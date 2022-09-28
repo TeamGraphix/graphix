@@ -3,4 +3,3 @@ ignore = E203
 max-line-length = 120
 docstring-convention = google
 import-order-style = google
-
