@@ -1,7 +1,8 @@
-from unittest import skip
 import numpy as np
-from simulator import Simulator
-from transpiler import Circuit
+from qiskit.quantum_info import Operator, Statevector, partial_trace
+from graphix.ops import Ops
+from graphix.simulator import Simulator
+from graphix.clifford import CLIFFORD
 
 class Patterns:
     """Pattern transpiler
@@ -14,13 +15,21 @@ class Patterns:
         apply from left to right.
         cmd in {'N', 'M', 'E', 'X', 'Z'}
         nodes of {'N', 'M', 'X', 'Z'} is i: int
-        nodes of {'E'} is (i, j)
+        nodes of {'E'} is (i, j): tuple
     sim : Simulator object from simulator
+    sv : qiskit.quantum_info.Statevector
+    node_index : list
+        the order in list corresponds to the order of tensor product subspaces
+    results : dict
+        storage measurement results
     """
 
     def __init__(self, simulator):
         self.seq = []
         self.sim = simulator
+        self.sv = Statevector([])
+        self.node_index = []
+        self.results = {}
 
     ###########read Patterns from Circuit###########
 
@@ -74,13 +83,21 @@ class Patterns:
         E = self.seq[target + 1]
         if E[1][0] == X[1]:
             Z = ['Z', E[1][1]]
-            self.sim.byproductz[E[1][1]].extend(self.sim.byproductx[X[1]]) # E_ijX_i^s = X_i^sZ_j^sE_ij
+            if X[1] in self.sim.byproductx.keys():
+                if E[1][1] in self.sim.byproductz.keys(): # E_ijX_i^s = X_i^sZ_j^sE_ij
+                    self.sim.byproductz[E[1][1]].extend(self.sim.byproductx[X[1]])
+                else:
+                    self.sim.byproductz[E[1][1]] = self.sim.byproductx[X[1]]
             self.seq.pop(target + 1) # del E
             self.seq.insert(target, Z) # add Z in front of X
             self.seq.insert(target, E) # add E in front of Z
         elif E[1][1] == X[1]:
             Z = ['Z', E[1][0]]
-            self.sim.byproductz[E[1][0]].extend(self.sim.byproductx[X[1]])
+            if X[1] in self.sim.byproductx.keys():
+                if E[1][0] in self.sim.byproductz.keys(): # E_ijX_i^s = X_i^sZ_j^sE_ij
+                    self.sim.byproductz[E[1][0]].extend(self.sim.byproductx[X[1]])
+                else:
+                    self.sim.byproductz[E[1][0]] = self.sim.byproductx[X[1]]
             self.seq.pop(target + 1) # del E
             self.seq.insert(target, Z) # add Z in front of X
             self.seq.insert(target, E) # add E in front of Z
@@ -91,8 +108,13 @@ class Patterns:
     def commute_MX(self, target):
         X = self.seq[target]
         M = self.seq[target + 1]
-        if X[1] == M[1]:
-            self.sim.domains[M[1]][0].extend(self.sim.byproductx[X[1]]) # s to s+r
+        if X[1] == M[1]:  # s to s+r
+            if X[1] in self.sim.byproductx.keys():
+                if M[1] in self.sim.domains.keys():
+                    self.sim.domains[M[1]][0].extend(self.sim.byproductx[X[1]])
+                else:
+                    self.sim.domains[M[1]][0] = self.sim.byproductx[X[1]]
+
             self.seq.pop(target) # del X
             self.sim.byproductx[X[1]] = []
         else:
@@ -103,7 +125,11 @@ class Patterns:
         Z = self.seq[target]
         M = self.seq[target + 1]
         if Z[1] == M[1]:
-            self.sim.domains[M[1]][1].extend(self.sim.byproductz[Z[1]])
+            if Z[1] in self.sim.byproductz.keys():
+                if M[1] in self.sim.domains.keys():
+                    self.sim.domains[M[1]][1].extend(self.sim.byproductz[Z[1]])
+                else:
+                    self.sim.domains[M[1]] = [self.sim.byproductz[Z[1]], []]
             self.seq.pop(target) # del Z
             self.sim.byproductz[Z[1]] = []
         else:
@@ -219,4 +245,193 @@ class Patterns:
 
 
 
-    ###########Optimization###########
+    # ###########Optimization###########
+    # free commutation rule is applied to N, E, M
+    # get measurement order list
+    def get_meas_flow(self): # this function can be replaced by more efficient algorithm
+        if not self.is_NEMC():
+            self.Standardization()
+        meas_flow = []
+        ind = self.find_op_to_be_moved('M')
+        if ind == 'end':
+            return []
+        while self.seq[ind][0] == 'M':
+            meas_flow.append(self.seq[ind])
+            ind += 1
+        return meas_flow
+
+    # get necessary nodes list for measure the target node
+    def search_must_prepared(self, node, prepared_list = None):
+        if not self.is_NEMC():
+            self.Standardization()
+        node_list = []
+        ind = self.find_op_to_be_moved('E')
+        while self.seq[ind ][0] == 'E':
+            if self.seq[ind][1][0] == node:
+                if not self.seq[ind][1][1] in prepared_list:
+                    node_list.append(self.seq[ind][1][1])
+            elif self.seq[ind][1][1] == node:
+                if not self.seq[ind][1][0] in prepared_list:
+                    node_list.append(self.seq[ind][1][0])
+            ind += 1
+        return node_list
+
+    # get byproduct correction sequence
+    def getC(self):
+        ind = self.find_op_to_be_moved('Z')
+        if ind == 'end':
+            ind = self.find_op_to_be_moved('X')
+            if ind == 'end':
+                return []
+        Clist = self.seq[ind:]
+        return Clist
+
+
+    # execute Optimization
+    def Optimization(self):
+        meas_flow = self.get_meas_flow()
+        prepared = [i for i in range(self.sim.circ.width)]
+        measured = []
+        new = []
+        for cmd in meas_flow:
+            node = cmd[1]
+            if not node in prepared:
+                new.append(['N', node])
+                prepared.append(node)
+            node_list = self.search_must_prepared(node, measured)
+            for add_node in node_list:
+                if not add_node in prepared:
+                    new.append(['N', add_node])
+                    prepared.append(add_node)
+                new.append(['E', (node, add_node)])
+            new.append(cmd)
+            measured.append(node)
+
+        # add corrections
+        Clist = self.getC()
+        new.extend(Clist)
+
+        # add not-prepared nodes
+        for node in range(self.sim.nodes):
+            if not node in prepared:
+                new.append(['N', node])
+
+        self.seq = new
+
+
+    ##### functions for investigation of pattern's properties ####
+    # count max necessary nodes
+    def minQR(self):
+        max_nodes = 0
+        nodes = self.sim.circ.width
+        for cmd in self.seq:
+            if cmd[0] == 'N':
+                nodes += 1
+            elif cmd[0] == 'M':
+                nodes -= 1
+            if nodes > max_nodes:
+                max_nodes = nodes
+        return max_nodes
+
+    # return the number of prepared nodes at each N or M cmd
+    def Nnodes_list(self):
+        nodes = self.sim.circ.width
+        N_list = []
+        for cmd in self.seq:
+            if cmd[0] == 'N':
+                nodes += 1
+                N_list.append(nodes)
+            elif cmd[0] == 'M':
+                nodes -= 1
+                N_list.append(nodes)
+        return N_list
+
+
+
+
+    #### execute commands ####
+    # return qubit number
+    def count_qubit(self):
+        return len(self.sv.dims())
+
+    # normalize statevector
+    def Normalization(self):
+        self.sv = self.sv/self.sv.trace()**0.5
+
+    # set input statevector
+    def set_state(self, statevector):
+        self.sv = statevector
+        self.node_index.extend([i for i in range(self.count_qubit())])
+
+    def set_initial(self):
+        n = self.sim.circ.width
+        self.sv = Statevector([1 for i in range(2**n)])
+        self.Normalization()
+        self.node_index.extend([i for i in range(n)])
+
+    # add |+>^n state nodes
+    def add_nodes(self, nodes):
+        n = len(nodes)
+        add_vector = Statevector([1 for i in range(2**n)])
+        add_vector = add_vector/add_vector.trace()**0.5
+        self.sv = self.sv.expand(add_vector)
+        self.node_index.extend(nodes)
+
+    # make entanglement
+    def make_entangle(self,edge):
+        target = self.node_index.index(edge[0])
+        control = self.node_index.index(edge[1])
+        self.sv = self.sv.evolve(Ops.cz, [control, target])
+
+    # measure and remove measured subsystem
+    def measure(self, node, angle):
+        result = np.random.choice([0, 1])
+        self.results[node] = result
+        s_signal, t_signal = self.sim.extract_signal(node, self.results)
+        angle = self.sim.angles[node] * np.pi * (-1)**s_signal + np.pi * t_signal
+
+        meas_op = self.sim.meas_op(angle, self.sim.vop[node], choice = result)
+        loc = self.node_index.index(node)
+        self.sv = self.sv.evolve(meas_op, [loc])
+
+        # trace out
+        self.Normalization()
+        state_dm = partial_trace(self.sv, [loc])
+        self.sv = state_dm.to_statevector()
+
+        # update node_index
+        self.node_index.remove(node)
+
+    # Feedforward
+    def XFeedForward(self, node):
+        if node in self.sim.byproductx.keys():
+            if np.mod(np.sum([self.results[j] for j in self.sim.byproductx[node]]), 2):
+                loc = self.node_index.index(node)
+                self.sv = self.sv.evolve(Ops.x, [loc])
+
+    def ZFeedForward(self, node):
+        if node in self.sim.byproductz.keys():
+            if np.mod(np.sum([self.results[j] for j in self.sim.byproductz[node]]), 2):
+                loc = self.node_index.index(node)
+                self.sv = self.sv.evolve(Ops.z, [loc])
+
+    # simulate the pattern
+    def execute_ptn(self):
+        self.set_initial()
+        for cmd in self.seq:
+            if cmd[0] == 'N':
+                self.add_nodes([cmd[1]])
+            elif cmd[0] == 'E':
+                self.make_entangle(cmd[1])
+            elif cmd[0] == 'M':
+                self.measure(cmd[1], self.sim.angles[cmd[1]])
+            elif cmd[0] == 'X':
+                self.XFeedForward(cmd[1])
+            elif cmd[0] == 'Z':
+                self.ZFeedForward(cmd[1])
+            else:
+                raise ValueError("invalid commands")
+        # apply VOP to output vertices
+        for i, j in enumerate(self.sim.output_nodes):
+            self.sv = self.sv.evolve(Operator(CLIFFORD[self.sim.vop[j]]), [i])
+
