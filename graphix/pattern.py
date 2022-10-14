@@ -13,8 +13,8 @@ class Patterns:
     seq : list of commands
         seq = [[cmd1, nodes1], [cmd2, nodes2], ...]
         apply from left to right.
-        cmd in {'N', 'M', 'E', 'X', 'Z'}
-        nodes of {'N', 'M', 'X', 'Z'} is i: int
+        cmd in {'N', 'M', 'E', 'X', 'Z', 'S'}
+        nodes of {'N', 'M', 'X', 'Z', 'S'} is i: int
         nodes of {'E'} is (i, j): tuple
     sim : Simulator object from simulator
     sv : qiskit.quantum_info.Statevector
@@ -22,6 +22,8 @@ class Patterns:
         the order in list corresponds to the order of tensor product subspaces
     results : dict
         storage measurement results
+    signal : dict
+        storage signal used in signal shifting
     """
 
     def __init__(self, simulator):
@@ -30,6 +32,7 @@ class Patterns:
         self.sv = Statevector([])
         self.node_index = []
         self.results = {}
+        self.signal = {}
 
     ###########read Patterns from Circuit###########
 
@@ -135,6 +138,40 @@ class Patterns:
         else:
             self.free_commute_R(target)
 
+    # exchange XS
+    def commute_XS(self, target):
+        S = self.seq[target]
+        X = self.seq[target + 1]
+        if S[1] in self.sim.byproductx[X[1]]:
+            self.sim.byproductx[X[1]].extend(self.signal[S[1]])
+        self.free_commute_R(target)
+
+    # exchange ZS
+    def commute_ZS(self, target):
+        S = self.seq[target]
+        Z = self.seq[target + 1]
+        if S[1] in self.sim.byproductz[Z[1]]:
+            self.sim.byproductz[Z[1]].extend(self.signal[S[1]])
+        self.free_commute_R(target)
+
+    # exchange MS
+    def commute_MS(self, target):
+        S = self.seq[target]
+        M = self.seq[target + 1]
+        if S[1] in self.sim.domains[M[1]][0]:
+            self.sim.domains[M[1]][0].extend(self.signal[S[1]])
+        if S[1] in self.sim.domains[M[1]][1]:
+            self.sim.domains[M[1]][1].extend(self.signal[S[1]])
+        self.free_commute_R(target)
+
+    # exchange SS
+    def commute_SS(self, target):
+        S1 = self.seq[target]
+        S2 = self.seq[target + 1]
+        if S1[1] in self.signal[S2[1]]:
+            self.signal[S2[1]].extend(self.signal[S1[1]])
+        self.free_commute_R(target)
+
     # free commutation
     def free_commute_R(self, target):
         A = self.seq[target + 1]
@@ -226,6 +263,43 @@ class Patterns:
             self.free_commute_L(target)
             target -= 1
 
+    # extract signal from measurement operator M
+    def extract_S(self):
+        pos = 0
+        while pos < len(self.seq):
+            cmd = self.seq[pos]
+            if cmd[0] == 'M':
+                node = cmd[1]
+                if self.sim.domains[node][1]:
+                    self.signal[node] = self.sim.domains[node][1]
+                    self.seq.insert(pos + 1, ['S', node])
+                    self.sim.domains[node][1] = [] # delete signal from 'M' op.
+                    pos += 1
+            pos += 1
+
+    # signal shifting
+    def signal_shifting(self):
+        if not self.is_NEMC():
+            self.Standardization()
+        self.extract_S()
+        target = self.find_op_to_be_moved('S', rev = True)
+        while target != 'end':
+            if target == len(self.seq)-1:
+                self.seq.pop(target)
+                target = self.find_op_to_be_moved('S', rev = True)
+                continue
+            if self.seq[target + 1][0] == 'X':
+                self.commute_XS(target)
+            elif self.seq[target + 1][0] == 'Z':
+                self.commute_ZS(target)
+            elif self.seq[target + 1][0] == 'M':
+                self.commute_MS(target)
+            elif self.seq[target + 1][0] == 'S':
+                self.commute_SS(target)
+            else:
+                self.free_commute_R(target)
+            target += 1
+
     # execute Standardization
     def Standardization(self):
         self.NtoLeft()
@@ -289,6 +363,8 @@ class Patterns:
 
     # execute Optimization
     def Optimization(self):
+        if not self.is_NEMC():
+            self.Standardization()
         meas_flow = self.get_meas_flow()
         prepared = [i for i in range(self.sim.circ.width)]
         measured = []
