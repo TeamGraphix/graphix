@@ -6,21 +6,12 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 import numpy as np
 from graphix.ops import States, Ops
 from copy import deepcopy
-
+from graphix.pattern import Pattern
 
 class Circuit():
     """Gate-to-MBQC transpiler.
 
     Holds gate operations and translates into MBQC measurement patterns.
-    Each nodes lie on 'rails' associated with logical qubits (in gate network).
-    For example, applying CNOT gates to two-qubit state results in the graph below
-
-    0 - - - 4 - 5
-            |
-    1 - 2 - 3
-
-    Note that we use identity gate together with CNOT to avoid
-    circular reference of byproduct (in this simple implementation).
 
     Attributes
     ----------
@@ -28,30 +19,7 @@ class Circuit():
         Number of logical qubits (for gate network)
     instruction : list
         List of gates applied
-    edges : list
-        Edges of the graph state.
-    Nnode : int
-        Total number of nodes required for the MBQC pattern
-    lengths : list
-        Total number of nodes associated with each logical qubit
-    angles : dict
-        Meausrement angles for each node
-    measurement_order : list
-        order of qubits to be measured to ensure determinisum
-    byproductx : dict
-        X Byproduct domains which apply to each node
-    byproductx : dict
-        Z Byproduct domains which apply to each node
-    domains :
-        Adaptive measurement domains (s and t in Measurement Calculus language)
-    next_node : dict
-        Next node in the 'rail' of logical qubit
-    out : array
-        Output node indices for each logical qubits
-    pos : dict
-        positions of nodes for graph drawing
 
-    TODO: add LC instead of CLifford graphs
     """
 
     def __init__(self, width):
@@ -64,26 +32,8 @@ class Circuit():
         self.width = width
         self.instruction = []
 
-        self.Nnode = width
-        self.edges = []
-        self.lengths = [1 for j in range(width)]
-        self.out = [j for j in range(width)]
-        self.angles = dict()
-        self.measurement_order = []
-        self.byproductz = {j: [] for j in range(width)}
-        self.byproductx = {j: [] for j in range(width)}
-        self.next_node = dict()
-        self.domains = dict()
-        self.pos = {j: [0, -j] for j in range(width)}
-
     def cnot(self, control, target):
-        """CNOT + identity gate
-        Identity is necessary to simplify the measurement order.
-        edges:
-        t   -    a2 - a3
-                  |
-        c - a0 - a1
-
+        """CNOT
 
         Prameters
         ---------
@@ -95,59 +45,6 @@ class Circuit():
         assert control in np.arange(self.width)
         assert target in np.arange(self.width)
         assert control != target
-
-        # assign new qubit labels
-        ancilla = self.Nnode + np.arange(4, dtype=np.int8)
-        self.Nnode += 4
-
-        self.pos[ancilla[2]] = [self.lengths[target], -target]
-        self.pos[ancilla[3]] = [self.lengths[target] + 1, -target]
-        self.pos[ancilla[0]] = [self.lengths[control], -control]
-        self.pos[ancilla[1]] = [self.lengths[control] + 1, -control]
-
-        self.edges.append((self.out[target], ancilla[2]))
-        self.edges.append((self.out[control], ancilla[0]))
-        if self.byproductx[self.out[control]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla[0]] = self.byproductx[self.out[control]]
-
-        self.edges.append((ancilla[0], ancilla[1]))
-        self.edges.append((ancilla[1], ancilla[2]))
-        self.edges.append((ancilla[2], ancilla[3]))
-
-        self.byproductx[ancilla[3]] = [ancilla[2]]
-        self.byproductz[ancilla[3]] = [self.out[target]]
-        self.byproductx[ancilla[0]] = [self.out[control]]
-        self.byproductx[ancilla[1]] = [ancilla[0]]
-        self.byproductz[ancilla[1]] = [self.out[target], self.out[control]]
-        self.byproductz[ancilla[2]] = [ancilla[0]]
-        if self.byproductx[self.out[target]]:  # E_ij X_i = X_i Z_j E_ij
-            for j in self.byproductx[self.out[target]]:
-                self.byproductz[ancilla[2]].append(j)
-
-        self.domains[self.out[target]] = [[], []]
-        self.domains[self.out[control]] = [[], []]
-        self.domains[ancilla[0]] = [[self.out[control]], []]
-        self.domains[ancilla[2]] = [[], []]
-
-        self.angles[self.out[target]] = 0
-        self.angles[self.out[control]] = 0
-        self.angles[ancilla[0]] = 0
-        self.angles[ancilla[2]] = 0
-
-        self.next_node[self.out[target]] = ancilla[2]
-        self.next_node[ancilla[2]] = ancilla[3]
-        self.next_node[self.out[control]] = ancilla[0]
-        self.next_node[ancilla[0]] = ancilla[1]
-
-        self.measurement_order.append(self.out[control])
-        self.measurement_order.append(self.out[target])
-        self.measurement_order.append(ancilla[0])
-        self.measurement_order.append(ancilla[2])
-
-        self.lengths[control] += 2
-        self.lengths[target] += 2
-        self.out[control] = ancilla[1]
-        self.out[target] = ancilla[3]
         self.instruction.append(['CNOT', [target, control]])
 
     def h(self, qubit):
@@ -158,24 +55,7 @@ class Circuit():
             target qubit
         """
         assert qubit in np.arange(self.width)
-        ancilla = self.Nnode
-        self.Nnode += 1
-
-        self.pos[ancilla] = [self.lengths[qubit], -qubit]
-        self.edges.append((self.out[qubit], ancilla))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla] = self.byproductx[self.out[qubit]]
-        else:
-            self.byproductz[ancilla] = []
-        self.byproductx[ancilla] = [self.out[qubit]]
-        self.next_node[self.out[qubit]] = ancilla
-        self.domains[self.out[qubit]] = [[], []]
-        self.angles[self.out[qubit]] = 0
-        self.measurement_order.append(self.out[qubit])
-
-        self.lengths[qubit] += 1
-        self.out[qubit] = ancilla
-        self.instruction.append(['H', [qubit]])
+        self.instruction.append(['H', qubit])
 
     def s(self, qubit):
         """S gate
@@ -185,36 +65,7 @@ class Circuit():
             target qubit
         """
         assert qubit in np.arange(self.width)
-
-        # assign new qubit labels
-        ancilla1, ancilla2 = self.Nnode, self.Nnode + 1
-        self.Nnode += 2
-
-        self.pos[ancilla1] = [self.lengths[qubit], -qubit]
-        self.pos[ancilla2] = [self.lengths[qubit] + 1, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla1))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla1] = self.byproductx[self.out[qubit]]
-
-        self.edges.append((ancilla1, ancilla2))
-        self.next_node[self.out[qubit]] = ancilla1
-        self.next_node[ancilla1] = ancilla2
-
-        self.byproductx[ancilla2] = [ancilla1]
-        self.byproductz[ancilla2] = [self.out[qubit]]
-
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla1] = [[], []]
-
-        self.angles[self.out[qubit]] = -0.5
-        self.angles[ancilla1] = 0
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla1)
-
-        self.lengths[qubit] += 2
-        self.out[qubit] = ancilla2
-        self.instruction.append(['S', [qubit]])
+        self.instruction.append(['S', qubit])
 
     def x(self, qubit):
         """Pauli X gate
@@ -224,36 +75,7 @@ class Circuit():
             target qubit
         """
         assert qubit in np.arange(self.width)
-
-        # assign new qubit labels
-        ancilla1, ancilla2 = self.Nnode, self.Nnode + 1
-        self.Nnode += 2
-
-        self.pos[ancilla1] = [self.lengths[qubit], -qubit]
-        self.pos[ancilla2] = [self.lengths[qubit] + 1, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla1))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla1] = self.byproductx[self.out[qubit]]
-
-        self.edges.append((ancilla1, ancilla2))
-        self.next_node[self.out[qubit]] = ancilla1
-        self.next_node[ancilla1] = ancilla2
-
-        self.byproductx[ancilla2] = [ancilla1]
-        self.byproductz[ancilla2] = [self.out[qubit]]
-
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla1] = [[], []]
-
-        self.angles[self.out[qubit]] = 0
-        self.angles[ancilla1] = -1
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla1)
-
-        self.lengths[qubit] += 2
-        self.out[qubit] = ancilla2
-        self.instruction.append(['X', [qubit]])
+        self.instruction.append(['X', qubit])
 
     def y(self, qubit):
         """Pauli Y gate
@@ -263,42 +85,7 @@ class Circuit():
             target qubit
         """
         assert qubit in np.arange(self.width)
-
-        # assign new qubit labels
-        ancilla = self.Nnode + np.arange(4, dtype=np.int8)
-        self.Nnode += 4
-
-        # straight graph
-        for i in range(4):
-            self.pos[ancilla[i]] = [self.lengths[qubit] + i, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla[0]))
-        self.next_node[self.out[qubit]] = ancilla[0]
-        for i in range(3):
-            self.edges.append((ancilla[i], ancilla[i + 1]))
-            self.next_node[ancilla[i]] = ancilla[i + 1]
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla[0]] = self.byproductx[self.out[qubit]]
-
-        self.byproductx[ancilla[3]] = [ancilla[2]]
-        self.byproductz[ancilla[3]] = [ancilla[1]]
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla[0]] = [[], []]
-        self.domains[ancilla[1]] = [[ancilla[0]], [self.out[qubit]]]
-        self.domains[ancilla[2]] = [[], [ancilla[0]]]
-
-        self.angles[self.out[qubit]] = 0
-        self.angles[ancilla[0]] = -1
-        self.angles[ancilla[1]] = -1
-        self.angles[ancilla[2]] = 0
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla[0])
-        self.measurement_order.append(ancilla[1])
-        self.measurement_order.append(ancilla[2])
-
-        self.lengths[qubit] += 4
-        self.out[qubit] = ancilla[3]
-        self.instruction.append(['Y', [qubit]])
+        self.instruction.append(['Y', qubit])
 
     def z(self, qubit):
         """Pauli Z gate
@@ -308,36 +95,7 @@ class Circuit():
             target qubit
         """
         assert qubit in np.arange(self.width)
-
-        # assign new qubit labels
-        ancilla1, ancilla2 = self.Nnode, self.Nnode + 1
-        self.Nnode += 2
-
-        self.pos[ancilla1] = [self.lengths[qubit], -qubit]
-        self.pos[ancilla2] = [self.lengths[qubit] + 1, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla1))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla1] = self.byproductx[self.out[qubit]]
-
-        self.edges.append((ancilla1, ancilla2))
-        self.next_node[self.out[qubit]] = ancilla1
-        self.next_node[ancilla1] = ancilla2
-
-        self.byproductx[ancilla2] = [ancilla1]
-        self.byproductz[ancilla2] = [self.out[qubit]]
-
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla1] = [[], []]
-
-        self.angles[self.out[qubit]] = -1
-        self.angles[ancilla1] = 0
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla1)
-
-        self.lengths[qubit] += 2
-        self.out[qubit] = ancilla2
-        self.instruction.append(['Z', [qubit]])
+        self.instruction.append(['Z', qubit])
 
     def rx(self, qubit, angle):
         """X rotation gate
@@ -349,35 +107,8 @@ class Circuit():
             rotation angle in radian
         """
         assert qubit in np.arange(self.width)
+        self.instruction.append(['Rx', qubit, angle])
 
-        # assign new qubit labels
-        ancilla1, ancilla2 = self.Nnode, self.Nnode + 1
-        self.Nnode += 2
-
-        self.pos[ancilla1] = [self.lengths[qubit], -qubit]
-        self.pos[ancilla2] = [self.lengths[qubit] + 1, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla1))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla1] = self.byproductx[self.out[qubit]]
-
-        self.edges.append((ancilla1, ancilla2))
-        self.next_node[self.out[qubit]] = ancilla1
-        self.next_node[ancilla1] = ancilla2
-
-        self.byproductx[ancilla2] = [ancilla1]
-        self.byproductz[ancilla2] = [self.out[qubit]]
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla1] = [[self.out[qubit]], []]
-
-        self.angles[self.out[qubit]] = 0
-        self.angles[ancilla1] = -1 * angle / np.pi
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla1)
-
-        self.lengths[qubit] += 2
-        self.out[qubit] = ancilla2
-        self.instruction.append(['Rx', [qubit], [angle]])
 
     def ry(self, qubit, angle):
         """Y rotation gate
@@ -389,42 +120,7 @@ class Circuit():
             angle in radian
         """
         assert qubit in np.arange(self.width)
-
-        # assign new qubit labels
-        ancilla = self.Nnode + np.arange(4, dtype=np.int8)
-        self.Nnode += 4
-
-        # straight graph
-        for i in range(4):
-            self.pos[ancilla[i]] = [self.lengths[qubit] + i, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla[0]))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla[0]] = self.byproductx[self.out[qubit]]
-        self.next_node[self.out[qubit]] = ancilla[0]
-        for i in range(3):
-            self.edges.append((ancilla[i], ancilla[i + 1]))
-            self.next_node[ancilla[i]] = ancilla[i + 1]
-
-        self.byproductx[ancilla[3]] = [ancilla[2]]
-        self.byproductz[ancilla[3]] = [ancilla[1]]
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla[0]] = [[self.out[qubit]], []]
-        self.domains[ancilla[1]] = [[], [self.out[qubit], ancilla[0]]]
-        self.domains[ancilla[2]] = [[], [ancilla[0]]]
-
-        self.angles[self.out[qubit]] = 0.5
-        self.angles[ancilla[0]] = -1 * angle / np.pi
-        self.angles[ancilla[1]] = -0.5
-        self.angles[ancilla[2]] = 0
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla[0])
-        self.measurement_order.append(ancilla[1])
-        self.measurement_order.append(ancilla[2])
-
-        self.lengths[qubit] += 4
-        self.out[qubit] = ancilla[3]
-        self.instruction.append(['Ry', [qubit], [angle]])
+        self.instruction.append(['Ry', qubit, angle])
 
     def rz(self, qubit, angle):
         """Z rotation gate
@@ -436,35 +132,7 @@ class Circuit():
             rotation angle in radian
         """
         assert qubit in np.arange(self.width)
-
-        # assign new qubit labels
-        ancilla1, ancilla2 = self.Nnode, self.Nnode + 1
-        self.Nnode += 2
-
-        self.pos[ancilla1] = [self.lengths[qubit], -qubit]
-        self.pos[ancilla2] = [self.lengths[qubit] + 1, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla1))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla1] = self.byproductx[self.out[qubit]]
-        self.edges.append((ancilla1, ancilla2))
-        self.next_node[self.out[qubit]] = ancilla1
-        self.next_node[ancilla1] = ancilla2
-
-        self.byproductx[ancilla2] = [ancilla1]
-        self.byproductz[ancilla2] = [self.out[qubit]]
-
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla1] = [[self.out[qubit]], []]
-
-        self.angles[self.out[qubit]] = - 1 * angle / np.pi
-        self.angles[ancilla1] = 0
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla1)
-
-        self.lengths[qubit] += 2
-        self.out[qubit] = ancilla2
-        self.instruction.append(['Rz', [qubit], [angle]])
+        self.instruction.append(['Rz', qubit, angle])
 
     def i(self, qubit):
         """identity (teleportation) gate
@@ -474,82 +142,366 @@ class Circuit():
             target qubit
         """
         assert qubit in np.arange(self.width)
+        self.instruction.append(['I', qubit])
 
-        # assign new qubit labels
-        ancilla1, ancilla2 = self.Nnode, self.Nnode + 1
-        self.Nnode += 2
-
-        self.pos[ancilla1] = [self.lengths[qubit], -qubit]
-        self.pos[ancilla2] = [self.lengths[qubit] + 1, -qubit]
-
-        self.edges.append((self.out[qubit], ancilla1))
-        if self.byproductx[self.out[qubit]]:  # E_ij X_i = X_i Z_j E_ij
-            self.byproductz[ancilla1] = self.byproductx[self.out[qubit]]
-
-        self.edges.append((ancilla1, ancilla2))
-        self.next_node[self.out[qubit]] = ancilla1
-        self.next_node[ancilla1] = ancilla2
-
-        self.byproductx[ancilla2] = [ancilla1]
-        self.byproductz[ancilla2] = [self.out[qubit]]
-        self.domains[self.out[qubit]] = [[], []]
-        self.domains[ancilla1] = [[self.out[qubit]], []]
-
-        self.angles[self.out[qubit]] = 0
-        self.angles[ancilla1] = 0
-        self.measurement_order.append(self.out[qubit])
-        self.measurement_order.append(ancilla1)
-
-        self.lengths[qubit] += 2
-        self.out[qubit] = ancilla2
-        self.instruction.append(['I', [qubit]])
-
-    def reorder_qubits(self):
-        for i in range(self.width):
-            self.i(i)
-
-    def sort_outputs(self):
-        old_out = deepcopy(self.out)
-        self.out.sort()
-
-        # change indices from old_out to sorted one
-        new_edges = []
-        for i, j in self.edges:
-            if i in old_out:
-                i = self.out[old_out.index(i)]
-            if j in old_out:
-                j = self.out[old_out.index(j)]
-            new_edges.append((i, j))
-        bpx = dict()
-        bpz = dict()
-        for i in iter(self.byproductx.keys()):
-            if i in old_out:
-                bpx[self.out[old_out.index(i)]] = self.byproductx[i]
+    def transpile(self):
+        """ gate-to-MBQC transpile function.
+        Returns
+        --------
+        pattern : graphix.Pattern object
+        """
+        Nnode = self.width
+        out = [j for j in range(self.width)]
+        pattern = Pattern([j for j in range(self.width)])
+        for instr in self.instruction:
+            if instr[0] == 'CNOT':
+                ancilla = [Nnode, Nnode+1]
+                out[instr[1][1]], out[instr[1][0]], seq =\
+                    self._cnot_command(out[instr[1][1]], out[instr[1][0]], ancilla)
+                pattern.seq.extend(seq)
+                Nnode += 2
+            elif instr[0] == 'I':
+                pass
+            elif instr[0] == 'H':
+                ancilla = Nnode
+                out[instr[1]], seq = self._h_command(out[instr[1]], ancilla)
+                pattern.seq.extend(seq)
+                Nnode += 1
+            elif instr[0] == 'S':
+                ancilla = [Nnode, Nnode+1]
+                out[instr[1]], seq = self._s_command(out[instr[1]], ancilla)
+                pattern.seq.extend(seq)
+                Nnode += 2
+            elif instr[0] == 'X':
+                ancilla = [Nnode, Nnode+1]
+                out[instr[1]], seq = self._x_command(out[instr[1]], ancilla)
+                pattern.seq.extend(seq)
+                Nnode += 2
+            elif instr[0] == 'Y':
+                ancilla = [Nnode, Nnode+1, Nnode+2, Nnode+3]
+                out[instr[1]], seq = self._y_command(out[instr[1]], ancilla)
+                pattern.seq.extend(seq)
+                Nnode += 4
+            elif instr[0] == 'Z':
+                ancilla = [Nnode, Nnode+1]
+                out[instr[1]], seq = self._z_command(out[instr[1]], ancilla)
+                pattern.seq.extend(seq)
+                Nnode += 2
+            elif instr[0] == 'Rx':
+                ancilla =[Nnode, Nnode+1]
+                out[instr[1]], seq = self._rx_command(out[instr[1]], ancilla, instr[2])
+                pattern.seq.extend(seq)
+                Nnode += 2
+            elif instr[0] == 'Ry':
+                ancilla = [Nnode, Nnode+1, Nnode+2, Nnode+3]
+                out[instr[1]], seq = self._ry_command(out[instr[1]], ancilla, instr[2])
+                pattern.seq.extend(seq)
+                Nnode += 4
+            elif instr[0] == 'Rz':
+                ancilla = [Nnode, Nnode+1]
+                out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
+                pattern.seq.extend(seq)
+                Nnode += 2
             else:
-                bpx[i] = self.byproductx[i]
-        for i in iter(self.byproductz.keys()):
-            if i in old_out:
-                bpz[self.out[old_out.index(i)]] = self.byproductz[i]
-            else:
-                bpz[i] = self.byproductz[i]
-        next_node = dict()
-        for i, j in iter(self.next_node.items()):
-            if j in old_out:
-                next_node[i] = self.out[old_out.index(j)]
-            else:
-                next_node[i] = j
-        new_pos = dict()
-        for i in iter(self.pos.keys()):
-            if i in old_out:
-                new_pos[self.out[old_out.index(i)]] = self.pos[i]
-            else:
-                new_pos[i] = self.pos[i]
+                raise ValueError('Unknown instruction, commands not added')
+        self._sort_outputs(pattern, out)
+        pattern.output_nodes = out
+        return pattern
 
-        self.edges = new_edges
-        self.byproductx = bpx
-        self.byproductz = bpz
-        self.next_node = next_node
-        self.pos = new_pos
+    @classmethod
+    def _cnot_command(self, control_node, target_node, ancilla):
+        """ MBQC commands for CNOT gate
+        Parameters
+        ---------
+        control_node : int
+            control node on graph
+        target : int
+            target node on graph
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+
+        Returns
+        ---------
+        control_out : int
+            control node on graph after the gate
+        target_out : int
+            target node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 2
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]
+        seq.append(['E', (target_node, ancilla[0])])
+        seq.append(['E', (control_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['M', target_node, 'XY', 0, [], []])
+        seq.append(['M', ancilla[0], 'XY', 0, [], []])
+        seq.append(['X', ancilla[1], [ancilla[0]]])
+        seq.append(['Z', ancilla[1], [target_node]])
+        seq.append(['Z', control_node, [target_node]])
+        return control_node, ancilla[1], seq
+
+    @classmethod
+    def _h_command(self, input_node, ancilla):
+        """MBQC commands for Hadamard gate
+        Parameters
+        ---------
+        input_node : int
+            target node on graph
+        ancilla : int
+            ancilla node index to be added
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        seq = [['N', ancilla]]
+        seq.append(['E', (input_node, ancilla)])
+        seq.append(['M', input_node, 'XY', 0, [], []])
+        seq.append(['X', ancilla, [input_node]])
+        return ancilla, seq
+
+    @classmethod
+    def _s_command(self, input_node, ancilla):
+        """MBQC commands for S gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 2
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['M', input_node, 'XY', -0.5, [], []])
+        seq.append(['M', ancilla[0], 'XY', 0, [], []])
+        seq.append(['X', ancilla[1], [ancilla[0]]])
+        seq.append(['Z', ancilla[1], [input_node]])
+        return ancilla[1], seq
+
+    @classmethod
+    def _x_command(self, input_node, ancilla):
+        """MBQC commands for Pauli X gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 2
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['M', input_node, 'XY', 0, [], []])
+        seq.append(['M', ancilla[0], 'XY', -1, [], []])
+        seq.append(['X', ancilla[1], [ancilla[0]]])
+        seq.append(['Z', ancilla[1], [input_node]])
+        return ancilla[1], seq
+
+    @classmethod
+    def _y_command(self, input_node, ancilla):
+        """MBQC commands for Pauli Y gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of four ints
+            ancilla node indices to be added to graph
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 4
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.extend([['N',ancilla[2]], ['N', ancilla[3]]])
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['E', (ancilla[1], ancilla[2])])
+        seq.append(['E', (ancilla[2], ancilla[3])])
+        seq.append(['M', input_node, 'XY', 0.5, [], []])
+        seq.append(['M', ancilla[0], 'XY', 0.5, [], []])
+        seq.append(['M', ancilla[1], 'XY', -0.5, [], [input_node, ancilla[0]]])
+        seq.append(['M', ancilla[2], 'XY', 0, [], [ancilla[0]]])
+        seq.append(['X', ancilla[3], [ancilla[2]]])
+        seq.append(['Z', ancilla[3], [ancilla[1]]])
+        return ancilla[3], seq
+
+    @classmethod
+    def _z_command(self, input_node, ancilla):
+        """MBQC commands for Pauli Z gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 2
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['M', input_node, 'XY', -1, [], []])
+        seq.append(['M', ancilla[0], 'XY', 0, [], []])
+        seq.append(['X', ancilla[1], [ancilla[0]]])
+        seq.append(['Z', ancilla[1], [input_node]])
+        return ancilla[1], seq
+
+    @classmethod
+    def _rx_command(self, input_node, ancilla, angle):
+        """MBQC commands for X rotation gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+        angle : float
+            measurement angle in radian
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 2
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['M', input_node, 'XY', 0, [], []])
+        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [], []])
+        seq.append(['X', ancilla[1], [ancilla[0]]])
+        seq.append(['Z', ancilla[1], [input_node]])
+        return ancilla[1], seq
+
+    @classmethod
+    def _ry_command(self, input_node, ancilla, angle):
+        """MBQC commands for Y rotation gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of four ints
+            ancilla node indices to be added to graph
+        angle : float
+            rotation angle in radian
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 4
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.extend([['N',ancilla[2]], ['N', ancilla[3]]])
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['E', (ancilla[1], ancilla[2])])
+        seq.append(['E', (ancilla[2], ancilla[3])])
+        seq.append(['M', input_node, 'XY', 0.5, [], []])
+        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [], []])
+        seq.append(['M', ancilla[1], 'XY', -0.5, [], [input_node, ancilla[0]]])
+        seq.append(['M', ancilla[2], 'XY', 0, [], [ancilla[0]]])
+        seq.append(['X', ancilla[3], [ancilla[2]]])
+        seq.append(['Z', ancilla[3], [ancilla[1]]])
+        return ancilla[3], seq
+
+    @classmethod
+    def _rz_command(self, input_node, ancilla, angle):
+        """MBQC commands for Z rotation gate
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+        angle : float
+            measurement angle in radian
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 2
+        seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
+        seq.append(['E', (input_node, ancilla[0])])
+        seq.append(['E', (ancilla[0], ancilla[1])])
+        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [], []])
+        seq.append(['M', input_node, 'XY', 0, [], []])
+        seq.append(['X', ancilla[1], [ancilla[0]]])
+        seq.append(['Z', ancilla[1], [input_node]])
+        return ancilla[1], seq
+
+    @classmethod
+    def _sort_outputs(self, pattern, output_nodes):
+        """Sort the node indices of ouput qubits.
+
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
+        angle : float
+            measurement angle in radian
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        old_out = deepcopy(output_nodes)
+        output_nodes.sort()
+        # check all commands and swap node indices
+        for i in range(len(pattern.seq)):
+            if pattern.seq[i][0] == 'E':
+                j, k = pattern.seq[i][1]
+                if j in old_out:
+                    j = output_nodes[old_out.index(j)]
+                if k in old_out:
+                    k = output_nodes[old_out.index(k)]
+                pattern.seq[i][1] = (j, k)
+            elif pattern.seq[i][1] in old_out:
+                pattern.seq[i][1] = output_nodes[old_out.index(pattern.seq[i][1])]
 
     def simulate_statevector(self, input_state=None):
 
@@ -566,20 +518,20 @@ class Circuit():
             elif self.instruction[i][0] == 'I':
                 pass
             elif self.instruction[i][0] == 'S':
-                state = state.evolve(Ops.s, self.instruction[i][1])
+                state = state.evolve(Ops.s, [self.instruction[i][1]])
             elif self.instruction[i][0] == 'H':
-                state = state.evolve(Ops.h, self.instruction[i][1])
+                state = state.evolve(Ops.h, [self.instruction[i][1]])
             elif self.instruction[i][0] == 'X':
-                state = state.evolve(Ops.x, self.instruction[i][1])
+                state = state.evolve(Ops.x, [self.instruction[i][1]])
             elif self.instruction[i][0] == 'Y':
-                state = state.evolve(Ops.y, self.instruction[i][1])
+                state = state.evolve(Ops.y, [self.instruction[i][1]])
             elif self.instruction[i][0] == 'Z':
-                state = state.evolve(Ops.z, self.instruction[i][1])
+                state = state.evolve(Ops.z, [self.instruction[i][1]])
             elif self.instruction[i][0] == 'Rx':
-                state = state.evolve(Ops.Rx(self.instruction[i][2][0]), self.instruction[i][1])
+                state = state.evolve(Ops.Rx(self.instruction[i][2]), [self.instruction[i][1]])
             elif self.instruction[i][0] == 'Ry':
-                state = state.evolve(Ops.Ry(self.instruction[i][2][0]), self.instruction[i][1])
+                state = state.evolve(Ops.Ry(self.instruction[i][2]), [self.instruction[i][1]])
             elif self.instruction[i][0] == 'Rz':
-                state = state.evolve(Ops.Rz(self.instruction[i][2][0]), self.instruction[i][1])
+                state = state.evolve(Ops.Rz(self.instruction[i][2]), [self.instruction[i][1]])
 
         return state

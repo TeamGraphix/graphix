@@ -1,8 +1,7 @@
-from graphix.simulator import Simulator
 from graphix.transpiler import Circuit
 import numpy as np
 
-# 2-qubit QFT
+# 3-qubit QFT
 # more description:https://qiskit.org/textbook/ch-algorithms/quantum-fourier-transform.html
 
 
@@ -25,28 +24,33 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
-circuit = Circuit(2)
+circuit = Circuit(3)
 
 # prepare all states in |0>, not |+> (default for graph state)
 circuit.h(0)
 circuit.h(1)
+circuit.h(2)
 
-# input is b11=3
-circuit.x(0)
 circuit.x(1)
+circuit.x(2)
 
 # QFT
+circuit.h(2)
+cp(circuit, np.pi / 4, 0, 2)
+cp(circuit, np.pi / 2, 1, 2)
 circuit.h(1)
 cp(circuit, np.pi / 2, 0, 1)
 circuit.h(0)
-swap(circuit, 0, 1)
-circuit.sort_outputs()
-
+swap(circuit, 0, 2)
 
 # run with MBQC simulator
-simulator = Simulator(circuit)
-simulator.measure_pauli()
-out_state = simulator.simulate_mbqc()
+
+pat = circuit.transpile()
+pat.Standardization()
+pat.signal_shifting()
+pat.Optimization()
+pat.execute_ptn()
+out_state = pat.sv
 
 state = circuit.simulate_statevector()
 print('overlap of states: ', np.abs(np.dot(state.data.conjugate(), out_state.data)))
