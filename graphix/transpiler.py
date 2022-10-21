@@ -204,8 +204,9 @@ class Circuit():
                 Nnode += 2
             else:
                 raise ValueError('Unknown instruction, commands not added')
-        self._sort_outputs(pattern, out)
+        # self._sort_outputs(pattern, out)
         pattern.output_nodes = out
+        pattern.Nnode = Nnode
         return pattern
 
     @classmethod
@@ -401,7 +402,7 @@ class Circuit():
         seq.append(['E', (input_node, ancilla[0])])
         seq.append(['E', (ancilla[0], ancilla[1])])
         seq.append(['M', input_node, 'XY', 0, [], []])
-        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [], []])
+        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [input_node], []])
         seq.append(['X', ancilla[1], [ancilla[0]]])
         seq.append(['Z', ancilla[1], [input_node]])
         return ancilla[1], seq
@@ -433,8 +434,8 @@ class Circuit():
         seq.append(['E', (ancilla[1], ancilla[2])])
         seq.append(['E', (ancilla[2], ancilla[3])])
         seq.append(['M', input_node, 'XY', 0.5, [], []])
-        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [], []])
-        seq.append(['M', ancilla[1], 'XY', -0.5, [], [input_node, ancilla[0]]])
+        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [input_node], []])
+        seq.append(['M', ancilla[1], 'XY', -0.5, [input_node], [ancilla[0]]])
         seq.append(['M', ancilla[2], 'XY', 0, [], [ancilla[0]]])
         seq.append(['X', ancilla[3], [ancilla[2]]])
         seq.append(['Z', ancilla[3], [ancilla[1]]])
@@ -463,8 +464,8 @@ class Circuit():
         seq = [['N',ancilla[0]], ['N', ancilla[1]]]# assign new qubit labels
         seq.append(['E', (input_node, ancilla[0])])
         seq.append(['E', (ancilla[0], ancilla[1])])
-        seq.append(['M', ancilla[0], 'XY', -1 * angle / np.pi, [], []])
-        seq.append(['M', input_node, 'XY', 0, [], []])
+        seq.append(['M', input_node, 'XY', -1 * angle / np.pi, [], []])
+        seq.append(['M', ancilla[0], 'XY', 0, [], []])
         seq.append(['X', ancilla[1], [ancilla[0]]])
         seq.append(['Z', ancilla[1], [input_node]])
         return ancilla[1], seq

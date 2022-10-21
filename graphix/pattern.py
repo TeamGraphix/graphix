@@ -22,7 +22,9 @@ class Pattern:
         attr for X: signal_domain
         attr for Z: signal_domain
         attr for S: signal_domain
-        sv : qiskit.quantum_info.Statevector
+    sv : qiskit.quantum_info.Statevector
+    Nnode : int
+        number of nodes
     node_index : list
         the order in list corresponds to the order of tensor product subspaces
     results : dict
@@ -54,13 +56,16 @@ class Pattern:
             self.seq.pop(target + 1) # del E
             self.seq.insert(target, Z) # add Z in front of X
             self.seq.insert(target, E) # add E in front of Z
+            return True
         elif E[1][1] == X[1]:
             Z = ['Z', E[1][0], X[2]]
             self.seq.pop(target + 1) # del E
             self.seq.insert(target, Z) # add Z in front of X
             self.seq.insert(target, E) # add E in front of Z
+            return True
         else:
             self.free_commute_R(target)
+            return False
 
     # exchange MX^s = M^s
     def commute_MX(self, target):
@@ -69,8 +74,10 @@ class Pattern:
         if X[1] == M[1]:  # s to s+r
             M[4].extend(X[2])
             self.seq.pop(target) # del X
+            return True
         else:
             self.free_commute_R(target)
+            return False
 
     # exchange MZ^r = ^rM
     def commute_MZ(self, target):
@@ -79,36 +86,43 @@ class Pattern:
         if Z[1] == M[1]:
             M[5].extend(Z[2])
             self.seq.pop(target) # del Z
+            return True
         else:
             self.free_commute_R(target)
+            return False
 
     # exchange XS
     def commute_XS(self, target):
         S = self.seq[target]
         X = self.seq[target + 1]
-        X[2].extend(S[2])
+        if np.mod(X[2].count(S[1]), 2):
+            X[2].extend(S[2])
         self.free_commute_R(target)
 
     # exchange ZS
     def commute_ZS(self, target):
         S = self.seq[target]
         Z = self.seq[target + 1]
-        Z[2].extend(S[2])
+        if np.mod(Z[2].count(S[1]), 2):
+            Z[2].extend(S[2])
         self.free_commute_R(target)
 
     # exchange MS
     def commute_MS(self, target):
         S = self.seq[target]
         M = self.seq[target + 1]
-        M[4].extend(S[2])
-        M[5].extend(S[2])
+        if np.mod(M[4].count(S[1]), 2):
+            M[4].extend(S[2])
+        if np.mod(M[5].count(S[1]), 2):
+            M[5].extend(S[2])
         self.free_commute_R(target)
 
     # exchange SS
     def commute_SS(self, target):
         S1 = self.seq[target]
         S2 = self.seq[target + 1]
-        S2[2].extend(S1[2])
+        if np.mod(S2[2].count(S1[1]), 2):
+            S2[2].extend(S1[2])
         self.free_commute_R(target)
 
     # free commutation
@@ -165,11 +179,14 @@ class Pattern:
                 target = self.find_op_to_be_moved('X',rev = True, skipnum = moved_X)
                 continue
             if self.seq[target + 1][0] == 'E':
-                self.commute_EX(target)
+                move = self.commute_EX(target)
+                if move:
+                    target += 1 # because of adding extra Z
             elif self.seq[target + 1][0] == 'M':
-                self.commute_MX(target)
-                target = self.find_op_to_be_moved('X', rev = True, skipnum = moved_X)
-                continue # when XM commutation rule applied, X will be removed
+                search = self.commute_MX(target)
+                if search:
+                    target = self.find_op_to_be_moved('X', rev = True, skipnum = moved_X)
+                    continue # when XM commutation rule applied, X will be removed
             else:
                 self.free_commute_R(target)
             # update target
@@ -183,9 +200,10 @@ class Pattern:
                 target = self.find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
                 continue
             if self.seq[target + 1][0] == 'M':
-                self.commute_MZ(target)
-                target = self.find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
-                continue # when ZM commutation rule applied, Z will be removed
+                search = self.commute_MZ(target)
+                if search:
+                    target = self.find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
+                    continue # when ZM commutation rule applied, Z will be removed
             else:
                 self.free_commute_R(target)
             # update target
@@ -255,7 +273,24 @@ class Pattern:
             op_ref = op
         return result
 
+    # sorting tensor product order
+    def sort_output(self):
+        output_order = self.output_nodes
+        for i in range(len(output_order)):
+            self.teleport_to_back(output_order[i])
 
+
+    def teleport_to_back(self, target):
+        add_nodes = [i for i in range(self.Nnode, self.Nnode + 2)]
+        self.Nnode += 2
+        for add_node in add_nodes:
+            self.seq.append(['N', add_node])
+        self.seq.append(['E', (target, add_nodes[0])])
+        self.seq.append(['E', (add_nodes[0], add_nodes[1])])
+        self.seq.append(['M', target, 'XY', 0, [], []])
+        self.seq.append(['M', add_nodes[0], 'XY', 0, [], []])
+        self.seq.append(['X', add_nodes[1], [add_nodes[0]]])
+        self.seq.append(['Z', add_nodes[1], [target]])
 
     # ###########Optimization###########
     # free commutation rule is applied to N, E, M
@@ -386,6 +421,8 @@ class Pattern:
 
     # add |+>^n state nodes
     def add_nodes(self, nodes):
+        if not self.sv:
+            self.sv = Statevector([1])
         n = len(nodes)
         add_vector = Statevector([1 for i in range(2**n)])
         add_vector = add_vector/add_vector.trace()**0.5
@@ -431,6 +468,7 @@ class Pattern:
     # simulate the pattern
     def execute_ptn(self):
         self.set_initial()
+        self.sort_output()
         for cmd in self.seq:
             if cmd[0] == 'N':
                 self.add_nodes([cmd[1]])
