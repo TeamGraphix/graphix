@@ -1,4 +1,5 @@
 from graphix.transpiler import Circuit
+from graphix.simulator import PatternSimulator
 import numpy as np
 
 # 3-qubit QFT
@@ -46,11 +47,10 @@ swap(circuit, 0, 2)
 # run with MBQC simulator
 
 pat = circuit.transpile()
-pat.Standardization()
-pat.signal_shifting()
-pat.Optimization()
-pat.execute_ptn()
-out_state = pat.sv
+pat.standardize()
+pat.shift_signals()
+pat.optimize_pattern()
+out_state = pat.simulate_pattern()
 
 state = circuit.simulate_statevector()
 print('overlap of states: ', np.abs(np.dot(state.data.conjugate(), out_state.data)))

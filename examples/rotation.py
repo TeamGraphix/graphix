@@ -1,4 +1,3 @@
-from graphix.simulator import Simulator
 from graphix.ops import States, Ops
 import numpy as np
 from graphix.transpiler import Circuit
@@ -16,9 +15,11 @@ circuit.rx(1, theta)
 circuit.rx(0, theta)
 
 # run with MBQC simulator
-simulator = Simulator(circuit)
-simulator.measure_pauli()
-out_state = simulator.simulate_mbqc()
+pat = circuit.transpile()
+pat.standardize()
+pat.shift_signals()
+pat.optimize_pattern()
+out_state = pat.simulate_pattern()
 print('MBQC sampling result: ', out_state.sample_counts(1000,))
 
 # statevector sim

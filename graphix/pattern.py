@@ -1,36 +1,36 @@
+"""MBQC pattern according to Measurement Calculus
+ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
+"""
 import numpy as np
-from qiskit.quantum_info import Operator, Statevector, partial_trace
-from graphix.ops import Ops
+from graphix.simulator import PatternSimulator
 from copy import deepcopy
-from graphix.clifford import CLIFFORD, CLIFFORD_MEASURE
 
 class Pattern:
-    """Pattern transpiler
-    Convert command sequence to NEMC order or optimized order for simulation
+    """ MBQC pattern class
+    Pattern holds a sequence of commands to operate the MBQC (Pattern.seq),
+    and provide modification strategies to improve the structure and simulation
+    efficiency of the pattern accoring to measurement calculus.
+
+    ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
     Attributes:
     -----------
     input_nodes : list of input node indices
     seq : list of commands
-        seq = [[cmd, nodes, attr], [cmd, nodes, attr], ...]
-        apply from left to right.
-        cmd in {'N', 'M', 'E', 'X', 'Z', 'S'}
-        nodes of {'N', 'M', 'X', 'Z', 'S'}: int
-        nodes of {'E'} is tuple (i, j)
+        each command is a list [type, nodes, attr] which will be
+        applied in the order of list indices.
+        type is one of {'N', 'M', 'E', 'X', 'Z', 'S'}
+        nodes : int for {'N', 'M', 'X', 'Z', 'S'} commands
+        nodes : tuple (i, j) for {'E'} command
         attr for N: none
         attr for M: meas_plane, angle, s_domain, t_domain
         attr for X: signal_domain
         attr for Z: signal_domain
         attr for S: signal_domain
-    sv : qiskit.quantum_info.Statevector
     Nnode : int
-        number of nodes
-    node_index : list
-        the order in list corresponds to the order of tensor product subspaces
+        total number of nodes in the resource state
     results : dict
-        storage measurement results
-    signal : dict
-        storage signal used in signal shifting
+        stores measurement results from graph state simulator
     """
 
     def __init__(self, input_nodes):
@@ -42,102 +42,127 @@ class Pattern:
         """
         self.input_nodes = input_nodes
         self.seq = []
-        self.sv = Statevector([])
         self.node_index = []
         self.results = {}
         self.output_nodes = []
+        self.output_sorted = False
+        self.Nnode = len(input_nodes)
 
-    # exchange EX = XZE
-    def commute_EX(self, target):
-        X = self.seq[target]
-        E = self.seq[target + 1]
-        if E[1][0] == X[1]:
-            Z = ['Z', E[1][1], X[2]]
-            self.seq.pop(target + 1) # del E
-            self.seq.insert(target, Z) # add Z in front of X
-            self.seq.insert(target, E) # add E in front of Z
-            return True
-        elif E[1][1] == X[1]:
-            Z = ['Z', E[1][0], X[2]]
-            self.seq.pop(target + 1) # del E
-            self.seq.insert(target, Z) # add Z in front of X
-            self.seq.insert(target, E) # add E in front of Z
-            return True
+    def add_command(self, cmd):
+        """add command to the end of the pattern.
+        an MBQC command is specified by a list of [type, node, attr], where
+
+            type : 'N', 'M', 'E', 'X', 'Z' or 'S'
+            nodes : int for 'N', 'M', 'X', 'Z', 'S' commands
+            nodes : tuple (i, j) for 'E' command
+            attr for N (node preparation):
+                none
+            attr for E (entanglement):
+                none
+            attr for M (measurement):
+                meas_plane : 'XY','YZ' or 'ZX'
+                angle : float, in radian / pi
+                s_domain : list
+                t_domain : list
+            attr for X:
+                signal_domain : list
+            attr for Z:
+                signal_domain : list
+            attr for S:
+                signal_domain : list
+
+        Parameters
+        ----------
+        cmd : list
+            MBQC command.
+        """
+        assert type(cmd) == list
+        assert cmd[0] in ['N', 'E', 'M', 'X', 'Z', 'S']
+        if cmd[0] == 'N':
+            self.Nnode += 1
+        self.seq.append(cmd)
+
+    def standardize(self):
+        """Executes standardization of the pattern.
+        'standard' pattern is one where commands are sorted in the order of
+        'N', 'E', 'M' and then byproduct commands ('X' and 'Z').
+        """
+        self._move_N_to_left()
+        self._move_byproduct_to_right()
+        self._move_E_after_N()
+
+    def is_standard(self):
+        """ determines whether the command sequence is standard
+        Returns
+        -------
+        is_standard : bool
+        """
+        order_dict = {'N': ['N', 'E', 'M', 'X', 'Z'], 'E': ['E', 'M', 'X', 'Z'], 'M': ['M', 'X', 'Z'], 'X': ['X', 'Z'], 'Z': ['X', 'Z']}
+        result = True
+        op_ref = 'N'
+        for cmd in self.seq:
+            op = cmd[0]
+            result = result & (op in order_dict[op_ref])
+            op_ref = op
+        return result
+
+    def shift_signals(self):
+        """ Performs signal shifting procedure
+        Extract the t-dependence of the measurement into 'S' commands
+        and commute them towards the end of the command sequence,
+        where it can be deleted.
+        In many cases, this procedure simplifies the dependence structure
+        of the pattern. For patterns transpiled from gate sequencees,
+        this result in the removal of s- and t- domains on Pauli measurement commands.
+
+        Ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
+        """
+        if not self.is_standard():
+            self.standardize()
+        self.extract_signals()
+        target = self._find_op_to_be_moved('S', rev = True)
+        while target != 'end':
+            if target == len(self.seq)-1:
+                self.seq.pop(target)
+                target = self._find_op_to_be_moved('S', rev = True)
+                continue
+            if self.seq[target + 1][0] == 'X':
+                self._commute_XS(target)
+            elif self.seq[target + 1][0] == 'Z':
+                self._commute_ZS(target)
+            elif self.seq[target + 1][0] == 'M':
+                self._commute_MS(target)
+            elif self.seq[target + 1][0] == 'S':
+                self._commute_SS(target)
+            else:
+                self._commute_with_following(target)
+            target += 1
+
+    def sort_output(self):
+        """Add teleportation commands to the sequence,
+        to make sure the ordering of the output qubits is the
+        same as input logical qubits.
+        """
+        assert not self.output_sorted
+        sorted = deepcopy(self.output_nodes)
+        sorted.sort()
+        if self.output_nodes == sorted:
+            pass
         else:
-            self.free_commute_R(target)
-            return False
+            new_output_nodes = []
+            for i in range(len(self.output_nodes)):
+                new_output_nodes.append(self.teleport_node(self.output_nodes[i]))
+            self.output_nodes = new_output_nodes
+        self.output_sorted = True
 
-    # exchange MX^s = M^s
-    def commute_MX(self, target):
-        X = self.seq[target]
-        M = self.seq[target + 1]
-        if X[1] == M[1]:  # s to s+r
-            M[4].extend(X[2])
-            self.seq.pop(target) # del X
-            return True
-        else:
-            self.free_commute_R(target)
-            return False
+    def _find_op_to_be_moved(self, op, rev = False, skipnum = 0):
+        """ Internal method for pattern modification.
+        Parameters
+        ----------
+        op : str, 'N', 'E', 'M', 'X', 'Z', 'S'
+            command types to be searched
 
-    # exchange MZ^r = ^rM
-    def commute_MZ(self, target):
-        Z = self.seq[target]
-        M = self.seq[target + 1]
-        if Z[1] == M[1]:
-            M[5].extend(Z[2])
-            self.seq.pop(target) # del Z
-            return True
-        else:
-            self.free_commute_R(target)
-            return False
-
-    # exchange XS
-    def commute_XS(self, target):
-        S = self.seq[target]
-        X = self.seq[target + 1]
-        if np.mod(X[2].count(S[1]), 2):
-            X[2].extend(S[2])
-        self.free_commute_R(target)
-
-    # exchange ZS
-    def commute_ZS(self, target):
-        S = self.seq[target]
-        Z = self.seq[target + 1]
-        if np.mod(Z[2].count(S[1]), 2):
-            Z[2].extend(S[2])
-        self.free_commute_R(target)
-
-    # exchange MS
-    def commute_MS(self, target):
-        S = self.seq[target]
-        M = self.seq[target + 1]
-        if np.mod(M[4].count(S[1]), 2):
-            M[4].extend(S[2])
-        if np.mod(M[5].count(S[1]), 2):
-            M[5].extend(S[2])
-        self.free_commute_R(target)
-
-    # exchange SS
-    def commute_SS(self, target):
-        S1 = self.seq[target]
-        S2 = self.seq[target + 1]
-        if np.mod(S2[2].count(S1[1]), 2):
-            S2[2].extend(S1[2])
-        self.free_commute_R(target)
-
-    # free commutation
-    def free_commute_R(self, target):
-        A = self.seq[target + 1]
-        self.seq.pop(target + 1)
-        self.seq.insert(target, A)
-
-    def free_commute_L(self, target):
-        A = self.seq[target - 1]
-        self.seq.pop(target - 1)
-        self.seq.insert(target, A)
-
-    ###########Standardization###########
-    def find_op_to_be_moved(self, op, rev = False, skipnum = 0):
+        """
         if not rev: # search from front
             target = 0
             step = 1
@@ -156,9 +181,173 @@ class Pattern:
         target = 'end'
         return target
 
-    # Algorithm-1 move Preparations
-    def NtoLeft(self):
-        # commutation rule of AN(for any A) is free commutation. so drop all Ns and add in the beginning of sequence
+    def _commute_EX(self, target):
+        """ Internal method to perform the commutation of E and X.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a X command followed by E command
+        """
+        assert self.seq[target][0] == 'X'
+        assert self.seq[target + 1][0] == 'E'
+        X = self.seq[target]
+        E = self.seq[target + 1]
+        if E[1][0] == X[1]:
+            Z = ['Z', E[1][1], X[2]]
+            self.seq.pop(target + 1) # del E
+            self.seq.insert(target, Z) # add Z in front of X
+            self.seq.insert(target, E) # add E in front of Z
+            return True
+        elif E[1][1] == X[1]:
+            Z = ['Z', E[1][0], X[2]]
+            self.seq.pop(target + 1) # del E
+            self.seq.insert(target, Z) # add Z in front of X
+            self.seq.insert(target, E) # add E in front of Z
+            return True
+        else:
+            self._commute_with_following(target)
+            return False
+
+    def _commute_MX(self, target):
+        """ Internal method to perform the commutation of M and X.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a X command followed by M command
+        """
+        assert self.seq[target][0] == 'X'
+        assert self.seq[target + 1][0] == 'M'
+        X = self.seq[target]
+        M = self.seq[target + 1]
+        if X[1] == M[1]:  # s to s+r
+            M[4].extend(X[2])
+            self.seq.pop(target) # del X
+            return True
+        else:
+            self._commute_with_following(target)
+            return False
+
+    def _commute_MZ(self, target):
+        """ Internal method to perform the commutation of M and Z.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a Z command followed by M command
+        """
+        assert self.seq[target][0] == 'Z'
+        assert self.seq[target + 1][0] == 'M'
+        Z = self.seq[target]
+        M = self.seq[target + 1]
+        if Z[1] == M[1]:
+            M[5].extend(Z[2])
+            self.seq.pop(target) # del Z
+            return True
+        else:
+            self._commute_with_following(target)
+            return False
+
+    def _commute_XS(self, target):
+        """ Internal method to perform the commutation of X and S.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a S command followed by X command
+        """
+        assert self.seq[target][0] == 'S'
+        assert self.seq[target + 1][0] == 'X'
+        S = self.seq[target]
+        X = self.seq[target + 1]
+        if np.mod(X[2].count(S[1]), 2):
+            X[2].extend(S[2])
+        self._commute_with_following(target)
+
+    def _commute_ZS(self, target):
+        """ Internal method to perform the commutation of Z and S.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a S command followed by Z command
+        """
+        assert self.seq[target][0] == 'S'
+        assert self.seq[target + 1][0] == 'Z'
+        S = self.seq[target]
+        Z = self.seq[target + 1]
+        if np.mod(Z[2].count(S[1]), 2):
+            Z[2].extend(S[2])
+        self._commute_with_following(target)
+
+    def _commute_MS(self, target):
+        """ Internal method to perform the commutation of M and S.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a S command followed by M command
+        """
+        assert self.seq[target][0] == 'S'
+        assert self.seq[target + 1][0] == 'M'
+        S = self.seq[target]
+        M = self.seq[target + 1]
+        if np.mod(M[4].count(S[1]), 2):
+            M[4].extend(S[2])
+        if np.mod(M[5].count(S[1]), 2):
+            M[5].extend(S[2])
+        self._commute_with_following(target)
+
+    def _commute_SS(self, target):
+        """ Internal method to perform the commutation of two S commands.
+        Parameters
+        ----------
+        target : int
+            target command index. this must point to
+            a S command followed by S command
+        """
+        assert self.seq[target][0] == 'S'
+        assert self.seq[target + 1][0] == 'S'
+        S1 = self.seq[target]
+        S2 = self.seq[target + 1]
+        if np.mod(S2[2].count(S1[1]), 2):
+            S2[2].extend(S1[2])
+        self._commute_with_following(target)
+
+    def _commute_with_following(self, target):
+        """ Internal method to perform the commutation of
+        two consecutive commands that commutes.
+        commutes the target command with the following command.
+
+        Parameters
+        ----------
+        target : int
+            target command index
+        """
+        A = self.seq[target + 1]
+        self.seq.pop(target + 1)
+        self.seq.insert(target, A)
+
+    def _commute_with_preceding(self, target):
+        """ Internal method to perform the commutation of
+        two consecutive commands that commutes.
+        commutes the target command with the preceding command.
+
+        Parameters
+        ----------
+        target : int
+            target command index
+        """
+        A = self.seq[target - 1]
+        self.seq.pop(target - 1)
+        self.seq.insert(target, A)
+
+    def _move_N_to_left(self):
+        """Internal method to move all 'N' commands to the start of the sequence.
+        N can be moved to the start of sequence without the need of considering
+        commutation relations.
+        """
         Nlist = []
         for cmd in self.seq:
             if cmd[0] == 'N':
@@ -168,60 +357,67 @@ class Pattern:
             self.seq.remove(N)
         self.seq = Nlist + self.seq
 
-    # Algorithm-2 move Corrections(X,Z)
-    def CtoRight(self):
-        # move X first
-        moved_X = 0 # storage number of moved X
-        target = self.find_op_to_be_moved('X',rev = True, skipnum = moved_X)
+    def _move_byproduct_to_right(self):
+        """Internal method to move the byproduct commands to the end of sequence,
+        using the commutation relations implemented in graphix.Pattern class
+        """
+        # First, we move all X commands to the end of sequence
+        moved_X = 0 # number of moved X
+        target = self._find_op_to_be_moved('X',rev = True, skipnum = moved_X)
         while target != 'end':
             if (target == len(self.seq)-1) or (self.seq[target + 1] == 'X'):
                 moved_X += 1
-                target = self.find_op_to_be_moved('X',rev = True, skipnum = moved_X)
+                target = self._find_op_to_be_moved('X',rev = True, skipnum = moved_X)
                 continue
             if self.seq[target + 1][0] == 'E':
-                move = self.commute_EX(target)
+                move = self._commute_EX(target)
                 if move:
-                    target += 1 # because of adding extra Z
+                    target += 1 # addition of extra Z means target must be increased
             elif self.seq[target + 1][0] == 'M':
-                search = self.commute_MX(target)
+                search = self._commute_MX(target)
                 if search:
-                    target = self.find_op_to_be_moved('X', rev = True, skipnum = moved_X)
-                    continue # when XM commutation rule applied, X will be removed
+                    target = self._find_op_to_be_moved('X', rev = True, skipnum = moved_X)
+                    continue # XM commutation rule removes X command
             else:
-                self.free_commute_R(target)
-            # update target
+                self._commute_with_following(target)
             target += 1
-        # move Z in front of X
-        moved_Z = 0 # storage number of moved Z
-        target = self.find_op_to_be_moved('Z', rev = True, skipnum = moved_Z)
+
+        # then, move Z to the end of sequence in front of X
+        moved_Z = 0 # number of moved Z
+        target = self._find_op_to_be_moved('Z', rev = True, skipnum = moved_Z)
         while target != 'end':
             if (target == len(self.seq) -1) or (self.seq[target + 1][0] == ('X' or 'Z')):
                 moved_Z += 1
-                target = self.find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
+                target = self._find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
                 continue
             if self.seq[target + 1][0] == 'M':
-                search = self.commute_MZ(target)
+                search = self._commute_MZ(target)
                 if search:
-                    target = self.find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
-                    continue # when ZM commutation rule applied, Z will be removed
+                    target = self._find_op_to_be_moved('Z',rev = True, skipnum = moved_Z)
+                    continue # ZM commutation rule removes Z command
             else:
-                self.free_commute_R(target)
-            # update target
+                self._commute_with_following(target)
             target += 1
-    # Algorithm-3 move Entanglement
-    def EtoNextN(self):
+
+    def _move_E_after_N(self):
+        """Internal method to move all E commands to the start of sequence,
+        before all N commands. assumes that _move_N_to_left() method was called.
+        """
         moved_E = 0
-        target = self.find_op_to_be_moved('E',skipnum = moved_E)
+        target = self._find_op_to_be_moved('E',skipnum = moved_E)
         while target != 'end':
             if (target == 0) or (self.seq[target - 1][0] == ('N' or 'E')):
                 moved_E += 1
-                target = self.find_op_to_be_moved('E',skipnum = moved_E)
+                target = self._find_op_to_be_moved('E',skipnum = moved_E)
                 continue
-            self.free_commute_L(target)
+            self._commute_with_preceding(target)
             target -= 1
 
-    # extract signal from measurement operator M
-    def extract_S(self):
+    def extract_signals(self):
+        """Extracts 't' domain of measurement commands, turn them into
+        signal 'S' commands and add to the command sequence.
+        This is used for signal_shifting() method.
+        """
         pos = 0
         while pos < len(self.seq):
             cmd = self.seq[pos]
@@ -233,113 +429,99 @@ class Pattern:
                     pos += 1
             pos += 1
 
-    # signal shifting
-    def signal_shifting(self):
-        if not self.is_NEMC():
-            self.Standardization()
-        self.extract_S()
-        target = self.find_op_to_be_moved('S', rev = True)
-        while target != 'end':
-            if target == len(self.seq)-1:
-                self.seq.pop(target)
-                target = self.find_op_to_be_moved('S', rev = True)
-                continue
-            if self.seq[target + 1][0] == 'X':
-                self.commute_XS(target)
-            elif self.seq[target + 1][0] == 'Z':
-                self.commute_ZS(target)
-            elif self.seq[target + 1][0] == 'M':
-                self.commute_MS(target)
-            elif self.seq[target + 1][0] == 'S':
-                self.commute_SS(target)
-            else:
-                self.free_commute_R(target)
-            target += 1
-
-    # execute Standardization
-    def Standardization(self):
-        self.NtoLeft()
-        self.CtoRight()
-        self.EtoNextN()
-
-    # check whether seq is NEMC
-    def is_NEMC(self):
-        order_dict = {'N': ['N', 'E', 'M', 'X', 'Z'], 'E': ['E', 'M', 'X', 'Z'], 'M': ['M', 'X', 'Z'], 'X': ['X', 'Z'], 'Z': ['X', 'Z']}
-        result = True
-        op_ref = 'N'
-        for cmd in self.seq:
-            op = cmd[0]
-            result = result & (op in order_dict[op_ref])
-            op_ref = op
-        return result
-
-    # sorting tensor product order
-    def sort_output(self):
-        output_order = self.output_nodes
-        for i in range(len(output_order)):
-            self.teleport_to_back(output_order[i])
-
-
-    def teleport_to_back(self, target):
-        add_nodes = [i for i in range(self.Nnode, self.Nnode + 2)]
+    def teleport_node(self, target):
+        """Add command sequence for teleportation (Identity gate).
+        This is primarily used to reorder the output nodes,
+        so that they are sorted in the correct way at the end of statevector simulation.
+        Parameters
+        ----------
+        target : int
+            target node to be teleported.
+            This must be an existing node in the command sequence
+        """
+        assert target in np.arange(self.Nnode)
+        ancilla = [i for i in range(self.Nnode, self.Nnode + 2)]
         self.Nnode += 2
-        for add_node in add_nodes:
+        for add_node in ancilla:
             self.seq.append(['N', add_node])
-        self.seq.append(['E', (target, add_nodes[0])])
-        self.seq.append(['E', (add_nodes[0], add_nodes[1])])
+        self.seq.append(['E', (target, ancilla[0])])
+        self.seq.append(['E', (ancilla[0], ancilla[1])])
         self.seq.append(['M', target, 'XY', 0, [], []])
-        self.seq.append(['M', add_nodes[0], 'XY', 0, [], []])
-        self.seq.append(['X', add_nodes[1], [add_nodes[0]]])
-        self.seq.append(['Z', add_nodes[1], [target]])
+        self.seq.append(['M', ancilla[0], 'XY', 0, [], []])
+        self.seq.append(['X', ancilla[1], [ancilla[0]]])
+        self.seq.append(['Z', ancilla[1], [target]])
+        return ancilla[1]
 
-    # ###########Optimization###########
-    # free commutation rule is applied to N, E, M
-    # get measurement order list
-    def get_meas_flow(self): # this function can be replaced by more efficient algorithm
-        if not self.is_NEMC():
-            self.Standardization()
-        meas_flow = []
-        ind = self.find_op_to_be_moved('M')
+    def get_measurement_order(self):
+        """Returns the list containing the node indices,
+        in the order of measurements
+        Returns
+        -------
+        meas_order : list
+            list of node indices in the order of meaurements
+        """
+        if not self.is_standard():
+            self.standardize()
+        meas_order = []
+        ind = self._find_op_to_be_moved('M')
         if ind == 'end':
             return []
         while self.seq[ind][0] == 'M':
-            meas_flow.append(self.seq[ind])
+            meas_order.append(self.seq[ind])
             ind += 1
-        return meas_flow
+        return meas_order
 
-    # get necessary nodes list for measure the target node
-    def search_must_prepared(self, node, prepared_list = None):
-        if not self.is_NEMC():
-            self.Standardization()
+    def connected_nodes(self, node, prepared = None):
+        """Find nodes that are connected to a specified node.
+        These nodes must be in the statevector when the specified
+        node is measured, to ensure correct computation.
+        If connected nodes already exist in the statevector (prepared),
+        then they will be ignored as they do not need to be prepared again.
+        Parameters
+        ----------
+        node : int
+            node index
+        prepared : list
+            list of node indices, which are to be ignored
+        Returns
+        -------
+        node_list : list
+            list of nodes that are entangled with speicifed node
+        """
+        if not self.is_standard():
+            self.standardize()
         node_list = []
-        ind = self.find_op_to_be_moved('E')
+        ind = self._find_op_to_be_moved('E')
         if not ind == 'end': # end -> 'node' is isolated
-            while self.seq[ind ][0] == 'E':
+            while self.seq[ind][0] == 'E':
                 if self.seq[ind][1][0] == node:
-                    if not self.seq[ind][1][1] in prepared_list:
+                    if not self.seq[ind][1][1] in prepared:
                         node_list.append(self.seq[ind][1][1])
                 elif self.seq[ind][1][1] == node:
-                    if not self.seq[ind][1][0] in prepared_list:
+                    if not self.seq[ind][1][0] in prepared:
                         node_list.append(self.seq[ind][1][0])
                 ind += 1
         return node_list
 
-    # get byproduct correction sequence
-    def getC(self):
-        ind = self.find_op_to_be_moved('Z')
+    def correction_commands(self):
+        """Returns the list of correction commands
+        """
+        assert self.is_standard()
+        ind = self._find_op_to_be_moved('Z')
         if ind == 'end':
-            ind = self.find_op_to_be_moved('X')
+            ind = self._find_op_to_be_moved('X')
             if ind == 'end':
                 return []
         Clist = self.seq[ind:]
         return Clist
 
-
-    # execute Optimization
-    def Optimization(self):
-        if not self.is_NEMC():
-            self.Standardization()
-        meas_flow = self.get_meas_flow()
+    def optimize_pattern(self):
+        """Optimize the pattern to minimize the max_space property of
+        the pattern i.e. the optimized pattern has significantly reduced space requirement (memory space for classical simulation and maximum simultaneously prepared qubits for quantum hardwares).
+        """
+        if not self.is_standard():
+            self.standardize()
+        meas_flow = self.get_measurement_order()
         prepared = deepcopy(self.input_nodes)
         measured = []
         new = []
@@ -348,7 +530,7 @@ class Pattern:
             if not node in prepared:
                 new.append(['N', node])
                 prepared.append(node)
-            node_list = self.search_must_prepared(node, measured)
+            node_list = self.connected_nodes(node, measured)
             for add_node in node_list:
                 if not add_node in prepared:
                     new.append(['N', add_node])
@@ -358,10 +540,10 @@ class Pattern:
             measured.append(node)
 
         # add corrections
-        Clist = self.getC()
+        Clist = self.correction_commands()
         new.extend(Clist)
 
-        # add not-prepared nodes
+        # add isolated nodes
         for cmd in self.seq:
             if cmd[0] == 'N':
                 if not cmd[1] in prepared:
@@ -369,9 +551,15 @@ class Pattern:
 
         self.seq = new
 
-    ##### functions for investigation of pattern's properties ####
-    # count max necessary nodes
-    def minQR(self):
+    def max_space(self):
+        """The maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
+        For statevector simulation, this is equivalent to the maximum memory
+        needed for classical simulation.
+        Returns
+        -------
+        n_nodes : int
+            max number of nodes present in the graph during pattern execution.
+        """
         max_nodes = 0
         nodes = len(self.input_nodes)
         for cmd in self.seq:
@@ -383,8 +571,14 @@ class Pattern:
                 max_nodes = nodes
         return max_nodes
 
-    # return the number of prepared nodes at each N or M cmd
-    def Nnodes_list(self):
+    def space_list(self):
+        """Returns the list of the number of nodes present in the graph (space)
+        during each step of execution of the pattern (for N and M commands).
+        Returns
+        -------
+        N_list : list
+            time evolution of 'space' at each 'N' and 'M' commands of pattern.
+        """
         nodes = len(self.input_nodes)
         N_list = []
         for cmd in self.seq:
@@ -396,120 +590,14 @@ class Pattern:
                 N_list.append(nodes)
         return N_list
 
-
-
-
-    #### execute commands ####
-    # return qubit number
-    def count_qubit(self):
-        return len(self.sv.dims())
-
-    # normalize statevector
-    def Normalization(self):
-        self.sv = self.sv/self.sv.trace()**0.5
-
-    # set input statevector
-    def set_state(self, statevector):
-        self.sv = statevector
-        self.node_index.extend([i for i in range(self.count_qubit())])
-
-    def set_initial(self):
-        n = len(self.input_nodes)
-        self.sv = Statevector([1 for i in range(2**n)])
-        self.Normalization()
-        self.node_index.extend([i for i in range(n)])
-
-    # add |+>^n state nodes
-    def add_nodes(self, nodes):
-        if not self.sv:
-            self.sv = Statevector([1])
-        n = len(nodes)
-        add_vector = Statevector([1 for i in range(2**n)])
-        add_vector = add_vector/add_vector.trace()**0.5
-        self.sv = self.sv.expand(add_vector)
-        self.node_index.extend(nodes)
-
-    # make entanglement
-    def make_entangle(self,edge):
-        target = self.node_index.index(edge[0])
-        control = self.node_index.index(edge[1])
-        self.sv = self.sv.evolve(Ops.cz, [control, target])
-
-    # measure and remove measured subsystem
-    def measure(self, cmd):
-        result = np.random.choice([0, 1])
-        self.results[cmd[1]] = result
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi * (-1)**s_signal + np.pi * t_signal
-        meas_op = self.meas_op(angle, 0, choice = result)
-        loc = self.node_index.index(cmd[1])
-        self.sv = self.sv.evolve(meas_op, [loc])
-
-        # trace out
-        self.Normalization()
-        state_dm = partial_trace(self.sv, [loc])
-        self.sv = state_dm.to_statevector()
-
-        # update node_index
-        self.node_index.remove(cmd[1])
-
-    # Feedforward
-    def XFeedForward(self, cmd):
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2):
-            loc = self.node_index.index(cmd[1])
-            self.sv = self.sv.evolve(Ops.x, [loc])
-
-    def ZFeedForward(self, cmd):
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2):
-            loc = self.node_index.index(cmd[1])
-            self.sv = self.sv.evolve(Ops.z, [loc])
-
-    # simulate the pattern
-    def execute_ptn(self):
-        self.set_initial()
-        self.sort_output()
-        for cmd in self.seq:
-            if cmd[0] == 'N':
-                self.add_nodes([cmd[1]])
-            elif cmd[0] == 'E':
-                self.make_entangle(cmd[1])
-            elif cmd[0] == 'M':
-                self.measure(cmd)
-            elif cmd[0] == 'X':
-                self.XFeedForward(cmd)
-            elif cmd[0] == 'Z':
-                self.ZFeedForward(cmd)
-            else:
-                raise ValueError("invalid commands")
-        # apply VOP to output vertices
-        #for i, j in enumerate(self.output_nodes):
-        #    self.sv = self.sv.evolve(Operator(CLIFFORD[self.sim.vop[j]]), [i])
-
-    @staticmethod
-    def meas_op(angle, vop, choice=0):
-        """Returns the projection operator for given measurement angle and local Clifford op (VOP).
-
-        Parameters
+    def simulate_pattern(self, backend='statevector'):
+        """Perform simulation of the pattern by using
+        graphix.simulator.PatternSimulator class.
+        Optional Parameters
         ----------
-        angle: float
-            original measurement angle (xy-plane) in radian
-        vop : int
-            index of local Clifford (vop), see graphq.clifford.CLIFFORD
-        choice : 0 or 1
-            choice of measurement outcome. measured eigenvalue would be (-1)**choice.
-
-        Returns
-        -------
-        op : qi.Operator
-            projection operator
-
+        backend : str
+            simulator backend from {'statevector'}
         """
-        assert vop in np.arange(24)
-        assert choice in [0, 1]
-        vec = (np.cos(angle), np.sin(angle), 0)
-        op_mat = np.eye(2, dtype=np.complex128) / 2
-        for i in range(3):
-            op_mat += (-1)**(choice + CLIFFORD_MEASURE[vop][i][1]) \
-                * vec[CLIFFORD_MEASURE[vop][i][0]] * CLIFFORD[i + 1] / 2
-        return Operator(op_mat)
+        sim = PatternSimulator(self, backend=backend)
+        sim.run()
+        return sim.sv

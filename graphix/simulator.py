@@ -1,300 +1,181 @@
 """MBQC simulator
 
-Simulates MBQC by running Pauli measurements on stabilizer simulator
-and other measurements on qiskit.qi.
+Simulates MBQC by executing the pattern.
 
 """
 
 import numpy as np
 import qiskit.quantum_info as qi
-from graphix.graphsim import GraphState
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD
 
 
-class Simulator():
+class PatternSimulator():
     """MBQC simulator
 
-    Perform Pauli measurements of the transpiled measurement pattern using graphsim.
-    Non-Pauli measurements are directly simulated by applying projection operators to
-    the graph state, using qiskit.quantum_info module.
+    Executes the pattern (graphix.Pattern)
 
     Attributes:
     -----------
-    graph : nx.Graph
-        graph state to be simulated.
-    angles : dict
-        measurement angles or 'output' label for output qubits
-    domains : list of dicts
-        domains of dependence ('s' and 't') for adaptive measurements.
-    byprocuts : list of dicts
-        domains of dependence for byproducts (X, Z) that applies to output qubits
-    input_qubits : list
-        vertex labels for input qubits.
-    unmeasured : list
-        unmeasured qubits after the graph state simulation
-    output_qubits : list
-        vertex labels for output qubits
-    measurement_results : dict
-        measurement results at each qubit, either 0 or 1
-    vop : dict
-        local Clifford (vertex operator, vop) on each qubit.
-    node_pos : dict
-        position of nodes for nx.draw() call.
+    pattern : graphix.Pattern
+        MBQC command sequence to be simulated
+    backend : 'statevector'
+        optional argument to select backend of simulation.
+    results : dict
+        measurement results for each measuring nodes in the graph state
+    node_index : list
+        the mapping of node indices to qubit indices in statevector.
     """
 
-    def __init__(self, circuit):
+    def __init__(self, pattern, backend='statevector'):
         """
         Parameteres:
         --------
-        circuit: graphq.transpiler.Circuit
+        pattern: graphq.pattern.Pattern object
+            MBQC pattern to be simulated.
+        backend: 'statevector'
+            optional argument for simulation.
         """
-        circuit.sort_outputs()
-        self.circ = circuit
+        # check that pattern has input and output nodes configured
+        assert len(pattern.input_nodes) > 0
+        assert len(pattern.output_nodes) > 0
+        if not pattern.output_sorted:
+            pattern.sort_output()
+        self.backend = backend
+        self.pattern = pattern
+        self.results = pattern.results
+        self.sv = qi.Statevector([])
+        self.node_index = []
 
-        # specify graph states
-        self.nodes = circuit.Nnode
-        self.edges = circuit.edges
-        self.vop = {j: 0 for j in range(self.nodes)}
-        self.node_pos = circuit.pos
-
-        # measurement pattern
-        self.measurement_order = circuit.measurement_order
-        self.byproductx = circuit.byproductx
-        self.byproductz = circuit.byproductz
-        self.domains = circuit.domains
-        self.angles = circuit.angles
-        self.measurement_results = {}
-        self.output_nodes = circuit.out
-        self._pauli_measurements_performed = False
-
-    def pauli_nodes(self):
-        """Find nodes that can be measured with graph algorithm
-
+    def qubit_dim(self):
+        """Returns the qubit number in the internal statevector
         Returns
-        --------
-        to_measure: list
-            list of nodes that can be measured by graph transformation
+        -------
+        n_qubit : int
         """
-        to_measure = []  # Pauli measured and do not depend on non-Pauli meas
-        cannot_measure = []  # all other nodes
-        for i in self.circ.measurement_order:
-            bpx = np.any(np.isin(self.circ.byproductx.get(i), cannot_measure))
-            bpz = np.any(np.isin(self.circ.byproductz.get(i), cannot_measure))
-            domain = self.circ.domains.get(i)
-            if domain:
-                dms0 = np.any(np.isin(self.circ.domains[i][0], cannot_measure))
-                dms1 = np.any(np.isin(self.circ.domains[i][1], cannot_measure))
-            else:
-                dms0, dms1 = False, False
-                cannot_measure.append(i)
-            if np.mod(self.angles[i], 1) == 0:  # \pm x Pauli measurement
-                if bpz or dms1:
-                    cannot_measure.append(i)
-                else:
-                    to_measure.append(i)
-            elif np.mod(self.angles[i], 1) == 0.5:  # \pm y Pauli measurement
-                if bpx or bpz or dms1 or dms0:
-                    cannot_measure.append(i)
-                else:
-                    to_measure.append(i)
-            else:
-                cannot_measure.append(i)
+        return len(self.sv.dims())
 
-        return to_measure, cannot_measure
-
-    def measure_pauli(self):
+    def normalize_state(self):
+        """Normalize the internal statevector
         """
-        Perform Pauli measurements by graph transformations.
-        uses graphq.graphsim module.
+        self.sv = self.sv/self.sv.trace()**0.5
 
-        Updates the internal graph and meausrement pattern.
+    def set_state(self, statevector):
+        """Initialize the inpute state with user-specified statevector.
+        Parameters
+        ----------
+        statevector : qiskit.quantum_info.Statevector object
+            initial state for MBQC.
         """
-        assert not self._pauli_measurements_performed
-        graph_state = GraphState(nodes=np.arange(self.nodes), edges=list(self.edges))
-        to_measure, non_pauli_nodes = self.pauli_nodes()
-        results = {}
+        assert len(statevector.dims()) == len(self.pattern.input_nodes)
+        self.sv = statevector
+        self.node_index.extend([i for i in range(self.qubit_dim())])
 
-        for i in to_measure:
-            # treatment of byproduct during graph transformation
-            s_signal, t_signal = self.extract_signal(i, results)
-            if self.angles[i] in [-0.5, 0.5]:
-                angle = self.angles[i] * (-1)**(s_signal + t_signal)
-            elif self.angles[i] in [0, -1]:
-                angle = self.angles[i] + np.mod(t_signal, 2)
-
-            if angle == 0:  # +x measurement
-                results[i] = graph_state.measure_x(i, choice=0)
-            elif angle in [-1, 1]:  # -x measurement
-                results[i] = 1 - graph_state.measure_x(i, choice=1)
-            elif angle == 0.5:  # +y measurement
-                results[i] = graph_state.measure_y(i, choice=0)
-            elif angle == -0.5:  # -y measurement
-                results[i] = 1 - graph_state.measure_y(i, choice=1)
-
-        # relabel nodes from 0 to len(graph_state.nodes)
-        vops = graph_state.get_vops()
-        unmeasured = list(graph_state.nodes)
-        nqubit = len(graph_state.nodes)
-        mapping = [unmeasured[j] for j in range(nqubit)]
-        out = [mapping.index(j) for j in self.output_nodes]
-        new_edge = [(mapping.index(i), mapping.index(j)) for i, j in iter(graph_state.edges)]
-        new_pos = {j: self.node_pos[mapping[j]] for j in range(nqubit)}
-        new_vops = {j: vops[mapping[j]] for j in range(nqubit)}
-        byproductx = dict()
-        byproductz = dict()
-        domains = dict()
-        new_angles = dict()
-        # relabel byproduct domains and apply byproduct effects from Pauli measurements
-        for i in range(nqubit):
-            s_signal, t_signal = 0, 0
-            if self.byproductx.get(mapping[i]) is not None:
-                bpx = []
-                for j in self.byproductx[mapping[i]]:
-                    if j in mapping:
-                        bpx.append(mapping.index(j))
-                    else:
-                        s_signal += results[j]
-                if bpx:
-                    byproductx[i] = bpx
-            else:
-                byproductx[i] = []
-
-            if self.byproductz.get(mapping[i]) is not None:
-                bpz = []
-                for j in self.byproductz[mapping[i]]:
-                    if j in mapping:
-                        bpz.append(mapping.index(j))
-                    else:
-                        t_signal += results[j]
-                if bpz:
-                    byproductz[i] = bpz
-            else:
-                byproductz[i] = []
-
-            if self.domains.get(mapping[i]) is not None:
-                dmt, dms = [], []
-                for j in self.domains[mapping[i]][0]:
-                    if j in mapping:
-                        dmt.append(mapping.index(j))
-                    else:
-                        s_signal += results[j]
-                for j in self.domains[mapping[i]][1]:
-                    if j in mapping:
-                        dms.append(mapping.index(j))
-                    else:
-                        t_signal += results[j]
-                domains[i] = [dmt, dms]
-            else:
-                domains[i] = [[], []]
-
-            if self.angles.get(mapping[i]) is not None:
-                new_angles[i] = self.angles[mapping[i]] * (-1)**s_signal + t_signal
-
-        self.nodes = nqubit
-        self.edges = new_edge
-        self.measurement_order = [mapping.index(j) for j in non_pauli_nodes]
-        self.byproductx = byproductx
-        self.byproductz = byproductz
-        self.domains = domains
-        self.angles = new_angles
-        self.vop = new_vops
-        self.node_pos = new_pos
-        self.output_nodes = out
-        self._pauli_measurements_performed = True
-        return graph_state
-
-    def extract_signal(self, node, results):
-        """Signal extraction for adaptive measurement and byproduct of measured qubits
-
-        returns the adaptive signal to change the measurement angle.
-        s flips polarity of measurement angle and t add pi to the measurement.
-
-        Returns:
-        --------
-        s_signal : int
-        t_signal : int
+    def initialize_statevector(self):
+        """Initialize the internal statevector with
+        tensor product of |+> state.
         """
-        bpx, bpz = 0, 0
-        if not np.mod(self.angles[node], 1) == 0:  # NOT \pm x Pauli measurement
-            if node in self.byproductx.keys():
-                if self.byproductx[node]:
-                    bpx = np.sum([results[j] for j in self.byproductx[node]])
-        if node in self.byproductz.keys():
-            if self.byproductz[node]:
-                bpz = np.sum([results[j] for j in self.byproductz[node]])
+        n = len(self.pattern.input_nodes)
+        self.sv = qi.Statevector([1 for i in range(2**n)])
+        self.normalize_state()
+        self.node_index.extend([i for i in range(n)])
 
-        signal_s, signal_t = 0, 0
-        if not np.mod(self.angles[node], 1) == 0:  # NOT \pm x Pauli measurement
-            if self.domains[node][0]:
-                signal_s = np.sum([results[j] for j in self.domains[node][0]])
-        if self.domains[node][1]:
-            signal_t = np.sum([results[j] for j in self.domains[node][1]])
-        return signal_s + bpx, signal_t + bpz
-
-    def simulate_mbqc(self):
-        """MBQC simulation
-
-        Using qiskit.qi, create the graph state and simulate measurements by
-        applying projection operator.
-
-        Returns:
-        --------
-        gstate: qiskit.quantum_info.State
-            output state after measurement and partial trace over measured qubits
-
-        TODO: memory-efficient simulation
-        TODO: arbitrary input state
+    def add_nodes(self, nodes):
+        """add new qubit to internal statevector
+        and assign the corresponding node number
+        to list self.node_index.
+        Parameters
+        ---------
+        nodes : list of node indices
         """
-        gstate = qi.Statevector(np.ones(2**self.nodes) / np.sqrt(2**self.nodes))
-        for i, j in self.edges:
-            gstate = gstate.evolve(Ops.cz, [i, j])
+        if not self.sv:
+            self.sv = qi.Statevector([1])
+        n = len(nodes)
+        sv_to_add = qi.Statevector([1 for i in range(2**n)])
+        sv_to_add = sv_to_add/sv_to_add.trace()**0.5
+        self.sv = self.sv.expand(sv_to_add)
+        self.node_index.extend(nodes)
 
-        to_trace = []
-        results = {}
-        for i in self.measurement_order:
-            if i in self.output_nodes:
-                pass
+    def entangle_nodes(self, edge):
+        """ Apply CZ gate to two connected nodes
+        Parameters
+        ----------
+        edge : tuple (i, j)
+            a pair of node indices
+        """
+        target = self.node_index.index(edge[0])
+        control = self.node_index.index(edge[1])
+        self.sv = self.sv.evolve(Ops.cz, [control, target])
+
+    def measure(self, cmd):
+        """Perform measurement of a node in the internal statevector and trace out the qubit
+        Parameters
+        ----------
+        cmd : list
+            measurement command : ['M', node, plane angle, s_domain, t_domain]
+        """
+        # choose the measurement result randomly
+        result = np.random.choice([0, 1])
+        self.results[cmd[1]] = result
+
+        # extract signals for adaptive angle
+        s_signal = np.sum([self.results[j] for j in cmd[4]])
+        t_signal = np.sum([self.results[j] for j in cmd[5]])
+        angle = cmd[3] * np.pi * (-1)**s_signal + np.pi * t_signal
+        meas_op = self.meas_op(angle, 0, plane=cmd[2], choice=result)
+        loc = self.node_index.index(cmd[1])
+        # perform measurement
+        self.sv = self.sv.evolve(meas_op, [loc])
+
+        # trace out measured qubit
+        self.normalize_state()
+        state_dm = qi.partial_trace(self.sv, [loc])
+        self.sv = state_dm.to_statevector()
+
+        # update node_index
+        self.node_index.remove(cmd[1])
+
+    def correct_byproduct(self, cmd):
+        """Byproduct correction
+        correct for the X or Z byproduct operators,
+        by applying the X or Z gate.
+        """
+        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+            loc = self.node_index.index(cmd[1])
+            if cmd[0] == 'X':
+                op = Ops.x
+            elif cmd[0] == 'Z':
+                op = Ops.z
+            self.sv = self.sv.evolve(op, [loc])
+
+    def run(self):
+        self.initialize_statevector()
+        for cmd in self.pattern.seq:
+            if cmd[0] == 'N':
+                self.add_nodes([cmd[1]])
+            elif cmd[0] == 'E':
+                self.entangle_nodes(cmd[1])
+            elif cmd[0] == 'M':
+                self.measure(cmd)
+            elif cmd[0] == 'X':
+                self.correct_byproduct(cmd)
+            elif cmd[0] == 'Z':
+                self.correct_byproduct(cmd)
             else:
-                result = np.random.choice([0, 1])
-                results[i] = result
-
-                s_signal, t_signal = self.extract_signal(i, results)
-                angle = self.angles[i] * np.pi * (-1)**s_signal + np.pi * t_signal
-
-                meas_op = self.meas_op(angle, self.vop[i], choice=result)
-                gstate = gstate.evolve(meas_op, [i])
-                to_trace.append(i)
-
-        gstate = qi.Statevector(  # normalize
-            gstate.data / np.sqrt(np.dot(gstate.data.conjugate(), gstate.data)))
-
-        for i in self.output_nodes:
-            if i in self.byproductx.keys():
-                if np.mod(np.sum([results[j] for j in self.byproductx[i]]), 2):
-                    gstate = gstate.evolve(Ops.x, [i])
-            if i in self.byproductz.keys():
-                if np.mod(np.sum([results[j] for j in self.byproductz[i]]), 2):
-                    gstate = gstate.evolve(Ops.z, [i])
-
-        # trace out meaured nodes
-        gstate = qi.partial_trace(gstate, to_trace).to_statevector()
-        # apply VOP to output vertices
-        for i, j in enumerate(self.output_nodes):
-            gstate = gstate.evolve(qi.Operator(CLIFFORD[self.vop[j]]), [i])
-
-        return gstate
+                raise ValueError("invalid commands")
 
     @staticmethod
-    def meas_op(angle, vop, choice=0):
+    def meas_op(angle, vop, plane='XY', choice=0):
         """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
         Parameters
         ----------
         angle: float
-            original measurement angle (xy-plane) in radian
+            original measurement angle in radian
         vop : int
             index of local Clifford (vop), see graphq.clifford.CLIFFORD
+        plane : 'XY', 'YZ' or 'ZX'
+            measurement plane on which angle shall be defined
         choice : 0 or 1
             choice of measurement outcome. measured eigenvalue would be (-1)**choice.
 
@@ -306,7 +187,13 @@ class Simulator():
         """
         assert vop in np.arange(24)
         assert choice in [0, 1]
-        vec = (np.cos(angle), np.sin(angle), 0)
+        assert plane in ['XY', 'YZ', 'ZX']
+        if plane == 'XY':
+            vec = (np.cos(angle), np.sin(angle), 0)
+        elif plane == 'YZ':
+            vec = (0, np.cos(angle), np.sin(angle))
+        elif plane == 'ZX':
+            vec = (np.sin(angle), 0, np.sin(angle))
         op_mat = np.eye(2, dtype=np.complex128) / 2
         for i in range(3):
             op_mat += (-1)**(choice + CLIFFORD_MEASURE[vop][i][1]) \
