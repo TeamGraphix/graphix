@@ -33,6 +33,10 @@ class Ops:
                                 [0, 1, 0, 0],
                                 [0, 0, 0, 1],
                                 [0, 0, 1, 0]]))
+    swap = qi.Operator(np.array([[1, 0, 0, 0],
+                                [0, 0, 1, 0],
+                                [0, 1, 0, 0],
+                                [0, 0, 0, 1]]))
 
     @staticmethod
     def Rx(theta):

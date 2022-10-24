@@ -3,6 +3,8 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 import numpy as np
 from graphix.simulator import PatternSimulator
+from graphix.graphsim import GraphState
+from graphix.clifford import CLIFFORD_MEASURE
 from copy import deepcopy
 
 class Pattern:
@@ -15,52 +17,51 @@ class Pattern:
 
     Attributes:
     -----------
-    input_nodes : list of input node indices
+    width : number of output qubits
     seq : list of commands
         each command is a list [type, nodes, attr] which will be
         applied in the order of list indices.
-        type is one of {'N', 'M', 'E', 'X', 'Z', 'S'}
-        nodes : int for {'N', 'M', 'X', 'Z', 'S'} commands
+        type is one of {'N', 'M', 'E', 'X', 'Z', 'S', 'C'}
+        nodes : int for {'N', 'M', 'X', 'Z', 'S', 'C'} commands
         nodes : tuple (i, j) for {'E'} command
         attr for N: none
         attr for M: meas_plane, angle, s_domain, t_domain
         attr for X: signal_domain
         attr for Z: signal_domain
         attr for S: signal_domain
+        attr for C: clifford_index, as defined in graphix.clifford
     Nnode : int
         total number of nodes in the resource state
     results : dict
         stores measurement results from graph state simulator
     """
 
-    def __init__(self, input_nodes):
+    def __init__(self, width):
         """Initialize pattern object
         Parameters
         ---------
-        input_nodes : list of int
-            input node indices
+        width : int
+            number of output qubits
         """
-        self.input_nodes = input_nodes
-        self.seq = []
-        self.node_index = []
+        self.width = width
+        self.seq = [['N', i] for i in range(width)]
         self.results = {}
         self.output_nodes = []
-        self.output_sorted = False
-        self.Nnode = len(input_nodes)
+        self.Nnode = width
 
     def add_command(self, cmd):
         """add command to the end of the pattern.
         an MBQC command is specified by a list of [type, node, attr], where
 
-            type : 'N', 'M', 'E', 'X', 'Z' or 'S'
-            nodes : int for 'N', 'M', 'X', 'Z', 'S' commands
+            type : 'N', 'M', 'E', 'X', 'Z', 'S' or 'C'
+            nodes : int for 'N', 'M', 'X', 'Z', 'S', 'C' commands
             nodes : tuple (i, j) for 'E' command
             attr for N (node preparation):
                 none
             attr for E (entanglement):
                 none
             attr for M (measurement):
-                meas_plane : 'XY','YZ' or 'ZX'
+                meas_plane : 'XY','YZ' or 'XZ'
                 angle : float, in radian / pi
                 s_domain : list
                 t_domain : list
@@ -70,6 +71,8 @@ class Pattern:
                 signal_domain : list
             attr for S:
                 signal_domain : list
+            attr for C:
+                clifford_index : int
 
         Parameters
         ----------
@@ -77,7 +80,7 @@ class Pattern:
             MBQC command.
         """
         assert type(cmd) == list
-        assert cmd[0] in ['N', 'E', 'M', 'X', 'Z', 'S']
+        assert cmd[0] in ['N', 'E', 'M', 'X', 'Z', 'S', 'C']
         if cmd[0] == 'N':
             self.Nnode += 1
         self.seq.append(cmd)
@@ -97,7 +100,7 @@ class Pattern:
         -------
         is_standard : bool
         """
-        order_dict = {'N': ['N', 'E', 'M', 'X', 'Z'], 'E': ['E', 'M', 'X', 'Z'], 'M': ['M', 'X', 'Z'], 'X': ['X', 'Z'], 'Z': ['X', 'Z']}
+        order_dict = {'N': ['N', 'E', 'M', 'X', 'Z', 'C'], 'E': ['E', 'M', 'X', 'Z', 'C'], 'M': ['M', 'X', 'Z', 'C'], 'X': ['X', 'Z', 'C'], 'Z': ['X', 'Z', 'C'], 'C': ['X', 'Z', 'C']}
         result = True
         op_ref = 'N'
         for cmd in self.seq:
@@ -138,30 +141,16 @@ class Pattern:
                 self._commute_with_following(target)
             target += 1
 
-    def sort_output(self):
-        """Add teleportation commands to the sequence,
-        to make sure the ordering of the output qubits is the
-        same as input logical qubits.
-        """
-        assert not self.output_sorted
-        sorted = deepcopy(self.output_nodes)
-        sorted.sort()
-        if self.output_nodes == sorted:
-            pass
-        else:
-            new_output_nodes = []
-            for i in range(len(self.output_nodes)):
-                new_output_nodes.append(self.teleport_node(self.output_nodes[i]))
-            self.output_nodes = new_output_nodes
-        self.output_sorted = True
-
     def _find_op_to_be_moved(self, op, rev = False, skipnum = 0):
         """ Internal method for pattern modification.
         Parameters
         ----------
         op : str, 'N', 'E', 'M', 'X', 'Z', 'S'
             command types to be searched
-
+        ref : bool
+            search from the end (true) or start (false) of seq
+        skipnum : int
+            skip the detected command by specified times
         """
         if not rev: # search from front
             target = 0
@@ -363,7 +352,7 @@ class Pattern:
         """
         # First, we move all X commands to the end of sequence
         moved_X = 0 # number of moved X
-        target = self._find_op_to_be_moved('X',rev = True, skipnum = moved_X)
+        target = self._find_op_to_be_moved('X', rev = True, skipnum = moved_X)
         while target != 'end':
             if (target == len(self.seq)-1) or (self.seq[target + 1] == 'X'):
                 moved_X += 1
@@ -429,29 +418,6 @@ class Pattern:
                     pos += 1
             pos += 1
 
-    def teleport_node(self, target):
-        """Add command sequence for teleportation (Identity gate).
-        This is primarily used to reorder the output nodes,
-        so that they are sorted in the correct way at the end of statevector simulation.
-        Parameters
-        ----------
-        target : int
-            target node to be teleported.
-            This must be an existing node in the command sequence
-        """
-        assert target in np.arange(self.Nnode)
-        ancilla = [i for i in range(self.Nnode, self.Nnode + 2)]
-        self.Nnode += 2
-        for add_node in ancilla:
-            self.seq.append(['N', add_node])
-        self.seq.append(['E', (target, ancilla[0])])
-        self.seq.append(['E', (ancilla[0], ancilla[1])])
-        self.seq.append(['M', target, 'XY', 0, [], []])
-        self.seq.append(['M', ancilla[0], 'XY', 0, [], []])
-        self.seq.append(['X', ancilla[1], [ancilla[0]]])
-        self.seq.append(['Z', ancilla[1], [target]])
-        return ancilla[1]
-
     def get_measurement_order(self):
         """Returns the list containing the node indices,
         in the order of measurements
@@ -470,6 +436,24 @@ class Pattern:
             meas_order.append(self.seq[ind])
             ind += 1
         return meas_order
+
+    def get_graph(self):
+        """returns the list of nodes and edges from the command sequence,
+        extracted from 'N' and 'E' commands.
+        Returns
+        -------
+        node_list : list
+            list of node indices.
+        edge_list : list
+            list of tuples (i,j) specifying edges
+        """
+        node_list, edge_list = [], []
+        for cmd in self.seq:
+            if cmd[0] == 'N':
+                node_list.append(cmd[1])
+            elif cmd[0] == 'E':
+                edge_list.append(cmd[1])
+        return node_list, edge_list
 
     def connected_nodes(self, node, prepared = None):
         """Find nodes that are connected to a specified node.
@@ -504,7 +488,7 @@ class Pattern:
         return node_list
 
     def correction_commands(self):
-        """Returns the list of correction commands
+        """Returns the list of byproduct correction commands
         """
         assert self.is_standard()
         ind = self._find_op_to_be_moved('Z')
@@ -522,7 +506,7 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_flow = self.get_measurement_order()
-        prepared = deepcopy(self.input_nodes)
+        prepared = []
         measured = []
         new = []
         for cmd in meas_flow:
@@ -539,15 +523,19 @@ class Pattern:
             new.append(cmd)
             measured.append(node)
 
-        # add corrections
-        Clist = self.correction_commands()
-        new.extend(Clist)
-
         # add isolated nodes
         for cmd in self.seq:
             if cmd[0] == 'N':
                 if not cmd[1] in prepared:
-                    new.append(['N', node])
+                    new.append(['N', cmd[1]])
+        # addC Clifford nodes
+        for cmd in self.seq:
+            if cmd[0] == 'C':
+                new.append(cmd)
+
+        # add corrections
+        Clist = self.correction_commands()
+        new.extend(Clist)
 
         self.seq = new
 
@@ -561,7 +549,7 @@ class Pattern:
             max number of nodes present in the graph during pattern execution.
         """
         max_nodes = 0
-        nodes = len(self.input_nodes)
+        nodes = 0
         for cmd in self.seq:
             if cmd[0] == 'N':
                 nodes += 1
@@ -579,7 +567,7 @@ class Pattern:
         N_list : list
             time evolution of 'space' at each 'N' and 'M' commands of pattern.
         """
-        nodes = len(self.input_nodes)
+        nodes = 0
         N_list = []
         for cmd in self.seq:
             if cmd[0] == 'N':
@@ -601,3 +589,119 @@ class Pattern:
         sim = PatternSimulator(self, backend=backend)
         sim.run()
         return sim.sv
+
+    def perform_pauli_measurements(self):
+        """Perform Pauli measurements in the pattern using
+        efficient stabilizer simulator """
+        measure_pauli(self, copy=False)
+
+
+def measure_pauli(pattern, copy=False):
+    """Perform Pauli measurement of a pattern by fast graph state simulator
+    uses the decorated-graph method implemented in graphix.graphsim to perform
+    the measurements in Pauli bases, and then sort remaining nodes back into
+    pattern together with Clifford commands.
+
+    TODO: non-XY plane measurements in original pattern
+
+    Parameters
+    ----------
+    pattern : grgaphix.Pattern object
+    copy : bool
+        True: changes will be applied to new copied object and will be returned
+        False: changes will be applied to the supplied Pattern object
+
+    Returns
+    ------
+    new_pattern : graphix.Pattern object
+        pattern with Pauli measurement removed.
+        only returned if copy argument is True.
+    """
+    if not pattern.is_standard():
+        pattern.standardize()
+    nodes, edges = pattern.get_graph()
+    graph_state = GraphState(nodes=nodes, edges=edges)
+    results = {}
+    to_measure = pauli_nodes(pattern)
+    for cmd in to_measure:
+        # extract signals for adaptive angle
+        if np.mod(cmd[3], 2) in [0, 1]: # \pm X Pauli measurement
+            s_signal = 0 # X meaurement is not affected by s_signal
+            t_signal = np.sum([results[j] for j in cmd[5]])
+        elif np.mod(cmd[3], 2) in [0.5, 1.5]: # \pm Y Pauli measurement
+            s_signal = np.sum([results[j] for j in cmd[4]])
+            t_signal = np.sum([results[j] for j in cmd[5]])
+        angle = cmd[3] * (-1)**s_signal + t_signal
+        if np.mod(angle, 2) == 0:  # +x measurement
+            results[cmd[1]] = graph_state.measure_x(cmd[1], choice=0)
+        elif np.mod(angle, 2) == 1:  # -x measurement
+            results[cmd[1]] = 1 - graph_state.measure_x(cmd[1], choice=1)
+        elif np.mod(angle, 2) == 0.5:  # +y measurement
+            results[cmd[1]] = graph_state.measure_y(cmd[1], choice=0)
+        elif np.mod(angle, 2) == 1.5:  # -y measurement
+            results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
+
+    # update command sequence
+    vops = graph_state.get_vops()
+    new_seq = []
+    for index in iter(graph_state.nodes):
+        new_seq.append(['N', index])
+    for edge in iter(graph_state.edges):
+        new_seq.append(['E', edge])
+    for cmd in pattern.seq:
+        if cmd[0] == 'M':
+            if not cmd in to_measure:
+                cmd_new = deepcopy(cmd)
+                cmd_new.append(vops[cmd[1]])
+                new_seq.append(cmd_new)
+    for index in pattern.output_nodes:
+        new_seq.append(['C', index, vops[index]])
+    for cmd in pattern.seq:
+        if cmd[0] == 'X' or cmd[0] == 'Z':
+            new_seq.append(cmd)
+    if copy:
+        pat = deepcopy(pattern)
+        pat.seq = new_seq
+        pat.results = results
+        return pat
+    else:
+        pattern.seq = new_seq
+        pattern.results = results
+
+
+def pauli_nodes(pattern):
+    """returns the list of measurement commands that are in Pauli bases
+    and that are not dependent on any non-Pauli measurements
+    Parameters
+    ----------
+    pattern : graphix.Pattern object
+
+    Returns
+    -------
+    pauli_node : list
+        list of node indices
+    """
+    if not pattern.is_standard():
+        pattern.standardize()
+    m_commands = pattern.get_measurement_order()
+    pauli_node = []
+    non_pauli_node = []
+    for cmd in m_commands:
+        if cmd[3] in [-1, 0, 1]: # \pm X Pauli measurement
+            t_cond = np.any(np.isin(cmd[5], non_pauli_node))
+            if t_cond: # cmd depend on non-Pauli measurement
+                non_pauli_node.append(cmd)
+            else:# cmd do not depend on non-Pauli measurements
+                # note: s_signal is irrelevant for X measurements
+                # because change of sign will do nothing
+                pauli_node.append(cmd)
+        elif cmd[3] in [-0.5, 0.5]: # \pm Y Pauli measurement
+            s_cond = np.any(np.isin(cmd[4], non_pauli_node))
+            t_cond = np.any(np.isin(cmd[5], non_pauli_node))
+            if s_cond or t_cond: # cmd depend on non-pauli measurement
+                non_pauli_node.append(cmd)
+            else:
+                pauli_node.append(cmd)
+        else:
+            non_pauli_node.append(cmd)
+    return pauli_node
