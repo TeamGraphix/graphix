@@ -152,7 +152,7 @@ class Circuit():
         """
         Nnode = self.width
         out = [j for j in range(self.width)]
-        pattern = Pattern([j for j in range(self.width)])
+        pattern = Pattern(self.width)
         for instr in self.instruction:
             if instr[0] == 'CNOT':
                 ancilla = [Nnode, Nnode+1]

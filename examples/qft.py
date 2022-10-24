@@ -1,5 +1,4 @@
 from graphix.transpiler import Circuit
-from graphix.simulator import PatternSimulator
 import numpy as np
 
 # 3-qubit QFT
@@ -49,6 +48,7 @@ swap(circuit, 0, 2)
 pat = circuit.transpile()
 pat.standardize()
 pat.shift_signals()
+pat.perform_pauli_measurements()
 pat.optimize_pattern()
 out_state = pat.simulate_pattern()
 

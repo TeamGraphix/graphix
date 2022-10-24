@@ -45,6 +45,7 @@ class PatternSimulator():
         self.results = deepcopy(pattern.results)
         self.sv = qi.Statevector([])
         self.node_index = []
+        self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError('Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again')
 
@@ -93,7 +94,7 @@ class PatternSimulator():
         control = self.node_index.index(edge[1])
         self.sv = self.sv.evolve(Ops.cz, [control, target])
 
-    def measure(self, cmd):
+    def measure(self, cmd, to_trace, to_trace_loc):
         """Perform measurement of a node in the internal statevector and trace out the qubit
         Parameters
         ----------
@@ -114,16 +115,12 @@ class PatternSimulator():
             vop = 0
         meas_op = self.meas_op(angle, vop, plane=cmd[2], choice=result)
         loc = self.node_index.index(cmd[1])
-        # perform measurement
         self.sv = self.sv.evolve(meas_op, [loc])
 
-        # trace out measured qubit
-        self.normalize_state()
-        state_dm = qi.partial_trace(self.sv, [loc])
-        self.sv = state_dm.to_statevector()
+        to_trace.append(cmd[1])
+        to_trace_loc.append(loc)
 
-        # update node_index
-        self.node_index.remove(cmd[1])
+        return to_trace, to_trace_loc
 
     def correct_byproduct(self, cmd):
         """Byproduct correction
@@ -147,13 +144,18 @@ class PatternSimulator():
 
     def run(self):
         self.initialize_statevector()
+        to_trace = []
+        to_trace_loc = []
+        Nqubit = 0
+        threshold = self.max_qubit_num
         for cmd in self.pattern.seq:
             if cmd[0] == 'N':
                 self.add_nodes([cmd[1]])
+                Nqubit += 1
             elif cmd[0] == 'E':
                 self.entangle_nodes(cmd[1])
             elif cmd[0] == 'M':
-                self.measure(cmd)
+                to_trace, to_trace_loc = self.measure(cmd, to_trace, to_trace_loc)
             elif cmd[0] == 'X':
                 self.correct_byproduct(cmd)
             elif cmd[0] == 'Z':
@@ -162,6 +164,16 @@ class PatternSimulator():
                 self.apply_clifford(cmd)
             else:
                 raise ValueError("invalid commands")
+
+            # trace out
+            if (Nqubit == threshold) or (self.pattern.seq[-1] == cmd):
+                self.normalize_state()
+                self.sv = qi.partial_trace(self.sv, to_trace_loc).to_statevector()
+                for node in to_trace:
+                    self.node_index.remove(node)
+                Nqubit -= len(to_trace)
+                to_trace = []
+                to_trace_loc = []
         self.sort_qubits()
 
     def sort_qubits(self):

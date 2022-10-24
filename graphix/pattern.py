@@ -4,7 +4,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 import numpy as np
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
-from graphix.clifford import CLIFFORD_MEASURE
+from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD_CONJ
 from copy import deepcopy
 
 class Pattern:
@@ -100,7 +100,11 @@ class Pattern:
         -------
         is_standard : bool
         """
-        order_dict = {'N': ['N', 'E', 'M', 'X', 'Z', 'C'], 'E': ['E', 'M', 'X', 'Z', 'C'], 'M': ['M', 'X', 'Z', 'C'], 'X': ['X', 'Z', 'C'], 'Z': ['X', 'Z', 'C'], 'C': ['X', 'Z', 'C']}
+        order_dict = {'N': ['N', 'E', 'M', 'X', 'Z', 'C'], \
+                      'E': ['E', 'M', 'X', 'Z', 'C'],\
+                      'M': ['M', 'X', 'Z', 'C'],\
+                      'X': ['X', 'Z', 'C'],\
+                      'Z': ['X', 'Z', 'C'], 'C': ['X', 'Z', 'C']}
         result = True
         op_ref = 'N'
         for cmd in self.seq:
@@ -147,15 +151,15 @@ class Pattern:
         ----------
         op : str, 'N', 'E', 'M', 'X', 'Z', 'S'
             command types to be searched
-        ref : bool
+        rev : bool
             search from the end (true) or start (false) of seq
         skipnum : int
             skip the detected command by specified times
         """
-        if not rev: # search from front
+        if not rev: # search from the start
             target = 0
             step = 1
-        else: # search from back
+        else: # search from the back
             target = len(self.seq)-1
             step = -1
         ite = 0
@@ -501,7 +505,9 @@ class Pattern:
 
     def optimize_pattern(self):
         """Optimize the pattern to minimize the max_space property of
-        the pattern i.e. the optimized pattern has significantly reduced space requirement (memory space for classical simulation and maximum simultaneously prepared qubits for quantum hardwares).
+        the pattern i.e. the optimized pattern has significantly
+        reduced space requirement (memory space for classical simulation,
+        and maximum simultaneously prepared qubits for quantum hardwares).
         """
         if not self.is_standard():
             self.standardize()
@@ -652,7 +658,7 @@ def measure_pauli(pattern, copy=False):
         if cmd[0] == 'M':
             if not cmd in to_measure:
                 cmd_new = deepcopy(cmd)
-                cmd_new.append(vops[cmd[1]])
+                cmd_new.append(CLIFFORD_CONJ[vops[cmd[1]]])
                 new_seq.append(cmd_new)
     for index in pattern.output_nodes:
         new_seq.append(['C', index, vops[index]])
