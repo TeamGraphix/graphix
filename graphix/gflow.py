@@ -18,7 +18,7 @@ import copy
 
 
 def solvebool(A, b):
-    """solves linear euqations of booleans
+    """solves linear equations of booleans
 
     Solves Ax=b, where A is n*m matrix and b is 1*m array, both of booleans.
     for example, for A=[[0,1,1],[1,0,1]] and b=[1,0], we solve:
@@ -151,7 +151,7 @@ def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
     l_k: np.array
         1D array for all qubits labeling layer number
     k: current layer number.
-    meas_plane: array of length |v| containing 'x','y','z','xy','yz',xz'.
+    meas_plane: array of length |v| containing 'X','Y','Z','XY','YZ','XZ'.
         measurement planes xy, yz, xz or Pauli measurement x,y,z.
 
     Outputs
@@ -263,6 +263,7 @@ def flow(g, v_in, v_out, meas_plane = None, timeout=100):
             raise TimeoutError('max iteration number n={} reached'.format(timeout))
     return f, l_k
 
+
 def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
     """Function to find one layer of the flow.
 
@@ -306,7 +307,7 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
     c_prime = set()
 
     for q in v_c:
-        N = search_neighbohr(q, e)
+        N = search_neighbor(q, e)
         p_set = N & (v - v_out)
         if len(p_set) == 1:
             p = list(p_set)[0]
@@ -326,7 +327,8 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
         exist = True
     return v_out | v_out_prime, (v_c - c_prime) | (v_out_prime & (v-v_in)), f, l_k, finished, exist
 
-def search_neighbohr(node, edges):
+
+def search_neighbor(node, edges):
     """Function to find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
 
     Parameter
@@ -349,6 +351,7 @@ def search_neighbohr(node, edges):
             N = N | {edge[0]}
     return N
 
+
 def find_flow(g, v_in, v_out, meas_plane = None, timeout = 100):
     """Function to determine whether there exists flow or gflow
 
@@ -365,18 +368,18 @@ def find_flow(g, v_in, v_out, meas_plane = None, timeout = 100):
     """
     f, l_k = gflow(g, v_in, v_out, meas_plane, timeout)
     if f:
-        print("there exists gflow")
+        print("gflow found")
         print("g is ", f)
         print("l_k is ", l_k)
     else:
-        print("there doesn't exist gflow")
+        print("no gflow found, finding flow")
     f, l_k = flow(g, v_in, v_out, timeout=timeout)
     if f:
-        print("there exists flow")
+        print("flow found")
         print("f is ", f)
         print("l_k is ", l_k)
     else:
-        print("there doesn't exist flow")
+        print("no flow found")
 
 
 def get_min_depth(l_k):
@@ -392,14 +395,16 @@ def get_min_depth(l_k):
     """
     return max(l_k.values())
 
+
 def get_layers(l_k):
     """get components of each layer.
-    Parameter
+    Parameters
     -------
     l_k: dict
-        layers obtained by flow or gflow
-    Return
-    ------
+        layers obtained by flow or gflow algorithms
+
+    Returns
+    -------
     d: int
         minimum depth of graph
     layers: dict of lists
@@ -411,20 +416,20 @@ def get_layers(l_k):
         layers[l_k[i]].append(i)
     return d, layers
 
+
 def get_meas_plane(pattern):
-    """get measurement plane from pattern.
+    """get measurement plane from the pattern.
     Parameter
     -------
-    pattern: Pattern object in graphix.pattern
-    nodes: list of node labels
-        which is equivalent to G.nodes
+    pattern: graphix.pattern.Pattern object
+
     Return
     -------
     meas_plane: dict of str
         list of strs representing measurement plane for each node.
     """
     meas_plane = dict()
-    XYtoXZ_list = [6, 8, 11, 12, 20, 21, 22, 23] # which change meas_plane from xy to xz
+    XYtoXZ_list = [6, 8, 11, 12, 20, 21, 22, 23] # clifford indices that change meas plane from xy to xz
     for cmd in pattern.seq:
         if cmd[0] == 'M':
             if len(cmd) == 7:
@@ -436,26 +441,28 @@ def get_meas_plane(pattern):
                 meas_plane[cmd[1]] = cmd[2]
     return meas_plane
 
+
 def get_measurement_order_from_gflow(pattern):
-    """Returns the list containing the node indices,
-    in the order of measurements which is optimal for parallel computing. For examples: actual machine, GPU computing.
+    """Returns a list containing the node indices,
+    in the order of measurements which can be performed with minimum depth.
+    Input must be a simple connected graph for the gflow-finding algorithm to work.
+
     Returns
     -------
     meas_order : list
         list of node indices in the order of measurements
-
-    Notation
-    -------
-    Input must be a simple concatenate graph, otherwise program can't get the proper gflow and measurement order.
     """
     nodes, edges = pattern.get_graph()
     G = nx.Graph()
     G.add_nodes_from(nodes)
     G.add_edges_from(edges)
+    isolated = list(nx.isolates(G))
+    if isolated:
+        raise ValueError('The input graph must be connected')
     meas_plane = get_meas_plane(pattern)
     g, l_k = gflow(G, set(), set(pattern.output_nodes), meas_plane=meas_plane)
     if not g:
-        raise ValueError("no gflow or not a simple concatenate graph")
+        raise ValueError("No gflow found")
     k, layers = get_layers(l_k)
     meas_order = []
     while k > 0:

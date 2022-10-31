@@ -409,7 +409,7 @@ class Pattern:
     def extract_signals(self):
         """Extracts 't' domain of measurement commands, turn them into
         signal 'S' commands and add to the command sequence.
-        This is used for signal_shifting() method.
+        This is used for shift_signals() method.
         """
         pos = 0
         while pos < len(self.seq):
@@ -422,24 +422,186 @@ class Pattern:
                     pos += 1
             pos += 1
 
+    def _get_dependency(self):
+        """Get dependency (byproduct correction & dependent measurement)
+        structure of nodes in the graph (resource) state, according to the pattern.
+        This is used to determine the optimum measurement order.
+
+        Returns
+        -------
+        dependency : dict of sets
+            index is node number. all nodes in the each set must be measured before measuring
+        """
+        nodes, _ = self.get_graph()
+        dependency = {i: set() for i in nodes}
+        for cmd in self.seq:
+            if cmd[0] == 'M':
+                dependency[cmd[1]] = dependency[cmd[1]] | set(cmd[4]) | set(cmd[5])
+            elif cmd[0] == 'X':
+                dependency[cmd[1]] = dependency[cmd[1]] | set(cmd[2])
+            elif cmd[0] =='Z':
+                dependency[cmd[1]] = dependency[cmd[1]] | set(cmd[2])
+        return dependency
+
+    def update_dependency(self, measured, dependency):
+        """Update dependency function. remove measured nodes from dependency.
+
+        Parameters
+        ---------
+        measured: set
+            measured nodes.
+        dependency: dict of sets
+            which is produced by `_get_dependency`
+
+        Returns
+        --------
+        dependency: dict of sets
+            updated dependency information
+        """
+        for i in dependency.keys():
+            dependency[i] -= measured
+        return dependency
+
+    def get_layers(self):
+        """Construct layers(l_k) from dependency information.
+        kth layer must be measured before measuring k+1th layer
+        and nodes in the same layer can be measured simultaneously.
+
+        Returns
+        -------
+        depth: int
+            depth of graph
+        l_k: dict of sets
+            nodes grouped by layer index(k)
+        """
+        dependency = self._get_dependency()
+        measured = self.results.keys()
+        dependency = self.update_dependency(measured, dependency)
+        not_measured = set()
+        for cmd in self.seq:
+            if cmd[0] == 'N':
+                if not cmd[1] in self.output_nodes:
+                    not_measured = not_measured | {cmd[1]}
+        l_k = dict()
+        k = 0
+        while not_measured:
+            l_k[k] = set()
+            for i in not_measured:
+                if not dependency[i]:
+                    l_k[k] = l_k[k] | {i}
+            dependency = self.update_dependency(l_k[k], dependency)
+            not_measured -= l_k[k]
+            k += 1
+            depth = k
+        return depth, l_k
+
+    def _measurement_order_depth(self):
+        """Obtain the measurement order which reduces the depth of
+        pattern execution.
+
+        Returns
+        -------
+        meas_order: list of ints
+            optimal measurement order for parallel computing
+        """
+        d, l_k = self.get_layers()
+        meas_order = []
+        for i in range(d):
+            for node in l_k[i]:
+                meas_order.append(node)
+        return meas_order
+
+    def connected_edges(self, node, edges):
+        """Search not activated edges connected to the specified node
+
+        Returns
+        -------
+        connected: set of taples
+                set of connected edges
+        """
+        connected = set()
+        for edge in edges:
+            if edge[0] == node:
+                connected = connected | {edge}
+            elif edge[1] == node:
+                connected = connected | {edge}
+        return connected
+
+    def _measurement_order_space(self):
+        """Determine the optimal measurement order
+         which minimize the `max_space` of the pattern.
+
+        Returns
+        -------
+        meas_order: list of ints
+            optimal measurement order for classical simulation
+        """
+        nodes, edges = self.get_graph()
+        nodes = set(nodes)
+        edges = set(edges)
+        not_measured = nodes - set(self.output_nodes)
+        dependency = self._get_dependency()
+        dependency = self.update_dependency(self.results.keys(),dependency)
+        meas_order = []
+        removable_edges = set()
+        while not_measured:
+            min_edges = len(nodes) + 1
+            next_node = -1
+            for i in not_measured:
+                if not dependency[i]:
+                    connected_edges = self.connected_edges(i, edges)
+                    if min_edges > len(connected_edges):
+                        min_edges = len(connected_edges)
+                        next_node = i
+                        removable_edges = connected_edges
+            assert next_node > -1
+            meas_order.append(next_node)
+            dependency = self.update_dependency({next_node}, dependency)
+            not_measured -= {next_node}
+            edges -= removable_edges
+        return meas_order
+
+    def sort_measurement_commands(self, meas_order):
+        """Convert measurement order to sequence of measurement commands
+
+        Parameters
+        --------
+        meas_order: list of ints
+            optimal measurement order.
+
+        Returns
+        --------
+        meas_flow: list of commands
+            sorted measurement commands
+        """
+        meas_flow = []
+        for i in meas_order:
+            target = 0
+            while True:
+                if (self.seq[target][0] == 'M') &(self.seq[target][1] == i):
+                    meas_flow.append(self.seq[target])
+                    break
+                target += 1
+        return meas_flow
+
     def get_measurement_order(self):
         """Returns the list containing the node indices,
         in the order of measurements
         Returns
         -------
-        meas_order : list
+        meas_flow : list
             list of node indices in the order of meaurements
         """
         if not self.is_standard():
             self.standardize()
-        meas_order = []
+        meas_flow = []
         ind = self._find_op_to_be_moved('M')
         if ind == 'end':
             return []
         while self.seq[ind][0] == 'M':
-            meas_order.append(self.seq[ind])
+            meas_flow.append(self.seq[ind])
             ind += 1
-        return meas_order
+        return meas_flow
 
     def get_graph(self):
         """returns the list of nodes and edges from the command sequence,
@@ -503,7 +665,18 @@ class Pattern:
         Clist = self.seq[ind:]
         return Clist
 
-    def optimize_pattern(self):
+    def parallelize_pattern(self):
+        """Optimize the pattern to reduce the depth of the computation
+        by gathering measurement commands that can be performed simultaneously.
+        This optimized pattern runs efficiently on GPUs and quantum hardwares with
+        depth (e.g. coherence time) limitations.
+        """
+        if not self.is_standard():
+            self.standardize()
+        meas_order = self._measurement_order_depth()
+        self._reorder_pattern(self.sort_measurement_commands(meas_order))
+
+    def minimize_space(self):
         """Optimize the pattern to minimize the max_space property of
         the pattern i.e. the optimized pattern has significantly
         reduced space requirement (memory space for classical simulation,
@@ -511,11 +684,20 @@ class Pattern:
         """
         if not self.is_standard():
             self.standardize()
-        meas_flow = self.get_measurement_order()
+        meas_order = self._measurement_order_space()
+        self._reorder_pattern(self.sort_measurement_commands(meas_order))
+
+    def _reorder_pattern(self, meas_commands):
+        """internal method to reorder the command sequence
+        Parameters
+        ----------
+        meas_commands : list of commands
+            list of measurement ('M') commands
+        """
         prepared = []
         measured = []
         new = []
-        for cmd in meas_flow:
+        for cmd in meas_commands:
             node = cmd[1]
             if not node in prepared:
                 new.append(['N', node])
@@ -534,14 +716,15 @@ class Pattern:
             if cmd[0] == 'N':
                 if not cmd[1] in prepared:
                     new.append(['N', cmd[1]])
-        # addC Clifford nodes
+
+        # add Clifford nodes
         for cmd in self.seq:
             if cmd[0] == 'C':
                 new.append(cmd)
 
         # add corrections
-        Clist = self.correction_commands()
-        new.extend(Clist)
+        c_list = self.correction_commands()
+        new.extend(c_list)
 
         self.seq = new
 
@@ -648,6 +831,7 @@ def measure_pauli(pattern, copy=False):
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
 
     # update command sequence
+    pattern.Nnode = len(graph_state.nodes)
     vops = graph_state.get_vops()
     new_seq = []
     for index in iter(graph_state.nodes):

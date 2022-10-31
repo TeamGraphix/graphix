@@ -49,7 +49,7 @@ pat = circuit.transpile()
 pat.standardize()
 pat.shift_signals()
 pat.perform_pauli_measurements()
-pat.optimize_pattern()
+pat.minimize_space()
 out_state = pat.simulate_pattern()
 
 state = circuit.simulate_statevector()
