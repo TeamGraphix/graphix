@@ -8,46 +8,47 @@ from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD_CONJ
 from copy import deepcopy
 
 class Pattern:
-    """ MBQC pattern class
+    """
+    MBQC pattern class
+
     Pattern holds a sequence of commands to operate the MBQC (Pattern.seq),
     and provide modification strategies to improve the structure and simulation
     efficiency of the pattern accoring to measurement calculus.
 
     ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
-    Attributes:
-    -----------
-    width : number of output qubits
-    seq : list of commands
-        each command is a list [type, nodes, attr] which will be
-        applied in the order of list indices.
-        type is one of {'N', 'M', 'E', 'X', 'Z', 'S', 'C'}
-        nodes : int for {'N', 'M', 'X', 'Z', 'S', 'C'} commands
-        nodes : tuple (i, j) for {'E'} command
-        attr for N: none
-        attr for M: meas_plane, angle, s_domain, t_domain
-        attr for X: signal_domain
-        attr for Z: signal_domain
-        attr for S: signal_domain
-        attr for C: clifford_index, as defined in graphix.clifford
+    Attributes
+    ----------
+    width : int
+        number of output qubits
+
+    seq : list
+        list of commands.
+
+        .. line-block::
+            each command is a list [type, nodes, attr] which will be applied in the order of list indices.
+            type: one of {'N', 'M', 'E', 'X', 'Z', 'S', 'C'}
+            nodes: int for {'N', 'M', 'X', 'Z', 'S', 'C'} commands, tuple (i, j) for {'E'} command
+            attr for N: none
+            attr for M: meas_plane, angle, s_domain, t_domain
+            attr for X: signal_domain
+            attr for Z: signal_domain
+            attr for S: signal_domain
+            attr for C: clifford_index, as defined in :py:mod:`graphix.clifford`
     Nnode : int
         total number of nodes in the resource state
-    results : dict
-        stores measurement results from graph state simulator
     """
 
     def __init__(self, width):
-        """Initialize pattern object
-        Parameters
-        ---------
-        width : int
-            number of output qubits
         """
+        :param width:  number of input/output qubits
+        """
+        # number of input qubits
         self.width = width
-        self.seq = [['N', i] for i in range(width)]
-        self.results = {}
-        self.output_nodes = []
-        self.Nnode = width
+        self.seq = [['N', i] for i in range(width)] # where command sequence is stored
+        self.results = {} # measurement results from the graph state simulator
+        self.output_nodes = [] # output nodes
+        self.Nnode = width # total number of nodes in the graph state
 
     def add_command(self, cmd):
         """add command to the end of the pattern.
@@ -85,6 +86,41 @@ class Pattern:
             self.Nnode += 1
         self.seq.append(cmd)
 
+    def __repr__(self):
+        return f'graphix.pattern.Pattern object with {len(self.seq)} commands and {self.width} output qubits'
+
+    def print_pattern(self, lim=40):
+        """pretty print the pattern sequence (Pattern.seq).
+
+        Parameters
+        ----------
+        lim: int
+            optional argument, maximum number of commands to show
+        """
+        if len(self.seq) < lim:
+            nmax = len(self.seq)
+        else:
+            nmax = lim
+        for i in range(nmax):
+            if self.seq[i][0] == 'N':
+                print(f'N, node = {self.seq[i][1]}')
+            elif self.seq[i][0] == 'E':
+                print(f'E, nodes = {self.seq[i][1]}')
+            elif self.seq[i][0] == 'M':
+                if len(self.seq[i]) == 6:
+                    print(f'M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}')
+                elif len(self.seq[i]) == 7:
+                    print(f'M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}, Clifford index = {self.seq[i][6]}')
+            elif self.seq[i][0] == 'X':
+                print(f'X byproduct, node = {self.seq[i][1]}, domain = {self.seq[i][2]}')
+            elif self.seq[i][0] == 'Z':
+                print(f'Z byproduct, node = {self.seq[i][1]}, domain = {self.seq[i][2]}')
+            elif self.seq[i][0] == 'C':
+                print(f'Clifford, node = {self.seq[i][1]}, Clifford index = {self.seq[i][2]}')
+
+        if len(self.seq) > lim:
+            print(f'{len(self.seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more')
+
     def standardize(self):
         """Executes standardization of the pattern.
         'standard' pattern is one where commands are sorted in the order of
@@ -96,9 +132,11 @@ class Pattern:
 
     def is_standard(self):
         """ determines whether the command sequence is standard
+
         Returns
         -------
         is_standard : bool
+            True if the pattern is standard
         """
         order_dict = {'N': ['N', 'E', 'M', 'X', 'Z', 'C'], \
                       'E': ['E', 'M', 'X', 'Z', 'C'],\
@@ -147,6 +185,7 @@ class Pattern:
 
     def _find_op_to_be_moved(self, op, rev = False, skipnum = 0):
         """ Internal method for pattern modification.
+
         Parameters
         ----------
         op : str, 'N', 'E', 'M', 'X', 'Z', 'S'
@@ -204,6 +243,7 @@ class Pattern:
 
     def _commute_MX(self, target):
         """ Internal method to perform the commutation of M and X.
+
         Parameters
         ----------
         target : int
@@ -224,6 +264,7 @@ class Pattern:
 
     def _commute_MZ(self, target):
         """ Internal method to perform the commutation of M and Z.
+
         Parameters
         ----------
         target : int
@@ -244,6 +285,7 @@ class Pattern:
 
     def _commute_XS(self, target):
         """ Internal method to perform the commutation of X and S.
+
         Parameters
         ----------
         target : int
@@ -260,6 +302,7 @@ class Pattern:
 
     def _commute_ZS(self, target):
         """ Internal method to perform the commutation of Z and S.
+
         Parameters
         ----------
         target : int
@@ -276,6 +319,7 @@ class Pattern:
 
     def _commute_MS(self, target):
         """ Internal method to perform the commutation of M and S.
+
         Parameters
         ----------
         target : int
@@ -447,7 +491,7 @@ class Pattern:
         """Update dependency function. remove measured nodes from dependency.
 
         Parameters
-        ---------
+        ----------
         measured: set
             measured nodes.
         dependency: dict of sets
@@ -469,9 +513,9 @@ class Pattern:
 
         Returns
         -------
-        depth: int
+        depth : int
             depth of graph
-        l_k: dict of sets
+        layers : dict of sets
             nodes grouped by layer index(k)
         """
         dependency = self._get_dependency()
@@ -587,6 +631,7 @@ class Pattern:
     def get_measurement_order(self):
         """Returns the list containing the node indices,
         in the order of measurements
+
         Returns
         -------
         meas_flow : list
@@ -606,6 +651,7 @@ class Pattern:
     def get_graph(self):
         """returns the list of nodes and edges from the command sequence,
         extracted from 'N' and 'E' commands.
+
         Returns
         -------
         node_list : list
@@ -627,12 +673,14 @@ class Pattern:
         node is measured, to ensure correct computation.
         If connected nodes already exist in the statevector (prepared),
         then they will be ignored as they do not need to be prepared again.
+
         Parameters
         ----------
         node : int
             node index
         prepared : list
             list of node indices, which are to be ignored
+
         Returns
         -------
         node_list : list
@@ -689,6 +737,7 @@ class Pattern:
 
     def _reorder_pattern(self, meas_commands):
         """internal method to reorder the command sequence
+
         Parameters
         ----------
         meas_commands : list of commands
@@ -732,6 +781,7 @@ class Pattern:
         """The maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
         For statevector simulation, this is equivalent to the maximum memory
         needed for classical simulation.
+
         Returns
         -------
         n_nodes : int
@@ -751,6 +801,7 @@ class Pattern:
     def space_list(self):
         """Returns the list of the number of nodes present in the graph (space)
         during each step of execution of the pattern (for N and M commands).
+
         Returns
         -------
         N_list : list
@@ -768,12 +819,18 @@ class Pattern:
         return N_list
 
     def simulate_pattern(self, backend='statevector'):
-        """Perform simulation of the pattern by using
-        graphix.simulator.PatternSimulator class.
-        Optional Parameters
+        """Simulate the execution of the pattern by using
+        :class:`graphix.simulator.PatternSimulator`.
+
+        Available backend: ['statevector']
+
+        Parameters
         ----------
         backend : str
-            simulator backend from {'statevector'}
+            optional parameter to select simulator backend.
+
+
+        .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend)
         sim.run()
@@ -781,7 +838,11 @@ class Pattern:
 
     def perform_pauli_measurements(self):
         """Perform Pauli measurements in the pattern using
-        efficient stabilizer simulator """
+        efficient stabilizer simulator.
+
+        .. seealso:: :func:`measure_pauli`
+
+        """
         measure_pauli(self, copy=False)
 
 
@@ -801,10 +862,13 @@ def measure_pauli(pattern, copy=False):
         False: changes will be applied to the supplied Pattern object
 
     Returns
-    ------
+    -------
     new_pattern : graphix.Pattern object
         pattern with Pauli measurement removed.
         only returned if copy argument is True.
+
+
+    .. seealso:: :class:`graphix.graphsim.GraphState`
     """
     if not pattern.is_standard():
         pattern.standardize()
@@ -862,6 +926,7 @@ def measure_pauli(pattern, copy=False):
 def pauli_nodes(pattern):
     """returns the list of measurement commands that are in Pauli bases
     and that are not dependent on any non-Pauli measurements
+
     Parameters
     ----------
     pattern : graphix.Pattern object

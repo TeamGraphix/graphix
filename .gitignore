@@ -3,3 +3,4 @@
 .benchmarks
 **egg-info
 **/.DS_Store
+**/build

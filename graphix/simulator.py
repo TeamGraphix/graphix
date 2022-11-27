@@ -13,30 +13,19 @@ from copy import deepcopy
 class PatternSimulator():
     """MBQC simulator
 
-    Executes the pattern (graphix.Pattern)
-
-    Attributes:
-    -----------
-    pattern : graphix.Pattern
-        MBQC command sequence to be simulated
-    backend : 'statevector'
-        optional argument to select backend of simulation.
-    results : dict
-        measurement results for each measuring nodes in the graph state
-    node_index : list
-        the mapping of node indices to qubit indices in statevector.
+    Executes the measurement pattern.
     """
 
     def __init__(self, pattern, backend='statevector', max_qubit_num=12):
         """
-        Parameteres:
-        --------
-        pattern: graphq.pattern.Pattern object
+        Parameteres
+        -----------
+        pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: 'statevector'
+        backend: str, 'statevector'
             optional argument for simulation.
         max_qubit_num : int
-            maximum number of qubits to store in statevector at a time.
+            optional argument specifying the maximum number of qubits in statevector at a time.
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
@@ -71,6 +60,7 @@ class PatternSimulator():
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
+
         Parameters
         ---------
         nodes : list of node indices
@@ -85,6 +75,7 @@ class PatternSimulator():
 
     def entangle_nodes(self, edge):
         """ Apply CZ gate to two connected nodes
+
         Parameters
         ----------
         edge : tuple (i, j)
@@ -143,6 +134,13 @@ class PatternSimulator():
         self.sv = self.sv.evolve(qi.Operator(CLIFFORD[cmd[2]]), [loc])
 
     def run(self):
+        """Perform the simulation.
+
+        Returns
+        -------
+        state : qiskit.quantum_info.Statevector
+            output state of the MBQC.
+        """
         self.initialize_statevector()
         to_trace = []
         to_trace_loc = []
@@ -175,6 +173,7 @@ class PatternSimulator():
                 to_trace = []
                 to_trace_loc = []
         self.sort_qubits()
+        return self.sv
 
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""

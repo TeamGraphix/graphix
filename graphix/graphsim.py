@@ -11,19 +11,15 @@ from graphix.clifford import CLIFFORD_MUL
 class GraphState(nx.Graph):
     """Graph state simulator
 
-    Performs Pauli measurements on graph states
+    Performs Pauli measurements on graph states.
+    Inherits methods and attributes from networkx.Graph.
+
     ref: M. Elliot, B. Eastin & C. Caves, JPhysA 2010
 
-    Attributes
-    ----------
-    nodes : nx.Graph.nodes
-        Vertex qubits, each one has vertex operator (vop)
-        Each node has attributes:
-            `hollow` : True if node is hollow
-            `sign` : True if node has negative sign
-            `loop` : True if node has loop
-    edges : nx.Graph.edges
-        Edges of graphstate on which CZ was applied.
+    Each node has attributes:
+        :`hollow`: True if node is hollow
+        :`sign`: True if node has negative sign
+        :`loop`: True if node has loop
     """
 
     def __init__(self, nodes=None, edges=None):
@@ -46,6 +42,7 @@ class GraphState(nx.Graph):
 
     def add_nodes_from(self, nodes):
         """Add nodes and initialize node properties.
+
         Parameters
         ----------
         nodes : iterable container
@@ -55,6 +52,7 @@ class GraphState(nx.Graph):
 
     def add_edges_from(self, edges):
         """Add edges and initialize node properties of newly added nodes.
+
         Parameters
         ----------
         edges : iterable container
@@ -71,10 +69,14 @@ class GraphState(nx.Graph):
         """Returns a dict containing clifford labels for each nodes.
         labels 0 - 23 specify one of 24 single-qubit Clifford gates.
         see graphq.clifford for the definition of all unitaries.
+
         Returns
         ----------
         vops : dict
             clifford gate indices as defined in `graphq.clifford`.
+
+
+        .. seealso:: :mod:`graphix.clifford`
         """
         vops = {}
         for i in self.nodes:
@@ -90,6 +92,7 @@ class GraphState(nx.Graph):
 
     def flip_fill(self, node):
         """Flips the fill (local H) of a node.
+
         Parameters
         ----------
         node : int
@@ -115,6 +118,7 @@ class GraphState(nx.Graph):
         reflecting the relation SS=Z.
         Note that application of S gate is different from `advance`
         if there exist an edge from the node.
+
         Parameters
         ----------
         node : int
@@ -128,6 +132,7 @@ class GraphState(nx.Graph):
 
     def h(self, node):
         """Apply H gate to a qubit (node).
+
         Parameters
         ----------
         node : int
@@ -137,6 +142,7 @@ class GraphState(nx.Graph):
 
     def s(self, node):
         """Apply S gate to a qubit (node).
+
         Parameters
         ----------
         node : int
@@ -161,6 +167,7 @@ class GraphState(nx.Graph):
 
     def z(self, node):
         """Apply Z gate to a qubit (node).
+
         Parameters
         ----------
         node : int
@@ -178,6 +185,7 @@ class GraphState(nx.Graph):
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to a node with loop.
+
         Parameters
         ----------
         node1 : int
@@ -197,6 +205,7 @@ class GraphState(nx.Graph):
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to two connected nodes without loop.
+
         Parameters
         ----------
         node1, node2 : int
@@ -224,6 +233,7 @@ class GraphState(nx.Graph):
 
     def local_complement(self, node):
         """Perform local complementation of a graph
+
         Parameters
         ----------
         node : int
@@ -243,6 +253,7 @@ class GraphState(nx.Graph):
         ----------
         node : int
             node to fill.
+
         Returns
         ----------
         result : int

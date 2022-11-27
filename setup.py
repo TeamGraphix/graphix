@@ -9,9 +9,9 @@ requirements = [
 
 info = {
     'name': 'Graphix',
-    'version': '0.0.0',
+    'version': '0.0.1',
     'packages': ['graphix'],
-    'description': 'Open source library for graph-based one-way quantum computation',
+    'description': 'Open source library to optimize and simulate measurement-based quantum computation',
     'install_requires': requirements,
 }
 

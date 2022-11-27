@@ -18,8 +18,7 @@ class Circuit():
     width : int
         Number of logical qubits (for gate network)
     instruction : list
-        List of gates applied
-
+        List containing the gate sequence applied.
     """
 
     def __init__(self, width):
@@ -33,7 +32,7 @@ class Circuit():
         self.instruction = []
 
     def cnot(self, control, target):
-        """CNOT
+        """CNOT gate
 
         Prameters
         ---------
@@ -49,6 +48,7 @@ class Circuit():
 
     def h(self, qubit):
         """Hadamard gate
+
         Prameters
         ---------
         qubit : int
@@ -59,6 +59,7 @@ class Circuit():
 
     def s(self, qubit):
         """S gate
+
         Prameters
         ---------
         qubit : int
@@ -69,6 +70,7 @@ class Circuit():
 
     def x(self, qubit):
         """Pauli X gate
+
         Prameters
         ---------
         qubit : int
@@ -79,6 +81,7 @@ class Circuit():
 
     def y(self, qubit):
         """Pauli Y gate
+
         Prameters
         ---------
         qubit : int
@@ -89,6 +92,7 @@ class Circuit():
 
     def z(self, qubit):
         """Pauli Z gate
+
         Prameters
         ---------
         qubit : int
@@ -99,6 +103,7 @@ class Circuit():
 
     def rx(self, qubit, angle):
         """X rotation gate
+
         Prameters
         ---------
         qubit : int
@@ -112,6 +117,7 @@ class Circuit():
 
     def ry(self, qubit, angle):
         """Y rotation gate
+
         Prameters
         ---------
         qubit : int
@@ -124,6 +130,7 @@ class Circuit():
 
     def rz(self, qubit, angle):
         """Z rotation gate
+
         Prameters
         ---------
         qubit : int
@@ -136,6 +143,7 @@ class Circuit():
 
     def i(self, qubit):
         """identity (teleportation) gate
+
         Prameters
         ---------
         qubit : int
@@ -146,9 +154,10 @@ class Circuit():
 
     def transpile(self):
         """ gate-to-MBQC transpile function.
+
         Returns
         --------
-        pattern : graphix.Pattern object
+        pattern : :class:`graphix.pattern.Pattern` object
         """
         Nnode = self.width
         out = [j for j in range(self.width)]
@@ -212,6 +221,7 @@ class Circuit():
     @classmethod
     def _cnot_command(self, control_node, target_node, ancilla):
         """ MBQC commands for CNOT gate
+
         Parameters
         ---------
         control_node : int
@@ -245,6 +255,7 @@ class Circuit():
     @classmethod
     def _h_command(self, input_node, ancilla):
         """MBQC commands for Hadamard gate
+
         Parameters
         ---------
         input_node : int
@@ -268,6 +279,7 @@ class Circuit():
     @classmethod
     def _s_command(self, input_node, ancilla):
         """MBQC commands for S gate
+
         Parameters
         ---------
         input_node : int
@@ -295,6 +307,7 @@ class Circuit():
     @classmethod
     def _x_command(self, input_node, ancilla):
         """MBQC commands for Pauli X gate
+
         Parameters
         ---------
         input_node : int
@@ -322,6 +335,7 @@ class Circuit():
     @classmethod
     def _y_command(self, input_node, ancilla):
         """MBQC commands for Pauli Y gate
+
         Parameters
         ---------
         input_node : int
@@ -354,6 +368,7 @@ class Circuit():
     @classmethod
     def _z_command(self, input_node, ancilla):
         """MBQC commands for Pauli Z gate
+
         Parameters
         ---------
         input_node : int
@@ -381,6 +396,7 @@ class Circuit():
     @classmethod
     def _rx_command(self, input_node, ancilla, angle):
         """MBQC commands for X rotation gate
+
         Parameters
         ---------
         input_node : int
@@ -410,6 +426,7 @@ class Circuit():
     @classmethod
     def _ry_command(self, input_node, ancilla, angle):
         """MBQC commands for Y rotation gate
+
         Parameters
         ---------
         input_node : int
@@ -444,6 +461,7 @@ class Circuit():
     @classmethod
     def _rz_command(self, input_node, ancilla, angle):
         """MBQC commands for Z rotation gate
+
         Parameters
         ---------
         input_node : int
@@ -505,6 +523,13 @@ class Circuit():
                 pattern.seq[i][1] = output_nodes[old_out.index(pattern.seq[i][1])]
 
     def simulate_statevector(self, input_state=None):
+        """Run statevector simultion of the gate sequence, using qiskit.quantum_info.Statevector.
+
+        Returns
+        -------
+        stete : qiskit.quantum_info.Statevector
+            output state of the statevector simulation.
+        """
 
         if input_state is None:
             state = States.xplus_state
