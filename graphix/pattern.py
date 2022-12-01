@@ -845,7 +845,7 @@ class Pattern:
                 N_list.append(nodes)
         return N_list
 
-    def simulate_pattern(self, backend='statevector'):
+    def simulate_pattern(self, backend='statevector', **kwargs):
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
@@ -855,13 +855,18 @@ class Pattern:
         ----------
         backend : str
             optional parameter to select simulator backend.
+        kwargs: keyword args for specified backend.
 
+        Returns
+        -------
+        state :
+            quantum state representation for the selected backend.
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        sim = PatternSimulator(self, backend=backend)
-        sim.run()
-        return sim.sv
+        sim = PatternSimulator(self, backend=backend, **kwargs)
+        state = sim.run()
+        return state
 
     def perform_pauli_measurements(self):
         """Perform Pauli measurements in the pattern using
