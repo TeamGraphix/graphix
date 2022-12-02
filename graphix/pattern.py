@@ -89,36 +89,65 @@ class Pattern:
     def __repr__(self):
         return f'graphix.pattern.Pattern object with {len(self.seq)} commands and {self.width} output qubits'
 
-    def print_pattern(self, lim=40):
-        """pretty print the pattern sequence (Pattern.seq).
+    def print_pattern(self, lim=40, filter=None):
+        """print the pattern sequence (Pattern.seq).
 
         Parameters
         ----------
-        lim: int
-            optional argument, maximum number of commands to show
+        lim: int, optional
+            maximum number of commands to show
+        filter : list of str, optional
+            show only specified commands, e.g. ['M', 'X', 'Z']
         """
         if len(self.seq) < lim:
             nmax = len(self.seq)
         else:
             nmax = lim
-        for i in range(nmax):
-            if self.seq[i][0] == 'N':
+        if filter == None:
+            filter = ['N', 'E', 'M', 'X', 'Z', 'C']
+        count = 0
+        i = -1
+        while count < nmax:
+            i = i + 1
+            if i == len(self.seq):
+                break
+            if self.seq[i][0] == 'N' and ('N' in filter):
+                count += 1
                 print(f'N, node = {self.seq[i][1]}')
-            elif self.seq[i][0] == 'E':
+            elif self.seq[i][0] == 'E' and ('E' in filter):
+                count += 1
                 print(f'E, nodes = {self.seq[i][1]}')
-            elif self.seq[i][0] == 'M':
+            elif self.seq[i][0] == 'M' and ('M' in filter):
+                count += 1
                 if len(self.seq[i]) == 6:
                     print(f'M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}')
                 elif len(self.seq[i]) == 7:
                     print(f'M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}, Clifford index = {self.seq[i][6]}')
-            elif self.seq[i][0] == 'X':
-                print(f'X byproduct, node = {self.seq[i][1]}, domain = {self.seq[i][2]}')
-            elif self.seq[i][0] == 'Z':
-                print(f'Z byproduct, node = {self.seq[i][1]}, domain = {self.seq[i][2]}')
-            elif self.seq[i][0] == 'C':
+            elif self.seq[i][0] == 'X' and ('X' in filter):
+                count += 1
+                # remove duplicates
+                _domain = np.array(self.seq[i][2])
+                uind = np.unique(_domain)
+                unique_domain = []
+                for ind in uind:
+                    if np.mod(np.count_nonzero(_domain==ind),2) == 1:
+                        unique_domain.append(ind)
+                print(f'X byproduct, node = {self.seq[i][1]}, domain = {unique_domain}')
+            elif self.seq[i][0] == 'Z' and ('Z' in filter):
+                count += 1
+                # remove duplicates
+                _domain = np.array(self.seq[i][2])
+                uind = np.unique(_domain)
+                unique_domain = []
+                for ind in uind:
+                    if np.mod(np.count_nonzero(_domain==ind),2) == 1:
+                        unique_domain.append(ind)
+                print(f'Z byproduct, node = {self.seq[i][1]}, domain = {unique_domain}')
+            elif self.seq[i][0] == 'C' and ('C' in filter):
+                count += 1
                 print(f'Clifford, node = {self.seq[i][1]}, Clifford index = {self.seq[i][2]}')
 
-        if len(self.seq) > lim:
+        if len(self.seq) > i + 1:
             print(f'{len(self.seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more')
 
     def standardize(self):
@@ -705,12 +734,10 @@ class Pattern:
         """Returns the list of byproduct correction commands
         """
         assert self.is_standard()
-        ind = self._find_op_to_be_moved('Z')
-        if ind == 'end':
-            ind = self._find_op_to_be_moved('X')
-            if ind == 'end':
-                return []
-        Clist = self.seq[ind:]
+        Clist = []
+        for i in range(len(self.seq)):
+            if self.seq[i][0] in ['X', 'Z']:
+                Clist.append(self.seq[i])
         return Clist
 
     def parallelize_pattern(self):

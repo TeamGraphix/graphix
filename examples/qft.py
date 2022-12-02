@@ -44,7 +44,6 @@ circuit.h(0)
 swap(circuit, 0, 2)
 
 # run with MBQC simulator
-
 pat = circuit.transpile()
 pat.standardize()
 pat.shift_signals()
