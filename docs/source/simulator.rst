@@ -13,3 +13,24 @@ Pattern Simulation
     .. automethod:: run
 
     .. automethod:: meas_op
+
+Simulator backends
+++++++++++++++++++
+
+Matrix Product State (MPS)
+--------------------------
+
+.. currentmodule:: graphix.sim.mps
+
+.. autoclass:: MPS
+    :members:
+
+Statevector
+-----------
+
+.. currentmodule:: graphix.sim.statevec
+
+.. autoclass:: StatevectorBackend
+    :members:
+
+.. autofunction:: meas_op

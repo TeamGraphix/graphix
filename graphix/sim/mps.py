@@ -13,25 +13,22 @@ class MPS():
     """
 
     def __init__(self, pattern, singular_value = None,\
-        max_truncation_err = None, graph_prep = 'opt'):
+        max_truncation_err = None, graph_prep = 'opt', output='statevector'):
         """
-        Parameters:
-        ---------
+
+        Parameters
+        ----------
         pattern : graphix.Pattern
             MBQC command sequence to be simulated
-        results : dict
-            measurement results for each measuring nodes in the graph state
-        graph: networkx.Graph
-        nodes: dict of tensornetwork.Node
-            index should be int
         singular_value: int
             cut off threshold for SVD decomposition
         truncation_err: float
             cut off threshold for SVD decomposition. truncate maximum number of singular values within truncation_err
         graph_prep : str
             'sequential' for standard method, 'opt' for faster method
-        accumulated_err: float
-            accumulated truncation square error
+        output : str
+            output object style. 'statevector' for translation to statevector,
+            'mps' for MPS object (= self).
             """
         nodes, edges = pattern.get_graph()
         G = nx.Graph()
@@ -40,18 +37,23 @@ class MPS():
         self.ptn = pattern
         self.results = deepcopy(pattern.results)
         self.graph = G
-        self.state = dict()
+        # dict of tensornetwork.Node, index should be int
+        self.nodes = dict()
+        self.state = None
         self.singular_value = singular_value
         self.truncation_err = max_truncation_err
         self.graph_prep = graph_prep
-        self.accumulated_err = 0
+        self.output = output
+        # accumulated truncation square error
+        self.accumulated_err = 0.
 
     def set_singular_value(self, chi):
         """Set the number of singular values holding under singular value decomposition(SVD).
 
-        Note: If you choose run_graph() to execute a pattern, you don't have to specify singular_value.
+        Note: If you choose 'opt' as a graph_prep, you don't have to specify the singular_value.
 
-        Args:
+        Parameters
+        ----------
             chi(int): number of singular values holding when SVD executed
         """
         self.singular_value = chi
@@ -59,9 +61,10 @@ class MPS():
     def set_truncation_err(self, truncation_err):
         """Set the max truncation error under SVD.
 
-        Note: If you choose run_graph() to execute a pattern, you don't have to specify truncation_err.
+        Note: If you choose 'opt' as a graph_prep, you don't have to specify the truncation_err.
 
-        Args:
+        Parameters
+        ----------
             truncation_err (float): Max truncation error allowed under SVD. Maximum number of singular values keeping truncation error under specified value will be possessed.
         """
         self.truncation_err = truncation_err
@@ -69,7 +72,8 @@ class MPS():
     def count_maxE(self):
         """Count the max number of edges per a node. When maxE is large number, huge memory(2^maxE) will be used.
 
-        Returns:
+        Returns
+        -------
             int: The max number of edges.
         """
         maxE = 0
@@ -90,7 +94,8 @@ class MPS():
     def add_node(self, n):
         """Internal method of run_cmd(). Add new qubit to a node set of MPS.
 
-        Args:
+        Parameters
+        ----------
             n (int): Site index of the new node.
         """
         neighbor = self.graph.neighbors(n)
@@ -100,20 +105,21 @@ class MPS():
             dim.append(1)
             axis_names.append(str(neighbor_node))
         node = tn.Node(np.ones(dim), str(n), axis_names)
-        self.state[n] = node
+        self.nodes[n] = node
 
     def entangle_nodes(self, edge):
         """Make entanglement between nodes specified by edge. Contract non-dangling edges in this process. Optimized contraction will be implemented in a later release.
 
-        Args:
+        Parameters
+        ----------
             edge (taple of ints): edge specifies two nodes applied CZ gate.
         """
         if self.graph_prep == 'sequential':
             # prepare CZ operator
             cz = tn.Node(np.array([[[[1., 0.], [0., 0.]], [[0., 1.], [0., 0.]]], [[[0., 0.], [1., 0.]], [[0., 0.], [0., -1.]]]]), name='cz', axis_names = ['c1', 'c2', 'c3', 'c4'])
             # call nodes from nodes list
-            node1 = self.state[edge[0]]
-            node2 = self.state[edge[1]]
+            node1 = self.nodes[edge[0]]
+            node2 = self.nodes[edge[1]]
             # contract the edge between nodes
             cont_edge = node1[str(edge[1])] ^ node2[str(edge[0])]
             axis_name1 = copy(node1.axis_names)
@@ -142,8 +148,8 @@ class MPS():
             # update the nodes
             node1_new.axis_names = axis_name1 + [str(edge[1])]
             node2_new.axis_names = [str(edge[0])] + axis_name2
-            self.state[edge[0]] = node1_new
-            self.state[edge[1]] = node2_new
+            self.nodes[edge[0]] = node1_new
+            self.nodes[edge[1]] = node2_new
             self.accumulated_err += np.linalg.norm(truncation_errs)
             assert node1_new[node1.name].is_dangling()
             assert node2_new[node2.name].is_dangling()
@@ -168,7 +174,10 @@ class MPS():
             self.entangle_nodes(edge)
 
     def finalize(self):
-        pass
+        if self.output == 'statevector':
+            self.state = self.to_statevector()
+        elif self.output == 'mps':
+            self.state = self
 
     def make_graph_state(self):
         """This is an internal method of run_graph. Prepare a graph state efficiently. The efficient expression of graph state is known. See {ref}. ToDo
@@ -206,19 +215,20 @@ class MPS():
             else: # branch for not concatenated graph
                 tensor = np.array([1./np.sqrt(2), 1./np.sqrt(2)])
             node = tn.Node(tensor, str(site), axis_names = axis_names)
-            self.state[site] = node
+            self.nodes[site] = node
 
         # connecting all edges
         for edge in self.graph.edges:
-            node1 = self.state[edge[0]]
-            node2 = self.state[edge[1]]
+            node1 = self.nodes[edge[0]]
+            node2 = self.nodes[edge[1]]
             node1[str(edge[1])] ^ node2[str(edge[0])]
 
 
     def measure(self, cmd):
         """Perform measurement of a node. In MPS, to apply measurement operator to the tensor, consisting Matrix Product State, equals to perform measurement.
 
-        Args:
+        Parameters
+        ----------
             cmd (list): measurement command : ['M', node, plane angle, s_domain, t_domain]
         """
         # choose the measurement result randomly
@@ -236,8 +246,8 @@ class MPS():
         m_op = meas_op(angle, vop, plane=cmd[2], choice=result)
 
         # the procedure described below tends to keep the norm of MPS
-        # buffer = abs(np.sum(self.state[cmd[1]].tensor))
-        buffer = 1.53
+        # buffer = abs(np.sum(self.nodes[cmd[1]].tensor))
+        buffer = 2**0.5
         m_op = m_op * buffer
 
         node_op = tn.Node(m_op)
@@ -246,7 +256,8 @@ class MPS():
     def correct_byproduct(self, cmd):
         """Perform byproduct correction.
 
-        Args:
+        Parameters
+        ----------
             cmd (list): correct for the X or Z byproduct operators, by applying the X or Z gate.
         """
         if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
@@ -261,7 +272,8 @@ class MPS():
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
 
-        Args:
+        Parameters
+        ----------
             cmd (list): clifford command. See {Ref} graphix-paper for the detail. ToDo
         """
         node_op = tn.Node(CLIFFORD[cmd[2]])
@@ -270,28 +282,31 @@ class MPS():
     def apply_one_site_operator(self, loc, node_op):
         """Internal method for measure, correct_byproduct, and apply_clifford. Apply one site operator to a node.
 
-        Args:
+        Parameters
+        ----------
             loc (int): site number.
             node_op (tn.Node): one site operator.
         """
-        node = self.state[loc]
+        node = self.nodes[loc]
         node[str(loc)] ^ node_op[0]
         edges = copy(node.edges)
         edges.remove(node[str(loc)])
         axis_names = copy(node.axis_names)
         axis_names.remove(str(loc))
         applied = tn.contract_between(node, node_op, name=node.name, output_edge_order=[node_op[1]] + edges, axis_names = [str(loc)] + axis_names)
-        self.state[loc] = applied
+        self.nodes[loc] = applied
 
     def expectation_value(self, op, qargs):
         """calculate expectation value of given operator.
 
-        Args:
+        Parameters
+        ----------
             op (numpy.ndarray): Expectation value is calculated based on op.
             qargs (list of ints): applied positions of logical qubits.
 
-        Returns:
-            float: Expectation value.
+        Returns
+        -------
+            expectation_value : float
         """
         dim = int(np.log2(len(op)))
         shape = [2 for _ in range(2*dim)]
@@ -302,27 +317,100 @@ class MPS():
         axis_names = [axis_names_in[-1-i] for i in range(len(axis_names_in))] + [axis_names_out[-1-i] for i in range(len(axis_names_out))]
         node_op = tn.Node(op.reshape(shape), axis_names= axis_names)
         # replicate nodes for calculating expectation value
-        rep_list = tn.replicate_nodes(self.state.values(), conjugate = True)
+        rep_list = tn.replicate_nodes(self.nodes.values(), conjugate = True)
         rep={node.name: node for node in rep_list}
-        rep_norm = deepcopy(self.state)
+        rep_norm = deepcopy(self.nodes)
         rep_norm2 = deepcopy(rep)
         # connecting given op to sites
-        for site in self.state.keys():
-            if site in sites:
-                node_op["in" + str(site)] ^ self.state[site][str(site)]
-                node_op[str(site)] ^ rep[str(site)][str(site)]
-            else:
-                self.state[site][str(site)] ^ rep[str(site)][str(site)]
-        expectation_value = tn.contractors.auto(list(self.state.values()) + list(rep.values()) + [node_op]).tensor
-        # calculate norm of TN
-        for index in rep_norm.keys():
-            rep_norm[index][str(index)] ^ rep_norm2[str(index)][str(index)]
         concatenated_nodes = set()
         for site in sites:
             concatenated_nodes |= nx.shortest_path(self.graph, site).keys()
-        norm = tn.contractors.auto(list(rep_norm.values()) + list(rep_norm2.values())).tensor
-        print(norm)
+        contraction_set = set()
+        for site in concatenated_nodes:
+            if site in sites:
+                node_op["in" + str(site)] ^ self.nodes[site][str(site)]
+                node_op[str(site)] ^ rep[str(site)][str(site)]
+            else:
+                self.nodes[site][str(site)] ^ rep[str(site)][str(site)]
+            contraction_set |= {self.nodes[site]} | {rep[str(site)]}
+        expectation_value = tn.contractors.auto(list(contraction_set) + [node_op]).tensor
+        # calculate norm of TN
+        norm_contraction_list = []
+        for site in concatenated_nodes:
+            rep_norm[site][str(site)] ^ rep_norm2[str(site)][str(site)]
+            norm_contraction_list += [rep_norm[site], rep_norm2[str(site)]]
+        norm = tn.contractors.auto(norm_contraction_list).tensor
         expectation_value = expectation_value/norm
         return expectation_value
 
+    def expectation_value_ops(self, ops, qargs):
+        """calculate expectation value of given operators. This command is mainly used for constructing a statevector from a MPS.
+
+        Parameters
+        ----------
+            ops (list of numpy.ndarray): Expectation value is calculated based on ops. For constructing statevector, ops are projection operators fro each site.
+            qargs (list of ints): applied positions of logical qubits.
+
+        Returns
+        -------
+            expectation value : float
+        """
+        state = deepcopy(self.nodes)
+        sites = [self.ptn.output_nodes[i] for i in qargs]
+        node_ops = dict()
+        for i in range(len(sites)):
+            node_op = tn.Node(ops[i], axis_names= ["in" + str(sites[i])] + [str(sites[i])])
+            node_ops[sites[i]] = node_op
+        # replicate nodes for calculating expectation value
+        rep_list = tn.replicate_nodes(state.values(), conjugate = True)
+        rep={node.name: node for node in rep_list}
+        rep_norm = deepcopy(state)
+        rep_norm2 = deepcopy(rep)
+        # connecting given op to sites
+        concatenated_nodes = set()
+        for site in sites:
+            concatenated_nodes |= nx.shortest_path(self.graph, site).keys()
+        contraction_set = set()
+        for site in concatenated_nodes:
+            if site in sites:
+                state[site][str(site)] ^ node_ops[site]["in" + str(site)]
+                node_ops[site][str(site)] ^ rep[str(site)][str(site)]
+            else:
+                state[site][str(site)] ^ rep[str(site)][str(site)]
+            contraction_set |= {state[site]} | {rep[str(site)]}
+        expectation_value = tn.contractors.auto(list(contraction_set) + list(node_ops.values())).tensor
+        # calculate norm of TN
+        norm_contraction_list = []
+        for site in concatenated_nodes:
+            rep_norm[site][str(site)] ^ rep_norm2[str(site)][str(site)]
+            norm_contraction_list += [rep_norm[site], rep_norm2[str(site)]]
+        norm = tn.contractors.auto(norm_contraction_list).tensor
+        expectation_value = expectation_value/norm
+        return expectation_value
+
+    def to_statevector(self):
+        """Convert a matrix product state to a statevector. This process requires exponentially increasing time.
+
+        Returns
+        -------
+            numpy.ndarray: A statevector converted from a MPS
+        """
+        proj_to_0 = np.array([[1., 0.], [0., 0.]])
+        proj_to_1 = np.array([[0., 0.], [0., 1.]])
+        qnum = len(self.ptn.output_nodes)
+        statevec = np.zeros(2**qnum, dtype=np.complex128)
+        qargs = range(qnum)
+        for i in range(2**qnum):
+            num = i
+            ops = []
+            for j in range(qnum):
+                exp = qnum - j - 1
+                if num // 2**exp == 1:
+                    ops.append(proj_to_1)
+                    num -= 2**exp
+                else:
+                    ops.append(proj_to_0)
+            ops = np.flip(np.array(ops))
+            statevec[i] = self.expectation_value_ops(ops, qargs)
+        return statevec
 

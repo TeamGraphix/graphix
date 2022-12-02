@@ -2,7 +2,7 @@ Pattern Generation
 ==================
 
 :mod:`graphix.transpiler` module
-+++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++
 
 .. currentmodule:: graphix.transpiler
 
@@ -33,3 +33,8 @@ Pattern Generation
     .. automethod:: ry
 
     .. automethod:: rz
+
+Flow-based pattern generation
++++++++++++++++++++++++++++++
+
+.. autofunction:: graphix.gflow.generate_from_graph

@@ -159,6 +159,8 @@ class StatevectorBackend():
 def meas_op(angle, vop, plane='XY', choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
+    .. seealso:: :mod:`graphix.clifford`
+
     Parameters
     ----------
     angle: float
@@ -172,7 +174,7 @@ def meas_op(angle, vop, plane='XY', choice=0):
 
     Returns
     -------
-    op : qi.Operator
+    op : numpy array
         projection operator
 
     """

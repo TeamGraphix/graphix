@@ -23,8 +23,8 @@ class PatternSimulator():
             simulation backend (optional), default is 'statevector'.
         kwargs: keyword args for specified backend.
 
-        .. seealso:: :class:`graphix.simulator.StatevectorBackend`
-        :class:`graphix.mps.MPS`
+        .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
+            :class:`graphix.sim.mps.MPS`
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
