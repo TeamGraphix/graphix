@@ -18,10 +18,13 @@ This provides efficient graph state simulator using the decorated graph method.
 
 .. currentmodule:: graphix.gflow
 
+.. autofunction:: generate_from_graph
+
 .. autofunction:: gflow
 
 .. autofunction:: flow
 
+.. autofunction:: solvebool
 
 :mod:`graphix.clifford` module
 +++++++++++++++++++++++++++++++++++

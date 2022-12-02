@@ -15,7 +15,104 @@ import networkx as nx
 import numpy as np
 import z3
 import copy
+from graphix.pattern import Pattern
 
+
+def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
+    r"""Generate the measurement pattern from open graph and measurement angles.
+
+    This function takes an open graph G = (nodes, edges, input, outputs),
+    specified by networks.Graph and two lists specifying input and output nodes.
+    Currently we support XY-plane measurements.
+
+    Searches for the flow in the open graph using :func:`flow` and if found,
+    construct the measurement pattern according to the theorem 1 of [NJP 9, 250 (2007)].
+
+    Then, if no flow was found, searches for gflow using :func:`gflow`,
+    from which measurement pattern can be constructed from theorem 2 of [NJP 9, 250 (2007)].
+
+    The constructed measurement pattern deterministically realize the unitary embedding
+
+    .. math::
+
+        U = \left( \prod_i \langle +_{\alpha_i} |_i \right) E_G N_{I^C},
+
+    where the measurements (bras) with always :math:`\langle+|` bases determined by the measurement angles :math:`\alpha_i` are applied to the measuring nodes,
+    i.e. the randomness of the measurement is eliminated by the added byproduct commands.
+
+    .. seealso:: :func:`flow` :func:`gflow` :class:`graphix.pattern.Pattern`
+
+    Parameters
+    ----------
+    graph : networkx.Graph
+        graph on which MBQC should be performed
+    angles : dict
+        measurement angles for each nodes on the graph (unit of pi), except output nodes
+    inputs : list
+        list of node indices for input nodes
+    outputs : list
+        list of node indices for output nodes
+    timeout : int
+        optional argument for flow and gflow search depth
+
+    Returns
+    -------
+    pattern : graphix.pattern.Pattern object
+        constructed pattern.
+    """
+    assert len(inputs) == len(outputs)
+    measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
+
+    # search for flow first
+    f, l_k = flow(graph, set(inputs), set(outputs), timeout=timeout)
+    if f:
+        # flow found
+        depth, layers = get_layers(l_k)
+        pattern = Pattern(len(inputs))
+        pattern.seq = [['N', i] for i in inputs]
+        for i in set(graph.nodes) - set(inputs):
+            pattern.seq.append(['N', i])
+        for e in graph.edges:
+            pattern.seq.append(['E', e])
+        measured = []
+        for i in range(depth, 0, -1): # i from depth, depth-1, ... 1
+            for j in layers[i]:
+                measured.append(j)
+                pattern.seq.append(['M', j, 'XY', angles[j], [], []])
+                for k in set(graph.neighbors(f[j])) - set([j]):
+                    if not k in measured:
+                        pattern.seq.append(['Z', k, [j]])
+                pattern.seq.append(['X', f[j], [j]])
+        pattern.output_nodes = outputs
+        pattern.Nnode = len(graph.nodes)
+    else:
+        # no flow found - we try gflow
+        g, l_k = gflow(graph, set(inputs), set(outputs), timeout=timeout)
+        if g:
+            # gflow found
+            depth, layers = get_layers(l_k)
+            pattern = Pattern(len(inputs))
+            pattern.seq = [['N', i] for i in inputs]
+            for i in set(graph.nodes) - set(inputs):
+                pattern.seq.append(['N', i])
+            for e in graph.edges:
+                pattern.seq.append(['E', e])
+            remaining = set(measuring_nodes)
+            for i in range(depth, 0, -1): # i from depth, depth-1, ... 1
+                for j in layers[i]:
+                    pattern.seq.append(['M', j, 'XY', angles[j], [], []])
+                    remaining = remaining - set([j])
+                    odd_neighbors = find_odd_neighbor(graph, remaining, set(g[j]))
+                    for k in odd_neighbors:
+                        pattern.seq.append(['Z', k, [j]])
+                    for k in set(g[j]) - set([j]):
+                        pattern.seq.append(['X', k, [j]])
+            pattern.output_nodes = outputs
+            pattern.Nnode = len(graph.nodes)
+        else:
+            raise ValueError('no flow or gflow found')
+
+    return pattern
 
 def solvebool(A, b):
     """solves linear equations of booleans
@@ -23,10 +120,12 @@ def solvebool(A, b):
     Solves Ax=b, where A is n*m matrix and b is 1*m array, both of booleans.
     for example, for A=[[0,1,1],[1,0,1]] and b=[1,0], we solve:
         XOR(x1,x2) = 1
+
         XOR(x0,x2) = 0
     for which (one of) the solution is [x0,x1,x2]=[1,0,1]
 
     Uses Z3, a theorem prover from Microsoft Research.
+
     Parameters
     ----------
     A: np.array
@@ -82,7 +181,11 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=100):
     of l_k from 1), and for each measurements of qubit i we must perform corrections on
     qubits in g(i), depending on the measurement outcome.
 
-    For more details of gflow, see [NJP 9, 250 (2007)].
+    For more details of gflow, see Browne et al., NJP 9, 250 (2007).
+
+    Original algorithm by Mhalla and Perdrix,
+    International Colloquium on Automata, Languages, and Programming (Springer, 2008),
+    pp. 857-868.
 
     Parameters
     ----------
@@ -167,7 +270,6 @@ def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
     exist: bool
         whether gflow exists or not
     """
-    # assert list(v) == list(np.arange(len(v)))  # vertex labels must be 0,1,...,len(v)-1.
 
     c_set = set()
     v_rem = v - v_out  # remaining vertices
@@ -222,6 +324,12 @@ def flow(g, v_in, v_out, meas_plane = None, timeout=100):
 
     For open graph g with input and output, this returns causal flow.
 
+    For more detail of causal flow, see Danos and Kashefi, PRA 74, 052310 (2006).
+
+    Original algorithm by Mhalla and Perdrix,
+    International Colloquium on Automata, Languages, and Programming (2008),
+    pp. 857-868.
+
     Parameters
     ----------
     g: nx.Graph
@@ -274,6 +382,8 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
     ----------
     v: set
         labels of all qubits (nodes)
+    e: set
+        edges
     v_in: set
         input qubit set
     v_out: set
@@ -384,17 +494,42 @@ def find_flow(g, v_in, v_out, meas_plane = None, timeout = 100):
 
 def get_min_depth(l_k):
     """get minimum depth of graph.
-    Parameter
-    -------
+
+    Parameters
+    ----------
     l_k: dict
         layers obtained by flow or gflow
-    Return
-    ------
+
+    Returns
+    -------
     d: int
         minimum depth of graph
     """
     return max(l_k.values())
 
+
+def find_odd_neighbor(graph, candidate, vertices):
+    """Returns the list containing the odd neighbor of a set of vertices.
+
+    Parameters
+    ----------
+    graph : networkx.Graph
+        underlying graph.
+    candidate : iterable
+        possible odd neighbors
+    vertices : set
+        set of nodes indices to find odd neighbors
+
+    Returns
+    -------
+    out : list
+        list of indices for odd neighbor of set `vertices`.
+    """
+    out = []
+    for c in candidate:
+        if np.mod(len(set(graph.neighbor(c)) ^ vertices), 2) == 1:
+            out.append(c)
+    return out
 
 def get_layers(l_k):
     """get components of each layer.
