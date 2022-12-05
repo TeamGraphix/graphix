@@ -1,5 +1,4 @@
 from graphix.transpiler import Circuit
-import qiskit.quantum_info as qi
 import numpy as np
 
 # balanced oracle for 4 qubits
@@ -45,11 +44,7 @@ pat.shift_signals()
 pat.perform_pauli_measurements()
 pat.minimize_space()
 out_state = pat.simulate_pattern()
-out_state = qi.partial_trace(out_state, [3]).to_statevector()
-print('MBQC sampling result: ', out_state.sample_counts(1000))
 
 # statevector sim
 state = circuit.simulate_statevector()
-state = qi.partial_trace(state, [3]).to_statevector()
-print('desired sampling result: ', state.sample_counts(1000))
-print('overlap of states: ', np.abs(np.dot(state.data.conjugate(), out_state.data)))
+print('overlap of states: ', np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))

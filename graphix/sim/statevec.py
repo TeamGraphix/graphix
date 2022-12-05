@@ -1,9 +1,8 @@
 import numpy as np
-import qiskit.quantum_info as qi
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD
 from copy import deepcopy
-
+from scipy.linalg import norm
 
 class StatevectorBackend():
     """MBQC simulator with statevector method.
@@ -25,7 +24,7 @@ class StatevectorBackend():
         assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
-        self.state = qi.Statevector([])
+        self.state = None
         self.node_index = []
         self.Nqubit = 0
         self.to_trace = []
@@ -42,15 +41,10 @@ class StatevectorBackend():
         """
         return len(self.state.dims())
 
-    def normalize_state(self):
-        """Normalize the internal statevector
-        """
-        self.state = self.state/self.state.trace()**0.5
-
     def initialize(self):
         """Initialize the internal statevector
         """
-        self.state = qi.Statevector([])
+        self.state = None
 
     def add_nodes(self, nodes):
         """add new qubit to internal statevector
@@ -58,15 +52,14 @@ class StatevectorBackend():
         to list self.node_index.
 
         Parameters
-        ---------
+        ----------
         nodes : list of node indices
         """
         if not self.state:
-            self.state = qi.Statevector([1])
+            self.state = Statevec(nqubit=0)
         n = len(nodes)
-        sv_to_add = qi.Statevector([1 for i in range(2**n)])
-        sv_to_add = sv_to_add/sv_to_add.trace()**0.5
-        self.state = self.state.expand(sv_to_add)
+        sv_to_add = Statevec(nqubit=n)
+        self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += 1
         if self.Nqubit == self.max_qubit_num:
@@ -82,7 +75,7 @@ class StatevectorBackend():
         """
         target = self.node_index.index(edge[0])
         control = self.node_index.index(edge[1])
-        self.state = self.state.evolve(Ops.cz, [control, target])
+        self.state.entangle((target, control))
 
     def measure(self, cmd):
         """Perform measurement of a node in the internal statevector and trace out the qubit
@@ -100,12 +93,11 @@ class StatevectorBackend():
         t_signal = np.sum([self.results[j] for j in cmd[5]])
         angle = cmd[3] * np.pi * (-1)**s_signal + np.pi * t_signal
         if len(cmd) == 7:
-            vop = cmd[6]
+            m_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
         else:
-            vop = 0
-        m_op = qi.Operator(meas_op(angle, vop, plane=cmd[2], choice=result))
+            m_op = meas_op(angle, plane=cmd[2], choice=result)
         loc = self.node_index.index(cmd[1])
-        self.state = self.state.evolve(m_op, [loc])
+        self.state.evolve_single(m_op, loc)
 
         self.to_trace.append(cmd[1])
         self.to_trace_loc.append(loc)
@@ -121,25 +113,26 @@ class StatevectorBackend():
                 op = Ops.x
             elif cmd[0] == 'Z':
                 op = Ops.z
-            self.state = self.state.evolve(op, [loc])
+            self.state.evolve_single(op, loc)
 
     def apply_clifford(self, cmd):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
         loc = self.node_index.index(cmd[1])
-        self.state = self.state.evolve(qi.Operator(CLIFFORD[cmd[2]]), [loc])
+        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
     def finalize(self):
         """to be run at the end of pattern simulation."""
         self.trace_out()
         self.sort_qubits()
+        self.state.normalize()
 
     def trace_out(self):
         """trace out the qubits buffered in self.to_trace from self.state
         """
-        self.normalize_state()
-        self.state = qi.partial_trace(self.state, self.to_trace_loc).to_statevector()
+        self.state.normalize()
+        self.state.ptrace(self.to_trace_loc)
         for node in self.to_trace:
             self.node_index.remove(node)
         self.Nqubit -= len(self.to_trace)
@@ -151,12 +144,12 @@ class StatevectorBackend():
         for i, ind in enumerate(self.pattern.output_nodes):
             if not self.node_index[i] == ind:
                 move_from = self.node_index.index(ind)
-                self.state = self.state.evolve(Ops.swap, [i, move_from])
+                self.state.swap((i, move_from))
                 self.node_index[i], self.node_index[move_from] = \
                     self.node_index[move_from], self.node_index[i]
 
 
-def meas_op(angle, vop, plane='XY', choice=0):
+def meas_op(angle, vop=0, plane='XY', choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`
@@ -192,3 +185,118 @@ def meas_op(angle, vop, plane='XY', choice=0):
         op_mat += (-1)**(choice + CLIFFORD_MEASURE[vop][i][1]) \
             * vec[CLIFFORD_MEASURE[vop][i][0]] * CLIFFORD[i + 1] / 2
     return op_mat
+
+
+CZ_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 1], [0, 0]]],
+                      [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],dtype=np.complex128)
+CNOT_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 1], [0, 0]]],
+                      [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],dtype=np.complex128)
+SWAP_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 0], [1, 0]]],
+                      [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],dtype=np.complex128)
+
+
+class Statevec():
+    """Simple statevector simulator
+    """
+    def __init__(self, plus_states = True, nqubit = 1):
+        """Initialize statevector
+
+        Args:
+            plus_states (bool, optional): whether or not to start all qubits in + state or 0 state. Defaults to +
+            nqubit (int, optional): number of qubits. Defaults to 1.
+        """
+        if plus_states:
+            self.psi=np.ones((2,) * nqubit) / np.sqrt(2**nqubit)
+        else:
+            self.psi=np.zeros((2,) * nqubit)
+            self.psi[(0,) * nqubit] = 1
+
+    def __repr__(self):
+        return f'Statevec, data={self.psi}, shape={self.dims()}'
+
+    def evolve_single(self, op, i):
+        """Single-qubit operation
+
+        Args:
+            op (np.array): 2*2 matrix
+            i (int): qubit index
+        """
+        self.psi=np.tensordot(op, self.psi, (1, i))
+        self.psi=np.moveaxis(self.psi, 0 ,i)
+
+    def dims(self):
+        return self.psi.shape
+
+    def ptrace(self, qargs):
+        """partial trace
+
+        Args:
+            qargs (list of ints): qubit inices to trace over
+        """
+        nqubit_after = len(self.psi.shape) - len(qargs)
+        psi = self.psi
+        rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))
+        rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
+        evals, evecs = np.linalg.eig(rho) # back to statevector
+        self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
+
+    def entangle(self, edge):
+        """connect graph nodes
+
+        Args:
+            edge (tuple of ints): (control, target) qubit indices
+        """
+        # contraction: 2nd index - control index, and 3rd index - target index.
+        self.psi=np.tensordot(CZ_TENSOR, self.psi, ((2,3), edge))
+        # sort back axes
+        self.psi=np.moveaxis(self.psi, (0,1), edge)
+
+    def tensor(self, other):
+        psi_self = self.psi.flatten()
+        psi_other = other.psi.flatten()
+        total_num = len(self.dims()) + len(other.dims())
+        self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
+
+    def CNOT(self, qubits):
+        """apply CNOT
+
+        Args:
+            qubits (tuple of ints): (control, target) qubit indices
+        """
+        # contraction: 2nd index - control index, and 3rd index - target index.
+        self.psi=np.tensordot(CNOT_TENSOR, self.psi, ((2,3), qubits))
+        # sort back axes
+        self.psi=np.moveaxis(self.psi, (0,1), qubits)
+
+    def swap(self, qubits):
+        """swap qubits
+
+        Args:
+            qubits (tuple of ints): (control, target) qubit indices
+        """
+        # contraction: 2nd index - control index, and 3rd index - target index.
+        self.psi=np.tensordot(SWAP_TENSOR, self.psi, ((2,3), qubits))
+        # sort back axes
+        self.psi=np.moveaxis(self.psi, (0,1), qubits)
+
+    def normalize(self):
+        """normalize the state"""
+        self.psi = self.psi / norm(self.psi)
+
+    def flatten(self):
+        """returns flattened statevector
+        """
+        return self.psi.flatten()
+
+    def expectation_single(self, op, loc):
+        """Expectation value of single-qubit operator.
+
+        Args:
+            op (np.array): 2*2 Hermite operator
+            loc (int): target qubit
+        Returns:
+            complex: expectation value.
+        """
+        st1 = deepcopy(self)
+        st1.evolve_single(op, loc)
+        return np.dot(self.psi.flatten().conjugate(), st1.psi.flatten())

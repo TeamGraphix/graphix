@@ -13,7 +13,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_hadamard(self):
         circuit = Circuit(1)
@@ -22,7 +22,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_s(self):
         circuit = Circuit(1)
@@ -31,7 +31,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_x(self):
         circuit = Circuit(1)
@@ -40,7 +40,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_y(self):
         circuit = Circuit(1)
@@ -49,7 +49,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_z(self):
         circuit = Circuit(1)
@@ -58,7 +58,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_rx(self):
         theta = np.random.random() * 2 * np.pi
@@ -68,7 +68,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_ry(self):
         theta = np.random.random() * 2 * np.pi
@@ -78,7 +78,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_rz(self):
         theta = np.random.random() * 2 * np.pi
@@ -88,7 +88,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_i(self):
         circuit = Circuit(1)
@@ -97,7 +97,7 @@ class TestPattern_UnitGates(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
 
 
@@ -114,7 +114,7 @@ class TestPattern(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_minimize_space(self):
         nqubits = 5
@@ -126,7 +126,7 @@ class TestPattern(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_parallelize_pattern(self):
         nqubits = 2
@@ -138,7 +138,7 @@ class TestPattern(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_shift_signals(self):
         nqubits = 2
@@ -150,7 +150,7 @@ class TestPattern(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_pauli_measurment(self):
         nqubits = 3
@@ -165,7 +165,7 @@ class TestPattern(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
 
 if __name__ == '__main__':

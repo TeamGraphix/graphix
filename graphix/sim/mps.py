@@ -240,10 +240,9 @@ class MPS():
         t_signal = np.sum([self.results[j] for j in cmd[5]])
         angle = cmd[3] * np.pi * (-1)**s_signal + np.pi * t_signal
         if len(cmd) == 7:
-            vop = cmd[6]
+            m_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
         else:
-            vop = 0
-        m_op = meas_op(angle, vop, plane=cmd[2], choice=result)
+            m_op = meas_op(angle, plane=cmd[2], choice=result)
 
         # the procedure described below tends to keep the norm of MPS
         # buffer = abs(np.sum(self.nodes[cmd[1]].tensor))

@@ -3,8 +3,8 @@ from setuptools import setup
 requirements = [
     "numpy>=1.22.0",
     "networkx>=2.0",
-    "qiskit>=0.20",
-    "z3-solver"
+    "z3-solver",
+    "tensornetwork>=0.4"
 ]
 
 info = {

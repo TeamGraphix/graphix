@@ -52,4 +52,4 @@ pat.minimize_space()
 out_state = pat.simulate_pattern()
 
 state = circuit.simulate_statevector()
-print('overlap of states: ', np.abs(np.dot(state.data.conjugate(), out_state.data)))
+print('overlap of states: ', np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))

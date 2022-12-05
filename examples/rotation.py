@@ -1,7 +1,7 @@
-from graphix.ops import States, Ops
+from graphix.ops import Ops
 import numpy as np
 from graphix.transpiler import Circuit
-
+from graphix.sim.statevec import Statevec
 
 circuit = Circuit(2)
 
@@ -21,12 +21,9 @@ pat.shift_signals()
 pat.perform_pauli_measurements()
 pat.minimize_space()
 out_state = pat.simulate_pattern()
-print('MBQC sampling result: ', out_state.sample_counts(1000,))
 
 # statevector sim
-state = States.zplus_state.copy()
-state = state.tensor(States.zplus_state)
-state = state.evolve(Ops.Rx(theta), [0])
-state = state.evolve(Ops.Rx(theta), [1])
-print('statevector sim sampling result: ', state.sample_counts(1000))
-print('overlap of states: ', np.abs(np.dot(state.data.conjugate(), out_state.data)))
+state = Statevec(nqubit=2, plus_states=False) # starts with |0> states
+state.evolve_single(Ops.Rx(theta), 0)
+state.evolve_single(Ops.Rx(theta), 1)
+print('overlap of states: ', np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))

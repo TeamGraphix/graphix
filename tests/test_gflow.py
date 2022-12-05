@@ -84,7 +84,7 @@ class TestGflow(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern2.simulate_pattern()
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.data.conjugate(), state.data)), 1)
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
 
 if __name__ == '__main__':
