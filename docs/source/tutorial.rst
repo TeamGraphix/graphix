@@ -9,6 +9,8 @@ We will explain the basics here along with the code, and you can go to :doc:`int
 Generating measurement patterns
 -------------------------------
 
+First, install `graphix` by following :doc:`quickstart`.
+
 Graphix is centered around the measurement `pattern`, which is a sequence of commands such as qubit preparattion, entanglement and single-qubit measurement commands.
 The most basic measurement pattern is that for realizing Hadamard gate, which we will use to see how `graphix` works.
 
@@ -17,7 +19,7 @@ For any gate network, we can use :class:`~graphix.transpiler.Circuit` class to g
 .. code-block:: python
 
     from graphix.transpiler import Circuit
-    # apply H gate to a qubit
+    # apply H gate to a qubit in + state
     circuit = Circuit(1)
     circuit.h(0)
     pattern = circuit.transpile()
@@ -53,6 +55,8 @@ Alternatively, we can simply call :meth:`~graphix.pattern.Pattern.simulate_patte
 
 >>> pattern.simulate_pattern(backend='statevector')
 statevector([0, 1])
+
+Note again that we started with :math:`|+\rangle` state so the answer is correct.
 
 Universal gatesets
 ------------------
@@ -97,7 +101,7 @@ As an example, let us prepare a pattern to rotate two qubits in :math:`|+\rangle
 
     from graphix.transpiler import Circuit
     import numpy as np
-    circuit = Circuit(2)
+    circuit = Circuit(2) # initialize with |+> \otimes |+>
     circuit.rz(0, np.random.rand())
     circuit.rz(1, np.random.rand())
     circuit.cnot(0, 1)
@@ -223,10 +227,10 @@ Z byproduct, node = 7, domain = [1, 5]
 X byproduct, node = 7, domain = [2, 4, 6]
 X byproduct, node = 3, domain = [2]
 
-Notice that all measurements with angle=0 (Pauli X measurements) dissapeared.
-The additional Clifford commands, along with byproduct operations, can be dealt with by simply rotating the final readout measurements from the standard Z basis, so the hardware/simulator requirement remains the same.
+Notice that all measurements with angle=0 (Pauli X measurements) dissapeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
+The additional Clifford commands, along with byproduct operations, can be dealt with by simply rotating the final readout measurements from the standard Z basis, so there is no downside in doing this preprocessing.
 
-As you can see below, the resource state has shrank significantly, but they both serve as the quantum resource state for the same quantum computation task as defined above.
+As you can see below, the resource state has shrank significantly, but again we know that they both serve as the quantum resource state for the same quantum computation task as defined above.
 
 +---------------------------------+---------------------------------+
 | before                          | after                           |

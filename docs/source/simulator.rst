@@ -12,7 +12,6 @@ Pattern Simulation
 
     .. automethod:: run
 
-    .. automethod:: meas_op
 
 Simulator backends
 ++++++++++++++++++
@@ -34,3 +33,6 @@ Statevector
     :members:
 
 .. autofunction:: meas_op
+
+.. autoclass:: Statevec
+    :members:

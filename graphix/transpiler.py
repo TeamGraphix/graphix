@@ -837,7 +837,7 @@ class Circuit():
 
         Returns
         -------
-        stete : qiskit.quantum_info.Statevector
+        stete : graphix.Statevec
             output state of the statevector simulation.
         """
 

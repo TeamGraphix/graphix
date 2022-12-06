@@ -6,7 +6,8 @@ Graph state simulator, according to M. Elliot, B. Eastin & C. Caves, 2010
 import networkx as nx
 import numpy as np
 from graphix.clifford import CLIFFORD_MUL
-
+from graphix.sim.statevec import Statevec
+from graphix.ops import Ops
 
 class GraphState(nx.Graph):
     """Graph state simulator
@@ -363,3 +364,23 @@ class GraphState(nx.Graph):
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         nx.draw(g, labels=labels, node_color=colors, edgecolors='k', **kwargs)
+
+    def to_statevector(self):
+        node_list = list(self.nodes)
+        nqubit = len(self.nodes)
+        gstate = Statevec(nqubit=nqubit)
+        # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
+        imapping = {node_list[i]: i for i in range(nqubit)}
+        mapping = [node_list[i] for i in range(nqubit)]
+        for i, j in self.edges:
+            gstate.entangle((imapping[i], imapping[j]))
+        for i in range(nqubit):
+            if self.nodes[mapping[i]]['sign']:
+                gstate.evolve_single(Ops.z, i)
+        for i in range(nqubit):
+            if self.nodes[mapping[i]]['loop']:
+                gstate.evolve_single(Ops.s, i)
+        for i in range(nqubit):
+            if self.nodes[mapping[i]]['hollow']:
+                gstate.evolve_single(Ops.h, i)
+        return gstate

@@ -15,10 +15,10 @@ Graphix - optimizing and simulating MBQC
    why-lcmbqc
    algorithms
    references
-..
-   .. toctree::
-      :maxdepth: 2
-      :caption: Introduction to LC-MBQC
 
-      intro
-      stabilizer
+.. toctree::
+   :maxdepth: 2
+   :caption: Introduction to LC-MBQC
+
+   intro
+   lc-mbqc

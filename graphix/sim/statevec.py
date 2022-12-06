@@ -235,7 +235,7 @@ class Statevec():
         """
         nqubit_after = len(self.psi.shape) - len(qargs)
         psi = self.psi
-        rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))
+        rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs)) # density matrix
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho) # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
