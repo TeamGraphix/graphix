@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding = "utf-8") as fh:
     long_description = fh.read()
 
 requirements = [
-    "numpy>=1.22.0",
-    "networkx>=2.0",
+    "numpy>=1.22,<1.24",
+    "networkx>=2.8,<3.0",
     "z3-solver",
     "tensornetwork>=0.4"
 ]
@@ -13,7 +13,7 @@ requirements = [
 info = {
     'name': 'graphix',
     'version': '0.1.0',
-    'packages': ['graphix'],
+    'packages': find_packages(),
     'author': 'Shinichi Sunami',
     'author_email': 'shinichi.sunami@gmail.com',
     "maintainer": "Shinichi Sunami",

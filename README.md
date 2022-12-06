@@ -7,7 +7,7 @@
 
 ## Feature
 
-- We integrate an [efficient stabilizer simulator](graphix/graphsim) as an optimization routine of MBQC *measurement pattern*, [with which we can classically preprocess all Pauli measurements]() (corresponding to the elimination of all Clifford gates in the gate network - c.f. [Gottesman-Knill theorem](https://en.wikipedia.org/wiki/Gottesman–Knill_theorem)), significantly reducing the required size of graph state to run the computation (typically by a factor of 3 or more).
+- We integrate an [efficient stabilizer simulator](graphix/graphsim.py) as an optimization routine of MBQC *measurement pattern*, with which we can classically preprocess all Pauli measurements](https://graphix.readthedocs.io/en/latest/tutorial.html#performing-pauli-measurements) (corresponding to the elimination of all Clifford gates in the gate network - c.f. [Gottesman-Knill theorem](https://en.wikipedia.org/wiki/Gottesman–Knill_theorem)), significantly reducing the required size of graph state to run the computation (typically by a factor of 3 or more).
 - We implement Matrix Product State (MPS) simulation of MBQC with which thousands of qubits (graph nodes) can be simulated with modest computing resources (e.g. laptop), without approximation.
 - Our pattern-based construction and optimization routines are suitable for high-level optimization to run quantum algorithms on MBQC quantum hardware with minimal resource state size requirements. We plan to add quantum hardware emulators (and quantum hardware) as pattern execution backends.
 
@@ -21,7 +21,7 @@ $ pip install graphix
 `clone` the repository and 
 
 ```bash
-$ python setup.py install
+$ python setup.py develop
 ```
 
 first version will be available on pypi soon, for `pip install`.
