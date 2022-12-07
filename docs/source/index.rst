@@ -10,7 +10,6 @@ Graphix - optimizing and simulating MBQC
    :maxdepth: 1
    :caption: Documentation
 
-   quickstart
    tutorial
    why-lcmbqc
    algorithms

@@ -33,7 +33,7 @@ With graphix, we can optimize the measurement pattern and use tensor network sim
 
 :pattern optimization: command sequence can be reordered to optimize the pattern characteristics according to the hardware requirements. If the number of qubit is limited, graphix can optimize the pattern to reduce the required qubit space (while increasing the depth); on the other hand if parallelism is desired (e.g. GPU simulation), graphix can parallelize the commands to minimze the depth of the command execution.
 
-:tensor-network simulator: We provide matrix-product state (MPS) simulation backend to run MBQC, which require only polynomial memory space on the number of nodes [2]. For a number of quantum algorithms with limited amount of entanglement required, this significantly improve the clasical simulation speed. For example, with max_edge < 5 we can simulate MBQC with n on-Pauli measurements running on thousands of qubits, on modest computer such as laptop.
+:tensor-network simulator: We provide matrix-product state (MPS) simulation backend to run MBQC, which require only polynomial memory space on the number of nodes [2]. For a number of quantum algorithms with limited amount of entanglement required, this significantly improve the clasical simulation speed. For example, with max_edge < 5 we can simulate MBQC with non-Pauli measurements running on thousands of qubits, on modest computer such as laptop.
 
 
 

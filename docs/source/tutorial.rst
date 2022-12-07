@@ -3,13 +3,15 @@ Tutorial
 
 Graphix provides a high-level interface to generate, optimize and classically simulate the measurement-based quantum computing (MBQC).
 
-In this tutorial, we look at how to program MBQC using `greaphix` library.
-We will explain the basics here along with the code, and you can go to :doc:`intro` to learn more about the theoretical background of MBQC.
+In this tutorial, we look at how to program MBQC using graphix library.
+We will explain the basics here along with the code, and you can go to :doc:`intro` to learn more about the theoretical background of MBQC and :doc:`references` for module references.
 
 Generating measurement patterns
 -------------------------------
 
-First, install `graphix` by following :doc:`quickstart`.
+First, install ``graphix`` by cloning the `repository <https://github.com/TeamGraphix/graphix>`_, ``cd`` to ``graphix`` directory and running
+
+>>> python setup.py develop
 
 Graphix is centered around the measurement `pattern`, which is a sequence of commands such as qubit preparattion, entanglement and single-qubit measurement commands.
 The most basic measurement pattern is that for realizing Hadamard gate, which we will use to see how `graphix` works.
