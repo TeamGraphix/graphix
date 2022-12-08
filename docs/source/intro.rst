@@ -17,12 +17,14 @@ Introduction
 
 .. figure:: ./../imgs/classical.png
    :scale: 50 %
+   :align: center
    :alt: quantum and classical processing
 
 Measurement-based (one-way) quantum computing, introduced by Raussendorf [#raussendorf]_, has a completely different approach which we can call `consumption of initially entangled resource state`; first you create a large entangled quantum state (graph state :math:`|g\rangle`), and the computation goes by measurements of qubits which drives the evolution of the quantum state. Entanglement is only required at the start, and all subsequent operations only reduce entanglement.
 
 .. figure:: ./../imgs/mbqc.png
    :scale: 50 %
+   :align: center
    :alt: gate-based and one-way qc
 
 There is no classical analog and it is difficult to picture, but MBQC has several remarkable advantages that motivate us to study further:
@@ -93,22 +95,23 @@ Most basic quantum gates (unitary operations) have corresponding graph state and
     \end{align}
 
 where :math:`|\pm_{\theta}\rangle` are the bases for measurements along the axis rotated on XY plane by angle :math:`\theta` and :math:`\langle\pm_{(-1)^{1+s_0} \theta}|_1` is called `feedforward` measurement whose angle :math:`(-1)^{1+s_0} \theta` is dependent on the measurement outcome of qubit :math:`0`.
-Because these building blocks include the single-qubit rotation and CNOT gate, MBQC is universal (i.e. with MBQC, we can determinisitically realize `any` multi-qubit unitary operations).
+Because these building blocks include the single-qubit rotation and CNOT gate, MBQC is universal (i.e. with MBQC, we can determinisitically realize `any` multi-qubit unitary operations). Particularly, note that Clifford gates can be translated into MBQC with no non-Pauli measurements (see eqs (:math:`\ref{6}`, :math:`\ref{7}`) for :math:`H`, :math:`S` and :math:`CNOT` gates, which generate any multi-qubit Clifford operations).
 
 We can concatenate them to create a larger graph state that realizes a more complex unitary evolution we show below,
 
-.. figure:: ./../imgs/circuit.png
+.. figure:: ./../imgs/transpile.png
    :scale: 60 %
+   :align: center
    :alt: translating from a circuit to a graph.
 
 which we can express by a long sequence,
 
 .. math::
     \begin{align}
-        H_7 \ CNOT_{7,4} \ H_4 \ R_z(\eta)_7 \ |\psi_{in}\rangle_{74} =& X_7^{s_6} \langle\pm|_6 CZ_{67} |+\rangle_7 \otimes \big(  \\
-        & X_6^{s_5} Z_6^{s_3} Z_4^{s_3} \langle\pm|_5 \langle\pm|_3 CZ_{56 } CZ_{45} CZ_{35} |+\rangle_5 |+\rangle_6 \otimes \big( \\
+        H_7 \ CNOT_{6,7} \ H_6 \ R_z(\eta)_7 \ |\psi_{in}\rangle_{74} =& X_7^{s_3} \langle\pm|_3 CZ_{37} |+\rangle_7 \otimes \big(  \\
+        & X_6^{s_5} Z_6^{s_4} Z_3^{s_4} \langle\pm|_5 \langle\pm|_4 CZ_{56 } CZ_{45} CZ_{35} |+\rangle_5 |+\rangle_6 \otimes \big( \\
         & X_4^{s_1} \langle\pm|_1 CZ_{14} |+\rangle_4 \otimes \big( \\
-        & Z_3^{s_0} X_3^{s_2} \langle\pm|_2 \langle\pm_{-\theta}|_0 CZ_{23} CZ_{02} |+\rangle_3 |+\rangle_2 \otimes |\psi_{in}\rangle_{01} \big)\big)\big).  \label{10}   \tag{10}
+        & Z_3^{s_0} X_3^{s_2} \langle\pm|_2 \langle\pm_{-\eta}|_0 CZ_{23} CZ_{02} |+\rangle_3 |+\rangle_2 \otimes |\psi_{in}\rangle_{01} \big)\big)\big).  \label{10}   \tag{10}
     \end{align}
 
 Note that the input state has `teleported` to qubits 4 and 7 after the computation.
@@ -132,7 +135,7 @@ Measurement Calculus
 --------------------
 
 It is quite tedious to treat the MBQC by bras and kets as we show in eqs (:math:`\ref{6}` - :math:`\ref{10}`) - it is impossible to track all the feedforwards and ancillas by hand if the number of operations grow as we try larger quantum algorithms.
-Instead, we can resort to `Measurement Calculus` [#mc]_ by Danos `et al.` to treat them as a linear sequence of commands consisting of
+Instead, we can resort to the `Measurement Calculus` [#mc]_ by Danos `et al.`, a mathematical formulation of MBQC, to treat them as a linear sequence of commands consisting of
 
 .. list-table::
     :widths: 3 20
@@ -161,7 +164,7 @@ where the Clifford command was added by us to treat the optimization routine we 
 We can now express the MBQC in eq (:math:`\ref{10}`) with these commands, which we read from the right:
 
 .. math::
-    X_7^{6} M_6^{0} E_{67} N_7 X_6^5 Z_6^3 Z_4^3 M_5^0 M_3^0 E_{56} E_{45} E_{35} N_6 N_5 X_4^1 M_1^0 E_{14} N_4 Z_3^0 X_3^2 M_2^0 M_0^{-\theta} E_{23} E_{02} N_3 N_2
+    X_7^{3} M_3^{0} E_{37} N_7 X_6^5 Z_6^4 Z_3^4 M_5^0 M_4^0 E_{56} E_{45} E_{35} N_6 N_5 X_4^1 M_1^0 E_{14} N_4 Z_3^0 X_3^2 M_2^0 M_0^{-\theta} E_{23} E_{02} N_3 N_2
 
 This is an example of `measurerment patttern` that realize MBQC. while this still looks long, this can now be treated programmatically, to efficiently handle with code and to optimize following well-defined rules.
 
@@ -170,14 +173,27 @@ This can be done by following the command commutations rules described in the or
 This removes intermediate byproduct commands to create
 
 .. math::
-    X_4^1 X_7^6 Z_4^3 Z_7^5 {}^3[M_6^0]^5 \ \ {}^{1,2}[M_5^0] \ \ {}^0[M_3^0]^2 \ \ M_1^0 M_2^0 M_0^{-\theta} E_{02} E_{23} E_{14} E_{35} E_{45} E_{56} E_{67} N_7 N_6 N_5 N_4 N_3 N_2
+    \begin{align}
+    X_6^5 X_7^3 Z_6^4 Z_7^2 {}^{[0,4]}[M_3^0]^2 \ \ {}^{[1,2]}[M_5^0] \ [M_4^0]^1 \ \ M_1^0 M_2^0 M_0^{-\theta} \\
+    E_{02} E_{23} E_{14} E_{35} E_{45} E_{56} E_{37} N_7 N_6 N_5 N_4 N_3 N_2
+    \end{align}
 
-Further, `signal shifting` procedure [#mc]_ simplifies the measurement dependence, which removes all :math:`t` signals.
+Further, `signal shifting` procedure [#mc]_ simplifies the measurement dependence, which removes all :math:`t` signals:
 
 .. math::
-    X_4^1 X_7^{0,3,6} Z_4^{0,3} Z_7^{1,2,5} [M_6^0]^{1,2,5} \ M_5^0 \ [M_3^0]^2 \ M_1^0 M_2^0 M_0^{-\theta} E_{02} E_{23} E_{14} E_{35} E_{45} E_{56} E_{67} N_7 N_6 N_5 N_4 N_3 N_2
+    \begin{align}
+    X_6^{1,2,5} X_7^{0,3,4} Z_6^{4} Z_7^{2} [M_3^0]^2 \ M_5^0 \ [M_4^0]^1 \ M_1^0 M_2^0 M_0^{-\theta} \\
+     E_{02} E_{23} E_{14} E_{35} E_{45} E_{56} E_{37} N_7 N_6 N_5 N_4 N_3 N_2
+    \end{align}
 
-In :doc:`lc-mbqc`, we will further optimize the measurement pattern using efficient graph state simulator, to classically preprocess all measurements except qubit 0.
+In the following page (:doc:`lc-mbqc`), we will further optimize the measurement pattern using efficient graph state simulator, to classically preprocess all Pauli measurements (all :math:`M` commands except qubit 0). This produce the following pattern:
+
+.. math::
+    \begin{align}
+    X_7^0 C_6^6 M_0^{-\theta} E_{07} E_{06} N_7
+    \end{align}
+
+
 
 References and footnotes
 ------------------------

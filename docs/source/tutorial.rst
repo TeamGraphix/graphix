@@ -206,10 +206,10 @@ Performing Pauli measurements
 
 It is known that quantum circuit consisting of Pauli basis states, Clifford gates and Pauli measurements can be simulated classically (see `Gottesman-Knill theorem
 <https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`_; e.g. the graph state simulator runs in :math:`\mathcal{O}(n \log n)` time).
-The Pauli measurement part of the MBQC is exactly this, and they can be preprocessed by our graph state simulator :class:`~graphix.graphsim.GraphState`.
+The Pauli measurement part of the MBQC is exactly this, and they can be preprocessed by our graph state simulator :class:`~graphix.graphsim.GraphState` - see :doc:`lc-mbqc` for more detailed description.
 
 We can call this in a line by calling :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` of :class:`~graphix.pattern.Pattern` object, which acts as the optimization routine of the measurement pattern.
-We get a runnable measurement pattern without Pauli measurements as follows
+We get an updated measurement pattern without Pauli measurements as follows:
 
 >>> pattern.perform_pauli_measurements()
 >>> pattern.print_pattern()
@@ -232,7 +232,7 @@ X byproduct, node = 3, domain = [2]
 Notice that all measurements with angle=0 (Pauli X measurements) dissapeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
 The additional Clifford commands, along with byproduct operations, can be dealt with by simply rotating the final readout measurements from the standard Z basis, so there is no downside in doing this preprocessing.
 
-As you can see below, the resource state has shrank significantly, but again we know that they both serve as the quantum resource state for the same quantum computation task as defined above.
+As you can see below, the resource state has shrank significantly (factor of two reduction in the number of nodes), but again we know that they both serve as the quantum resource state for the same quantum computation task as defined above.
 
 +---------------------------------+---------------------------------+
 | before                          | after                           |
@@ -241,6 +241,9 @@ As you can see below, the resource state has shrank significantly, but again we 
 |   :scale: 100 %                 |   :scale: 100 %                 |
 |   :alt: resource state          |   :alt: resource state          |
 +---------------------------------+---------------------------------+
+
+As we mention in :doc:`intro`, all Clifford gates translates into MBQC only consisting of Pauli measurements. So this procedure is equivalent to classically preprocessing all Clifford operations from quantum algorithms.
+
 
 Minimizing 'space' of a pattern
 +++++++++++++++++++++++++++++++
@@ -275,7 +278,7 @@ With the original measurement pattern, the simulation should have proceeded as f
    :scale: 100 %
    :alt: simulation order
 
-With the optimization with :meth:`~graphix.pattern.Pattern.minimize_space()`, the simulation proceeds as below, where we measurement and trace out qubit 1 before preparing qubits 0 and 3.
+With the optimization with :meth:`~graphix.pattern.Pattern.minimize_space()`, the simulation proceeds as below, where we measure and trace out qubit 1 before preparing qubits 0 and 3.
 Because the graph state only has short-range correlations (only adjacent qubits are entangled), this does not affect the outcome of the computation.
 With this, we only need the memory space for three qubits.
 

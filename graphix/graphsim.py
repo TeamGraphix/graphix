@@ -1,6 +1,8 @@
 """Graph simulator
 
-Graph state simulator, according to M. Elliot, B. Eastin & C. Caves, 2010
+Graph state simulator, according to
+M. Elliot, B. Eastin & C. Caves,
+    JPhysA 43, 025301 (2010) and PRA 77, 042307 (2008)
 
 """
 import networkx as nx
@@ -15,7 +17,8 @@ class GraphState(nx.Graph):
     Performs Pauli measurements on graph states.
     Inherits methods and attributes from networkx.Graph.
 
-    ref: M. Elliot, B. Eastin & C. Caves, JPhysA 2010
+    ref: M. Elliot, B. Eastin & C. Caves, JPhysA 43, 025301 (2010)
+    and PRA 77, 042307 (2008)
 
     Each node has attributes:
         :`hollow`: True if node is hollow
@@ -339,12 +342,14 @@ class GraphState(nx.Graph):
         self.remove_node(node)
         return result
 
-    def draw(self, **kwargs):
+    def draw(self, fill_color='C0', **kwargs):
         """Draw decorated graph state.
         Negative nodes are indicated by negative sign of node labels.
 
         Parameters
         ----------
+        fill_color : str, optional
+            fill color of nodes
         kwargs : keyword arguments, optional
             additional arguments to supply networkx.draw().
         """
@@ -352,7 +357,7 @@ class GraphState(nx.Graph):
         nodes = list(self.nodes)
         edges = list(self.edges)
         labels = {i: i for i in iter(self.nodes)}
-        colors = ['C0' for i in range(nqubit)]
+        colors = [fill_color for i in range(nqubit)]
         for i in range(nqubit):
             if self.nodes[nodes[i]]['loop']:
                 edges.append((nodes[i], nodes[i]))
