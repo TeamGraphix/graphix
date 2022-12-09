@@ -224,6 +224,33 @@ class Statevec():
         self.psi=np.tensordot(op, self.psi, (1, i))
         self.psi=np.moveaxis(self.psi, 0 ,i)
 
+    def evolve(self, op, qargs):
+        """Multi-qubit operation
+
+        Args:
+            op (np.array): 2^n*2^n matrix
+            qargs (list of ints): target qubits' indexes
+        """
+        alphabet = "abcdefghijklmnopqrstuvwxyz"
+        op_dim = int(np.log2(len(op)))
+        shape = [2 for _ in range(2*op_dim)]
+        op_tensor = op.reshape(shape)
+        input_index = ""
+        output_index = ""
+        for i in range(len(self.dims())):
+            input_index += alphabet[i]
+            if i in qargs:
+                output_index += alphabet[-1-i]
+            else:
+                output_index += alphabet[i]
+        op_in = ""
+        op_out = ""
+        for qarg in qargs:
+            op_in += alphabet[qarg]
+            op_out += alphabet[-1-qarg]
+        subscripts = op_out + op_in + "," + input_index + "->" + output_index
+        self.psi = np.einsum(subscripts , op_tensor, self.psi)
+
     def dims(self):
         return self.psi.shape
 
@@ -299,4 +326,18 @@ class Statevec():
         """
         st1 = deepcopy(self)
         st1.evolve_single(op, loc)
+        return np.dot(self.psi.flatten().conjugate(), st1.psi.flatten())
+
+    def expectation_value(self, op, qargs):
+        """Expectation value of multi-qubit operator.
+
+        Args:
+            op (np.array): 2^n*2^n operator
+            qargs (list of ints): target qubit
+
+        Returns:
+            complex: expectation value
+        """
+        st1 = deepcopy(self)
+        st1.evolve(op, qargs)
         return np.dot(self.psi.flatten().conjugate(), st1.psi.flatten())

@@ -13,7 +13,7 @@ class MPS():
     """
 
     def __init__(self, pattern, singular_value = None,\
-        max_truncation_err = None, graph_prep = 'opt', output='statevector'):
+        max_truncation_err = None, graph_prep = 'opt'):
         """
 
         Parameters
@@ -26,9 +26,6 @@ class MPS():
             cut off threshold for SVD decomposition. truncate maximum number of singular values within truncation_err
         graph_prep : str
             'sequential' for standard method, 'opt' for faster method
-        output : str
-            output object style. 'statevector' for translation to statevector,
-            'mps' for MPS object (= self).
             """
         nodes, edges = pattern.get_graph()
         G = nx.Graph()
@@ -43,7 +40,6 @@ class MPS():
         self.singular_value = singular_value
         self.truncation_err = max_truncation_err
         self.graph_prep = graph_prep
-        self.output = output
         # accumulated truncation square error
         self.accumulated_err = 0.
 
@@ -174,10 +170,7 @@ class MPS():
             self.entangle_nodes(edge)
 
     def finalize(self):
-        if self.output == 'statevector':
-            self.state = self.to_statevector()
-        elif self.output == 'mps':
-            self.state = self
+        self.state = self
 
     def make_graph_state(self):
         """This is an internal method of run_graph. Prepare a graph state efficiently. The efficient expression of graph state is known. See {ref}. ToDo
@@ -245,7 +238,6 @@ class MPS():
             m_op = meas_op(angle, plane=cmd[2], choice=result)
 
         # the procedure described below tends to keep the norm of MPS
-        # buffer = abs(np.sum(self.nodes[cmd[1]].tensor))
         buffer = 2**0.5
         m_op = m_op * buffer
 
@@ -287,12 +279,12 @@ class MPS():
             node_op (tn.Node): one site operator.
         """
         node = self.nodes[loc]
-        node[str(loc)] ^ node_op[0]
+        node[str(loc)] ^ node_op[1]
         edges = copy(node.edges)
         edges.remove(node[str(loc)])
         axis_names = copy(node.axis_names)
         axis_names.remove(str(loc))
-        applied = tn.contract_between(node, node_op, name=node.name, output_edge_order=[node_op[1]] + edges, axis_names = [str(loc)] + axis_names)
+        applied = tn.contract_between(node, node_op, name=node.name, output_edge_order=[node_op[0]] + edges, axis_names = [str(loc)] + axis_names)
         self.nodes[loc] = applied
 
     def expectation_value(self, op, qargs):
@@ -312,15 +304,14 @@ class MPS():
         sites = [self.ptn.output_nodes[i] for i in qargs]
         axis_names_in = ["in" + str(site) for site in sites]
         axis_names_out = [str(site) for site in sites]
-        # when using numpy's reshape, the order of tensor space becomes below
-        axis_names = [axis_names_in[-1-i] for i in range(len(axis_names_in))] + [axis_names_out[-1-i] for i in range(len(axis_names_out))]
+        axis_names = axis_names_out + axis_names_in
         node_op = tn.Node(op.reshape(shape), axis_names= axis_names)
         # replicate nodes for calculating expectation value
         rep_list = tn.replicate_nodes(self.nodes.values(), conjugate = True)
         rep={node.name: node for node in rep_list}
         rep_norm = deepcopy(self.nodes)
         rep_norm2 = deepcopy(rep)
-        # connecting given op to sites
+        # connect given operators to sites
         concatenated_nodes = set()
         for site in sites:
             concatenated_nodes |= nx.shortest_path(self.graph, site).keys()
@@ -343,7 +334,7 @@ class MPS():
         return expectation_value
 
     def expectation_value_ops(self, ops, qargs):
-        """calculate expectation value of given operators. This command is mainly used for constructing a statevector from a MPS.
+        """calculate expectation value of given operators. This command is mainly used for retrieving a probability distribution.
 
         Parameters
         ----------
@@ -387,29 +378,30 @@ class MPS():
         expectation_value = expectation_value/norm
         return expectation_value
 
-    def to_statevector(self):
-        """Convert a matrix product state to a statevector. This process requires exponentially increasing time.
+    def get_amplitude(self, number):
+        """calculate a probability amplitude of the specified state.
+
+        Parameters
+        ----------
+            number (int): specifies a state which one wants to know a probability amplitude(e.g. |0000> corresponds to 0. |1010> corresponds to 10).
 
         Returns
         -------
-            numpy.ndarray: A statevector converted from a MPS
+            float: the probability amplitude of the specified state.
         """
         proj_to_0 = np.array([[1., 0.], [0., 0.]])
         proj_to_1 = np.array([[0., 0.], [0., 1.]])
-        qnum = len(self.ptn.output_nodes)
-        statevec = np.zeros(2**qnum, dtype=np.complex128)
-        qargs = range(qnum)
-        for i in range(2**qnum):
-            num = i
-            ops = []
-            for j in range(qnum):
-                exp = qnum - j - 1
-                if num // 2**exp == 1:
-                    ops.append(proj_to_1)
-                    num -= 2**exp
-                else:
-                    ops.append(proj_to_0)
-            ops = np.flip(np.array(ops))
-            statevec[i] = self.expectation_value_ops(ops, qargs)
-        return statevec
+        sites = self.ptn.output_nodes
+        ops = []
+        for i in range(len(sites)):
+            exp = len(sites) - 1 -i
+            if (number // 2**exp) == 1:
+                op = proj_to_1
+                number -= 2**exp
+            else:
+                op = proj_to_0
+            ops.append(op)
+        qargs = range(len(sites))
+        probability = self.expectation_value_ops(ops, qargs)
+        return probability
 

@@ -350,18 +350,22 @@ class TestMPS(unittest.TestCase):
         np.testing.assert_almost_equal(
             value1, value2)
 
-    def test_make_statevector(self):
+    def test_get_amplitude(self):
         nqubits = 3
         depth = 5
         pairs = [(i, np.mod(i+1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
         pattern = circuit.transpile()
         pattern.standardize()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().flatten()
         mps_mbqc = pattern.simulate_pattern(backend='mps')
-        state_mbqc = mps_mbqc.to_statevector()
+        prob_circ = np.zeros(2**nqubits)
+        prob_mbqc = np.zeros(2**nqubits)
+        for i in range(2**nqubits):
+            prob_circ[i] = abs(state[i])**2
+            prob_mbqc[i] = mps_mbqc.get_amplitude(i)
         np.testing.assert_almost_equal(
-            np.abs(np.dot(state_mbqc.conjugate(), state.data)), 1)
+            prob_circ, prob_mbqc)
 
 
 
