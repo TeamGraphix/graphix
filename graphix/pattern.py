@@ -2,9 +2,10 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 import numpy as np
+import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
-from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD_CONJ
+from graphix.clifford import CLIFFORD_CONJ
 from copy import deepcopy
 
 class Pattern:
@@ -50,7 +51,7 @@ class Pattern:
         self.output_nodes = [] # output nodes
         self.Nnode = width # total number of nodes in the graph state
 
-    def add_command(self, cmd):
+    def add(self, cmd):
         """add command to the end of the pattern.
         an MBQC command is specified by a list of [type, node, attr], where
 
@@ -942,8 +943,16 @@ def measure_pauli(pattern, copy=False):
         elif np.mod(angle, 2) == 1.5:  # -y measurement
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
 
+    # measure (remove) isolated nodes. since they aren't Pauli measurements,
+    # measuring one of the results with possibility of 1 should not occur as was possible above for Pauli measurements,
+    # which means we can just choose 0. We should not remove output nodes even if isolated.
+    isolates = list(nx.isolates(graph_state))
+    for i in isolates:
+        if not i in pattern.output_nodes:
+            graph_state.remove_node(i)
+            results[i] = 0
+
     # update command sequence
-    pattern.Nnode = len(graph_state.nodes)
     vops = graph_state.get_vops()
     new_seq = []
     for index in iter(graph_state.nodes):
@@ -952,22 +961,26 @@ def measure_pauli(pattern, copy=False):
         new_seq.append(['E', edge])
     for cmd in pattern.seq:
         if cmd[0] == 'M':
-            if not cmd in to_measure:
+            if cmd[1] in list(graph_state.nodes):
                 cmd_new = deepcopy(cmd)
                 cmd_new.append(CLIFFORD_CONJ[vops[cmd[1]]])
                 new_seq.append(cmd_new)
     for index in pattern.output_nodes:
-        new_seq.append(['C', index, vops[index]])
+        if not vops[index] == 0:
+            new_seq.append(['C', index, vops[index]])
     for cmd in pattern.seq:
         if cmd[0] == 'X' or cmd[0] == 'Z':
             new_seq.append(cmd)
+
     if copy:
         pat = deepcopy(pattern)
         pat.seq = new_seq
+        pat.Nnode = len(graph_state.nodes)
         pat.results = results
         return pat
     else:
         pattern.seq = new_seq
+        pattern.Nnode = len(graph_state.nodes)
         pattern.results = results
 
 
@@ -994,7 +1007,7 @@ def pauli_nodes(pattern):
             t_cond = np.any(np.isin(cmd[5], non_pauli_node))
             if t_cond: # cmd depend on non-Pauli measurement
                 non_pauli_node.append(cmd)
-            else:# cmd do not depend on non-Pauli measurements
+            else: # cmd do not depend on non-Pauli measurements
                 # note: s_signal is irrelevant for X measurements
                 # because change of sign will do nothing
                 pauli_node.append(cmd)

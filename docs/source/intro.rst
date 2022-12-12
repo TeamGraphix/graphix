@@ -37,14 +37,14 @@ There is no classical analog and it is difficult to picture, but MBQC has severa
 One-way quantum computing
 -------------------------
 
-In one-way model, we perform quantum computation on the `resource state`, or equivalently the `graph state <https://en.wikipedia.org/wiki/Graph_state>`_, defined on methematical graph :math:`G = (N, E)` where :math:`N` is the set of nodes (qubits) and :math:`E` is a set of pairs of node indices, specifying the set of edges, by
+In one-way model, we perform quantum computation on the `resource state`, or equivalently the `graph state <https://en.wikipedia.org/wiki/Graph_state>`_, defined on methematical graph :math:`G = (N, E)` where :math:`N` is the set of nodes (qubits) and :math:`E` is a set of pairs of node indices, specifying graph edges, by
 
 .. math::
     \begin{equation}
     |g\rangle = \prod_{(i,j) \in E} CZ_{i,j} \bigotimes_{i\in N} |+\rangle_i, \label{1}   \tag{1}
     \end{equation}
 
-where :math:`\bigotimes_{i\in N} = |+\rangle_{i_1}\otimes|+\rangle_{i_2} \otimes ... `, tensor product of :math:`|+\rangle` states.
+where :math:`\bigotimes_{i\in N} = |+\rangle_{i_1}\otimes|+\rangle_{i_2} \otimes ... ` , tensor product of :math:`|+\rangle` states.
 A simplest example is the graph state with two qubits, :math:`|g'\rangle = CZ_{0,1}|+\rangle_1 \otimes |+\rangle_0`, which is local-unitary equivalent to the Bell state.
 
 Measurement of a qubit in Pauli X basis is expressed by the application of one of projection operators corresponding to measurement outcome :math:`(-1)^s = -1` or :math:`1`` for :math:`s=0, 1` ,
@@ -66,7 +66,7 @@ For our simplest graph state :math:`|g'\rangle`, measurement of qubit 0 in the X
 If the measurement outcome was :math:`s=0`, the output state is the initial :math:`|+\rangle` state with a Hadamard gate applied. If :math:`s=1`, there is additional :math:`X` gate applied. \
 In fact, this process of entangling with another qubit and then measuring with X basis the original qubit (qubit 0) is the MBQC version of Hadamard gate, and we treat the randomness of the measurement outcome with feedforward operations, as we describe below.
 
-In MBQC, measurements with :math:`s=0` is to be considered `default`, and the additional :math:`X` term is called `byproduct` of the measurement. The simplest construction of MBQC would be to apply adaptive :math:`X` gate to `correct` for this byproduct, which we can express as follows
+In MBQC, measurements with :math:`s=0` is to be considered `default` outcome, and the additional :math:`X` term is called `byproduct` of the measurement steming from the other result :math:`s=1`. The simplest construction of MBQC would be to apply adaptive :math:`X` gate to `correct` for this byproduct, which we can express as follows
 
 .. math::
     \begin{equation}
