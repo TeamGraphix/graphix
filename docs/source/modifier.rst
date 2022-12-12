@@ -32,7 +32,6 @@ Pattern Optimization
 
     .. automethod:: get_layers
 
+    .. automethod:: to_qasm3
+
 .. autofunction:: measure_pauli
-
-
-..
