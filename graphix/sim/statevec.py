@@ -231,25 +231,11 @@ class Statevec():
             op (np.array): 2^n*2^n matrix
             qargs (list of ints): target qubits' indexes
         """
-        alphabet = "abcdefghijklmnopqrstuvwxyz"
         op_dim = int(np.log2(len(op)))
         shape = [2 for _ in range(2*op_dim)]
         op_tensor = op.reshape(shape)
-        input_index = ""
-        output_index = ""
-        for i in range(len(self.dims())):
-            input_index += alphabet[i]
-            if i in qargs:
-                output_index += alphabet[-1-i]
-            else:
-                output_index += alphabet[i]
-        op_in = ""
-        op_out = ""
-        for qarg in qargs:
-            op_in += alphabet[qarg]
-            op_out += alphabet[-1-qarg]
-        subscripts = op_out + op_in + "," + input_index + "->" + output_index
-        self.psi = np.einsum(subscripts , op_tensor, self.psi)
+        self.psi = np.tensordot(op_tensor, self.psi, (tuple(op_dim + i for i in range(len(qargs))),tuple(qargs)))
+        self.psi = np.moveaxis(self.psi, [i for i in range(len(self.dims()))], qargs)
 
     def dims(self):
         return self.psi.shape

@@ -3,7 +3,8 @@ import tensornetwork as tn
 import networkx as nx
 from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import meas_op
-from copy import copy, deepcopy
+from copy import copy
+
 
 class MPS():
     """Matrix Product Simulator for MBQC
@@ -32,7 +33,7 @@ class MPS():
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
         self.ptn = pattern
-        self.results = deepcopy(pattern.results)
+        self.results = copy(pattern.results)
         self.graph = G
         # dict of tensornetwork.Node, index should be int
         self.nodes = dict()
@@ -287,6 +288,22 @@ class MPS():
         applied = tn.contract_between(node, node_op, name=node.name, output_edge_order=[node_op[0]] + edges, axis_names = [str(loc)] + axis_names)
         self.nodes[loc] = applied
 
+    def replicate_node_dict(self, node_dict, conjugate = False):
+        """Replicate dictionary of nodes.
+
+       Parameters
+        ----------
+            node_dict (dic of tensornetwork.Node): copying dictionary of nodes(e.g. self.nodes)
+
+        Returns
+        -------
+            dict of tensornetwork.Node: replicated node dictionary
+        """
+        rep_list = tn.replicate_nodes(node_dict.values(), conjugate=conjugate)
+        rep_dict = {node.name: node for node in rep_list}
+        return rep_dict
+
+
     def expectation_value(self, op, qargs):
         """calculate expectation value of given operator.
 
@@ -299,6 +316,7 @@ class MPS():
         -------
             expectation_value : float
         """
+        state = self.replicate_node_dict(self.nodes)
         dim = int(np.log2(len(op)))
         shape = [2 for _ in range(2*dim)]
         sites = [self.ptn.output_nodes[i] for i in qargs]
@@ -307,10 +325,9 @@ class MPS():
         axis_names = axis_names_out + axis_names_in
         node_op = tn.Node(op.reshape(shape), axis_names= axis_names)
         # replicate nodes for calculating expectation value
-        rep_list = tn.replicate_nodes(self.nodes.values(), conjugate = True)
-        rep={node.name: node for node in rep_list}
-        rep_norm = deepcopy(self.nodes)
-        rep_norm2 = deepcopy(rep)
+        rep = self.replicate_node_dict(self.nodes, conjugate = True)
+        rep_norm = self.replicate_node_dict(self.nodes)
+        rep_norm2 = self.replicate_node_dict(self.nodes, conjugate = True)
         # connect given operators to sites
         concatenated_nodes = set()
         for site in sites:
@@ -318,17 +335,17 @@ class MPS():
         contraction_set = set()
         for site in concatenated_nodes:
             if site in sites:
-                node_op["in" + str(site)] ^ self.nodes[site][str(site)]
+                node_op["in" + str(site)] ^ state[str(site)][str(site)]
                 node_op[str(site)] ^ rep[str(site)][str(site)]
             else:
-                self.nodes[site][str(site)] ^ rep[str(site)][str(site)]
-            contraction_set |= {self.nodes[site]} | {rep[str(site)]}
+                state[str(site)][str(site)] ^ rep[str(site)][str(site)]
+            contraction_set |= {state[str(site)]} | {rep[str(site)]}
         expectation_value = tn.contractors.auto(list(contraction_set) + [node_op]).tensor
         # calculate norm of TN
         norm_contraction_list = []
         for site in concatenated_nodes:
-            rep_norm[site][str(site)] ^ rep_norm2[str(site)][str(site)]
-            norm_contraction_list += [rep_norm[site], rep_norm2[str(site)]]
+            rep_norm[str(site)][str(site)] ^ rep_norm2[str(site)][str(site)]
+            norm_contraction_list += [rep_norm[str(site)], rep_norm2[str(site)]]
         norm = tn.contractors.auto(norm_contraction_list).tensor
         expectation_value = expectation_value/norm
         return expectation_value
@@ -345,17 +362,16 @@ class MPS():
         -------
             expectation value : float
         """
-        state = deepcopy(self.nodes)
+        state = self.replicate_node_dict(self.nodes)
         sites = [self.ptn.output_nodes[i] for i in qargs]
         node_ops = dict()
         for i in range(len(sites)):
             node_op = tn.Node(ops[i], axis_names= ["in" + str(sites[i])] + [str(sites[i])])
             node_ops[sites[i]] = node_op
         # replicate nodes for calculating expectation value
-        rep_list = tn.replicate_nodes(state.values(), conjugate = True)
-        rep={node.name: node for node in rep_list}
-        rep_norm = deepcopy(state)
-        rep_norm2 = deepcopy(rep)
+        rep = self.replicate_node_dict(self.nodes, conjugate = True)
+        rep_norm = self.replicate_node_dict(self.nodes)
+        rep_norm2 = self.replicate_node_dict(self.nodes, conjugate = True)
         # connecting given op to sites
         concatenated_nodes = set()
         for site in sites:
@@ -363,17 +379,17 @@ class MPS():
         contraction_set = set()
         for site in concatenated_nodes:
             if site in sites:
-                state[site][str(site)] ^ node_ops[site]["in" + str(site)]
+                state[str(site)][str(site)] ^ node_ops[site]["in" + str(site)]
                 node_ops[site][str(site)] ^ rep[str(site)][str(site)]
             else:
-                state[site][str(site)] ^ rep[str(site)][str(site)]
-            contraction_set |= {state[site]} | {rep[str(site)]}
+                state[str(site)][str(site)] ^ rep[str(site)][str(site)]
+            contraction_set |= {state[str(site)]} | {rep[str(site)]}
         expectation_value = tn.contractors.auto(list(contraction_set) + list(node_ops.values())).tensor
         # calculate norm of TN
         norm_contraction_list = []
         for site in concatenated_nodes:
-            rep_norm[site][str(site)] ^ rep_norm2[str(site)][str(site)]
-            norm_contraction_list += [rep_norm[site], rep_norm2[str(site)]]
+            rep_norm[str(site)][str(site)] ^ rep_norm2[str(site)][str(site)]
+            norm_contraction_list += [rep_norm[str(site)], rep_norm2[str(site)]]
         norm = tn.contractors.auto(norm_contraction_list).tensor
         expectation_value = expectation_value/norm
         return expectation_value
@@ -392,6 +408,7 @@ class MPS():
         proj_to_0 = np.array([[1., 0.], [0., 0.]])
         proj_to_1 = np.array([[0., 0.], [0., 1.]])
         sites = self.ptn.output_nodes
+        assert number < 2**len(sites)
         ops = []
         for i in range(len(sites)):
             exp = len(sites) - 1 -i
@@ -403,5 +420,5 @@ class MPS():
             ops.append(op)
         qargs = range(len(sites))
         probability = self.expectation_value_ops(ops, qargs)
-        return probability
+        return abs(probability)
 

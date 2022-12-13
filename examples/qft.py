@@ -1,8 +1,9 @@
+"""
+Graphix example with 3-qubit QFT circuit and comparison with statevec sim
+"""
+
 from graphix.transpiler import Circuit
 import numpy as np
-
-# 3-qubit QFT
-# more description:https://qiskit.org/textbook/ch-algorithms/quantum-fourier-transform.html
 
 
 def cp(circuit, theta, control, target):
