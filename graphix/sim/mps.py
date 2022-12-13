@@ -161,7 +161,8 @@ class MPS():
             self.make_graph_state()
 
     def make_initial(self):
-        """This is an internal method of run_cmd. Prepare a graph state sequentially.
+        """This is an internal method of run_cmd.
+        Prepare a graph state sequentially by applying CZ gates.
         """
         # prepare nodes
         for n in self.graph.nodes:
@@ -174,7 +175,10 @@ class MPS():
         self.state = self
 
     def make_graph_state(self):
-        """This is an internal method of run_graph. Prepare a graph state efficiently. The efficient expression of graph state is known. See {ref}. ToDo
+        """Prepare a graph state with efficient expression, instead of using CZ gates.
+        This is is an internal method of run_cmd().
+
+        .. seealso:: :meth:`~graphix.sim.mps.make_initial()`
         """
         # basic vectors
         plus = np.array([1./np.sqrt(2), 1./np.sqrt(2)])
@@ -291,7 +295,7 @@ class MPS():
     def replicate_node_dict(self, node_dict, conjugate = False):
         """Replicate dictionary of nodes.
 
-       Parameters
+        Parameters
         ----------
             node_dict (dic of tensornetwork.Node): copying dictionary of nodes(e.g. self.nodes)
 
@@ -302,7 +306,6 @@ class MPS():
         rep_list = tn.replicate_nodes(node_dict.values(), conjugate=conjugate)
         rep_dict = {node.name: node for node in rep_list}
         return rep_dict
-
 
     def expectation_value(self, op, qargs):
         """calculate expectation value of given operator.
@@ -355,7 +358,8 @@ class MPS():
 
         Parameters
         ----------
-            ops (list of numpy.ndarray): Expectation value is calculated based on ops. For constructing statevector, ops are projection operators fro each site.
+            ops (list of numpy.ndarray): Expectation value is calculated based on ops.
+                For constructing statevector, ops are projection operators fro each site.
             qargs (list of ints): applied positions of logical qubits.
 
         Returns

@@ -7,5 +7,7 @@ Module reference
     generator
     modifier
     simulator
-    miscellaneous
+    graphsim
+    flow
+    clifford
 

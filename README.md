@@ -1,4 +1,4 @@
-![Image](docs/logo/black_with_name.png)
+<img src="docs/logo/black_with_name.png" alt="logo" width="450">
 
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
@@ -30,6 +30,10 @@ first version will be available on pypi soon, for `pip install`.
 
 Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html).
 
+## Citing
+
+A paper will be out soon, stay tuned.
+
 ## Contributing
 
 We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking requests and bugs. 
@@ -38,11 +42,13 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 Dr. Shinichi Sunami (University of Oxford)
 
-Masato Fukushima (University of Tokyo, [Fixstars Amplify](https://amplify.fixstars.com/en/))
+Masato Fukushima (University of Tokyo, Fixstars Amplify)
 
-## Citing
+## Acknowledgements
 
-A paper will be out soon, stay tuned.
+<p><a href="https://amplify.fixstars.com/en/">
+<img src="docs/imgs/fam_logo.png" alt="amplify" width="160"/>
+</a></p>
 
 ## License
 
