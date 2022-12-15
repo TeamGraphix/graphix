@@ -1,4 +1,4 @@
-<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/logo/black_with_text.png" alt="logo" width="600">
+<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/logo/black_with_name.png" alt="logo" width="600">
 
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
