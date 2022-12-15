@@ -17,8 +17,7 @@ def cp(circuit, theta, control, target):
 
 
 def swap(circuit, a, b):
-    """swap gate
-    see https://qiskit.org/textbook/ch-gates/more-circuit-identities.html#2.-Swapping-Qubits-
+    """swap gate, decomposed
     """
     circuit.cnot(a, b)
     circuit.cnot(b, a)
@@ -53,4 +52,4 @@ pat.minimize_space()
 out_state = pat.simulate_pattern()
 
 state = circuit.simulate_statevector()
-print('overlap of states: ', np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
+print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))

@@ -4,7 +4,6 @@ from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD
 
 
 class TestClifford(unittest.TestCase):
-
     @staticmethod
     def classify_pauli(arr):
         """returns the index of Pauli gate with sign for a given 2x2 matrix.
@@ -35,7 +34,7 @@ class TestClifford(unittest.TestCase):
         elif np.allclose(-1 * CLIFFORD[3], arr):
             return (2, 1)
         else:
-            raise ValueError('No Pauli found')
+            raise ValueError("No Pauli found")
 
     @staticmethod
     def clifford_index(g):
@@ -62,7 +61,7 @@ class TestClifford(unittest.TestCase):
             # compare
             if np.allclose(CLIFFORD[i] * norm, g):
                 return i
-        raise ValueError('No Clifford found')
+        raise ValueError("No Clifford found")
 
     def test_measure(self):
         for i in range(24):
@@ -85,5 +84,5 @@ class TestClifford(unittest.TestCase):
             assert CLIFFORD_CONJ[i] == self.clifford_index(arr)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

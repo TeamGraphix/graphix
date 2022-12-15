@@ -37,7 +37,8 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
 
         U = \left( \prod_i \langle +_{\alpha_i} |_i \right) E_G N_{I^C},
 
-    where the measurements (bras) with always :math:`\langle+|` bases determined by the measurement angles :math:`\alpha_i` are applied to the measuring nodes,
+    where the measurements (bras) with always :math:`\langle+|` bases determined by the measurement
+    angles :math:`\alpha_i` are applied to the measuring nodes,
     i.e. the randomness of the measurement is eliminated by the added byproduct commands.
 
     .. seealso:: :func:`flow` :func:`gflow` :class:`graphix.pattern.Pattern`
@@ -69,20 +70,20 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
         # flow found
         depth, layers = get_layers(l_k)
         pattern = Pattern(len(inputs))
-        pattern.seq = [['N', i] for i in inputs]
+        pattern.seq = [["N", i] for i in inputs]
         for i in set(graph.nodes) - set(inputs):
-            pattern.seq.append(['N', i])
+            pattern.seq.append(["N", i])
         for e in graph.edges:
-            pattern.seq.append(['E', e])
+            pattern.seq.append(["E", e])
         measured = []
-        for i in range(depth, 0, -1): # i from depth, depth-1, ... 1
+        for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
             for j in layers[i]:
                 measured.append(j)
-                pattern.seq.append(['M', j, 'XY', angles[j], [], []])
+                pattern.seq.append(["M", j, "XY", angles[j], [], []])
                 for k in set(graph.neighbors(f[j])) - set([j]):
-                    if not k in measured:
-                        pattern.seq.append(['Z', k, [j]])
-                pattern.seq.append(['X', f[j], [j]])
+                    if k not in measured:
+                        pattern.seq.append(["Z", k, [j]])
+                pattern.seq.append(["X", f[j], [j]])
         pattern.output_nodes = outputs
         pattern.Nnode = len(graph.nodes)
     else:
@@ -92,27 +93,28 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
             # gflow found
             depth, layers = get_layers(l_k)
             pattern = Pattern(len(inputs))
-            pattern.seq = [['N', i] for i in inputs]
+            pattern.seq = [["N", i] for i in inputs]
             for i in set(graph.nodes) - set(inputs):
-                pattern.seq.append(['N', i])
+                pattern.seq.append(["N", i])
             for e in graph.edges:
-                pattern.seq.append(['E', e])
+                pattern.seq.append(["E", e])
             remaining = set(measuring_nodes)
-            for i in range(depth, 0, -1): # i from depth, depth-1, ... 1
+            for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
                 for j in layers[i]:
-                    pattern.seq.append(['M', j, 'XY', angles[j], [], []])
+                    pattern.seq.append(["M", j, "XY", angles[j], [], []])
                     remaining = remaining - set([j])
                     odd_neighbors = find_odd_neighbor(graph, remaining, set(g[j]))
                     for k in odd_neighbors:
-                        pattern.seq.append(['Z', k, [j]])
+                        pattern.seq.append(["Z", k, [j]])
                     for k in set(g[j]) - set([j]):
-                        pattern.seq.append(['X', k, [j]])
+                        pattern.seq.append(["X", k, [j]])
             pattern.output_nodes = outputs
             pattern.Nnode = len(graph.nodes)
         else:
-            raise ValueError('no flow or gflow found')
+            raise ValueError("no flow or gflow found")
 
     return pattern
+
 
 def solvebool(A, b):
     """solves linear equations of booleans
@@ -139,6 +141,7 @@ def solvebool(A, b):
         length n array of 1s and 0s satisfying Ax=b.
         if no solution is found, returns False.
     """
+
     def xor_n(a):
         if len(a) == 1:
             return a[0]
@@ -210,11 +213,11 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=100):
     """
     v = set(g.nodes)
     if meas_plane is None:
-        meas_plane = {u:'XY' for u in v}
+        meas_plane = {u: "XY" for u in v}
 
     gamma = nx.to_numpy_matrix(g)  # adjacency matrix
-    index_list = list(g.nodes) # match g.nodes with gamma's index
-    l_k = {i: 0 for i in v} # contains k, layer number initialized to default (0).
+    index_list = list(g.nodes)  # match g.nodes with gamma's index
+    l_k = {i: 0 for i in v}  # contains k, layer number initialized to default (0).
     g = dict()  # contains the correction set g(i) for i\in V.
     k = 1
     vo = copy.deepcopy(v_out)
@@ -222,12 +225,14 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=100):
     count = 0
     while not finished:
         count += 1
-        vo, g, l_k, finished, exist = gflowaux(v, gamma, index_list, v_in, vo, g, l_k, k, meas_plane)
+        vo, g, l_k, finished, exist = gflowaux(
+            v, gamma, index_list, v_in, vo, g, l_k, k, meas_plane
+        )
         k = k + 1
         if not exist:
             return None, None
         if count > timeout:
-            raise TimeoutError('max iteration number n={} reached'.format(timeout))
+            raise TimeoutError("max iteration number n={} reached".format(timeout))
     return g, l_k
 
 
@@ -279,7 +284,7 @@ def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
     v_correct_list = list(v_correct)
 
     index_0 = [[index_list.index(i)] for i in iter(v_rem)]  # for slicing rows
-    index_1 = [index_list.index(i) for i in iter(v_correct)] # for slicing columns
+    index_1 = [index_list.index(i) for i in iter(v_correct)]  # for slicing columns
 
     # if index_0 or index_1 is blank, skip the calculation below
     if len(index_0) * len(index_1):
@@ -287,15 +292,15 @@ def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
         gamma_sub = gamma[index_0, index_1]
 
         for u in iter(v_rem):
-            if meas_plane[u] == 'Z':
+            if meas_plane[u] == "Z":
                 c_set = c_set | {u}
                 g[u] = set()
                 l_k[u] = k
                 continue
-            elif meas_plane[u] in ['XY', 'XZ', 'X', 'Y']:
+            elif meas_plane[u] in ["XY", "XZ", "X", "Y"]:
                 Iu = np.zeros(n, dtype=np.int8)
                 Iu[v_rem_list.index(u)] = 1
-            elif meas_plane[u] == 'YZ':
+            elif meas_plane[u] == "YZ":
                 Iu = np.ones(n, dtype=np.int8)
                 Iu[v_rem_list.index(u)] = 0
 
@@ -319,7 +324,7 @@ def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
     return v_out | c_set, g, l_k, finished, exist
 
 
-def flow(g, v_in, v_out, meas_plane = None, timeout=100):
+def flow(g, v_in, v_out, meas_plane=None, timeout=100):
     """Causal flow finding algorithm
 
     For open graph g with input and output, this returns causal flow.
@@ -368,7 +373,7 @@ def flow(g, v_in, v_out, meas_plane = None, timeout=100):
         if not exist:
             return None, None
         if count > timeout:
-            raise TimeoutError('max iteration number n={} reached'.format(timeout))
+            raise TimeoutError("max iteration number n={} reached".format(timeout))
     return f, l_k
 
 
@@ -435,7 +440,14 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
     else:
         finished = False
         exist = True
-    return v_out | v_out_prime, (v_c - c_prime) | (v_out_prime & (v-v_in)), f, l_k, finished, exist
+    return (
+        v_out | v_out_prime,
+        (v_c - c_prime) | (v_out_prime & (v - v_in)),
+        f,
+        l_k,
+        finished,
+        exist,
+    )
 
 
 def search_neighbor(node, edges):
@@ -462,7 +474,7 @@ def search_neighbor(node, edges):
     return N
 
 
-def find_flow(g, v_in, v_out, meas_plane = None, timeout = 100):
+def find_flow(g, v_in, v_out, meas_plane=None, timeout=100):
     """Function to determine whether there exists flow or gflow
 
     Parameters
@@ -531,6 +543,7 @@ def find_odd_neighbor(graph, candidate, vertices):
             out.append(c)
     return out
 
+
 def get_layers(l_k):
     """get components of each layer.
     Parameters
@@ -546,7 +559,7 @@ def get_layers(l_k):
         components of each layer
     """
     d = get_min_depth(l_k)
-    layers = {k: [] for k in range(d+1)}
+    layers = {k: [] for k in range(d + 1)}
     for i in l_k.keys():
         layers[l_k[i]].append(i)
     return d, layers
@@ -564,12 +577,21 @@ def get_meas_plane(pattern):
         list of strs representing measurement plane for each node.
     """
     meas_plane = dict()
-    XYtoXZ_list = [6, 8, 11, 12, 20, 21, 22, 23] # clifford indices that change meas plane from xy to xz
+    XYtoXZ_list = [
+        6,
+        8,
+        11,
+        12,
+        20,
+        21,
+        22,
+        23,
+    ]  # clifford indices that change meas plane from xy to xz
     for cmd in pattern.seq:
-        if cmd[0] == 'M':
+        if cmd[0] == "M":
             if len(cmd) == 7:
                 if cmd[6] in XYtoXZ_list:
-                    meas_plane[cmd[1]] = 'XZ'
+                    meas_plane[cmd[1]] = "XZ"
                 else:
                     meas_plane[cmd[1]] = cmd[2]
             else:
@@ -593,7 +615,7 @@ def get_measurement_order_from_gflow(pattern):
     G.add_edges_from(edges)
     isolated = list(nx.isolates(G))
     if isolated:
-        raise ValueError('The input graph must be connected')
+        raise ValueError("The input graph must be connected")
     meas_plane = get_meas_plane(pattern)
     g, l_k = gflow(G, set(), set(pattern.output_nodes), meas_plane=meas_plane)
     if not g:
