@@ -15,9 +15,9 @@ jobs:
           python-version: 3.8
 
       - name: Install black
-        run: pip install black
+        run: pip install black==22.8.0
 
       - uses: actions/checkout@v2
 
       - name: Run black
-        run: black -l 100 demodoc/ tests/ --check
+        run: black -l 120 graphix/ tests/ --check

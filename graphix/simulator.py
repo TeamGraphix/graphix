@@ -7,13 +7,14 @@ Simulates MBQC by executing the pattern.
 from graphix.sim.mps import MPS
 from graphix.sim.statevec import StatevectorBackend
 
-class PatternSimulator():
+
+class PatternSimulator:
     """MBQC simulator
 
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend='statevector', **kwargs):
+    def __init__(self, pattern, backend="statevector", **kwargs):
         """
         Parameteres
         -----------
@@ -28,12 +29,12 @@ class PatternSimulator():
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
-        if backend == 'statevector':
+        if backend == "statevector":
             self.backend = StatevectorBackend(pattern, **kwargs)
-        elif backend == 'mps':
+        elif backend == "mps":
             self.backend = MPS(pattern, **kwargs)
         else:
-            raise ValueError('unknown backend')
+            raise ValueError("unknown backend")
         self.pattern = pattern
         self.results = self.backend.results
         self.state = self.backend.state
@@ -50,17 +51,17 @@ class PatternSimulator():
         """
         self.backend.initialize()
         for cmd in self.pattern.seq:
-            if cmd[0] == 'N':
+            if cmd[0] == "N":
                 self.backend.add_nodes([cmd[1]])
-            elif cmd[0] == 'E':
+            elif cmd[0] == "E":
                 self.backend.entangle_nodes(cmd[1])
-            elif cmd[0] == 'M':
+            elif cmd[0] == "M":
                 self.backend.measure(cmd)
-            elif cmd[0] == 'X':
+            elif cmd[0] == "X":
                 self.backend.correct_byproduct(cmd)
-            elif cmd[0] == 'Z':
+            elif cmd[0] == "Z":
                 self.backend.correct_byproduct(cmd)
-            elif cmd[0] == 'C':
+            elif cmd[0] == "C":
                 self.backend.apply_clifford(cmd)
             else:
                 raise ValueError("invalid commands")
@@ -68,5 +69,3 @@ class PatternSimulator():
                 self.backend.finalize()
 
         return self.backend.state
-
-

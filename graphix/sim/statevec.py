@@ -4,9 +4,9 @@ from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD
 from copy import deepcopy
 from scipy.linalg import norm
 
-class StatevectorBackend():
-    """MBQC simulator with statevector method.
-    """
+
+class StatevectorBackend:
+    """MBQC simulator with statevector method."""
 
     def __init__(self, pattern, max_qubit_num=20):
         """
@@ -31,7 +31,7 @@ class StatevectorBackend():
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError('Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again')
+            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -42,8 +42,7 @@ class StatevectorBackend():
         return len(self.state.dims())
 
     def initialize(self):
-        """Initialize the internal statevector
-        """
+        """Initialize the internal statevector"""
         self.state = None
 
     def add_nodes(self, nodes):
@@ -66,7 +65,7 @@ class StatevectorBackend():
             self.trace_out()
 
     def entangle_nodes(self, edge):
-        """ Apply CZ gate to two connected nodes
+        """Apply CZ gate to two connected nodes
 
         Parameters
         ----------
@@ -91,7 +90,7 @@ class StatevectorBackend():
         # extract signals for adaptive angle
         s_signal = np.sum([self.results[j] for j in cmd[4]])
         t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi * (-1)**s_signal + np.pi * t_signal
+        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
         if len(cmd) == 7:
             m_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
         else:
@@ -109,9 +108,9 @@ class StatevectorBackend():
         """
         if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
             loc = self.node_index.index(cmd[1])
-            if cmd[0] == 'X':
+            if cmd[0] == "X":
                 op = Ops.x
-            elif cmd[0] == 'Z':
+            elif cmd[0] == "Z":
                 op = Ops.z
             self.state.evolve_single(op, loc)
 
@@ -129,8 +128,7 @@ class StatevectorBackend():
         self.state.normalize()
 
     def trace_out(self):
-        """trace out the qubits buffered in self.to_trace from self.state
-        """
+        """trace out the qubits buffered in self.to_trace from self.state"""
         self.state.normalize()
         self.state.ptrace(self.to_trace_loc)
         for node in self.to_trace:
@@ -145,11 +143,10 @@ class StatevectorBackend():
             if not self.node_index[i] == ind:
                 move_from = self.node_index.index(ind)
                 self.state.swap((i, move_from))
-                self.node_index[i], self.node_index[move_from] = \
-                    self.node_index[move_from], self.node_index[i]
+                self.node_index[i], self.node_index[move_from] = self.node_index[move_from], self.node_index[i]
 
 
-def meas_op(angle, vop=0, plane='XY', choice=0):
+def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`
@@ -173,32 +170,34 @@ def meas_op(angle, vop=0, plane='XY', choice=0):
     """
     assert vop in np.arange(24)
     assert choice in [0, 1]
-    assert plane in ['XY', 'YZ', 'XZ']
-    if plane == 'XY':
+    assert plane in ["XY", "YZ", "XZ"]
+    if plane == "XY":
         vec = (np.cos(angle), np.sin(angle), 0)
-    elif plane == 'YZ':
+    elif plane == "YZ":
         vec = (0, np.cos(angle), np.sin(angle))
-    elif plane == 'XZ':
+    elif plane == "XZ":
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
-        op_mat += (-1)**(choice + CLIFFORD_MEASURE[vop][i][1]) \
-            * vec[CLIFFORD_MEASURE[vop][i][0]] * CLIFFORD[i + 1] / 2
+        op_mat += (
+            (-1) ** (choice + CLIFFORD_MEASURE[vop][i][1]) * vec[CLIFFORD_MEASURE[vop][i][0]] * CLIFFORD[i + 1] / 2
+        )
     return op_mat
 
 
-CZ_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 1], [0, 0]]],
-                      [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],dtype=np.complex128)
-CNOT_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 1], [0, 0]]],
-                      [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],dtype=np.complex128)
-SWAP_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 0], [1, 0]]],
-                      [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],dtype=np.complex128)
+CZ_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]], dtype=np.complex128)
+CNOT_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]], dtype=np.complex128
+)
+SWAP_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]], dtype=np.complex128
+)
 
 
-class Statevec():
-    """Simple statevector simulator
-    """
-    def __init__(self, plus_states = True, nqubit = 1):
+class Statevec:
+    """Simple statevector simulator"""
+
+    def __init__(self, plus_states=True, nqubit=1):
         """Initialize statevector
 
         Args:
@@ -206,13 +205,13 @@ class Statevec():
             nqubit (int, optional): number of qubits. Defaults to 1.
         """
         if plus_states:
-            self.psi=np.ones((2,) * nqubit) / np.sqrt(2**nqubit)
+            self.psi = np.ones((2,) * nqubit) / np.sqrt(2**nqubit)
         else:
-            self.psi=np.zeros((2,) * nqubit)
+            self.psi = np.zeros((2,) * nqubit)
             self.psi[(0,) * nqubit] = 1
 
     def __repr__(self):
-        return f'Statevec, data={self.psi}, shape={self.dims()}'
+        return f"Statevec, data={self.psi}, shape={self.dims()}"
 
     def evolve_single(self, op, i):
         """Single-qubit operation
@@ -221,8 +220,8 @@ class Statevec():
             op (np.array): 2*2 matrix
             i (int): qubit index
         """
-        self.psi=np.tensordot(op, self.psi, (1, i))
-        self.psi=np.moveaxis(self.psi, 0 ,i)
+        self.psi = np.tensordot(op, self.psi, (1, i))
+        self.psi = np.moveaxis(self.psi, 0, i)
 
     def evolve(self, op, qargs):
         """Multi-qubit operation
@@ -232,9 +231,9 @@ class Statevec():
             qargs (list of ints): target qubits' indexes
         """
         op_dim = int(np.log2(len(op)))
-        shape = [2 for _ in range(2*op_dim)]
+        shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
-        self.psi = np.tensordot(op_tensor, self.psi, (tuple(op_dim + i for i in range(len(qargs))),tuple(qargs)))
+        self.psi = np.tensordot(op_tensor, self.psi, (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)))
         self.psi = np.moveaxis(self.psi, [i for i in range(len(self.dims()))], qargs)
 
     def dims(self):
@@ -248,9 +247,9 @@ class Statevec():
         """
         nqubit_after = len(self.psi.shape) - len(qargs)
         psi = self.psi
-        rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs)) # density matrix
+        rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
-        evals, evecs = np.linalg.eig(rho) # back to statevector
+        evals, evecs = np.linalg.eig(rho)  # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     def entangle(self, edge):
@@ -260,9 +259,9 @@ class Statevec():
             edge (tuple of ints): (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi=np.tensordot(CZ_TENSOR, self.psi, ((2,3), edge))
+        self.psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
         # sort back axes
-        self.psi=np.moveaxis(self.psi, (0,1), edge)
+        self.psi = np.moveaxis(self.psi, (0, 1), edge)
 
     def tensor(self, other):
         """Tensor product state with other qubits.
@@ -283,9 +282,9 @@ class Statevec():
             qubits (tuple of ints): (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi=np.tensordot(CNOT_TENSOR, self.psi, ((2,3), qubits))
+        self.psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi=np.moveaxis(self.psi, (0,1), qubits)
+        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
 
     def swap(self, qubits):
         """swap qubits
@@ -294,17 +293,16 @@ class Statevec():
             qubits (tuple of ints): (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi=np.tensordot(SWAP_TENSOR, self.psi, ((2,3), qubits))
+        self.psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi=np.moveaxis(self.psi, (0,1), qubits)
+        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
 
     def normalize(self):
         """normalize the state"""
         self.psi = self.psi / norm(self.psi)
 
     def flatten(self):
-        """returns flattened statevector
-        """
+        """returns flattened statevector"""
         return self.psi.flatten()
 
     def expectation_single(self, op, loc):

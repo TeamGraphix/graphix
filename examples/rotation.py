@@ -23,7 +23,7 @@ pat.minimize_space()
 out_state = pat.simulate_pattern()
 
 # statevector sim
-state = Statevec(nqubit=2, plus_states=False) # starts with |0> states
+state = Statevec(nqubit=2, plus_states=False)  # starts with |0> states
 state.evolve_single(Ops.Rx(theta), 0)
 state.evolve_single(Ops.Rx(theta), 1)
-print('overlap of states: ', np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
+print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
