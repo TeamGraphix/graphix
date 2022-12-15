@@ -1,0 +1,4 @@
+numpy>=1.22,<1.24
+networkx>=2.8,<3.0
+z3-solver
+tensornetwork>=0.4
