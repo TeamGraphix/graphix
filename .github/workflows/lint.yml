@@ -20,4 +20,4 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run black
-        run: black -l 100 demodoc/ tests/ --check
+        run: black -l 100 graphix/ tests/ --check

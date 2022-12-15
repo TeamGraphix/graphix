@@ -32,7 +32,7 @@ info = {
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    "python_requires": ">=3.8",
+    "python_requires": ">=3.8,<3.11",
     "install_requires": requirements,
 }
 
