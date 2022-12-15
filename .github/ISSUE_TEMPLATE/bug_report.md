@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Thanks for taking the time to fill out this bug report!
+about: Report a bug
 title: "[Bug]: "
 labels: bug
 assignees: ''
@@ -17,9 +17,9 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Environment (please complete the following information):**
- - OS: [e.g. Windows10]
- - python version: [e.g. 3.8.1]
- - related module versions if applicable: [e.g. numpy=1.23.5]
+ - OS: [e.g. Windows10, macOS Monteley]
+ - Python version: [e.g. 3.8.1]
+ - Related module versions if applicable: [e.g. numpy=1.23.5]
 
 **Additional context**
 Add any other context about the problem here.
