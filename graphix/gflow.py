@@ -225,9 +225,7 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=100):
     count = 0
     while not finished:
         count += 1
-        vo, g, l_k, finished, exist = gflowaux(
-            v, gamma, index_list, v_in, vo, g, l_k, k, meas_plane
-        )
+        vo, g, l_k, finished, exist = gflowaux(v, gamma, index_list, v_in, vo, g, l_k, k, meas_plane)
         k = k + 1
         if not exist:
             return None, None

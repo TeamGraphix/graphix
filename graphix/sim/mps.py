@@ -6,15 +6,14 @@ from graphix.sim.statevec import meas_op
 from copy import copy
 
 
-class MPS():
+class MPS:
     """Matrix Product Simulator for MBQC
 
     Executes the measurement pattern.
     This is a simple implementation. Improved CPU/GPU MPS simulator will be released soon.
     """
 
-    def __init__(self, pattern, singular_value = None,\
-        max_truncation_err = None, graph_prep = 'opt'):
+    def __init__(self, pattern, singular_value=None, max_truncation_err=None, graph_prep="opt"):
         """
 
         Parameters
@@ -42,7 +41,7 @@ class MPS():
         self.truncation_err = max_truncation_err
         self.graph_prep = graph_prep
         # accumulated truncation square error
-        self.accumulated_err = 0.
+        self.accumulated_err = 0.0
 
     def set_singular_value(self, chi):
         """Set the number of singular values holding under singular value decomposition(SVD).
@@ -62,7 +61,8 @@ class MPS():
 
         Parameters
         ----------
-            truncation_err (float): Max truncation error allowed under SVD. Maximum number of singular values keeping truncation error under specified value will be possessed.
+            truncation_err (float): Max truncation error allowed under SVD.
+            Maximum number of singular values keeping truncation error under specified value will be possessed.
         """
         self.truncation_err = truncation_err
 
@@ -82,10 +82,10 @@ class MPS():
 
     def add_nodes(self, cmds):
         """add qubits to node sets from command sequence"""
-        if self.graph_prep == 'sequential':
+        if self.graph_prep == "sequential":
             for cmd in cmds:
                 self.add_node(cmd[1])
-        elif self.graph_prep == 'opt':
+        elif self.graph_prep == "opt":
             pass
 
     def add_node(self, n):
@@ -105,15 +105,25 @@ class MPS():
         self.nodes[n] = node
 
     def entangle_nodes(self, edge):
-        """Make entanglement between nodes specified by edge. Contract non-dangling edges in this process. Optimized contraction will be implemented in a later release.
+        """Make entanglement between nodes specified by edge. Contract non-dangling edges in this process.
+        Optimized contraction will be implemented in a later release.
 
         Parameters
         ----------
             edge (taple of ints): edge specifies two nodes applied CZ gate.
         """
-        if self.graph_prep == 'sequential':
+        if self.graph_prep == "sequential":
             # prepare CZ operator
-            cz = tn.Node(np.array([[[[1., 0.], [0., 0.]], [[0., 1.], [0., 0.]]], [[[0., 0.], [1., 0.]], [[0., 0.], [0., -1.]]]]), name='cz', axis_names = ['c1', 'c2', 'c3', 'c4'])
+            cz = tn.Node(
+                np.array(
+                    [
+                        [[[1.0, 0.0], [0.0, 0.0]], [[0.0, 1.0], [0.0, 0.0]]],
+                        [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 0.0], [0.0, -1.0]]],
+                    ]
+                ),
+                name="cz",
+                axis_names=["c1", "c2", "c3", "c4"],
+            )
             # call nodes from nodes list
             node1 = self.nodes[edge[0]]
             node2 = self.nodes[edge[1]]
@@ -123,9 +133,9 @@ class MPS():
             axis_name2 = copy(node2.axis_names)
             axis_name1.remove(str(edge[1]))
             axis_name2.remove(str(edge[0]))
-            connected = tn.contract(cont_edge, name='connected', axis_names=axis_name1 + axis_name2)
-            connected[str(edge[0])] ^ cz['c1']
-            connected[str(edge[1])] ^ cz['c2']
+            connected = tn.contract(cont_edge, name="connected", axis_names=axis_name1 + axis_name2)
+            connected[str(edge[0])] ^ cz["c1"]
+            connected[str(edge[1])] ^ cz["c2"]
             connected_rem = copy(connected.edges)
             connected_rem.remove(connected[str(edge[0])])
             connected_rem.remove(connected[str(edge[1])])
@@ -133,7 +143,13 @@ class MPS():
             connected_axis_names.remove(str(edge[0]))
             connected_axis_names.remove(str(edge[1]))
             # apply entangle operatorn and rename edges
-            entangled = tn.contract_between(connected, cz, name='entangled', output_edge_order=[cz['c3'], cz['c4']] + connected_rem, axis_names=[str(edge[0]), str(edge[1])]+connected_axis_names)
+            entangled = tn.contract_between(
+                connected,
+                cz,
+                name="entangled",
+                output_edge_order=[cz["c3"], cz["c4"]] + connected_rem,
+                axis_names=[str(edge[0]), str(edge[1])] + connected_axis_names,
+            )
             leftedges = []
             for name in axis_name1:
                 leftedges.append(entangled[name])
@@ -141,7 +157,16 @@ class MPS():
             for name in axis_name2:
                 rightedges.append(entangled[name])
             # separate 4rank tensor to two 3rank tensors
-            node1_new, node2_new, truncation_errs = tn.split_node(entangled, left_edges=leftedges, right_edges = rightedges, max_singular_values=self.singular_value, max_truncation_err=self.truncation_err, left_name=node1.name, right_name=node2.name, edge_name = 'contracted')
+            node1_new, node2_new, truncation_errs = tn.split_node(
+                entangled,
+                left_edges=leftedges,
+                right_edges=rightedges,
+                max_singular_values=self.singular_value,
+                max_truncation_err=self.truncation_err,
+                left_name=node1.name,
+                right_name=node2.name,
+                edge_name="contracted",
+            )
             # update the nodes
             node1_new.axis_names = axis_name1 + [str(edge[1])]
             node2_new.axis_names = [str(edge[0])] + axis_name2
@@ -150,14 +175,14 @@ class MPS():
             self.accumulated_err += np.linalg.norm(truncation_errs)
             assert node1_new[node1.name].is_dangling()
             assert node2_new[node2.name].is_dangling()
-        elif self.graph_prep == 'opt':
+        elif self.graph_prep == "opt":
             pass
 
     def initialize(self):
         """initialize the internal MPS state"""
-        if self.graph_prep == 'sequential':
+        if self.graph_prep == "sequential":
             self.make_initial()
-        elif self.graph_prep == 'opt':
+        elif self.graph_prep == "opt":
             self.make_graph_state()
 
     def make_initial(self):
@@ -181,10 +206,10 @@ class MPS():
         .. seealso:: :meth:`~graphix.sim.mps.make_initial()`
         """
         # basic vectors
-        plus = np.array([1./np.sqrt(2), 1./np.sqrt(2)])
-        minus = np.array([1./np.sqrt(2), -1./np.sqrt(2)])
-        zero = np.array([1., 0.])
-        one = np.array([0., 1.])
+        plus = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])
+        minus = np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)])
+        zero = np.array([1.0, 0.0])
+        one = np.array([0.0, 1.0])
         for site in self.graph.nodes:
             neighbor = self.graph.neighbors(site)
             A0 = []
@@ -209,10 +234,15 @@ class MPS():
                     edge_order1.append(minus_node_cp[0])
                 axis_names.append(str(n))
             if len(A0) * len(A1):
-                tensor = np.array([tn.outer_product_final_nodes(A0, edge_order0).tensor, tn.outer_product_final_nodes(A1, edge_order1).tensor])
-            else: # branch for not concatenated graph
-                tensor = np.array([1./np.sqrt(2), 1./np.sqrt(2)])
-            node = tn.Node(tensor, str(site), axis_names = axis_names)
+                tensor = np.array(
+                    [
+                        tn.outer_product_final_nodes(A0, edge_order0).tensor,
+                        tn.outer_product_final_nodes(A1, edge_order1).tensor,
+                    ]
+                )
+            else:  # branch for not concatenated graph
+                tensor = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])
+            node = tn.Node(tensor, str(site), axis_names=axis_names)
             self.nodes[site] = node
 
         # connecting all edges
@@ -221,9 +251,9 @@ class MPS():
             node2 = self.nodes[edge[1]]
             node1[str(edge[1])] ^ node2[str(edge[0])]
 
-
     def measure(self, cmd):
-        """Perform measurement of a node. In MPS, to apply measurement operator to the tensor, consisting Matrix Product State, equals to perform measurement.
+        """Perform measurement of a node. In MPS, to apply measurement operator to the tensor,
+        consisting Matrix Product State, equals to perform measurement.
 
         Parameters
         ----------
@@ -236,14 +266,14 @@ class MPS():
         # extract signals for adaptive angle
         s_signal = np.sum([self.results[j] for j in cmd[4]])
         t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi * (-1)**s_signal + np.pi * t_signal
+        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
         if len(cmd) == 7:
             m_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
         else:
             m_op = meas_op(angle, plane=cmd[2], choice=result)
 
         # the procedure described below tends to keep the norm of MPS
-        buffer = 2**0.5
+        buffer = 2 ** 0.5
         m_op = m_op * buffer
 
         node_op = tn.Node(m_op)
@@ -257,10 +287,10 @@ class MPS():
             cmd (list): correct for the X or Z byproduct operators, by applying the X or Z gate.
         """
         if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            if cmd[0] == 'X':
-                op = np.array([[0., 1.], [1., 0.]])
-            elif cmd[0] == 'Z':
-                op = np.array([[1., 0.], [0., -1.]])
+            if cmd[0] == "X":
+                op = np.array([[0.0, 1.0], [1.0, 0.0]])
+            elif cmd[0] == "Z":
+                op = np.array([[1.0, 0.0], [0.0, -1.0]])
             node_op = tn.Node(op)
             self.apply_one_site_operator(cmd[1], node_op)
 
@@ -289,10 +319,12 @@ class MPS():
         edges.remove(node[str(loc)])
         axis_names = copy(node.axis_names)
         axis_names.remove(str(loc))
-        applied = tn.contract_between(node, node_op, name=node.name, output_edge_order=[node_op[0]] + edges, axis_names = [str(loc)] + axis_names)
+        applied = tn.contract_between(
+            node, node_op, name=node.name, output_edge_order=[node_op[0]] + edges, axis_names=[str(loc)] + axis_names
+        )
         self.nodes[loc] = applied
 
-    def replicate_node_dict(self, node_dict, conjugate = False):
+    def replicate_node_dict(self, node_dict, conjugate=False):
         """Replicate dictionary of nodes.
 
         Parameters
@@ -321,16 +353,16 @@ class MPS():
         """
         state = self.replicate_node_dict(self.nodes)
         dim = int(np.log2(len(op)))
-        shape = [2 for _ in range(2*dim)]
+        shape = [2 for _ in range(2 * dim)]
         sites = [self.ptn.output_nodes[i] for i in qargs]
         axis_names_in = ["in" + str(site) for site in sites]
         axis_names_out = [str(site) for site in sites]
         axis_names = axis_names_out + axis_names_in
-        node_op = tn.Node(op.reshape(shape), axis_names= axis_names)
+        node_op = tn.Node(op.reshape(shape), axis_names=axis_names)
         # replicate nodes for calculating expectation value
-        rep = self.replicate_node_dict(self.nodes, conjugate = True)
+        rep = self.replicate_node_dict(self.nodes, conjugate=True)
         rep_norm = self.replicate_node_dict(self.nodes)
-        rep_norm2 = self.replicate_node_dict(self.nodes, conjugate = True)
+        rep_norm2 = self.replicate_node_dict(self.nodes, conjugate=True)
         # connect given operators to sites
         concatenated_nodes = set()
         for site in sites:
@@ -350,11 +382,12 @@ class MPS():
             rep_norm[str(site)][str(site)] ^ rep_norm2[str(site)][str(site)]
             norm_contraction_list += [rep_norm[str(site)], rep_norm2[str(site)]]
         norm = tn.contractors.auto(norm_contraction_list).tensor
-        expectation_value = expectation_value/norm
+        expectation_value = expectation_value / norm
         return expectation_value
 
     def expectation_value_ops(self, ops, qargs):
-        """calculate expectation value of given operators. This command is mainly used for retrieving a probability distribution.
+        """calculate expectation value of given operators.
+        This command is mainly used for retrieving a probability distribution.
 
         Parameters
         ----------
@@ -370,12 +403,12 @@ class MPS():
         sites = [self.ptn.output_nodes[i] for i in qargs]
         node_ops = dict()
         for i in range(len(sites)):
-            node_op = tn.Node(ops[i], axis_names= ["in" + str(sites[i])] + [str(sites[i])])
+            node_op = tn.Node(ops[i], axis_names=["in" + str(sites[i])] + [str(sites[i])])
             node_ops[sites[i]] = node_op
         # replicate nodes for calculating expectation value
-        rep = self.replicate_node_dict(self.nodes, conjugate = True)
+        rep = self.replicate_node_dict(self.nodes, conjugate=True)
         rep_norm = self.replicate_node_dict(self.nodes)
-        rep_norm2 = self.replicate_node_dict(self.nodes, conjugate = True)
+        rep_norm2 = self.replicate_node_dict(self.nodes, conjugate=True)
         # connecting given op to sites
         concatenated_nodes = set()
         for site in sites:
@@ -395,7 +428,7 @@ class MPS():
             rep_norm[str(site)][str(site)] ^ rep_norm2[str(site)][str(site)]
             norm_contraction_list += [rep_norm[str(site)], rep_norm2[str(site)]]
         norm = tn.contractors.auto(norm_contraction_list).tensor
-        expectation_value = expectation_value/norm
+        expectation_value = expectation_value / norm
         return expectation_value
 
     def get_amplitude(self, number):
@@ -403,26 +436,26 @@ class MPS():
 
         Parameters
         ----------
-            number (int): specifies a state which one wants to know a probability amplitude(e.g. |0000> corresponds to 0. |1010> corresponds to 10).
+            number (int): specifies a state which one wants to know a probability amplitude
+            e.g. |0000> corresponds to 0. |1010> corresponds to 10.
 
         Returns
         -------
             float: the probability amplitude of the specified state.
         """
-        proj_to_0 = np.array([[1., 0.], [0., 0.]])
-        proj_to_1 = np.array([[0., 0.], [0., 1.]])
+        proj_to_0 = np.array([[1.0, 0.0], [0.0, 0.0]])
+        proj_to_1 = np.array([[0.0, 0.0], [0.0, 1.0]])
         sites = self.ptn.output_nodes
-        assert number < 2**len(sites)
+        assert number < 2 ** len(sites)
         ops = []
         for i in range(len(sites)):
-            exp = len(sites) - 1 -i
-            if (number // 2**exp) == 1:
+            exp = len(sites) - 1 - i
+            if (number // 2 ** exp) == 1:
                 op = proj_to_1
-                number -= 2**exp
+                number -= 2 ** exp
             else:
                 op = proj_to_0
             ops.append(op)
         qargs = range(len(sites))
         probability = self.expectation_value_ops(ops, qargs)
         return abs(probability)
-
