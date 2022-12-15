@@ -6,8 +6,7 @@ import numpy as np
 
 
 class Ops:
-    """ Basic single- and two-qubits operators
-    """
+    """Basic single- and two-qubits operators"""
 
     x = np.array([[0, 1], [1, 0]])
     y = np.array([[0, -1j], [1j, 0]])
@@ -20,7 +19,7 @@ class Ops:
 
     @staticmethod
     def Rx(theta):
-        """ x rotation
+        """x rotation
         Parameters
         ----------
         theta : float
@@ -34,7 +33,7 @@ class Ops:
 
     @staticmethod
     def Ry(theta):
-        """ y rotation
+        """y rotation
         Parameters
         ----------
         theta : float
@@ -48,7 +47,7 @@ class Ops:
 
     @staticmethod
     def Rz(theta):
-        """ z rotation
+        """z rotation
         Parameters
         ----------
         theta : float

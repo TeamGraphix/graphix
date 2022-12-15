@@ -15,7 +15,7 @@ jobs:
           python-version: 3.8
 
       - name: Install black
-        run: pip install black
+        run: pip install black==22.8.0
 
       - uses: actions/checkout@v2
 

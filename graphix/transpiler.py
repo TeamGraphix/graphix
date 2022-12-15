@@ -154,7 +154,7 @@ class Circuit:
         self.instruction.append(["I", qubit])
 
     def transpile(self):
-        """ gate-to-MBQC transpile function.
+        """gate-to-MBQC transpile function.
 
         Returns
         --------
@@ -220,7 +220,7 @@ class Circuit:
         return pattern
 
     def standardize_and_transpile(self):
-        """ gate-to-MBQC transpile function.
+        """gate-to-MBQC transpile function.
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
 
@@ -460,7 +460,7 @@ class Circuit:
             self._commute_with_following(target)
 
     def _commute_with_following(self, target):
-        """ Internal method to perform the commutation of
+        """Internal method to perform the commutation of
         two consecutive commands that commutes.
         commutes the target command with the following command.
 
@@ -474,7 +474,7 @@ class Circuit:
         self._instr.insert(target, A)
 
     def _find_byproduct_to_move(self, rev=False, skipnum=0):
-        """ Internal method for reordering commands
+        """Internal method for reordering commands
         Parameters
         ----------
         rev : bool
@@ -501,8 +501,7 @@ class Circuit:
         return target
 
     def _move_byproduct_to_right(self):
-        """Internal method to move the byproduct 'gate' to the end of sequence, using the commutation relations
-        """
+        """Internal method to move the byproduct 'gate' to the end of sequence, using the commutation relations"""
         moved = 0  # number of moved op
         target = self._find_byproduct_to_move(rev=True, skipnum=moved)
         while target != "end":
@@ -529,7 +528,7 @@ class Circuit:
 
     @classmethod
     def _cnot_command(self, control_node, target_node, ancilla):
-        """ MBQC commands for CNOT gate
+        """MBQC commands for CNOT gate
 
         Parameters
         ---------

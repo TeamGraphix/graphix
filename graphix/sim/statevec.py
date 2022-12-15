@@ -6,8 +6,7 @@ from scipy.linalg import norm
 
 
 class StatevectorBackend:
-    """MBQC simulator with statevector method.
-    """
+    """MBQC simulator with statevector method."""
 
     def __init__(self, pattern, max_qubit_num=20):
         """
@@ -43,8 +42,7 @@ class StatevectorBackend:
         return len(self.state.dims())
 
     def initialize(self):
-        """Initialize the internal statevector
-        """
+        """Initialize the internal statevector"""
         self.state = None
 
     def add_nodes(self, nodes):
@@ -67,7 +65,7 @@ class StatevectorBackend:
             self.trace_out()
 
     def entangle_nodes(self, edge):
-        """ Apply CZ gate to two connected nodes
+        """Apply CZ gate to two connected nodes
 
         Parameters
         ----------
@@ -130,8 +128,7 @@ class StatevectorBackend:
         self.state.normalize()
 
     def trace_out(self):
-        """trace out the qubits buffered in self.to_trace from self.state
-        """
+        """trace out the qubits buffered in self.to_trace from self.state"""
         self.state.normalize()
         self.state.ptrace(self.to_trace_loc)
         for node in self.to_trace:
@@ -198,8 +195,7 @@ SWAP_TENSOR = np.array(
 
 
 class Statevec:
-    """Simple statevector simulator
-    """
+    """Simple statevector simulator"""
 
     def __init__(self, plus_states=True, nqubit=1):
         """Initialize statevector
@@ -209,7 +205,7 @@ class Statevec:
             nqubit (int, optional): number of qubits. Defaults to 1.
         """
         if plus_states:
-            self.psi = np.ones((2,) * nqubit) / np.sqrt(2 ** nqubit)
+            self.psi = np.ones((2,) * nqubit) / np.sqrt(2**nqubit)
         else:
             self.psi = np.zeros((2,) * nqubit)
             self.psi[(0,) * nqubit] = 1
@@ -252,7 +248,7 @@ class Statevec:
         nqubit_after = len(self.psi.shape) - len(qargs)
         psi = self.psi
         rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
-        rho = np.reshape(rho, (2 ** nqubit_after, 2 ** nqubit_after))
+        rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
@@ -306,8 +302,7 @@ class Statevec:
         self.psi = self.psi / norm(self.psi)
 
     def flatten(self):
-        """returns flattened statevector
-        """
+        """returns flattened statevector"""
         return self.psi.flatten()
 
     def expectation_single(self, op, loc):

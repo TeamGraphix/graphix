@@ -26,7 +26,7 @@ class MPS:
             cut off threshold for SVD decomposition. truncate maximum number of singular values within truncation_err
         graph_prep : str
             'sequential' for standard method, 'opt' for faster method
-            """
+        """
         nodes, edges = pattern.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -273,7 +273,7 @@ class MPS:
             m_op = meas_op(angle, plane=cmd[2], choice=result)
 
         # the procedure described below tends to keep the norm of MPS
-        buffer = 2 ** 0.5
+        buffer = 2**0.5
         m_op = m_op * buffer
 
         node_op = tn.Node(m_op)
@@ -450,9 +450,9 @@ class MPS:
         ops = []
         for i in range(len(sites)):
             exp = len(sites) - 1 - i
-            if (number // 2 ** exp) == 1:
+            if (number // 2**exp) == 1:
                 op = proj_to_1
-                number -= 2 ** exp
+                number -= 2**exp
             else:
                 op = proj_to_0
             ops.append(op)

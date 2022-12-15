@@ -8,7 +8,7 @@ import tests.random_circuit as rc
 
 def random_op(sites, dtype=np.complex64, seed=0):
     np.random.seed(seed)
-    size = 2 ** sites
+    size = 2**sites
     if dtype is np.complex64:
         return np.random.randn(size, size).astype(np.float32) + 1j * np.random.randn(size, size).astype(np.float32)
     if dtype is np.complex128:
@@ -77,7 +77,8 @@ class TestMPS(unittest.TestCase):
         value1 = state.expectation_value(random_op1, [0])
         value2 = mps_mbqc.expectation_value(random_op1, [0])
         np.testing.assert_almost_equal(
-            value1, value2,
+            value1,
+            value2,
         )
 
     def test_s(self):
@@ -210,9 +211,9 @@ class TestMPS(unittest.TestCase):
         pattern.standardize()
         state = circuit.simulate_statevector().flatten()
         mps_mbqc = pattern.simulate_pattern(backend="mps")
-        prob_circ = np.zeros(2 ** nqubits)
-        prob_mbqc = np.zeros(2 ** nqubits)
-        for i in range(2 ** nqubits):
+        prob_circ = np.zeros(2**nqubits)
+        prob_mbqc = np.zeros(2**nqubits)
+        for i in range(2**nqubits):
             prob_circ[i] = abs(state[i]) ** 2
             prob_mbqc[i] = mps_mbqc.get_amplitude(i)
         np.testing.assert_almost_equal(prob_circ, prob_mbqc)

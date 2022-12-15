@@ -168,7 +168,7 @@ class Pattern:
         self._move_E_after_N()
 
     def is_standard(self):
-        """ determines whether the command sequence is standard
+        """determines whether the command sequence is standard
 
         Returns
         -------
@@ -192,7 +192,7 @@ class Pattern:
         return result
 
     def shift_signals(self):
-        """ Performs signal shifting procedure
+        """Performs signal shifting procedure
         Extract the t-dependence of the measurement into 'S' commands
         and commute them towards the end of the command sequence,
         where it can be deleted.
@@ -224,7 +224,7 @@ class Pattern:
             target += 1
 
     def _find_op_to_be_moved(self, op, rev=False, skipnum=0):
-        """ Internal method for pattern modification.
+        """Internal method for pattern modification.
 
         Parameters
         ----------
@@ -254,7 +254,7 @@ class Pattern:
         return target
 
     def _commute_EX(self, target):
-        """ Internal method to perform the commutation of E and X.
+        """Internal method to perform the commutation of E and X.
         Parameters
         ----------
         target : int
@@ -282,7 +282,7 @@ class Pattern:
             return False
 
     def _commute_MX(self, target):
-        """ Internal method to perform the commutation of M and X.
+        """Internal method to perform the commutation of M and X.
 
         Parameters
         ----------
@@ -303,7 +303,7 @@ class Pattern:
             return False
 
     def _commute_MZ(self, target):
-        """ Internal method to perform the commutation of M and Z.
+        """Internal method to perform the commutation of M and Z.
 
         Parameters
         ----------
@@ -324,7 +324,7 @@ class Pattern:
             return False
 
     def _commute_XS(self, target):
-        """ Internal method to perform the commutation of X and S.
+        """Internal method to perform the commutation of X and S.
 
         Parameters
         ----------
@@ -341,7 +341,7 @@ class Pattern:
         self._commute_with_following(target)
 
     def _commute_ZS(self, target):
-        """ Internal method to perform the commutation of Z and S.
+        """Internal method to perform the commutation of Z and S.
 
         Parameters
         ----------
@@ -358,7 +358,7 @@ class Pattern:
         self._commute_with_following(target)
 
     def _commute_MS(self, target):
-        """ Internal method to perform the commutation of M and S.
+        """Internal method to perform the commutation of M and S.
 
         Parameters
         ----------
@@ -377,7 +377,7 @@ class Pattern:
         self._commute_with_following(target)
 
     def _commute_SS(self, target):
-        """ Internal method to perform the commutation of two S commands.
+        """Internal method to perform the commutation of two S commands.
         Parameters
         ----------
         target : int
@@ -393,7 +393,7 @@ class Pattern:
         self._commute_with_following(target)
 
     def _commute_with_following(self, target):
-        """ Internal method to perform the commutation of
+        """Internal method to perform the commutation of
         two consecutive commands that commutes.
         commutes the target command with the following command.
 
@@ -407,7 +407,7 @@ class Pattern:
         self.seq.insert(target, A)
 
     def _commute_with_preceding(self, target):
-        """ Internal method to perform the commutation of
+        """Internal method to perform the commutation of
         two consecutive commands that commutes.
         commutes the target command with the preceding command.
 
@@ -742,8 +742,7 @@ class Pattern:
         return node_list
 
     def correction_commands(self):
-        """Returns the list of byproduct correction commands
-        """
+        """Returns the list of byproduct correction commands"""
         assert self.is_standard()
         Clist = []
         for i in range(len(self.seq)):
