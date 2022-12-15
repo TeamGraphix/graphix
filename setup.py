@@ -3,16 +3,17 @@ from setuptools import setup, find_packages
 with open("README.md", "r", encoding = "utf-8") as fh:
     long_description = fh.read()
 
+version = {}
+with open("graphix/version.py") as fp:
+    exec(fp.read(), version)
+
 requirements = [
-    "numpy>=1.22,<1.24",
-    "networkx>=2.8,<3.0",
-    "z3-solver",
-    "tensornetwork>=0.4"
+    requirement.strip() for requirement in open('requirements.txt').readlines()
 ]
 
 info = {
     'name': 'graphix',
-    'version': '0.1.0',
+    'version': version['__version__'],
     'packages': find_packages(),
     'author': 'Shinichi Sunami',
     'author_email': 'shinichi.sunami@gmail.com',
@@ -35,7 +36,7 @@ info = {
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    'python_requires': ">=3.7",
+    'python_requires': ">=3.8",
     'install_requires': requirements,
 }
 
