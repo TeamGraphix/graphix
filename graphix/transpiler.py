@@ -347,7 +347,7 @@ class Circuit:
         command_seq = []
         for cmd in self._N:
             command_seq.append(cmd)
-        for cmd in self._E:
+        for cmd in reversed(self._E):
             command_seq.append(cmd)
         for cmd in self._M:
             command_seq.append(cmd)
