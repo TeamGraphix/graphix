@@ -1020,7 +1020,7 @@ def pauli_nodes(pattern):
     non_pauli_node = []
     for cmd in m_commands:
         if cmd[3] in [-1, 0, 1]:  # \pm X Pauli measurement
-            t_cond = np.any(np.isin(cmd[5], non_pauli_node))
+            t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
             if t_cond:  # cmd depend on non-Pauli measurement
                 non_pauli_node.append(cmd)
             else:  # cmd do not depend on non-Pauli measurements
@@ -1028,8 +1028,8 @@ def pauli_nodes(pattern):
                 # because change of sign will do nothing
                 pauli_node.append(cmd)
         elif cmd[3] in [-0.5, 0.5]:  # \pm Y Pauli measurement
-            s_cond = np.any(np.isin(cmd[4], non_pauli_node))
-            t_cond = np.any(np.isin(cmd[5], non_pauli_node))
+            s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
+            t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
             if s_cond or t_cond:  # cmd depend on non-pauli measurement
                 non_pauli_node.append(cmd)
             else:
