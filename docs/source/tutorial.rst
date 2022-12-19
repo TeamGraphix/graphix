@@ -9,9 +9,9 @@ We will explain the basics here along with the code, and you can go to :doc:`int
 Generating measurement patterns
 -------------------------------
 
-First, install ``graphix`` by cloning the `repository <https://github.com/TeamGraphix/graphix>`_, ``cd`` to ``graphix`` directory and running
+First, install ``graphix`` by
 
->>> python setup.py develop
+>>> pip install graphix
 
 Graphix is centered around the measurement `pattern`, which is a sequence of commands such as qubit preparattion, entanglement and single-qubit measurement commands.
 The most basic measurement pattern is that for realizing Hadamard gate, which we will use to see how `graphix` works.

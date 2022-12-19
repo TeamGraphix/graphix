@@ -264,8 +264,8 @@ class Statevec:
         self.psi = np.moveaxis(self.psi, (0, 1), edge)
 
     def tensor(self, other):
-        """Tensor product state with other qubits.
-        Results in self \otimes other.
+        r"""Tensor product state with other qubits.
+        Results in self :math:`\otimes` other.
 
         Args:
             other (_type_): graphix.sim.statevec.Statevec instance
