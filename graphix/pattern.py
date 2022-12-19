@@ -123,12 +123,12 @@ class Pattern:
                 count += 1
                 if len(self.seq[i]) == 6:
                     print(
-                        f"M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}"
+                        f"M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, "
                         + f"s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}"
                     )
                 elif len(self.seq[i]) == 7:
                     print(
-                        f"M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}"
+                        f"M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, "
                         + f"s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}, Clifford index = {self.seq[i][6]}"
                     )
             elif self.seq[i][0] == "X" and ("X" in filter):
