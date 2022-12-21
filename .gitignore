@@ -4,3 +4,4 @@
 **egg-info
 **/.DS_Store
 **/build
+dist/*

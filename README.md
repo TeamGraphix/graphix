@@ -2,6 +2,8 @@
 
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/graphix)
+![PyPI](https://img.shields.io/pypi/v/graphix)
 
 **Graphix** is an open-source library to optimize and simulate measurement-based quantum computing (MBQC). 
 
@@ -20,7 +22,9 @@ $ pip install graphix
 
 ## Next Steps
 
-Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html).
+Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) to learn how to use `Graphix`. We also have a few demos [here](https://graphix.readthedocs.io/en/latest/algorithms.html) (more will be added).
+
+For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
 
 ## Citing
 
