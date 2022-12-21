@@ -41,7 +41,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, width):
+    def __init__(self, width=0):
         """
         :param width:  number of input/output qubits
         """
@@ -86,7 +86,21 @@ class Pattern:
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             self.Nnode += 1
+            self.output_nodes.append(cmd[1])
+        elif cmd[0] == "M":
+            self.output_nodes.remove(cmd[1])
         self.seq.append(cmd)
+
+    def set_output_nodes(self, output_nodes):
+        """arrange the order of output_nodes.
+
+        Parameters
+        ----------
+        output_nodes: list of int
+            output nodes order determined by user. each index corresponds to that of logical qubits.
+        """
+        assert set(self.output_nodes) == set(output_nodes)
+        self.output_nodes = output_nodes
 
     def __repr__(self):
         return f"graphix.pattern.Pattern object with {len(self.seq)} commands and {self.width} output qubits"
