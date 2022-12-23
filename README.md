@@ -28,7 +28,8 @@ For theoretical background, read our quick introduction into [MBQC](https://grap
 
 ## Citing
 
-A paper will be out soon, stay tuned.
+> S. Sunami and M. Fukushima. "Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph", 
+> [arXiv:2212.11975](https://arxiv.org/abs/2212.11975) (2022).
 
 ## Contributing
 
