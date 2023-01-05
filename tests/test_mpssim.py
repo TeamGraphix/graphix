@@ -62,7 +62,7 @@ class TestMPS(unittest.TestCase):
             value1 = state.expectation_value(random_op1, list(qargs))
             value2 = mps_mbqc.expectation_value(random_op1, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
-    
+
     def test_expectation_value3_subspace2(self):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
