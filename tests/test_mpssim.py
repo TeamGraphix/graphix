@@ -51,6 +51,30 @@ class TestMPS(unittest.TestCase):
             value2 = mps_mbqc.expectation_value(random_op3, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
 
+    def test_expectation_value3_subspace1(self):
+        circuit = Circuit(3)
+        state = circuit.simulate_statevector()
+        pattern = circuit.transpile()
+        mps_mbqc = pattern.simulate_pattern(backend="mps")
+        random_op1 = random_op(1)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input, 1):
+            value1 = state.expectation_value(random_op1, list(qargs))
+            value2 = mps_mbqc.expectation_value(random_op1, list(qargs))
+            np.testing.assert_almost_equal(value1, value2)
+
+    def test_expectation_value3_subspace2(self):
+        circuit = Circuit(3)
+        state = circuit.simulate_statevector()
+        pattern = circuit.transpile()
+        mps_mbqc = pattern.simulate_pattern(backend="mps")
+        random_op2 = random_op(2)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input, 2):
+            value1 = state.expectation_value(random_op2, list(qargs))
+            value2 = mps_mbqc.expectation_value(random_op2, list(qargs))
+            np.testing.assert_almost_equal(value1, value2)
+
     def test_expectation_value_ops3(self):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
