@@ -2,7 +2,7 @@ alabaster==0.7.12
     # via sphinx
 babel==2.10.1
     # via sphinx
-certifi==2021.10.8
+certifi==2022.12.07
     # via requests
 charset-normalizer==2.0.12
     # via requests
@@ -59,3 +59,7 @@ urllib3==1.26.9
     # via requests
 zipp==3.8.0
     # via importlib-metadata
+
+# for spinx gallery
+sphinx-gallery==0.11.1
+graphix

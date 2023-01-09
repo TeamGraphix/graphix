@@ -12,7 +12,7 @@ Graphix - optimizing and simulating MBQC
 
    tutorial
    why-lcmbqc
-   algorithms
+   gallery/index
    references
 
 .. toctree::
