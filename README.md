@@ -22,9 +22,15 @@ $ pip install graphix
 
 ## Next Steps
 
-Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) to learn how to use `Graphix`. We also have a few demos [here](https://graphix.readthedocs.io/en/latest/algorithms.html) (more will be added).
+- We have a few [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing basic usages of `Graphix`.
+- You can run demos on your browser:
+  - Preprocessing Clifford gates: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=deutsch-jozsa.ipynb)
+  - Using MPS simulator: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_mps.ipynb)
+  - QAOA circuit: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qaoa.ipynb)
 
-For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
+- Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more comprehensive guide.
+
+- For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
 
 ## Citing
 

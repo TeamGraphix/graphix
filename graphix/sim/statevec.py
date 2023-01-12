@@ -234,7 +234,7 @@ class Statevec:
         shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
         self.psi = np.tensordot(op_tensor, self.psi, (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)))
-        self.psi = np.moveaxis(self.psi, [i for i in range(len(self.dims()))], qargs)
+        self.psi = np.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
 
     def dims(self):
         return self.psi.shape

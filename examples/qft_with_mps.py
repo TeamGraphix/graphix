@@ -1,9 +1,24 @@
 """
-Running larger QFT with MBQC on MPS simulator
+Using MPS simulator
+===================
+
+In this example, we demonstrate the matrix product state (MPS) simulator to simulate MBQC
+with up to thousands of nodes at a time, without the need for approximation which is often present for circuit-MPS simulators.
+
+You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
+
+.. image:: https://mybinder.org/badge_logo.svg
+ :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_mps.ipynb
+
+
+We will simulate n-qubit QFT circuit.
+Firstly, let us import relevant modules:
 """
 
-from graphix.transpiler import Circuit
 import numpy as np
+from graphix import Circuit
+import networkx as nx
+import matplotlib.pyplot as plt
 
 
 def cp(circuit, theta, control, target):
@@ -42,11 +57,13 @@ def qft(circuit, n):
     swap_registers(circuit, n)
 
 
+#%%
+# We will simulate 7-qubit QFT, which requires nearly 250 nodes to be simulated.
+
 n = 7
 print("{}-qubit QFT".format(n))
 circuit = Circuit(n)
 
-# get |0> input states, from default |+> states
 for i in range(n):
     circuit.h(i)
 qft(circuit, n)
@@ -54,9 +71,22 @@ qft(circuit, n)
 # standardize pattern
 pattern = circuit.transpile()
 pattern.standardize()
-print("Simulating {}-node MBQC".format(pattern.max_space()))
+nodes, edges = pattern.get_graph()
+g = nx.Graph()
+g.add_nodes_from(nodes)
+g.add_edges_from(edges)
+np.random.seed(100)
+nx.draw(g)
+plt.show()
+print(len(nodes))
 
-# execute pattern on mps backend
+#%%
+# You can easily check that the below code run without much load on the computer.
+# Also notice that we have not used :meth:`graphix.pattern.Pattern.minimize_space()`,
+# which we know reduced the burden on the simulator.
+# To specify MPS backend of the simulation, simply provide as a keyword argument.
+# here we do a very basic check that the state is what is is expected to be:
+
 mps = pattern.simulate_pattern(backend="mps")
 value = mps.get_amplitude(0)
 print("amplitude of |00000> is ", value)
