@@ -309,7 +309,14 @@ class Pattern:
         X = self.seq[target]
         M = self.seq[target + 1]
         if X[1] == M[1]:  # s to s+r
-            M[4].extend(X[2])
+            if len(M) == 7:
+                vop = M[6]
+            else:
+                vop = 0
+            if M[2] == "YZ" or vop == 6:
+                M[5].extend(X[2])
+            elif M[2] == "XY":
+                M[4].extend(X[2])
             self.seq.pop(target)  # del X
             return True
         else:
@@ -330,7 +337,14 @@ class Pattern:
         Z = self.seq[target]
         M = self.seq[target + 1]
         if Z[1] == M[1]:
-            M[5].extend(Z[2])
+            if len(M) == 7:
+                vop = M[6]
+            else:
+                vop = 0
+            if M[2] == "YZ" or vop == 6:
+                M[4].extend(Z[2])
+            elif M[2] == "XY":
+                M[5].extend(Z[2])
             self.seq.pop(target)  # del Z
             return True
         else:
@@ -513,11 +527,12 @@ class Pattern:
         while pos < len(self.seq):
             cmd = self.seq[pos]
             if cmd[0] == "M":
-                node = cmd[1]
-                if cmd[5]:
-                    self.seq.insert(pos + 1, ["S", node, cmd[5]])
-                    cmd[5] = []
-                    pos += 1
+                if cmd[2] == "XY":
+                    node = cmd[1]
+                    if cmd[5]:
+                        self.seq.insert(pos + 1, ["S", node, cmd[5]])
+                        cmd[5] = []
+                        pos += 1
             pos += 1
 
     def _get_dependency(self):
@@ -721,6 +736,21 @@ class Pattern:
                 edge_list.append(cmd[1])
         return node_list, edge_list
 
+    def get_vops(self):
+        vops = dict()
+        for cmd in self.seq:
+            if cmd[0] == "M":
+                if len(cmd) == 7:
+                    vops[cmd[1]] = cmd[6]
+                else:
+                    vops[cmd[1]] = 0
+            elif cmd[0] == "C":
+                vops[cmd[1]] = cmd[2]
+        for out in self.output_nodes:
+            if out not in vops.keys():
+                vops[out] = 0
+        return vops
+
     def connected_nodes(self, node, prepared=None):
         """Find nodes that are connected to a specified node.
         These nodes must be in the statevector when the specified
@@ -873,7 +903,7 @@ class Pattern:
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector']
+        Available backend: ['statevector', 'mps']
 
         Parameters
         ----------
@@ -890,7 +920,7 @@ class Pattern:
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
         state = sim.run()
-        return state
+        return state, sim
 
     def perform_pauli_measurements(self):
         """Perform Pauli measurements in the pattern using
@@ -952,6 +982,7 @@ def measure_pauli(pattern, copy=False):
     if not pattern.is_standard():
         pattern.standardize()
     nodes, edges = pattern.get_graph()
+    vop_init = pattern.get_vops()
     graph_state = GraphState(nodes=nodes, edges=edges)
     results = {}
     to_measure = pauli_nodes(pattern)
@@ -974,8 +1005,8 @@ def measure_pauli(pattern, copy=False):
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
 
     # measure (remove) isolated nodes. since they aren't Pauli measurements,
-    # measuring one of the results with possibility of 1 should not occur as was possible above for Pauli measurements,
-    # which means we can just choose 0. We should not remove output nodes even if isolated.
+    # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
+    # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = list(nx.isolates(graph_state))
     for i in isolates:
         if i not in pattern.output_nodes:
