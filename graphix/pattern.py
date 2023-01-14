@@ -5,7 +5,7 @@ import numpy as np
 import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MUL
 from copy import deepcopy
 
 
@@ -736,25 +736,47 @@ class Pattern:
                 edge_list.append(cmd[1])
         return node_list, edge_list
 
-    def get_vops(self, conj=False):
+    def get_vops(self, conj=False, include_identity=False):
+        """Get local-Clifford decorations from measurement or Clifford commands.
+
+        Parameters
+        ----------
+            conj (False) : bool, optional
+                Apply conjugations to all local Clifford operators.
+            include_identity (False) : bool, optional
+                Whether or not to include identity gates in the output
+
+        Returns:
+            vops : dict
+        """
         vops = dict()
         for cmd in self.seq:
             if cmd[0] == "M":
                 if len(cmd) == 7:
-                    if conj:
-                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
+                    if cmd[6] == 0:
+                        if include_identity:
+                            vops[cmd[1]] = cmd[6]
                     else:
-                        vops[cmd[1]] = cmd[6]
+                        if conj:
+                            vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
+                        else:
+                            vops[cmd[1]] = cmd[6]
                 else:
-                    vops[cmd[1]] = 0
+                    if include_identity:
+                        vops[cmd[1]] = 0
             elif cmd[0] == "C":
-                if conj:
-                    vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
+                if cmd[2] == 0:
+                    if include_identity:
+                        vops[cmd[1]] = cmd[2]
                 else:
-                    vops[cmd[1]] = cmd[2]
+                    if conj:
+                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
+                    else:
+                        vops[cmd[1]] = cmd[2]
         for out in self.output_nodes:
             if out not in vops.keys():
-                vops[out] = 0
+                if include_identity:
+                    vops[out] = 0
         return vops
 
     def connected_nodes(self, node, prepared=None):
@@ -989,7 +1011,7 @@ def measure_pauli(pattern, copy=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=True)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
+    graph_state = GraphState(nodes=nodes, edges=edges)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
@@ -1034,11 +1056,20 @@ def measure_pauli(pattern, copy=False):
         if cmd[0] == "M":
             if cmd[1] in list(graph_state.nodes):
                 cmd_new = deepcopy(cmd)
-                cmd_new.append(CLIFFORD_CONJ[vops[cmd[1]]])
+                new_clifford_ = CLIFFORD_CONJ[vops[cmd[1]]]
+                if cmd[1] in vop_init.keys():
+                    new_clifford_ = CLIFFORD_MUL[vop_init[cmd[1]], new_clifford_]
+                if len(cmd_new) == 7:
+                    cmd_new[6] = new_clifford_
+                else:
+                    cmd_new.append(new_clifford_)
                 new_seq.append(cmd_new)
     for index in pattern.output_nodes:
-        if not vops[index] == 0:
-            new_seq.append(["C", index, vops[index]])
+        new_clifford_ = vops[index]
+        if index in vop_init.keys():
+            new_clifford_ = CLIFFORD_MUL[vop_init[index], new_clifford_]
+        if new_clifford_ != 0:
+            new_seq.append(["C", index, new_clifford_])
     for cmd in pattern.seq:
         if cmd[0] == "X" or cmd[0] == "Z":
             new_seq.append(cmd)
@@ -1092,7 +1123,7 @@ def pauli_nodes(pattern):
                 else:
                     pauli_node.append(cmd)
         else:
-            raise NotImplementedError('YZ and XZ plane measurements not considered for pauli_node')
+            raise NotImplementedError("YZ and XZ plane measurements not considered for pauli_node")
     return pauli_node, non_pauli_node
 
 

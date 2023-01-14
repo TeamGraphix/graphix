@@ -42,8 +42,10 @@ g.add_nodes_from(nodes)
 g.add_edges_from(edges)
 
 #%%
-# script to specify graph node positions and colors
-# we work out how nodes should be connected using flow-finding algorithm
+# script to specify graph node positions and colors.
+#
+# We work out how to place nodes on the plot, by using the flow-finding algorithm.
+
 
 from graphix.gflow import flow
 

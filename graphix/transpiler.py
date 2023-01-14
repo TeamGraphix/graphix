@@ -177,6 +177,11 @@ class Circuit:
     def transpile(self, opt=False):
         """gate-to-MBQC transpile function.
 
+        Parameters
+        ----------
+        opt : bool
+            Whether or not to use pre-optimized gateset with local-Clifford decoration.
+
         Returns
         --------
         pattern : :class:`graphix.pattern.Pattern` object
@@ -243,12 +248,16 @@ class Circuit:
             elif instr[0] == "Rzz":
                 if opt:
                     ancilla = Nnode
-                    out[instr[1][0]], out[instr[1][1]], seq =\
-                        self._rzz_command_opt(out[instr[1][0]], out[instr[1][1]], ancilla, instr[2])
+                    out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
+                        out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
+                    )
                     pattern.seq.extend(seq)
                     Nnode += 1
                 else:
-                    raise NotImplementedError("YZ-plane measurements not accepted and Rzz gate cannot be directly transpiled")
+                    raise NotImplementedError(
+                        "YZ-plane measurements not accepted and Rzz gate\
+                        cannot be directly transpiled"
+                    )
             else:
                 raise ValueError("Unknown instruction, commands not added")
         pattern.output_nodes = out
@@ -259,6 +268,11 @@ class Circuit:
         """gate-to-MBQC transpile function.
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
+
+        Parameters
+        ----------
+        opt : bool
+            Whether or not to use pre-optimized gateset with local-Clifford decoration.
 
         Returns
         --------
@@ -387,8 +401,9 @@ class Circuit:
                     Nnode += 2
             elif instr[0] == "Rzz":
                 ancilla = Nnode
-                out[instr[1][0]], out[instr[1][1]], seq =\
-                    self._rzz_command_opt(out[instr[1][0]], out[instr[1][1]], ancilla, instr[2])
+                out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
+                    out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
+                )
                 self._N.append(seq[0])
                 self._E.extend(seq[1:3])
                 self._M.append(seq[3])

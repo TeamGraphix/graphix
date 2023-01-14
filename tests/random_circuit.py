@@ -23,12 +23,20 @@ def entangler(circuit, pairs):
         circuit.cnot(a, b)
 
 
-def generate_gate(nqubits, depth, pairs):
+def entangler_rzz(circuit, pairs):
+    for a, b in pairs:
+        circuit.rzz(a, b, np.random.rand())
+
+
+def generate_gate(nqubits, depth, pairs, use_rzz=False):
     circuit = Circuit(nqubits)
     first_rotation(circuit, nqubits)
     entangler(circuit, pairs)
     for k in range(depth - 1):
         mid_rotation(circuit, nqubits)
-        entangler(circuit, pairs)
+        if use_rzz:
+            entangler_rzz(circuit, pairs)
+        else:
+            entangler(circuit, pairs)
     last_rotation(circuit, nqubits)
     return circuit
