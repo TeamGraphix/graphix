@@ -7,7 +7,7 @@ M. Elliot, B. Eastin & C. Caves,
 """
 import networkx as nx
 import numpy as np
-from graphix.clifford import CLIFFORD_MUL
+from graphix.clifford import CLIFFORD_MUL, CLIFFORD_HSZ_DECOMPOSITION
 from graphix.sim.statevec import Statevec
 from graphix.ops import Ops
 
@@ -27,7 +27,7 @@ class GraphState(nx.Graph):
         :`loop`: True if node has loop
     """
 
-    def __init__(self, nodes=None, edges=None):
+    def __init__(self, nodes=None, edges=None, vops=None):
         """
         Parameters
         ----------
@@ -35,15 +35,35 @@ class GraphState(nx.Graph):
             A container of nodes (list, dict, etc)
         edges : list
             list of tuples (i,j) for pairs to be entangled.
+        vops : dict
+            dict of local Clifford gates with keys for node indices and
+            values for Clifford index (see graphix.clifford.CLIFFORD)
         """
         super().__init__()
-        if nodes is not None and edges is not None:
+        if nodes is not None:
             self.add_nodes_from(nodes)
+        if edges is not None:
             self.add_edges_from(edges)
-        elif nodes is not None:
-            self.add_nodes_from(np.arange(nodes))
-        elif edges is not None:
-            self.add_edges_from(edges)
+        if vops is not None:
+            self.apply_vops(vops)
+
+    def apply_vops(self, vops):
+        """Apply local Clifford operators to the graph state from a dictionary
+
+        Parameters
+        ----------
+            vops : dict
+                dict containing node indices as keys and
+                local Clifford indices as values (see graphix.clifford.CLIFFORD)
+        """
+        for node, vop in vops.items():
+            for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
+                if lc == 3:
+                    self.z(node)
+                elif lc == 6:
+                    self.h(node)
+                elif lc == 4:
+                    self.s(node)
 
     def add_nodes_from(self, nodes):
         """Add nodes and initialize node properties.

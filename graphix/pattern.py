@@ -736,16 +736,22 @@ class Pattern:
                 edge_list.append(cmd[1])
         return node_list, edge_list
 
-    def get_vops(self):
+    def get_vops(self, conj=False):
         vops = dict()
         for cmd in self.seq:
             if cmd[0] == "M":
                 if len(cmd) == 7:
-                    vops[cmd[1]] = cmd[6]
+                    if conj:
+                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
+                    else:
+                        vops[cmd[1]] = cmd[6]
                 else:
                     vops[cmd[1]] = 0
             elif cmd[0] == "C":
-                vops[cmd[1]] = cmd[2]
+                if conj:
+                    vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
+                else:
+                    vops[cmd[1]] = cmd[2]
         for out in self.output_nodes:
             if out not in vops.keys():
                 vops[out] = 0
@@ -920,7 +926,7 @@ class Pattern:
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
         state = sim.run()
-        return state, sim
+        return state
 
     def perform_pauli_measurements(self):
         """Perform Pauli measurements in the pattern using
@@ -965,7 +971,7 @@ def measure_pauli(pattern, copy=False):
 
     Parameters
     ----------
-    pattern : grgaphix.Pattern object
+    pattern : graphix.pattern.Pattern object
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
@@ -982,12 +988,12 @@ def measure_pauli(pattern, copy=False):
     if not pattern.is_standard():
         pattern.standardize()
     nodes, edges = pattern.get_graph()
-    vop_init = pattern.get_vops()
-    graph_state = GraphState(nodes=nodes, edges=edges)
+    vop_init = pattern.get_vops(conj=True)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
-    to_measure = pauli_nodes(pattern)
+    to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
-        # extract signals for adaptive angle
+        # extract signals for adaptive angle. Assumes XY plane measurements
         if np.mod(cmd[3], 2) in [0, 1]:  # \pm X Pauli measurement
             s_signal = 0  # X meaurement is not affected by s_signal
             t_signal = np.sum([results[j] for j in cmd[5]])
@@ -1004,14 +1010,18 @@ def measure_pauli(pattern, copy=False):
         elif np.mod(angle, 2) == 1.5:  # -y measurement
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
 
-    # measure (remove) isolated nodes. since they aren't Pauli measurements,
+    # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = list(nx.isolates(graph_state))
-    for i in isolates:
-        if i not in pattern.output_nodes:
-            graph_state.remove_node(i)
-            results[i] = 0
+    # for i in isolates:
+    #     if i not in pattern.output_nodes:
+    #         # check whether this is Pauli measurement
+    for cmd in non_pauli_meas:
+        if (cmd[1] in isolates) and (cmd[1] not in pattern.output_nodes):
+            print(cmd)
+            graph_state.remove_node(cmd[1])
+            results[cmd[1]] = 0
 
     # update command sequence
     vops = graph_state.get_vops()
@@ -1062,26 +1072,28 @@ def pauli_nodes(pattern):
         pattern.standardize()
     m_commands = pattern.get_measurement_order()
     pauli_node = []
+    # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node = []
     for cmd in m_commands:
-        if cmd[3] in [-1, 0, 1]:  # \pm X Pauli measurement
-            t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
-            if t_cond:  # cmd depend on non-Pauli measurement
-                non_pauli_node.append(cmd)
-            else:  # cmd do not depend on non-Pauli measurements
-                # note: s_signal is irrelevant for X measurements
-                # because change of sign will do nothing
-                pauli_node.append(cmd)
-        elif cmd[3] in [-0.5, 0.5]:  # \pm Y Pauli measurement
-            s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
-            t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
-            if s_cond or t_cond:  # cmd depend on non-pauli measurement
-                non_pauli_node.append(cmd)
-            else:
-                pauli_node.append(cmd)
+        if cmd[2] == "XY":
+            if cmd[3] in [-1, 0, 1]:  # Not affected by t dependency
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
+                if t_cond:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.append(cmd)
+                else:  # cmd do not depend on non-Pauli measurements
+                    # note: s_signal is irrelevant for X measurements
+                    # because change of sign will do nothing
+                    pauli_node.append(cmd)
+            elif cmd[3] in [-0.5, 0.5]:  # Affected by t dependency
+                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
+                if s_cond or t_cond:  # cmd depend on non-pauli measurement
+                    non_pauli_node.append(cmd)
+                else:
+                    pauli_node.append(cmd)
         else:
-            non_pauli_node.append(cmd)
-    return pauli_node
+            raise NotImplementedError('YZ and XZ plane measurements not considered for pauli_node')
+    return pauli_node, non_pauli_node
 
 
 def cmd_to_qasm3(cmd):
