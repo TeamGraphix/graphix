@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_MUL
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_MUL, CLIFFORD_HSZ_DECOMPOSITION
 
 
 class TestClifford(unittest.TestCase):
@@ -82,6 +82,13 @@ class TestClifford(unittest.TestCase):
         for i in range(24):
             arr = CLIFFORD[i].conjugate().T
             assert CLIFFORD_CONJ[i] == self.clifford_index(arr)
+
+    def test_decomposition(self):
+        for i in range(1, 24):
+            op = np.eye(2)
+            for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
+                op = op @ CLIFFORD[j]
+            assert i == self.clifford_index(op)
 
 
 if __name__ == "__main__":

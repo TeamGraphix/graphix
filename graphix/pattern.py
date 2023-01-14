@@ -5,7 +5,7 @@ import numpy as np
 import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MUL
 from copy import deepcopy
 
 
@@ -309,7 +309,14 @@ class Pattern:
         X = self.seq[target]
         M = self.seq[target + 1]
         if X[1] == M[1]:  # s to s+r
-            M[4].extend(X[2])
+            if len(M) == 7:
+                vop = M[6]
+            else:
+                vop = 0
+            if M[2] == "YZ" or vop == 6:
+                M[5].extend(X[2])
+            elif M[2] == "XY":
+                M[4].extend(X[2])
             self.seq.pop(target)  # del X
             return True
         else:
@@ -330,7 +337,14 @@ class Pattern:
         Z = self.seq[target]
         M = self.seq[target + 1]
         if Z[1] == M[1]:
-            M[5].extend(Z[2])
+            if len(M) == 7:
+                vop = M[6]
+            else:
+                vop = 0
+            if M[2] == "YZ" or vop == 6:
+                M[4].extend(Z[2])
+            elif M[2] == "XY":
+                M[5].extend(Z[2])
             self.seq.pop(target)  # del Z
             return True
         else:
@@ -513,11 +527,12 @@ class Pattern:
         while pos < len(self.seq):
             cmd = self.seq[pos]
             if cmd[0] == "M":
-                node = cmd[1]
-                if cmd[5]:
-                    self.seq.insert(pos + 1, ["S", node, cmd[5]])
-                    cmd[5] = []
-                    pos += 1
+                if cmd[2] == "XY":
+                    node = cmd[1]
+                    if cmd[5]:
+                        self.seq.insert(pos + 1, ["S", node, cmd[5]])
+                        cmd[5] = []
+                        pos += 1
             pos += 1
 
     def _get_dependency(self):
@@ -721,6 +736,49 @@ class Pattern:
                 edge_list.append(cmd[1])
         return node_list, edge_list
 
+    def get_vops(self, conj=False, include_identity=False):
+        """Get local-Clifford decorations from measurement or Clifford commands.
+
+        Parameters
+        ----------
+            conj (False) : bool, optional
+                Apply conjugations to all local Clifford operators.
+            include_identity (False) : bool, optional
+                Whether or not to include identity gates in the output
+
+        Returns:
+            vops : dict
+        """
+        vops = dict()
+        for cmd in self.seq:
+            if cmd[0] == "M":
+                if len(cmd) == 7:
+                    if cmd[6] == 0:
+                        if include_identity:
+                            vops[cmd[1]] = cmd[6]
+                    else:
+                        if conj:
+                            vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
+                        else:
+                            vops[cmd[1]] = cmd[6]
+                else:
+                    if include_identity:
+                        vops[cmd[1]] = 0
+            elif cmd[0] == "C":
+                if cmd[2] == 0:
+                    if include_identity:
+                        vops[cmd[1]] = cmd[2]
+                else:
+                    if conj:
+                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
+                    else:
+                        vops[cmd[1]] = cmd[2]
+        for out in self.output_nodes:
+            if out not in vops.keys():
+                if include_identity:
+                    vops[out] = 0
+        return vops
+
     def connected_nodes(self, node, prepared=None):
         """Find nodes that are connected to a specified node.
         These nodes must be in the statevector when the specified
@@ -873,7 +931,7 @@ class Pattern:
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector']
+        Available backend: ['statevector', 'mps']
 
         Parameters
         ----------
@@ -935,7 +993,7 @@ def measure_pauli(pattern, copy=False):
 
     Parameters
     ----------
-    pattern : grgaphix.Pattern object
+    pattern : graphix.pattern.Pattern object
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
@@ -952,11 +1010,12 @@ def measure_pauli(pattern, copy=False):
     if not pattern.is_standard():
         pattern.standardize()
     nodes, edges = pattern.get_graph()
+    vop_init = pattern.get_vops(conj=True)
     graph_state = GraphState(nodes=nodes, edges=edges)
     results = {}
-    to_measure = pauli_nodes(pattern)
+    to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
-        # extract signals for adaptive angle
+        # extract signals for adaptive angle. Assumes XY plane measurements
         if np.mod(cmd[3], 2) in [0, 1]:  # \pm X Pauli measurement
             s_signal = 0  # X meaurement is not affected by s_signal
             t_signal = np.sum([results[j] for j in cmd[5]])
@@ -973,14 +1032,18 @@ def measure_pauli(pattern, copy=False):
         elif np.mod(angle, 2) == 1.5:  # -y measurement
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
 
-    # measure (remove) isolated nodes. since they aren't Pauli measurements,
-    # measuring one of the results with possibility of 1 should not occur as was possible above for Pauli measurements,
-    # which means we can just choose 0. We should not remove output nodes even if isolated.
+    # measure (remove) isolated nodes. if they aren't Pauli measurements,
+    # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
+    # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = list(nx.isolates(graph_state))
-    for i in isolates:
-        if i not in pattern.output_nodes:
-            graph_state.remove_node(i)
-            results[i] = 0
+    # for i in isolates:
+    #     if i not in pattern.output_nodes:
+    #         # check whether this is Pauli measurement
+    for cmd in non_pauli_meas:
+        if (cmd[1] in isolates) and (cmd[1] not in pattern.output_nodes):
+            print(cmd)
+            graph_state.remove_node(cmd[1])
+            results[cmd[1]] = 0
 
     # update command sequence
     vops = graph_state.get_vops()
@@ -993,11 +1056,20 @@ def measure_pauli(pattern, copy=False):
         if cmd[0] == "M":
             if cmd[1] in list(graph_state.nodes):
                 cmd_new = deepcopy(cmd)
-                cmd_new.append(CLIFFORD_CONJ[vops[cmd[1]]])
+                new_clifford_ = CLIFFORD_CONJ[vops[cmd[1]]]
+                if cmd[1] in vop_init.keys():
+                    new_clifford_ = CLIFFORD_MUL[vop_init[cmd[1]], new_clifford_]
+                if len(cmd_new) == 7:
+                    cmd_new[6] = new_clifford_
+                else:
+                    cmd_new.append(new_clifford_)
                 new_seq.append(cmd_new)
     for index in pattern.output_nodes:
-        if not vops[index] == 0:
-            new_seq.append(["C", index, vops[index]])
+        new_clifford_ = vops[index]
+        if index in vop_init.keys():
+            new_clifford_ = CLIFFORD_MUL[vop_init[index], new_clifford_]
+        if new_clifford_ != 0:
+            new_seq.append(["C", index, new_clifford_])
     for cmd in pattern.seq:
         if cmd[0] == "X" or cmd[0] == "Z":
             new_seq.append(cmd)
@@ -1031,26 +1103,28 @@ def pauli_nodes(pattern):
         pattern.standardize()
     m_commands = pattern.get_measurement_order()
     pauli_node = []
+    # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node = []
     for cmd in m_commands:
-        if cmd[3] in [-1, 0, 1]:  # \pm X Pauli measurement
-            t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
-            if t_cond:  # cmd depend on non-Pauli measurement
-                non_pauli_node.append(cmd)
-            else:  # cmd do not depend on non-Pauli measurements
-                # note: s_signal is irrelevant for X measurements
-                # because change of sign will do nothing
-                pauli_node.append(cmd)
-        elif cmd[3] in [-0.5, 0.5]:  # \pm Y Pauli measurement
-            s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
-            t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
-            if s_cond or t_cond:  # cmd depend on non-pauli measurement
-                non_pauli_node.append(cmd)
-            else:
-                pauli_node.append(cmd)
+        if cmd[2] == "XY":
+            if cmd[3] in [-1, 0, 1]:  # Not affected by t dependency
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
+                if t_cond:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.append(cmd)
+                else:  # cmd do not depend on non-Pauli measurements
+                    # note: s_signal is irrelevant for X measurements
+                    # because change of sign will do nothing
+                    pauli_node.append(cmd)
+            elif cmd[3] in [-0.5, 0.5]:  # Affected by t dependency
+                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
+                if s_cond or t_cond:  # cmd depend on non-pauli measurement
+                    non_pauli_node.append(cmd)
+                else:
+                    pauli_node.append(cmd)
         else:
-            non_pauli_node.append(cmd)
-    return pauli_node
+            raise NotImplementedError("YZ and XZ plane measurements not considered for pauli_node")
+    return pauli_node, non_pauli_node
 
 
 def cmd_to_qasm3(cmd):

@@ -142,6 +142,27 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Rz", qubit, angle])
 
+    def rzz(self, control, target, angle):
+        r"""ZZ-rotation gate.
+        Equivalent to the sequence
+        CNOT(control, target),
+        Rz(target, angle),
+        CNOT(control, target)
+
+        and realizes rotation expressed by
+        :math:`e^{-i \frac{\theta}{2} Z_c Z_t}`.
+
+        Prameters
+        ---------
+        qubit : int
+            target qubit
+        angle : float
+            rotation angle in radian
+        """
+        assert control in np.arange(self.width)
+        assert target in np.arange(self.width)
+        self.instruction.append(["Rzz", [control, target], angle])
+
     def i(self, qubit):
         """identity (teleportation) gate
 
@@ -153,8 +174,13 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["I", qubit])
 
-    def transpile(self):
+    def transpile(self, opt=False):
         """gate-to-MBQC transpile function.
+
+        Parameters
+        ----------
+        opt : bool
+            Whether or not to use pre-optimized gateset with local-Clifford decoration.
 
         Returns
         --------
@@ -209,20 +235,44 @@ class Circuit:
                 pattern.seq.extend(seq)
                 Nnode += 4
             elif instr[0] == "Rz":
-                ancilla = [Nnode, Nnode + 1]
-                out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
-                pattern.seq.extend(seq)
-                Nnode += 2
+                if opt:
+                    ancilla = Nnode
+                    out[instr[1]], seq = self._rz_command_opt(out[instr[1]], ancilla, instr[2])
+                    pattern.seq.extend(seq)
+                    Nnode += 1
+                else:
+                    ancilla = [Nnode, Nnode + 1]
+                    out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
+                    pattern.seq.extend(seq)
+                    Nnode += 2
+            elif instr[0] == "Rzz":
+                if opt:
+                    ancilla = Nnode
+                    out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
+                        out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
+                    )
+                    pattern.seq.extend(seq)
+                    Nnode += 1
+                else:
+                    raise NotImplementedError(
+                        "YZ-plane measurements not accepted and Rzz gate\
+                        cannot be directly transpiled"
+                    )
             else:
                 raise ValueError("Unknown instruction, commands not added")
         pattern.output_nodes = out
         pattern.Nnode = Nnode
         return pattern
 
-    def standardize_and_transpile(self):
+    def standardize_and_transpile(self, opt=True):
         """gate-to-MBQC transpile function.
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
+
+        Parameters
+        ----------
+        opt : bool
+            Whether or not to use pre-optimized gateset with local-Clifford decoration.
 
         Returns
         --------
@@ -326,17 +376,43 @@ class Circuit:
                 self._instr.append(["ZC", instr[1], seq[13][2]])
                 Nnode += 4
             elif instr[0] == "Rz":
-                ancilla = [Nnode, Nnode + 1]
-                out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
-                self._N.extend(seq[0:2])
-                self._E.extend(seq[2:4])
-                self._M.extend(seq[4:6])
+                if opt:
+                    ancilla = Nnode
+                    out[instr[1]], seq = self._rz_command_opt(out[instr[1]], ancilla, instr[2])
+                    self._N.append(seq[0])
+                    self._E.append(seq[1])
+                    self._M.append(seq[2])
+                    instr_ = deepcopy(instr)
+                    instr_.append(len(self._M) - 1)  # index of arb angle measurement command
+                    self._instr.append(instr_)
+                    self._instr.append(["ZC", instr[1], seq[3][2]])
+                    Nnode += 1
+                else:
+                    ancilla = [Nnode, Nnode + 1]
+                    out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
+                    self._N.extend(seq[0:2])
+                    self._E.extend(seq[2:4])
+                    self._M.extend(seq[4:6])
+                    instr_ = deepcopy(instr)
+                    instr_.append(len(self._M) - 2)  # index of arb angle measurement command
+                    self._instr.append(instr_)
+                    self._instr.append(["XC", instr[1], seq[6][2]])
+                    self._instr.append(["ZC", instr[1], seq[7][2]])
+                    Nnode += 2
+            elif instr[0] == "Rzz":
+                ancilla = Nnode
+                out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
+                    out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
+                )
+                self._N.append(seq[0])
+                self._E.extend(seq[1:3])
+                self._M.append(seq[3])
+                Nnode += 1
                 instr_ = deepcopy(instr)
-                instr_.append(len(self._M) - 2)  # index of arb angle measurement command
+                instr_.append(len(self._M) - 1)  # index of arb angle measurement command
                 self._instr.append(instr_)
-                self._instr.append(["XC", instr[1], seq[6][2]])
-                self._instr.append(["ZC", instr[1], seq[7][2]])
-                Nnode += 2
+                self._instr.append(["ZC", instr[1][1], seq[4][2]])
+                self._instr.append(["ZC", instr[1][0], seq[5][2]])
             else:
                 raise ValueError("Unknown instruction, commands not added")
 
@@ -459,6 +535,17 @@ class Circuit:
         else:
             self._commute_with_following(target)
 
+    def _commute_with_Rzz(self, target):
+        assert self._instr[target][0] in ["XC", "ZC"]
+        assert self._instr[target + 1][0] == "Rzz"
+        if self._instr[target][0] == "XC":
+            cond = self._instr[target][1] == self._instr[target + 1][1][0]
+            cond2 = self._instr[target][1] == self._instr[target + 1][1][1]
+            if cond or cond2:
+                # add to the s-domain
+                self._M[self._instr[target + 1][3]][4].extend(self._instr[target][2])
+        self._commute_with_following(target)
+
     def _commute_with_following(self, target):
         """Internal method to perform the commutation of
         two consecutive commands that commutes.
@@ -521,6 +608,8 @@ class Circuit:
                 self._commute_with_Ry(target)
             elif self._instr[target + 1][0] == "Rz":
                 self._commute_with_Rz(target)
+            elif self._instr[target + 1][0] == "Rzz":
+                self._commute_with_Rzz(target)
             else:
                 # Pauli gates commute up to global phase.
                 self._commute_with_following(target)
@@ -782,7 +871,7 @@ class Circuit:
         Returns
         ---------
         out_node : int
-            control node on graph after the gate
+            node on graph after the gate
         commands : list
             list of MBQC commands
         """
@@ -795,6 +884,62 @@ class Circuit:
         seq.append(["X", ancilla[1], [ancilla[0]]])
         seq.append(["Z", ancilla[1], [input_node]])
         return ancilla[1], seq
+
+    @classmethod
+    def _rz_command_opt(self, input_node, ancilla, angle):
+        """optimized MBQC commands for Z rotation gate
+
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : int
+            ancilla node index to be added to graph
+        angle : float
+            measurement angle in radian
+
+        Returns
+        ---------
+        out_node : int
+            control node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        seq = [["N", ancilla]]  # assign new qubit label
+        seq.append(["E", (input_node, ancilla)])
+        seq.append(["M", ancilla, "XY", -angle / np.pi, [], [], 6])
+        seq.append(["Z", input_node, [ancilla]])
+        return input_node, seq
+
+    @classmethod
+    def _rzz_command_opt(self, control_node, target_node, ancilla, angle):
+        """Optimized MBQC commands for ZZ-rotation gate
+
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : int
+            ancilla node index
+        angle : float
+            measurement angle in radian
+
+        Returns
+        ---------
+        out_node_control : int
+            control node on graph after the gate
+        out_node_target : int
+            target node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        seq = [["N", ancilla]]  # assign new qubit labels
+        seq.append(["E", (control_node, ancilla)])
+        seq.append(["E", (target_node, ancilla)])
+        seq.append(["M", ancilla, "XY", -angle / np.pi, [], [], 6])
+        seq.append(["Z", control_node, [ancilla]])
+        seq.append(["Z", target_node, [ancilla]])
+        return control_node, target_node, seq
 
     @classmethod
     def _sort_outputs(self, pattern, output_nodes):
@@ -865,5 +1010,7 @@ class Circuit:
                 state.evolve_single(Ops.Ry(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rz":
                 state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
+            elif self.instruction[i][0] == "Rzz":
+                state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
 
         return state

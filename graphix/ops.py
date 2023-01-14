@@ -20,6 +20,7 @@ class Ops:
     @staticmethod
     def Rx(theta):
         """x rotation
+
         Parameters
         ----------
         theta : float
@@ -34,6 +35,7 @@ class Ops:
     @staticmethod
     def Ry(theta):
         """y rotation
+
         Parameters
         ----------
         theta : float
@@ -48,6 +50,7 @@ class Ops:
     @staticmethod
     def Rz(theta):
         """z rotation
+
         Parameters
         ----------
         theta : float
@@ -58,3 +61,22 @@ class Ops:
         operator : 2*2 np.array
         """
         return np.array([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]])
+
+    @staticmethod
+    def Rzz(theta):
+        """zz-rotation.
+        Equivalent to the sequence
+        CNOT(control, target),
+        Rz(target, angle),
+        CNOT(control, target)
+
+        Parameters
+        ----------
+        theta : float
+            rotation angle in radian
+
+        Returns
+        ----------
+        operator : 4*4 np.array
+        """
+        return Ops.cnot @ np.kron(np.eye(2), Ops.Rz(theta)) @ Ops.cnot
