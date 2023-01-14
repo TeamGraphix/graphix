@@ -88,11 +88,7 @@ class TestClifford(unittest.TestCase):
             op = np.eye(2)
             for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
                 op = op @ CLIFFORD[j]
-            if op[0, 0] == 0:
-                normalized = op * CLIFFORD[i][0, 1] / op[0, 1]
-            else:
-                normalized = op * CLIFFORD[i][0, 0] / op[0, 0]
-            np.testing.assert_almost_equal(CLIFFORD[i], normalized)
+            assert i == self.clifford_index(op)
 
 
 if __name__ == "__main__":
