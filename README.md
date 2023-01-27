@@ -4,6 +4,7 @@
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/graphix)
 ![PyPI](https://img.shields.io/pypi/v/graphix)
+[![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.fund/)
 
 **Graphix** is an open-source library to optimize and simulate measurement-based quantum computing (MBQC). 
 
@@ -37,6 +38,11 @@ $ pip install graphix
 > S. Sunami and M. Fukushima. "Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph", 
 > [arXiv:2212.11975](https://arxiv.org/abs/2212.11975) (2022).
 
+Update on the paper: [^1]
+
+[^1]: Following the release of this arXiv preprint, we were made aware of a previous work by [Backens et al.](https://quantum-journal.org/papers/q-2021-03-25-421/) where Pauli measurement elimination method for MBQC was developed in the context of circuit optimization. 
+Many thanks for letting us know about this work, we will properly mention this work in the next version of our paper.
+
 ## Contributing
 
 We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking requests and bugs. 
@@ -49,9 +55,14 @@ Masato Fukushima (University of Tokyo, Fixstars Amplify)
 
 ## Acknowledgements
 
+We are proud to be supported by [unitary fund microgrant program](https://unitary.fund/grants.html). 
+
+Special thanks to Fixstars Amplify:
+
 <p><a href="https://amplify.fixstars.com/en/">
 <img src="https://github.com/TeamGraphix/graphix/raw/master/docs/imgs/fam_logo.png" alt="amplify" width="200"/>
 </a></p>
+
 
 ## License
 
