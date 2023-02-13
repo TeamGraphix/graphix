@@ -4,7 +4,7 @@ Simulates MBQC by executing the pattern.
 
 """
 
-from graphix.sim.mps import MPS
+from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.sim.statevec import StatevectorBackend
 
 
@@ -20,19 +20,19 @@ class PatternSimulator:
         -----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: str, 'statevector' or 'MPS'
+        backend: str, 'statevector' or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
         kwargs: keyword args for specified backend.
 
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
-            :class:`graphix.sim.mps.MPS`
+            :class:`graphix.sim.tensornet.TensorNetworkBackend`
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
         if backend == "statevector":
             self.backend = StatevectorBackend(pattern, **kwargs)
-        elif backend == "mps":
-            self.backend = MPS(pattern, **kwargs)
+        elif backend == "tensornetwork":
+            self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("unknown backend")
         self.pattern = pattern
