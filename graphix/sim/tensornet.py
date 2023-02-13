@@ -369,6 +369,24 @@ class TensorNetworkBackend(TensorNetwork):
         norm = self.calc_norm()
         return coef / norm**0.5
 
+    def get_amplitude(self, number):
+        """Calculate the probability amplitude of the specified state.
+
+        Parameters
+        ----------
+        number : int
+            specifies a state which one wants to know a probability amplitude
+            e.g. |0000> corresponds to 0. |1010> corresponds to 10.
+
+        Returns
+        -------
+        float :
+            the probability amplitude of the specified state.
+        """
+        coef = self.coef_state(number)
+        norm = self.calc_norm()
+        return abs(coef) ** 2 / norm
+
     def to_statevector(self):
         """Retrieve the statevector from the tensornetwork.
         This method requires heavy processing.
