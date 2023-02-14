@@ -11,6 +11,8 @@ VEC = [
     np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)]),  # minus
     np.array([1.0, 0.0]),  # zero
     np.array([0.0, 1.0]),  # one
+    np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)]),  # yplus
+    np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)]),  # yminus
 ]
 
 OP = [
@@ -224,7 +226,7 @@ class TensorNetworkBackend(TensorNetwork):
             super().add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
 
     def measure(self, cmd):
-        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to applying measurement operator to the tensor.
+        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
         Parameters
         ----------
@@ -241,15 +243,22 @@ class TensorNetworkBackend(TensorNetwork):
         t_signal = np.sum([self.results[j] for j in cmd[5]])
         angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
         if len(cmd) == 7:
-            node_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
+            proj_vec = proj_basis(angle, vop=cmd[6], plane=cmd[2], choice=result)
         else:
-            node_op = meas_op(angle, plane=cmd[2], choice=result)
+            proj_vec = proj_basis(angle, vop=0, plane=cmd[2], choice=result)
 
         # following procedure tends to keep the norm of the TN
         buffer = 2**0.5
-        node_op = node_op * buffer
+        proj_vec = proj_vec * buffer
 
-        self._apply_one_site_operator(cmd[1], "M", node_op)
+        old_ind = self._dangling[str(cmd[1])]
+        proj_ts = Tensor(proj_vec, [old_ind], [str(cmd[1]), "M", "Close", "ancilla"]).H
+
+        tid = list(super()._get_tids_from_inds(old_ind))
+        tensor = self.tensor_map[tid[0]]
+        tensor.retag({"Open": "Close"}, inplace=True)
+
+        super().add_tensor(proj_ts)
 
     def correct_byproduct(self, cmd):
         """Perform byproduct correction.
@@ -311,21 +320,6 @@ class TensorNetworkBackend(TensorNetwork):
     def finalize(self):
         self.state = self
 
-    def dispose_ancilla(self):
-        """Dispose all ancilla qubits. internal method"""
-        for node in self._dangling.keys():
-            if int(node) not in self.output_nodes:
-                result = self.results[int(node)]
-                state = VEC[result]
-                edge_ind = self._dangling[node]
-
-                tid = list(super()._get_tids_from_inds(edge_ind))
-                tensor = self.tensors[tid[0]]
-                tensor.retag({"Open": "Close"}, inplace=True)
-
-                state_tn = Tensor(state, [edge_ind], [node, "ancilla", "Close"])
-                super().add(state_tn)
-
     def simplify(self, *options):
         return super().full_simplify(*options)
 
@@ -343,7 +337,6 @@ class TensorNetworkBackend(TensorNetwork):
             coefficient
         """
         tn = self.copy()
-        tn.dispose_ancilla()
         # prepare projected state
         for i in range(len(tn.output_nodes)):
             node = str(tn.output_nodes[i])
@@ -384,8 +377,7 @@ class TensorNetworkBackend(TensorNetwork):
             the probability amplitude of the specified state.
         """
         coef = self.coef_state(number)
-        norm = self.calc_norm()
-        return abs(coef) ** 2 / norm
+        return abs(coef) ** 2
 
     def to_statevector(self):
         """Retrieve the statevector from the tensornetwork.
@@ -411,7 +403,6 @@ class TensorNetworkBackend(TensorNetwork):
             norm of the state
         """
         tn_cp1 = self.copy()
-        tn_cp1.dispose_ancilla()
         tn_cp2 = tn_cp1.conj()
         tn = TensorNetwork([tn_cp1, tn_cp2])
         norm = abs(tn.contract())
@@ -441,7 +432,6 @@ class TensorNetworkBackend(TensorNetwork):
         tn_cp_left = self.copy()
         op_ts = Tensor(op, new_ind_right + new_ind_left, ["Expectation Op.", "Close"])
 
-        tn_cp_left.dispose_ancilla()
         tn_cp_right = tn_cp_left.conj()
 
         # reindex & retag
@@ -472,6 +462,49 @@ def gen_str():
     """Generate dummy string for einsum."""
     result = qtn.rand_uuid()
     return result
+
+
+def proj_basis(angle, vop, plane, choice):
+    """Calculate the projected statevector.
+
+    Parameters
+    ----------
+    angle : float
+        measurement angle
+    vop : int
+        CLIFFORD index
+    plane : str
+        measurement plane
+    choice : int
+        measurement result
+
+    Returns
+    -------
+    numpy.ndarray :
+        projected state
+    """
+    if plane == "XY":
+        vec = VEC[0 + choice]
+        rotU = np.array([[1.0, 0.0], [0, np.e ** (angle * 1.0j)]])
+    elif plane == "YZ":
+        vec = VEC[4 + choice]
+        rotU = np.array(
+            [
+                [np.cos(angle / 2), -1.0j * np.sin(angle / 2)],
+                [-1.0j * np.sin(angle / 2), np.cos(angle / 2)],
+            ]
+        )
+    elif plane == "XZ":
+        vec = VEC[2 + choice]
+        rotU = np.array(
+            [
+                [np.cos(angle / 2), -np.sin(angle / 2)],
+                [np.sin(angle / 2), np.cos(angle / 2)],
+            ]
+        )
+    vec = np.matmul(rotU, vec)
+    vec = np.matmul(CLIFFORD[vop], vec)
+    return vec
 
 
 def outer_product(vectors):
