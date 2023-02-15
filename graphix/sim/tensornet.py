@@ -2,7 +2,7 @@ import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import meas_op
+from graphix.ops import Ops
 import string
 from copy import deepcopy
 
@@ -13,27 +13,6 @@ VEC = [
     np.array([0.0, 1.0]),  # one
     np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)]),  # yplus
     np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)]),  # yminus
-]
-
-OP = [
-    np.array(
-        [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, -1.0],
-        ]
-    )  # CZ
-]
-
-DECOMPOSED_CZ = [
-    np.array(
-        [
-            [[-0.34461337, 1.13818065], [0.0, 0.0]],
-            [[0.0, 0.0], [-1.13818065, -0.34461337]],
-        ]
-    ),  # CZleft
-    np.array([[[-1.04849371, 0.0], [0.0, 0.5611368]], [[0.5611368, 0.0], [0.0, 1.04849371]]]),  # CZright
 ]
 
 
@@ -51,7 +30,13 @@ class TensorNetworkBackend(TensorNetwork):
         ----------
         pattern : graphix.Pattern
         graph_prep : str
-            'sequential' for standard method, 'opt' for faster method
+            'opt'(default) :
+                for faster and optimal method.
+                The expression of the given graph state can be obtained from its geometry.
+                See https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315 for example.
+            'sequential' :
+                for standard method.
+                In this strategy, All N and E commands executed sequentially.
         """
         if "ts" not in kwargs.keys():
             kwargs["ts"] = []
@@ -63,6 +48,7 @@ class TensorNetworkBackend(TensorNetwork):
             self.results = tnb.results
             self.state = tnb.state
             self._dangling = tnb._dangling
+            self._decomposed_cz = None
             self.__graph_prep = tnb.__graph_prep
             return
 
@@ -90,9 +76,13 @@ class TensorNetworkBackend(TensorNetwork):
         Parameters
         ----------
         deep : bool, optional
-            Defaults to False. Whether to copy the underlying data as well.
+            Defaults to False.
+            Whether to copy the underlying data as well.
         virtual : bool, optional
-            Defaults to False. To conveniently mimic the behaviour of taking a virtual copy of tensor network, this simply returns `self`. See quimb's document for the detail.
+            Defaults to False.
+            To conveniently mimic the behaviour of taking a virtual copy of tensor network,
+            this simply returns `self`.
+            See quimb's document for the detail.
 
         Returns
         -------
@@ -101,6 +91,8 @@ class TensorNetworkBackend(TensorNetwork):
         """
         if deep:
             return deepcopy(self)
+        if virtual:
+            return self
         return self.__class__(self.pattern, ts=self)
 
     def add_node(self, node):
@@ -135,6 +127,38 @@ class TensorNetworkBackend(TensorNetwork):
         elif self.graph_prep == "opt":
             pass
 
+    def _prepare_decomposed_cz(self):
+        """Prepare the decomposed cz tensors. This is an internal method.
+
+        CZ gate can be decomposed into two 3-rank tensors(Schmidt rank = 2).
+        Decomposing into low-rank tensors is important preprocessing for
+        the optimal contraction path searching problem.
+        So, in this backend, the DECOMPOSED_CZ gate is applied
+        instead of the original CZ gate.
+
+            Decomposing CZ gate
+
+         output            output
+         |    |           |      |
+        --------   SVD   ---    ---
+        |  CZ  |   -->   |L|----|R|
+        --------         ---    ---
+         |    |           |      |
+         input             input
+
+        4-rank x1         3-rank x2
+        """
+        cz_ts = Tensor(
+            Ops.cz.reshape((2, 2, 2, 2)).astype(np.float64),
+            ["O1", "O2", "I1", "I2"],
+            ["CZ"],
+        )
+        decomposed_cz = cz_ts.split(left_inds=["O1", "I1"], right_inds=["O2", "I2"], max_bond=4)
+        self._decomposed_cz = [
+            decomposed_cz.tensors[0].data,
+            decomposed_cz.tensors[1].data,
+        ]
+
     def entangle_nodes(self, edge):
         """Make entanglement between nodes specified by edge.
 
@@ -156,12 +180,12 @@ class TensorNetworkBackend(TensorNetwork):
             CZ_tn = TensorNetwork(
                 [
                     qtn.Tensor(
-                        DECOMPOSED_CZ[0],
+                        self._decomposed_cz[0],
                         [new_inds[0], old_inds[0], new_inds[2]],
                         [str(edge[0]), "CZ", "Open"],
                     ),
                     qtn.Tensor(
-                        DECOMPOSED_CZ[1],
+                        self._decomposed_cz[1],
                         [new_inds[2], new_inds[1], old_inds[1]],
                         [str(edge[1]), "CZ", "Open"],
                     ),
@@ -175,7 +199,7 @@ class TensorNetworkBackend(TensorNetwork):
     def initialize(self):
         """Initialize the TN according to the graph preparation strategy."""
         if self.graph_prep == "sequential":
-            pass
+            self._prepare_decomposed_cz()
         elif self.graph_prep == "opt":
             nodes, edges = self.pattern.get_graph()
             self.make_graph_state(nodes, edges)
@@ -267,7 +291,7 @@ class TensorNetworkBackend(TensorNetwork):
         ----------
         cmd : list
             Byproduct command
-            i.e.　['X' or 'Z', node, signal_domain]
+            i.e. ['X' or 'Z', node, signal_domain]
         """
         if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
             if cmd[0] == "X":
@@ -485,23 +509,13 @@ def proj_basis(angle, vop, plane, choice):
     """
     if plane == "XY":
         vec = VEC[0 + choice]
-        rotU = np.array([[1.0, 0.0], [0, np.e ** (angle * 1.0j)]])
+        rotU = Ops.Rz(angle)
     elif plane == "YZ":
         vec = VEC[4 + choice]
-        rotU = np.array(
-            [
-                [np.cos(angle / 2), -1.0j * np.sin(angle / 2)],
-                [-1.0j * np.sin(angle / 2), np.cos(angle / 2)],
-            ]
-        )
+        rotU = Ops.Rx(angle)
     elif plane == "XZ":
         vec = VEC[2 + choice]
-        rotU = np.array(
-            [
-                [np.cos(angle / 2), -np.sin(angle / 2)],
-                [np.sin(angle / 2), np.cos(angle / 2)],
-            ]
-        )
+        rotU = Ops.Ry(angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[vop], vec)
     return vec
