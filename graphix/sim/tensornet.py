@@ -31,11 +31,11 @@ class TensorNetworkBackend(TensorNetwork):
         pattern : graphix.Pattern
         graph_prep : str
             'opt'(default) :
-                for faster and optimal method.
+                Faster and optimal method to prepare a tensornetwork representing graph state.
                 The expression of the given graph state can be obtained from its geometry.
                 See https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315 for example.
             'sequential' :
-                for standard method.
+                Sequentially add nodes and edges.
                 In this strategy, All N and E commands executed sequentially.
         """
         if "ts" not in kwargs.keys():
@@ -50,15 +50,14 @@ class TensorNetworkBackend(TensorNetwork):
             self._dangling = tnb._dangling
             self._decomposed_cz = None
             self.__graph_prep = tnb.__graph_prep
-            return
-
-        super().__init__(**kwargs)
-        self.pattern = pattern
-        self.output_nodes = pattern.output_nodes
-        self.results = deepcopy(pattern.results)
-        self.state = None
-        self._dangling = dict()
-        self.__graph_prep = graph_prep
+        else:
+            super().__init__(**kwargs)
+            self.pattern = pattern
+            self.output_nodes = pattern.output_nodes
+            self.results = deepcopy(pattern.results)
+            self.state = None
+            self._dangling = dict()
+            self.__graph_prep = graph_prep
 
     @property
     def graph_prep(self):
@@ -96,7 +95,7 @@ class TensorNetworkBackend(TensorNetwork):
         return self.__class__(self.pattern, ts=self)
 
     def add_node(self, node):
-        """Add a single node into the network.
+        """Add a single node to the network.
 
         Parameters
         ----------
@@ -110,7 +109,7 @@ class TensorNetworkBackend(TensorNetwork):
         self._dangling[tag] = ind
 
     def add_nodes(self, nodes):
-        """Add nodes into the network
+        """Add nodes to the network
 
         Parameters
         ----------
@@ -164,7 +163,7 @@ class TensorNetworkBackend(TensorNetwork):
 
         Parameters
         ----------
-        edge : taple of int
+        edge : tuple of int
             edge specifies two target nodes of the CZ gate.
         """
         if self.graph_prep == "sequential":
@@ -197,7 +196,7 @@ class TensorNetworkBackend(TensorNetwork):
             pass
 
     def initialize(self):
-        """Initialize the TN according to the graph preparation strategy."""
+        """Initialize the TN"""
         if self.graph_prep == "sequential":
             self._prepare_decomposed_cz()
         elif self.graph_prep == "opt":
@@ -205,8 +204,7 @@ class TensorNetworkBackend(TensorNetwork):
             self.make_graph_state(nodes, edges)
 
     def make_graph_state(self, nodes, edges):
-        """Prepare the graph state in the efficient way, without directly applying CZ gates.
-        This is an internal method of run_cmd().
+        """Prepare the graph state without directly applying CZ gates.
 
         Parameters
         ----------
@@ -250,7 +248,8 @@ class TensorNetworkBackend(TensorNetwork):
             super().add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
 
     def measure(self, cmd):
-        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to applying measurement operator to the tensor. Here, directly contracted with the projected state.
+        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to 
+        applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
         Parameters
         ----------
@@ -315,7 +314,8 @@ class TensorNetworkBackend(TensorNetwork):
         self._apply_one_site_operator(cmd[1], "C", node_op)
 
     def _apply_one_site_operator(self, node, gate_type, node_op):
-        """Internal method for 'measure', 'correct_byproduct', and 'apply_clifford'. Apply one site operator to the node.
+        """Internal method for 'measure', 'correct_byproduct', and 'apply_clifford'. 
+        Apply one site operator to the node.
 
         Parameters
         ----------
@@ -363,10 +363,10 @@ class TensorNetworkBackend(TensorNetwork):
             node = str(tn.output_nodes[i])
             exp = len(tn.output_nodes) - i - 1
             if (number // 2**exp) == 1:
-                state_out = VEC[3]  # project into |1>
+                state_out = VEC[3]  # project onto |1>
                 number -= 2**exp
             else:
-                state_out = VEC[2]  # project into |0>
+                state_out = VEC[2]  # project onto |0>
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
 
             # retag
@@ -487,7 +487,7 @@ def gen_str():
 
 
 def proj_basis(angle, vop, plane, choice):
-    """Calculate the projected statevector.
+    """the projected statevector.
 
     Parameters
     ----------
@@ -520,7 +520,7 @@ def proj_basis(angle, vop, plane, choice):
 
 
 def outer_product(vectors):
-    """Calculate outer product of the given vectors
+    """outer product of the given vectors
 
     Parameters
     ----------
