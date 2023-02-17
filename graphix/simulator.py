@@ -31,7 +31,7 @@ class PatternSimulator:
         assert len(pattern.output_nodes) > 0
         if backend == "statevector":
             self.backend = StatevectorBackend(pattern, **kwargs)
-        elif backend == ("tensornetwork" or "mps"):
+        elif backend in {"tensornetwork", "mps"}:
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("unknown backend")

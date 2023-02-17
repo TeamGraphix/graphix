@@ -344,9 +344,6 @@ class TensorNetworkBackend(TensorNetwork):
     def finalize(self):
         self.state = self
 
-    def simplify(self, *options):
-        return super().full_simplify(*options)
-
     def coef_state(self, number):
         """Calculate the coefficient of the given state.
 
@@ -380,8 +377,8 @@ class TensorNetworkBackend(TensorNetwork):
             tn.add_tensor(tensor)
 
         # contraction
-        tn.simplify()
-        coef = tn.contract()
+        tn_simplified = tn.full_simplify("ADCR")
+        coef = tn_simplified.contract(output_inds=[])
 
         norm = self.calc_norm()
         return coef / norm**0.5
@@ -429,7 +426,8 @@ class TensorNetworkBackend(TensorNetwork):
         tn_cp1 = self.copy()
         tn_cp2 = tn_cp1.conj()
         tn = TensorNetwork([tn_cp1, tn_cp2])
-        norm = abs(tn.contract())
+        tn_simplified = tn.full_simplify("ADCR")
+        norm = abs(tn_simplified.contract(output_inds=[]))
         return norm
 
     def expectation_value(self, op, qargs):
@@ -475,8 +473,8 @@ class TensorNetworkBackend(TensorNetwork):
         tn_cp_left.add([op_ts, tn_cp_right])
 
         # contraction
-        tn_cp_left.simplify()
-        exp_val = tn_cp_left.contract()
+        tn_cp_left = tn_cp_left.full_simplify("ADCR")
+        exp_val = tn_cp_left.contract(output_inds=[])
         norm = self.calc_norm()
 
         return exp_val / norm

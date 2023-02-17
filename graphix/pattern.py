@@ -931,7 +931,7 @@ class Pattern:
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector', 'mps']
+        Available backend: ['statevector', 'tensornetwork']
 
         Parameters
         ----------
