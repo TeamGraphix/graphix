@@ -4,10 +4,9 @@ import numpy as np
 from quimb.tensor import Tensor
 from graphix.transpiler import Circuit
 from graphix.pattern import Pattern
-from graphix.sim.tensornet import TensorNetworkBackend, gen_str
+from graphix.ops import Ops, States
+from graphix.sim.tensornet import TensorNetworkBackend, MBQCTensorNet, gen_str
 from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import meas_op
-
 import tests.random_circuit as rc
 
 
@@ -21,44 +20,38 @@ def random_op(sites, dtype=np.complex64, seed=0):
     return np.random.randn(size, size).astype(dtype)
 
 
-CZ = np.diag([1.0, 1.0, 1.0, -1.0])
-plus = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])
+CZ = Ops.cz
+plus = States.plus
 
 
 class TestTN(unittest.TestCase):
     def test_add_node(self):
         node_index = np.random.randint(0, 1000)
-        pattern = Pattern()
-        tn = TensorNetworkBackend(pattern)
+        tn = MBQCTensorNet()
 
-        tn.add_node(node_index)
+        tn.add_qubit(node_index)
 
         np.testing.assert_equal(set(tn.tag_map.keys()), {str(node_index), "Open"})
-
         np.testing.assert_equal(tn.tensors[0].data, plus)
 
     def test_add_nodes(self):
-        pattern = Pattern()
         node_index = set(np.random.randint(0, 1000, 20))
-        tn = TensorNetworkBackend(pattern)
+        tn = MBQCTensorNet()
 
         tn.graph_prep = "sequential"
-        tn.add_nodes(node_index)
+        tn.add_qubits(node_index)
 
         np.testing.assert_equal(set(tn.tag_map.keys()), set([str(ind) for ind in node_index]) | {"Open"})
-
         for tensor in tn.tensor_map.values():
             np.testing.assert_equal(tensor.data, plus)
 
     def test_entangle_nodes(self):
         random_vec = np.array([1.0, 1.0, 1.0, 1.0]).reshape(2, 2)
-
         circuit = Circuit(2)
         pattern = circuit.transpile()
         pattern.add(["E", (0, 1)])
         tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         dummy_index = [gen_str() for _ in range(2)]
-
         qubit_index = 0
         for n in tn._dangling.keys():
             ind = tn._dangling[n]
@@ -69,12 +62,9 @@ class TestTN(unittest.TestCase):
 
         random_vec_ts = Tensor(random_vec, dummy_index, ["random_vector"])
         tn.add_tensor(random_vec_ts)
-
         contracted = tn.contract()
-
         # reference
         contracted_ref = np.einsum("abcd, c, d, ab->", CZ.reshape(2, 2, 2, 2), plus, plus, random_vec)
-
         np.testing.assert_almost_equal(contracted, contracted_ref)
 
     def test_make_graph_state(self):
@@ -93,16 +83,13 @@ class TestTN(unittest.TestCase):
         pattern.results[15] = 1  # X&Z operator will be applied.
         for cmd in cmds:
             pattern.add(cmd)
-
         tn = pattern.simulate_pattern(backend="tensornetwork")
         dummy_index = gen_str()
         ind = tn._dangling.pop("0")
         tensor = tn.tensor_map[tn._get_tids_from_inds(ind).popleft()]
         tensor.reindex({ind: dummy_index}, inplace=True)
-
         random_vec_ts = Tensor(random_vec, [dummy_index], ["random_vector"])
         tn.add_tensor(random_vec_ts)
-
         contracted = tn.contract()
 
         # reference
@@ -111,9 +98,7 @@ class TestTN(unittest.TestCase):
             np.array([[1.0, 0.0], [0.0, -1.0]]),
             CLIFFORD[cmds[2][2]],
         ]
-
         contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
-
         np.testing.assert_almost_equal(contracted, contracted_ref)
 
     def test_expectation_value1(self):
@@ -325,7 +310,7 @@ class TestTN(unittest.TestCase):
         tn = pattern.simulate_pattern("tensornetwork")
         for number in range(len(statevec_ref.flatten())):
             self.subTest(number=number)
-            coef_tn = tn.coef_state(number)
+            coef_tn = tn.get_basis_coefficient(number)
             coef_sv = statevec_ref.flatten()[number]
 
             np.testing.assert_almost_equal(abs(coef_tn), abs(coef_sv))

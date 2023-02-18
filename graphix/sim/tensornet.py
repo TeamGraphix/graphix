@@ -42,7 +42,7 @@ class TensorNetworkBackend:
             )
         elif graph_prep == "sequential":
             self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
-            self.decomposed_cz = _get_decomposed_cz()
+            self._decomposed_cz = _get_decomposed_cz()
 
     def add_nodes(self, nodes):
         """Add nodes to the network
@@ -67,7 +67,7 @@ class TensorNetworkBackend:
         """
         if self.graph_prep == "sequential":
             old_inds = [self.state._dangling[str(node)] for node in edge]
-            tids = super()._get_tids_from_inds(old_inds, which="any")
+            tids = self.state._get_tids_from_inds(old_inds, which="any")
             tensors = [self.state.tensor_map[tid] for tid in tids]
             new_inds = [gen_str() for _ in range(3)]
 
@@ -212,7 +212,7 @@ class MBQCTensorNet(TensorNetwork):
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
             vec = state
         tsr = qtn.Tensor(vec, [ind], [tag, "Open"])
-        super().add_tensor(tsr)
+        self.add_tensor(tsr)
         self._dangling[tag] = ind
 
     def evolve_single(self, index, arr, label="U"):
@@ -228,7 +228,7 @@ class MBQCTensorNet(TensorNetwork):
             label for the gate.
         """
         old_ind = self._dangling[str(index)]
-        tid = list(super()._get_tids_from_inds(old_ind))
+        tid = list(self._get_tids_from_inds(old_ind))
         tensor = self.tensor_map[tid[0]]
 
         new_ind = gen_str()
@@ -240,7 +240,7 @@ class MBQCTensorNet(TensorNetwork):
             [str(index), label, "Open"],
         )
         self._dangling[str(index)] = new_ind
-        super().add_tensor(node_ts)
+        self.add_tensor(node_ts)
 
     def add_qubits(self, indices, states="plus"):
         """Add qubits to the network
@@ -351,7 +351,7 @@ class MBQCTensorNet(TensorNetwork):
             if node not in ind_dict.keys():
                 ind = gen_str()
                 self._dangling[str(node)] = ind
-                super().add_tensor(Tensor(States.plus, [ind], [str(node), "Open"]))
+                self.add_tensor(Tensor(States.plus, [ind], [str(node), "Open"]))
                 continue
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
@@ -360,7 +360,7 @@ class MBQCTensorNet(TensorNetwork):
                     outer_product([States.vec[1 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
                 ]
             )
-            super().add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
+            self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
 
     def get_basis_coefficient(self, basis, normalize=True, indices=None):
         """Calculate the coefficient of a given computational basis.
@@ -409,21 +409,22 @@ class MBQCTensorNet(TensorNetwork):
         else:
             return coef
 
-    def get_amplitude(self, number):
-        """Calculate the probability amplitude of the specified state.
+    def get_basis_amplitude(self, basis):
+        """Calculate the probability amplitude of the specified computational basis state.
 
         Parameters
         ----------
-        number : int
-            specifies a state which one wants to know a probability amplitude
-            e.g. |0000> corresponds to 0. |1010> corresponds to 10.
+        basis : int or str
+            computational basis expressed in binary (str) or integer, e.g. 101 or 5.
 
         Returns
         -------
         float :
             the probability amplitude of the specified state.
         """
-        coef = self.get_basis_coefficient(number)
+        if isinstance(basis, str):
+            basis = int(basis, 2)
+        coef = self.get_basis_coefficient(basis)
         return abs(coef) ** 2
 
     def to_statevector(self, indices=None):
