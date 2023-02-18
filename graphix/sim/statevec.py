@@ -41,10 +41,6 @@ class StatevectorBackend:
         """
         return len(self.state.dims())
 
-    def initialize(self):
-        """Initialize the internal statevector"""
-        self.state = None
-
     def add_nodes(self, nodes):
         """add new qubit to internal statevector
         and assign the corresponding node number

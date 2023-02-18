@@ -2,18 +2,10 @@ import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 from graphix.clifford import CLIFFORD
-from graphix.ops import Ops
+from graphix.ops import States, Ops
 import string
 from copy import deepcopy
 
-VEC = [
-    np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)]),  # plus
-    np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)]),  # minus
-    np.array([1.0, 0.0]),  # zero
-    np.array([0.0, 1.0]),  # one
-    np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)]),  # yplus
-    np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)]),  # yminus
-]
 
 
 class TensorNetworkBackend(TensorNetwork):
@@ -344,36 +336,40 @@ class TensorNetworkBackend(TensorNetwork):
     def finalize(self):
         self.state = self
 
-    def coef_state(self, number):
-        """Calculate the coefficient of the given state.
+    def get_basis_coefficient(self, basis, indices=None):
+        """Calculate the coefficient of a given computational basis.
 
         Parameters
         ----------
-        number : int
-            state. e.g. |0000> corresponds to 0. |1010> corresponds to 10.
+        basis : int or str
+            computational basis expressed in binary (str) or integer, e.g. 101 or 5.
+        indices (optional): list of int
+            target qubit indices to compute the coefficients, default is the MBQC output nodes (self.default_output_nodes).
 
         Returns
         -------
-        complex :
+        coef : complex
             coefficient
         """
+        if indices == None:
+            indices = self.default_output_nodes
+        if isinstance(basis, str):
+            basis = int(basis, 2)
         tn = self.copy()
         # prepare projected state
-        for i in range(len(tn.output_nodes)):
-            node = str(tn.output_nodes[i])
-            exp = len(tn.output_nodes) - i - 1
-            if (number // 2**exp) == 1:
-                state_out = VEC[3]  # project onto |1>
-                number -= 2**exp
+        for i in range(len(indices)):
+            node = str(indices[i])
+            exp = len(indices) - i - 1
+            if (basis // 2**exp) == 1:
+                state_out = States.one  # project onto |1>
+                basis -= 2**exp
             else:
-                state_out = VEC[2]  # project onto |0>
+                state_out = States.zero  # project onto |0>
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
-
             # retag
             old_ind = tn._dangling[node]
             tid = list(tn._get_tids_from_inds(old_ind))[0]
             tn.tensor_map[tid].retag({"Open": "Close"})
-
             tn.add_tensor(tensor)
 
         # contraction
@@ -506,13 +502,13 @@ def proj_basis(angle, vop, plane, choice):
         projected state
     """
     if plane == "XY":
-        vec = VEC[0 + choice]
+        vec = States.vec[0 + choice]
         rotU = Ops.Rz(angle)
     elif plane == "YZ":
-        vec = VEC[4 + choice]
+        vec = States.vec[4 + choice]
         rotU = Ops.Rx(angle)
     elif plane == "XZ":
-        vec = VEC[2 + choice]
+        vec = States.vec[2 + choice]
         rotU = Ops.Ry(angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[vop], vec)

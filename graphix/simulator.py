@@ -49,7 +49,6 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
-        self.backend.initialize()
         for cmd in self.pattern.seq:
             if cmd[0] == "N":
                 self.backend.add_nodes([cmd[1]])
