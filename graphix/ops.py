@@ -14,6 +14,7 @@ class States:
     iminus = np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)])  # -1 eigenstate of Pauli Y
     vec = [plus, minus, zero, one, iplus, iminus]
 
+
 class Ops:
     """Basic single- and two-qubits operators"""
 
