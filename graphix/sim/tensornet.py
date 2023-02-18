@@ -12,6 +12,7 @@ class TensorNetworkBackend:
 
     Executes the measurement pattern using TN expression of graph states.
     """
+
     def __init__(self, pattern, graph_prep="opt", **kwargs):
         """
 
@@ -36,8 +37,9 @@ class TensorNetworkBackend:
         self.graph_prep = graph_prep
         if graph_prep == "opt":
             nodes, edges = pattern.get_graph()
-            self.state = MBQCTensorNet(graph_nodes=nodes, graph_edges=edges,\
-                                         default_output_nodes=pattern.output_nodes, **kwargs)
+            self.state = MBQCTensorNet(
+                graph_nodes=nodes, graph_edges=edges, default_output_nodes=pattern.output_nodes, **kwargs
+            )
         elif graph_prep == "sequential":
             self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
             self.decomposed_cz = _get_decomposed_cz()
@@ -92,7 +94,7 @@ class TensorNetworkBackend:
             pass
 
     def measure(self, cmd):
-        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to 
+        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
         Parameters
@@ -151,13 +153,12 @@ class TensorNetworkBackend:
 
 
 class MBQCTensorNet(TensorNetwork):
-    """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.core.TensorNetwork.
-    """
+    """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.core.TensorNetwork."""
 
     def __init__(self, graph_nodes=None, graph_edges=None, default_output_nodes=None, ts=[], **kwargs):
         """
         Initialize MBQCTensorNet.
-        
+
         Parameters
         ----------
         graph_nodes (optional): list of int
@@ -189,7 +190,7 @@ class MBQCTensorNet(TensorNetwork):
         index : int
             index of the new qubit.
         state (optional): str or 2-element np.ndarray
-            initial state of the new qubit. 
+            initial state of the new qubit.
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
         """
         ind = gen_str()
@@ -207,7 +208,7 @@ class MBQCTensorNet(TensorNetwork):
         elif state == "iminus":
             vec = States.iminus
         else:
-            assert state.shape==(2,), "state must be 2-element np.ndarray" 
+            assert state.shape == (2,), "state must be 2-element np.ndarray"
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
             vec = state
         tsr = qtn.Tensor(vec, [ind], [tag, "Open"])
@@ -271,7 +272,7 @@ class MBQCTensorNet(TensorNetwork):
             1*2 numpy.ndarray for arbitrary measurement bases.
         bypass_probability_calculation : bool
             default True.
-            if True, skip the calculation of the probability of the measurement 
+            if True, skip the calculation of the probability of the measurement
             result and use equal probability for each result.
             if False, calculate the probability of the measurement result from the state.
         outcome : int (0 or 1)
@@ -285,12 +286,12 @@ class MBQCTensorNet(TensorNetwork):
         if bypass_probability_calculation:
             if outcome is not None:
                 result = outcome
-            else: 
+            else:
                 result = np.random.choice([0, 1])
             # Basis state to be projected
             if type(basis) == np.ndarray:
                 if outcome is not None:
-                    raise Warning('Measurement outcome is chosen but the basis state was given.')
+                    raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
             elif basis == "Z" and result == 0:
                 proj_vec = States.zero
@@ -305,9 +306,9 @@ class MBQCTensorNet(TensorNetwork):
             elif basis == "Y" and result == 1:
                 proj_vec = States.iminus
             else:
-                raise ValueError('Invalid measurement basis.')
+                raise ValueError("Invalid measurement basis.")
         else:
-            raise NotImplementedError('Measurement probability calculation not implemented.')
+            raise NotImplementedError("Measurement probability calculation not implemented.")
         old_ind = self._dangling[str(index)]
         proj_ts = Tensor(proj_vec, [old_ind], [str(index), "M", "Close", "ancilla"]).H
         # add the tensor to the network
@@ -405,7 +406,7 @@ class MBQCTensorNet(TensorNetwork):
         if normalize:
             norm = self.get_norm()
             return coef / norm**0.5
-        else:  
+        else:
             return coef
 
     def get_amplitude(self, number):
@@ -464,12 +465,12 @@ class MBQCTensorNet(TensorNetwork):
         return norm
 
     def expectation_value(self, op, qubit_indices, output_node_indices=None):
-        """Calculate expectation value of the given operator, 
+        """Calculate expectation value of the given operator,
 
         Parameters
         ----------
         op : numpy.ndarray
-            single- or multi-qubit Hermitian operator 
+            single- or multi-qubit Hermitian operator
         qubit_indices : list of int
             Applied positions of **logical** qubits.
         output_node_indices (optional): list of int
