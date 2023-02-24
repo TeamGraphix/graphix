@@ -31,9 +31,7 @@ class StatevectorBackend:
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError(
-                "Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again"
-            )
+            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -181,10 +179,7 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
         op_mat += (
-            (-1) ** (choice + CLIFFORD_MEASURE[vop][i][1])
-            * vec[CLIFFORD_MEASURE[vop][i][0]]
-            * CLIFFORD[i + 1]
-            / 2
+            (-1) ** (choice + CLIFFORD_MEASURE[vop][i][1]) * vec[CLIFFORD_MEASURE[vop][i][0]] * CLIFFORD[i + 1] / 2
         )
     return op_mat
 
