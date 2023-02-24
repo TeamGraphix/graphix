@@ -38,11 +38,17 @@ class TensorNetworkBackend:
         if graph_prep == "opt":
             nodes, edges = pattern.get_graph()
             self.state = MBQCTensorNet(
-                graph_nodes=nodes, graph_edges=edges, default_output_nodes=pattern.output_nodes, **kwargs
+                graph_nodes=nodes,
+                graph_edges=edges,
+                default_output_nodes=pattern.output_nodes,
+                **kwargs,
             )
         elif graph_prep == "sequential":
-            self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
+            self.state = MBQCTensorNet(
+                default_output_nodes=pattern.output_nodes, **kwargs
+            )
             self._decomposed_cz = _get_decomposed_cz()
+        self._isolated_nodes = pattern.get_isolated_nodes()
 
     def add_nodes(self, nodes):
         """Add nodes to the network
@@ -103,9 +109,18 @@ class TensorNetworkBackend:
             measurement command
             i.e. ['M', node, plane angle, s_domain, t_domain]
         """
-        # choose the measurement result randomly
-        result = np.random.choice([0, 1])
-        self.results[cmd[1]] = result
+        if cmd[1] in self._isolated_nodes:
+            vector = self.state.get_open_tensor_from_index(cmd[1])
+            probs = np.abs(vector) ** 2
+            probs = probs / (np.sum(probs))
+            result = np.random.choice([0, 1], p=probs)
+            self.results[cmd[1]] = result
+            buffer = 1 / probs[result] ** 0.5
+        else:
+            # choose the measurement result randomly
+            result = np.random.choice([0, 1])
+            self.results[cmd[1]] = result
+            buffer = 2**0.5
 
         # extract signals for adaptive angle
         s_signal = np.sum([self.results[j] for j in cmd[4]])
@@ -116,8 +131,7 @@ class TensorNetworkBackend:
         else:
             proj_vec = proj_basis(angle, vop=0, plane=cmd[2], choice=result)
 
-        # following procedure tends to keep the norm of the TN
-        buffer = 2**0.5
+        # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
         self.state.measure_single(cmd[1], basis=proj_vec)
 
@@ -155,7 +169,14 @@ class TensorNetworkBackend:
 class MBQCTensorNet(TensorNetwork):
     """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.core.TensorNetwork."""
 
-    def __init__(self, graph_nodes=None, graph_edges=None, default_output_nodes=None, ts=[], **kwargs):
+    def __init__(
+        self,
+        graph_nodes=None,
+        graph_edges=None,
+        default_output_nodes=None,
+        ts=[],
+        **kwargs,
+    ):
         """
         Initialize MBQCTensorNet.
 
@@ -181,6 +202,27 @@ class MBQCTensorNet(TensorNetwork):
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
             self.set_graph_state(graph_nodes, graph_edges)
+
+    def get_open_tensor_from_index(self, index):
+        """Get tensor specified by node index. The tensor has a dangling edge.
+
+        Parameters
+        ----------
+        index : str
+            node index
+
+        Returns
+        -------
+        numpy.ndarray :
+            Specified tensor
+        """
+        if isinstance(index, int):
+            index = str(index)
+        assert isinstance(index, str)
+        tags = [index, "Open"]
+        tid = list(self._get_tids_from_tags(tags, which="all"))[0]
+        tensor = self.tensor_map[tid]
+        return tensor.data
 
     def add_qubit(self, index, state="plus"):
         """Add a single qubit to the network.
@@ -259,7 +301,9 @@ class MBQCTensorNet(TensorNetwork):
         for i, ind in enumerate(indices):
             self.add_qubit(ind, state=states[i])
 
-    def measure_single(self, index, basis="Z", bypass_probability_calculation=True, outcome=None):
+    def measure_single(
+        self, index, basis="Z", bypass_probability_calculation=True, outcome=None
+    ):
         """Measure a node in specified basis. Note this does not perform the partial trace.
 
         Parameters
@@ -291,7 +335,9 @@ class MBQCTensorNet(TensorNetwork):
             # Basis state to be projected
             if type(basis) == np.ndarray:
                 if outcome is not None:
-                    raise Warning("Measurement outcome is chosen but the basis state was given.")
+                    raise Warning(
+                        "Measurement outcome is chosen but the basis state was given."
+                    )
                 proj_vec = basis
             elif basis == "Z" and result == 0:
                 proj_vec = States.zero
@@ -308,7 +354,9 @@ class MBQCTensorNet(TensorNetwork):
             else:
                 raise ValueError("Invalid measurement basis.")
         else:
-            raise NotImplementedError("Measurement probability calculation not implemented.")
+            raise NotImplementedError(
+                "Measurement probability calculation not implemented."
+            )
         old_ind = self._dangling[str(index)]
         proj_ts = Tensor(proj_vec, [old_ind], [str(index), "M", "Close", "ancilla"]).H
         # add the tensor to the network
@@ -356,13 +404,26 @@ class MBQCTensorNet(TensorNetwork):
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
                 [
-                    outer_product([States.vec[0 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
-                    outer_product([States.vec[1 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
+                    outer_product(
+                        [
+                            States.vec[0 + 2 * vec_dict[node][i]]
+                            for i in range(dim_tensor)
+                        ]
+                    ),
+                    outer_product(
+                        [
+                            States.vec[1 + 2 * vec_dict[node][i]]
+                            for i in range(dim_tensor)
+                        ]
+                    ),
                 ]
             )
             self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
 
-    def get_basis_coefficient(self, basis, normalize=True, indices=None):
+        norm = self.get_norm()
+        self.multiply(1 / norm, inplace=True)
+
+    def get_basis_coefficient(self, basis, normalize=True, indices=None, **kwagrs):
         """Calculate the coefficient of a given computational basis.
 
         Parameters
@@ -393,7 +454,9 @@ class MBQCTensorNet(TensorNetwork):
                 basis -= 2**exp
             else:
                 state_out = States.zero  # project onto |0>
-            tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
+            tensor = Tensor(
+                state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"]
+            )
             # retag
             old_ind = tn._dangling[node]
             tid = list(tn._get_tids_from_inds(old_ind))[0]
@@ -402,14 +465,14 @@ class MBQCTensorNet(TensorNetwork):
 
         # contraction
         tn_simplified = tn.full_simplify("ADCR")
-        coef = tn_simplified.contract(output_inds=[])
+        coef = tn_simplified.contract(output_inds=[], **kwagrs)
         if normalize:
             norm = self.get_norm()
-            return coef / norm**0.5
+            return coef / norm
         else:
             return coef
 
-    def get_basis_amplitude(self, basis):
+    def get_basis_amplitude(self, basis, **kwagrs):
         """Calculate the probability amplitude of the specified computational basis state.
 
         Parameters
@@ -424,10 +487,10 @@ class MBQCTensorNet(TensorNetwork):
         """
         if isinstance(basis, str):
             basis = int(basis, 2)
-        coef = self.get_basis_coefficient(basis)
+        coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, indices=None):
+    def to_statevector(self, indices=None, **kwagrs):
         """Retrieve the statevector from the tensornetwork.
         This method tends to be slow however we plan to parallelize this.
 
@@ -447,10 +510,12 @@ class MBQCTensorNet(TensorNetwork):
             n_qubit = len(indices)
         statevec = np.zeros(2**n_qubit, np.complex128)
         for i in range(len(statevec)):
-            statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices)
+            statevec[i] = self.get_basis_coefficient(
+                i, normalize=False, indices=indices, **kwagrs
+            )
         return statevec / np.linalg.norm(statevec)
 
-    def get_norm(self):
+    def get_norm(self, **kwagrs):
         """Calculate the norm of the state.
 
         Returns
@@ -462,10 +527,10 @@ class MBQCTensorNet(TensorNetwork):
         tn_cp2 = tn_cp1.conj()
         tn = TensorNetwork([tn_cp1, tn_cp2])
         tn_simplified = tn.full_simplify("ADCR")
-        norm = abs(tn_simplified.contract(output_inds=[]))
+        norm = abs(tn_simplified.contract(output_inds=[], **kwagrs)) ** 0.5
         return norm
 
-    def expectation_value(self, op, qubit_indices, output_node_indices=None):
+    def expectation_value(self, op, qubit_indices, output_node_indices=None, **kwagrs):
         """Calculate expectation value of the given operator,
 
         Parameters
@@ -506,7 +571,9 @@ class MBQCTensorNet(TensorNetwork):
             tid_left = list(tn_cp_left._get_tids_from_inds(old_ind))[0]
             tid_right = list(tn_cp_right._get_tids_from_inds(old_ind))[0]
             if node in target_nodes:
-                tn_cp_left.tensor_map[tid_left].reindex({old_ind: new_ind_left[target_nodes.index(node)]}, inplace=True)
+                tn_cp_left.tensor_map[tid_left].reindex(
+                    {old_ind: new_ind_left[target_nodes.index(node)]}, inplace=True
+                )
                 tn_cp_right.tensor_map[tid_right].reindex(
                     {old_ind: new_ind_right[target_nodes.index(node)]}, inplace=True
                 )
@@ -516,9 +583,56 @@ class MBQCTensorNet(TensorNetwork):
 
         # contraction
         tn_cp_left = tn_cp_left.full_simplify("ADCR")
-        exp_val = tn_cp_left.contract(output_inds=[])
-        norm = self.get_norm()
-        return exp_val / norm
+        exp_val = tn_cp_left.contract(output_inds=[], **kwagrs)
+        norm = self.get_norm(**kwagrs)
+        return exp_val / norm**2
+
+    def evolve(self, operator, qubit_indices, decompose=True, **kwagrs):
+        """Apply an arbitrary operator to the state.
+
+        Parameters
+        ----------
+        operator : numpy.ndarray
+            operator.
+        qubit_indices : list of int
+            Applied positions of **logical** qubits.
+        decompose : bool, optional
+            default True
+            whether a given operator will be decomposed or not. If True, operator is decomposed into Matrix Product Operator(MPO)
+        """
+        if len(operator.shape) != len(qubit_indices) * 2:
+            shape = [2 for _ in range(2 * len(qubit_indices))]
+            operator = operator.reshape(shape)
+
+        # operator indices
+        node_indices = [self.default_output_nodes[index] for index in qubit_indices]
+        old_ind_list = [self._dangling[str(index)] for index in node_indices]
+        new_ind_list = [gen_str() for _ in range(len(node_indices))]
+        for i in range(len(node_indices)):
+            self._dangling[str(node_indices[i])] = new_ind_list[i]
+
+        ts = Tensor(
+            operator,
+            new_ind_list + old_ind_list,
+            [str(index) for index in node_indices],
+        )
+        if decompose:  # decompose tensor into Matrix Product Operator(MPO)
+            tensors = []
+            bond_inds = {0: None}
+            for i in range(len(node_indices) - 1):
+                bond_inds[i + 1] = gen_str()
+                left_inds = [new_ind_list[i], old_ind_list[i]]
+                if bond_inds[i]:
+                    left_inds.append(bond_inds[i])
+                unit_tensor, ts = ts.split(
+                    left_inds=left_inds, bond_ind=bond_inds[i + 1], **kwagrs
+                )
+                tensors.append(unit_tensor)
+            tensors.append(ts)
+            op_tensor = TensorNetwork(tensors)
+        else:
+            op_tensor = ts
+        self.add(op_tensor)
 
     def copy(self, deep=False):
         """Returns the copy of this object.
@@ -553,9 +667,9 @@ def _get_decomposed_cz():
 
         output            output
         |    |           |      |
-    --------   SVD   ---    ---
-    |  CZ  |   -->   |L|----|R|
-    --------         ---    ---
+       --------   SVD   ---    ---
+       |  CZ  |   -->   |L|----|R|
+       --------         ---    ---
         |    |           |      |
         input             input
 
@@ -566,7 +680,9 @@ def _get_decomposed_cz():
         ["O1", "O2", "I1", "I2"],
         ["CZ"],
     )
-    decomposed_cz = cz_ts.split(left_inds=["O1", "I1"], right_inds=["O2", "I2"], max_bond=4)
+    decomposed_cz = cz_ts.split(
+        left_inds=["O1", "I1"], right_inds=["O2", "I2"], max_bond=4
+    )
     return [
         decomposed_cz.tensors[0].data,
         decomposed_cz.tensors[1].data,

@@ -67,9 +67,6 @@ class TestTN(unittest.TestCase):
         contracted_ref = np.einsum("abcd, c, d, ab->", CZ.reshape(2, 2, 2, 2), plus, plus, random_vec)
         np.testing.assert_almost_equal(contracted, contracted_ref)
 
-    def test_make_graph_state(self):
-        pass
-
     def test_apply_one_site_operator(self):
         cmds = [
             ["X", 0, [15]],
@@ -135,6 +132,18 @@ class TestTN(unittest.TestCase):
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
 
+    def test_expectation_value3_sequential(self):
+        circuit = Circuit(3)
+        state = circuit.simulate_statevector()
+        pattern = circuit.transpile()
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        random_op3 = random_op(3)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input):
+            value1 = state.expectation_value(random_op3, list(qargs))
+            value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
+            np.testing.assert_almost_equal(value1, value2)
+
     def test_expectation_value3_subspace1(self):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
@@ -159,8 +168,17 @@ class TestTN(unittest.TestCase):
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
 
-    def test_element_gates(self):
-        pass
+    def test_expectation_value3_subspace2_sequential(self):
+        circuit = Circuit(3)
+        state = circuit.simulate_statevector()
+        pattern = circuit.transpile()
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        random_op2 = random_op(2)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input, 2):
+            value1 = state.expectation_value(random_op2, list(qargs))
+            value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
+            np.testing.assert_almost_equal(value1, value2)
 
     def test_hadamard(self):
         circuit = Circuit(1)
@@ -298,6 +316,24 @@ class TestTN(unittest.TestCase):
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
 
+    def test_with_graphtrans_sequential(self):
+        nqubits = 3
+        depth = 6
+        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
+        circuit = rc.generate_gate(nqubits, depth, pairs)
+        pattern = circuit.transpile()
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        state = circuit.simulate_statevector()
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        random_op3 = random_op(3)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input):
+            value1 = state.expectation_value(random_op3, list(qargs))
+            value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
+            np.testing.assert_almost_equal(value1, value2)
+
     def test_coef_state(self):
         nqubits = 4
         depth = 2
@@ -330,6 +366,28 @@ class TestTN(unittest.TestCase):
 
             inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
             np.testing.assert_almost_equal(abs(inner_product), 1)
+
+    def test_evolve(self):
+        nqubits = 3
+        depth = 6
+        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
+        circuit = rc.generate_gate(nqubits, depth, pairs)
+        pattern = circuit.transpile()
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        state = circuit.simulate_statevector()
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        random_op3 = random_op(3)
+        random_op3_exp = random_op(3)
+
+        state.evolve(random_op3, [0, 1, 2])
+        tn_mbqc.evolve(random_op3, [0, 1, 2], decompose=False)
+
+        expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])
+        expval_ref = state.expectation_value(random_op3_exp, [0, 1, 2])
+
+        np.testing.assert_almost_equal(expval_tn, expval_ref)
 
 
 if __name__ == "__main__":
