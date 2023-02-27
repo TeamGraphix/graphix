@@ -399,11 +399,8 @@ class MBQCTensorNet(TensorNetwork):
                     outer_product([States.vec[0 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
                     outer_product([States.vec[1 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
                 ]
-            )
+            ) * 2 ** (dim_tensor / 4 - 1.0 / 2)
             self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
-
-        norm = self.get_norm()
-        self.multiply(1 / norm, inplace=True)
 
     def get_basis_coefficient(self, basis, normalize=True, indices=None, **kwagrs):
         """Calculate the coefficient of a given computational basis.
@@ -561,7 +558,6 @@ class MBQCTensorNet(TensorNetwork):
         tn_cp_left = tn_cp_left.full_simplify("ADCR")
         exp_val = tn_cp_left.contract(output_inds=[], **kwagrs)
         norm = self.get_norm(**kwagrs)
-        print(norm)
         return exp_val / norm**2
 
     def evolve(self, operator, qubit_indices, decompose=True, **kwagrs):
