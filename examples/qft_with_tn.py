@@ -88,6 +88,6 @@ print(len(nodes))
 # here we do a very basic check that the state is what is is expected to be:
 
 tn = pattern.simulate_pattern(backend="tensornetwork")
-value = tn.get_amplitude(0)
+value = tn.get_basis_amplitude(0)
 print("amplitude of |00...0> is ", value)
 print("1/2^n (true answer) is", 1 / 2**n)
