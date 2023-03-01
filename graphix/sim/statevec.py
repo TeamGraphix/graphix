@@ -41,10 +41,6 @@ class StatevectorBackend:
         """
         return len(self.state.dims())
 
-    def initialize(self):
-        """Initialize the internal statevector"""
-        self.state = None
-
     def add_nodes(self, nodes):
         """add new qubit to internal statevector
         and assign the corresponding node number
@@ -143,7 +139,10 @@ class StatevectorBackend:
             if not self.node_index[i] == ind:
                 move_from = self.node_index.index(ind)
                 self.state.swap((i, move_from))
-                self.node_index[i], self.node_index[move_from] = self.node_index[move_from], self.node_index[i]
+                self.node_index[i], self.node_index[move_from] = (
+                    self.node_index[move_from],
+                    self.node_index[i],
+                )
 
 
 def meas_op(angle, vop=0, plane="XY", choice=0):
@@ -185,12 +184,17 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
     return op_mat
 
 
-CZ_TENSOR = np.array([[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]], dtype=np.complex128)
+CZ_TENSOR = np.array(
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [1, 0]], [[0, 0], [0, -1]]]],
+    dtype=np.complex128,
+)
 CNOT_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]], dtype=np.complex128
+    [[[[1, 0], [0, 0]], [[0, 1], [0, 0]]], [[[0, 0], [0, 1]], [[0, 0], [1, 0]]]],
+    dtype=np.complex128,
 )
 SWAP_TENSOR = np.array(
-    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]], dtype=np.complex128
+    [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
+    dtype=np.complex128,
 )
 
 
@@ -233,7 +237,11 @@ class Statevec:
         op_dim = int(np.log2(len(op)))
         shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
-        self.psi = np.tensordot(op_tensor, self.psi, (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)))
+        self.psi = np.tensordot(
+            op_tensor,
+            self.psi,
+            (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)),
+        )
         self.psi = np.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
 
     def dims(self):
@@ -315,8 +323,10 @@ class Statevec:
             complex: expectation value.
         """
         st1 = deepcopy(self)
+        st1.normalize()
+        st2 = st1.deepcopy(st1)
         st1.evolve_single(op, loc)
-        return np.dot(self.psi.flatten().conjugate(), st1.psi.flatten())
+        return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
     def expectation_value(self, op, qargs):
         """Expectation value of multi-qubit operator.
@@ -329,5 +339,7 @@ class Statevec:
             complex: expectation value
         """
         st1 = deepcopy(self)
+        st1.normalize()
+        st2 = deepcopy(st1)
         st1.evolve(op, qargs)
-        return np.dot(self.psi.flatten().conjugate(), st1.psi.flatten())
+        return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())

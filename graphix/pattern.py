@@ -736,6 +736,21 @@ class Pattern:
                 edge_list.append(cmd[1])
         return node_list, edge_list
 
+    def get_isolated_nodes(self):
+        """Get isolated nodes.
+
+        Returns
+        -------
+        set of int :
+            set of the isolated nodes
+        """
+        nodes, edges = self.get_graph()
+        node_set = set(nodes)
+        connected_node_set = set()
+        for edge in edges:
+            connected_node_set |= set(edge)
+        return node_set - connected_node_set
+
     def get_vops(self, conj=False, include_identity=False):
         """Get local-Clifford decorations from measurement or Clifford commands.
 
@@ -931,7 +946,7 @@ class Pattern:
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector', 'mps']
+        Available backend: ['statevector', 'tensornetwork']
 
         Parameters
         ----------

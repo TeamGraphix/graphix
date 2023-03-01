@@ -16,13 +16,19 @@ Pattern Simulation
 Simulator backends
 ++++++++++++++++++
 
-Matrix Product State (MPS)
+Tensor Network
 --------------------------
 
-.. currentmodule:: graphix.sim.mps
+.. currentmodule:: graphix.sim.tensornet
 
-.. autoclass:: MPS
+.. autoclass:: TensorNetworkBackend
     :members:
+
+.. autofunction:: gen_str
+
+.. autofunction:: proj_basis
+
+.. autofunction:: outer_product
 
 Statevector
 -----------

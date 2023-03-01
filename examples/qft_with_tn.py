@@ -1,14 +1,14 @@
 """
-Using MPS simulator
+Using Tensor Network simulator
 ===================
 
-In this example, we demonstrate the matrix product state (MPS) simulator to simulate MBQC
-with up to thousands of nodes at a time, without the need for approximation which is often present for circuit-MPS simulators.
+In this example, we demonstrate the Tensor Network (TN) simulator to simulate MBQC
+with up to thousands of nodes at a time.
 
 You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
 
 .. image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_mps.ipynb
+ :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_tn.ipynb
 
 
 We will simulate n-qubit QFT circuit.
@@ -57,7 +57,7 @@ def qft(circuit, n):
     swap_registers(circuit, n)
 
 
-#%%
+# %%
 # We will simulate 7-qubit QFT, which requires nearly 250 nodes to be simulated.
 
 n = 7
@@ -80,14 +80,14 @@ nx.draw(g)
 plt.show()
 print(len(nodes))
 
-#%%
+# %%
 # You can easily check that the below code run without much load on the computer.
 # Also notice that we have not used :meth:`graphix.pattern.Pattern.minimize_space()`,
 # which we know reduced the burden on the simulator.
-# To specify MPS backend of the simulation, simply provide as a keyword argument.
+# To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that the state is what is is expected to be:
 
-mps = pattern.simulate_pattern(backend="mps")
-value = mps.get_amplitude(0)
-print("amplitude of |00000> is ", value)
-print("1/2^n (true answer) is", 1 / 2 ** n)
+tn = pattern.simulate_pattern(backend="tensornetwork")
+value = tn.get_basis_amplitude(0)
+print("amplitude of |00...0> is ", value)
+print("1/2^n (true answer) is", 1 / 2**n)
