@@ -1056,7 +1056,6 @@ def measure_pauli(pattern, copy=False):
     #         # check whether this is Pauli measurement
     for cmd in non_pauli_meas:
         if (cmd[1] in isolates) and (cmd[1] not in pattern.output_nodes):
-            print(cmd)
             graph_state.remove_node(cmd[1])
             results[cmd[1]] = 0
 
@@ -1137,6 +1136,8 @@ def pauli_nodes(pattern):
                     non_pauli_node.append(cmd)
                 else:
                     pauli_node.append(cmd)
+            else:
+                non_pauli_node.append(cmd)
         else:
             raise NotImplementedError("YZ and XZ plane measurements not considered for pauli_node")
     return pauli_node, non_pauli_node
