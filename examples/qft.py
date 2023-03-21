@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 
 def cp(circuit, theta, control, target):
-    """Controlled rotation gate, decomposed
+    """Controlled phase gate, decomposed
     """
     circuit.rz(control, theta / 2)
     circuit.rz(target, theta / 2)
@@ -49,12 +49,12 @@ circuit.x(1)
 circuit.x(2)
 
 # QFT
-circuit.h(2)
-cp(circuit, np.pi / 4, 0, 2)
-cp(circuit, np.pi / 2, 1, 2)
-circuit.h(1)
-cp(circuit, np.pi / 2, 0, 1)
 circuit.h(0)
+cp(circuit, np.pi / 2, 1, 0)
+cp(circuit, np.pi / 4, 2, 0)
+circuit.h(1)
+cp(circuit, np.pi / 2, 2, 1)
+circuit.h(2)
 swap(circuit, 0, 2)
 
 # transpile and plot the graph
