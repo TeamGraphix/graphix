@@ -19,8 +19,7 @@ import matplotlib.pyplot as plt
 
 
 def cp(circuit, theta, control, target):
-    """Controlled phase gate, decomposed
-    """
+    """Controlled phase gate, decomposed"""
     circuit.rz(control, theta / 2)
     circuit.rz(target, theta / 2)
     circuit.cnot(control, target)
@@ -29,8 +28,7 @@ def cp(circuit, theta, control, target):
 
 
 def swap(circuit, a, b):
-    """swap gate, decomposed
-    """
+    """swap gate, decomposed"""
     circuit.cnot(a, b)
     circuit.cnot(b, a)
     circuit.cnot(a, b)
@@ -89,8 +87,14 @@ print(pattern.max_space())
 
 #%%
 # The maximum space has gone down to 4 which should be very easily simulated on laptops.
-# Finally, we check the answer is correct, by comparing with statevector simulation.
+# Let us check the answer is correct, by comparing with statevector simulation.
 
 out_state = pattern.simulate_pattern()
 state = circuit.simulate_statevector()
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
+
+#%%
+# Finally, check the output state:
+
+print(np.round([np.exp(2 * np.pi * 1j * 3 * i / 8) / np.sqrt(8) for i in range(8)], 3))
+print(np.round(out_state.flatten() * -1j, 3))  # global phase is arbitrary
