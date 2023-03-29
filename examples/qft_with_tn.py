@@ -36,12 +36,9 @@ def swap(circuit, a, b):
 
 
 def qft_rotations(circuit, n):
-    if n == 0:
-        return circuit
-    n -= 1
     circuit.h(n)
-    for qubit in range(n):
-        cp(circuit, np.pi / 2 ** (n - qubit), qubit, n)
+    for qubit in range(n+1, circuit.width):
+        cp(circuit, np.pi / 2 ** (qubit - n), qubit, n)
 
 
 def swap_registers(circuit, n):
@@ -52,8 +49,7 @@ def swap_registers(circuit, n):
 
 def qft(circuit, n):
     for i in range(n):
-        m = n - i
-        qft_rotations(circuit, m)
+        qft_rotations(circuit, i)
     swap_registers(circuit, n)
 
 
