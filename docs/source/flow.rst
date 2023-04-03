@@ -7,8 +7,6 @@ flow and gflow
 
 .. currentmodule:: graphix.gflow
 
-.. autofunction:: generate_from_graph
-
 .. autofunction:: gflow
 
 .. autofunction:: flow

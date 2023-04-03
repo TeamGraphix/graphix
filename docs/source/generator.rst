@@ -34,7 +34,9 @@ Pattern Generation
 
     .. automethod:: rz
 
-Flow-based pattern generation
+:mod:`graphix.generator` module
 +++++++++++++++++++++++++++++
 
-.. autofunction:: graphix.gflow.generate_from_graph
+.. currentmodule:: graphix.generator
+
+.. autofunction:: graphix.generator.generate_from_graph
