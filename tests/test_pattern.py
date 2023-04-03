@@ -27,6 +27,29 @@ class TestPattern(unittest.TestCase):
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
+    def test_minimize_space_with_gflow(self):
+        nqubits = 5
+        depth = 5
+        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
+        circuit = rc.generate_gate(nqubits, depth, pairs)
+        pattern = circuit.transpile()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        pattern.minimize_space()
+        state = circuit.simulate_statevector()
+        state_mbqc = pattern.simulate_pattern()
+        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
+    def test_minimize_space_graph_maxspace_with_flow(self):
+        max_qubits = 20
+        for nqubits in range(2, max_qubits):
+            depth = 5
+            pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
+            circuit = rc.generate_gate(nqubits, depth, pairs)
+            pattern = circuit.transpile()
+            pattern.minimize_space()
+            np.testing.assert_equal(pattern.max_space(), nqubits + 1)
+
     def test_parallelize_pattern(self):
         nqubits = 2
         depth = 1

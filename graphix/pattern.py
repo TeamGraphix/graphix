@@ -674,6 +674,31 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
+    def get_measurement_order_from_flow(self):
+        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
+
+        Returns
+        -------
+        meas_order: list of int
+            measurement order
+        """
+        nodes, edges = self.get_graph()
+        G = nx.Graph()
+        G.add_nodes_from(nodes)
+        G.add_edges_from(edges)
+        vin = {i for i in range(self.width)}
+        vout = set(self.output_nodes)
+        f, l_k = flow(G, vin, vout)
+        if f is None:
+            return None
+        depth, layer = get_layers(l_k)
+        meas_order = []
+        for i in range(depth):
+            k = depth - i
+            nodes = layer[k]
+            meas_order += nodes
+        return meas_order
+
     def get_measurement_order_from_gflow(self):
         """Returns a list containing the node indices,
         in the order of measurements which can be performed with minimum depth.
@@ -726,7 +751,7 @@ class Pattern:
                 target += 1
         return meas_cmds
 
-    def get_measurement_commnads(self):
+    def get_measurement_commands(self):
         """Returns the list containing the measurement commands,
         in the order of measurements
 
@@ -916,7 +941,9 @@ class Pattern:
         """
         if not self.is_standard():
             self.standardize()
-        meas_order = self._measurement_order_space()
+        meas_order = self.get_measurement_order_from_flow()
+        if meas_order is None:
+            meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
     def _reorder_pattern(self, meas_commands):

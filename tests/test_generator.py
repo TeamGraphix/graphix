@@ -22,7 +22,7 @@ class TestGenerator(unittest.TestCase):
         g.add_edges_from(edges)
         input = [0, 1, 2]
         angles = dict()
-        for cmd in pattern.get_measurement_order():
+        for cmd in pattern.get_measurement_commands():
             angles[cmd[1]] = cmd[3]
         pattern2 = generate_from_graph(g, angles, input, pattern.output_nodes)
         # check that the new one runs and returns correct result
