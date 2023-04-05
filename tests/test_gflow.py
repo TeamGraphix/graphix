@@ -1,7 +1,6 @@
 import unittest
 import networkx as nx
 from graphix.gflow import gflow, flow
-import tests.random_circuit as rc
 import numpy as np
 
 
@@ -51,7 +50,7 @@ class TestGflow(unittest.TestCase):
             (8, 10),
             (10, 12),
         ]
-        input = set()
+        input = {1, 2}
         output = {11, 12}
         G = nx.Graph()
         G.add_nodes_from(nodes)
