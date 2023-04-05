@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import tests.random_circuit as rc
 from graphix.transpiler import Circuit
+from graphix.pattern import Pattern
 
 
 class TestPattern(unittest.TestCase):
@@ -153,6 +154,27 @@ class TestPattern(unittest.TestCase):
         isolated_nodes_ref = {48}
 
         np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
+
+    def test_get_meas_plane(self):
+        preset_meas_plane = ["XY", "XY", "XY", "YZ", "YZ", "YZ", "XZ", "XZ", "XZ"]
+        vop_list = [0, 5, 6]  # [identity, S gate, H gate]
+        pattern = Pattern(len(preset_meas_plane))
+        pattern.set_output_nodes([i for i in range(len(preset_meas_plane))])
+        for i in range(len(preset_meas_plane)):
+            pattern.add(["M", i, preset_meas_plane[i], 0, [], [], vop_list[i % 3]])
+        ref_meas_plane = {
+            0: "XY",
+            1: "XY",
+            2: "YZ",
+            3: "YZ",
+            4: "XZ",
+            5: "XY",
+            6: "XZ",
+            7: "YZ",
+            8: "XZ",
+        }
+        meas_plane = pattern.get_meas_plane()
+        np.testing.assert_equal(meas_plane, ref_meas_plane)
 
 
 def cp(circuit, theta, control, target):

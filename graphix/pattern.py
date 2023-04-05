@@ -6,7 +6,12 @@ import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
 from graphix.gflow import flow, gflow, get_layers
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MUL
+from graphix.clifford import (
+    CLIFFORD_CONJ,
+    CLIFFORD_TO_QASM3,
+    CLIFFORD_MUL,
+    CLIFFORD_MEASURE,
+)
 from copy import deepcopy
 
 
@@ -100,7 +105,6 @@ class Pattern:
         output_nodes: list of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
-        assert set(self.output_nodes) == set(output_nodes)
         self.output_nodes = output_nodes
 
     def __repr__(self):
@@ -641,8 +645,7 @@ class Pattern:
         return connected
 
     def _measurement_order_space(self):
-        """Determine a sub-optimal measurement order
-         which heuristically minimizes the `max_space` of a pattern.
+        """Determine measurement order that heuristically optimises the max_space of a pattern
 
         Returns
         -------
@@ -702,7 +705,6 @@ class Pattern:
     def get_measurement_order_from_gflow(self):
         """Returns a list containing the node indices,
         in the order of measurements which can be performed with minimum depth.
-        Input must be a simple connected graph for the gflow-finding algorithm to work.
 
         Returns
         -------
@@ -780,25 +782,18 @@ class Pattern:
             list of str representing measurement plane for each node.
         """
         meas_plane = dict()
-        XYtoXZ_list = [
-            6,
-            8,
-            11,
-            12,
-            20,
-            21,
-            22,
-            23,
-        ]  # clifford indices that change meas plane from xy to xz
+        order = ["X", "Y", "Z"]
         for cmd in self.seq:
             if cmd[0] == "M":
+                mplane = cmd[2]
                 if len(cmd) == 7:
-                    if cmd[6] in XYtoXZ_list:
-                        meas_plane[cmd[1]] = "XZ"
-                    else:
-                        meas_plane[cmd[1]] = cmd[2]
-                else:
-                    meas_plane[cmd[1]] = cmd[2]
+                    converted_mplane = ""
+                    clifford_measure = CLIFFORD_MEASURE[cmd[6]]
+                    for axis in mplane:
+                        converted = order[clifford_measure[order.index(axis)][0]]
+                        converted_mplane += converted
+                    mplane = "".join(sorted(converted_mplane))
+                meas_plane[cmd[1]] = mplane
         return meas_plane
 
     def get_graph(self):
