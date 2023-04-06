@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix QFT circuits in examples (#38)
 - Improve `Pattern.minimize_space` method because it sometimes returned incorrect results when applied to graphs with flow, as compared to the theoretical values (#40)
 
 
