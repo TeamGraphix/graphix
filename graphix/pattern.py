@@ -5,7 +5,13 @@ import numpy as np
 import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MUL
+from graphix.gflow import flow, gflow, get_layers
+from graphix.clifford import (
+    CLIFFORD_CONJ,
+    CLIFFORD_TO_QASM3,
+    CLIFFORD_MUL,
+    CLIFFORD_MEASURE,
+)
 from copy import deepcopy
 
 
@@ -99,7 +105,6 @@ class Pattern:
         output_nodes: list of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
-        assert set(self.output_nodes) == set(output_nodes)
         self.output_nodes = output_nodes
 
     def __repr__(self):
@@ -542,7 +547,7 @@ class Pattern:
 
         Returns
         -------
-        dependency : dict of sets
+        dependency : dict of set
             index is node number. all nodes in the each set must be measured before measuring
         """
         nodes, _ = self.get_graph()
@@ -557,18 +562,18 @@ class Pattern:
         return dependency
 
     def update_dependency(self, measured, dependency):
-        """Update dependency function. remove measured nodes from dependency.
+        """Remove measured nodes from the 'dependency'.
 
         Parameters
         ----------
-        measured: set
+        measured: set of int
             measured nodes.
-        dependency: dict of sets
+        dependency: dict of set
             which is produced by `_get_dependency`
 
         Returns
         --------
-        dependency: dict of sets
+        dependency: dict of set
             updated dependency information
         """
         for i in dependency.keys():
@@ -584,7 +589,7 @@ class Pattern:
         -------
         depth : int
             depth of graph
-        layers : dict of sets
+        layers : dict of set
             nodes grouped by layer index(k)
         """
         dependency = self._get_dependency()
@@ -609,12 +614,11 @@ class Pattern:
         return depth, l_k
 
     def _measurement_order_depth(self):
-        """Obtain the measurement order which reduces the depth of
-        pattern execution.
+        """Obtain a measurement order which reduces the depth of a pattern.
 
         Returns
         -------
-        meas_order: list of ints
+        meas_order: list of int
             optimal measurement order for parallel computing
         """
         d, l_k = self.get_layers()
@@ -629,7 +633,7 @@ class Pattern:
 
         Returns
         -------
-        connected: set of taples
+        connected: set of taple
                 set of connected edges
         """
         connected = set()
@@ -641,13 +645,12 @@ class Pattern:
         return connected
 
     def _measurement_order_space(self):
-        """Determine the optimal measurement order
-         which minimize the `max_space` of the pattern.
+        """Determine measurement order that heuristically optimises the max_space of a pattern
 
         Returns
         -------
-        meas_order: list of ints
-            optimal measurement order for classical simulation
+        meas_order: list of int
+            sub-optimal measurement order for classical simulation
         """
         nodes, edges = self.get_graph()
         nodes = set(nodes)
@@ -674,48 +677,124 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
+    def get_measurement_order_from_flow(self):
+        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
+
+        Returns
+        -------
+        meas_order: list of int
+            measurement order
+        """
+        nodes, edges = self.get_graph()
+        G = nx.Graph()
+        G.add_nodes_from(nodes)
+        G.add_edges_from(edges)
+        vin = {i for i in range(self.width)}
+        vout = set(self.output_nodes)
+        f, l_k = flow(G, vin, vout)
+        if f is None:
+            return None
+        depth, layer = get_layers(l_k)
+        meas_order = []
+        for i in range(depth):
+            k = depth - i
+            nodes = layer[k]
+            meas_order += nodes
+        return meas_order
+
+    def get_measurement_order_from_gflow(self):
+        """Returns a list containing the node indices,
+        in the order of measurements which can be performed with minimum depth.
+
+        Returns
+        -------
+        meas_order : list of int
+            measurement order
+        """
+        nodes, edges = self.get_graph()
+        G = nx.Graph()
+        G.add_nodes_from(nodes)
+        G.add_edges_from(edges)
+        isolated = list(nx.isolates(G))
+        if isolated:
+            raise ValueError("The input graph must be connected")
+        meas_plane = self.get_meas_plane()
+        g, l_k = gflow(G, set(), set(self.output_nodes), meas_plane=meas_plane)
+        if not g:
+            raise ValueError("No gflow found")
+        k, layers = get_layers(l_k)
+        meas_order = []
+        while k > 0:
+            for node in layers[k]:
+                meas_order.append(node)
+            k -= 1
+        return meas_order
+
     def sort_measurement_commands(self, meas_order):
         """Convert measurement order to sequence of measurement commands
 
         Parameters
-        --------
-        meas_order: list of ints
+        ----------
+        meas_order: list of int
             optimal measurement order.
 
         Returns
-        --------
-        meas_flow: list of commands
+        -------
+        meas_cmds: list of command
             sorted measurement commands
         """
-        meas_flow = []
+        meas_cmds = []
         for i in meas_order:
             target = 0
             while True:
                 if (self.seq[target][0] == "M") & (self.seq[target][1] == i):
-                    meas_flow.append(self.seq[target])
+                    meas_cmds.append(self.seq[target])
                     break
                 target += 1
-        return meas_flow
+        return meas_cmds
 
-    def get_measurement_order(self):
-        """Returns the list containing the node indices,
+    def get_measurement_commands(self):
+        """Returns the list containing the measurement commands,
         in the order of measurements
 
         Returns
         -------
-        meas_flow : list
-            list of node indices in the order of meaurements
+        meas_cmds : list
+            list of measurement commands in the order of meaurements
         """
         if not self.is_standard():
             self.standardize()
-        meas_flow = []
+        meas_cmds = []
         ind = self._find_op_to_be_moved("M")
         if ind == "end":
             return []
         while self.seq[ind][0] == "M":
-            meas_flow.append(self.seq[ind])
+            meas_cmds.append(self.seq[ind])
             ind += 1
-        return meas_flow
+        return meas_cmds
+
+    def get_meas_plane(self):
+        """get measurement plane from the pattern.
+
+        Returns
+        -------
+        meas_plane: dict of str
+            list of str representing measurement plane for each node.
+        """
+        meas_plane = dict()
+        order = ["X", "Y", "Z"]
+        for cmd in self.seq:
+            if cmd[0] == "M":
+                mplane = cmd[2]
+                if len(cmd) == 7:
+                    converted_mplane = ""
+                    clifford_measure = CLIFFORD_MEASURE[cmd[6]]
+                    for axis in mplane:
+                        converted = order[clifford_measure[order.index(axis)][0]]
+                        converted_mplane += converted
+                    mplane = "".join(sorted(converted_mplane))
+                meas_plane[cmd[1]] = mplane
+        return meas_plane
 
     def get_graph(self):
         """returns the list of nodes and edges from the command sequence,
@@ -741,7 +820,7 @@ class Pattern:
 
         Returns
         -------
-        set of int :
+        isolated_nodes : set of int
             set of the isolated nodes
         """
         nodes, edges = self.get_graph()
@@ -749,7 +828,8 @@ class Pattern:
         connected_node_set = set()
         for edge in edges:
             connected_node_set |= set(edge)
-        return node_set - connected_node_set
+        isolated_nodes = node_set - connected_node_set
+        return isolated_nodes
 
     def get_vops(self, conj=False, include_identity=False):
         """Get local-Clifford decorations from measurement or Clifford commands.
@@ -856,7 +936,9 @@ class Pattern:
         """
         if not self.is_standard():
             self.standardize()
-        meas_order = self._measurement_order_space()
+        meas_order = self.get_measurement_order_from_flow()
+        if meas_order is None:
+            meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
     def _reorder_pattern(self, meas_commands):
@@ -864,7 +946,7 @@ class Pattern:
 
         Parameters
         ----------
-        meas_commands : list of commands
+        meas_commands : list of command
             list of measurement ('M') commands
         """
         prepared = []
@@ -1115,7 +1197,7 @@ def pauli_nodes(pattern):
     """
     if not pattern.is_standard():
         pattern.standardize()
-    m_commands = pattern.get_measurement_order()
+    m_commands = pattern.get_measurement_commands()
     pauli_node = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node = []
