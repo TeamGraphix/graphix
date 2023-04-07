@@ -9,25 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Move `generate_from_pattern` method from `gflow.py` to `generator.py` (#40)
-- Modify `Pattern.get_meas_plane` method to be adaptable for general cases (#40)
+- Move import path of `generate_from_pattern` from `graphix.gflow` to `grahpix.generator` (#40)
+- Rename `Pattern.get_measurement_order` to `Pattern.get_measurement_commands` (#40)
+- Modify `Pattern.get_meas_plane` method to work for Clifford-decorated nodes (#40)
 
 ### Fixed
 
 - Fix QFT circuits in examples (#38)
-- Improve `Pattern.minimize_space` method because it sometimes returned incorrect results when applied to graphs with flow, as compared to the theoretical values (#40)
+- Fix the stability issue of `Pattern.minimize_space` method which sometimes failed to give theoretical minimum space for patterns with flow (#40)
 
 
 ## [0.2.0] - 2023-03-16
 
 ### Added
 
-- Fast circuit translation for selected types gates and circuits (#16)
+- Fast circuit translation for some types gates and circuits (see PR) (#16)
 - Additional required modules: `quimb` and `autoray` for more performant TN backend (#32)
 
 ### Changed
 
 - Restructured tensor-network simulator backend for more optimized contraction (#32)
+- Modify TN simulator interface to `TensorNetwork` from `MPS` (#32)
 
 ### Fixed
 

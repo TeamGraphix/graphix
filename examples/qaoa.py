@@ -73,7 +73,7 @@ for i in range(4):
 # determine wheher or not a node will be measured in Pauli basis
 def get_clr_list(pattern):
     nodes, edges = pattern.get_graph()
-    meas_list = pattern.get_measurement_order()
+    meas_list = pattern.get_measurement_commands()
     g = nx.Graph()
     g.add_nodes_from(nodes)
     g.add_edges_from(edges)
