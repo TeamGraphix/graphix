@@ -25,10 +25,10 @@ class IBMQBackend:
         self.shots = shots
         self.provider = IBMProvider(instance = self.instance)
         self.backend = self.provider.get_backend(self.resource)
-        self.circ = self.transform()
+        self.circ = self.to_qiskit()
 
-    def transform(self):
-        """transform the MBQC pattern to the qiskit cuicuit transpiled for the designated resource.
+    def to_qiskit(self):
+        """convert the MBQC pattern to the qiskit cuicuit and transpile for the designated resource.
         Returns
         -------
         circ : :class:`qiskit.circuit.quantumcircuit.QuantumCircuit` object
@@ -126,6 +126,6 @@ class IBMQBackend:
             circ_ind = qubit_dict[node]
             circ.measure(circ_ind, node)
 
-        circ = transpile(circ, backend = self.backend) # , optimization_level = 3
+        circ = transpile(circ, backend = self.backend)
 
         return circ
