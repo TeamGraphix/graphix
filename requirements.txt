@@ -4,3 +4,5 @@ z3-solver
 quimb>=1.4.0
 autoray>=0.6.0
 opt_einsum>=3.2
+qiskit>=0.42
+qiskit_ibm_provider>=0.5

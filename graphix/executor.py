@@ -4,7 +4,7 @@ Executes MBQC using actual quantum devices.
 
 """
 
-from .exe.ibmq import IBMQBackend
+from graphix.exe.ibmq import IBMQBackend
 
 class PatternExecutor:
     """MBQC exeulator
