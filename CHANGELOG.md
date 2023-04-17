@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Fast pattern operations with `pattern.LocalPattern` class (#42)
+
 ### Changed
 
 - Move import path of `generate_from_pattern` from `graphix.gflow` to `grahpix.generator` (#40)
 - Rename `Pattern.get_measurement_order` to `Pattern.get_measurement_commands` (#40)
 - Modify `Pattern.get_meas_plane` method to work for Clifford-decorated nodes (#40)
+- Modify default backend for `Pattern.standardize` and `Pattern.shift_signals` to `pattern.LocalPattern` (#42)
 
 ### Fixed
 
