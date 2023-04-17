@@ -240,11 +240,18 @@ class Pattern:
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
-            self = localpattern.get_pattern()
+            lpattern = localpattern.get_pattern()
+            self.width = lpattern.width
+            self.seq = lpattern.seq
+            self.results = lpattern.results
+            self.output_nodes = lpattern.output_nodes
+            self.Nnode = lpattern.Nnode
         elif method == "global":
             self._move_N_to_left()
             self._move_byproduct_to_right()
             self._move_E_after_N()
+        else:
+            raise ValueError("Invalid method")
 
     def is_standard(self):
         """determines whether the command sequence is standard
@@ -291,7 +298,12 @@ class Pattern:
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.shift_signals()
-            self = localpattern.get_pattern()
+            lpattern = localpattern.get_pattern()
+            self.width = lpattern.width
+            self.seq = lpattern.seq
+            self.results = lpattern.results
+            self.output_nodes = lpattern.output_nodes
+            self.Nnode = lpattern.Nnode
         elif method == "global":
             self.extract_signals()
             target = self._find_op_to_be_moved("S", rev=True)
@@ -311,6 +323,8 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
+        else:
+            raise ValueError("Invalid method")
 
     def standardize_and_shift_signals_with_localpattern(self):
         """Execute standardization and signal shifting with a local pattern."""
