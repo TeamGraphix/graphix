@@ -4,6 +4,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 import numpy as np
 import networkx as nx
 from graphix.simulator import PatternSimulator
+from graphix.executor import PatternExecutor
 from graphix.graphsim import GraphState
 from graphix.gflow import flow, gflow, get_layers
 from graphix.clifford import (
@@ -1046,6 +1047,26 @@ class Pattern:
         sim = PatternSimulator(self, backend=backend, **kwargs)
         state = sim.run()
         return state
+    
+    def execute_pattern(self, backend, **kwargs):
+        """execute the pattern using a actual device. .
+        Available backend: ['ibmq']
+
+        Parameters
+        ----------
+        backend : str
+            parameter to select executor backend.
+        kwargs: keyword args for specified backend.
+
+        Returns
+        -------
+        result :
+            the measurement result,
+            in the representation depending on the backend used.
+        """
+        exe = PatternExecutor(self, backend=backend, **kwargs)
+        result = exe.run()
+        return result
 
     def perform_pauli_measurements(self):
         """Perform Pauli measurements in the pattern using
