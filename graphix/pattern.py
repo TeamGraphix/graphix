@@ -185,6 +185,7 @@ class Pattern:
         localpattern : LocalPattern
             transpiled local pattern.
         """
+        standardized = self.is_standard()
         node_prop = dict()
         morder = []
         for cmd in self.seq:
@@ -193,6 +194,7 @@ class Pattern:
                     "seq": [],
                     "Mprop": [None, None, [], []],
                     "Xsignal": [],
+                    "Xsignals": [],
                     "Zsignal": [],
                     "vop": None,
                     "output": False,
@@ -205,7 +207,11 @@ class Pattern:
                 node_prop[cmd[1]]["seq"].append(-1)
                 morder.append(cmd[1])
             elif cmd[0] == "X":
-                node_prop[cmd[1]]["Xsignal"] += cmd[2]
+                if standardized:
+                    node_prop[cmd[1]]["Xsignal"] += cmd[2]
+                    node_prop[cmd[1]]["Xsignals"] += [cmd[2]]
+                else:
+                    node_prop[cmd[1]]["Xsignals"].append(cmd[2])
                 node_prop[cmd[1]]["seq"].append(-2)
             elif cmd[0] == "Z":
                 node_prop[cmd[1]]["Zsignal"] += cmd[2]
@@ -240,12 +246,7 @@ class Pattern:
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
-            lpattern = localpattern.get_pattern()
-            self.width = lpattern.width
-            self.seq = lpattern.seq
-            self.results = lpattern.results
-            self.output_nodes = lpattern.output_nodes
-            self.Nnode = lpattern.Nnode
+            self.seq = localpattern.get_pattern().seq
         elif method == "global":
             self._move_N_to_left()
             self._move_byproduct_to_right()
@@ -298,12 +299,7 @@ class Pattern:
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.shift_signals()
-            lpattern = localpattern.get_pattern()
-            self.width = lpattern.width
-            self.seq = lpattern.seq
-            self.results = lpattern.results
-            self.output_nodes = lpattern.output_nodes
-            self.Nnode = lpattern.Nnode
+            self.seq = localpattern.get_pattern().seq
         elif method == "global":
             self.extract_signals()
             target = self._find_op_to_be_moved("S", rev=True)
@@ -331,7 +327,7 @@ class Pattern:
         localpattern = self.get_local_pattern()
         localpattern.standardize()
         localpattern.shift_signals()
-        self = localpattern.get_pattern()
+        self.seq = localpattern.get_pattern().seq
 
     def _find_op_to_be_moved(self, op, rev=False, skipnum=0):
         """Internal method for pattern modification.
@@ -1192,6 +1188,8 @@ class CommandNode:
         measurement result of the node
     Xsignal : list
         signal domain
+    Xsignals : list
+        signal domain. Xsignals may contains lists. For standardization, this variable is used.
     Zsignal : list
         signal domain
     vop : int
@@ -1200,7 +1198,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Xsignal, Zsignal, vop, output):
+    def __init__(self, node_index, seq, Mprop, Zsignal, vop, output, Xsignal=[], Xsignals=[]):
         """
         Parameters
         ----------
@@ -1216,6 +1214,10 @@ class CommandNode:
         Xsignal : list
             signal domain for X byproduct correction
 
+        Xsignals : list of list
+            signal domains for X byproduct correction
+            Xsignal or Xsignals must be specified
+
         Zsignal : list
             signal domain for Z byproduct correction
 
@@ -1229,7 +1231,8 @@ class CommandNode:
         self.seq = seq  # composed of [E, M, X, Z, C]
         self.Mprop = Mprop
         self.result = None
-        self.Xsignal = Xsignal  # appeared only once
+        self.Xsignal = Xsignal
+        self.Xsignals = Xsignals
         self.Zsignal = Zsignal  # appeared at most e + 1
         self.vop = vop
         self.output = output
@@ -1239,21 +1242,29 @@ class CommandNode:
 
         Returns
         -------
-        EXcommutated_nodes : list
-            when X commutes with E, Z correction is added on the pair node. This list specifies target nodes where Zs will be added.
+        EXcommutated_nodes : dict
+            when X commutes with E, Z correction is added on the pair node. This dict specifies target nodes where Zs will be added.
         """
-        if -2 not in self.seq:
-            return []
-        Xpos = self.seq.index(-2)
-        EXcommutated_nodes = []
-        for i in range(Xpos, len(self.seq)):
-            if self.seq[i] >= 0:
-                EXcommutated_nodes.append(self.seq[i])
-        self.seq.remove(-2)
+        EXcommutated_nodes = dict()
+        combined_Xsignal = []
+        for Xsignal in self.Xsignals:
+            Xpos = self.seq.index(-2)
+            for i in range(Xpos, len(self.seq)):
+                if self.seq[i] >= 0:
+                    try:
+                        EXcommutated_nodes[self.seq[i]] += Xsignal
+                    except KeyError:
+                        EXcommutated_nodes[self.seq[i]] = Xsignal
+            self.seq.remove(-2)
+            combined_Xsignal += Xsignal
         if self.output:
             self.seq.append(-2)  # put X on the end of the pattern
+            self.Xsignal = combined_Xsignal
+            self.Xsignals = [combined_Xsignal]
         else:
-            self.Mprop[2] = xor_combination_list(self.Xsignal, self.Mprop[2])
+            self.Mprop[2] = xor_combination_list(combined_Xsignal, self.Mprop[2])
+            self.Xsignal = []
+            self.Xsignals = []
         return EXcommutated_nodes
 
     def commute_Z(self):
@@ -1289,7 +1300,7 @@ class CommandNode:
             print(self.get_command(cmd))
 
     def get_command(self, cmd):
-        """Get a command with full description.
+        """Get a command with full description. Patterns with more than one X or Z corrections are not supported.
 
         Parameters
         ----------
@@ -1311,8 +1322,12 @@ class CommandNode:
         elif cmd == -1:
             return ["M", self.index] + self.Mprop
         elif cmd == -2:
+            if self.seq.count(-2) > 1:
+                raise NotImplementedError("Patterns with more than one X corrections are not supported")
             return ["X", self.index, self.Xsignal]
         elif cmd == -3:
+            if self.seq.count(-3) > 1:
+                raise NotImplementedError("Patterns with more than one Z corrections are not supported")
             return ["Z", self.index, self.Zsignal]
         elif cmd == -4:
             return ["C", self.index, self.vop]
@@ -1352,7 +1367,7 @@ class LocalPattern:
 
     Attributes
     ----------
-    nodes : Node
+    nodes : set
         set of nodes with distributed command sequences
 
     output_nodes : list
@@ -1371,29 +1386,27 @@ class LocalPattern:
         """
         Parameters
         ----------
-        nodes : CommandNode
-            command decorated node. Defaults to an empty dict.
+        nodes : dict
+            dict of command decorated nodes. Defaults to an empty dict.
         output_nodes : list, optional
             list of output node indices. Defaults to [].
         morder : list, optional
             list of node indices in a measurement order. Defaults to [].
         """
-        self.nodes = nodes  # dict of graphsim.Node
+        self.nodes = nodes  # dict of Pattern.CommandNode
         self.output_nodes = output_nodes
-        self.morder = morder  # list of int. measurement order
+        self.morder = morder
         self.signal_destination = {i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()} for i in self.nodes.keys()}
 
     def Xshift(self):
-        """Move X to the back of a pattern"""
+        """Move X to the back of the pattern"""
         for index, node in self.nodes.items():
             EXcomutation = node.commute_X()
-            for target_index in EXcomutation:
-                self.nodes[target_index]._add_Z(index, node.Xsignal)
-            if not node.output:
-                node.Xsignal = []
+            for target_index, signal in EXcomutation.items():
+                self.nodes[target_index]._add_Z(index, signal)
 
     def Zshift(self):
-        """Move Z to the back of a pattern. This method can be executed separately"""
+        """Move Z to the back of the pattern. This method can be executed separately"""
         for node in self.nodes.values():
             node.commute_Z()
 
@@ -1463,7 +1476,8 @@ class LocalPattern:
         pattern : Pattern
             standardized global pattern
         """
-        pattern = Pattern(width=len(self.nodes), output_nodes=self.output_nodes)
+        pattern = Pattern(output_nodes=self.output_nodes)
+        Nseq = [["N", i] for i in self.nodes.keys()]
         Eseq = []
         Mseq = []
         Xseq = []
@@ -1487,7 +1501,7 @@ class LocalPattern:
                     raise ValueError(f"command {cmd} is invalid!")
             if node.result is not None:
                 pattern.results[node.index] = node.result
-        pattern.seq += Eseq + Mseq + Xseq + Zseq + Cseq
+        pattern.seq = Nseq + Eseq + Mseq + Xseq + Zseq + Cseq
         return pattern
 
 

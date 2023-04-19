@@ -12,10 +12,12 @@ class TestPattern(unittest.TestCase):
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
         pattern = circuit.transpile()
-        pattern.standardize(method="global")
-        state = circuit.simulate_statevector()
-        state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        for method in {"local", "global"}:
+            pattern.standardize(method=method)
+            np.testing.assert_equal(pattern.is_standard(), True)
+            state = circuit.simulate_statevector()
+            state_mbqc = pattern.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_minimize_space(self):
         nqubits = 5
@@ -71,12 +73,14 @@ class TestPattern(unittest.TestCase):
         depth = 1
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
-        state = circuit.simulate_statevector()
-        state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        for method in {"local", "global"}:
+            pattern = circuit.transpile()
+            pattern.standardize(method=method)
+            pattern.shift_signals(method=method)
+            np.testing.assert_equal(pattern.is_standard(), True)
+            state = circuit.simulate_statevector()
+            state_mbqc = pattern.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_pauli_measurment(self):
         nqubits = 3
@@ -268,6 +272,7 @@ class TestLocalPattern(unittest.TestCase):
         localpattern = pattern.get_local_pattern()
         localpattern.standardize()
         pattern = localpattern.get_pattern()
+        np.testing.assert_equal(pattern.is_standard(), True)
         pattern.minimize_space()
         state_p = pattern.simulate_pattern()
         state_ref = circuit.simulate_statevector()
@@ -283,6 +288,7 @@ class TestLocalPattern(unittest.TestCase):
         localpattern.standardize()
         localpattern.shift_signals()
         pattern = localpattern.get_pattern()
+        np.testing.assert_equal(pattern.is_standard(), True)
         pattern.minimize_space()
         state_p = pattern.simulate_pattern()
         state_ref = circuit.simulate_statevector()
