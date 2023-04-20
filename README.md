@@ -1,4 +1,4 @@
-<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/logo/black_with_name.png" alt="logo" width="600">
+<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/logo/black_with_name.png" alt="logo" width="550">
 
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
@@ -6,7 +6,7 @@
 ![PyPI](https://img.shields.io/pypi/v/graphix)
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.fund/)
 
-**Graphix** is an open-source library to optimize and simulate measurement-based quantum computing (MBQC). 
+**Graphix** is a measurement-based quantum computing (MBQC) compiler, which makes it easier to generate, optimize and simulate MBQC *measurement patterns*.
 
 ## Feature
 
@@ -47,6 +47,10 @@ Many thanks for letting us know about this work, we will properly mention this w
 
 We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking requests and bugs. 
 
+## Discord Server
+
+Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix` to ask questions.
+
 ## Core Contributors
 
 Dr. Shinichi Sunami (University of Oxford)
@@ -56,6 +60,10 @@ Masato Fukushima (University of Tokyo, Fixstars Amplify)
 ## Acknowledgements
 
 We are proud to be supported by [unitary fund microgrant program](https://unitary.fund/grants.html). 
+
+<p><a href="https://unitary.fund/grants.html">
+<img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
+</a></p>
 
 Special thanks to Fixstars Amplify:
 
