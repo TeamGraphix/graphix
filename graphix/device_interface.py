@@ -1,13 +1,12 @@
-"""MBQC executor
+"""Quantum hardware device interface
 
-Executes MBQC using actual quantum devices.
+Runs MBQC command sequence on quantum hardware.
 
 """
 
-from graphix.exe.ibmq import IBMQBackend
 
-class PatternExecutor:
-    """MBQC exeulator
+class PatternRunner:
+    """MBQC pattern runner
 
     Executes the measurement pattern.
     """
@@ -26,6 +25,10 @@ class PatternExecutor:
         self.backend_name = backend
 
         if self.backend_name == 'ibmq':
+            try:
+                from graphix-ibmq.runner import IBMQBackend
+            except:
+                raise ImportError("Failed to import graphix-ibmq. Please install graphix-ibmq by `pip install graphix-ibmq`.")
             self.backend = IBMQBackend(pattern, **kwargs)
         else:
             raise ValueError("unknown backend")
