@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Sunami
+    given-names: Shinichi
+    orcid: https://orcid.org/0000-0002-0969-9909
+  - family-names: Fukushima
+    given-names: Masato
+title: Graphix
+version: v0.2.1
+doi: 10.5281/zenodo.7861382
+date-released: 2023-04-25
+url: https://github.com/TeamGraphix/graphix
