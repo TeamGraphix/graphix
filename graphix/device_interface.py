@@ -26,10 +26,18 @@ class PatternRunner:
 
         if self.backend_name == 'ibmq':
             try:
-                from graphix-ibmq.runner import IBMQBackend
+                from graphix_ibmq.runner import IBMQBackend
             except:
                 raise ImportError("Failed to import graphix-ibmq. Please install graphix-ibmq by `pip install graphix-ibmq`.")
-            self.backend = IBMQBackend(pattern, **kwargs)
+            self.backend = IBMQBackend(pattern)
+            instance = kwargs.get("instance", "ibm-q/open/main")
+            resource = kwargs.get("resource", None)
+            save_statevector = kwargs.get("save_statevector", False)
+            optimization_level = kwargs.get("optimizer_level", 1)
+            self.backend.get_backend(instance, resource)
+            self.backend.to_qiskit(save_statevector)
+            self.backend.transpile(optimization_level)
+            self.shots = kwargs.get("shots", 1024)
         else:
             raise ValueError("unknown backend")
 
@@ -43,7 +51,7 @@ class PatternRunner:
             in the representation depending on the backend used.
         """
         if self.backend_name == 'ibmq':
-            self.job = self.backend.backend.run(self.backend.circ, shots = self.backend.shots, dynamic=True)
+            self.job = self.backend.backend.run(self.backend.circ, shots=self.shots, dynamic=True)
             print(f"Your job's id: {self.job.job_id()}")
             result = self.job.result()
 
