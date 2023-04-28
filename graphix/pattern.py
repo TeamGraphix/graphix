@@ -192,11 +192,10 @@ class Pattern:
             if cmd[0] == "N":
                 node_prop[cmd[1]] = {
                     "seq": [],
-                    "Mprop": [None, None, [], []],
+                    "Mprop": [None, None, [], [], 0],
                     "Xsignal": [],
                     "Xsignals": [],
                     "Zsignal": [],
-                    "vop": None,
                     "output": False,
                 }
             elif cmd[0] == "E":
@@ -1198,7 +1197,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, vop, output, Xsignal=[], Xsignals=[]):
+    def __init__(self, node_index, seq, Mprop, Zsignal, output, Xsignal=[], Xsignals=[]):
         """
         Parameters
         ----------
@@ -1221,9 +1220,6 @@ class CommandNode:
         Zsignal : list
             signal domain for Z byproduct correction
 
-        vop : int
-            value for clifford index
-
         output : bool
             whether the node is an output or not
         """
@@ -1234,7 +1230,7 @@ class CommandNode:
         self.Xsignal = Xsignal
         self.Xsignals = Xsignals
         self.Zsignal = Zsignal  # appeared at most e + 1
-        self.vop = vop
+        self.vop = Mprop[4] if len(Mprop) == 5 else 0
         self.output = output
 
     def commute_X(self):
@@ -1262,7 +1258,10 @@ class CommandNode:
             self.Xsignal = combined_Xsignal
             self.Xsignals = [combined_Xsignal]
         else:
-            self.Mprop[2] = xor_combination_list(combined_Xsignal, self.Mprop[2])
+            if self.Mprop[0] == "YZ" or self.vop == 6:
+                self.Mprop[3] = xor_combination_list(combined_Xsignal, self.Mprop[3])
+            elif self.Mprop[0] == "XY":
+                self.Mprop[2] = xor_combination_list(combined_Xsignal, self.Mprop[2])
             self.Xsignal = []
             self.Xsignals = []
         return EXcommutated_nodes
@@ -1276,7 +1275,10 @@ class CommandNode:
         if self.output and z_in_seq:
             self.seq.append(-3)
         else:
-            self.Mprop[3] = xor_combination_list(self.Zsignal, self.Mprop[3])
+            if self.Mprop[0] == "YZ" or self.vop == 6:
+                self.Mprop[2] = xor_combination_list(self.Zsignal, self.Mprop[2])
+            elif self.Mprop[0] == "XY":
+                self.Mprop[3] = xor_combination_list(self.Zsignal, self.Mprop[3])
             self.Zsignal = []
 
     def _add_Z(self, pair, signal):
@@ -1338,7 +1340,7 @@ class CommandNode:
         Returns
         -------
         signal_destination : set
-            measurement results of each node propagate to the nodes specified by 'signal_distination'. Inversal set of dependent nodes.
+            Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
         """
         signal_destination = set(self.Mprop[2]) | set(self.Mprop[3]) | set(self.Xsignal) | set(self.Zsignal)
         return signal_destination
@@ -1349,8 +1351,7 @@ class CommandNode:
         Returns
         -------
         signal_destination_dict : dict
-            measurement results of each node propagate to the nodes specified by 'signal_distination'.
-            Inversal set of dependent nodes.
+            Counterpart of 'dependent nodes'. Unlike 'get_signal_destination', types of domains are memorarized. measurement results of each node propagate to the nodes specified by 'signal_distination_dict'.
         """
         dependent_nodes_dict = dict()
         dependent_nodes_dict["Ms"] = self.Mprop[2]
@@ -1435,8 +1436,8 @@ class LocalPattern:
             signal = self.nodes[node_index].Mprop[3]
             self.nodes[node_index].Mprop[3] = []
             for signal_label, destinated_nodes in self.signal_destination[node_index].items():
-                for desinated_node in destinated_nodes:
-                    node = self.nodes[desinated_node]
+                for destinated_node in destinated_nodes:
+                    node = self.nodes[destinated_node]
                     if signal_label == "Ms":
                         node.Mprop[2] += signal
                     elif signal_label == "Mt":
