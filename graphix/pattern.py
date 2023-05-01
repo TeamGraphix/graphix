@@ -1233,6 +1233,30 @@ class CommandNode:
         self.vop = Mprop[4] if len(Mprop) == 5 else 0
         self.output = output
 
+    def is_standard(self):
+        """Check whether the local command sequence is standardized.
+
+        Returns
+        -------
+        standardized : Bool
+            whether the local command sequence is standardized or not
+        """
+        order_dict = {
+            -1: [-1, -2, -3, -4],
+            -2: [-2, -3, -4],
+            -3: [-2, -3, -4],
+            -4: [-4],
+        }
+        standardized = True
+        cmd_ref = 0
+        for cmd in self.seq:
+            if cmd_ref >= 0:
+                pass
+            else:
+                standardized &= cmd in order_dict[cmd_ref]
+            cmd_ref = cmd
+        return standardized
+
     def commute_X(self):
         """Move all X correction commands to the back.
 
@@ -1399,6 +1423,19 @@ class LocalPattern:
         self.morder = morder
         self.signal_destination = {i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()} for i in self.nodes.keys()}
 
+    def is_standard(self):
+        """Check whether the local pattern is standardized or not
+
+        Returns
+        -------
+        standardized : bool
+            whether the local pattern is standardized or not
+        """
+        standardized = True
+        for node in self.nodes.values():
+            standardized &= node.is_standard()
+        return standardized
+
     def Xshift(self):
         """Move X to the back of the pattern"""
         for index, node in self.nodes.items():
@@ -1477,6 +1514,7 @@ class LocalPattern:
         pattern : Pattern
             standardized global pattern
         """
+        assert self.is_standard()
         pattern = Pattern(output_nodes=self.output_nodes)
         Nseq = [["N", i] for i in self.nodes.keys()]
         Eseq = []

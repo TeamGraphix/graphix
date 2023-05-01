@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import tests.random_circuit as rc
 from graphix.transpiler import Circuit
-from graphix.pattern import Pattern
+from graphix.pattern import Pattern, CommandNode
 
 
 class TestPattern(unittest.TestCase):
@@ -359,6 +359,30 @@ class TestLocalPattern(unittest.TestCase):
         state_p = pattern.simulate_pattern()
         state_ref = circuit.simulate_statevector()
         np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+
+    def test_node_is_standardized(self):
+        ref_sequence = [
+            [[1, 2, 3, -1], True],
+            [[1, 2, 3, -2, -3, -2, -4], True],
+            [[1, -4, 2, -3, -1, 3], False],
+            [[1, 2, 3, -1, -4, 2], False],
+        ]
+        for [seq, ref] in ref_sequence:
+            node = CommandNode(0, seq, [], [], False, [], [])
+            result = node.is_standard()
+            np.testing.assert_equal(result, ref)
+
+    def test_localpattern_is_standard(self):
+        nqubits = 5
+        depth = 4
+        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
+        circuit = rc.generate_gate(nqubits, depth, pairs)
+        localpattern = circuit.transpile().get_local_pattern()
+        result1 = localpattern.is_standard()
+        localpattern.standardize()
+        result2 = localpattern.is_standard()
+        np.testing.assert_equal(result1, False)
+        np.testing.assert_equal(result2, True)
 
 
 def assert_equal_edge(edge, ref):
