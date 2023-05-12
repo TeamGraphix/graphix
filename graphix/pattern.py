@@ -1047,7 +1047,7 @@ class Pattern:
         sim = PatternSimulator(self, backend=backend, **kwargs)
         state = sim.run()
         return state
-    
+
     def execute_pattern(self, backend, **kwargs):
         """execute the pattern using a actual device. .
         Available backend: ['ibmq']

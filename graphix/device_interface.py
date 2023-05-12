@@ -24,11 +24,13 @@ class PatternRunner:
         self.pattern = pattern
         self.backend_name = backend
 
-        if self.backend_name == 'ibmq':
+        if self.backend_name == "ibmq":
             try:
                 from graphix_ibmq.runner import IBMQBackend
             except:
-                raise ImportError("Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix_ibmq`.")
+                raise ImportError(
+                    "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix_ibmq`."
+                )
             self.backend = IBMQBackend(pattern)
             instance = kwargs.get("instance", "ibm-q/open/main")
             resource = kwargs.get("resource", None)
@@ -50,13 +52,13 @@ class PatternRunner:
             the measurement result,
             in the representation depending on the backend used.
         """
-        if self.backend_name == 'ibmq':
+        if self.backend_name == "ibmq":
             self.job = self.backend.backend.run(self.backend.circ, shots=self.shots, dynamic=True)
             print(f"Your job's id: {self.job.job_id()}")
             result = self.job.result()
 
         return result
-    
+
     def retrieve_result(self, job_id):
         """Retrieve the execution result.
 
@@ -66,7 +68,7 @@ class PatternRunner:
             the measurement result,
             in the representation depending on the backend used.
         """
-        if self.backend_name == 'ibmq':
+        if self.backend_name == "ibmq":
             self.job = self.backend.backend.retrieve_job(job_id)
             result = self.job.result()
 
