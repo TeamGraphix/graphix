@@ -28,7 +28,7 @@ class PatternRunner:
             try:
                 from graphix_ibmq.runner import IBMQBackend
             except:
-                raise ImportError("Failed to import graphix-ibmq. Please install graphix-ibmq by `pip install graphix-ibmq`.")
+                raise ImportError("Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix_ibmq`.")
             self.backend = IBMQBackend(pattern)
             instance = kwargs.get("instance", "ibm-q/open/main")
             resource = kwargs.get("resource", None)
