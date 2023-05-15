@@ -298,7 +298,8 @@ class TestLocalPattern(unittest.TestCase):
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
         pattern = circuit.transpile()
-        pattern.standardize_and_shift_signals_with_localpattern()
+        pattern.standardize()
+        pattern.shift_signals()
         np.testing.assert_equal(pattern.is_standard(), True)
         pattern.minimize_space()
         state_p = pattern.simulate_pattern()

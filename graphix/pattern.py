@@ -280,19 +280,19 @@ class Pattern:
     def shift_signals(self, method="local"):
         """Performs signal shifting procedure
         Extract the t-dependence of the measurement into 'S' commands
-        and commute them towards the end of the command sequence,
-        where it can be deleted.
-        In many cases, this procedure simplifies the dependence structure
-        of the pattern. For patterns transpiled from gate sequencees,
-        this result in the removal of s- and t- domains on Pauli measurement commands.
+        and commute them to the end of the command sequence where it can be removed.
+        This procedure simplifies the dependence structure of the pattern. 
 
-        Ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
+        Ref for the original 'global' method: 
+            V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
+        Ref for the 'local' method:
+            S. Sunami and M. Fukushima, in preparation
 
         Parameters
         ----------
         method : str, optional
             'global' shift_signals is executed on a conventional Pattern sequence.
-            'local' shift_signals is done on a LocalPattern. the latter is faster than the former.
+            'local' shift_signals is done on a LocalPattern class which is faster but results in equivalent pattern.
             defaults to 'local'
         """
         if method == "local":
@@ -320,13 +320,6 @@ class Pattern:
                 target += 1
         else:
             raise ValueError("Invalid method")
-
-    def standardize_and_shift_signals_with_localpattern(self):
-        """Execute standardization and signal shifting with a local pattern."""
-        localpattern = self.get_local_pattern()
-        localpattern.standardize()
-        localpattern.shift_signals()
-        self.seq = localpattern.get_pattern().seq
 
     def _find_op_to_be_moved(self, op, rev=False, skipnum=0):
         """Internal method for pattern modification.
@@ -1388,7 +1381,9 @@ class CommandNode:
 class LocalPattern:
     """MBQC Local Pattern class
 
-    Unlike global Pattern class, a command sequence is distributed to each node. This data structure is sufficient and effective for MBQCs. By reducing unnecessary calculations, command operations are significantly accelerated.
+    Instead of storing commands as a 1D list as in Pattern class, here we distribute them to each node.
+    This data structure is efficient for command operations such as commutation and signal propagation.
+    This results in faster standardization and signal shifting.
 
     Attributes
     ----------
@@ -1402,9 +1397,8 @@ class LocalPattern:
         list of node indices in a measurement order.
 
     signal_destination : dict
-       measurement results of each node propagate to the nodes specified by 'signal_distination'.
-       this dict is used in 'shift_signals'.
-       signal destination is memorized separately for each kind of signal(i.e. Ms, Mt, X, Z).
+       stores the set of nodes where dependent feedforward operations are performed, from the result of measurement at each node.
+       stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
     def __init__(self, nodes=dict(), output_nodes=[], morder=[]):
@@ -1412,11 +1406,11 @@ class LocalPattern:
         Parameters
         ----------
         nodes : dict
-            dict of command decorated nodes. Defaults to an empty dict.
+            dict of command decorated nodes. defaults to an empty dict.
         output_nodes : list, optional
-            list of output node indices. Defaults to [].
+            list of output node indices. defaults to [].
         morder : list, optional
-            list of node indices in a measurement order. Defaults to [].
+            list of node indices in a measurement order. defaults to [].
         """
         self.nodes = nodes  # dict of Pattern.CommandNode
         self.output_nodes = output_nodes
@@ -1621,9 +1615,6 @@ def measure_pauli(pattern, copy=False):
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = list(nx.isolates(graph_state))
-    # for i in isolates:
-    #     if i not in pattern.output_nodes:
-    #         # check whether this is Pauli measurement
     for cmd in non_pauli_meas:
         if (cmd[1] in isolates) and (cmd[1] not in pattern.output_nodes):
             graph_state.remove_node(cmd[1])
