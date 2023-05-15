@@ -9,11 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Fast pattern operations with `pattern.LocalPattern` class (#42)
+- Fast pattern standardization and signal shfiting with `pattern.LocalPattern` class (#42), performance report at #43
+- Defaulted local pattern method for `graphix.Pattern.standardize()` and `graphix.Pattern.shift_signals()`. Note the resulting pattern is equivalent to the output of original method.
 
 ### Changed
-
-- Modify default backend for `Pattern.standardize` and `Pattern.shift_signals` to `pattern.LocalPattern` (#42)
 
 
 ## [0.2.1] - 2023-04-25
