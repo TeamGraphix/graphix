@@ -1,11 +1,11 @@
 """
-Using Tensor Network simulator
+Heavy Calculation with Tensor Network Simulator
 ===================
 
 In this example, we demonstrate the Tensor Network (TN) simulator to simulate MBQC
-with up to thousands of nodes at a time.
+with up to ten-thousands of nodes on a laptop PC.
 
-You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
+You can also run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
 
 .. image:: https://mybinder.org/badge_logo.svg
  :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_tn.ipynb
@@ -19,6 +19,8 @@ import numpy as np
 from graphix import Circuit
 import networkx as nx
 import matplotlib.pyplot as plt
+
+plt.rc("font", family="serif")
 
 
 def cp(circuit, theta, control, target):
@@ -37,7 +39,7 @@ def swap(circuit, a, b):
 
 def qft_rotations(circuit, n):
     circuit.h(n)
-    for qubit in range(n+1, circuit.width):
+    for qubit in range(n + 1, circuit.width):
         cp(circuit, np.pi / 2 ** (qubit - n), qubit, n)
 
 
@@ -54,9 +56,9 @@ def qft(circuit, n):
 
 
 # %%
-# We will simulate 7-qubit QFT, which requires nearly 250 nodes to be simulated.
+# We will simulate 50-qubit QFT, which requires more than 10000 nodes to be simulated.
 
-n = 7
+n = 50
 print("{}-qubit QFT".format(n))
 circuit = Circuit(n)
 
@@ -68,13 +70,26 @@ qft(circuit, n)
 pattern = circuit.transpile()
 pattern.standardize()
 nodes, edges = pattern.get_graph()
+
+print(f"Number of nodes: {len(nodes)}")
+print(f"Number of edges: {len(edges)}")
+
+# %%
+# The above graph is too large to simulate on tensor network simulator, so we remove pauli nodes.
+
+pattern.shift_signals()
+pattern.perform_pauli_measurements()
+
+nodes, edges = pattern.get_graph()
 g = nx.Graph()
 g.add_nodes_from(nodes)
 g.add_edges_from(edges)
+print(f"Number of nodes: {len(nodes)}")
+print(f"Number of edges: {len(edges)}")
 np.random.seed(100)
-nx.draw(g)
+pos = nx.spring_layout(g)
+nx.draw(g, pos=pos, node_size=15)
 plt.show()
-print(len(nodes))
 
 # %%
 # You can easily check that the below code run without much load on the computer.
@@ -83,7 +98,7 @@ print(len(nodes))
 # To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that the state is what is is expected to be:
 
-tn = pattern.simulate_pattern(backend="tensornetwork")
+tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
 value = tn.get_basis_amplitude(0)
 print("amplitude of |00...0> is ", value)
 print("1/2^n (true answer) is", 1 / 2**n)
