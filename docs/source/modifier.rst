@@ -34,4 +34,26 @@ Pattern Optimization
 
     .. automethod:: to_qasm3
 
+
+.. autoclass:: CommandNode
+
+    .. automethod:: __init__
+
+    .. automethod:: print_pattern
+
+
+.. autoclass:: LocalPattern
+
+    .. automethod:: __init__
+
+    .. automethod:: standardize
+
+    .. automethod:: shift_signals
+
+    .. automethod:: get_graph
+
+    .. automethod:: get_pattern
+
+
 .. autofunction:: measure_pauli
+

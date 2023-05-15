@@ -14,7 +14,7 @@ class TestGenerator(unittest.TestCase):
         results = []
         repeats = 3  # for testing the determinism of a pattern
         for _ in range(repeats):
-            pattern = generate_from_graph(graph, angles, inputs, outputs)
+            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs))
             pattern.standardize()
             pattern.minimize_space()
             state = pattern.simulate_pattern()
@@ -28,11 +28,11 @@ class TestGenerator(unittest.TestCase):
         graph = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
-        angles = np.random.randn(11)
+        angles = np.random.randn(6)
         results = []
         repeats = 3  # for testing the determinism of a pattern
         for _ in range(repeats):
-            pattern = generate_from_graph(graph, angles, inputs, outputs)
+            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs))
             pattern.standardize()
             pattern.minimize_space()
             state = pattern.simulate_pattern()

@@ -3,14 +3,13 @@ import itertools
 import numpy as np
 from quimb.tensor import Tensor
 from graphix.transpiler import Circuit
-from graphix.pattern import Pattern
 from graphix.ops import Ops, States
-from graphix.sim.tensornet import TensorNetworkBackend, MBQCTensorNet, gen_str
+from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.clifford import CLIFFORD
 import tests.random_circuit as rc
 
 
-def random_op(sites, dtype=np.complex64, seed=0):
+def random_op(sites, dtype=np.complex128, seed=0):
     np.random.seed(seed)
     size = 2**sites
     if dtype is np.complex64:
