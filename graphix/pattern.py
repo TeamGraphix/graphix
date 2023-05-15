@@ -987,6 +987,27 @@ class Pattern:
                 ind += 1
         return node_list
 
+    def standardize_and_shift_signals(self, method="local"):
+        """Executes standardization and signal shifting.
+
+        Parameters
+        ----------
+        method : str, optional
+            'global' corresponds to a conventional method executed on Pattern class.
+            'local' standardization is executed on LocalPattern class.
+            defaults to 'local'
+        """
+        if method == "local":
+            localpattern = self.get_local_pattern()
+            localpattern.standardize()
+            localpattern.shift_signals()
+            self.seq = localpattern.get_pattern().seq
+        elif method == "global":
+            self.standardize()
+            self.shift_signals()
+        else:
+            raise ValueError("Invalid method")
+
     def correction_commands(self):
         """Returns the list of byproduct correction commands"""
         assert self.is_standard()
