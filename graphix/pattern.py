@@ -281,9 +281,9 @@ class Pattern:
         """Performs signal shifting procedure
         Extract the t-dependence of the measurement into 'S' commands
         and commute them to the end of the command sequence where it can be removed.
-        This procedure simplifies the dependence structure of the pattern. 
+        This procedure simplifies the dependence structure of the pattern.
 
-        Ref for the original 'global' method: 
+        Ref for the original 'global' method:
             V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
         Ref for the 'local' method:
             S. Sunami and M. Fukushima, in preparation
