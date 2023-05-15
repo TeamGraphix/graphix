@@ -1,0 +1,44 @@
+# Contributing
+
+thank you for your interest in `Graphix`!
+
+## Motivation
+
+The aim of `graphix` is to make the measurement-based quantum computing (MBQC) accessible by creating a one-stop environment to study and research MBQC. We plan to add quantum hardware as pattern execution backend, extending the scope to noisy near-term devices.
+
+
+## Getting started developing with `graphix`
+
+Follow the commands below to get ready in trying out `graphix`.
+```
+   $ git clone git@github.com:TeamGraphix/graphix.git
+   $ cd graphix
+   $ pip install -r requirements.txt
+   $ python setup.py develop
+```
+
+You may want to install additional packages for plotting, testing and code formatting. Specifically, `matplotlib` is necessary to run codes in `example` folder.
+```
+   $ pip install "black==22.8.0" pytest matplotlib
+```
+
+## Making changes to `graphix`
+We recommend to fork the repository before working on new features, whether that being an existing issue or your own idea.
+Once created, you'll need to clone the repository, and the rest is the same as above to set up the environment. You may want to set up virtual environment, such as `conda env` or `pipenv` before setting up the environment.
+```
+   $ git clone git@github.com:<username>/graphix.git
+```
+
+Before comitting the code, make sure to format with `black`. As `black` sometimes have breaking changes (that will trigger error in our CI pipeline even after formatting), we fixed the version to `black==22.8.0` as above. To format a python file, just run
+```
+   $ black -l 120 <file path>
+```
+and you are ready to commit the changes.
+
+## Creating pull request
+
+When creating a pull request, you'll see default text already filled in to the PR comment box. Please read them and fill in the missing parts, so the motivation and the changes of the PR are clear.
+
+## Last but not least..
+
+If you use graphix, please consider giving the repository a star, as well as citing in your work. 
