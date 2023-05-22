@@ -84,9 +84,7 @@ g.add_nodes_from(nodes)
 g.add_edges_from(edges)
 print(f"Number of nodes: {len(nodes)}")
 print(f"Number of edges: {len(edges)}")
-np.random.seed(100)
-pos = nx.spring_layout(g)
-nx.draw(g, pos=pos, node_size=15)
+nx.draw(g, node_size=10)
 plt.show()
 
 # %%
@@ -96,7 +94,7 @@ plt.show()
 # To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that the state is what it is expected to be:
 
-tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+tn = pattern.simulate_pattern(backend="tensornetwork")
 value = tn.get_basis_amplitude(0)
 print("amplitude of |00...0> is ", value)
 print("1/2^n (true answer) is", 1 / 2**n)
