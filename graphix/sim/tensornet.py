@@ -43,9 +43,9 @@ class TensorNetworkBackend:
         elif graph_prep == "auto":
             max_degree = pattern.get_max_degree()
             if max_degree > 5:
-                self.graph_prep = "parallel"
-            else:
                 self.graph_prep = "sequential"
+            else:
+                self.graph_prep = "parallel"
         else:
             raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
 
