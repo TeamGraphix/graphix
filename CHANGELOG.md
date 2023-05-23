@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fast pattern standardization and signal shfiting with `pattern.LocalPattern` class (#42), performance report at #43
 - Defaulted local pattern method for `graphix.Pattern.standardize()` and `graphix.Pattern.shift_signals()`. Note the resulting pattern is equivalent to the output of original method.
+- Interface to run patterns on the IBMQ devices. (see PR) (#44)
 
 ### Changed
 
