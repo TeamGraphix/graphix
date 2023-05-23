@@ -73,3 +73,29 @@ class PatternRunner:
             result = self.job.result()
 
         return result
+    
+    def format_result(self):
+        """Format the result so that only the result corresponding to the output qubit is taken out.
+
+        Returns
+        -------
+        result :
+            the formatted result
+        """
+        if self.backend_name == "ibmq":
+            result = self.job.result()
+            masked_results = {} # dictionary that stores the extracted results by applying a mask
+
+            N_node = self.pattern.Nnode + len(self.pattern.results)
+
+            # Iterate over original measurement results
+            for key, value in result.get_counts().items():
+                masked_key = ""
+                for idx in self.pattern.output_nodes:
+                    masked_key +=  key[N_node - idx - 1]
+                if masked_key in masked_results:
+                    masked_results[masked_key] += value
+                else:
+                    masked_results[masked_key] = value
+
+        return masked_results
