@@ -39,7 +39,7 @@ class TensorNetworkBackend:
             self.graph_prep = graph_prep
         elif graph_prep == "opt":
             self.graph_prep = "parallel"
-            print(f"graph preparation strategy '{graph_prep}' will be removed")
+            print(f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'")
         elif graph_prep == "auto":
             max_degree = pattern.get_max_degree()
             if max_degree > 5:
