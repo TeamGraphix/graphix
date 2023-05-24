@@ -1,24 +1,20 @@
 """
-Using Tensor Network simulator
+Large-scale simulations with tensor network simulator
 ===================
 
-In this example, we demonstrate the Tensor Network (TN) simulator to simulate MBQC
-with up to thousands of nodes at a time.
+In this example, we demonstrate simulation of MBQC involving 10k+ nodes.
 
-You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
+You can also run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
 
 .. image:: https://mybinder.org/badge_logo.svg
  :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_tn.ipynb
 
-
-We will simulate n-qubit QFT circuit.
-Firstly, let us import relevant modules:
+Firstly, let us import relevant modules and define the circuit:
 """
-
+# %%
 import numpy as np
 from graphix import Circuit
 import networkx as nx
-import matplotlib.pyplot as plt
 
 
 def cp(circuit, theta, control, target):
@@ -37,7 +33,7 @@ def swap(circuit, a, b):
 
 def qft_rotations(circuit, n):
     circuit.h(n)
-    for qubit in range(n+1, circuit.width):
+    for qubit in range(n + 1, circuit.width):
         cp(circuit, np.pi / 2 ** (qubit - n), qubit, n)
 
 
@@ -54,9 +50,9 @@ def qft(circuit, n):
 
 
 # %%
-# We will simulate 7-qubit QFT, which requires nearly 250 nodes to be simulated.
+# We will simulate 50-qubit QFT, which requires graph states with more than 10000 nodes.
 
-n = 7
+n = 50
 print("{}-qubit QFT".format(n))
 circuit = Circuit(n)
 
@@ -67,23 +63,29 @@ qft(circuit, n)
 # standardize pattern
 pattern = circuit.transpile()
 pattern.standardize()
+pattern.shift_signals()
 nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-np.random.seed(100)
-nx.draw(g)
-plt.show()
-print(len(nodes))
+print(f"Number of nodes: {len(nodes)}")
+print(f"Number of edges: {len(edges)}")
 
 # %%
-# You can easily check that the below code run without much load on the computer.
+# Using efficient graph state simulator `graphix.GraphSim`, we can classically preprocess Pauli measurements.
+# We are currently improving the speed of this process by using rust-based graph manipulation backend.
+pattern.perform_pauli_measurements()
+
+
+# %%
+# You can easily check that the below code run without too much load on your computer.
 # Also notice that we have not used :meth:`graphix.pattern.Pattern.minimize_space()`,
 # which we know reduced the burden on the simulator.
 # To specify TN backend of the simulation, simply provide as a keyword argument.
-# here we do a very basic check that the state is what is is expected to be:
+# here we do a very basic check that one of the statevector amplitudes is what it is expected to be:
 
+import time
+t1 = time.time()
 tn = pattern.simulate_pattern(backend="tensornetwork")
 value = tn.get_basis_amplitude(0)
+t2 = time.time()
 print("amplitude of |00...0> is ", value)
 print("1/2^n (true answer) is", 1 / 2**n)
+print("approximate execution time in seconds: ", t2 - t1)
