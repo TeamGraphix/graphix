@@ -9,7 +9,7 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 .. image:: https://mybinder.org/badge_logo.svg
  :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=ghz_with_tn.ipynb
 
-We will simulate 100-qubit GHZ circuit.
+We will simulate the generation of 100-qubit GHZ state.
 Firstly, let us import relevant modules:
 """
 # %%
