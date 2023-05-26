@@ -9,12 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Fast pattern standardization and signal shfiting with `pattern.LocalPattern` class (#42), performance report at #43
-- Defaulted local pattern method for `graphix.Pattern.standardize()` and `graphix.Pattern.shift_signals()`. Note the resulting pattern is equivalent to the output of original method.
 - Interface to run patterns on the IBMQ devices. (see PR) (#44)
 
 ### Changed
 
+
+## [0.2.2] - 2023-05-25
+### Added
+
+- Fast pattern standardization and signal shfiting with `pattern.LocalPattern` class (#42), performance report at #43
+- Defaulted local pattern method for `graphix.Pattern.standardize()` and `graphix.Pattern.shift_signals()`. Note the resulting pattern is equivalent to the output of original method.
+- Automatic selection of appropriate tensor network graph state preparation strategy `graph_prep="auto"` argument for instantiation of `TensorNetworkBackend` (#50)
+
+### Changed
+- option `graph_prep="opt"` for `graph_prep` kwarg of `TensorNetworkBackend` (#50) will be deprecated, and will be replaced by `graph_prep="parallel"`, as we identified that `parallel` preparation is not always optimal.
 
 ## [0.2.1] - 2023-04-25
 

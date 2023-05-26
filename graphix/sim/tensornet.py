@@ -13,29 +13,45 @@ class TensorNetworkBackend:
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="opt", **kwargs):
+    def __init__(self, pattern, graph_prep="auto", **kwargs):
         """
 
         Parameters
         ----------
         pattern : graphix.Pattern
         graph_prep : str
-            'opt'(default) :
-                Faster and optimal method to prepare a tensornetwork representing graph state.
-                The expression of the given graph state can be obtained from its geometry.
-                See https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315 for example.
-                Note that the 'N' and 'E' commands in the measurement pattern are ignored.
+            'parallel' :
+                Faster method for preparing a graph state.
+                The expression of a graph state can be obtained from the graph geometry.
+                See https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315 for detail calculation.
+                Note that 'N' and 'E' commands in the measurement pattern are ignored.
             'sequential' :
-                Sequentially add nodes and edges, strictly following the measuremen pattern.
+                Sequentially execute N and E commands, strictly following the measurement pattern.
                 In this strategy, All N and E commands executed sequentially.
+            'auto'(default) :
+                Automatically select a preparation strategy based on the max degree of a graph
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
-        assert graph_prep in ["opt", "sequential"]
-        self.graph_prep = graph_prep
-        if graph_prep == "opt":
+        if graph_prep in ["parallel", "sequential"]:
+            self.graph_prep = graph_prep
+        elif graph_prep == "opt":
+            self.graph_prep = "parallel"
+            print(f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'")
+        elif graph_prep == "auto":
+            max_degree = pattern.get_max_degree()
+            if max_degree > 5:
+                self.graph_prep = "sequential"
+            else:
+                self.graph_prep = "parallel"
+        else:
+            raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
+
+        if self.graph_prep == "parallel":
+            if not pattern.is_standard():
+                raise ValueError("parallel preparation strategy does not support not-standardized pattern")
             nodes, edges = pattern.get_graph()
             self.state = MBQCTensorNet(
                 graph_nodes=nodes,
@@ -43,7 +59,7 @@ class TensorNetworkBackend:
                 default_output_nodes=pattern.output_nodes,
                 **kwargs,
             )
-        elif graph_prep == "sequential":
+        elif self.graph_prep == "sequential":
             self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()

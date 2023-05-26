@@ -876,6 +876,22 @@ class Pattern:
                 meas_plane[cmd[1]] = mplane
         return meas_plane
 
+    def get_max_degree(self):
+        """Get max degree of a pattern
+
+        Returns
+        -------
+        max_degree : int
+            max degree of a pattern
+        """
+        nodes, edges = self.get_graph()
+        g = nx.Graph()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+        degree = g.degree()
+        max_degree = max([i for i in dict(degree).values()])
+        return max_degree
+
     def get_graph(self):
         """returns the list of nodes and edges from the command sequence,
         extracted from 'N' and 'E' commands.
