@@ -11,15 +11,17 @@ class PatternRunner:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend, **kwargs):
+    def __init__(self, pattern, backend="ibmq", **kwargs):
         """
+
         Parameteres
         -----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be executed.
-        backend_name: str, 'ibmq'
-            execution backend (optional), default is 'ibmq'.
-        kwargs: keyword args for specified backend.
+        backend_name: str, optional
+            execution backend, default is 'ibmq'.
+        kwargs: dict
+            keyword args for specified backend.
         """
         self.pattern = pattern
         self.backend_name = backend
@@ -32,20 +34,55 @@ class PatternRunner:
                     "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix-ibmq`."
                 )
             self.backend = IBMQBackend(pattern)
-            instance = kwargs.get("instance", "ibm-q/open/main")
-            resource = kwargs.get("resource", None)
-            save_statevector = kwargs.get("save_statevector", False)
-            optimization_level = kwargs.get("optimizer_level", 1)
-            self.backend.get_backend(instance, resource)
-            self.backend.to_qiskit(save_statevector)
-            self.backend.transpile(optimization_level)
-            self.shots = kwargs.get("shots", 1024)
+            try:
+                instance = kwargs.get("instance", "ibm-q/open/main")
+                resource = kwargs.get("resource", None)
+                save_statevector = kwargs.get("save_statevector", False)
+                optimization_level = kwargs.get("optimizer_level", 1)
+
+                self.backend.get_backend(instance, resource)
+                self.backend.to_qiskit(save_statevector)
+                self.backend.transpile(optimization_level)
+                self.shots = kwargs.get("shots", 1024)
+            except:
+                save_statevector = kwargs.get("save_statevector", False)
+                optimization_level = kwargs.get("optimizer_level", 1)
+                self.backend.to_qiskit(save_statevector)
+                self.shots = kwargs.get("shots", 1024)
         else:
             raise ValueError("unknown backend")
 
-    def run(self):
+    def simulate(self, **kwargs):
+        """ "Perform the simulation.
+
+        Parameters
+        ----------
+        kwargs: dict
+            keyword args for specified backend.
+
+        Returns
+        -------
+        result :
+            the simulation result,
+            in the representation depending on the backend used.
+        """
+        if self.backend_name == "ibmq":
+            shots = kwargs.get("shots", self.shots)
+            noise_model = kwargs.get("noise_model", None)
+            format_result = kwargs.get("format_result", True)
+
+            result = self.backend.simulate(shots=shots, noise_model=noise_model, format_result=format_result)
+
+        return result
+
+    def run(self, **kwargs):
         """Perform the execution.
 
+        Parameters
+        ----------
+        kwargs: dict
+            keyword args for specified backend.
+
         Returns
         -------
         result :
@@ -53,15 +90,22 @@ class PatternRunner:
             in the representation depending on the backend used.
         """
         if self.backend_name == "ibmq":
-            self.job = self.backend.backend.run(self.backend.circ, shots=self.shots, dynamic=True)
-            print(f"Your job's id: {self.job.job_id()}")
-            result = self.job.result()
+            shots = kwargs.get("shots", self.shots)
+            format_result = kwargs.get("format_result", True)
+            optimization_level = kwargs.get("optimizer_level", 1)
+
+            result = self.backend.run(shots=shots, format_result=format_result, optimization_level=optimization_level)
 
         return result
 
-    def retrieve_result(self, job_id):
+    def retrieve_result(self, **kwargs):
         """Retrieve the execution result.
 
+        Parameters
+        ----------
+        kwargs: dict
+            keyword args for specified backend.
+
         Returns
         -------
         result :
@@ -69,33 +113,7 @@ class PatternRunner:
             in the representation depending on the backend used.
         """
         if self.backend_name == "ibmq":
-            self.job = self.backend.backend.retrieve_job(job_id)
-            result = self.job.result()
+            job_id = kwargs.get("job_id", None)
+            result = self.backend.retrieve_result(job_id)
 
         return result
-
-    def format_result(self):
-        """Format the result so that only the result corresponding to the output qubit is taken out.
-
-        Returns
-        -------
-        result :
-            the formatted result
-        """
-        if self.backend_name == "ibmq":
-            result = self.job.result()
-            masked_results = {}  # dictionary that stores the extracted results by applying a mask
-
-            N_node = self.pattern.Nnode + len(self.pattern.results)
-
-            # Iterate over original measurement results
-            for key, value in result.get_counts().items():
-                masked_key = ""
-                for idx in self.pattern.output_nodes:
-                    masked_key += key[N_node - idx - 1]
-                if masked_key in masked_results:
-                    masked_results[masked_key] += value
-                else:
-                    masked_results[masked_key] = value
-
-        return masked_results

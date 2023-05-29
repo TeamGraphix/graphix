@@ -36,7 +36,7 @@ info = {
     ],
     "python_requires": ">=3.8,<3.11",
     "install_requires": requirements,
-    "extras_require": {'extra': ['graphix-ibmq']},
+    "extras_require": {'extra': ['graphix-ibmq'], 'test': ['graphix-ibmq']},
 }
 
 setup(**(info))
