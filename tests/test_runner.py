@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from graphix.device_interface import PatternRunner
 import tests.random_circuit as rc
+from qiskit import Aer
 
 
 def modify_statevector(statevector, output_qubit):
@@ -25,6 +26,7 @@ class TestPatternRunner(unittest.TestCase):
         pattern = circuit.transpile()
         state = pattern.simulate_pattern()
 
+        sim = Aer.get_backend('aer_simulator')
         runner = PatternRunner(pattern, backend="ibmq", save_statevector=True)
         sim_result = runner.simulate(format_result=False)
         state_qiskit = sim_result.get_statevector(runner.backend.circ)
