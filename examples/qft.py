@@ -11,7 +11,7 @@ for any quantum algorithms running on MBQC.
 We will demonstrate this by simulating QFT on three qubits.
 First, import relevant modules and define additional gates we'll use:
 """
-
+#%%
 import numpy as np
 from graphix import Circuit
 import networkx as nx
@@ -95,6 +95,9 @@ print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_
 
 #%%
 # Finally, check the output state:
+st_expected = [np.exp(2 * np.pi * 1j * 3 * i / 8) / np.sqrt(8) for i in range(8)]
+out_stv = out_state.flatten()
+print(np.round(st_expected, 3))
+print(np.round(out_stv * st_expected[0] / out_stv[0], 3))  # global phase is arbitrary
 
-print(np.round([np.exp(2 * np.pi * 1j * 3 * i / 8) / np.sqrt(8) for i in range(8)], 3))
-print(np.round(out_state.flatten() * -1j, 3))  # global phase is arbitrary
+# %%
