@@ -1668,7 +1668,7 @@ def measure_pauli(pattern, copy=False):
         if cmd[0] == "M":
             if cmd[1] in list(graph_state.nodes):
                 cmd_new = deepcopy(cmd)
-                new_clifford_ = CLIFFORD_CONJ[vops[cmd[1]]]
+                new_clifford_ = vops[cmd[1]]
                 if cmd[1] in vop_init.keys():
                     new_clifford_ = CLIFFORD_MUL[vop_init[cmd[1]], new_clifford_]
                 if len(cmd_new) == 7:
