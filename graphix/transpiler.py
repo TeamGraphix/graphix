@@ -154,7 +154,9 @@ class Circuit:
 
         Prameters
         ---------
-        qubit : int
+        control : int
+            control qubit
+        target : int
             target qubit
         angle : float
             rotation angle in radian
@@ -162,6 +164,23 @@ class Circuit:
         assert control in np.arange(self.width)
         assert target in np.arange(self.width)
         self.instruction.append(["Rzz", [control, target], angle])
+
+    def ccx(self, control1, control2, target):
+        r"""CCX (Toffoli) gate.
+
+        Prameters
+        ---------
+        control1 : int
+            first control qubit
+        control2 : int
+            second control qubit
+        target : int
+            target qubit
+        """
+        assert control1 in np.arange(self.width)
+        assert control2 in np.arange(self.width)
+        assert target in np.arange(self.width)
+        self.instruction.append(["CCX", [control1, control2, target]])
 
     def i(self, qubit):
         """identity (teleportation) gate
@@ -258,6 +277,27 @@ class Circuit:
                         "YZ-plane measurements not accepted and Rzz gate\
                         cannot be directly transpiled"
                     )
+            elif instr[0] == "CCX":
+                if opt:
+                    ancilla = [Nnode + i for i in range(6)]
+                    (
+                        out[instr[1][0]],
+                        out[instr[1][1]],
+                        out[instr[1][2]],
+                        seq,
+                    ) = self._ccx_command_opt(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
+                    pattern.seq.extend(seq)
+                    Nnode += 6
+                else:
+                    ancilla = [Nnode + i for i in range(28)]
+                    (
+                        out[instr[1][0]],
+                        out[instr[1][1]],
+                        out[instr[1][2]],
+                        seq,
+                    ) = self._ccx_command(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
+                    pattern.seq.extend(seq)
+                    Nnode += 28
             else:
                 raise ValueError("Unknown instruction, commands not added")
         pattern.output_nodes = out
@@ -940,6 +980,283 @@ class Circuit:
         seq.append(["Z", control_node, [ancilla]])
         seq.append(["Z", target_node, [ancilla]])
         return control_node, target_node, seq
+
+    @classmethod
+    def _ccx_command(self, control_node1, control_node2, target_node, ancilla):
+        """MBQC commands for CCX gate
+
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : int
+            ancilla node index
+
+        Returns
+        ---------
+        out_node_control : int
+            control node on graph after the gate
+        out_node_target : int
+            target node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        raise NotImplementedError  # TODO:
+        assert len(ancilla) == 28
+        seq = [["N", ancilla[i]] for i in range(28)]  # assign new qubit labels
+        seq.append(["E", (ancilla[2], ancilla[3])])
+        seq.append(["E", (ancilla[3], ancilla[4])])
+        seq.append(["E", (ancilla[4], ancilla[1])])
+        seq.append(["E", (ancilla[4], ancilla[5])])
+        seq.append(["E", (ancilla[5], ancilla[6])])
+        seq.append(["E", (ancilla[6], ancilla[7])])
+        seq.append(["E", (ancilla[7], ancilla[8])])
+        seq.append(["E", (ancilla[8], ancilla[0])])
+        seq.append(["E", (ancilla[8], ancilla[9])])
+        seq.append(["E", (ancilla[9], ancilla[10])])
+        seq.append(["E", (ancilla[10], ancilla[11])])
+        seq.append(["E", (ancilla[11], ancilla[12])])
+        seq.append(["E", (ancilla[12], ancilla[1])])
+        seq.append(["E", (ancilla[12], ancilla[13])])
+        seq.append(["E", (ancilla[13], ancilla[14])])
+        seq.append(["E", (ancilla[14], ancilla[15])])
+        seq.append(["E", (ancilla[15], ancilla[16])])
+        seq.append(["E", (ancilla[16], ancilla[0])])
+        seq.append(["E", (ancilla[16], ancilla[17])])
+        seq.append(["E", (ancilla[1], ancilla[18])])
+        seq.append(["E", (ancilla[18], ancilla[19])])
+        seq.append(["E", (ancilla[17], ancilla[20])])
+        seq.append(["E", (ancilla[20], ancilla[21])])
+        seq.append(["E", (ancilla[19], ancilla[22])])
+        seq.append(["E", (ancilla[22], ancilla[0])])
+        seq.append(["E", (ancilla[22], ancilla[23])])
+        seq.append(["E", (ancilla[21], ancilla[24])])
+        seq.append(["E", (ancilla[0], control_node1)])
+        seq.append(["E", (control_node1, ancilla[25])])
+        seq.append(["E", (ancilla[23], ancilla[26])])
+        seq.append(["E", (ancilla[26], control_node2)])
+        seq.append(["E", (control_node2, ancilla[27])])
+        seq.append(["E", (ancilla[27], ancilla[25])])
+        seq.append(["E", (ancilla[27], target_node)])
+        seq.append(["M", ancilla[2], "XY", 0, [], []])
+        seq.append(["M", ancilla[3], "XY", 0, [ancilla[2]], []])
+        seq.append(["M", ancilla[4], "XY", 0, [], []])
+        seq.append(["M", ancilla[5], "XY", 0.25, [ancilla[4], ancilla[2]], []])
+        seq.append(["M", ancilla[6], "XY", 0, [], []])
+        seq.append(["M", ancilla[7], "XY", 0, [ancilla[6], ancilla[4], ancilla[2]], []])
+        seq.append(["M", ancilla[8], "XY", 0, [], []])
+        seq.append(
+            [
+                "M",
+                ancilla[9],
+                "XY",
+                -0.25,
+                [ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
+                [],
+            ]
+        )
+        seq.append(["M", ancilla[10], "XY", 0, [], []])
+        seq.append(
+            [
+                "M",
+                ancilla[11],
+                "XY",
+                0,
+                [ancilla[10], ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
+                [],
+            ]
+        )
+        seq.append(["M", ancilla[12], "XY", 0, [], []])
+        seq.append(["M", ancilla[13], "XY", 0.25, [], []])
+        seq.append(["M", ancilla[14], "XY", 0, [], []])
+        seq.append(
+            [
+                "M",
+                ancilla[15],
+                "XY",
+                0.25,
+                [
+                    ancilla[14],
+                    ancilla[12],
+                    ancilla[10],
+                    ancilla[8],
+                    ancilla[6],
+                    ancilla[4],
+                    ancilla[2],
+                ],
+                [],
+            ]
+        )
+        seq.append(["M", ancilla[16], "XY", 0, [], []])
+        seq.append(["M", ancilla[1], "XY", -0.25, [], []])
+        seq.append(["M", ancilla[18], "XY", 0, [], []])
+        seq.append(
+            [
+                "M",
+                ancilla[17],
+                "XY",
+                0,
+                [
+                    ancilla[16],
+                    ancilla[14],
+                    ancilla[12],
+                    ancilla[10],
+                    ancilla[8],
+                    ancilla[6],
+                    ancilla[4],
+                    ancilla[2],
+                ],
+                [],
+            ]
+        )
+        seq.append(["M", ancilla[20], "XY", 0, [], []])
+        seq.append(["M", ancilla[19], "XY", 0, [ancilla[18]], []])
+        seq.append(["M", ancilla[22], "XY", 0, [], []])
+        seq.append(
+            [
+                "M",
+                ancilla[21],
+                "XY",
+                0,
+                [
+                    ancilla[20],
+                    ancilla[16],
+                    ancilla[14],
+                    ancilla[12],
+                    ancilla[10],
+                    ancilla[8],
+                    ancilla[6],
+                    ancilla[4],
+                    ancilla[2],
+                ],
+                [],
+            ]
+        )
+        seq.append(["M", ancilla[0], "XY", -0.25, [], []])
+        seq.append(["M", ancilla[25], "XY", 0, [], []])
+        seq.append(["M", ancilla[23], "XY", 0.25, [ancilla[22], ancilla[18]], []])
+        seq.append(["M", ancilla[27], "XY", 0, [], []])
+        seq.append(["M", ancilla[28], "XY", 0, [ancilla[27], ancilla[22], ancilla[18]], []])
+
+        seq.append(["X", control_node1, [ancilla[24]]])
+        seq.append(
+            [
+                "X",
+                control_node2,
+                [ancilla[14], ancilla[20], ancilla[24], ancilla[25], ancilla[27]],
+            ]
+        )
+        seq.append(
+            [
+                "X",
+                target_node,
+                [
+                    ancilla[3],
+                    ancilla[5],
+                    ancilla[7],
+                    ancilla[9],
+                    ancilla[11],
+                    ancilla[13],
+                    ancilla[17],
+                    ancilla[19],
+                    ancilla[23],
+                ],
+            ]
+        )
+        seq.append(
+            [
+                "Z",
+                control_node1,
+                [
+                    ancilla[0],
+                    ancilla[9],
+                    ancilla[11],
+                    ancilla[13],
+                    ancilla[17],
+                    ancilla[21],
+                    ancilla[26],
+                ],
+            ]
+        )
+        seq.append(
+            [
+                "Z",
+                control_node2,
+                [
+                    ancilla[1],
+                    ancilla[5],
+                    ancilla[7],
+                    ancilla[9],
+                    ancilla[11],
+                    ancilla[15],
+                    ancilla[21],
+                    ancilla[26],
+                ],
+            ]
+        )
+        seq.append(
+            [
+                "Z",
+                target_node,
+                [
+                    ancilla[2],
+                    ancilla[4],
+                    ancilla[6],
+                    ancilla[8],
+                    ancilla[10],
+                    ancilla[12],
+                    ancilla[16],
+                    ancilla[18],
+                    ancilla[22],
+                ],
+            ]
+        )
+        return control_node1, control_node2, target_node, seq
+
+    @classmethod
+    def _ccx_command_opt(self, control_node1, control_node2, target_node, ancilla):
+        """Optimized MBQC commands for CCX gate
+
+        Parameters
+        ---------
+        input_node : int
+            input node index
+        ancilla : int
+            ancilla node index
+
+        Returns
+        ---------
+        out_node_control : int
+            control node on graph after the gate
+        out_node_target : int
+            target node on graph after the gate
+        commands : list
+            list of MBQC commands
+        """
+        assert len(ancilla) == 6
+        seq = [["N", ancilla[0]], ["N", ancilla[1]]]  # assign new qubit labels
+        seq.extend([["N", ancilla[2]], ["N", ancilla[3]]])
+        seq.extend([["N", ancilla[4]], ["N", ancilla[5]]])
+        seq.append(["E", (ancilla[0], ancilla[3])])
+        seq.append(["E", (ancilla[0], control_node2)])
+        seq.append(["E", (ancilla[1], control_node2)])
+        seq.append(["E", (ancilla[2], control_node2)])
+        seq.append(["E", (ancilla[3], ancilla[5])])
+        seq.append(["E", (ancilla[3], control_node1)])
+        seq.append(["E", (ancilla[3], ancilla[4])])
+        seq.append(["E", (ancilla[4], control_node2)])
+        seq.append(["E", (control_node1, control_node2)])
+        seq.append(["M", ancilla[2], "XY", 0.25, [], [], 6])
+        seq.append(["M", ancilla[3], "XY", -0.25, [], [], 0])
+        seq.append(["M", ancilla[4], "XY", 0.25, [], [], 6])
+        seq.append(["M", ancilla[1], "XY", -0.25, [], [], 6])
+        seq.append(["M", ancilla[0], "XY", -0.25, [], [], 6])
+        seq.append(["M", ancilla[5], "XY", 0.25, [], [], 6])
+        # seq.append(["C", control_node1, 6]) # TODO: does not work?
+        seq.append(["X", target_node, [ancilla[2], ancilla[3], ancilla[4]]])
+        seq.append(["Z", control_node1, [ancilla[0], ancilla[3], ancilla[4], ancilla[5]]])
+        seq.append(["Z", control_node2, [ancilla[1], ancilla[2], ancilla[3], ancilla[5]]])
+        return control_node1, control_node2, target_node, seq
 
     @classmethod
     def _sort_outputs(self, pattern, output_nodes):
