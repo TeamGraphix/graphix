@@ -297,7 +297,6 @@ after_meas = []
 
 
 for n_qubits in qubits:
-    print("n_qubits:", n_qubits)
     
     params = np.random.rand(n_layers * n_qubits * n_features * 2)
     qnn = QNN(n_qubits, n_layers, n_features)
@@ -312,3 +311,11 @@ for n_qubits in qubits:
     after_meas.append(pattern.max_space())
     
     del circuit, pattern, qnn, params
+
+#%%
+# resource state size vs circut width
+
+plt.plot(qubits, before_meas, '.-', label='Before Pauli Meas')
+plt.plot(qubits, after_meas, '.-', label='After Pauli Meas')
+plt.xlabel("qubits")
+plt.ylabel("max space")
