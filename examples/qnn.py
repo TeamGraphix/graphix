@@ -268,7 +268,7 @@ n_features = 3
 qnn = QNN(n_qubits, n_layers, n_features)
 
 start = time()
-result = qnn.fit(x, y, maxiter=100)
+result = qnn.fit(x, y, maxiter=50)
 end = time()
 
 print("Duration:", end-start)
