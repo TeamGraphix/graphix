@@ -93,7 +93,7 @@ plt.show()
 
 #%%
 # Since all operations are Clifford, all measurements in the measurement pattern are Pauli measurements:
-# So the preprocessing has done all the necessary computations, and all nodes are idolated with no further measurements required.
+# So the preprocessing has done all the necessary computations, and all nodes are isolated with no further measurements required.
 # Let us make sure the result is correct:
 
 out_state = pattern.simulate_pattern()
