@@ -180,8 +180,9 @@ class QNN:
         pattern.standardize()
         pattern.shift_signals()
         pattern.perform_pauli_measurements()
-        out_state = pattern.simulate_pattern('tensornetwork')
-        sv = out_state.to_statevector().flatten()
+        pattern.minimize_space()
+        out_state = pattern.simulate_pattern('statevector')
+        sv = out_state.flatten()
         return self.get_expectation_value(sv)
     
     def cost(self, params, x, y):
