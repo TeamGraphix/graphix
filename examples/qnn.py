@@ -179,9 +179,8 @@ class QNN:
         pattern = circuit.transpile()
         pattern.standardize()
         pattern.shift_signals()
-        pattern.minimize_space()
-        out_state = pattern.simulate_pattern('statevector')
-        sv = out_state.flatten()
+        out_state = pattern.simulate_pattern('tensornetwork')
+        sv = out_state.to_statevector().flatten()
         return self.get_expectation_value(sv)
     
     def cost(self, params, x, y):
@@ -267,7 +266,7 @@ n_features = 3
 qnn = QNN(n_qubits, n_layers, n_features)
 
 start = time()
-result = qnn.fit(x, y, maxiter=50)
+result = qnn.fit(x, y, maxiter=100)
 end = time()
 
 print("Duration:", end-start)
