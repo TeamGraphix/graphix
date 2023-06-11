@@ -179,7 +179,6 @@ class QNN:
         pattern = circuit.transpile()
         pattern.standardize()
         pattern.shift_signals()
-        pattern.perform_pauli_measurements()
         pattern.minimize_space()
         out_state = pattern.simulate_pattern('statevector')
         sv = out_state.flatten()
