@@ -66,3 +66,4 @@ graphix
 matplotlib
 scikit-learn
 seaborn
+ipython
