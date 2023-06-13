@@ -426,7 +426,7 @@ nx.draw(g, pos=pos, **graph_params)
 # Qubit Resource plot
 # ------------------------------------------
 
-qubits = range(10)
+qubits = range(1, 10)
 n_layers = 2
 n_features = 3
 input_params = np.random.rand(n_features)
