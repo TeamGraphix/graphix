@@ -49,7 +49,7 @@ We can perform this with :class:`~graphix.graphsim.GraphState` class and then co
     state_from_graphsim = g.to_statevector()
 
     # do the same with statevector sim
-    state.evolve_single(0, meas_op(0, choice=0))
+    state.evolve_single(meas_op(0, choice=0), 0)
     state.normalize()
     state.ptrace([0])
 

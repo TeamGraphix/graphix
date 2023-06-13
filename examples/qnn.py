@@ -30,7 +30,7 @@ np.random.seed(0)
 # The dataset is padded with zeros to make it compatible with the quantum circuit. 
 # We want the number of features to be a multiple of 3 as the quantum circuit uses 3 features at a time with gates :math:`R_x, R_y, R_z`.
 # We also change the labels to -1 and 1 as later we will use Pauli Z operator for measurment whose expectation values are :math:`\pm 1`.
-x, y = make_circles(n_samples=200, noise=0.1, factor=0.1, random_state=32)
+x, y = make_circles(n_samples=100, noise=0.1, factor=0.1, random_state=32)
 
 # Plot the circle pattern
 plt.scatter(x[:, 0], x[:, 1], c=y)
@@ -68,9 +68,9 @@ class QNN:
         assert n_features % 3 == 0, "n_features must be a multiple of 3"
         
         # Pauli Z operator on all qubits
-        Z = np.array([[1, 0], 
+        Z_OP = np.array([[1, 0], 
                       [0, -1]])
-        operator = [Z]*self.n_qubits
+        operator = [Z_OP]*self.n_qubits
         self.obs = reduce(np.kron, operator)
         self.cost_values = [] # to store cost values during optimization
         
@@ -179,7 +179,6 @@ class QNN:
         pattern = circuit.transpile()
         pattern.standardize()
         pattern.shift_signals()
-        pattern.perform_pauli_measurements()
         out_state = pattern.simulate_pattern('tensornetwork')
         sv = out_state.to_statevector().flatten()
         return self.get_expectation_value(sv)
@@ -267,7 +266,7 @@ n_features = 3
 qnn = QNN(n_qubits, n_layers, n_features)
 
 start = time()
-result = qnn.fit(x, y, maxiter=100)
+result = qnn.fit(x, y, maxiter=80)
 end = time()
 
 print("Duration:", end-start)
@@ -322,7 +321,7 @@ input_params = np.random.rand(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
-pattern = circuit.transpile()
+pattern = circuit.transpile(opt=False)
 pattern.standardize()
 pattern.shift_signals()
 
@@ -427,7 +426,7 @@ nx.draw(g, pos=pos, **graph_params)
 # Qubit Resource plot
 # ------------------------------------------
 
-qubits = range(1, 16, 2)
+qubits = range(1, 10)
 n_layers = 2
 n_features = 3
 input_params = np.random.rand(n_features)
