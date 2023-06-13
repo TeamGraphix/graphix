@@ -321,7 +321,7 @@ input_params = np.random.rand(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=False)
 pattern.standardize()
 pattern.shift_signals()
 
