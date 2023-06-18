@@ -290,7 +290,6 @@ class Circuit:
                     Nnode += 7
                 else:
                     ancilla = [Nnode + i for i in range(28)]
-                    print(out[instr[1][0]])
                     (
                         out[instr[1][0]],
                         out[instr[1][1]],
