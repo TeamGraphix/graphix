@@ -64,3 +64,6 @@ zipp==3.8.0
 sphinx-gallery==0.11.1
 graphix
 matplotlib
+scikit-learn
+seaborn
+ipython

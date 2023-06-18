@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-### Changed
+- Quantum classifier demo (#57) by @Gopal-Dahale
 
+
+### Changed
+- fixed a bug in a code snippet isn docs (#59), as pointed out by @zilkf92
+- fixed issue building docs on readthedocs (#61)
 
 ## [0.2.2] - 2023-05-25
 ### Added
