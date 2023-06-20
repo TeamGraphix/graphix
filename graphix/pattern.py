@@ -1631,22 +1631,32 @@ def measure_pauli(pattern, copy=False):
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
-        # extract signals for adaptive angle. Assumes XY plane measurements
+        # extract signals for adaptive angle. 
         if np.mod(cmd[3], 2) in [0, 1]:  # \pm X Pauli measurement
             s_signal = 0  # X meaurement is not affected by s_signal
             t_signal = np.sum([results[j] for j in cmd[5]])
         elif np.mod(cmd[3], 2) in [0.5, 1.5]:  # \pm Y Pauli measurement
             s_signal = np.sum([results[j] for j in cmd[4]])
             t_signal = np.sum([results[j] for j in cmd[5]])
-        angle = cmd[3] * (-1) ** s_signal + t_signal
-        if np.mod(angle, 2) == 0:  # +x measurement
+        else:
+            raise ValueError('unknown angle', cmd[3])
+        if int(s_signal % 2) == 1: # equivalent to X byproduct
+            graph_state.h(cmd[1])
+            graph_state.z(cmd[1])
+            graph_state.h(cmd[1])
+        if int(t_signal % 2) == 1: # equivalent to Z byproduct
+            graph_state.z(cmd[1])
+        # assume XY-plane measurement
+        if np.mod(cmd[3], 2) == 0:  # +x measurement
             results[cmd[1]] = graph_state.measure_x(cmd[1], choice=0)
-        elif np.mod(angle, 2) == 1:  # -x measurement
+        elif np.mod(cmd[3], 2) == 1:  # -x measurement
             results[cmd[1]] = 1 - graph_state.measure_x(cmd[1], choice=1)
-        elif np.mod(angle, 2) == 0.5:  # +y measurement
+        elif np.mod(cmd[3], 2) == 0.5:  # +y measurement
             results[cmd[1]] = graph_state.measure_y(cmd[1], choice=0)
-        elif np.mod(angle, 2) == 1.5:  # -y measurement
+        elif np.mod(cmd[3], 2) == 1.5:  # -y measurement
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
+        else:
+            raise ValueError('unknown angle', cmd[3])
 
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,

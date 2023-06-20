@@ -176,7 +176,7 @@ class GraphState(nx.Graph):
         if self.nodes[node]["hollow"]:
             if self.nodes[node]["loop"]:
                 self.flip_fill(node)
-                self.nodes["loop"] = False
+                self.nodes[node]["loop"] = False
                 self.local_complement(node)
                 for i in self.neighbors(node):
                     self.advance(i)
@@ -320,8 +320,19 @@ class GraphState(nx.Graph):
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
         """
-        self.h(node)
-        return self.measure_z(node, choice=choice)
+        # check if isolated
+        if len(list(self.neighbors(node))) == 0:
+            if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
+                choice_ = choice
+            elif self.nodes[node]["sign"]: # isolated and state is |->
+                choice_ = 1
+            else: # isolated and state is |+>
+                choice_ = 0 
+            self.remove_node(node)
+            return choice_
+        else:
+            self.h(node)
+            return self.measure_z(node, choice=choice)
 
     def measure_y(self, node, choice=0):
         """perform measurement in Y basis
