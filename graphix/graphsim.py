@@ -238,6 +238,8 @@ class GraphState(nx.Graph):
         """
         assert (node1, node2) in list(self.edges) or (node2, node1) in list(self.edges)
         assert not self.nodes[node1]["loop"] and not self.nodes[node2]["loop"]
+        sg1 = self.nodes[node1]["sign"]
+        sg2 = self.nodes[node2]["sign"]
         self.flip_fill(node1)
         self.flip_fill(node2)
         # local complement along edge between node1, node2
@@ -246,15 +248,14 @@ class GraphState(nx.Graph):
         self.local_complement(node1)
         for i in iter(set(self.neighbors(node1)) & set(self.neighbors(node2))):
             self.flip_sign(i)
-        if self.nodes[node1]["sign"] != self.nodes[node2]["sign"]:
-            if self.nodes[node1]["sign"]:
-                self.flip_sign(node1)
-                for i in self.neighbors(node1):
-                    self.flip_sign(i)
-            elif self.nodes[node2]["sign"]:
-                self.flip_sign(node2)
-                for i in self.neighbors(node2):
-                    self.flip_sign(i)
+        if sg1:
+            self.flip_sign(node1)
+            for i in self.neighbors(node1):
+                self.flip_sign(i)
+        if sg2:
+            self.flip_sign(node2)
+            for i in self.neighbors(node2):
+                self.flip_sign(i)
 
     def local_complement(self, node):
         """Perform local complementation of a graph
