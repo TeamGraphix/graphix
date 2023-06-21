@@ -325,10 +325,10 @@ class GraphState(nx.Graph):
         if len(list(self.neighbors(node))) == 0:
             if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
                 choice_ = choice
-            elif self.nodes[node]["sign"]: # isolated and state is |->
+            elif self.nodes[node]["sign"]:  # isolated and state is |->
                 choice_ = 1
-            else: # isolated and state is |+>
-                choice_ = 0 
+            else:  # isolated and state is |+>
+                choice_ = 0
             self.remove_node(node)
             return choice_
         else:

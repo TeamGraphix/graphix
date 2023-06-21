@@ -1631,7 +1631,7 @@ def measure_pauli(pattern, copy=False):
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
-        # extract signals for adaptive angle. 
+        # extract signals for adaptive angle.
         if np.mod(cmd[3], 2) in [0, 1]:  # \pm X Pauli measurement
             s_signal = 0  # X meaurement is not affected by s_signal
             t_signal = np.sum([results[j] for j in cmd[5]])
@@ -1639,12 +1639,12 @@ def measure_pauli(pattern, copy=False):
             s_signal = np.sum([results[j] for j in cmd[4]])
             t_signal = np.sum([results[j] for j in cmd[5]])
         else:
-            raise ValueError('unknown angle', cmd[3])
-        if int(s_signal % 2) == 1: # equivalent to X byproduct
+            raise ValueError("unknown angle", cmd[3])
+        if int(s_signal % 2) == 1:  # equivalent to X byproduct
             graph_state.h(cmd[1])
             graph_state.z(cmd[1])
             graph_state.h(cmd[1])
-        if int(t_signal % 2) == 1: # equivalent to Z byproduct
+        if int(t_signal % 2) == 1:  # equivalent to Z byproduct
             graph_state.z(cmd[1])
         # assume XY-plane measurement
         if np.mod(cmd[3], 2) == 0:  # +x measurement
@@ -1656,7 +1656,7 @@ def measure_pauli(pattern, copy=False):
         elif np.mod(cmd[3], 2) == 1.5:  # -y measurement
             results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
         else:
-            raise ValueError('unknown angle', cmd[3])
+            raise ValueError("unknown angle", cmd[3])
 
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,

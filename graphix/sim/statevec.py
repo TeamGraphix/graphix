@@ -90,7 +90,7 @@ class StatevectorBackend:
         if len(cmd) == 7:
             vop = cmd[6]
         else:
-            vop = 0            
+            vop = 0
         if int(s_signal % 2) == 1:
             vop = CLIFFORD_MUL[1, vop]
         if int(t_signal % 2) == 1:
