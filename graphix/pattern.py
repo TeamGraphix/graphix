@@ -1549,7 +1549,7 @@ class LocalPattern:
             standardized global pattern
         """
         assert self.is_standard()
-        pattern = Pattern(output_nodes=self.output_nodes)
+        pattern = Pattern(output_nodes=self.output_nodes, width=len(self.output_nodes))
         Nseq = [["N", i] for i in self.nodes.keys()]
         Eseq = []
         Mseq = []
