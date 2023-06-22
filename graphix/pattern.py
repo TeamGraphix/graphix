@@ -6,12 +6,7 @@ import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
 from graphix.gflow import flow, gflow, get_layers
-from graphix.clifford import (
-    CLIFFORD_CONJ,
-    CLIFFORD_TO_QASM3,
-    CLIFFORD_MUL,
-    CLIFFORD_MEASURE,
-)
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
 from copy import deepcopy
 
 
@@ -1634,46 +1629,52 @@ def measure_pauli(pattern, copy=False):
     if not pattern.is_standard():
         pattern.standardize()
     nodes, edges = pattern.get_graph()
-    vop_init = pattern.get_vops(conj=True)
+    vop_init = pattern.get_vops(conj=False)
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
         # extract signals for adaptive angle.
-        if np.mod(cmd[3], 2) in [0, 1]:  # \pm X Pauli measurement
+        if cmd[1] in ["+X", "-X"]:
             s_signal = 0  # X meaurement is not affected by s_signal
-            t_signal = np.sum([results[j] for j in cmd[5]])
-        elif np.mod(cmd[3], 2) in [0.5, 1.5]:  # \pm Y Pauli measurement
-            s_signal = np.sum([results[j] for j in cmd[4]])
-            t_signal = np.sum([results[j] for j in cmd[5]])
+            t_signal = np.sum([results[j] for j in cmd[0][5]])
+        elif cmd[1] in ["+Y", "-Y"]:
+            s_signal = np.sum([results[j] for j in cmd[0][4]])
+            t_signal = np.sum([results[j] for j in cmd[0][5]])
+        elif cmd[1] in ["+Z", "-Z"]:
+            s_signal = np.sum([results[j] for j in cmd[0][4]])
+            t_signal = 0  # Z meaurement is not affected by t_signal
         else:
-            raise ValueError("unknown angle", cmd[3])
+            raise ValueError("unknown Pauli measurement basis", cmd[1])
+
         if int(s_signal % 2) == 1:  # equivalent to X byproduct
-            graph_state.h(cmd[1])
-            graph_state.z(cmd[1])
-            graph_state.h(cmd[1])
+            graph_state.h(cmd[0][1])
+            graph_state.z(cmd[0][1])
+            graph_state.h(cmd[0][1])
         if int(t_signal % 2) == 1:  # equivalent to Z byproduct
-            graph_state.z(cmd[1])
-        # assume XY-plane measurement
-        if np.mod(cmd[3], 2) == 0:  # +x measurement
-            results[cmd[1]] = graph_state.measure_x(cmd[1], choice=0)
-        elif np.mod(cmd[3], 2) == 1:  # -x measurement
-            results[cmd[1]] = 1 - graph_state.measure_x(cmd[1], choice=1)
-        elif np.mod(cmd[3], 2) == 0.5:  # +y measurement
-            results[cmd[1]] = graph_state.measure_y(cmd[1], choice=0)
-        elif np.mod(cmd[3], 2) == 1.5:  # -y measurement
-            results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
-        else:
-            raise ValueError("unknown angle", cmd[3])
+            graph_state.z(cmd[0][1])
+
+        if cmd[1] == "+X":
+            results[cmd[0][1]] = graph_state.measure_x(cmd[0][1], choice=0)
+        elif cmd[1] == "-X":
+            results[cmd[0][1]] = 1 - graph_state.measure_x(cmd[0][1], choice=1)
+        elif cmd[1] == "+Y":
+            results[cmd[0][1]] = graph_state.measure_y(cmd[0][1], choice=0)
+        elif cmd[1] == "-Y":
+            results[cmd[0][1]] = 1 - graph_state.measure_y(cmd[0][1], choice=1)
+        elif cmd[1] == "+Z":
+            results[cmd[0][1]] = graph_state.measure_z(cmd[0][1], choice=0)
+        elif cmd[1] == "-Z":
+            results[cmd[0][1]] = 1 - graph_state.measure_z(cmd[0][1], choice=1)
 
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = list(nx.isolates(graph_state))
-    for cmd in non_pauli_meas:
-        if (cmd[1] in isolates) and (cmd[1] not in pattern.output_nodes):
-            graph_state.remove_node(cmd[1])
-            results[cmd[1]] = 0
+    for node in non_pauli_meas:
+        if (node in isolates) and (node not in pattern.output_nodes):
+            graph_state.remove_node(node)
+            results[node] = 0
 
     # update command sequence
     vops = graph_state.get_vops()
@@ -1734,26 +1735,31 @@ def pauli_nodes(pattern):
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node = []
     for cmd in m_commands:
-        if cmd[2] == "XY":
-            if cmd[3] in [-1, 0, 1]:  # Not affected by t dependency
-                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
+        pm = is_pauli_measurement(cmd, ignore_vop=True)
+        if pm is not None:  # Pauli measurement
+            if pm in ["+X", "-X"]:
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node)))
                 if t_cond:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.append(cmd)
-                else:  # cmd do not depend on non-Pauli measurements
-                    # note: s_signal is irrelevant for X measurements
-                    # because change of sign will do nothing
-                    pauli_node.append(cmd)
-            elif cmd[3] in [-0.5, 0.5]:  # Affected by t dependency
-                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
-                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
-                if s_cond or t_cond:  # cmd depend on non-pauli measurement
-                    non_pauli_node.append(cmd)
+                    non_pauli_node.append(cmd[1])
                 else:
-                    pauli_node.append(cmd)
+                    pauli_node.append((cmd, pm))
+            elif pm in ["+Y", "-Y"]:
+                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node)))
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node)))
+                if t_cond or s_cond:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.append(cmd[1])
+                else:
+                    pauli_node.append((cmd, pm))
+            elif pm in ["+Z", "-Z"]:
+                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node)))
+                if s_cond:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.append(cmd[1])
+                else:
+                    pauli_node.append((cmd, pm))
             else:
-                non_pauli_node.append(cmd)
+                raise ValueError("Unknown Pauli measurement basis")
         else:
-            raise NotImplementedError("YZ and XZ plane measurements not considered for pauli_node")
+            non_pauli_node.append(cmd[1])
     return pauli_node, non_pauli_node
 
 
