@@ -765,9 +765,6 @@ class Pattern:
         meas_order: list of int
             measurement order
         """
-        if self._pauli_preprocessed:
-            # do not search for flow to get order if pauli meas preprocessing was performed
-            return None
         nodes, edges = self.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -794,9 +791,6 @@ class Pattern:
         meas_order : list of int
             measurement order
         """
-        if self._pauli_preprocessed:
-            # do not search for gflow to get order if pauli meas preprocessing was performed
-            return None
         nodes, edges = self.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -1059,7 +1053,9 @@ class Pattern:
         """
         if not self.is_standard():
             self.standardize()
-        meas_order = self.get_measurement_order_from_flow()
+        meas_order = None
+        if not self._pauli_preprocessed:
+            meas_order = self.get_measurement_order_from_flow()
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1094,6 +1090,11 @@ class Pattern:
             if cmd[0] == "N":
                 if not cmd[1] in prepared:
                     new.append(["N", cmd[1]])
+        for cmd in self.seq:
+            if cmd[0] == "E":
+                if cmd[1][0] in self.output_nodes:
+                    if cmd[1][1] in self.output_nodes:
+                        new.append(cmd)
 
         # add Clifford nodes
         for cmd in self.seq:
