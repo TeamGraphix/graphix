@@ -53,39 +53,39 @@ def genpair(n_qubits, count):
     return pairs
 
 
-def get_rand_circuit(nqubits, depth, use_rzz = False):
+def get_rand_circuit(nqubits, depth, use_rzz=False):
     circuit = Circuit(nqubits)
-    gate_choice = [0,1,2,3,4,5,6,7]
+    gate_choice = [0, 1, 2, 3, 4, 5, 6, 7]
     for i in range(depth):
         for j, k in genpair(nqubits, 2):
             circuit.cnot(j, k)
         if use_rzz:
             for j, k in genpair(nqubits, 1):
-                circuit.rzz(j,k, np.pi/4)
+                circuit.rzz(j, k, np.pi / 4)
         for j in range(nqubits):
             k = np.random.choice(gate_choice)
             if k == 0:
-                circuit.ry(j, np.pi/4)
+                circuit.ry(j, np.pi / 4)
                 pass
             elif k == 1:
-                circuit.rz(j, -np.pi/4)
+                circuit.rz(j, -np.pi / 4)
                 pass
             elif k == 2:
-                circuit.rx(j, -np.pi/4)
+                circuit.rx(j, -np.pi / 4)
                 pass
-            elif k == 3: # H
+            elif k == 3:  # H
                 circuit.h(j)
                 pass
-            elif k == 4: # S
+            elif k == 4:  # S
                 circuit.s(j)
                 pass
-            elif k == 5: # X
+            elif k == 5:  # X
                 circuit.x(j)
                 pass
-            elif k == 6: # Z
+            elif k == 6:  # Z
                 circuit.z(j)
                 pass
-            elif k == 7: # Y
+            elif k == 7:  # Y
                 circuit.y(j)
                 pass
             else:
