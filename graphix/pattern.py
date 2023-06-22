@@ -1756,6 +1756,81 @@ def pauli_nodes(pattern):
     return pauli_node, non_pauli_node
 
 
+def is_pauli_measurement(cmd, ignore_vop=True):
+    """Determines whether or not the measurement command is a Pauli measurement,
+    and if so returns the measurement basis.
+
+    Parameters
+    ----------
+    cmd : list
+        measurement command. list containing the information of the measurement,
+        "M", node index, measurement plane, angle (in unit of pi), s-signal, t-signal, clifford index.
+
+        e.g. `['M', 2, 'XY', 0.25, [], [], 6]`
+        for measurement of node 2, in 4/pi angle in XY plane, with local Clifford index 6 (Hadamard).
+    ignore_vop : bool
+        whether or not to ignore local Clifford to detemrine the measurement basis.
+
+    Returns
+    -------
+        str, one of '+X', '-X', '+Y', '-Y', '+Z', '-Z'
+        if the measurement is not in Pauli basis, returns None.
+    """
+    assert cmd[0] == "M"
+    basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
+    if len(cmd) == 7:
+        vop = cmd[6]
+    else:
+        vop = 0
+    # first item: 0, 1 or 2. correspond to choice of X, Y and Z
+    # second item: 0 or 1. correspond to sign (+, -)
+    basis_index = (0, 0)
+    if np.mod(cmd[3], 2) == 0:
+        if cmd[2] == "XY":
+            basis_index = (0, 0)
+        elif cmd[2] == "YZ":
+            basis_index = (1, 0)
+        elif cmd[2] == "XZ":
+            basis_index = (0, 0)
+        else:
+            raise ValueError("Unknown measurement plane")
+    elif np.mod(cmd[3], 2) == 1:
+        if cmd[2] == "XY":
+            basis_index = (0, 1)
+        elif cmd[2] == "YZ":
+            basis_index = (1, 1)
+        elif cmd[2] == "XZ":
+            basis_index = (0, 1)
+        else:
+            raise ValueError("Unknown measurement plane")
+    elif np.mod(cmd[3], 2) == 0.5:
+        if cmd[2] == "XY":
+            basis_index = (1, 0)
+        elif cmd[2] == "YZ":
+            basis_index = (2, 0)
+        elif cmd[2] == "XZ":
+            basis_index = (2, 0)
+        else:
+            raise ValueError("Unknown measurement plane")
+    elif np.mod(cmd[3], 2) == 1.5:
+        if cmd[2] == "XY":
+            basis_index = (1, 1)
+        elif cmd[2] == "YZ":
+            basis_index = (2, 1)
+        elif cmd[2] == "XZ":
+            basis_index = (2, 1)
+        else:
+            raise ValueError("Unknown measurement plane")
+    else:
+        return None
+    if not ignore_vop:
+        basis_index = (
+            CLIFFORD_MEASURE[vop][basis_index[0]][0],
+            int(np.abs(basis_index[1] - CLIFFORD_MEASURE[vop][basis_index[0]][1])),
+        )
+    return basis_str[basis_index[0]][basis_index[1]]
+
+
 def cmd_to_qasm3(cmd):
     """Converts a command in the pattern into OpenQASM 3.0 statement.
 
