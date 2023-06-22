@@ -57,6 +57,7 @@ class Pattern:
         self.results = {}  # measurement results from the graph state simulator
         self.output_nodes = output_nodes  # output nodes
         self.Nnode = width  # total number of nodes in the graph state
+        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -764,6 +765,9 @@ class Pattern:
         meas_order: list of int
             measurement order
         """
+        if self._pauli_preprocessed:
+            # do not search for flow to get order if pauli meas preprocessing was performed
+            return None
         nodes, edges = self.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -790,6 +794,9 @@ class Pattern:
         meas_order : list of int
             measurement order
         """
+        if self._pauli_preprocessed:
+            # do not search for gflow to get order if pauli meas preprocessing was performed
+            return None
         nodes, edges = self.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -1627,7 +1634,7 @@ def measure_pauli(pattern, copy=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=True)
-    graph_state = GraphState(nodes=nodes, edges=edges)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
@@ -1679,8 +1686,6 @@ def measure_pauli(pattern, copy=False):
             if cmd[1] in list(graph_state.nodes):
                 cmd_new = deepcopy(cmd)
                 new_clifford_ = vops[cmd[1]]
-                if cmd[1] in vop_init.keys():
-                    new_clifford_ = CLIFFORD_MUL[vop_init[cmd[1]], new_clifford_]
                 if len(cmd_new) == 7:
                     cmd_new[6] = new_clifford_
                 else:
@@ -1688,8 +1693,6 @@ def measure_pauli(pattern, copy=False):
                 new_seq.append(cmd_new)
     for index in pattern.output_nodes:
         new_clifford_ = vops[index]
-        if index in vop_init.keys():
-            new_clifford_ = CLIFFORD_MUL[vop_init[index], new_clifford_]
         if new_clifford_ != 0:
             new_seq.append(["C", index, new_clifford_])
     for cmd in pattern.seq:
@@ -1701,11 +1704,13 @@ def measure_pauli(pattern, copy=False):
         pat.seq = new_seq
         pat.Nnode = len(graph_state.nodes)
         pat.results = results
+        pat._pauli_preprocessed = True
         return pat
     else:
         pattern.seq = new_seq
         pattern.Nnode = len(graph_state.nodes)
         pattern.results = results
+        pattern._pauli_preprocessed = True
 
 
 def pauli_nodes(pattern):
