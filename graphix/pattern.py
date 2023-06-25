@@ -6,12 +6,7 @@ import networkx as nx
 from graphix.simulator import PatternSimulator
 from graphix.graphsim import GraphState
 from graphix.gflow import flow, gflow, get_layers
-from graphix.clifford import (
-    CLIFFORD_CONJ,
-    CLIFFORD_TO_QASM3,
-    CLIFFORD_MUL,
-    CLIFFORD_MEASURE,
-)
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
 from copy import deepcopy
 
 
@@ -57,6 +52,7 @@ class Pattern:
         self.results = {}  # measurement results from the graph state simulator
         self.output_nodes = output_nodes  # output nodes
         self.Nnode = width  # total number of nodes in the graph state
+        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -1052,7 +1048,9 @@ class Pattern:
         """
         if not self.is_standard():
             self.standardize()
-        meas_order = self.get_measurement_order_from_flow()
+        meas_order = None
+        if not self._pauli_preprocessed:
+            meas_order = self.get_measurement_order_from_flow()
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1087,6 +1085,11 @@ class Pattern:
             if cmd[0] == "N":
                 if not cmd[1] in prepared:
                     new.append(["N", cmd[1]])
+        for cmd in self.seq:
+            if cmd[0] == "E":
+                if cmd[1][0] in self.output_nodes:
+                    if cmd[1][1] in self.output_nodes:
+                        new.append(cmd)
 
         # add Clifford nodes
         for cmd in self.seq:
@@ -1546,7 +1549,7 @@ class LocalPattern:
             standardized global pattern
         """
         assert self.is_standard()
-        pattern = Pattern(output_nodes=self.output_nodes)
+        pattern = Pattern(output_nodes=self.output_nodes, width=len(self.output_nodes))
         Nseq = [["N", i] for i in self.nodes.keys()]
         Eseq = []
         Mseq = []
@@ -1626,36 +1629,52 @@ def measure_pauli(pattern, copy=False):
     if not pattern.is_standard():
         pattern.standardize()
     nodes, edges = pattern.get_graph()
-    vop_init = pattern.get_vops(conj=True)
-    graph_state = GraphState(nodes=nodes, edges=edges)
+    vop_init = pattern.get_vops(conj=False)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern)
     for cmd in to_measure:
-        # extract signals for adaptive angle. Assumes XY plane measurements
-        if np.mod(cmd[3], 2) in [0, 1]:  # \pm X Pauli measurement
+        # extract signals for adaptive angle.
+        if cmd[1] in ["+X", "-X"]:
             s_signal = 0  # X meaurement is not affected by s_signal
-            t_signal = np.sum([results[j] for j in cmd[5]])
-        elif np.mod(cmd[3], 2) in [0.5, 1.5]:  # \pm Y Pauli measurement
-            s_signal = np.sum([results[j] for j in cmd[4]])
-            t_signal = np.sum([results[j] for j in cmd[5]])
-        angle = cmd[3] * (-1) ** s_signal + t_signal
-        if np.mod(angle, 2) == 0:  # +x measurement
-            results[cmd[1]] = graph_state.measure_x(cmd[1], choice=0)
-        elif np.mod(angle, 2) == 1:  # -x measurement
-            results[cmd[1]] = 1 - graph_state.measure_x(cmd[1], choice=1)
-        elif np.mod(angle, 2) == 0.5:  # +y measurement
-            results[cmd[1]] = graph_state.measure_y(cmd[1], choice=0)
-        elif np.mod(angle, 2) == 1.5:  # -y measurement
-            results[cmd[1]] = 1 - graph_state.measure_y(cmd[1], choice=1)
+            t_signal = np.sum([results[j] for j in cmd[0][5]])
+        elif cmd[1] in ["+Y", "-Y"]:
+            s_signal = np.sum([results[j] for j in cmd[0][4]])
+            t_signal = np.sum([results[j] for j in cmd[0][5]])
+        elif cmd[1] in ["+Z", "-Z"]:
+            s_signal = np.sum([results[j] for j in cmd[0][4]])
+            t_signal = 0  # Z meaurement is not affected by t_signal
+        else:
+            raise ValueError("unknown Pauli measurement basis", cmd[1])
+
+        if int(s_signal % 2) == 1:  # equivalent to X byproduct
+            graph_state.h(cmd[0][1])
+            graph_state.z(cmd[0][1])
+            graph_state.h(cmd[0][1])
+        if int(t_signal % 2) == 1:  # equivalent to Z byproduct
+            graph_state.z(cmd[0][1])
+
+        if cmd[1] == "+X":
+            results[cmd[0][1]] = graph_state.measure_x(cmd[0][1], choice=0)
+        elif cmd[1] == "-X":
+            results[cmd[0][1]] = 1 - graph_state.measure_x(cmd[0][1], choice=1)
+        elif cmd[1] == "+Y":
+            results[cmd[0][1]] = graph_state.measure_y(cmd[0][1], choice=0)
+        elif cmd[1] == "-Y":
+            results[cmd[0][1]] = 1 - graph_state.measure_y(cmd[0][1], choice=1)
+        elif cmd[1] == "+Z":
+            results[cmd[0][1]] = graph_state.measure_z(cmd[0][1], choice=0)
+        elif cmd[1] == "-Z":
+            results[cmd[0][1]] = 1 - graph_state.measure_z(cmd[0][1], choice=1)
 
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = list(nx.isolates(graph_state))
-    for cmd in non_pauli_meas:
-        if (cmd[1] in isolates) and (cmd[1] not in pattern.output_nodes):
-            graph_state.remove_node(cmd[1])
-            results[cmd[1]] = 0
+    for node in non_pauli_meas:
+        if (node in isolates) and (node not in pattern.output_nodes):
+            graph_state.remove_node(node)
+            results[node] = 0
 
     # update command sequence
     vops = graph_state.get_vops()
@@ -1669,8 +1688,6 @@ def measure_pauli(pattern, copy=False):
             if cmd[1] in list(graph_state.nodes):
                 cmd_new = deepcopy(cmd)
                 new_clifford_ = vops[cmd[1]]
-                if cmd[1] in vop_init.keys():
-                    new_clifford_ = CLIFFORD_MUL[vop_init[cmd[1]], new_clifford_]
                 if len(cmd_new) == 7:
                     cmd_new[6] = new_clifford_
                 else:
@@ -1678,8 +1695,6 @@ def measure_pauli(pattern, copy=False):
                 new_seq.append(cmd_new)
     for index in pattern.output_nodes:
         new_clifford_ = vops[index]
-        if index in vop_init.keys():
-            new_clifford_ = CLIFFORD_MUL[vop_init[index], new_clifford_]
         if new_clifford_ != 0:
             new_seq.append(["C", index, new_clifford_])
     for cmd in pattern.seq:
@@ -1691,11 +1706,13 @@ def measure_pauli(pattern, copy=False):
         pat.seq = new_seq
         pat.Nnode = len(graph_state.nodes)
         pat.results = results
+        pat._pauli_preprocessed = True
         return pat
     else:
         pattern.seq = new_seq
         pattern.Nnode = len(graph_state.nodes)
         pattern.results = results
+        pattern._pauli_preprocessed = True
 
 
 def pauli_nodes(pattern):
@@ -1718,27 +1735,107 @@ def pauli_nodes(pattern):
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node = []
     for cmd in m_commands:
-        if cmd[2] == "XY":
-            if cmd[3] in [-1, 0, 1]:  # Not affected by t dependency
-                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
+        pm = is_pauli_measurement(cmd, ignore_vop=True)
+        if pm is not None:  # Pauli measurement
+            if pm in ["+X", "-X"]:
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node)))
                 if t_cond:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.append(cmd)
-                else:  # cmd do not depend on non-Pauli measurements
-                    # note: s_signal is irrelevant for X measurements
-                    # because change of sign will do nothing
-                    pauli_node.append(cmd)
-            elif cmd[3] in [-0.5, 0.5]:  # Affected by t dependency
-                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node, dtype=object)))
-                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node, dtype=object)))
-                if s_cond or t_cond:  # cmd depend on non-pauli measurement
-                    non_pauli_node.append(cmd)
+                    non_pauli_node.append(cmd[1])
                 else:
-                    pauli_node.append(cmd)
+                    pauli_node.append((cmd, pm))
+            elif pm in ["+Y", "-Y"]:
+                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node)))
+                t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node)))
+                if t_cond or s_cond:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.append(cmd[1])
+                else:
+                    pauli_node.append((cmd, pm))
+            elif pm in ["+Z", "-Z"]:
+                s_cond = np.any(np.isin(cmd[4], np.array(non_pauli_node)))
+                if s_cond:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.append(cmd[1])
+                else:
+                    pauli_node.append((cmd, pm))
             else:
-                non_pauli_node.append(cmd)
+                raise ValueError("Unknown Pauli measurement basis")
         else:
-            raise NotImplementedError("YZ and XZ plane measurements not considered for pauli_node")
+            non_pauli_node.append(cmd[1])
     return pauli_node, non_pauli_node
+
+
+def is_pauli_measurement(cmd, ignore_vop=True):
+    """Determines whether or not the measurement command is a Pauli measurement,
+    and if so returns the measurement basis.
+
+    Parameters
+    ----------
+    cmd : list
+        measurement command. list containing the information of the measurement,
+        "M", node index, measurement plane, angle (in unit of pi), s-signal, t-signal, clifford index.
+
+        e.g. `['M', 2, 'XY', 0.25, [], [], 6]`
+        for measurement of node 2, in 4/pi angle in XY plane, with local Clifford index 6 (Hadamard).
+    ignore_vop : bool
+        whether or not to ignore local Clifford to detemrine the measurement basis.
+
+    Returns
+    -------
+        str, one of '+X', '-X', '+Y', '-Y', '+Z', '-Z'
+        if the measurement is not in Pauli basis, returns None.
+    """
+    assert cmd[0] == "M"
+    basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
+    if len(cmd) == 7:
+        vop = cmd[6]
+    else:
+        vop = 0
+    # first item: 0, 1 or 2. correspond to choice of X, Y and Z
+    # second item: 0 or 1. correspond to sign (+, -)
+    basis_index = (0, 0)
+    if np.mod(cmd[3], 2) == 0:
+        if cmd[2] == "XY":
+            basis_index = (0, 0)
+        elif cmd[2] == "YZ":
+            basis_index = (1, 0)
+        elif cmd[2] == "XZ":
+            basis_index = (0, 0)
+        else:
+            raise ValueError("Unknown measurement plane")
+    elif np.mod(cmd[3], 2) == 1:
+        if cmd[2] == "XY":
+            basis_index = (0, 1)
+        elif cmd[2] == "YZ":
+            basis_index = (1, 1)
+        elif cmd[2] == "XZ":
+            basis_index = (0, 1)
+        else:
+            raise ValueError("Unknown measurement plane")
+    elif np.mod(cmd[3], 2) == 0.5:
+        if cmd[2] == "XY":
+            basis_index = (1, 0)
+        elif cmd[2] == "YZ":
+            basis_index = (2, 0)
+        elif cmd[2] == "XZ":
+            basis_index = (2, 0)
+        else:
+            raise ValueError("Unknown measurement plane")
+    elif np.mod(cmd[3], 2) == 1.5:
+        if cmd[2] == "XY":
+            basis_index = (1, 1)
+        elif cmd[2] == "YZ":
+            basis_index = (2, 1)
+        elif cmd[2] == "XZ":
+            basis_index = (2, 1)
+        else:
+            raise ValueError("Unknown measurement plane")
+    else:
+        return None
+    if not ignore_vop:
+        basis_index = (
+            CLIFFORD_MEASURE[vop][basis_index[0]][0],
+            int(np.abs(basis_index[1] - CLIFFORD_MEASURE[vop][basis_index[0]][1])),
+        )
+    return basis_str[basis_index[0]][basis_index[1]]
 
 
 def cmd_to_qasm3(cmd):

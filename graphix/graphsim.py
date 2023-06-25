@@ -176,7 +176,7 @@ class GraphState(nx.Graph):
         if self.nodes[node]["hollow"]:
             if self.nodes[node]["loop"]:
                 self.flip_fill(node)
-                self.nodes["loop"] = False
+                self.nodes[node]["loop"] = False
                 self.local_complement(node)
                 for i in self.neighbors(node):
                     self.advance(i)
@@ -238,6 +238,8 @@ class GraphState(nx.Graph):
         """
         assert (node1, node2) in list(self.edges) or (node2, node1) in list(self.edges)
         assert not self.nodes[node1]["loop"] and not self.nodes[node2]["loop"]
+        sg1 = self.nodes[node1]["sign"]
+        sg2 = self.nodes[node2]["sign"]
         self.flip_fill(node1)
         self.flip_fill(node2)
         # local complement along edge between node1, node2
@@ -246,15 +248,14 @@ class GraphState(nx.Graph):
         self.local_complement(node1)
         for i in iter(set(self.neighbors(node1)) & set(self.neighbors(node2))):
             self.flip_sign(i)
-        if self.nodes[node1]["sign"] != self.nodes[node2]["sign"]:
-            if self.nodes[node1]["sign"]:
-                self.flip_sign(node1)
-                for i in self.neighbors(node1):
-                    self.flip_sign(i)
-            elif self.nodes[node2]["sign"]:
-                self.flip_sign(node2)
-                for i in self.neighbors(node2):
-                    self.flip_sign(i)
+        if sg1:
+            self.flip_sign(node1)
+            for i in self.neighbors(node1):
+                self.flip_sign(i)
+        if sg2:
+            self.flip_sign(node2)
+            for i in self.neighbors(node2):
+                self.flip_sign(i)
 
     def local_complement(self, node):
         """Perform local complementation of a graph
@@ -320,8 +321,19 @@ class GraphState(nx.Graph):
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
         """
-        self.h(node)
-        return self.measure_z(node, choice=choice)
+        # check if isolated
+        if len(list(self.neighbors(node))) == 0:
+            if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
+                choice_ = choice
+            elif self.nodes[node]["sign"]:  # isolated and state is |->
+                choice_ = 1
+            else:  # isolated and state is |+>
+                choice_ = 0
+            self.remove_node(node)
+            return choice_
+        else:
+            self.h(node)
+            return self.measure_z(node, choice=choice)
 
     def measure_y(self, node, choice=0):
         """perform measurement in Y basis
