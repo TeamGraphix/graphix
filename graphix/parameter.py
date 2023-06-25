@@ -42,7 +42,10 @@ class Parameter:
         self._assigned = False
 
     def __repr__(self):
-        return f"graphix.Parameter, name={self.name}"
+        if self._assigned:
+            return f"graphix.Parameter, name = {self.name}, assigned value = {self._value}"
+        else:
+            return f"graphix.Parameter, name={self.name}"
     
     @property
     def name(self):
@@ -65,9 +68,9 @@ class Parameter:
         assert not self._assigned
         assert isinstance(value, float) or isinstance(value, int)
         if unit == "pi":
-            self.value = value # rotation angles are in unit of pi for measurement commands
+            self._value = value # rotation angles are in unit of pi for measurement commands
         elif unit == "radian":
-            self.value = value / np.pi
+            self._value = value / np.pi
         else:
             raise ValueError(f"Unknown unit {unit}")
         self._assigned = True
@@ -82,22 +85,23 @@ class Parameter:
         unit : "pi" or "radian"
             unit of the rotation angle, either in rad/pi or rad.
         """
-        assert isinstance(values, float)
+        assert not self._assigned
+        assert isinstance(values, dict)
         if self.name in values.keys():
-            self.bind(values[self._name])
+            self.bind(values[self._name], unit)
         else:
             raise ValueError(f"{self._name} not found")
 
     def __mul__(self, other):
         """mul magic function is used to return measurement angles in simulators."""
         assert self._assigned, "parameter cannot be used for calculation unless value is assigned."
-        assert isinstance(other, float)
-        return self.value * other
+        assert isinstance(other, float) or isinstance(other, int) or isinstance(other, complex)
+        return self._value * other
 
     def __mod__(self, other):
         """mod magic function returns nan so that evaluation of 
         mod of measurement angles in :meth:`graphix.pattern.is_pauli_measurement`
         will not cause error. returns nan so that this will not be considered Pauli measurement.
         """
-        assert isinstance(other, float)
+        assert isinstance(other, float) or isinstance(other, int)
         return np.nan

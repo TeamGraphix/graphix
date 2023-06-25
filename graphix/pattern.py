@@ -1869,7 +1869,7 @@ def cmd_to_qasm3(cmd):
     elif name == "M":
         qubit = cmd[1]
         plane = cmd[2]
-        alpha = cmd[3]
+        alpha = cmd[3] * 1. # multiply by 1. to turn a Parameter into its value
         sdomain = cmd[4]
         tdomain = cmd[5]
         yield "// measure qubit q" + str(qubit) + "\n"
