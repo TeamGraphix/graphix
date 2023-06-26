@@ -1,5 +1,5 @@
-from graphix.sim.density_matrix import DensityMatrix
 import numpy as np
+from graphix.sim.density_matrix import DensityMatrix
 
 
 class BaseNoiseModel:
@@ -26,7 +26,7 @@ class BaseNoiseModel:
 
     def confuse_result(self, cmd):
         """assign wrong measurement result"""
-        p = 0.
+        p = 0.0
         if np.random.rand() < p:
             self.simulator.result[cmd[1]] = 1 - self.simulator.result[cmd[1]]
 
