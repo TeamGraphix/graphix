@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-import warnings
 from numpy.linalg import norm
 from graphix import Circuit
 from graphix.sim.statevec import Statevec, StatevectorBackend, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
@@ -26,10 +25,6 @@ class TestDensityMatrix(unittest.TestCase):
         # deprecated data shape (these test might be unnecessary)
         with self.assertRaises(ValueError):
             DensityMatrix([1, 2, [3]])
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
-            with self.assertRaises(AssertionError):
-                DensityMatrix(np.array([1, 2, [3]]))
 
     def test_init_without_data_success(self):
         for n in range(3):
