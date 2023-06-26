@@ -142,8 +142,8 @@ class NoisyPatternSimulator:
             elif cmd[0] == "C":
                 self.backend.apply_clifford(cmd)
                 self.noise_model.clifford(cmd)
-            elif cmd[0] == "T":  
-                # T command is a flag for one clock cycle in simulated experiment, 
+            elif cmd[0] == "T":
+                # T command is a flag for one clock cycle in simulated experiment,
                 # to be added via hardware-agnostic pattern modifier
                 self.noise_model.tick_clock()
             else:
