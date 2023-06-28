@@ -1,6 +1,6 @@
 import numpy as np
 from graphix.ops import Ops
-from graphix.clifford import CLIFFORD_MEASURE, CLIFFORD
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
 from copy import deepcopy
 from scipy.linalg import norm
 
@@ -86,11 +86,16 @@ class StatevectorBackend:
         # extract signals for adaptive angle
         s_signal = np.sum([self.results[j] for j in cmd[4]])
         t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
+        angle = cmd[3] * np.pi
         if len(cmd) == 7:
-            m_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
+            vop = cmd[6]
         else:
-            m_op = meas_op(angle, plane=cmd[2], choice=result)
+            vop = 0
+        if int(s_signal % 2) == 1:
+            vop = CLIFFORD_MUL[1, vop]
+        if int(t_signal % 2) == 1:
+            vop = CLIFFORD_MUL[3, vop]
+        m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(m_op, loc)
 
@@ -178,9 +183,8 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
-        op_mat += (
-            (-1) ** (choice + CLIFFORD_MEASURE[vop][i][1]) * vec[CLIFFORD_MEASURE[vop][i][0]] * CLIFFORD[i + 1] / 2
-        )
+        op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
+    op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
     return op_mat
 
 

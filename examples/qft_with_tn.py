@@ -50,9 +50,9 @@ def qft(circuit, n):
 
 
 # %%
-# We will simulate 50-qubit QFT, which requires graph states with more than 10000 nodes.
+# We will simulate 45-qubit QFT, which requires graph states with more than 10000 nodes.
 
-n = 50
+n = 45
 print("{}-qubit QFT".format(n))
 circuit = Circuit(n)
 
