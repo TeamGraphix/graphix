@@ -258,6 +258,8 @@ class Statevec:
         rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho)  # back to statevector
+        # NOTE works since only one 1 in the eigenvalues corresponding to the state
+        # TODO use np.eigh since rho is Hermitian?
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg):
