@@ -26,7 +26,7 @@ class TestPatternRunner(unittest.TestCase):
         pattern = circuit.transpile()
         state = pattern.simulate_pattern()
 
-        sim = Aer.get_backend('aer_simulator')
+        sim = Aer.get_backend("aer_simulator")
         runner = PatternRunner(pattern, backend="ibmq", save_statevector=True)
         sim_result = runner.simulate(format_result=False)
         state_qiskit = sim_result.get_statevector(runner.backend.circ)
