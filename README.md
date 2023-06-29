@@ -22,6 +22,16 @@ Install `graphix` with `pip`:
 $ pip install graphix
 ```
 
+Install together with device interface:
+```bash
+$ pip install graphix[extra]
+```
+this will install `graphix` and [IBMQ interface](https://github.com/TeamGraphix/graphix-ibmq) to run MBQC patterns on IBM devices and Aer simulator.
+
+We are currently adding more quantum device interfaces.
+Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you have any particular device in mind!
+
+
 ## Next Steps
 
 - We have a few [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing basic usages of `Graphix`.
