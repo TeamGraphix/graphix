@@ -1168,7 +1168,7 @@ class Pattern:
         return state
 
     def run_pattern(self, backend, **kwargs):
-        """run the pattern on a actual device.
+        """run the pattern on cloud-based quantum devices and their simulators.
         Available backend: ['ibmq']
 
         Parameters

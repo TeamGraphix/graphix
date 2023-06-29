@@ -4,7 +4,7 @@ Device Interface
 :mod:`graphix.device_interface` module
 +++++++++++++++++++++++++++++++++++
 
-.. currentmodule:: graphix.interface
+.. currentmodule:: graphix.device_interface
 
 .. autoclass:: PatternRunner
 
