@@ -1167,8 +1167,8 @@ class Pattern:
         state = sim.run()
         return state
 
-    def execute_pattern(self, backend, **kwargs):
-        """execute the pattern using a actual device. .
+    def run_pattern(self, backend, **kwargs):
+        """run the pattern on a actual device.
         Available backend: ['ibmq']
 
         Parameters
