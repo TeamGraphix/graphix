@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from graphix.kraus import to_kraus
+from graphix.kraus import to_kraus, _is_matrix
 
 
 class TestKraus(unittest.TestCase):
@@ -79,6 +79,18 @@ class TestKraus(unittest.TestCase):
         np.testing.assert_array_equal(kraus[0][1], np.asarray(B, dtype=complex))
         np.testing.assert_array_equal(kraus[1][0], np.asarray(C, dtype=complex))
         np.testing.assert_array_equal(kraus[1][1], np.asarray(D, dtype=complex))
+
+    def test__is_matrix_fial(self):
+        np.testing.assert_equal(_is_matrix(1), False)
+        np.testing.assert_equal(_is_matrix("hello"), False)
+        np.testing.assert_equal(_is_matrix([]), False)
+        np.testing.assert_equal(_is_matrix([[], []]), False)
+        np.testing.assert_equal(_is_matrix([[0, 1, 2], [3, 4, 5]]), False)
+
+    def test__is_matrix_success(self):
+        A = [[0, 1], [2, 3]]
+        np.testing.assert_equal(_is_matrix(A), True)
+        np.testing.assert_equal(_is_matrix(np.asarray(A, dtype=complex)), True)
 
 
 if __name__ == "__main__":
