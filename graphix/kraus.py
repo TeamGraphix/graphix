@@ -7,6 +7,9 @@ class KrausOp:
         self.data = np.asarray(data, dtype=complex)
         self.qarg = qarg
 
+    def __repr__(self):
+        return f"KrausOp(data={self.data}, qarg={self.qarg})"
+
 
 def to_kraus(data):
     r"""Convert input data into Kraus operator set [KrausOp, KrausOp, ...].
@@ -39,7 +42,7 @@ def to_kraus(data):
         # E(rho) = A * rho * A^\dagger
         # and the second data is target qubit index.
         if _is_kraus_op(data):
-            return [KrausOp(data[0], data[1])]
+            return [KrausOp(data=data[0], qarg=data[1])]
 
         # (ii) If input is list of [2d-array-likes, int], it is a single Kraus set for channel:
         # E(rho) = \sum_i A_i * rho * A_i^\dagger
@@ -47,9 +50,9 @@ def to_kraus(data):
         elif isinstance(data, (list, tuple, np.ndarray)) and _is_kraus_op(data[0]):
             if isinstance(data, np.ndarray):
                 data = data.tolist()
-            kraus = [KrausOp(data[0][0], data[0][1])]
+            kraus = [KrausOp(data=data[0][0], qarg=data[0][1])]
             for A_i in data[1:]:
-                A_i = KrausOp(A_i[0], A_i[1])
+                A_i = KrausOp(data=A_i[0], qarg=A_i[1])
                 if _is_kraus_op(A_i):
                     raise ValueError("All Kraus operators must have same shape.")
                 kraus.append(A_i)
@@ -62,11 +65,6 @@ def to_kraus(data):
             )
     else:
         raise TypeError("Input data must be list, tupple, or array_like.")
-
-
-def generate_dephasing_kraus(p, nqubits):
-    """Return Kraus operators for a dephasing channel."""
-    pass
 
 
 def generate_depolarizing_kraus(p, nqubits):
