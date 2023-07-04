@@ -2,6 +2,17 @@ import numpy as np
 
 
 class KrausOp:
+    """Kraus operator class.
+
+    Parameters
+    ----------
+        data : array_like
+            Kraus operator data. 2d-array-like.
+            This might be changed in the future to support Kraus operator of 2^k dim array-like (k <= n).
+        qarg : int
+            Target qubit index.
+    """
+
     def __init__(self, data, qarg):
         assert isinstance(qarg, int)
         self.data = np.asarray(data, dtype=complex)
@@ -65,6 +76,21 @@ def to_kraus(data):
             )
     else:
         raise TypeError("Input data must be list, tupple, or array_like.")
+
+
+def generate_dephasing_kraus(p, qarg):
+    """Return Kraus operators for a dephasing channel.
+
+    Parameters
+    ----------
+        p : float
+            Probability of dephasing error.
+        qarg : int
+            Target qubit index.
+    """
+    assert isinstance(qarg, int)
+    assert 0 <= p <= 1
+    return [KrausOp(data=np.sqrt(1 - p) * np.eye(2), qarg=qarg), KrausOp(data=np.sqrt(p) * np.diag([1, -1]), qarg=qarg)]
 
 
 def generate_depolarizing_kraus(p, nqubits):
