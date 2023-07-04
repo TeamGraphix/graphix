@@ -90,7 +90,7 @@ def generate_dephasing_kraus(p, qarg):
     """
     assert isinstance(qarg, int)
     assert 0 <= p <= 1
-    return [KrausOp(data=np.sqrt(1 - p) * np.eye(2), qarg=qarg), KrausOp(data=np.sqrt(p) * np.diag([1, -1]), qarg=qarg)]
+    return to_kraus([[np.sqrt(1 - p) * np.eye(2), qarg], [np.sqrt(p) * np.diag([1, -1]), qarg]])
 
 
 def generate_depolarizing_kraus(p, nqubits):
