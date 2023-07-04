@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from graphix.kraus import to_kraus, _is_matrix
+from graphix.kraus import to_kraus, _is_kraus_op
 
 
 class TestKraus(unittest.TestCase):
@@ -88,17 +88,17 @@ class TestKraus(unittest.TestCase):
         np.testing.assert_array_equal(kraus[1][0].data, np.asarray(C, dtype=complex))
         np.testing.assert_array_equal(kraus[1][1].data, np.asarray(D, dtype=complex))
 
-    def test__is_matrix_fail(self):
-        np.testing.assert_equal(_is_matrix(1), False)
-        np.testing.assert_equal(_is_matrix("hello"), False)
-        np.testing.assert_equal(_is_matrix([]), False)
-        np.testing.assert_equal(_is_matrix([[], []]), False)
-        np.testing.assert_equal(_is_matrix([[0, 1, 2], [3, 4, 5]]), False)
+    def test__is_kraus_op_fail(self):
+        np.testing.assert_equal(_is_kraus_op(1), False)
+        np.testing.assert_equal(_is_kraus_op("hello"), False)
+        np.testing.assert_equal(_is_kraus_op([]), False)
+        np.testing.assert_equal(_is_kraus_op([[], []]), False)
+        np.testing.assert_equal(_is_kraus_op([[0, 1, 2], [3, 4, 5]]), False)
 
-    def test__is_matrix_success(self):
+    def test__is_kraus_op_success(self):
         A = [[0, 1], [2, 3]]
-        np.testing.assert_equal(_is_matrix(A), True)
-        np.testing.assert_equal(_is_matrix(np.asarray(A, dtype=complex)), True)
+        np.testing.assert_equal(_is_kraus_op((A, 1)), True)
+        np.testing.assert_equal(_is_kraus_op((np.asarray(A, dtype=complex), 1)), True)
 
 
 if __name__ == "__main__":
