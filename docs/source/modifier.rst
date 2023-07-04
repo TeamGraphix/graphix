@@ -12,6 +12,8 @@ Pattern Optimization
 
     .. automethod:: simulate_pattern
 
+    .. automethod:: run_pattern
+
     .. automethod:: perform_pauli_measurements
 
     .. automethod:: print_pattern

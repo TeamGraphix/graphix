@@ -10,4 +10,5 @@ Module reference
     graphsim
     flow
     clifford
+    device_interface
 

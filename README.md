@@ -1,11 +1,12 @@
 <img src="https://github.com/TeamGraphix/graphix/raw/master/docs/logo/black_with_name.png" alt="logo" width="550">
 
-[![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
-![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/graphix)
 ![PyPI](https://img.shields.io/pypi/v/graphix)
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.fund/)
 [![DOI](https://zenodo.org/badge/573466585.svg)](https://zenodo.org/badge/latestdoi/573466585)
+[![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
+![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
+[![Downloads](https://static.pepy.tech/badge/graphix)](https://pepy.tech/project/graphix)
 
 **Graphix** is a measurement-based quantum computing (MBQC) compiler, which makes it easier to generate, optimize and simulate MBQC *measurement patterns*.
 
@@ -21,6 +22,16 @@ Install `graphix` with `pip`:
 ```bash
 $ pip install graphix
 ```
+
+Install together with device interface:
+```bash
+$ pip install graphix[extra]
+```
+this will install `graphix` and [IBMQ interface](https://github.com/TeamGraphix/graphix-ibmq) to run MBQC patterns on IBM devices and Aer simulator.
+
+We are currently adding more quantum device interfaces.
+Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you have any particular device in mind!
+
 
 ## Next Steps
 
