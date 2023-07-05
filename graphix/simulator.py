@@ -103,13 +103,12 @@ class NoisyPatternSimulator:
         self.state = self.backend.state
         self.node_index = []
         if noise_model is None:
-            self.noise_model = BaseNoiseModel()
+            set_noise_model(self, BaseNoiseModel)
         else:
-            assert isinstance(noise_model, BaseNoiseModel)
-            self.noise_model = noise_model
+            set_noise_model(self, noise_model)
 
     def set_noise_model(self, model):
-        assert isinstance(model, BaseNoiseModel)
+        assert issubclass(model, NoiseModel)
         self.noise_model = model
 
     def run(self):
@@ -121,6 +120,7 @@ class NoisyPatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
+        # NOTE assign_simulator isn't supposed to be called with a simulator parameter as is base_noise_model.py?
         self.noise_model.assign_simulator(self)
         for cmd in self.pattern.seq:
             if cmd[0] == "N":
