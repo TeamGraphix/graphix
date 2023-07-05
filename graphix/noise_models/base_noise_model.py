@@ -6,7 +6,6 @@ from graphix.noise_models.noise_model import NoiseModel
 class BaseNoiseModel(NoiseModel):
     """No noise"""
 
-
     def prepare_qubit(self, cmd):
         """return qubit to be added.
         in this base model, we return clean qubit in |+> state"""
