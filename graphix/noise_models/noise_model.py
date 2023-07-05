@@ -8,17 +8,16 @@ class NoiseModel(abc.ABC):
 
     def __init__(self):
         pass
-    
+
     # NOTE is this useful?
     def assign_simulator(self, simulator):
         self.simulator = simulator
 
     @abc.abstractmethod
     def prepare_qubit(self, cmd):
-        """return qubit to be added with preparation errors.
-        """
+        """return qubit to be added with preparation errors."""
         pass
-    
+
     @abc.abstractmethod
     def entangle(self, cmd):
         """apply noise to qubits that happens in the CZ gate process"""
