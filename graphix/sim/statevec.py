@@ -8,7 +8,7 @@ from scipy.linalg import norm
 class StatevectorBackend:
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20):
+    def __init__(self, pattern, max_qubit_num=20, pr_calc=False):
         """
         Parameteres
         -----------
@@ -22,6 +22,12 @@ class StatevectorBackend:
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
+
+        # test whether the user defined pr_calc (whether to compute the probability).
+        # Defaults to False.
+        # self.pr_calc = kwargs.get('pr_calc', False)
+        self.pr_calc = pr_calc
+
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
         self.state = None
@@ -79,14 +85,13 @@ class StatevectorBackend:
         cmd : list
             measurement command : ['M', node, plane angle, s_domain, t_domain]
         """
-        # choose the measurement result randomly
-        result = np.random.choice([0, 1])
-        self.results[cmd[1]] = result
+
+        # m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
 
         # extract signals for adaptive angle
         s_signal = np.sum([self.results[j] for j in cmd[4]])
         t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
+
         if len(cmd) == 7:
             vop = cmd[6]
         else:
@@ -95,8 +100,30 @@ class StatevectorBackend:
             vop = CLIFFORD_MUL[1, vop]
         if int(t_signal % 2) == 1:
             vop = CLIFFORD_MUL[3, vop]
-        m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+
+        angle = cmd[3] * np.pi
         loc = self.node_index.index(cmd[1])
+
+        # check if compute the probability
+        if self.pr_calc:
+            m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=0)
+            result = 0
+
+        m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=0)
+        result = 0
+
+        # probability to measure in the |+_angle> state.
+        # NOT EFFICIENT AT ALL since expectation_single calls evolve_single...
+        prob_0 = self.state.expectation_single(m_op, loc)
+
+        # choose the measurement result randomly according to the computed probability
+        # just modify result and operator if the outcome turns out to be 1
+        if np.random.rand() > prob_0:
+            result = 1
+            m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+
+        self.results[cmd[1]] = result
+
         self.state.evolve_single(m_op, loc)
 
         self.to_trace.append(cmd[1])
@@ -328,7 +355,7 @@ class Statevec:
         """
         st1 = deepcopy(self)
         st1.normalize()
-        st2 = st1.deepcopy(st1)
+        st2 = deepcopy(st1)
         st1.evolve_single(op, loc)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
