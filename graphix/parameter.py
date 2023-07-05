@@ -4,7 +4,7 @@ allows the manipulation of the measurement pattern without specific value assign
 
 """
 import numpy as np
-
+import sympy as sp
 
 class Parameter:
     """Placeholder for measurement angles, which allows the pattern optimizations
@@ -38,14 +38,16 @@ class Parameter:
         """
         assert isinstance(name, str)
         self._name = name
-        self._value = np.nan
-        self._assigned = False
+        self._value = None
+        self._assignment = None
+        self._expression = sp.Symbol(name= name)
 
     def __repr__(self):
-        if self._assigned:
-            return f"graphix.Parameter, name = {self.name}, assigned value = {self._value}"
+        if self.assigned:
+            return f"expr = {self._expression}, assignment = [ {self.parameters.pop()} : {self._assignment} ]"
         else:
-            return f"graphix.Parameter, name={self.name}"
+            return f"expr = {self._expression} "
+        
     
     @property
     def name(self):
@@ -53,50 +55,103 @@ class Parameter:
 
     @property
     def assigned(self):
-        return self._assigned
+        return isinstance(self._assignment, (int, float))
+    
+    @property
+    def expression(self):
+        return self._expression
+    
+    @property
+    def value(self):
+        return self._value
+    
+    @property
+    def parameters(self):
+        return self._expression.free_symbols
+    
 
-    def bind(self, value, unit="pi"):
+    def bind_value(self, value, overwrite= False):
         """Binds the parameters to itself.
         
         Parameters
         ----------
-        values : float
-            value to assign to the parameter.
-        unit : "pi" or "radian"
-            unit of the rotation angle, either in rad/pi or rad.
-        """
-        assert not self._assigned
-        assert isinstance(value, float) or isinstance(value, int)
-        if unit == "pi":
-            self._value = value # rotation angles are in unit of pi for measurement commands
-        elif unit == "radian":
-            self._value = value / np.pi
-        else:
-            raise ValueError(f"Unknown unit {unit}")
-        self._assigned = True
+        values_dict : float
+            dict of values to assign to the parameter.
 
-    def bind_from_dict(self, values, unit="pi"):
-        """Binds the parameters to itself.
-        
-        Parameters
-        ----------
-        values : float
-            value to assign to the parameter.
-        unit : "pi" or "radian"
-            unit of the rotation angle, either in rad/pi or rad.
         """
-        assert not self._assigned
-        assert isinstance(values, dict)
-        if self.name in values.keys():
-            self.bind(values[self._name], unit)
-        else:
-            raise ValueError(f"{self._name} not found")
+        
+        # assert isinstance( value_dict , dict)
+        if len(self._expression.free_symbols) == 0:
+            raise ValueError(" No unassinged symbols in self.expression")
+        
+        symbol = self._expression.free_symbols.pop()
+        val = self._expression.subs({symbol: value})
+
+        if len(val.free_symbols) == 0:
+
+            if overwrite:
+                self._value = float(val)
+                self._assignment = value
+            else :
+                if not self.assigned:
+                    self._value = float(val)
+                    self._assignment = value
+                else :
+                    raise ValueError("Symbols are already assigned, set overwrite = True to overwrite value")
+        
+        if len(val.free_symbols) != 0:
+            print(" WARNING: all symbols in self.expression is not assigned, remaining variables : " 
+                  + str(val.free_symbols))
+            self._expression = val
+        
+        return self
+    
+    def bind(self, parameter_map, allow_unknown_parameters= True, overwrite= False):
+
+        for parameter, value in parameter_map.items():
+            
+            if parameter.parameters.issubset(self.parameters):
+                # print("binding-parametrs") ##check
+                self.bind_value(value, overwrite= overwrite)
+            
+        return self
 
     def __mul__(self, other):
-        """mul magic function is used to return measurement angles in simulators."""
-        assert self._assigned, "parameter cannot be used for calculation unless value is assigned."
-        assert isinstance(other, float) or isinstance(other, int) or isinstance(other, complex)
-        return self._value * other
+        self._expression = self._expression * other
+        return self
+    
+    def __rmul__(self, other):
+        self._expression = other * self._expression
+        return self
+    
+    def __add__(self, other):
+        # return self._expression + other
+        self._expression = self._expression + other
+        return self
+    
+    def __radd__(self, other):
+        self._expression = other + self._expression
+        return self
+    
+    def __sub__(self, other):
+        self._expression = self._expression - other
+        return self
+    
+    def __rsub__(self, other):
+        self._expression = other - self._expression
+        return self
+    
+    def __neg__(self):
+        self._expression = self._expression * -1.0 
+        return self
+    
+    def __truediv__(self, other):
+        self._expression = self._expression / other
+        return self
+    
+    def __rtruediv__(self, other):
+        self._expression = other / self._expression
+        return self
 
     def __mod__(self, other):
         """mod magic function returns nan so that evaluation of 
@@ -105,3 +160,38 @@ class Parameter:
         """
         assert isinstance(other, float) or isinstance(other, int)
         return np.nan
+    
+    def sin(self):
+        self._expression = sp.sin(self._expression)
+        return self
+    
+    def cos(self):
+        self._expression = sp.cos(self._expression)
+        return self
+    
+    def tan(self): 
+        self._expression = sp.tan(self._expression)
+        return self
+    
+    def arcsin(self):
+        self._expression = sp.asin(self._expression) 
+        return self
+    
+    def arccos(self):
+        self._expression = sp.acos(self._expression)
+        return self
+    
+    def arctan(self):
+        self._expression = sp.atan(self._expression)
+        return self
+    
+    def exp(self):
+        self._expression = sp.exp(self._expression)
+        return self
+    
+    def log(self):
+        self._expression = sp.log(self._expression)
+        return self
+
+
+     

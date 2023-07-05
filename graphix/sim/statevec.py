@@ -327,7 +327,7 @@ class Statevec:
         st2 = st1.deepcopy(st1)
         st1.evolve_single(op, loc)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
-
+    
     def expectation_value(self, op, qargs):
         """Expectation value of multi-qubit operator.
 
