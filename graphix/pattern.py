@@ -9,6 +9,8 @@ from graphix.gflow import flow, gflow, get_layers
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
 from copy import deepcopy
 
+from graphix.parameter import Parameter
+
 
 class Pattern:
     """
@@ -54,6 +56,9 @@ class Pattern:
         self.Nnode = width  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
+        self.num_parameterized_measurements = 0  ## for patterns with parameterized measurement commands
+        self.parameters = set()
+
     def add(self, cmd):
         """add command to the end of the pattern.
         an MBQC command is specified by a list of [type, node, attr], where
@@ -88,10 +93,133 @@ class Pattern:
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             self.Nnode += 1
-            self.output_nodes.append(cmd[1])
+            # self.output_nodes.append(cmd[1])
         elif cmd[0] == "M":
-            self.output_nodes.remove(cmd[1])
+            # self.output_nodes.remove(cmd[1])
+            if cmd[1] in self.output_nodes:
+                raise ValueError(
+                    str(cmd[1]) + " is an output node " + str(self.output_nodes) + " ,and cannot be measured"
+                )
+            if not isinstance(cmd[3], (float, int)):
+                if self.num_parameterized_measurements == 0:
+                    self.parameterized_commands = []
+
+                self.num_parameterized_measurements += 1
+                self.parameterized_commands.append({cmd[1]: cmd[3]})
+                self.parameters = self.parameters.union(cmd[3].parameters)
+
         self.seq.append(cmd)
+
+    def add_multiple_commands(self, cmd_list: list):
+        """append list of commands to the measurement pattern
+
+        Parameters
+        ----------
+
+        cmd_list : list
+                    a list of commands to be appended to the measurement pattern
+
+                    NOTE: commands are apppended via the Pattern.add() method and any
+                          internal processing follows.
+
+
+        """
+        for cmd in cmd_list:
+            self.add(cmd)
+
+    @property
+    def is_parameterized(self):
+        """returns True if pattern has measuremnt patterns, False otherwise"""
+        if self.num_parameterized_measurements > 0:
+            return True
+        else:
+            return False
+
+    def inspect_parameterized_commands(self, store_data: bool = True, return_data: bool = False):
+        """method to summarize all parameterized measurements commands
+        informs user about all Parameterised Measurement Commands and the Parameter variables in the commands
+
+        Parameters
+        ----------
+        store_data : bool
+                    if True saves all information in respective class attribrutes
+        return_data : bool
+                    if True then returns
+
+                    list - of all parameterised measurements commands,
+                    set - of all the parameters used in the commands
+
+        """
+
+        if self.num_parameterized_measurements == 0:
+            raise ValueError(" no paramaters to assign ")
+
+        meas_cmds = self.get_measurement_commands()
+        param_meas_cmds = []
+        params = set()
+        if self.num_parameterized_measurements > 0:
+            for cmd in meas_cmds:
+                if not isinstance(cmd[3], (float, int)):
+                    param_meas_cmds.append({cmd[1]: cmd[3]})
+                    params = params.union(cmd[3].parameters)
+
+        if len(params) == 0:
+            self.num_parameterized_measurements = 0
+
+        if store_data:
+            self.parameterized_commands = param_meas_cmds
+            self.parameters = params
+
+        if return_data:
+            return param_meas_cmds, params
+
+    def assign_parameters(self, parameter_assignment: dict, verbose: bool = True, inplace: bool = True):
+        """assign numerical values to the parameters in the measurement commands
+
+        Parameters
+        ----------
+        parameter_assignment : dict
+                            dictionary with parameters as keys and numerical assignments as values. eg {param_1: 0.3, params_2: 0.5, ..}
+        verbose  : bool
+                    if True prints status of all assigned and unassigned meaurement parameters
+        inplace : bool
+                    if True, assigns paramters to the current pattern, otherwise returns a new Pattern with measuremnt parameter assigned.
+
+        """
+
+        if self.num_parameterized_measurements == 0:
+            raise ValueError(" no paramaters to assign ")
+
+        if inplace:
+            cmd_indx = -1
+            for cmd in self.seq:
+                cmd_indx += 1
+                if cmd[0] == "M" and isinstance(cmd[3], Parameter):
+                    cmd[3] = cmd[3].bind(parameter_assignment, allow_unknown_parameters=True).value
+                    self.seq[cmd_indx] = cmd
+
+            self.inspect_parameterized_commands()
+
+        else:
+            new_pattern = deepcopy(self)
+            cmd_indx = -1
+            for cmd in new_pattern.seq:
+                cmd_indx += 1
+                if cmd[0] == "M" and isinstance(cmd[3], Parameter):
+                    cmd[3] = cmd[3].bind(parameter_assignment, allow_unknown_parameters=True).value
+                    new_pattern.seq[cmd_indx] = cmd
+
+            return new_pattern
+
+        if verbose:
+
+            if len(self.parameters) == 0:
+                print("all parameter values assigned")
+
+            else:
+                print(" unassigned parameters in commands ")
+                print(" Commands :" + str(self.parameterized_commands))
+                print(" Parameters : " + str(self.parameters))
 
     def set_output_nodes(self, output_nodes):
         """arrange the order of output_nodes.
@@ -905,6 +1033,12 @@ class Pattern:
             elif cmd[0] == "E":
                 edge_list.append(cmd[1])
         return node_list, edge_list
+
+    # def get_nx_graph(self):
+    #     nodes, edges = self.get_graph()
+    #     g = nx.Graph()
+    #     g.add_nodes_from(nodes)
+    #     g.add_edges_from(edges)
 
     def get_isolated_nodes(self):
         """Get isolated nodes.
@@ -1721,6 +1855,7 @@ def pauli_nodes(pattern):
 
     Parameters
     ----------
+
     pattern : graphix.Pattern object
 
     Returns
