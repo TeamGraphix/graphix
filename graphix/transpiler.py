@@ -9,9 +9,9 @@ from copy import deepcopy
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
 
-from typing import Union
 
 from graphix.parameter import Parameter
+
 
 class Circuit:
     """Gate-to-MBQC transpiler.
@@ -35,104 +35,104 @@ class Circuit:
         """
         self.width = width
         self.instruction = []
-        
+
         self.num_parameterized_gates = 0  ## for circuits with parameterized gates
         self.parameters = set()
-       
-    
-    def inspect_parameterized_gates(self, store_data:bool = True, return_data:bool = False):
-        """ method to summarize all parameterized gate instructions
-            informs user about all Parameter variables in the circuit
 
-            Parameters
-            ----------
-            store_data : bool
-                        if True saves all information in respective class attribrutes
-            return_data : bool
-                        if True then returns
-                        set - of all the parameters used in the circuit
-        
+    def inspect_parameterized_gates(self, store_data: bool = True, return_data: bool = False):
+        """method to summarize all parameterized gate instructions
+        informs user about all Parameter variables in the circuit
+
+        Parameters
+        ----------
+        store_data : bool
+                    if True saves all information in respective class attribrutes
+        return_data : bool
+                    if True then returns
+                    set - of all the parameters used in the circuit
+
         """
-        
-        if self.num_parameterized_gates == 0 :
+
+        if self.num_parameterized_gates == 0:
             raise ValueError(" no paramaters to assign ")
-        
-        elif self.num_parameterized_gates > 0 :
+
+        elif self.num_parameterized_gates > 0:
 
             parameterized_gate_indx = self._find_parameterized_gates()
             parameters = set()
             for gate_indx in parameterized_gate_indx:
-                
-                gate_instr = self.instruction[gate_indx]  
+
+                gate_instr = self.instruction[gate_indx]
                 parameters = parameters.union(gate_instr[-1].parameters)
 
-            if len(parameters) == 0: self.num_parameterized_gates = 0 
+            if len(parameters) == 0:
+                self.num_parameterized_gates = 0
 
             if store_data:
                 self.parameters = parameters
 
             if return_data:
                 return parameters
-    
-    def assign_parameters(self, parameter_assignment: dict, verbose: bool= True, inplace: bool= True):
-        """ assign numerical values to the parameters in the measurement commands
 
-            Parameters
-            ----------
-            parameter_assignment : dict
-                                dictionary with parameters as keys and numerical assignments as values. eg {param_1: 0.3, params_2: 0.5, ..}
-            verbose  : bool
-                        if True prints status of all assigned and unassigned gate parameters
-            inplace : bool 
-                        if True, assigns paramters to the current circuit, otherwise returns a new Circuit with gate parameters assigned. 
-        
+    def assign_parameters(self, parameter_assignment: dict, verbose: bool = True, inplace: bool = True):
+        """assign numerical values to the parameters in the measurement commands
+
+        Parameters
+        ----------
+        parameter_assignment : dict
+                            dictionary with parameters as keys and numerical assignments as values. eg {param_1: 0.3, params_2: 0.5, ..}
+        verbose  : bool
+                    if True prints status of all assigned and unassigned gate parameters
+        inplace : bool
+                    if True, assigns paramters to the current circuit, otherwise returns a new Circuit with gate parameters assigned.
+
         """
 
-        if self.num_parameterized_gates == 0 :
+        if self.num_parameterized_gates == 0:
             raise ValueError(" no paramaters to assign ")
-        
+
         parameterized_gate_indx = self._find_parameterized_gates()
 
-        if inplace :
+        if inplace:
 
-            for gate_indx in parameterized_gate_indx :
-                
+            for gate_indx in parameterized_gate_indx:
+
                 gate_instr = self.instruction[gate_indx]
                 if isinstance(gate_instr[-1], (Parameter)):
-                    gate_instr[-1] = gate_instr[-1].bind(parameter_assignment, allow_unknown_parameters= True).value
-                    print(gate_instr) ##checkflag
+                    gate_instr[-1] = gate_instr[-1].bind(parameter_assignment, allow_unknown_parameters=True).value
+                    print(gate_instr)  ##checkflag
                     self.instruction[gate_indx] = gate_instr
-        
+
             self.inspect_parameterized_gates()
-        
-        else :
+
+        else:
 
             new_pattern = deepcopy(self)
 
-            for gate_indx in parameterized_gate_indx :
-                
+            for gate_indx in parameterized_gate_indx:
+
                 gate_instr = new_pattern.instruction[gate_indx]
                 if isinstance(gate_instr[-1], (Parameter)):
-                    gate_instr[-1] = gate_instr[-1].bind(parameter_assignment, allow_unknown_parameters= True).value
+                    gate_instr[-1] = gate_instr[-1].bind(parameter_assignment, allow_unknown_parameters=True).value
                     new_pattern.instruction[gate_indx] = gate_instr
-        
-            new_pattern.inspect_parameterized_gates()            
-            
-            return new_pattern
-      
-        if verbose:
-            
-            if len(self.parameters) == 0 : print("all parameter values assigned")
 
-            else : 
+            new_pattern.inspect_parameterized_gates()
+
+            return new_pattern
+
+        if verbose:
+
+            if len(self.parameters) == 0:
+                print("all parameter values assigned")
+
+            else:
                 print(" unassigned parameters in commands ")
                 # print(" Commands :" + str(self.parameterized_commands) )
-                print(" Parameters : "+ str(self.parameters))
-    
+                print(" Parameters : " + str(self.parameters))
 
     @property
     def is_parameterized(self):
-        return self.num_parameterized_gates > 0 
+        return self.num_parameterized_gates > 0
 
     def cnot(self, control, target):
         """CNOT gate
@@ -204,7 +204,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Z", qubit])
 
-    def rx(self, qubit, angle: Union[float, Parameter]):
+    def rx(self, qubit, angle):
         """X rotation gate
 
         Prameters
@@ -218,12 +218,11 @@ class Circuit:
         angle = 1.0 * angle
         self.instruction.append(["Rx", qubit, angle])
 
-        if not isinstance(angle, (float, int)): 
+        if not isinstance(angle, (float, int)):
             self.num_parameterized_gates += 1
             self.parameters = self.parameters.union(angle.parameters)
 
-
-    def ry(self, qubit, angle: Union[float, Parameter]):
+    def ry(self, qubit, angle):
         """Y rotation gate
 
         Prameters
@@ -235,14 +234,13 @@ class Circuit:
         """
         assert qubit in np.arange(self.width)
         angle = 1.0 * angle
-        self.instruction.append(["Ry", qubit,  angle])
+        self.instruction.append(["Ry", qubit, angle])
 
-        if not isinstance(angle, (float, int)): 
+        if not isinstance(angle, (float, int)):
             self.num_parameterized_gates += 1
             self.parameters = self.parameters.union(angle.parameters)
 
-
-    def rz(self, qubit, angle: Union[float, Parameter]):
+    def rz(self, qubit, angle):
         """Z rotation gate
 
         Prameters
@@ -260,8 +258,7 @@ class Circuit:
             self.num_parameterized_gates += 1
             self.parameters = self.parameters.union(angle.parameters)
 
-        
-    def rzz(self, control, target, angle: Union[float, Parameter]):
+    def rzz(self, control, target, angle):
         r"""ZZ-rotation gate.
         Equivalent to the sequence
         CNOT(control, target),
@@ -286,7 +283,6 @@ class Circuit:
         if not isinstance(angle, (float, int)):
             self.num_parameterized_gates += 1
             self.parameters = self.parameters.union(angle.parameters)
-
 
     def i(self, qubit):
         """identity (teleportation) gate
@@ -314,7 +310,7 @@ class Circuit:
         Nnode = self.width
         out = [j for j in range(self.width)]
         pattern = Pattern(self.width)
-        print('WARNING: Circuit has unassigned paramteters')
+        print("WARNING: Circuit has unassigned paramteters")
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
@@ -582,7 +578,7 @@ class Circuit:
         pattern.Nnode = Nnode
         # pattern.seq = command_seq
         pattern.add_multiple_commands(command_seq)
-        
+
         return pattern
 
     def _commute_with_cnot(self, target):
@@ -714,18 +710,19 @@ class Circuit:
             target += step
         target = "end"
         return target
-    
+
     def _find_parameterized_gates(self):
         """ """
 
-        parameterizable_gates = {'Rx','Ry','Rz','Rz','Rzz'}
-        indx = -1; parameterized_gates = []
-        for instr in self.instruction :
+        parameterizable_gates = {"Rx", "Ry", "Rz", "Rz", "Rzz"}
+        indx = -1
+        parameterized_gates = []
+        for instr in self.instruction:
             indx += 1
             if instr[0] in parameterizable_gates:
                 if not isinstance(instr[-1], (float, int)):
                     parameterized_gates.append(indx)
-        
+
         return parameterized_gates
 
     def _move_byproduct_to_right(self):
@@ -1129,8 +1126,11 @@ class Circuit:
             state = Statevec(nqubit=self.width)
         else:
             state = input_state
-        
-        if self.num_parameterized_gates != 0 : print(' WARNING: the circuit has unassigned parameters, class methods from graphix.Statevec might not work as expected')
+
+        if self.num_parameterized_gates != 0:
+            print(
+                " WARNING: the circuit has unassigned parameters, class methods from graphix.Statevec might not work as expected"
+            )
         for i in range(len(self.instruction)):
             if self.instruction[i][0] == "CNOT":
                 state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))

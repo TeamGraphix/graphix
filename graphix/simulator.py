@@ -28,7 +28,7 @@ class PatternSimulator:
             :class:`graphix.sim.tensornet.TensorNetworkBackend`
         """
         # check the pattern has paramters assigned
-        if pattern.num_parameterized_measurements != 0 :
+        if pattern.num_parameterized_measurements != 0:
             raise ValueError(" 'Pattern' {pattern} has unassigned parameters")
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
