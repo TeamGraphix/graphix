@@ -10,10 +10,8 @@ import sympy as sp
 class Parameter:
     """Placeholder for measurement angles, which allows the pattern optimizations
     without specifying measurement angles for measurement commands.
-
     Either use for rotation gates of :class:`Circuit` class or for
     the measurement angle of the measurement commands to be added with :meth:`Pattern.add` method.
-
     Example:
     .. code-block:: python
 
@@ -193,3 +191,4 @@ class Parameter:
     def log(self):
         self._expression = sp.log(self._expression)
         return self
+

@@ -1,7 +1,7 @@
 import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
-from graphix.clifford import CLIFFORD
+from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
 from graphix.ops import States, Ops
 import string
 from copy import deepcopy
@@ -139,11 +139,16 @@ class TensorNetworkBackend:
         # extract signals for adaptive angle
         s_signal = np.sum([self.results[j] for j in cmd[4]])
         t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
+        angle = cmd[3] * np.pi
         if len(cmd) == 7:
-            proj_vec = proj_basis(angle, vop=cmd[6], plane=cmd[2], choice=result)
+            vop = cmd[6]
         else:
-            proj_vec = proj_basis(angle, vop=0, plane=cmd[2], choice=result)
+            vop = 0
+        if int(s_signal % 2) == 1:
+            vop = CLIFFORD_MUL[1, vop]
+        if int(t_signal % 2) == 1:
+            vop = CLIFFORD_MUL[3, vop]
+        proj_vec = proj_basis(angle, vop=vop, plane=cmd[2], choice=result)
 
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
@@ -706,10 +711,10 @@ def proj_basis(angle, vop, plane, choice):
         vec = States.vec[4 + choice]
         rotU = Ops.Rx(angle)
     elif plane == "XZ":
-        vec = States.vec[2 + choice]
-        rotU = Ops.Ry(angle)
+        vec = States.vec[0 + choice]
+        rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)
-    vec = np.matmul(CLIFFORD[vop], vec)
+    vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
     return vec
 
 
