@@ -1012,7 +1012,6 @@ class Circuit:
         """
         assert len(ancilla) == 28
         seq = [["N", ancilla[i]] for i in range(28)]  # assign new qubit labels
-        # control_node1, control_node2, target_node = target_node, control_node2, control_node1
         seq.append(["E", (ancilla[2], ancilla[3])])
         seq.append(["E", (ancilla[3], ancilla[4])])
         seq.append(["E", (ancilla[4], ancilla[1])])
