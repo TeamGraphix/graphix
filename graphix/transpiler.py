@@ -990,16 +990,22 @@ class Circuit:
 
         Parameters
         ---------
-        input_node : int
-            input node index
-        ancilla : int
-            ancilla node index
+        control_node1 : int
+            first control node on graph
+        control_node2 : int
+            second control node on graph
+        target_node : int
+            target node on graph
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
 
         Returns
         ---------
-        out_node_control : int
-            control node on graph after the gate
-        out_node_target : int
+        control_out1 : int
+            first control node on graph after the gate
+        control_out2 : int
+            second control node on graph after the gate
+        target_out : int
             target node on graph after the gate
         commands : list
             list of MBQC commands
@@ -1243,16 +1249,22 @@ class Circuit:
 
         Parameters
         ---------
-        input_node : int
-            input node index
-        ancilla : int
-            ancilla node index
+        control_node1 : int
+            first control node on graph
+        control_node2 : int
+            second control node on graph
+        target_node : int
+            target node on graph
+        ancilla : list of two ints
+            ancilla node indices to be added to graph
 
         Returns
         ---------
-        out_node_control : int
-            control node on graph after the gate
-        out_node_target : int
+        control_out1 : int
+            first control node on graph after the gate
+        control_out2 : int
+            second control node on graph after the gate
+        target_out : int
             target node on graph after the gate
         commands : list
             list of MBQC commands
