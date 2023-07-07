@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+## [0.2.4] - 2023-07-06
+### Added
+
 - Interface to run patterns on the IBMQ devices. (see PR) (#44)
 
 
