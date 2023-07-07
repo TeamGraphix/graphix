@@ -534,10 +534,7 @@ class Circuit:
             if self._instr[target][0] == "XC":
                 self._commute_with_following(target)
                 # changes to Y = XZ
-                self._instr.insert(
-                    target + 1,
-                    ["ZC", self._instr[target + 1][1], self._instr[target + 1][2]],
-                )
+                self._instr.insert(target + 1, ["ZC", self._instr[target + 1][1], self._instr[target + 1][2]])
                 return target + 1
         self._commute_with_following(target)
         return target
