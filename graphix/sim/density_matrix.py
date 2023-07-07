@@ -42,7 +42,10 @@ class DensityMatrix:
             assert np.isclose(nqubit, int(nqubit))
             nqubit = int(nqubit)
             self.Nqubit = nqubit
-            self.rho = np.asarray(data, dtype=complex).reshape((2**nqubit, 2**nqubit))
+
+            # conversion done above
+            self.rho = data.reshape((2**nqubit, 2**nqubit))
+            np.testing.assert_almost_equal(self.rho.trace(), 1, err_msg='The data provided does not have unit trace!')
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -154,7 +157,7 @@ class DensityMatrix:
 
     def normalize(self):
         """normalize density matrix"""
-        self.rho /= np.linalg.norm(self.rho)
+        self.rho /= np.trace(self.rho)
 
     def ptrace(self, qargs):
         """partial trace
