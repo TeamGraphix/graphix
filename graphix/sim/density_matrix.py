@@ -5,6 +5,7 @@ Simulate MBQC with density matrix representation.
 
 from copy import deepcopy
 import numpy as np
+import scipy
 from graphix.ops import Ops
 from graphix.sim.statevec import meas_op, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
 
@@ -45,7 +46,9 @@ class DensityMatrix:
 
             # conversion done above
             self.rho = data.reshape((2**nqubit, 2**nqubit))
-            np.testing.assert_almost_equal(self.rho.trace(), 1, err_msg='The data provided does not have unit trace!')
+            np.testing.assert_almost_equal(self.rho.trace(), 1, err_msg='The provided matrix does not have unit trace!')
+            # also add test for hermiticity!!! QuTip test? and modify the DM tests that use not hermitian DMs
+            np.testing.assert_equal(scipy.linalg.ishermitian(self.rho), True, err_msg='The provided matrix is not Hermitian!')
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -182,8 +185,9 @@ class DensityMatrix:
         rho_res = np.tensordot(
             np.eye(2**qargs_num).reshape((2,) * qargs_num * 2), rho_res, axes=(list(range(2 * qargs_num)), trace_axes)
         )
-
-        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after)) / np.linalg.norm(rho_res)
+    # NOTE no need to normalize when taking partial trace! 
+    # TODO or assert norm is still one? 
+        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after)) # / np.linalg.norm(rho_res)
         self.Nqubit = nqubit_after
 
     def fidelity(self, statevec):

@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import scipy
 from graphix import Circuit
 from graphix.sim.statevec import Statevec, StatevectorBackend, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
@@ -42,8 +43,9 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_init_with_data_success(self):
         for n in range(3):
-            data = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data /= np.linalg.norm(data)
+            tmp  = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
+            data = tmp + tmp.conj().T
+            data /= np.trace(data)
             dm = DensityMatrix(data=data)
             assert dm.Nqubit == n
             assert dm.rho.shape == (2**n, 2**n)
@@ -51,14 +53,23 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_evolve_single_fail(self):
         dm = DensityMatrix(nqubit=2)
-        op = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
+        
+        # op = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
+
+        # generate random unitary matrix
+        # NOTE use hypothesis for that.
+        op = scipy.stats.unitary_group.rvs(4)
+
         with self.assertRaises(AssertionError):
             dm.evolve_single(op, 2)
         with self.assertRaises(ValueError):
             dm.evolve_single(op, 1)
 
     def test_evolve_single_success(self):
-        op = np.random.rand(2, 2) + 1j * np.random.rand(2, 2)
+        # NOT unitary
+        # op = np.random.rand(2, 2) + 1j * np.random.rand(2, 2)
+        # NOTE use hypothesis for that?
+        op = scipy.stats.unitary_group.rvs(2)
         n = 10
         for i in range(n):
             sv = Statevec(nqubit=n)
@@ -85,11 +96,13 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_tensor_with_data_success(self):
         for n in range(3):
-            data_a = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data_a /= np.linalg.norm(data_a)
+            tmp_a = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
+            data_a = tmp_a + tmp_a.conj().T
+            data_a /= np.trace(data_a)
             dm_a = DensityMatrix(data=data_a)
-            data_b = np.random.rand(2 ** (n + 1), 2 ** (n + 1)) + 1j * np.random.rand(2 ** (n + 1), 2 ** (n + 1))
-            data_b /= np.linalg.norm(data_b)
+            tmp_b = np.random.rand(2**(n + 1), 2**(n + 1)) + 1j * np.random.rand(2**(n + 1), 2**(n + 1))
+            data_b = tmp_b + tmp_b.conj().T
+            data_b /= np.trace(data_b)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
             assert dm_a.Nqubit == 2 * n + 1
@@ -119,6 +132,7 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(dm.rho, original_matrix)
 
         psi = np.random.rand(4) + 1j * np.random.rand(4)
+        psi /= np.sqrt(np.sum(np.abs(psi)**2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.cnot(edge)
@@ -152,6 +166,7 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(dm.rho, original_matrix)
 
         psi = np.random.rand(4) + 1j * np.random.rand(4)
+        psi /= np.sqrt(np.sum(np.abs(psi)**2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.swap(edge)
@@ -191,7 +206,8 @@ class TestDensityMatrix(unittest.TestCase):
         dm2 = dm.rho
         assert np.allclose(dm1, dm2)
 
-        psi = np.random.rand(4) + 1j * np.random.rand(4)
+        psi = (np.random.rand(4) + 1j * np.random.rand(4))
+        psi /= np.sqrt(np.sum(np.abs(psi)**2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.entangle(edge)
@@ -203,10 +219,12 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(rho, expected_matrix)
 
     def test_normalize(self):
-        data = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
+        tmp = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)      
+        data = tmp + tmp.conj().T
+        data /= data.trace()
         dm = DensityMatrix(data)
         dm.normalize()
-        assert np.allclose(np.linalg.norm(dm.rho), 1)
+        assert np.allclose(np.trace(dm.rho), 1)
 
     def test_ptrace_fail(self):
         dm = DensityMatrix(nqubit=0)
