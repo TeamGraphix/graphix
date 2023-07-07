@@ -1012,6 +1012,7 @@ class Circuit:
         """
         assert len(ancilla) == 28
         seq = [["N", ancilla[i]] for i in range(28)]  # assign new qubit labels
+        # control_node1, control_node2, target_node = target_node, control_node2, control_node1
         seq.append(["E", (ancilla[2], ancilla[3])])
         seq.append(["E", (ancilla[3], ancilla[4])])
         seq.append(["E", (ancilla[4], ancilla[1])])
@@ -1053,27 +1054,9 @@ class Circuit:
         seq.append(["M", ancilla[6], "XY", 0, [], []])
         seq.append(["M", ancilla[7], "XY", 0, [ancilla[6], ancilla[4], ancilla[2]], []])
         seq.append(["M", ancilla[8], "XY", 0, [], []])
-        seq.append(
-            [
-                "M",
-                ancilla[9],
-                "XY",
-                -0.25,
-                [ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
-                [],
-            ]
-        )
+        seq.append(["M", ancilla[9], "XY", -0.25, [ancilla[8], ancilla[6], ancilla[4], ancilla[2]], []])
         seq.append(["M", ancilla[10], "XY", 0, [], []])
-        seq.append(
-            [
-                "M",
-                ancilla[11],
-                "XY",
-                0,
-                [ancilla[10], ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
-                [],
-            ]
-        )
+        seq.append(["M", ancilla[11], "XY", 0, [ancilla[10], ancilla[8], ancilla[6], ancilla[4], ancilla[2]], []])
         seq.append(["M", ancilla[12], "XY", 0, [], []])
         seq.append(["M", ancilla[1], "XY", -0.25, [], []])
         seq.append(["M", ancilla[14], "XY", 0, [], []])
@@ -1083,14 +1066,7 @@ class Circuit:
                 ancilla[13],
                 "XY",
                 0.25,
-                [
-                    ancilla[12],
-                    ancilla[10],
-                    ancilla[8],
-                    ancilla[6],
-                    ancilla[4],
-                    ancilla[2],
-                ],
+                [ancilla[12], ancilla[10], ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
                 [],
             ]
         )
@@ -1101,15 +1077,7 @@ class Circuit:
                 ancilla[17],
                 "XY",
                 0,
-                [
-                    ancilla[16],
-                    ancilla[12],
-                    ancilla[10],
-                    ancilla[8],
-                    ancilla[6],
-                    ancilla[4],
-                    ancilla[2],
-                ],
+                [ancilla[16], ancilla[12], ancilla[10], ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
                 [],
             ]
         )
@@ -1122,16 +1090,7 @@ class Circuit:
                 ancilla[19],
                 "XY",
                 -0.25,
-                [
-                    ancilla[18],
-                    ancilla[16],
-                    ancilla[12],
-                    ancilla[10],
-                    ancilla[8],
-                    ancilla[6],
-                    ancilla[4],
-                    ancilla[2],
-                ],
+                [ancilla[18], ancilla[16], ancilla[12], ancilla[10], ancilla[8], ancilla[6], ancilla[4], ancilla[2]],
                 [],
             ]
         )
@@ -1163,27 +1122,21 @@ class Circuit:
         seq.append(["M", ancilla[26], "XY", 0, [ancilla[25], ancilla[20], ancilla[14]], []])
         seq.append(["M", ancilla[27], "XY", 0, [], []])
         seq.append(["X", control_node1, [ancilla[24]]])
-        seq.append(
-            [
-                "X",
-                control_node2,
-                [ancilla[27], ancilla[24], ancilla[25], ancilla[20], ancilla[14]],
-            ]
-        )
+        seq.append(["X", control_node2, [ancilla[14], ancilla[20], ancilla[24], ancilla[25], ancilla[27]]])
         seq.append(
             [
                 "X",
                 target_node,
                 [
-                    ancilla[23],
-                    ancilla[19],
-                    ancilla[17],
-                    ancilla[13],
-                    ancilla[11],
-                    ancilla[9],
-                    ancilla[7],
-                    ancilla[5],
                     ancilla[3],
+                    ancilla[5],
+                    ancilla[7],
+                    ancilla[9],
+                    ancilla[11],
+                    ancilla[13],
+                    ancilla[17],
+                    ancilla[19],
+                    ancilla[23],
                 ],
             ]
         )
@@ -1191,37 +1144,14 @@ class Circuit:
             [
                 "Z",
                 control_node1,
-                [
-                    ancilla[0],
-                    ancilla[26],
-                    ancilla[7],
-                    ancilla[17],
-                    ancilla[15],
-                    ancilla[5],
-                    ancilla[3],
-                    ancilla[13],
-                    ancilla[11],
-                    ancilla[9],
-                    ancilla[1],
-                    ancilla[21],
-                ],
+                [ancilla[0], ancilla[9], ancilla[11], ancilla[13], ancilla[17], ancilla[21], ancilla[26]],
             ]
         )
         seq.append(
             [
                 "Z",
                 control_node2,
-                [
-                    ancilla[26],
-                    ancilla[21],
-                    ancilla[15],
-                    ancilla[1],
-                    ancilla[3],
-                    ancilla[11],
-                    ancilla[9],
-                    ancilla[7],
-                    ancilla[5],
-                ],
+                [ancilla[1], ancilla[5], ancilla[7], ancilla[9], ancilla[11], ancilla[15], ancilla[21], ancilla[26]],
             ]
         )
         seq.append(
@@ -1229,15 +1159,15 @@ class Circuit:
                 "Z",
                 target_node,
                 [
-                    ancilla[22],
-                    ancilla[18],
-                    ancilla[16],
-                    ancilla[12],
-                    ancilla[10],
-                    ancilla[8],
-                    ancilla[6],
-                    ancilla[4],
                     ancilla[2],
+                    ancilla[4],
+                    ancilla[6],
+                    ancilla[8],
+                    ancilla[10],
+                    ancilla[12],
+                    ancilla[16],
+                    ancilla[18],
+                    ancilla[22],
                 ],
             ]
         )
@@ -1270,10 +1200,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 7
-        seq = [["N", ancilla[0]], ["N", ancilla[1]]]  # assign new qubit labels
-        seq.extend([["N", ancilla[2]], ["N", ancilla[3]]])
-        seq.extend([["N", ancilla[4]], ["N", ancilla[5]]])
-        seq.extend([["N", ancilla[6]]])
+        seq = [["N", ancilla[i]] for i in range(7)]  # assign new qubit labels
         seq.append(["E", (ancilla[0], control_node1)])
         seq.append(["E", (ancilla[1], ancilla[3])])
         seq.append(["E", (ancilla[1], control_node1)])
@@ -1292,22 +1219,9 @@ class Circuit:
         seq.append(["M", ancilla[5], "XY", 0.25, [], [], 6])
         seq.append(["M", ancilla[6], "XY", 0, [], [], 0])
         seq.append(["X", control_node2, [ancilla[6]]])
-        seq.append(["X", target_node, [ancilla[4], ancilla[3], ancilla[2]]])
-        seq.append(
-            [
-                "Z",
-                control_node1,
-                [
-                    ancilla[0],
-                    ancilla[2],
-                    ancilla[4],
-                    ancilla[3],
-                    ancilla[1],
-                    ancilla[5],
-                ],
-            ]
-        )
-        seq.append(["Z", control_node2, [ancilla[5], ancilla[1], ancilla[3], ancilla[2]]])
+        seq.append(["X", target_node, [ancilla[2], ancilla[3], ancilla[4]]])
+        seq.append(["Z", control_node1, [ancilla[0], ancilla[3], ancilla[4], ancilla[5]]])
+        seq.append(["Z", control_node2, [ancilla[1], ancilla[2], ancilla[3], ancilla[5]]])
         return control_node1, control_node2, target_node, seq
 
     @classmethod
@@ -1380,9 +1294,6 @@ class Circuit:
             elif self.instruction[i][0] == "Rz":
                 state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rzz":
-                state.evolve(
-                    Ops.Rzz(self.instruction[i][2]),
-                    [self.instruction[i][1][0], self.instruction[i][1][1]],
-                )
+                state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
 
         return state
