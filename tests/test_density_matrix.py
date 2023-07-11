@@ -308,6 +308,21 @@ class DensityMatrixBackendTest(unittest.TestCase):
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
 
+    def test_measure_pr_calc(self):
+        circ = Circuit(1)
+        circ.rx(0, np.pi / 2)
+        pattern = circ.transpile()
+
+        backend = DensityMatrixBackend(pattern, pr_calc=True)
+        backend.add_nodes([0, 1, 2])
+        backend.entangle_nodes((0, 1))
+        backend.entangle_nodes((1, 2))
+        backend.measure(backend.pattern.seq[-4])
+
+        expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
+        expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
+        assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
+
     def test_correct_byproduct(self):
         np.random.seed(0)
 

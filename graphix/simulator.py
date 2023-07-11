@@ -36,7 +36,7 @@ class PatternSimulator:
         elif backend in {"tensornetwork", "mps"}:
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
-            raise ValueError("unknown backend")
+            raise ValueError("Unknown backend")
         self.pattern = pattern
         self.results = self.backend.results
         self.state = self.backend.state
