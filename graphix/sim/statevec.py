@@ -109,17 +109,19 @@ class StatevectorBackend:
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=0)
             result = 0
 
-        m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=0)
-        result = 0
+            # probability to measure in the |+_angle> state.
+            # NOT EFFICIENT AT ALL since expectation_single calls evolve_single...
+            prob_0 = self.state.expectation_single(m_op, loc)
 
-        # probability to measure in the |+_angle> state.
-        # NOT EFFICIENT AT ALL since expectation_single calls evolve_single...
-        prob_0 = self.state.expectation_single(m_op, loc)
+            # choose the measurement result randomly according to the computed probability
+            # just modify result and operator if the outcome turns out to be 1
+            if np.random.rand() > prob_0:
+                result = 1
+                m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
 
-        # choose the measurement result randomly according to the computed probability
-        # just modify result and operator if the outcome turns out to be 1
-        if np.random.rand() > prob_0:
-            result = 1
+        # choose the measurement result randomly
+        else:
+            result = np.random.choice([0, 1])
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
 
         self.results[cmd[1]] = result
