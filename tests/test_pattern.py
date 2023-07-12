@@ -180,6 +180,18 @@ class TestPattern(unittest.TestCase):
         meas_plane = pattern.get_meas_plane()
         np.testing.assert_equal(meas_plane, ref_meas_plane)
 
+    def test_pr_calc(self):
+        nqubits = 3
+        depth = 3
+        for i in range(10):
+            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
+            pattern = circuit.standardize_and_transpile(opt=True)
+            state = circuit.simulate_statevector()
+            pattern.minimize_space()
+            state_mbqc = pattern.simulate_pattern()
+            state_mbqc_calc = pattern.simulate_pattern(pr_calc=True)
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc_calc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state_mbqc_calc.flatten())), 1)
 
 def cp(circuit, theta, control, target):
     """Controlled rotation gate, decomposed"""
