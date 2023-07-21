@@ -11,7 +11,6 @@ Graphix - optimizing and simulating MBQC
    :caption: Documentation
 
    tutorial
-   why-lcmbqc
    gallery/index
    references
 
