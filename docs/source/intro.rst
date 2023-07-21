@@ -20,18 +20,18 @@ Introduction
    :align: center
    :alt: quantum and classical processing
 
-Measurement-based (one-way) quantum computing, introduced by Raussendorf [#raussendorf]_, has a completely different approach which we can call `consumption of initially entangled resource state`; first you create a large entangled quantum state (graph state :math:`|g\rangle`), and the computation goes by measurements of qubits which drives the evolution of the quantum state. Entanglement is only required at the start, and all subsequent operations only reduce entanglement.
+Measurement-based (one-way) quantum computing, introduced by Raussendorf [#raussendorf]_, has a different approach which can be called `consumption of initially entangled resource state`; first you create a large entangled quantum state (graph state :math:`|g\rangle`), and the computation goes by measurements of qubits which drives the evolution of the quantum state. Entanglement is only required at the start, and all subsequent operations only reduce entanglement.
 
 .. figure:: ./../imgs/mbqc.png
    :scale: 50 %
    :align: center
    :alt: gate-based and one-way qc
 
-There is no classical analog and it is difficult to picture, but MBQC has several remarkable advantages that motivate us to study further:
+MBQC has several remarkable advantages that may motivate us to study further:
 
-- Only single-qubit measurements are needed to perform the computation on the resource state (no single- or multi-qubit gates).
-- The resource state is a [low-entangled state]() with only two-qubit entanglement which can be prepared in a depth of one. Further, they can be prepared offline [], and can be based on probabilistic entangling operations [].
-- The depth of the computation is usually significantly smaller than the equivalent quantum circuit model, which means computation is less affected by finite coherence time.
+- Only single-qubit measurements are needed to perform the computation on the resource state.
+- The resource state can be prepared in a depth of one using CZ gates which commute with each other. Further, they can be prepared offline, and/or can be based on probabilistic entangling operations.
+- The depth of the computation is usually significantly smaller than the equivalent quantum circuit, which means computation might be less affected by finite coherence time.
 
 
 One-way quantum computing
