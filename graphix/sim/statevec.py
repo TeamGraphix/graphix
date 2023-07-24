@@ -213,7 +213,7 @@ class Statevec:
             nqubit (int, optional): number of qubits. Defaults to 1.
         """
         if plus_states:
-            self.psi = np.ones((2,) * nqubit) / np.sqrt(2**nqubit)
+            self.psi = np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
         else:
             self.psi = np.zeros((2,) * nqubit)
             self.psi[(0,) * nqubit] = 1
@@ -263,6 +263,17 @@ class Statevec:
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
+
+    def truncate_one_qubit(self, qarg):
+        """truncate one qubit
+
+        Args:
+            qarg (int): qubit index
+        """
+        # extract |***0_{qarg}***> components if not zero else |***1_{qarg}***>
+        psi = self.psi.take(indices=0, axis=qarg)
+        self.psi = psi if psi[(0,) * psi.ndim] != 0.0 else self.psi.take(indices=1, axis=qarg)
+        self.normalize()
 
     def entangle(self, edge):
         """connect graph nodes
