@@ -57,8 +57,6 @@ class StatevectorBackend:
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += 1
-        if self.Nqubit == self.max_qubit_num:
-            self.trace_out()
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
@@ -99,8 +97,9 @@ class StatevectorBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(m_op, loc)
 
-        self.to_trace.append(cmd[1])
-        self.to_trace_loc.append(loc)
+        self.state.truncate_one_qubit(loc)
+        self.node_index.remove(cmd[1])
+        self.Nqubit -= 1
 
     def correct_byproduct(self, cmd):
         """Byproduct correction
@@ -124,19 +123,8 @@ class StatevectorBackend:
 
     def finalize(self):
         """to be run at the end of pattern simulation."""
-        self.trace_out()
         self.sort_qubits()
         self.state.normalize()
-
-    def trace_out(self):
-        """trace out the qubits buffered in self.to_trace from self.state"""
-        self.state.normalize()
-        self.state.ptrace(self.to_trace_loc)
-        for node in self.to_trace:
-            self.node_index.remove(node)
-        self.Nqubit -= len(self.to_trace)
-        self.to_trace = []
-        self.to_trace_loc = []
 
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""
