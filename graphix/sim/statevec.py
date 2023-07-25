@@ -270,20 +270,20 @@ class Statevec:
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg):
-        """ Remove a separable qubit from the system and assemble a statevector for remaining qubits.
+        """Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         Note this does not exactly perform the partial trace: see :meth:`~graphix.sim.statevec.Statevec.ptrace` and warning therein.
 
         For a statevector $\ket{\psi} = \sum c_i \ket{i}$ with $i = 00\dots 0 \dots 11\dots 1$, this method returns
-        $\ket{\psi}' = c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} + 
-          c_{0 \dots 00_{\mathrm{k}}0 \dots 01} \ket{0 \dots 00_{\mathrm{k}}0 \dots 01} 
+        $\ket{\psi}' = c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} +
+          c_{0 \dots 00_{\mathrm{k}}0 \dots 01} \ket{0 \dots 00_{\mathrm{k}}0 \dots 01}
           \dots c_{1 \dots 10_{\mathrm{k}}1 \dots 11} \ket{1 \dots 10_{\mathrm{k}}1 \dots 11}$
-        after normalization, for $k$ = qarg. If the $k$th qubit is in $1$ state, above will be zero, so 
+        after normalization, for $k$ = qarg. If the $k$th qubit is in $1$ state, above will be zero, so
         in such a case the returned state will be the one above with $0_{\mathlim{k}}$ replaced with $1_{\mathlim{k}}$.
-        
+
         .. warning::
             This method assumes the qubit with index `qarg` to be separable from the rest,
-            and is implemented as a significantly faster alternative for partial trace to 
-            be used after single-qubit measurements. 
+            and is implemented as a significantly faster alternative for partial trace to
+            be used after single-qubit measurements.
             Care needs to be taken when using this method.
 
         Parameters
