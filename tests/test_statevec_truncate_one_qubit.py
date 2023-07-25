@@ -5,7 +5,7 @@ from graphix.sim.statevec import Statevec, meas_op
 
 
 class StatevecTruncateOneQubitTest(unittest.TestCase):
-    def test_atodekesu(self):
+    def test_truncate_one_qubit(self):
         n = 10
         k = 3
 
