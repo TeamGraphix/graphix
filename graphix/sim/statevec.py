@@ -259,10 +259,9 @@ class Statevec:
             qarg (int): qubit index
         """
         # extract |***0_{qarg}***> components if not zero else |***1_{qarg}***>
+        assert not np.isclose(norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        if np.isclose(norm(psi), 0):
-            psi = self.psi.take(indices=1, axis=qarg)
-        self.psi = psi
+        self.psi = psi if not np.isclose(norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
     def entangle(self, edge):
