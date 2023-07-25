@@ -3,6 +3,7 @@ import time
 import unittest
 from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
+import tests.random_circuit as rc
 
 
 class StatevecTruncateOneQubitTest(unittest.TestCase):
@@ -43,6 +44,19 @@ class StatevecTruncateOneQubitTest(unittest.TestCase):
 
             sv2 = Statevec(nqubit=n - 1)
             np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+
+    def test_with_rand_circuit_sim(self):
+        n = 3
+        depth = 3
+        circuit = rc.get_rand_circuit(n, depth)
+        state = circuit.simulate_statevector()
+
+        pattern = circuit.transpile()
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        sv_mbqc = pattern.simulate_pattern()
+        np.testing.assert_almost_equal(np.abs(np.dot(sv_mbqc.psi.flatten().conjugate(), state.flatten())), 1)
 
 
 if __name__ == "__main__":
