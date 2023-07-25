@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import unittest
+from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
 
 
@@ -29,7 +30,19 @@ class StatevecTruncateOneQubitTest(unittest.TestCase):
         end = time.time()
         print("time (new method): ", end - start)
 
-        np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1.0)
+        np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+
+    def test_measurement_into_each_XYZ_basis(self):
+        for state in States.vec:
+            m_op = np.outer(state, state.T.conjugate())
+            n = 3
+            k = 0
+            sv = Statevec(nqubit=n)
+            sv.evolve(m_op, [k])
+            sv.truncate_one_qubit(k)
+
+            sv2 = Statevec(nqubit=n - 1)
+            np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
 
 
 if __name__ == "__main__":
