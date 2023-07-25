@@ -260,7 +260,7 @@ class Statevec:
         """
         # extract |***0_{qarg}***> components if not zero else |***1_{qarg}***>
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if psi[(0,) * psi.ndim] != 0.0 else self.psi.take(indices=1, axis=qarg)
+        self.psi = psi if not np.isclose(psi.flat[0], 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
     def entangle(self, edge):

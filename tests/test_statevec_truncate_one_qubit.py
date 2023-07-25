@@ -34,10 +34,10 @@ class StatevecTruncateOneQubitTest(unittest.TestCase):
         np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
 
     def test_measurement_into_each_XYZ_basis(self):
+        n = 3
+        k = 0
         for state in States.vec:
             m_op = np.outer(state, state.T.conjugate())
-            n = 3
-            k = 0
             sv = Statevec(nqubit=n)
             sv.evolve(m_op, [k])
             sv.truncate_one_qubit(k)
@@ -56,7 +56,7 @@ class StatevecTruncateOneQubitTest(unittest.TestCase):
         pattern.shift_signals()
         pattern.perform_pauli_measurements()
         sv_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(sv_mbqc.psi.flatten().conjugate(), state.flatten())), 1)
+        np.testing.assert_almost_equal(np.abs(sv_mbqc.psi.flatten().dot(state.flatten().conj())), 1)
 
 
 if __name__ == "__main__":
