@@ -297,9 +297,9 @@ class Statevec:
             qubit index
         """
         # extract |***0_{qarg}***> components if not zero else |***1_{qarg}***>
-        assert not np.isclose(get_norm(self.psi), 0)
+        assert not np.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(get_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
     def entangle(self, edge):
@@ -357,7 +357,7 @@ class Statevec:
 
     def normalize(self):
         """normalize the state"""
-        norm = get_norm(self.psi)
+        norm = _get_statevec_norm(self.psi)
         self.psi = self.psi / norm
 
     def flatten(self):
@@ -405,6 +405,6 @@ class Statevec:
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
 
-def get_norm(psi):
+def _get_statevec_norm(psi):
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
