@@ -13,9 +13,9 @@ class StatevectorBackend:
         """
         Parameteres
         -----------
-        pattern: :class:`graphix.pattern.Pattern` object
+        pattern : :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: str, 'statevector'
+        backend : str, 'statevector'
             optional argument for simulation.
         max_qubit_num : int
             optional argument specifying the maximum number of qubits
@@ -146,7 +146,7 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
 
     Parameters
     ----------
-    angle: float
+    angle : float
         original measurement angle in radian
     vop : int
         index of local Clifford (vop), see graphq.clifford.CLIFFORD
@@ -253,9 +253,11 @@ class Statevec:
         """partial trace selected qubits
 
         .. warning::
-            This method currently assumes qubits in qargs to be separable from the rest (checks not implemented for speed).
+            This method currently assumes qubits in qargs to be separable from the rest
+            (checks not implemented for speed).
             Otherwise, the state returned will be forced to be pure which will result in incorrect state.
-            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development (#64) is merged.
+            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development (#64)
+            is merged.
 
         Parameters
         ----------
@@ -270,15 +272,18 @@ class Statevec:
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg):
-        """Remove a separable qubit from the system and assemble a statevector for remaining qubits.
-        Note this does not exactly perform the partial trace: see :meth:`~graphix.sim.statevec.Statevec.ptrace` and warning therein.
+        r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
+        Note this does not exactly perform the partial trace: see :meth:`~graphix.sim.statevec.Statevec.ptrace`
+        and warning therein.
 
-        For a statevector $\ket{\psi} = \sum c_i \ket{i}$ with $i = 00\dots 0 \dots 11\dots 1$, this method returns
-        $\ket{\psi}' = c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} +
+        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with :math:`i = 00\dots 0 \dots 11\dots 1`,
+        this method returns
+        :math:`\ket{\psi}' = c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} +
           c_{0 \dots 00_{\mathrm{k}}0 \dots 01} \ket{0 \dots 00_{\mathrm{k}}0 \dots 01}
-          \dots c_{1 \dots 10_{\mathrm{k}}1 \dots 11} \ket{1 \dots 10_{\mathrm{k}}1 \dots 11}$
-        after normalization, for $k$ = qarg. If the $k$th qubit is in $1$ state, above will be zero, so
-        in such a case the returned state will be the one above with $0_{\mathlim{k}}$ replaced with $1_{\mathlim{k}}$.
+          \dots c_{1 \dots 10_{\mathrm{k}}1 \dots 11} \ket{1 \dots 10_{\mathrm{k}}1 \dots 11}`
+        after normalization, for :math:`k = ` `qarg`. If the :math:`k`th qubit is in :math:`1` state,
+        above will be zero, so in such a case the returned state will be the one above with :math:`0_{\mathlim{k}}`
+        replaced with :math:`1_{\mathlim{k}}`.
 
         .. warning::
             This method assumes the qubit with index `qarg` to be separable from the rest,
@@ -288,7 +293,7 @@ class Statevec:
 
         Parameters
         ----------
-        qarg :int
+        qarg : int
             qubit index
         """
         # extract |***0_{qarg}***> components if not zero else |***1_{qarg}***>
@@ -302,7 +307,7 @@ class Statevec:
 
         Parameters
         ----------
-        edge :tuple of int
+        edge : tuple of int
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
@@ -316,7 +321,7 @@ class Statevec:
 
         Parameters
         ----------
-        other : graphix.sim.statevec.Statevec
+        other : :class:`graphix.sim.statevec.Statevec`
             statevector to be tensored with self
         """
         psi_self = self.psi.flatten()
@@ -366,7 +371,7 @@ class Statevec:
         ----------
         op : numpy.ndarray
             2*2 operator
-        loc :int
+        loc : int
             target qubit index
 
         Returns
@@ -391,7 +396,7 @@ class Statevec:
 
         Returns
         -------
-        complex: expectation value
+        complex : expectation value
         """
         st1 = deepcopy(self)
         st1.normalize()

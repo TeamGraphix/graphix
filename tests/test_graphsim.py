@@ -1,8 +1,10 @@
 import unittest
+
+import numpy as np
+
 from graphix.graphsim import GraphState
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec, meas_op
-import numpy as np
 
 
 def get_state(g):
