@@ -36,6 +36,7 @@ class StatevectorBackend:
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
+
         Returns
         -------
         n_qubit : int
@@ -73,6 +74,7 @@ class StatevectorBackend:
 
     def measure(self, cmd):
         """Perform measurement of a node in the internal statevector and trace out the qubit
+
         Parameters
         ----------
         cmd : list
@@ -276,14 +278,21 @@ class Statevec:
         Note this does not exactly perform the partial trace: see :meth:`~graphix.sim.statevec.Statevec.ptrace`
         and warning therein.
 
-        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with :math:`i = 00\dots 0 \dots 11\dots 1`,
-        this method returns
-        :math:`\ket{\psi}' = c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} +
-          c_{0 \dots 00_{\mathrm{k}}0 \dots 01} \ket{0 \dots 00_{\mathrm{k}}0 \dots 01}
-          \dots c_{1 \dots 10_{\mathrm{k}}1 \dots 11} \ket{1 \dots 10_{\mathrm{k}}1 \dots 11}`
-        after normalization, for :math:`k = ` `qarg`. If the :math:`k`th qubit is in :math:`1` state,
-        above will be zero, so in such a case the returned state will be the one above with :math:`0_{\mathlim{k}}`
-        replaced with :math:`1_{\mathlim{k}}`.
+        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with :math:`\ket{i} = \ket{0 \dots 0}, \dots,
+        \ket{1 \dots 1}`, this method returns
+
+        .. math::
+            \begin{align}
+                \ket{\psi}' =&
+                    c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} \\
+                    & + c_{0 \dots 00_{\mathrm{k}}0 \dots 01} \ket{0 \dots 00_{\mathrm{k}}0 \dots 01} \\
+                    & + \dots \\
+                    & + c_{1 \dots 10_{\mathrm{k}}1 \dots 11} \ket{1 \dots 10_{\mathrm{k}}1 \dots 11}
+           \end{align}
+
+        after normalization, for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`1` state,
+        above will be zero, so in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
+        replaced with :math:`1_{\mathrm{k}}` .
 
         .. warning::
             This method assumes the qubit with index `qarg` to be separable from the rest,
