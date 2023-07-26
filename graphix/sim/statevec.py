@@ -284,14 +284,15 @@ class Statevec:
         .. math::
             \begin{align}
                 \ket{\psi}' =&
-                    c_{0 \dots 00_{\mathrm{k}}0 \dots 00} \ket{0 \dots 00_{\mathrm{k}}0 \dots 00} \\
-                    & + c_{0 \dots 00_{\mathrm{k}}0 \dots 01} \ket{0 \dots 00_{\mathrm{k}}0 \dots 01} \\
+                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
                     & + \dots \\
-                    & + c_{1 \dots 10_{\mathrm{k}}1 \dots 11} \ket{1 \dots 10_{\mathrm{k}}1 \dots 11}
+                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11} \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
            \end{align}
 
-        after normalization, for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`1` state,
-        above will not work, and in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
+        (after normalization) for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`\ket{1}` state,
+        above will return zero amplitudes; in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
         replaced with :math:`1_{\mathrm{k}}` .
 
         .. warning::
