@@ -252,13 +252,13 @@ class Statevec:
         return self.psi.shape
 
     def ptrace(self, qargs):
-        """partial trace selected qubits
+        """Perform partial trace of the selected qubits.
 
         .. warning::
             This method currently assumes qubits in qargs to be separable from the rest
             (checks not implemented for speed).
-            Otherwise, the state returned will be forced to be pure which will result in incorrect state.
-            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development (#64)
+            Otherwise, the state returned will be forced to be pure which will result in incorrect output.
+            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development (PR #64),
             is merged.
 
         Parameters
@@ -275,11 +275,10 @@ class Statevec:
 
     def remove_qubit(self, qarg):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
-        Note this does not exactly perform the partial trace: see :meth:`~graphix.sim.statevec.Statevec.ptrace`
-        and warning therein.
-
-        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over :math:`i \in 0 \dots 00,\ 0\dots 01,\ \dots,\
-        1 \dots 11`, this method returns
+        This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
+        
+        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
+        1 \dots 11 ]`, this method returns
 
         .. math::
             \begin{align}
@@ -300,13 +299,16 @@ class Statevec:
             and is implemented as a significantly faster alternative for partial trace to
             be used after single-qubit measurements.
             Care needs to be taken when using this method.
+            Checks for separability will be implemented soon as an option.
+        
+        .. seealso::
+            :meth:`graphix.sim.statevec.Statevec.ptrace` and warning therein.
 
         Parameters
         ----------
         qarg : int
             qubit index
         """
-        # extract |***0_{qarg}***> components if not zero else |***1_{qarg}***>
         assert not np.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
         self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
