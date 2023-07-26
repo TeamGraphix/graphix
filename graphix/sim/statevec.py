@@ -278,8 +278,8 @@ class Statevec:
         Note this does not exactly perform the partial trace: see :meth:`~graphix.sim.statevec.Statevec.ptrace`
         and warning therein.
 
-        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with :math:`\ket{i} = \ket{0 \dots 0}, \dots,
-        \ket{1 \dots 1}`, this method returns
+        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over :math:`i \in 0 \dots 00,\ 0\dots 01,\ \dots,\
+        1 \dots 11`, this method returns
 
         .. math::
             \begin{align}
@@ -291,7 +291,7 @@ class Statevec:
            \end{align}
 
         after normalization, for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`1` state,
-        above will be zero, so in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
+        above will not work, and in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
         replaced with :math:`1_{\mathrm{k}}` .
 
         .. warning::
