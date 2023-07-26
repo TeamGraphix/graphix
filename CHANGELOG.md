@@ -10,11 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+
+## [0.2.5] - 2023-07-26
+### Added
+
+- Fast qubit removing method (`Statevec.remove_qubit`) for qubit in separable state (#73)
+
 ## [0.2.4] - 2023-07-06
 ### Added
 
 - Interface to run patterns on the IBMQ devices. (see PR) (#44)
-
 
 ## [0.2.3] - 2023-06-25
 ### Changed
