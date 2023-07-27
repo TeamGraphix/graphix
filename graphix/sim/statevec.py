@@ -58,7 +58,7 @@ class StatevectorBackend:
         sv_to_add = Statevec(nqubit=n)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
-        self.Nqubit += 1
+        self.Nqubit += n
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
