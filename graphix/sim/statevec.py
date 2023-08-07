@@ -1,8 +1,9 @@
-import numpy as np
-from graphix.ops import Ops
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
 from copy import deepcopy
-from scipy.linalg import norm
+
+import numpy as np
+
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.ops import Ops
 
 
 class StatevectorBackend:
@@ -12,9 +13,9 @@ class StatevectorBackend:
         """
         Parameteres
         -----------
-        pattern: :class:`graphix.pattern.Pattern` object
+        pattern : :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: str, 'statevector'
+        backend : str, 'statevector'
             optional argument for simulation.
         max_qubit_num : int
             optional argument specifying the maximum number of qubits
@@ -35,6 +36,7 @@ class StatevectorBackend:
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
+
         Returns
         -------
         n_qubit : int
@@ -57,8 +59,6 @@ class StatevectorBackend:
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
-        if self.Nqubit == self.max_qubit_num:
-            self.trace_out()
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
@@ -74,6 +74,7 @@ class StatevectorBackend:
 
     def measure(self, cmd):
         """Perform measurement of a node in the internal statevector and trace out the qubit
+
         Parameters
         ----------
         cmd : list
@@ -99,8 +100,9 @@ class StatevectorBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(m_op, loc)
 
-        self.to_trace.append(cmd[1])
-        self.to_trace_loc.append(loc)
+        self.state.remove_qubit(loc)
+        self.node_index.remove(cmd[1])
+        self.Nqubit -= 1
 
     def correct_byproduct(self, cmd):
         """Byproduct correction
@@ -124,19 +126,8 @@ class StatevectorBackend:
 
     def finalize(self):
         """to be run at the end of pattern simulation."""
-        self.trace_out()
         self.sort_qubits()
         self.state.normalize()
-
-    def trace_out(self):
-        """trace out the qubits buffered in self.to_trace from self.state"""
-        self.state.normalize()
-        self.state.ptrace(self.to_trace_loc)
-        for node in self.to_trace:
-            self.node_index.remove(node)
-        self.Nqubit -= len(self.to_trace)
-        self.to_trace = []
-        self.to_trace_loc = []
 
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""
@@ -157,7 +148,7 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
 
     Parameters
     ----------
-    angle: float
+    angle : float
         original measurement angle in radian
     vop : int
         index of local Clifford (vop), see graphq.clifford.CLIFFORD
@@ -205,15 +196,18 @@ SWAP_TENSOR = np.array(
 class Statevec:
     """Simple statevector simulator"""
 
-    def __init__(self, plus_states=True, nqubit=1):
+    def __init__(self, nqubit=1, plus_states=True):
         """Initialize statevector
 
-        Args:
-            plus_states (bool, optional): whether or not to start all qubits in + state or 0 state. Defaults to +
-            nqubit (int, optional): number of qubits. Defaults to 1.
+        Parameters
+        ----------
+        nqubit : int, optional:
+            number of qubits. Defaults to 1.
+        plus_states : bool, optional
+            whether or not to start all qubits in + state or 0 state. Defaults to +
         """
         if plus_states:
-            self.psi = np.ones((2,) * nqubit) / np.sqrt(2**nqubit)
+            self.psi = np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
         else:
             self.psi = np.zeros((2,) * nqubit)
             self.psi[(0,) * nqubit] = 1
@@ -224,9 +218,12 @@ class Statevec:
     def evolve_single(self, op, i):
         """Single-qubit operation
 
-        Args:
-            op (np.array): 2*2 matrix
-            i (int): qubit index
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2*2 matrix
+        i : int
+            qubit index
         """
         self.psi = np.tensordot(op, self.psi, (1, i))
         self.psi = np.moveaxis(self.psi, 0, i)
@@ -234,9 +231,12 @@ class Statevec:
     def evolve(self, op, qargs):
         """Multi-qubit operation
 
-        Args:
-            op (np.array): 2^n*2^n matrix
-            qargs (list of ints): target qubits' indexes
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2^n*2^n matrix
+        qargs : list of int
+            target qubits' indices
         """
         op_dim = int(np.log2(len(op)))
         shape = [2 for _ in range(2 * op_dim)]
@@ -252,10 +252,19 @@ class Statevec:
         return self.psi.shape
 
     def ptrace(self, qargs):
-        """partial trace
+        """Perform partial trace of the selected qubits.
 
-        Args:
-            qargs (list of ints): qubit inices to trace over
+        .. warning::
+            This method currently assumes qubits in qargs to be separable from the rest
+            (checks not implemented for speed).
+            Otherwise, the state returned will be forced to be pure which will result in incorrect output.
+            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development (PR #64),
+            is merged.
+
+        Parameters
+        ----------
+        qargs : list of int
+            qubit indices to trace over
         """
         nqubit_after = len(self.psi.shape) - len(qargs)
         psi = self.psi
@@ -264,11 +273,54 @@ class Statevec:
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
+    def remove_qubit(self, qarg):
+        r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
+        This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
+        
+        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
+        1 \dots 11 ]`, this method returns
+
+        .. math::
+            \begin{align}
+                \ket{\psi}' =&
+                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
+                    & + \dots \\
+                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11} \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
+           \end{align}
+
+        (after normalization) for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`\ket{1}` state,
+        above will return zero amplitudes; in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
+        replaced with :math:`1_{\mathrm{k}}` .
+
+        .. warning::
+            This method assumes the qubit with index `qarg` to be separable from the rest,
+            and is implemented as a significantly faster alternative for partial trace to
+            be used after single-qubit measurements.
+            Care needs to be taken when using this method.
+            Checks for separability will be implemented soon as an option.
+        
+        .. seealso::
+            :meth:`graphix.sim.statevec.Statevec.ptrace` and warning therein.
+
+        Parameters
+        ----------
+        qarg : int
+            qubit index
+        """
+        assert not np.isclose(_get_statevec_norm(self.psi), 0)
+        psi = self.psi.take(indices=0, axis=qarg)
+        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        self.normalize()
+
     def entangle(self, edge):
         """connect graph nodes
 
-        Args:
-            edge (tuple of ints): (control, target) qubit indices
+        Parameters
+        ----------
+        edge : tuple of int
+            (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
         self.psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
@@ -279,8 +331,10 @@ class Statevec:
         r"""Tensor product state with other qubits.
         Results in self :math:`\otimes` other.
 
-        Args:
-            other (_type_): graphix.sim.statevec.Statevec instance
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevec`
+            statevector to be tensored with self
         """
         psi_self = self.psi.flatten()
         psi_other = other.psi.flatten()
@@ -290,8 +344,10 @@ class Statevec:
     def CNOT(self, qubits):
         """apply CNOT
 
-        Args:
-            qubits (tuple of ints): (control, target) qubit indices
+        Parameters
+        ----------
+        qubits : tuple of int
+            (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
         self.psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
@@ -301,8 +357,10 @@ class Statevec:
     def swap(self, qubits):
         """swap qubits
 
-        Args:
-            qubits (tuple of ints): (control, target) qubit indices
+        Parameters
+        ----------
+        qubits : tuple of int
+            (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
         self.psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
@@ -311,7 +369,8 @@ class Statevec:
 
     def normalize(self):
         """normalize the state"""
-        self.psi = self.psi / norm(self.psi)
+        norm = _get_statevec_norm(self.psi)
+        self.psi = self.psi / norm
 
     def flatten(self):
         """returns flattened statevector"""
@@ -320,11 +379,16 @@ class Statevec:
     def expectation_single(self, op, loc):
         """Expectation value of single-qubit operator.
 
-        Args:
-            op (np.array): 2*2 Hermite operator
-            loc (int): target qubit
-        Returns:
-            complex: expectation value.
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2*2 operator
+        loc : int
+            target qubit index
+
+        Returns
+        -------
+        complex : expectation value.
         """
         st1 = deepcopy(self)
         st1.normalize()
@@ -335,15 +399,24 @@ class Statevec:
     def expectation_value(self, op, qargs):
         """Expectation value of multi-qubit operator.
 
-        Args:
-            op (np.array): 2^n*2^n operator
-            qargs (list of ints): target qubit
+        Parameters
+        ----------
+        op : numpy.ndarray
+            2^n*2^n operator
+        qargs : list of int
+            target qubit indices
 
-        Returns:
-            complex: expectation value
+        Returns
+        -------
+        complex : expectation value
         """
         st1 = deepcopy(self)
         st1.normalize()
         st2 = deepcopy(st1)
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
+
+
+def _get_statevec_norm(psi):
+    """returns norm of the state"""
+    return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))

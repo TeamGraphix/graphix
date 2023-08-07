@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Fast alternative to partial trace (`Statevec.remove_qubit`) for a separable (post-measurement) qubit (#73)
+
 ### Changed
+
+- `StatevectorBackend` now uses `Statevec.remove_qubit` after each measurement, instead of performing `ptrace` after multiple measurements, for better performance. This keeps the result exactly the same (#73)
+
+
 ## [0.2.4] - 2023-07-06
 ### Added
 
 - Interface to run patterns on the IBMQ devices. (see PR) (#44)
-
 
 ## [0.2.3] - 2023-06-25
 ### Changed
