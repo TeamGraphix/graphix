@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+
+### Fixed
+
+- Density matrix backend normalization, checks at initialization and tests (see PR) (#76).
+
 ## [0.2.4] - 2023-07-06
 ### Added
 
