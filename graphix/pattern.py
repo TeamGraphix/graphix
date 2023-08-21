@@ -1237,7 +1237,7 @@ class Pattern:
         pauli_indicator : bool
             If True, the nodes are colored according to the measurement angles.
         local_clifford_indicator : bool
-            If True, the nindex of local clifford gates are shown by the nodes.
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         save : bool
             If True, the plot is saved as a png file.
         filename : str

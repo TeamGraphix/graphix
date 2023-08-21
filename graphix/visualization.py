@@ -42,8 +42,9 @@ class GraphVisualizer:
         angles : dict
             Measurement angles for each nodes on the graph (unit of pi), except output nodes.
             If not None, the nodes with Pauli measurement angles are colored light blue.
-        local_clifford_indicator : bool
-            If True, the nindex of local clifford gates are shown by the nodes.
+        local_clifford : dict
+            Indexes of local clifford operations for each nodes.
+            If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
         figsize : tuple
             Figure size of the plot.
         save : bool
@@ -82,8 +83,9 @@ class GraphVisualizer:
         angles : dict
             Measurement angles for each nodes on the graph (unit of pi), except output nodes.
             If not None, the nodes with Pauli measurement angles are colored light blue.
-        local_clifford_indicator : bool
-            If True, the nindex of local clifford gates are shown by the nodes.
+        local_clifford : dict
+            Indexes of local clifford operations for each nodes.
+            If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
         figsize : tuple
             Figure size of the plot.
         save : bool
