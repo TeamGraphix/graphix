@@ -18,7 +18,7 @@ class PatternSimulator:
 
     def __init__(self, pattern, backend="statevector", **kwargs):
         """
-        Parameteres
+        Parameters
         -----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
