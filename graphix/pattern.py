@@ -899,6 +899,8 @@ class Pattern:
         for cmd in self.seq:
             if cmd[0] == "C":
                 local_clifford[cmd[1]] = cmd[2]
+            elif cmd[0] == "M" and len(cmd) == 7:
+                local_clifford[cmd[1]] = cmd[6]
         return local_clifford
 
     def get_max_degree(self):
