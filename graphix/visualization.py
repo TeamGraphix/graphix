@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import math
 import networkx as nx
-from scipy.special import comb
 from graphix import gflow
 
 
@@ -221,3 +221,7 @@ class GraphVisualizer:
         for i, point in enumerate(bezier_path):
             curve += np.outer(comb(n, i) * ((1 - t) ** (n - i)) * (t**i), np.array(point))
         return curve
+
+
+def comb(n, r):
+    return math.factorial(n) // (math.factorial(n - r) * math.factorial(r))

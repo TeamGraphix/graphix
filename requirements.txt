@@ -4,3 +4,4 @@ z3-solver
 quimb>=1.4.0
 autoray>=0.6.0
 opt_einsum>=3.2
+matplotlib
