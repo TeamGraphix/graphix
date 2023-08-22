@@ -8,77 +8,99 @@ class TestKraus(unittest.TestCase):
 
     def test_init_with_data_success(self):
         "test for successful intialization"
-        # TODO generate random data.
+        # TODO generate random data?
         prob = 0.75
         mychannel = Channel(
-            {
-                0: {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                1: {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            }
+            [
+                {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+            ]
         )
         assert isinstance(mychannel.nqubit, int)
         assert mychannel.nqubit == 1
         assert mychannel.size == 2
-        assert isinstance(mychannel.kraus_ops, dict)
+        assert isinstance(mychannel.kraus_ops, (list, np.ndarray, tuple))
 
     def test_init_with_data_fail(self):
         "test for unsuccessful intialization"
         # TODO generate random data.
 
-         # incorrect "parameter" key
-         
         prob = 0.75
+
+        # empty data
+        with self.assertRaises(ValueError):
+            mychannel = Channel([])
+
+        # incorrect parameter type
+        with self.assertRaises(TypeError):
+            mychannel = Channel("a")
+
+        # incorrect "parameter" key
         with self.assertRaises(KeyError):
             mychannel = Channel(
-            {
-                0: {"parmer": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                1: {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            }
-        )
-        # incorrect "operator" key    
+                [
+                    {"parmer": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
+        # incorrect "operator" key
         with self.assertRaises(KeyError):
             mychannel = Channel(
-            {
-                0: {"parameter": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                1: {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            }
-        )
+                [
+                    {"parameter": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
 
         # incorrect parameter type
         with self.assertRaises(TypeError):
             mychannel = Channel(
-            {
-                0: {"parameter": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                1: {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            }
-        )
-            
+                [
+                    {"parameter": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
 
         # incorrect operator type
         with self.assertRaises(TypeError):
             mychannel = Channel(
-            {
-                0: {"parameter": np.sqrt(1 - prob), "operator": "a"},
-                1: {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            }
-        )
-            
+                [
+                    {"parameter": np.sqrt(1 - prob), "operator": "a"},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
+
         # incorrect operator dimension
         with self.assertRaises(ValueError):
             mychannel = Channel(
-            {
-                0: {"parameter": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
-                1: {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            }
-        )
+                [
+                    {"parameter": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
 
-        # invalid data type (dict of dicts)
+        # incorrect operator dimension: square but not qubits
+        with self.assertRaises(ValueError):
+            mychannel = Channel(
+                [
+                    {"parameter": np.sqrt(1 - prob), "operator": np.random.rand(3,3)},
+                    {"parameter": np.sqrt(prob), "operator": np.random.rand(3,3)},
+                ]
+            )
 
-        # Kraus ops don't have the same dim
-
-        # Kraus ops are not square matrices
-
-        # check parameters are complex
+        # doesn't square to 1. Not normalized. Parameter.
+        with self.assertRaises(ValueError):
+            mychannel = Channel( [
+                    {"parameter": 2*np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ])
+            
+         # doesn't square to 1. Not normalized. Operator.
+        with self.assertRaises(ValueError):
+            mychannel = Channel( [
+                    {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
+                ])
 
     # def test_to_kraus_fail(self):
     #     A_wrong = [[0, 1, 2], [3, 4, 5]]

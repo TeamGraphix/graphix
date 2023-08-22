@@ -7,7 +7,7 @@ class Channel:
     Parameters
     ----------
         data : array_like
-            array of Kraus operator data. dict(dict): {0: {parameter: float, operator: array_like}, 1: {parameter: float, operator: array_like}, ...}
+            array of Kraus operator data. array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
     """
 
     # TODO json compatibility and allow to import channels from file?
@@ -15,29 +15,22 @@ class Channel:
     def __init__(self, kraus_data):
 
         # check there is data
-        assert kraus_data
-        assert isinstance(kraus_data, dict)
-        assert len(kraus_data) >= 1
+        if not kraus_data:
+            raise ValueError("Cannot instantiate the channel with empty data.")
 
-        # check that data is correctly formatted before assigning it to the object. 
-        # Maybe not the best way to do it?
-        # Raises an error if something is incorrect.
-        # remove if do conversion later.
+        if not isinstance(kraus_data, (list, np.ndarray, tuple)):
+            raise TypeError(f"The data must be a list, a numpy.ndarray or a tuple not a {type(kraus_data)}.")
+
+        # check that data is correctly formatted before assigning it to the object.
         check_data_values_type(kraus_data)
-        # raise TypeError("Incorrect types and formats")
         # TODO also add the check that keys are "parameter" and "value". Do that behind the scenes.
-
-        # don't use assert to validate data! https://www.pythoniste.fr/python/linstruction-dassertion-en-python-assert/
-        # better?
-        # test!
-        # if not check_data_dims(kraus_data):
-        #     raise ValueError("All provided Kraus operators don't have the same dimension!")
 
         check_data_dims(kraus_data)
 
-        # add an euseless since there's an error raised?
-        # TODO ask TM
-        # else: # non empty and all same dim
+        # check that the channel is properly normalized i.e
+        # \sum_K_i^\dagger K_i = Identity
+        check_data_normalization(kraus_data)
+
         self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
         self.kraus_ops = kraus_data
 
@@ -52,16 +45,23 @@ class Channel:
 
 def check_data_dims(data):
 
-    result = False
     # convert to set to remove duplicates
-    dims = list(set([i["operator"].shape for i in data.values()]))
-    # check all the same dimensions and that they are square matrices
-    if len(dims) == 1 and len(list(dims)[0]) == 2 and dims[0][0] == dims[0][1]:
-        result = True
-    else:
-        raise ValueError("All provided Kraus operators don't have the same dimension!")
+    dims = list(set([i["operator"].shape for i in data]))
 
-    return result
+    # check all the same dimensions and that they are square matrices
+    if not len(dims) == 1:
+        raise ValueError(f"All provided Kraus operators don't have the same dimension {dims}!")
+
+    if not dims[0][0] == dims[0][1]:
+        raise ValueError(f"All provided Kraus operators have the same shape {dims[0]} but are not square matrices!")
+
+    # check consistency with tensor of qubit local Hilbert spaces
+    data_dim = np.log2(dims[0][0])
+    if not np.isclose(data_dim, int(data_dim)):
+        raise ValueError(f"Incorrect data dimension {data_dim}: not consistent with qubits.")
+    # data_dim = int(data_dim)
+
+    return
 
 
 def check_data_values_type(data):
@@ -69,47 +69,58 @@ def check_data_values_type(data):
 
     # TODO put error raising here instead. And deaggregate this mess to raise useful errors.
 
-    result = False
     # also check the values in the arrays !!!
-    value_types = list(set([isinstance(i, dict) for i in data.values()]))
-    
+    value_types = list(set([isinstance(i, dict) for i in data]))
 
     if value_types == [True]:
 
-        key0_values = list(set([list(i.keys())[0] =='parameter' for i in data.values()]))
-        key1_values = list(set([list(i.keys())[1] =='operator' for i in data.values()]))
+        key0_values = list(set([list(i.keys())[0] == "parameter" for i in data]))
+        key1_values = list(set([list(i.keys())[1] == "operator" for i in data]))
 
-        if key0_values == [True] and key1_values == [True]: 
-            operator_types = list(set([isinstance(i["operator"], np.ndarray) for i in data.values()]))
+        if key0_values == [True] and key1_values == [True]:
+            operator_types = list(set([isinstance(i["operator"], np.ndarray) for i in data]))
 
             if operator_types == [True]:
-                operator_dtypes = list(set([i["operator"].dtype == (float or complex or np.float64 or np.complex128)  for i in data.values()]))
-                    
+                operator_dtypes = list(
+                    set([i["operator"].dtype == (float or complex or np.float64 or np.complex128) for i in data])
+                )
+
                 if operator_dtypes == [True]:
-                    par_types = list(set([isinstance(i["parameter"], (float, complex, np.float64, np.complex128)) for i in data.values()]))
+                    par_types = list(
+                        set([isinstance(i["parameter"], (float, complex, np.float64, np.complex128)) for i in data])
+                    )
 
-
-                    if par_types == [True] :
-                        result = True
+                    if par_types == [True]:
+                        pass
                     else:
                         raise TypeError("All parameters are not scalars")
 
-                else: 
+                else:
                     raise TypeError("All operators don't have the same dtype.")
 
-            else: 
-                raise TypeError("All operators don't have the same type.")
+            else:
+                raise TypeError("All operators don't have the same type and must be np.ndarray.")
         else:
             raise KeyError("The keys of the indivudal Kraus operators must be parameter and operator.")
     else:
         raise TypeError("All values are not dictionaries.")
-    
-    return result
+
+    return
+
 
 def check_data_normalization(data):
-    # convert to set to remove duplicates
-    # TODO implement
-    pass
+
+    # or use map?
+
+    pars, ops = [i["parameter"] for i in data], [i["operator"] for i in data]
+
+    opsu = np.array([pars[i] * pars[i].conj() * ops[i].conj().T @ ops[i] for i in range(len(ops))])
+
+    if not np.allclose(np.sum(opsu, axis=0), np.eye(2)):  # , atol=1e-10, rtol=0
+        raise ValueError("The specified channel is not normalized.")
+
+    return
+
 
 # # maybe later if not dict of dict but array_like of array_like
 # def to_kraus(data):
