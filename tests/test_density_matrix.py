@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 import scipy
+import random
+from copy import deepcopy
 from graphix import Circuit
 from graphix.sim.statevec import Statevec, StatevectorBackend, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
@@ -26,6 +28,36 @@ class TestDensityMatrix(unittest.TestCase):
         with self.assertRaises(ValueError):
             DensityMatrix([1, 2, [3]])
 
+        # check with hermitian dm but not unit trace
+        with self.assertRaises(ValueError):
+            DensityMatrix(data=rand_herm(2 ** np.random.randint(2, 5)))
+        # check with non hermitian dm but unit trace
+        with self.assertRaises(ValueError):
+            l = 2 ** np.random.randint(2, 5)
+            tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
+            DensityMatrix(data=tmp / np.trace(tmp))
+        # check with non hermitian dm and not unit trace
+        with self.assertRaises(ValueError):
+            l = 2 ** np.random.randint(2, 5) # np.random.randint(2, 20)
+            DensityMatrix(data=np.random.rand(l, l) + 1j * np.random.rand(l, l))
+
+        # checks are done before trace/hermiticity test so OK for now. 
+        # Indeed rectangular matrix has no trace and can't be hermitian!
+
+        # check not square matrix
+        with self.assertRaises(ValueError):
+            # l = 2 ** np.random.randint(2, 5) # np.random.randint(2, 20)
+            DensityMatrix(data = np.random.rand(3, 2))
+
+        # check higher dimensional matrix
+        with self.assertRaises(ValueError):
+            DensityMatrix(data = np.random.rand(2, 2, 3))
+
+        # check square and hermitian but with incorrect dimension (non-qubit type)
+        with self.assertRaises(ValueError):
+            tmp = rand_herm(5)
+            DensityMatrix(data = tmp / tmp.trace())
+
     def test_init_without_data_success(self):
         for n in range(3):
             dm = DensityMatrix(nqubit=n)
@@ -43,8 +75,8 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_init_with_data_success(self):
         for n in range(3):
-            tmp  = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data = tmp + tmp.conj().T
+            # tmp  = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
+            data = rand_herm(2**n)
             data /= np.trace(data)
             dm = DensityMatrix(data=data)
             assert dm.Nqubit == n
@@ -53,12 +85,8 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_evolve_single_fail(self):
         dm = DensityMatrix(nqubit=2)
-        
-        # op = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
-
-        # generate random unitary matrix
-        # NOTE use hypothesis for that.
-        op = scipy.stats.unitary_group.rvs(4)
+        # generate random 4 x 4 unitary matrix
+        op = rand_unit(4)
 
         with self.assertRaises(AssertionError):
             dm.evolve_single(op, 2)
@@ -66,10 +94,8 @@ class TestDensityMatrix(unittest.TestCase):
             dm.evolve_single(op, 1)
 
     def test_evolve_single_success(self):
-        # NOT unitary
-        # op = np.random.rand(2, 2) + 1j * np.random.rand(2, 2)
-        # NOTE use hypothesis for that?
-        op = scipy.stats.unitary_group.rvs(2)
+        # generate random 2 x 2 unitary matrix
+        op = rand_unit(2)
         n = 10
         for i in range(n):
             sv = Statevec(nqubit=n)
@@ -96,12 +122,12 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_tensor_with_data_success(self):
         for n in range(3):
-            tmp_a = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data_a = tmp_a + tmp_a.conj().T
+            # tmp_a = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
+            data_a = rand_herm(2**n)
             data_a /= np.trace(data_a)
             dm_a = DensityMatrix(data=data_a)
-            tmp_b = np.random.rand(2**(n + 1), 2**(n + 1)) + 1j * np.random.rand(2**(n + 1), 2**(n + 1))
-            data_b = tmp_b + tmp_b.conj().T
+            # tmp_b = np.random.rand(2**(n + 1), 2**(n + 1)) + 1j * np.random.rand(2**(n + 1), 2**(n + 1))
+            data_b = rand_herm(2 ** (n + 1))
             data_b /= np.trace(data_b)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
@@ -111,15 +137,15 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_cnot_fail(self):
         dm = DensityMatrix(nqubit=2)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.cnot((1, 1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.cnot((-1, 1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.cnot((1, -1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.cnot((1, 2))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.cnot((2, 1))
 
     def test_cnot_success(self):
@@ -131,8 +157,9 @@ class TestDensityMatrix(unittest.TestCase):
         dm.cnot((0, 1))
         assert np.allclose(dm.rho, original_matrix)
 
+        # test on 2 qubits only
         psi = np.random.rand(4) + 1j * np.random.rand(4)
-        psi /= np.sqrt(np.sum(np.abs(psi)**2))
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.cnot(edge)
@@ -143,17 +170,33 @@ class TestDensityMatrix(unittest.TestCase):
         expected_matrix = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix)
 
+        # test on arbitrary number of qubits and random pair
+        n = np.random.randint(2, 4)
+        psi = np.random.rand(2**n) + 1j * np.random.rand(2**n)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+        # for test only. Sample distinct pairs (== without replacement).
+        # https://docs.python.org/2/library/random.html#random.sample
+        edge = tuple(random.sample(range(n), 2))
+        dm.cnot(edge)
+        rho = dm.rho.copy()
+        psi = psi.reshape((2,) * n)
+        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
+        psi = np.moveaxis(psi, (0, 1), edge)
+        expected_matrix = np.outer(psi, psi.conj())
+        np.testing.assert_allclose(rho, expected_matrix)
+
     def test_swap_fail(self):
         dm = DensityMatrix(nqubit=2)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.swap((1, 1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.swap((-1, 1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.swap((1, -1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.swap((1, 2))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.swap((2, 1))
 
     def test_swap_success(self):
@@ -166,7 +209,7 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(dm.rho, original_matrix)
 
         psi = np.random.rand(4) + 1j * np.random.rand(4)
-        psi /= np.sqrt(np.sum(np.abs(psi)**2))
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.swap(edge)
@@ -179,9 +222,9 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_entangle_fail(self):
         dm = DensityMatrix(nqubit=3)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.entangle((1, 1))
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             dm.entangle(((1, 3)))
         with self.assertRaises(ValueError):
             dm.entangle((0, 1, 2))
@@ -206,8 +249,8 @@ class TestDensityMatrix(unittest.TestCase):
         dm2 = dm.rho
         assert np.allclose(dm1, dm2)
 
-        psi = (np.random.rand(4) + 1j * np.random.rand(4))
-        psi /= np.sqrt(np.sum(np.abs(psi)**2))
+        psi = np.random.rand(4) + 1j * np.random.rand(4)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.entangle(edge)
@@ -216,13 +259,142 @@ class TestDensityMatrix(unittest.TestCase):
         psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
-        assert np.allclose(rho, expected_matrix)
+        np.testing.assert_allclose(rho, expected_matrix)
 
+    def test_evolve_success(self):
+
+        # single-qubit gate
+        # check against evolve_single
+
+        N_qubits = np.random.randint(2, 4)
+        N_qubits_op = 1
+
+        # random statevector
+        psi = np.random.rand(2**N_qubits) + 1j * np.random.rand(2**N_qubits)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        # density matrix calculation
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+        dm_single = deepcopy(dm)
+
+        op = rand_unit(2**N_qubits_op)
+        i = np.random.randint(0, N_qubits)
+
+        # need a list format for a single target
+        dm.evolve(op, [i])
+        dm_single.evolve_single(op, i)
+
+        np.testing.assert_allclose(dm.rho, dm_single.rho)
+
+        # 2-qubit gate
+
+        N_qubits = np.random.randint(2, 4)
+        N_qubits_op = 2
+
+        # random unitary
+        op = rand_unit(2**N_qubits_op)
+        # random pair of indices
+        edge = tuple(random.sample(range(N_qubits), 2))
+
+        # random statevector to compare to
+        psi = np.random.rand(2**N_qubits) + 1j * np.random.rand(2**N_qubits)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        # density matrix calculation
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+        dm.evolve(op, edge)
+        rho = dm.rho
+
+        # statevec calculation
+        # NOTE don't know if evolve has been tested in the SV backend.
+        # do it by hand for 2x2.
+
+        psi = psi.reshape((2,) * N_qubits)
+        psi = np.tensordot(op.reshape((2,) * 2 * N_qubits_op), psi, ((2, 3), edge))
+        psi = np.moveaxis(psi, (0, 1), edge)
+        expected_matrix = np.outer(psi, psi.conj())
+        np.testing.assert_allclose(rho, expected_matrix)
+
+        # 3-qubit gate
+
+        N_qubits = np.random.randint(3, 5)
+        N_qubits_op = 3
+
+        # random unitary
+        op = rand_unit(2**N_qubits_op)
+        # 3 random indices
+        targets = tuple(random.sample(range(N_qubits), 3))
+
+        # random statevector to compare to
+        psi = np.random.rand(2**N_qubits) + 1j * np.random.rand(2**N_qubits)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        # density matrix calculation
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+        dm.evolve(op, targets)
+        rho = dm.rho
+
+        # statevec calculation
+        # NOTE don't know if evolve has been tested in the SV backend.
+        # do it by hand 3x3.
+
+        psi = psi.reshape((2,) * N_qubits)
+        psi = np.tensordot(op.reshape((2,) * 2 * N_qubits_op), psi, ((3, 4, 5), targets))
+        psi = np.moveaxis(psi, (0, 1, 2), targets)
+        expected_matrix = np.outer(psi, psi.conj())
+        np.testing.assert_allclose(rho, expected_matrix)
+
+        # TODO here or elsewhere compare pour Statevec.evolve().
+        # Cannot build Statevector object from data as DM.
+        # NEWFEATURE?
+        # psi_evolved_sv = psi.evolve(op, targets)
+        # assert np.allclose(rho, DensityMatrix(data=np.outer(psi_evolved_sv, psi_evolved_sv.conj())))
+
+        # random_qubit_gate?
+
+    # TODO by testing evolve, we remove the need for testing indepently CNOT, SWAP and CZ
+    def test_evolve_fail(self):
+
+        # test on 3-qubit gate just in case.
+        N_qubits = np.random.randint(3, 5)
+        N_qubits_op = 3
+
+        # random unitary
+        op = rand_unit(2**N_qubits_op)
+        # 3 random indices
+        targets = tuple(random.sample(range(N_qubits), 3))
+
+        dm = DensityMatrix(nqubit = N_qubits)
+        # dimension mismatch
+        with self.assertRaises(ValueError):
+            dm.evolve(op, (1, 1))
+        with self.assertRaises(ValueError):
+            dm.evolve(op, (0, 1, 2, 3))
+        # incorrect range
+        with self.assertRaises(ValueError):
+            dm.evolve(op, (-1, 0, 1))
+        # repeated index
+        with self.assertRaises(ValueError):
+            dm.evolve(op, (0, 1, 1))
+
+        # check not square matrix
+        with self.assertRaises(ValueError):
+            dm.evolve(np.random.rand(2, 3), (0, 1))
+
+        # check higher dimensional matrix
+        with self.assertRaises(ValueError):
+            dm.evolve(np.random.rand(2, 2, 3), (0, 1))
+
+        # check square but with incorrect dimension (non-qubit type)
+        with self.assertRaises(ValueError):
+            dm.evolve(np.random.rand(5, 5), (0, 1))
+
+    # TODO the test for normalization is done at initialization with data. Now check that all operations conserve the norm.
     def test_normalize(self):
-        tmp = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)      
-        data = tmp + tmp.conj().T
-        data /= data.trace()
-        dm = DensityMatrix(data)
+        #  tmp = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
+        data = rand_herm(2 ** np.random.randint(2, 4))
+        # data /= data.trace()
+        dm = DensityMatrix(data / data.trace())
         dm.normalize()
         assert np.allclose(np.trace(dm.rho), 1)
 
@@ -471,6 +643,44 @@ class DensityMatrixBackendTest(unittest.TestCase):
         ) / np.sqrt(8)
         exact_qft_state = qft_matrix @ sv.psi.flatten()
         np.testing.assert_allclose(dm_backend.state.fidelity(noisy_state), dm_backend.state.fidelity(exact_qft_state))
+
+
+def rand_herm(l: int):
+    """
+    generate random hermitian matrix of size l*l
+    """
+    tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
+    return tmp + tmp.conj().T
+
+
+def rand_unit(l: int):
+    """
+    generate random unitary matrix of size l*l from hermitian matrix
+    """
+    return scipy.linalg.expm(1j * rand_herm(l))
+
+
+class TestUtilities(unittest.TestCase):
+
+    # not 2**n as for QM but doesn't matter.
+    def test_rand_herm(self):
+        tmp = rand_herm(np.random.randint(2, 20))
+        np.testing.assert_allclose(tmp, tmp.conj().T)
+
+    def test_rand_unit(self):
+        d = np.random.randint(2, 20)
+        tmp = rand_unit(d)
+
+        # check by applying to a random state
+        # can compare both vectors directly since no global phase introduced in the computation.
+        psi = np.random.rand(d) + 1j * np.random.rand(d)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+        np.testing.assert_allclose(tmp @ tmp.conj().T @ psi, psi)
+        np.testing.assert_allclose(tmp.conj().T @ tmp @ psi, psi)
+
+        # direct assert equal identity doesn't seem to work. Precision issues?
+        # np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d))
+        # np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d))
 
 
 if __name__ == "__main__":

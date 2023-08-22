@@ -6,3 +6,4 @@
 **/build
 dist/*
 docs/source/gallery/**
+.pre-commit-config.yaml
