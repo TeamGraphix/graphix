@@ -67,11 +67,11 @@ class DensityMatrix:
             #     self.rho, self.rho.transpose().conjugate(), err_msg="The provided matrix is not Hermitian."
             # )
 
-            if not np.allclose(self.rho.trace(), 1.0):
-                raise ValueError("The provided matrix does not have unit trace.")
+        if not np.allclose(self.rho.trace(), 1.0):
+            raise ValueError("The provided matrix does not have unit trace.")
 
-            if not np.allclose(self.rho, self.rho.transpose().conjugate()):
-                raise ValueError("The provided matrix is not Hermitian.")
+        if not np.allclose(self.rho, self.rho.transpose().conjugate()):
+            raise ValueError("The provided matrix is not Hermitian.")
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
