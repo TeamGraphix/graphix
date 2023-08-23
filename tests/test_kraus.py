@@ -1,9 +1,10 @@
 import unittest
 import numpy as np
-from graphix.kraus import Channel
+from graphix.kraus import *
+from graphix.ops import Ops
 
 
-class TestKraus(unittest.TestCase):
+class TestChannel(unittest.TestCase):
     """Tests for Channel class"""
 
     def test_init_with_data_success(self):
@@ -83,24 +84,63 @@ class TestKraus(unittest.TestCase):
         with self.assertRaises(ValueError):
             mychannel = Channel(
                 [
-                    {"parameter": np.sqrt(1 - prob), "operator": np.random.rand(3,3)},
-                    {"parameter": np.sqrt(prob), "operator": np.random.rand(3,3)},
+                    {"parameter": np.sqrt(1 - prob), "operator": np.random.rand(3, 3)},
+                    {"parameter": np.sqrt(prob), "operator": np.random.rand(3, 3)},
                 ]
             )
 
         # doesn't square to 1. Not normalized. Parameter.
         with self.assertRaises(ValueError):
-            mychannel = Channel( [
-                    {"parameter": 2*np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+            mychannel = Channel(
+                [
+                    {"parameter": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ])
-            
-         # doesn't square to 1. Not normalized. Operator.
+                ]
+            )
+
+        # doesn't square to 1. Not normalized. Operator.
         with self.assertRaises(ValueError):
-            mychannel = Channel( [
+            mychannel = Channel(
+                [
                     {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
-                ])
+                ]
+            )
+
+    def test_dephasing_channel(self):
+
+        prob = np.random.rand()
+        data = [
+            {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+            {"parameter": np.sqrt(prob), "operator": Ops.z},
+        ]
+        dephase_channel = create_dephasing_channel(prob)
+        assert dephase_channel.nqubit == 1
+        assert dephase_channel.size == 2
+
+        for i in range(len(dephase_channel.kraus_ops)):
+            np.testing.assert_allclose(dephase_channel.kraus_ops[i]["parameter"], data[i]["parameter"])
+            np.testing.assert_allclose(dephase_channel.kraus_ops[i]["operator"], data[i]["operator"])
+
+    def test_depolarising_channel(self):
+
+        prob = np.random.rand()
+        data = [
+            {"parameter": np.sqrt(1 - prob), "operator": np.eye(2, dtype=np.complex128)},
+            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.x},
+            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.y},
+            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.z},
+        ]
+
+        assert Ops.y.dtype == np.complex128
+        depol_channel = create_depolarising_channel(prob)
+
+        assert depol_channel.nqubit == 1
+        assert depol_channel.size == 4
+
+        for i in range(len(depol_channel.kraus_ops)):
+            np.testing.assert_allclose(depol_channel.kraus_ops[i]["parameter"], data[i]["parameter"])
+            np.testing.assert_allclose(depol_channel.kraus_ops[i]["operator"], data[i]["operator"])
 
     # def test_to_kraus_fail(self):
     #     A_wrong = [[0, 1, 2], [3, 4, 5]]
@@ -190,4 +230,5 @@ class TestKraus(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    np.random.seed(2)
     unittest.main()

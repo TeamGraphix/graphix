@@ -1,18 +1,50 @@
 import numpy as np
+from graphix.ops import Ops
 
 
 class Channel:
     """(Noise) Channel class in the Kraus representation
 
-    Parameters
+    Attributes
     ----------
-        data : array_like
-            array of Kraus operator data. array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
+    nqubit : int
+        number of qubits acted on by the Kraus operators
+    size : int
+        number of Kraus operators
+    kraus_ops : array_like(dict())
+        the data in format
+        array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
+
+
+    Methods
+    -------
+    says(sound=None)
+        Prints the animals name and what sound it makes
+
+    Returns
+    -------
+    Channel object
+        containing the corresponding Kraus operators
+
     """
 
     # TODO json compatibility and allow to import channels from file?
     # TODO ? or *data and build from several (parameter, operator) couples?
     def __init__(self, kraus_data):
+        """
+        Parameters
+        ----------
+
+        kraus_data : array_like
+            array of Kraus operator data.
+            array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
+
+        Raises
+        ------
+        ValueError
+            If empty array_like is provided.
+        ....
+        """
 
         # check there is data
         if not kraus_data:
@@ -29,7 +61,8 @@ class Channel:
 
         # check that the channel is properly normalized i.e
         # \sum_K_i^\dagger K_i = Identity
-        check_data_normalization(kraus_data)
+        if not check_data_normalization(kraus_data):
+            raise ValueError("The specified channel is not normalized.")
 
         self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
         self.kraus_ops = kraus_data
@@ -40,19 +73,24 @@ class Channel:
 
     # TODO update
     def __repr__(self):
-        return f"Channel object with (data={self.kraus_ops}, qarg={self.qarg})"
+        return f"Channel object with {self.size} Kraus operators of dimension {self.nqubit}."
+
+    # TODO is assign to attributes first then call this method.
+    def is_normalized(self):
+        return check_data_normalization(self.kraus_ops)
 
 
 def check_data_dims(data):
 
     # convert to set to remove duplicates
     dims = list(set([i["operator"].shape for i in data]))
+    # or list({[i["operator"].shape for i in data]}) using set comprehension
 
     # check all the same dimensions and that they are square matrices
-    if not len(dims) == 1:
+    if len(dims) != 1:
         raise ValueError(f"All provided Kraus operators don't have the same dimension {dims}!")
 
-    if not dims[0][0] == dims[0][1]:
+    if dims[0][0] != dims[0][1]:
         raise ValueError(f"All provided Kraus operators have the same shape {dims[0]} but are not square matrices!")
 
     # check consistency with tensor of qubit local Hilbert spaces
@@ -60,8 +98,6 @@ def check_data_dims(data):
     if not np.isclose(data_dim, int(data_dim)):
         raise ValueError(f"Incorrect data dimension {data_dim}: not consistent with qubits.")
     # data_dim = int(data_dim)
-
-    return
 
 
 def check_data_values_type(data):
@@ -82,7 +118,7 @@ def check_data_values_type(data):
 
             if operator_types == [True]:
                 operator_dtypes = list(
-                    set([i["operator"].dtype == (float or complex or np.float64 or np.complex128) for i in data])
+                    set([i["operator"].dtype in [float, complex, np.float64, np.complex128] for i in data])
                 )
 
                 if operator_dtypes == [True]:
@@ -96,8 +132,10 @@ def check_data_values_type(data):
                         raise TypeError("All parameters are not scalars")
 
                 else:
-                    raise TypeError("All operators don't have the same dtype.")
-
+                    raise TypeError(
+                        f"All operators  {list([i['operator'].dtype == (float or complex or np.float64 or np.complex128) for i in data])}."
+                    )
+            # do not have the same dtype    {[i['operator'].dtype  for i in data]},
             else:
                 raise TypeError("All operators don't have the same type and must be np.ndarray.")
         else:
@@ -105,21 +143,48 @@ def check_data_values_type(data):
     else:
         raise TypeError("All values are not dictionaries.")
 
-    return
-
 
 def check_data_normalization(data):
 
-    # or use map?
+    opsu = np.array([i["parameter"] * i["parameter"].conj() * i["operator"].conj().T @ i["operator"] for i in data])
 
-    pars, ops = [i["parameter"] for i in data], [i["operator"] for i in data]
+    return np.allclose(np.sum(opsu, axis=0), np.eye(2))
 
-    opsu = np.array([pars[i] * pars[i].conj() * ops[i].conj().T @ ops[i] for i in range(len(ops))])
 
-    if not np.allclose(np.sum(opsu, axis=0), np.eye(2)):  # , atol=1e-10, rtol=0
-        raise ValueError("The specified channel is not normalized.")
+def create_dephasing_channel(prob: float):
+    """single-qubit Dephasing channel
+    .. math::
+        (1-p) \rho + p * Z * \rho * Z
 
-    return
+    Parameters
+    ----------
+    prob : float
+        The probability associated to the channel
+
+    Returns
+    -------
+    Channel object
+        containing the corresponding Kraus operators
+    """
+    return Channel(
+        [{"parameter": np.sqrt(1 - prob), "operator": np.eye(2)}, {"parameter": np.sqrt(prob), "operator": Ops.z}]
+    )
+
+
+def create_depolarising_channel(prob: float):
+    """single-qubit depolarizing channel
+    .. math::
+        (1-p) \rho + \frac{p}{3} (X * \rho * X + Y * rho * Y + Z * rho * Z) = (1 - 4\frac{p}{3}) \rho + 4 \frac{p}{3} Id
+    but my format is better with X, Y Z
+    """
+    return Channel(
+        [
+            {"parameter": np.sqrt(1 - prob), "operator": np.eye(2)},
+            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.x},
+            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.y},
+            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.z},
+        ]
+    )
 
 
 # # maybe later if not dict of dict but array_like of array_like
