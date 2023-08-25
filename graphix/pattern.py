@@ -1227,9 +1227,7 @@ class Pattern:
         """
         measure_pauli(self, copy=False)
 
-    def view_graph(
-        self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None
-    ):
+    def view_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
         Parameters
