@@ -19,13 +19,13 @@ class GraphVisualizer:
         list of output nodes
     """
 
-    def __init__(self, g, v_in, v_out):
+    def __init__(self, G, v_in, v_out):
         """
-        g: networkx graph
+        G: networkx graph
         v_in: list of input nodes
         v_out: list of output nodes
         """
-        self.g = g
+        self.G = G
         self.v_in = v_in
         self.v_out = v_out
 
@@ -53,16 +53,16 @@ class GraphVisualizer:
             Filename of the saved plot.
         """
 
-        f, l_k = gflow.flow(self.g, set(self.v_in), set(self.v_out))
+        f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out))
         if f:
             self.visualize_w_flow(f, l_k, angles, local_clifford, figsize, save, filename)
         else:
-            g, l_k = gflow.gflow(self.g, set(self.v_in), set(self.v_out))
+            g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out))
             if g:
                 self.visualize_w_gflow(g, l_k, angles, local_clifford, figsize, save, filename)
             else:
                 print("No flow or gflow found.")
-                nx.draw(self.g, with_labels=True)
+                nx.draw(self.G, with_labels=True)
                 plt.show()
 
     def visualize_w_flow(self, f, l_k, angles=None, local_clifford=None, figsize=None, save=False, filename=None):
@@ -77,7 +77,7 @@ class GraphVisualizer:
         Parameters
         ----------
         f : dict
-            Flow mapping.
+            flow mapping.
         l_k : dict
             Layer mapping.
         angles : dict
@@ -98,7 +98,7 @@ class GraphVisualizer:
             height = len(self.v_in)
             figsize = (width, height)
         plt.figure(figsize=figsize)
-        pos = nx.spring_layout(self.g)  # Initial layout for the nodes
+        pos = nx.spring_layout(self.G)  # Initial layout for the nodes
 
         n = len(self.v_in)
         for i in range(n):
@@ -114,14 +114,14 @@ class GraphVisualizer:
 
         # Draw the arrows
         for a, b in f.items():
-            nx.draw_networkx_edges(self.g, pos, edgelist=[(a, b)], edge_color="black", arrowstyle="->", arrows=True)
+            nx.draw_networkx_edges(self.G, pos, edgelist=[(a, b)], edge_color="black", arrowstyle="->", arrows=True)
 
         # Draw the dashed edges
-        for edge in self.g.edges():
+        for edge in self.G.edges():
             if f.get(edge[0]) != edge[1] and f.get(edge[1]) != edge[0]:  # This edge is not an arrow
                 intersect = False
                 bezier_path = [pos[edge[0]]]
-                for node in self.g.nodes():
+                for node in self.G.nodes():
                     if (
                         node != edge[0]
                         and node != edge[1]
@@ -131,7 +131,7 @@ class GraphVisualizer:
                         ctrl_point = self.control_point(pos[edge[0]], pos[edge[1]], pos[node])
                         bezier_path.append(ctrl_point)
                 if not intersect:
-                    nx.draw_networkx_edges(self.g, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                    nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
                     continue
                 bezier_path.append(pos[edge[1]])
                 t = np.linspace(0, 1, 100)
@@ -139,7 +139,7 @@ class GraphVisualizer:
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.g.nodes():
+        for node in self.G.nodes():
             color = "black"  # default color for 'other' nodes
             inner_color = "white"
             if node in self.v_in:
@@ -153,40 +153,158 @@ class GraphVisualizer:
             )  # Draw the nodes manually with scatter()
 
         if local_clifford is not None:
-            for node in self.g.nodes():
+            for node in self.G.nodes():
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
         # Draw the labels
-        nx.draw_networkx_labels(self.g, pos)
+        nx.draw_networkx_labels(self.G, pos)
 
-        x_min = min([pos[node][0] for node in self.g.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.g.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.g.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.g.nodes()])  # Get the maximum y coordinate
+        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
+        y_min = min([pos[node][1] for node in self.G.nodes()])  # Get the minimum y coordinate
+        y_max = max([pos[node][1] for node in self.G.nodes()])  # Get the maximum y coordinate
 
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
             plt.axvline(x=layer + 0.5, color="gray", linestyle="--", alpha=0.5)  # Draw line between layers
         for layer in range(min(l_k.values()), max(l_k.values()) + 1):
-            # plt.axvline(x=layer + 0.5, color='gray', linestyle='--')  # Draw line between layers
             plt.text(
                 layer, y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
             )  # Add layer label at bottom
 
         plt.xlim(x_min - 0.5, x_max + 0.5)  # Add some padding to the left and right
         plt.ylim(y_min - 1, y_max + 0.5)  # Add some padding to the top and bottom
-        plt.show()
-
         if save:
             plt.savefig(filename)
+        plt.show()
 
-    def visualize_w_gflow(self, g, l_k, figsize=None):
+    def visualize_w_gflow(self, g, l_k, angles=None, local_clifford=None, figsize=None, save=False, filename=None):
         """
-        visualizes the graph with gflow structure.
-        to be implemented
+        visualizes the graph with flow structure.
+
+        Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
+        or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
+        different layers of the graph. This function does not return anything but plots the graph
+        using matplotlib's pyplot.
+
+        Parameters
+        ----------
+        g : dict
+            gflow mapping.
+        l_k : dict
+            Layer mapping.
+        angles : dict
+            Measurement angles for each nodes on the graph (unit of pi), except output nodes.
+            If not None, the nodes with Pauli measurement angles are colored light blue.
+        local_clifford : dict
+            Indexes of local clifford operations for each nodes.
+            If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        figsize : tuple
+            Figure size of the plot.
+        save : bool
+            If True, the plot is saved as a png file.
+        filename : str
+            Filename of the saved plot.
         """
-        pass
+
+        pos = nx.spring_layout(self.G)  # Initial layout for the nodes
+
+        g_edges = []
+
+        for node, node_list in g.items():
+            for n in node_list:
+                g_edges.append((node, n))
+
+        G_prime = self.G.copy()
+        G_prime.add_nodes_from(self.G.nodes())
+        G_prime.add_edges_from(g_edges)
+
+        l_max = max(l_k.values())
+        l_reverse = {v: l_max - l for v, l in l_k.items()}
+
+        nx.set_node_attributes(G_prime, l_reverse, "subset")
+
+        pos = nx.multipartite_layout(G_prime)
+        ys = [value[1] for value in pos.values()]
+        yrange = max(ys) - min(ys)
+
+        if figsize is None:
+            width = (max(l_k.values()) + 1) * 0.8
+            height = yrange + 1
+            figsize = (width, height)
+
+        plt.figure(figsize=figsize)
+
+        # Draw the arrows
+        for a, bs in g.items():
+            for b in bs:
+                nx.draw_networkx_edges(self.G, pos, edgelist=[(a, b)], edge_color="black", arrowstyle="->", arrows=True)
+
+        # Draw the dashed edges
+        for edge in self.G.edges():
+            if edge[1] not in g.get(edge[0], set()) and edge[0] not in g.get(
+                edge[1], set()
+            ):  # This edge is not an arrow
+                intersect = False
+                bezier_path = [pos[edge[0]]]
+                for node in self.G.nodes():
+                    if (
+                        node != edge[0]
+                        and node != edge[1]
+                        and self.edge_intersects_node(pos[edge[0]], pos[edge[1]], pos[node])
+                    ):
+                        intersect = True
+                        ctrl_point = self.control_point(pos[edge[0]], pos[edge[1]], pos[node])
+                        bezier_path.append(ctrl_point)
+                if not intersect:
+                    nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                    continue
+                bezier_path.append(pos[edge[1]])
+                t = np.linspace(0, 1, 100)
+                curve = self.bezier_curve(bezier_path, t)
+                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
+
+        # Draw the nodes with different colors based on their role (input, output, or other)
+        for node in self.G.nodes():
+            color = "black"  # default color for 'other' nodes
+            inner_color = "white"
+            if node in self.v_in:
+                color = "red"
+            if node in self.v_out:
+                inner_color = "lightgray"
+            elif angles is not None and (angles[node] == 0 or angles[node] == 1 / 2):
+                inner_color = "lightblue"
+            plt.scatter(
+                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
+            )  # Draw the nodes manually with scatter()
+
+        if local_clifford is not None:
+            for node in self.G.nodes():
+                if node in local_clifford.keys():
+                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+
+        # Draw the labels
+        nx.draw_networkx_labels(self.G, pos)
+
+        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
+        y_min = min([pos[node][1] for node in self.G.nodes()])  # Get the minimum y coordinate
+        y_max = max([pos[node][1] for node in self.G.nodes()])  # Get the maximum y coordinate
+
+        # Draw the vertical lines to separate different layers
+        for layer in range(min(l_k.values()), max(l_k.values())):
+            plt.axvline(x=layer, color="gray", linestyle="--", alpha=0.5)  # Draw line between layers
+        for layer in range(min(l_k.values()), max(l_k.values()) + 1):
+            plt.text(
+                layer - 0.5, y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
+            )  # Add layer label at bottom
+
+        plt.xlim(x_min - 0.5, x_max + 0.5)  # Add some padding to the left and right
+        plt.ylim(y_min - 1, y_max + 0.5)  # Add some padding to the top and bottom
+        if save:
+            plt.savefig(filename)
+        plt.show()
 
     @staticmethod
     def edge_intersects_node(start, end, node_pos, buffer=0.2):
