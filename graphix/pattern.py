@@ -1228,7 +1228,7 @@ class Pattern:
         measure_pauli(self, copy=False)
 
     def view_graph(
-        self, figsize=None, pauli_indicator=False, local_clifford_indicator=False, save=False, filename=None
+        self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None
     ):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
@@ -1253,9 +1253,9 @@ class Pattern:
         g.add_edges_from(edges)
         vis = GraphVisualizer(g, v_in, self.output_nodes)
         if pauli_indicator:
-            angles = None
-        else:
             angles = self.get_angles()
+        else:
+            angles = None
         if local_clifford_indicator:
             local_clifford = self.get_local_clifford()
         else:
