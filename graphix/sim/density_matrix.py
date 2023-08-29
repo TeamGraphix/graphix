@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import numpy as np
 
-import graphix.checks as checks
+import graphix.Checks.generic_checks as generic_checks
 from graphix.kraus import Channel
 from graphix.ops import Ops
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
@@ -43,13 +43,13 @@ class DensityMatrix:
             else:
                 raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
 
-            assert checks.check_square(data)
+            assert generic_checks.check_square(data)
             self.Nqubit = int(np.log2(len(data)))
 
             self.rho = data
 
-        assert checks.check_hermitian(self.rho)
-        assert checks.check_unit_trace(self.rho)
+        assert generic_checks.check_hermitian(self.rho)
+        assert generic_checks.check_unit_trace(self.rho)
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -324,24 +324,24 @@ class DensityMatrixBackend:
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
 
-    def dephase(self, p=0):
-        """Apply dephasing channel to all nodes. Phase is flipped with probability p.
+    # def dephase(self, p=0):
+    #     """Apply dephasing channel to all nodes. Phase is flipped with probability p.
 
-        :math:`(1-p) \rho + p Z \rho Z`
+    #     :math:`(1-p) \rho + p Z \rho Z`
 
-        Parameters
-        ----------
-            p : float
-                dephase probability
-        """
-        n = int(np.log2(self.state.rho.shape[0]))
-        Z = np.array([[1, 0], [0, -1]])
-        rho_tensor = self.state.rho.reshape((2,) * n * 2)
-        for node in range(n):
-            dephase_part = np.tensordot(np.tensordot(Z, rho_tensor, axes=(1, node)), Z, axes=(node + n, 0))
-            dephase_part = np.moveaxis(dephase_part, (0, -1), (node, node + n))
-            rho_tensor = (1 - p) * rho_tensor + p * dephase_part
-        self.state.rho = rho_tensor.reshape((2**n, 2**n))
+    #     Parameters
+    #     ----------
+    #         p : float
+    #             dephase probability
+    #     """
+    #     n = int(np.log2(self.state.rho.shape[0]))
+    #     Z = np.array([[1, 0], [0, -1]])
+    #     rho_tensor = self.state.rho.reshape((2,) * n * 2)
+    #     for node in range(n):
+    #         dephase_part = np.tensordot(np.tensordot(Z, rho_tensor, axes=(1, node)), Z, axes=(node + n, 0))
+    #         dephase_part = np.moveaxis(dephase_part, (0, -1), (node, node + n))
+    #         rho_tensor = (1 - p) * rho_tensor + p * dephase_part
+    #     self.state.rho = rho_tensor.reshape((2**n, 2**n))
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix

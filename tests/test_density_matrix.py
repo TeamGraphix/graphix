@@ -823,120 +823,120 @@ class DensityMatrixBackendTest(unittest.TestCase):
 
         np.testing.assert_allclose(rho, np.outer(psi, psi.conj()))
 
-    def test_dephase(self):
-        def run(p, pattern, max_qubit_num=12):
-            backend = DensityMatrixBackend(pattern, max_qubit_num=max_qubit_num)
-            for cmd in pattern.seq:
-                if cmd[0] == "N":
-                    backend.add_nodes([cmd[1]])
-                elif cmd[0] == "E":
-                    backend.entangle_nodes(cmd[1])
-                    backend.dephase(p)
-                elif cmd[0] == "M":
-                    backend.measure(cmd)
-                    backend.dephase(p)
-                elif cmd[0] == "X":
-                    backend.correct_byproduct(cmd)
-                    backend.dephase(p)
-                elif cmd[0] == "Z":
-                    backend.correct_byproduct(cmd)
-                    backend.dephase(p)
-                elif cmd[0] == "C":
-                    backend.apply_clifford(cmd)
-                    backend.dephase(p)
-                elif cmd[0] == "T":
-                    backend.dephase(p)
-                else:
-                    raise ValueError("invalid commands")
-                if pattern.seq[-1] == cmd:
-                    backend.finalize()
-            return backend
+    # def test_dephase(self):
+    #     def run(p, pattern, max_qubit_num=12):
+    #         backend = DensityMatrixBackend(pattern, max_qubit_num=max_qubit_num)
+    #         for cmd in pattern.seq:
+    #             if cmd[0] == "N":
+    #                 backend.add_nodes([cmd[1]])
+    #             elif cmd[0] == "E":
+    #                 backend.entangle_nodes(cmd[1])
+    #                 backend.dephase(p)
+    #             elif cmd[0] == "M":
+    #                 backend.measure(cmd)
+    #                 backend.dephase(p)
+    #             elif cmd[0] == "X":
+    #                 backend.correct_byproduct(cmd)
+    #                 backend.dephase(p)
+    #             elif cmd[0] == "Z":
+    #                 backend.correct_byproduct(cmd)
+    #                 backend.dephase(p)
+    #             elif cmd[0] == "C":
+    #                 backend.apply_clifford(cmd)
+    #                 backend.dephase(p)
+    #             elif cmd[0] == "T":
+    #                 backend.dephase(p)
+    #             else:
+    #                 raise ValueError("invalid commands")
+    #             if pattern.seq[-1] == cmd:
+    #                 backend.finalize()
+    #         return backend
 
-        # Test for Rx(pi/4)
-        circ = Circuit(1)
-        circ.rx(0, np.pi / 4)
-        pattern = circ.transpile()
-        backend1 = run(0, pattern)
-        backend2 = run(1, pattern)
-        np.testing.assert_allclose(backend1.state.rho, backend2.state.rho)
+    #     # Test for Rx(pi/4)
+    #     circ = Circuit(1)
+    #     circ.rx(0, np.pi / 4)
+    #     pattern = circ.transpile()
+    #     backend1 = run(0, pattern)
+    #     backend2 = run(1, pattern)
+    #     np.testing.assert_allclose(backend1.state.rho, backend2.state.rho)
 
-        # Test for Rz(pi/3)
-        circ = Circuit(1)
-        circ.rz(0, np.pi / 3)
-        pattern = circ.transpile()
-        dm_backend = run(1, pattern)
-        sv_backend = StatevectorBackend(pattern)
-        sv_backend.add_nodes([0, 1, 2])
-        sv_backend.entangle_nodes((0, 1))
-        sv_backend.entangle_nodes((1, 2))
-        sv_backend.measure(pattern.seq[-4])
-        sv_backend.measure(pattern.seq[-3])
-        sv_backend.correct_byproduct(pattern.seq[-2])
-        sv_backend.correct_byproduct(pattern.seq[-1])
-        sv_backend.finalize()
-        np.testing.assert_allclose(dm_backend.state.fidelity(sv_backend.state.psi), 0.25)
+    #     # Test for Rz(pi/3)
+    #     circ = Circuit(1)
+    #     circ.rz(0, np.pi / 3)
+    #     pattern = circ.transpile()
+    #     dm_backend = run(1, pattern)
+    #     sv_backend = StatevectorBackend(pattern)
+    #     sv_backend.add_nodes([0, 1, 2])
+    #     sv_backend.entangle_nodes((0, 1))
+    #     sv_backend.entangle_nodes((1, 2))
+    #     sv_backend.measure(pattern.seq[-4])
+    #     sv_backend.measure(pattern.seq[-3])
+    #     sv_backend.correct_byproduct(pattern.seq[-2])
+    #     sv_backend.correct_byproduct(pattern.seq[-1])
+    #     sv_backend.finalize()
+    #     np.testing.assert_allclose(dm_backend.state.fidelity(sv_backend.state.psi), 0.25)
 
-        # Test for 3-qubit QFT
-        def cp(circuit, theta, control, target):
-            """Controlled rotation gate, decomposed"""
-            circuit.rz(control, theta / 2)
-            circuit.rz(target, theta / 2)
-            circuit.cnot(control, target)
-            circuit.rz(target, -1 * theta / 2)
-            circuit.cnot(control, target)
+    #     # Test for 3-qubit QFT
+    #     def cp(circuit, theta, control, target):
+    #         """Controlled rotation gate, decomposed"""
+    #         circuit.rz(control, theta / 2)
+    #         circuit.rz(target, theta / 2)
+    #         circuit.cnot(control, target)
+    #         circuit.rz(target, -1 * theta / 2)
+    #         circuit.cnot(control, target)
 
-        def swap(circuit, a, b):
-            """swap gate, decomposed"""
-            circuit.cnot(a, b)
-            circuit.cnot(b, a)
-            circuit.cnot(a, b)
+    #     def swap(circuit, a, b):
+    #         """swap gate, decomposed"""
+    #         circuit.cnot(a, b)
+    #         circuit.cnot(b, a)
+    #         circuit.cnot(a, b)
 
-        def qft_circ():
-            circ = Circuit(3)
-            for i in range(3):
-                circ.h(i)
-            circ.x(1)
-            circ.x(2)
+    #     def qft_circ():
+    #         circ = Circuit(3)
+    #         for i in range(3):
+    #             circ.h(i)
+    #         circ.x(1)
+    #         circ.x(2)
 
-            circ.h(2)
-            cp(circ, np.pi / 4, 0, 2)
-            cp(circ, np.pi / 2, 1, 2)
-            circ.h(1)
-            cp(circ, np.pi / 2, 0, 1)
-            circ.h(0)
-            swap(circ, 0, 2)
-            return circ
+    #         circ.h(2)
+    #         cp(circ, np.pi / 4, 0, 2)
+    #         cp(circ, np.pi / 2, 1, 2)
+    #         circ.h(1)
+    #         cp(circ, np.pi / 2, 0, 1)
+    #         circ.h(0)
+    #         swap(circ, 0, 2)
+    #         return circ
 
-        # no-noise case
-        circ = qft_circ()
-        pattern = circ.transpile()
-        dm_backend = run(0, pattern)
-        state = circ.simulate_statevector().flatten()
-        np.testing.assert_allclose(dm_backend.state.fidelity(state), 1)
+    #     # no-noise case
+    #     circ = qft_circ()
+    #     pattern = circ.transpile()
+    #     dm_backend = run(0, pattern)
+    #     state = circ.simulate_statevector().flatten()
+    #     np.testing.assert_allclose(dm_backend.state.fidelity(state), 1)
 
-        # noisy case vs exact 3-qubit QFT result
-        circ = qft_circ()
-        pattern = circ.transpile()
-        p = np.random.rand() * 0 + 0.8
-        dm_backend = run(p, pattern)
-        noisy_state = circ.simulate_statevector().flatten()
+    #     # noisy case vs exact 3-qubit QFT result
+    #     circ = qft_circ()
+    #     pattern = circ.transpile()
+    #     p = np.random.rand() * 0 + 0.8
+    #     dm_backend = run(p, pattern)
+    #     noisy_state = circ.simulate_statevector().flatten()
 
-        sv = Statevec(nqubit=3)
-        omega = np.exp(2j * np.pi / 8)
-        qft_matrix = np.array(
-            [
-                [1, 1, 1, 1, 1, 1, 1, 1],
-                [1, omega, omega**2, omega**3, omega**4, omega**5, omega**6, omega**7],
-                [1, omega**2, omega**4, omega**6, 1, omega**2, omega**4, omega**6],
-                [1, omega**3, omega**6, omega, omega**4, omega**7, omega**2, omega**5],
-                [1, omega**4, 1, omega**4, 1, omega**4, 1, omega**4],
-                [1, omega**5, omega**2, omega**7, omega**4, omega, omega**6, omega**3],
-                [1, omega**6, omega**4, omega**2, 1, omega**6, omega**4, omega**2],
-                [1, omega**7, omega**6, omega**5, omega**4, omega**3, omega**2, omega],
-            ]
-        ) / np.sqrt(8)
-        exact_qft_state = qft_matrix @ sv.psi.flatten()
-        np.testing.assert_allclose(dm_backend.state.fidelity(noisy_state), dm_backend.state.fidelity(exact_qft_state))
+    #     sv = Statevec(nqubit=3)
+    #     omega = np.exp(2j * np.pi / 8)
+    #     qft_matrix = np.array(
+    #         [
+    #             [1, 1, 1, 1, 1, 1, 1, 1],
+    #             [1, omega, omega**2, omega**3, omega**4, omega**5, omega**6, omega**7],
+    #             [1, omega**2, omega**4, omega**6, 1, omega**2, omega**4, omega**6],
+    #             [1, omega**3, omega**6, omega, omega**4, omega**7, omega**2, omega**5],
+    #             [1, omega**4, 1, omega**4, 1, omega**4, 1, omega**4],
+    #             [1, omega**5, omega**2, omega**7, omega**4, omega, omega**6, omega**3],
+    #             [1, omega**6, omega**4, omega**2, 1, omega**6, omega**4, omega**2],
+    #             [1, omega**7, omega**6, omega**5, omega**4, omega**3, omega**2, omega],
+    #         ]
+    #     ) / np.sqrt(8)
+    #     exact_qft_state = qft_matrix @ sv.psi.flatten()
+    #     np.testing.assert_allclose(dm_backend.state.fidelity(noisy_state), dm_backend.state.fidelity(exact_qft_state))
 
 
 def rand_herm(l: int):
@@ -953,6 +953,36 @@ def rand_unit(l: int):
     """
     return scipy.linalg.expm(1j * rand_herm(l))
 
+# code from Qutip
+# https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
+
+UNITS = np.array([1, 1j])
+# TODO implement and checks
+def randnz(shape, norm=1): # 1 / np.sqrt(2)
+    	
+    # [Mis12] Miszczak, Generating and using truly random quantum states in Mathematica, Computer Physics Communications 183 1, 118-124 (2012). doi:10.1016/j.cpc.2011.08.002.
+
+    """
+    Returns an array of standard normal complex random variates.
+    The Ginibre ensemble corresponds to setting ``norm = 1`` [Mis12]_.
+
+    Parameters
+    ----------
+    shape : tuple
+        Shape of the returned array of random variates.
+    norm : float
+        Scale of the returned random variates, or 'ginibre' to draw
+        from the Ginibre ensemble.
+    """
+    if norm == 'ginibre':
+        norm = 1
+    return np.sum(np.random.randn(*(shape + (2,))) * UNITS, axis=-1) 
+
+# for generating random Kraus operators
+# see in rand_super_bcsz https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html 
+# based on [KNPPZ21] https://arxiv.org/abs/2011.02994 preprint but has explicit form
+# see also [BCSZ08] https://arxiv.org/abs/0804.2361
+# TODO a bit of work but why not. Look at the question of rank.
 
 def random_channel(size: int, dim: int) -> Channel:
     """
