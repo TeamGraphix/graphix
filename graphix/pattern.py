@@ -767,7 +767,8 @@ class Pattern:
         G.add_edges_from(edges)
         vin = {i for i in range(self.width)}
         vout = set(self.output_nodes)
-        f, l_k = flow(G, vin, vout)
+        meas_planes = self.get_meas_plane()
+        f, l_k = flow(G, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
         depth, layer = get_layers(l_k)

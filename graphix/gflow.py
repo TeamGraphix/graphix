@@ -9,9 +9,10 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
 
+from itertools import product
+
 import networkx as nx
 import numpy as np
-from itertools import product
 
 
 def gflow(graph, input, output, meas_planes, mode="single"):
@@ -103,9 +104,7 @@ def gflowaux(
     correction_candidate = output - input
     solver = GF2Solver(graph, input, output)
     adjacency_matrix, node_order_list = solver.get_adjacency_matrix()
-    adjacency_matrix_row_reduced = remove_nodes_from_row(
-        adjacency_matrix, node_order_list, output
-    )
+    adjacency_matrix_row_reduced = remove_nodes_from_row(adjacency_matrix, node_order_list, output)
     adjacency_matrix_reduced = remove_nodes_from_column(
         adjacency_matrix_row_reduced, node_order_list, nodes - correction_candidate
     )
@@ -125,19 +124,13 @@ def gflowaux(
             vec[node_order_row.index(node)] = 1
         elif meas_planes[node] == "XZ":
             vec[node_order_row.index(node)] = 1
-            vec_add = adjacency_matrix_row_reduced[
-                :, node_order_row.index(node)
-            ].reshape(vec.shape)
+            vec_add = adjacency_matrix_row_reduced[:, node_order_row.index(node)].reshape(vec.shape)
             vec = (vec + vec_add) % 2
         elif meas_planes[node] == "YZ":
-            vec = adjacency_matrix_row_reduced[:, node_order_row.index(node)].reshape(
-                vec.shape
-            )
+            vec = adjacency_matrix_row_reduced[:, node_order_row.index(node)].reshape(vec.shape)
         RHS_map[node] = vec
 
-    all_solutions, uncertainty = solver.solve(
-        adjacency_matrix_reduced, RHS_map, node_order_col
-    )
+    all_solutions, uncertainty = solver.solve(adjacency_matrix_reduced, RHS_map, node_order_col)
 
     corrected = set()
     for candidate in all_solutions.keys():
@@ -159,9 +152,7 @@ def gflowaux(
         else:
             return None, None
     else:
-        return gflowaux(
-            graph, input, output | corrected, meas_planes, k + 1, l_k, g, mode=mode
-        )
+        return gflowaux(graph, input, output | corrected, meas_planes, k + 1, l_k, g, mode=mode)
 
 
 def flow(graph, input, output, meas_planes):
@@ -448,12 +439,8 @@ class GF2Solver:
         uncertainty: set
             set of nodes which are not determined by the linear equations.
         """
-        LHS, RHS, node_order_col, RHS_order = self.forward_elimination(
-            adjacency_matrix, node_order_col, RHS_map
-        )
-        all_solutions, uncertainty = self.backward_substitution(
-            LHS, RHS, node_order_col, RHS_order
-        )
+        LHS, RHS, node_order_col, RHS_order = self.forward_elimination(adjacency_matrix, node_order_col, RHS_map)
+        all_solutions, uncertainty = self.backward_substitution(LHS, RHS, node_order_col, RHS_order)
         return all_solutions, uncertainty
 
     @staticmethod
@@ -498,16 +485,12 @@ class GF2Solver:
                 pivot_row = np.where(expanded_matrix[row:, row] != 0)[0]
                 if len(pivot_row) == 0:
                     # pivot column
-                    pivot_col = np.where(
-                        expanded_matrix[row:, row : adjacency_matrix.shape[1]] != 0
-                    )
+                    pivot_col = np.where(expanded_matrix[row:, row : adjacency_matrix.shape[1]] != 0)
                     if len(pivot_col[1]) == 0:
                         break
                     pivot_col = pivot_col[1][0] + row
                     # swap the pivot column with the current column
-                    expanded_matrix[:, [row, pivot_col]] = expanded_matrix[
-                        :, [pivot_col, row]
-                    ]
+                    expanded_matrix[:, [row, pivot_col]] = expanded_matrix[:, [pivot_col, row]]
                     # swap the indices vector
                     node_order_col[row], node_order_col[pivot_col] = (
                         node_order_col[pivot_col],
@@ -523,9 +506,7 @@ class GF2Solver:
             # perform row operations to eliminate the current column
             for row_eliminated in range(row + 1, expanded_matrix.shape[0]):
                 if expanded_matrix[row_eliminated, row] != 0:
-                    expanded_matrix[row_eliminated, :] = (
-                        expanded_matrix[row_eliminated] + expanded_matrix[row, :]
-                    ) % 2
+                    expanded_matrix[row_eliminated, :] = (expanded_matrix[row_eliminated] + expanded_matrix[row, :]) % 2
 
         LHS = expanded_matrix[:, :dim_O_notI]
         RHS = expanded_matrix[:, dim_O_notI:]
@@ -581,14 +562,10 @@ class GF2Solver:
                 for col in range(rank, LHS.shape[1]):
                     if LHS[row, col] != 0:
                         uncertainty |= {node_order_col[col]}
-                currect_sol = SolutionNode(
-                    node_order_col[row], RHS_vector[row, 0], uncertainty
-                )
+                currect_sol = SolutionNode(node_order_col[row], RHS_vector[row, 0], uncertainty)
                 for col in range(row + 1, rank):
                     if LHS[row, col] != 0:
-                        currect_sol.subtract(
-                            all_solutions[candidate][node_order_col[col]]
-                        )
+                        currect_sol.subtract(all_solutions[candidate][node_order_col[col]])
                 all_solutions[candidate][node_order_col[row]] = currect_sol
         uncertainty = {node_order_col[col] for col in range(rank, LHS.shape[1])}
 
@@ -640,9 +617,7 @@ def find_all_solutions(solutions, uncertainty):
         all_substituded_solutions["no uncertainty"] = set()
         for solution_node in solutions.values():
             if solution_node.substitute({}):
-                all_substituded_solutions["no uncertainty"] |= {
-                    solution_node.node_index
-                }
+                all_substituded_solutions["no uncertainty"] |= {solution_node.node_index}
         return all_substituded_solutions
     all_uncertainty = product([0, 1], repeat=len(uncertainty))
     all_substituded_solutions = dict()
