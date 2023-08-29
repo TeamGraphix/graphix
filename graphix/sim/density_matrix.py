@@ -4,10 +4,13 @@ Simulate MBQC with density matrix representation.
 """
 
 from copy import deepcopy
+
 import numpy as np
-from graphix.ops import Ops
-from graphix.sim.statevec import meas_op, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
+
+import graphix.checks as checks
 from graphix.kraus import Channel
+from graphix.ops import Ops
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
 
 
 class DensityMatrix:
@@ -40,39 +43,13 @@ class DensityMatrix:
             else:
                 raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
 
-            # TODO actual do the tests before assigning to object? Does that matter
+            assert checks.check_square(data)
+            self.Nqubit = int(np.log2(len(data)))
 
-            d = data.shape
-            # check it is a matrix.
-            if len(d) == 2:
-                # check it is square
-                if d[0] == d[1]:
-                    pass
-                else:
-                    raise ValueError(f"The provided data has shape {data.shape} and is not a square matrix.")
-            else:
-                raise ValueError(f"The provided data has incorrect shape {data.shape}.")
+            self.rho = data
 
-            # then assign
-            nqubit = np.log2(len(data))
-            if not np.isclose(nqubit, int(nqubit)):
-                raise ValueError("Incorrect data dimension: not consistent with qubits.")
-            self.Nqubit = int(nqubit)
-
-            # formatting done above.
-            # ckecked data has the correct shape so no need to reshape.
-            self.rho = data  # .reshape((2 ** self.Nqubit, 2 ** self.Nqubit))
-
-            # np.testing.assert_allclose(self.rho.trace(), 1, err_msg="The provided matrix does not have unit trace.")
-            # np.testing.assert_allclose(
-            #     self.rho, self.rho.transpose().conjugate(), err_msg="The provided matrix is not Hermitian."
-            # )
-
-        if not np.allclose(self.rho.trace(), 1.0):
-            raise ValueError("The provided matrix does not have unit trace.")
-
-        if not np.allclose(self.rho, self.rho.transpose().conjugate()):
-            raise ValueError("The provided matrix is not Hermitian.")
+        assert checks.check_hermitian(self.rho)
+        assert checks.check_unit_trace(self.rho)
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -271,7 +248,7 @@ class DensityMatrix:
         """
         return np.abs(statevec.conj() @ self.rho @ statevec)
 
-    def apply_channel(self, channel, qargs):
+    def apply_channel(self, channel: Channel, qargs):
         """Applies a channel to a density matrix.
 
         Parameters

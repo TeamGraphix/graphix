@@ -1,11 +1,9 @@
 import unittest
+
 import numpy as np
-from graphix.kraus import (
-    Channel,
-    create_depolarising_channel,
-    create_dephasing_channel,
-    create_2_qubit_dephasing_channel,
-)
+
+from graphix.kraus import Channel, create_2_qubit_dephasing_channel, create_dephasing_channel, create_depolarising_channel
+
 from graphix.ops import Ops
 
 

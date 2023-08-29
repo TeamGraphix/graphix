@@ -1,13 +1,15 @@
+import random
 import unittest
+from copy import deepcopy
+
 import numpy as np
 import scipy
-import random
-from copy import deepcopy
+
 from graphix import Circuit
+from graphix.kraus import Channel, create_dephasing_channel, create_depolarising_channel
 from graphix.ops import Ops
-from graphix.sim.statevec import Statevec, StatevectorBackend, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.kraus import Channel, create_depolarising_channel, create_dephasing_channel
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
 
 
 class TestDensityMatrix(unittest.TestCase):
@@ -461,6 +463,11 @@ class TestDensityMatrix(unittest.TestCase):
         prob = np.random.rand()
         dephase_channel = create_dephasing_channel(prob)
 
+        # useless since checked in apply_channel method.
+        assert isinstance(dephase_channel, Channel)
+        # useless since checked in the constructor.
+        assert dephase_channel.is_normalized()
+
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
         dm.apply_channel(dephase_channel, [0])
@@ -498,6 +505,11 @@ class TestDensityMatrix(unittest.TestCase):
         # create dephasing channel
         prob = np.random.rand()
         dephase_channel = create_dephasing_channel(prob)
+
+        # useless since checked in apply_channel method.
+        assert isinstance(dephase_channel, Channel)
+        # useless since checked in the constructor.
+        assert dephase_channel.is_normalized()
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -543,6 +555,11 @@ class TestDensityMatrix(unittest.TestCase):
         prob = np.random.rand()
         depol_channel = create_depolarising_channel(prob)
 
+        # useless since checked in apply_channel method.
+        assert isinstance(depol_channel, Channel)
+        # useless since checked in the constructor.
+        assert depol_channel.is_normalized()
+
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
         dm.apply_channel(depol_channel, [0])
@@ -579,6 +596,11 @@ class TestDensityMatrix(unittest.TestCase):
         # create dephasing channel
         prob = np.random.rand()
         depol_channel = create_depolarising_channel(prob)
+
+        # useless since checked in apply_channel method.
+        assert isinstance(depol_channel, Channel)
+        # useless since checked in the constructor.
+        assert depol_channel.is_normalized()
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -658,7 +680,8 @@ class TestDensityMatrix(unittest.TestCase):
                 {"parameter": np.sqrt(1 - np.sum(np.abs(probs) ** 2)), "operator": Ops.z},
             ]
         )
-
+        # useless since checked in apply_channel method.
+        assert isinstance(channel, Channel)
         # useless since checked in the constructor.
         assert channel.is_normalized()
 
