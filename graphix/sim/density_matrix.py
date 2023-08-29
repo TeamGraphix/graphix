@@ -4,9 +4,12 @@ Simulate MBQC with density matrix representation.
 """
 
 from copy import deepcopy
+
 import numpy as np
+
+import graphix.checks as checks
 from graphix.ops import Ops
-from graphix.sim.statevec import meas_op, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
 
 
 class DensityMatrix:
@@ -38,11 +41,14 @@ class DensityMatrix:
                 pass
             else:
                 raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
-            nqubit = np.log2(len(data.flatten())) / 2
-            assert np.isclose(nqubit, int(nqubit))
-            nqubit = int(nqubit)
-            self.Nqubit = nqubit
-            self.rho = np.asarray(data, dtype=complex).reshape((2**nqubit, 2**nqubit))
+
+            assert checks.check_square(data)
+            self.Nqubit = int(np.log2(len(data)))
+
+            self.rho = data
+
+        assert checks.check_hermitian(self.rho)
+        assert checks.check_unit_trace(self.rho)
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -64,6 +70,55 @@ class DensityMatrix:
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
         rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
+        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+
+    def evolve(self, op, qargs):
+        """Multi-qubit operation
+
+        Args:
+            op (np.array): 2^n*2^n matrix
+            qargs (list of ints): target qubits' indexes
+        """
+
+        d = op.shape
+        # check it is a matrix.
+        if len(d) == 2:
+            # check it is square
+            if d[0] == d[1]:
+                pass
+            else:
+                raise ValueError(f"The provided operator has shape {op.shape} and is not a square matrix.")
+        else:
+            raise ValueError(f"The provided data has incorrect shape {op.shape}.")
+
+        op_dim = np.log2(len(op))
+        if not np.isclose(op_dim, int(op_dim)):
+            raise ValueError("Incorrect operator dimension: not consistent with qubits.")
+        op_dim = int(op_dim)
+
+        if op_dim != len(qargs):
+            raise ValueError("The dimension of the operator doesn't match the number of targets.")
+
+        for i in qargs:
+            if i < 0 or i >= self.Nqubit:
+                raise ValueError("Incorrect target indices.")
+        if len(set(qargs)) != op_dim:
+            raise ValueError("A repeated target qubit index is not possible.")
+
+        op_tensor = op.reshape((2,) * 2 * op_dim)
+
+        rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
+
+        rho_tensor = np.tensordot(
+            np.tensordot(op_tensor, rho_tensor, axes=[tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)]),
+            op.conj().T.reshape((2,) * 2 * op_dim),
+            axes=[tuple(i + self.Nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
+        )
+        rho_tensor = np.moveaxis(
+            rho_tensor,
+            [i for i in range(len(qargs))] + [-i for i in range(1, len(qargs) + 1)],
+            [i for i in qargs] + [i + self.Nqubit for i in reversed(list(qargs))],
+        )
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
     def dims(self):
@@ -91,20 +146,8 @@ class DensityMatrix:
             edge : (int, int) or [int, int]
                 Edge to apply CNOT gate.
         """
-        i, j = edge
-        n = int(np.log2(self.rho.shape[0]))
-        assert i >= 0 and j >= 0
-        assert n > i and n > j
-        assert i != j
 
-        rho_tensor = self.rho.reshape((2,) * n * 2)
-        rho_tensor = np.tensordot(
-            np.tensordot(CNOT_TENSOR, rho_tensor, axes=[(2, 3), edge]),
-            CNOT_TENSOR.conj().T,
-            axes=[(edge[1] + n, edge[0] + n), [0, 1]],
-        )
-        rho_tensor = np.moveaxis(rho_tensor, (0, 1, -1, -2), (edge[0], edge[1], edge[0] + n, edge[1] + n))
-        self.rho = rho_tensor.reshape((2**n, 2**n))
+        self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
 
     def swap(self, edge):
         """swap qubits
@@ -114,20 +157,8 @@ class DensityMatrix:
             edge : (int, int) or [int, int]
                 (control, target) qubits indices.
         """
-        i, j = edge
-        n = int(np.log2(self.rho.shape[0]))
-        assert i >= 0 and j >= 0
-        assert n > i and n > j
-        assert i != j
 
-        rho_tensor = self.rho.reshape((2,) * n * 2)
-        rho_tensor = np.tensordot(
-            np.tensordot(SWAP_TENSOR, rho_tensor, axes=[(2, 3), edge]),
-            SWAP_TENSOR.conj().T,
-            axes=[(edge[1] + n, edge[0] + n), [0, 1]],
-        )
-        rho_tensor = np.moveaxis(rho_tensor, (0, 1, -1, -2), (edge[0], edge[1], edge[0] + n, edge[1] + n))
-        self.rho = rho_tensor.reshape((2**n, 2**n))
+        self.evolve(SWAP_TENSOR.reshape(4, 4), edge)
 
     def entangle(self, edge):
         """connect graph nodes
@@ -137,24 +168,12 @@ class DensityMatrix:
             edge : (int, int) or [int, int]
                 (control, target) qubit indices.
         """
-        i, j = edge
-        n = int(np.log2(self.rho.shape[0]))
-        assert i >= 0 and j >= 0
-        assert n > i and n > j
-        assert i != j
 
-        rho_tensor = self.rho.reshape((2,) * n * 2)
-        rho_tensor = np.tensordot(
-            np.tensordot(CZ_TENSOR, rho_tensor, axes=[(2, 3), edge]),
-            CZ_TENSOR.conj().T,
-            axes=[(edge[1] + n, edge[0] + n), [0, 1]],
-        )
-        rho_tensor = np.moveaxis(rho_tensor, (0, 1, -1, -2), (edge[0], edge[1], edge[0] + n, edge[1] + n))
-        self.rho = rho_tensor.reshape((2**n, 2**n))
+        self.evolve(CZ_TENSOR.reshape(4, 4), edge)
 
     def normalize(self):
         """normalize density matrix"""
-        self.rho /= np.linalg.norm(self.rho)
+        self.rho /= np.trace(self.rho)
 
     def ptrace(self, qargs):
         """partial trace
@@ -180,7 +199,8 @@ class DensityMatrix:
             np.eye(2**qargs_num).reshape((2,) * qargs_num * 2), rho_res, axes=(list(range(2 * qargs_num)), trace_axes)
         )
 
-        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after)) / np.linalg.norm(rho_res)
+        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
+        assert checks.check_unit_trace(self.rho)
         self.Nqubit = nqubit_after
 
     def fidelity(self, statevec):
@@ -218,6 +238,7 @@ class DensityMatrixBackend:
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
 
+    # TODO to be removed
     def dephase(self, p=0):
         """Apply dephasing channel to all nodes. Phase is flipped with probability p.
 
