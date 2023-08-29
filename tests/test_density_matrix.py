@@ -4,8 +4,10 @@ import scipy
 import random
 from copy import deepcopy
 from graphix import Circuit
+from graphix.ops import Ops
 from graphix.sim.statevec import Statevec, StatevectorBackend, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
+from graphix.kraus import Channel, create_depolarising_channel, create_dephasing_channel
 
 
 class TestDensityMatrix(unittest.TestCase):
@@ -38,25 +40,25 @@ class TestDensityMatrix(unittest.TestCase):
             DensityMatrix(data=tmp / np.trace(tmp))
         # check with non hermitian dm and not unit trace
         with self.assertRaises(ValueError):
-            l = 2 ** np.random.randint(2, 5) # np.random.randint(2, 20)
+            l = 2 ** np.random.randint(2, 5)  # np.random.randint(2, 20)
             DensityMatrix(data=np.random.rand(l, l) + 1j * np.random.rand(l, l))
 
-        # checks are done before trace/hermiticity test so OK for now. 
+        # checks are done before trace/hermiticity test so OK for now.
         # Indeed rectangular matrix has no trace and can't be hermitian!
 
         # check not square matrix
         with self.assertRaises(ValueError):
             # l = 2 ** np.random.randint(2, 5) # np.random.randint(2, 20)
-            DensityMatrix(data = np.random.rand(3, 2))
+            DensityMatrix(data=np.random.rand(3, 2))
 
         # check higher dimensional matrix
         with self.assertRaises(ValueError):
-            DensityMatrix(data = np.random.rand(2, 2, 3))
+            DensityMatrix(data=np.random.rand(2, 2, 3))
 
         # check square and hermitian but with incorrect dimension (non-qubit type)
         with self.assertRaises(ValueError):
             tmp = rand_herm(5)
-            DensityMatrix(data = tmp / tmp.trace())
+            DensityMatrix(data=tmp / tmp.trace())
 
     def test_init_without_data_success(self):
         for n in range(3):
@@ -364,7 +366,7 @@ class TestDensityMatrix(unittest.TestCase):
         # 3 random indices
         targets = tuple(random.sample(range(N_qubits), 3))
 
-        dm = DensityMatrix(nqubit = N_qubits)
+        dm = DensityMatrix(nqubit=N_qubits)
         # dimension mismatch
         with self.assertRaises(ValueError):
             dm.evolve(op, (1, 1))
@@ -442,6 +444,275 @@ class TestDensityMatrix(unittest.TestCase):
             [[1 / 3, 0, np.sqrt(2) / 3, 0], [0, 0, 0, 0], [np.sqrt(2) / 3, 0, 2 / 3, 0], [0, 0, 0, 0]]
         )
         assert np.allclose(dm.rho, expected_matrix)
+
+    def test_apply_dephasing_channel(self):
+
+        # check on single qubit first
+        # # create random density matrix
+        # data = rand_herm(2 ** np.random.randint(2, 4))
+        data = rand_herm(2)
+        data /= np.trace(data)
+        dm = DensityMatrix(data=data)
+
+        # copy of initial dm
+        rho_test = deepcopy(dm.rho)
+
+        # create dephasing channel
+        prob = np.random.rand()
+        dephase_channel = create_dephasing_channel(prob)
+
+        # apply channel. list with single element needed.
+        # if Channel.nqubit == 1 use list with single element.
+        dm.apply_channel(dephase_channel, [0])
+        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+        # compare
+        expected_dm = (
+            np.sqrt(1 - prob) ** 2 * id @ rho_test @ id.conj().T
+            + np.sqrt(prob) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
+        )
+
+        np.testing.assert_allclose(expected_dm.trace(), 1.0)
+        np.testing.assert_allclose(dm.rho, expected_dm)
+
+        # check on single qubit against evolve (already tested)? But built on evolve.
+        # check against statevector backend?
+        # NEWFEATURE build random statevector and check normalization there too.
+        # so do it by hand for now.
+        # # create random density matrix
+
+        N_qubits = np.random.randint(2, 5)
+
+        # target qubit index
+        i = np.random.randint(0, N_qubits)
+
+        # create random density matrix from statevector
+
+        # random statevector to compare to
+        psi = np.random.rand(2**N_qubits) + 1j * np.random.rand(2**N_qubits)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        # build DensityMatrix
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+
+        # create dephasing channel
+        prob = np.random.rand()
+        dephase_channel = create_dephasing_channel(prob)
+
+        # apply channel. list with single element needed.
+        # if Channel.nqubit == 1 use list with single element.
+        dm.apply_channel(dephase_channel, [i])
+
+        # compute on the statevector
+        # psi.reshape((2,) * N_qubits)
+        # tmp = np.zeros(psi.shape)
+
+        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+        # by hand: operator list and gate application
+        psi_evolved = np.tensordot(id, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolved = np.moveaxis(psi_evolved, 0, i)
+
+        psi_evolvedb = np.tensordot(Ops.z, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedb = np.moveaxis(psi_evolvedb, 0, i)
+
+        # compute final density matrix
+        psi_evolved = np.reshape(psi_evolved, (2**N_qubits))
+        psi_evolvedb = np.reshape(psi_evolvedb, (2**N_qubits))
+        expected_dm = np.sqrt(1 - prob) ** 2 * np.outer(psi_evolved, psi_evolved.conj()) + np.sqrt(
+            prob
+        ) ** 2 * np.outer(psi_evolvedb, psi_evolvedb.conj())
+
+        # compare
+        np.testing.assert_allclose(expected_dm.trace(), 1.0)
+        np.testing.assert_allclose(dm.rho, expected_dm)
+
+    def test_apply_depolarising_channel(self):
+
+        # check on single qubit first
+        # # create random density matrix
+        # data = rand_herm(2 ** np.random.randint(2, 4))
+        data = rand_herm(2)
+        data /= np.trace(data)
+        dm = DensityMatrix(data=data)
+
+        # copy of initial dm
+        rho_test = deepcopy(dm.rho)
+
+        # create dephasing channel
+        prob = np.random.rand()
+        depol_channel = create_depolarising_channel(prob)
+
+        # apply channel. list with single element needed.
+        # if Channel.nqubit == 1 use list with single element.
+        dm.apply_channel(depol_channel, [0])
+        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+        # compare
+        expected_dm = (
+            np.sqrt(1 - prob) ** 2 * id @ rho_test @ id.conj().T
+            + np.sqrt(prob / 3.0) ** 2 * Ops.x @ rho_test @ Ops.x.conj().T
+            + np.sqrt(prob / 3.0) ** 2 * Ops.y @ rho_test @ Ops.y.conj().T
+            + np.sqrt(prob / 3.0) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
+        )
+
+        np.testing.assert_allclose(expected_dm.trace(), 1.0)
+        np.testing.assert_allclose(dm.rho, expected_dm)
+
+        # chek against statevector backend by hand for now.
+        # create random density matrix
+
+        N_qubits = np.random.randint(2, 5)
+
+        # target qubit index
+        i = np.random.randint(0, N_qubits)
+
+        # create random density matrix from statevector
+
+        # random statevector to compare to
+        psi = np.random.rand(2**N_qubits) + 1j * np.random.rand(2**N_qubits)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        # build DensityMatrix
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+
+        # create dephasing channel
+        prob = np.random.rand()
+        depol_channel = create_depolarising_channel(prob)
+
+        # apply channel. list with single element needed.
+        # if Channel.nqubit == 1 use list with single element.
+        dm.apply_channel(depol_channel, [i])
+
+        # compute on the statevector
+        # psi.reshape((2,) * N_qubits)
+        # tmp = np.zeros(psi.shape)
+
+        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+        # by hand: operator list and gate application
+        psi_evolved = np.tensordot(id, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolved = np.moveaxis(psi_evolved, 0, i)
+
+        psi_evolvedb = np.tensordot(Ops.x, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedb = np.moveaxis(psi_evolvedb, 0, i)
+
+        psi_evolvedc = np.tensordot(Ops.y, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedc = np.moveaxis(psi_evolvedc, 0, i)
+
+        psi_evolvedd = np.tensordot(Ops.z, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedd = np.moveaxis(psi_evolvedd, 0, i)
+
+        # compute final density matrix
+        psi_evolved = np.reshape(psi_evolved, (2**N_qubits))
+        psi_evolvedb = np.reshape(psi_evolvedb, (2**N_qubits))
+        psi_evolvedc = np.reshape(psi_evolvedc, (2**N_qubits))
+        psi_evolvedd = np.reshape(psi_evolvedd, (2**N_qubits))
+
+        expected_dm = (
+            np.sqrt(1 - prob) ** 2 * np.outer(psi_evolved, psi_evolved.conj())
+            + np.sqrt(prob / 3.0) ** 2 * np.outer(psi_evolvedb, psi_evolvedb.conj())
+            + np.sqrt(prob / 3.0) ** 2 * np.outer(psi_evolvedc, psi_evolvedc.conj())
+            + np.sqrt(prob / 3.0) ** 2 * np.outer(psi_evolvedd, psi_evolvedd.conj())
+        )
+
+        # compare
+        np.testing.assert_allclose(expected_dm.trace(), 1.0)
+        np.testing.assert_allclose(dm.rho, expected_dm)
+
+    def test_apply_random_channel(self):
+        """
+        test random 1-qubit channel.
+        Especially checks for complex parameters.
+        TODO : add higher-dimension Pauli group SMARTLY. Just tensor products recursively?
+        """
+
+        # chek against statevector backend by hand for now.
+        # create random density matrix
+
+        N_qubits = np.random.randint(2, 5)
+        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+        # target qubit index
+        i = np.random.randint(0, N_qubits)
+
+        # create random density matrix from statevector
+
+        # random statevector to compare to
+        psi = np.random.rand(2**N_qubits) + 1j * np.random.rand(2**N_qubits)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+
+        # build DensityMatrix
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+
+        # create dephasing channel
+        probs = np.random.rand(3) + 1j * np.random.rand(3)
+        # HACK NOT SOUND AT ALL. Done by hand to be sure that the last parameter is defined (sqrt).
+        # TODO modify.
+        probs /= 1.2 * np.sqrt(np.sum(np.abs(probs) ** 2))
+        channel = Channel(
+            [
+                {"parameter": probs[0], "operator": id},
+                {"parameter": probs[1], "operator": Ops.x},
+                {"parameter": probs[2], "operator": Ops.y},
+                {"parameter": np.sqrt(1 - np.sum(np.abs(probs) ** 2)), "operator": Ops.z},
+            ]
+        )
+
+        # useless since checked in the constructor.
+        assert channel.is_normalized()
+
+        # apply channel. list with single element needed.
+        # if Channel.nqubit == 1 use list with single element.
+        dm.apply_channel(channel, [i])
+
+        # compute on the statevector
+        # psi.reshape((2,) * N_qubits)
+        # tmp = np.zeros(psi.shape)
+
+        # by hand: operator list and gate application
+        psi_evolved = np.tensordot(id, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolved = np.moveaxis(psi_evolved, 0, i)
+
+        psi_evolvedb = np.tensordot(Ops.x, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedb = np.moveaxis(psi_evolvedb, 0, i)
+
+        psi_evolvedc = np.tensordot(Ops.y, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedc = np.moveaxis(psi_evolvedc, 0, i)
+
+        psi_evolvedd = np.tensordot(Ops.z, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolvedd = np.moveaxis(psi_evolvedd, 0, i)
+
+        # compute final density matrix
+        psi_evolved = np.reshape(psi_evolved, (2**N_qubits))
+        psi_evolvedb = np.reshape(psi_evolvedb, (2**N_qubits))
+        psi_evolvedc = np.reshape(psi_evolvedc, (2**N_qubits))
+        psi_evolvedd = np.reshape(psi_evolvedd, (2**N_qubits))
+
+        expected_dm = (
+            channel.kraus_ops[0]["parameter"]
+            * channel.kraus_ops[0]["parameter"].conj()
+            * np.outer(psi_evolved, psi_evolved.conj())
+            + channel.kraus_ops[1]["parameter"]
+            * channel.kraus_ops[1]["parameter"].conj()
+            * np.outer(psi_evolvedb, psi_evolvedb.conj())
+            + channel.kraus_ops[2]["parameter"]
+            * channel.kraus_ops[2]["parameter"].conj()
+            * np.outer(psi_evolvedc, psi_evolvedc.conj())
+            + channel.kraus_ops[3]["parameter"]
+            * channel.kraus_ops[3]["parameter"].conj()
+            * np.outer(psi_evolvedd, psi_evolvedd.conj())
+        )
+
+        # compare
+        np.testing.assert_allclose(expected_dm.trace(), 1.0)
+        np.testing.assert_allclose(dm.rho, expected_dm)
+
+
+# TODO add test for random channel but figure out how to build it. Last = Id - sum (others)? Guess so.
+# Not that trivial. See below.
+# Just random Paulis so that they all square to 1?
+# Sample Pauli group of arbitrary dimension...
 
 
 class DensityMatrixBackendTest(unittest.TestCase):
@@ -658,6 +929,39 @@ def rand_unit(l: int):
     generate random unitary matrix of size l*l from hermitian matrix
     """
     return scipy.linalg.expm(1j * rand_herm(l))
+
+
+def random_channel(size: int, dim: int) -> Channel:
+    """
+    generate random channel in Kraus representation.
+    Parameters
+    ----------
+    size : int
+        total number of Kraus operators
+    dim : int
+        dimension of the operators. Must be a multiple of 2.
+
+    Returns
+    -------
+    Channel object
+        containing the corresponding Kraus operators
+    """
+
+    # Maybe no so useful since do comparison by hand ... so not random number but fixed. Like size = 5.
+    # Check dimension
+    # TODO update with checks when done.
+    pass
+    # TODO start back here for random channel generation [if useful]
+    # assert dim & dim - 1 == 0
+
+    # data = []
+    # # all except one
+    # for i in range(size - 1):
+    #     data[i] = {"parameter": np.random.rand(), "operator": np.random.rand(dim, dim) + 1j * np.random.rand(dim, dim)}
+
+    # # final
+    # data[size - 1]["parameter"]
+    # return
 
 
 class TestUtilities(unittest.TestCase):

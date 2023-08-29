@@ -1,6 +1,11 @@
 import unittest
 import numpy as np
-from graphix.kraus import *
+from graphix.kraus import (
+    Channel,
+    create_depolarising_channel,
+    create_dephasing_channel,
+    create_2_qubit_dephasing_channel,
+)
 from graphix.ops import Ops
 
 
@@ -10,7 +15,7 @@ class TestChannel(unittest.TestCase):
     def test_init_with_data_success(self):
         "test for successful intialization"
         # TODO generate random data?
-        prob = 0.75
+        prob = np.random.rand()
         mychannel = Channel(
             [
                 {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
@@ -26,7 +31,7 @@ class TestChannel(unittest.TestCase):
         "test for unsuccessful intialization"
         # TODO generate random data.
 
-        prob = 0.75
+        prob = np.random.rand()
 
         # empty data
         with self.assertRaises(ValueError):
@@ -115,6 +120,7 @@ class TestChannel(unittest.TestCase):
             {"parameter": np.sqrt(prob), "operator": Ops.z},
         ]
         dephase_channel = create_dephasing_channel(prob)
+        assert isinstance(dephase_channel, Channel)
         assert dephase_channel.nqubit == 1
         assert dephase_channel.size == 2
 
@@ -126,21 +132,41 @@ class TestChannel(unittest.TestCase):
 
         prob = np.random.rand()
         data = [
-            {"parameter": np.sqrt(1 - prob), "operator": np.eye(2, dtype=np.complex128)},
+            {"parameter": np.sqrt(1 - prob), "operator": np.eye(2)},
             {"parameter": np.sqrt(prob / 3.0), "operator": Ops.x},
             {"parameter": np.sqrt(prob / 3.0), "operator": Ops.y},
             {"parameter": np.sqrt(prob / 3.0), "operator": Ops.z},
         ]
 
-        assert Ops.y.dtype == np.complex128
         depol_channel = create_depolarising_channel(prob)
 
+        assert isinstance(depol_channel, Channel)
         assert depol_channel.nqubit == 1
         assert depol_channel.size == 4
 
         for i in range(len(depol_channel.kraus_ops)):
             np.testing.assert_allclose(depol_channel.kraus_ops[i]["parameter"], data[i]["parameter"])
             np.testing.assert_allclose(depol_channel.kraus_ops[i]["operator"], data[i]["operator"])
+
+    def test_2_qubit_dephasing_channel(self):
+
+        prob = np.random.rand()
+        data = [
+            {"parameter": np.sqrt(1 - prob), "operator": np.kron(np.eye(2), np.eye(2))},
+            {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, Ops.z)},
+        ]
+
+        dephase_channel_2_qubit = create_2_qubit_dephasing_channel(prob)
+
+        assert isinstance(dephase_channel_2_qubit, Channel)
+        assert dephase_channel_2_qubit.nqubit == 2
+        assert dephase_channel_2_qubit.size == 4
+
+        for i in range(len(dephase_channel_2_qubit.kraus_ops)):
+            np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["parameter"], data[i]["parameter"])
+            np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
 
     # def test_to_kraus_fail(self):
     #     A_wrong = [[0, 1, 2], [3, 4, 5]]

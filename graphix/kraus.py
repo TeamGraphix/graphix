@@ -54,15 +54,12 @@ class Channel:
             raise TypeError(f"The data must be a list, a numpy.ndarray or a tuple not a {type(kraus_data)}.")
 
         # check that data is correctly formatted before assigning it to the object.
-        check_data_values_type(kraus_data)
-        # TODO also add the check that keys are "parameter" and "value". Do that behind the scenes.
-
-        check_data_dims(kraus_data)
+        assert check_data_values_type(kraus_data)
+        assert check_data_dims(kraus_data)
 
         # check that the channel is properly normalized i.e
         # \sum_K_i^\dagger K_i = Identity
-        if not check_data_normalization(kraus_data):
-            raise ValueError("The specified channel is not normalized.")
+        assert check_data_normalization(kraus_data)
 
         self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
         self.kraus_ops = kraus_data
@@ -71,16 +68,14 @@ class Channel:
         # number of Kraus operators in the Channel
         self.size = len(kraus_data)
 
-    # TODO update
     def __repr__(self):
         return f"Channel object with {self.size} Kraus operators of dimension {self.nqubit}."
 
-    # TODO is assign to attributes first then call this method.
     def is_normalized(self):
         return check_data_normalization(self.kraus_ops)
 
 
-def check_data_dims(data):
+def check_data_dims(data) -> bool:
 
     # convert to set to remove duplicates
     dims = list(set([i["operator"].shape for i in data]))
@@ -99,8 +94,10 @@ def check_data_dims(data):
         raise ValueError(f"Incorrect data dimension {data_dim}: not consistent with qubits.")
     # data_dim = int(data_dim)
 
+    return True
 
-def check_data_values_type(data):
+
+def check_data_values_type(data) -> bool:
     # convert to set to remove duplicates
 
     # TODO put error raising here instead. And deaggregate this mess to raise useful errors.
@@ -143,18 +140,22 @@ def check_data_values_type(data):
     else:
         raise TypeError("All values are not dictionaries.")
 
+    return True
 
-def check_data_normalization(data):
+
+def check_data_normalization(data) -> bool:
 
     opsu = np.array([i["parameter"] * i["parameter"].conj() * i["operator"].conj().T @ i["operator"] for i in data])
 
-    return np.allclose(np.sum(opsu, axis=0), np.eye(2))
+    if not np.allclose(np.sum(opsu, axis=0), np.eye(2 ** int(np.log2(len(data[0]["operator"]))))):
+        raise ValueError(f"The specified channel is not normalized. {np.sum(opsu, axis=0)}")
+    return True
 
 
-def create_dephasing_channel(prob: float):
-    """single-qubit Dephasing channel
+def create_dephasing_channel(prob: float) -> Channel:
+    """single-qubit dephasing channel
     .. math::
-        (1-p) \rho + p * Z * \rho * Z
+        (1-p) \rho + p Z  \rho Z
 
     Parameters
     ----------
@@ -171,7 +172,7 @@ def create_dephasing_channel(prob: float):
     )
 
 
-def create_depolarising_channel(prob: float):
+def create_depolarising_channel(prob: float) -> Channel:
     """single-qubit depolarizing channel
     .. math::
         (1-p) \rho + \frac{p}{3} (X * \rho * X + Y * rho * Y + Z * rho * Z) = (1 - 4\frac{p}{3}) \rho + 4 \frac{p}{3} Id
@@ -183,6 +184,33 @@ def create_depolarising_channel(prob: float):
             {"parameter": np.sqrt(prob / 3.0), "operator": Ops.x},
             {"parameter": np.sqrt(prob / 3.0), "operator": Ops.y},
             {"parameter": np.sqrt(prob / 3.0), "operator": Ops.z},
+        ]
+    )
+
+
+def create_2_qubit_dephasing_channel(prob: float) -> Channel:
+    """two-qubit dephasing channel
+    .. math::
+        (1-p) \rho + \frac{p}{3} (Z_1  \rho  Z_1 + Z_2  \rho  Z_2 + Z_1 Z_2  \rho  Z_1 Z_2)
+
+    Parameters
+    ----------
+    prob : float
+        The probability associated to the channel
+
+    Returns
+    -------
+    Channel object
+        containing the corresponding Kraus operators
+    """
+    # NOTE kinf of useless since just the tensor product of single-qubit channels.
+    # There for testing purposes only.
+    return Channel(
+        [
+            {"parameter": np.sqrt(1 - prob), "operator": np.kron(np.eye(2), np.eye(2))},
+            {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, Ops.z)},
         ]
     )
 

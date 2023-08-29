@@ -7,6 +7,7 @@ from copy import deepcopy
 import numpy as np
 from graphix.ops import Ops
 from graphix.sim.statevec import meas_op, CNOT_TENSOR, SWAP_TENSOR, CZ_TENSOR
+from graphix.kraus import Channel
 
 
 class DensityMatrix:
@@ -28,7 +29,7 @@ class DensityMatrix:
                 self.rho = np.ones(2 ** (2 * nqubit)).reshape(2**nqubit, 2**nqubit) / 2**nqubit
             else:
                 self.rho = np.zeros(2 ** (2 * nqubit)).reshape(2**nqubit, 2**nqubit)
-                self.rho[0, 0] = 1
+                self.rho[0, 0] = 1.0
         else:
             if isinstance(data, DensityMatrix):
                 data = data.rho
@@ -269,6 +270,57 @@ class DensityMatrix:
                 statevector (flattened numpy array) to compare with
         """
         return np.abs(statevec.conj() @ self.rho @ statevec)
+
+    def apply_channel(self, channel, qargs):
+        """Applies a channel to a density matrix.
+
+        Parameters
+        ----------
+        :rho: density matrix.
+        channel: :class:`graphix.kraus.Channel` object
+            Channel to be applied to the density matrix
+        qargs: target qubit indices
+
+        Returns
+        -------
+        nothing
+
+        Raises
+        ------
+        ValueError
+            If the final density matrix is not normalized after application of the channel.
+            This shouldn't happen since :class:`graphix.kraus.Channel` objects are normalized by construction.
+        ....
+        """
+        # Can't initialize a dm to all 0s since not unit trace.
+        # Use arrays instead.
+        # DensityMatrix(np.zeros((2 ** self.Nqubit, 2 ** self.Nqubit)))
+        result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
+        tmp_dm = deepcopy(self)
+
+        assert isinstance(channel, Channel)
+
+        # too many deepcopy?
+        for i in channel.kraus_ops:
+            # evolve.
+            # TODO not optimal
+            # evolve works for a single qubit
+            # if len(qargs) == 1:
+            #     tmp_dm.evolve_single(i["operator"], qargs)
+            # else:
+            #     tmp_dm.evolve(i["operator"], qargs)
+            tmp_dm.evolve(i["operator"], qargs)
+            result_array += i["parameter"] * i["parameter"].conj() * tmp_dm.rho
+            # reinitialize to input density matrix
+            tmp_dm = deepcopy(self)
+
+        # avoid problems by using deepcopy? Performance?
+        self.rho = deepcopy(result_array)
+
+        # The channel is normalised by construction if everything is ok.
+        # TODO use self.is_normalized when implementend
+        if not np.allclose(self.rho.trace(), 1.0):
+            raise ValueError("The output density is not normalized, something went wrong while applying channel.")
 
 
 class DensityMatrixBackend:
