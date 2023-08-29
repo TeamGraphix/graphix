@@ -1,6 +1,5 @@
 numpy>=1.22
 networkx>=2.8,<3.0
-z3-solver
 quimb>=1.4.0
 autoray>=0.6.0
 opt_einsum>=3.2
