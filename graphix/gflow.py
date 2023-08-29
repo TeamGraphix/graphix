@@ -1,82 +1,23 @@
-"""Optimum generalized flow finding algorithm
+"""flow finding algorithm
 
-For a given open graph (G, I, O), this iterative method
-finds a generalized flow (gflow) [NJP 9, 250 (2007)] in polynomial time.
-In particular, this outputs gflow with minimum depth.
-We implemented a modification according to definition of
-Pauli flow (NJP 9, 250 (2007)).
+For a given underlying graph (G, I, O, meas_plane), this method finds a (generalized) flow [NJP 9, 250 (2007)] in polynomincal time.
+In particular, this outputs gflow with minimum depth, maximally delayed gflow.
 
 Ref: Mhalla and Perdrix, International Colloquium on Automata,
 Languages, and Programming (Springer, 2008), pp. 857-868.
+Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
 
 import networkx as nx
 import numpy as np
-import z3
-import copy
+from itertools import product
 
 
-def solvebool(A, b):
-    """solves linear equations of booleans
+def gflow(graph, input, output, meas_planes, mode="single"):
+    """Maximally delayed gflow finding algorithm
 
-    Solves Ax=b, where A is n*m matrix and b is 1*m array, both of booleans.
-    for example, for A=[[0,1,1],[1,0,1]] and b=[1,0], we solve:
-        XOR(x1,x2) = 1
-
-        XOR(x0,x2) = 0
-    for which (one of) the solution is [x0,x1,x2]=[1,0,1]
-
-    Uses Z3, a theorem prover from Microsoft Research.
-
-    Parameters
-    ----------
-    A: np.array
-        n*m array of 1s and 0s, or booleans
-    b: np.array
-        length m array of 1s and 0s, or booleans
-
-    Returns
-    --------
-    x: np.array
-        length n array of 1s and 0s satisfying Ax=b.
-        if no solution is found, returns False.
-    """
-
-    def xor_n(a):
-        if len(a) == 1:
-            return a[0]
-        elif len(a) > 1:
-            return z3.Xor(a[0], xor_n(a[1:]))
-
-    # create list of params
-    p = []
-    for i in range(A.shape[1]):
-        p.append(z3.Bool(i))
-    p = np.array(p)
-
-    # add constraints
-    s = z3.Solver()
-    for i in range(len(b)):
-        arr = np.asarray(A[i, :]).flatten().astype(np.bool8)
-        if arr.any():
-            if b[i] == 0:
-                s.add(z3.Not(xor_n(p[arr])))
-            else:
-                s.add(xor_n(p[arr]))
-
-    # solve
-    if s.check() == z3.sat:  # there's solution
-        ans = s.model()
-        return np.array([ans[p[i]] for i in range(A.shape[1])])
-    else:  # no solution found
-        return False
-
-
-def gflow(g, v_in, v_out, meas_plane=None, timeout=1000):
-    """Optimum generalized flow finding algorithm
-
-    For open graph g with input and output, this returns optimum gflow.
+    For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
 
     gflow consist of function g(i) where i is the qubit labels,
     and strict partial ordering < or layers labels l_k where each element
@@ -87,145 +28,146 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=1000):
 
     For more details of gflow, see Browne et al., NJP 9, 250 (2007).
 
-    Original algorithm by Mhalla and Perdrix,
-    International Colloquium on Automata, Languages, and Programming (Springer, 2008),
-    pp. 857-868.
+    We use the extended gflow finding algorithm proposed by Backens et al., Quantum 5, 421 (2021).
 
     Parameters
     ----------
-    g: nx.Graph
+    graph: nx.Graph
         graph (incl. in and out)
-    v_in: set
+    input: set
         set of node labels for input
-    v_out: set
+    output: set
         set of node labels for output
-    timeout: int
-        number of iterations allowed before timeout
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
     Returns
     -------
-    g: list of sets
-        list of length |g| where each set is the correcting nodes for
-        the measurements of each qubits. function g() in gflow.
-    l_k: np.array
-        1D array of length |g|, where elements are layer of each qubits
-        corresponds to the strict partial ordering < in gflow.
-        Measurements must proceed in decreasing order of layer numbers.
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-    v = set(g.nodes)
-    if meas_plane is None:
-        meas_plane = {u: "XY" for u in v}
-
-    gamma = nx.to_numpy_matrix(g)  # adjacency matrix
-    index_list = list(g.nodes)  # match g.nodes with gamma's index
-    l_k = {i: 0 for i in v}  # contains k, layer number initialized to default (0).
-    g = dict()  # contains the correction set g(i) for i\in V.
-    k = 1
-    vo = copy.deepcopy(v_out)
-    finished = False
-    count = 0
-    while not finished:
-        count += 1
-        vo, g, l_k, finished, exist = gflowaux(v, gamma, index_list, v_in, vo, g, l_k, k, meas_plane)
-        k = k + 1
-        if not exist:
-            return None, None
-        if count > timeout:
-            raise TimeoutError("max iteration number n={} reached".format(timeout))
-    return g, l_k
+    l_k = dict()
+    g = dict()
+    for node in graph.nodes:
+        l_k[node] = 0
+    return gflowaux(graph, input, output, meas_planes, 1, l_k, g, mode=mode)
 
 
-def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
+def gflowaux(
+    graph,
+    input: set,
+    output: set,
+    meas_planes: dict,
+    k: int,
+    l_k: dict,
+    g: dict,
+    mode,
+):
     """Function to find one layer of the gflow.
 
-    Ref: Mhalla and Perdrix, International Colloquium on Automata,
-    Languages, and Programming (Springer, 2008), pp. 857-868.
+    Ref: Backens et al., Quantum 5, 421 (2021).
 
     Parameters
     ----------
-    v: set
-        labels of all qubits (nodes)
-    gamma: np.array
-        adjacency matrix of graph
-    index_list: list of ints
-        this list connects between index of gamma and node number of Graph.
-    v_in: set
-        input qubit set
-    v_out: set
-        output qubit set U set of qubits in layers 0...k-1.
-    g: list of sets
-        g(i) for all qubits i
-    l_k: np.array
-        1D array for all qubits labeling layer number
-    k: current layer number.
-    meas_plane: array of length |v| containing 'X','Y','Z','XY','YZ','XZ'.
-        measurement planes xy, yz, xz or Pauli measurement x,y,z.
+    graph: nx.Graph
+        graph (incl. in and out)
+    input: set
+        set of node labels for input
+    output: set
+        set of node labels for output
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    k: int
+        current layer number.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    mode: str
+        "single" or "all". "single" returns a single solution for each qubit, while "all" returns all solutions.
 
-    Outputs
+    Returns
     -------
-    v_out: set
-        output qubit set U set of qubits in layers 0...k+1.
-    g: list of sets
-        updated g(i) for all qubits i
-    l_k: np.array
-        updated 1D array for all qubits labeling layer number
-    finished: bool
-        whether iteration ends or not
-    exist: bool
-        whether gflow exists or not
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
 
-    c_set = set()
-    v_rem = v - v_out  # remaining vertices
-    v_rem_list = list(v_rem)
-    n = len(v_rem)
-    v_correct = v_out - v_in
-    v_correct_list = list(v_correct)
+    nodes = set(graph.nodes)
+    if output == nodes:
+        return g, l_k
+    non_output = nodes - output
+    correction_candidate = output - input
+    solver = GF2Solver(graph, input, output)
+    adjacency_matrix, node_order_list = solver.get_adjacency_matrix()
+    adjacency_matrix_row_reduced = remove_nodes_from_row(
+        adjacency_matrix, node_order_list, output
+    )
+    adjacency_matrix_reduced = remove_nodes_from_column(
+        adjacency_matrix_row_reduced, node_order_list, nodes - correction_candidate
+    )
 
-    index_0 = [[index_list.index(i)] for i in iter(v_rem)]  # for slicing rows
-    index_1 = [index_list.index(i) for i in iter(v_correct)]  # for slicing columns
+    node_order_row = []
+    node_order_col = []
+    for node in node_order_list:
+        if node in non_output:
+            node_order_row.append(node)
+        if node in correction_candidate:
+            node_order_col.append(node)
 
-    # if index_0 or index_1 is blank, skip the calculation below
-    if len(index_0) * len(index_1):
-        gamma_sub = gamma[index_0, index_1]
+    RHS_map = dict()
+    for node in non_output:
+        vec = np.zeros(len(node_order_row))
+        if meas_planes[node] == "XY":
+            vec[node_order_row.index(node)] = 1
+        elif meas_planes[node] == "XZ":
+            vec[node_order_row.index(node)] = 1
+            vec_add = adjacency_matrix_row_reduced[
+                :, node_order_row.index(node)
+            ].reshape(vec.shape)
+            vec = (vec + vec_add) % 2
+        elif meas_planes[node] == "YZ":
+            vec = adjacency_matrix_row_reduced[:, node_order_row.index(node)].reshape(
+                vec.shape
+            )
+        RHS_map[node] = vec
 
-        for u in iter(v_rem):
-            if meas_plane[u] == "Z":
-                c_set = c_set | {u}
-                g[u] = set()
-                l_k[u] = k
-                continue
-            elif meas_plane[u] in ["XY", "XZ", "X", "Y"]:
-                Iu = np.zeros(n, dtype=np.int8)
-                Iu[v_rem_list.index(u)] = 1
-            elif meas_plane[u] == "YZ":
-                Iu = np.ones(n, dtype=np.int8)
-                Iu[v_rem_list.index(u)] = 0
+    all_solutions, uncertainty = solver.solve(
+        adjacency_matrix_reduced, RHS_map, node_order_col
+    )
 
-            Ix = solvebool(gamma_sub.astype(np.int8), Iu.astype(np.int8))
-            inds = np.where(Ix)[0]
+    corrected = set()
+    for candidate in all_solutions.keys():
+        if len(all_solutions[candidate]) == 0:
+            continue
+        if meas_planes[candidate] in ["XZ", "YZ"]:
+            all_solutions[candidate][candidate] = SolutionNode(candidate, 1, set())
+        if mode == "single":
+            g[candidate] = find_single_solution(all_solutions[candidate], uncertainty)
+        elif mode == "all":
+            g[candidate] = find_all_solutions(all_solutions[candidate], uncertainty)
 
-            if len(inds) > 0:  # has solution
-                c_set = c_set | {u}
-                g[u] = set(v_correct_list[ind_] for ind_ in inds)
-                l_k[u] = k
-    if not c_set:
-        finished = True
-        if v_out == v:
-            exist = True
+        l_k[candidate] = k
+        corrected |= {candidate}
+
+    if len(corrected) == 0:
+        if output == nodes:
+            return g, l_k
         else:
-            exist = False
+            return None, None
     else:
-        finished = False
-        exist = True
+        return gflowaux(
+            graph, input, output | corrected, meas_planes, k + 1, l_k, g, mode=mode
+        )
 
-    return v_out | c_set, g, l_k, finished, exist
 
-
-def flow(g, v_in, v_out, meas_plane=None, timeout=10000):
+def flow(graph, input, output, meas_planes):
     """Causal flow finding algorithm
 
-    For open graph g with input and output, this returns causal flow.
+    For open graph g with input, output, and measurement planes, this returns causal flow.
 
     For more detail of causal flow, see Danos and Kashefi, PRA 74, 052310 (2006).
 
@@ -235,47 +177,37 @@ def flow(g, v_in, v_out, meas_plane=None, timeout=10000):
 
     Parameters
     ----------
-    g: nx.Graph
+    graph: nx.Graph
         graph (incl. in and out)
-    v_in: set
+    input: set
         set of node labels for input
-    v_out: set
+    output: set
         set of node labels for output
-    timeout: int
-        number of iterations allowed before timeout
+    meas_planes: int
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i. Note that an underlying graph has a causal flow only if all measurement planes are "XY".
 
     Returns
     -------
     f: list of nodes
-        list of length |g| where each node corrects the measurements of each qubits. function f() in flow.
-    l_k: np.array
-        1D array of length |g|, where elements are layer of each qubits
-        corresponds to the strict partial ordering < in flow.
-        Measurements must proceed in decreasing order of layer numbers.
+        causal flow function. f[i] is the qubit to be measured after qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-    v = set(g.nodes)
-    e = set(g.edges)
+    nodes = set(graph.nodes)
+    edges = set(graph.edges)
 
-    l_k = {i: 0 for i in v}
+    for plane in meas_planes.values():
+        if plane not in ["X", "Y", "XY"]:
+            return None, None
+
+    l_k = {i: 0 for i in nodes}
     f = dict()
     k = 1
-    vo = copy.deepcopy(v_out)
-    finished = False
-    exist = True
-    count = 0
-    v_c = v_out - v_in
-    while not finished:
-        count += 1
-        vo, v_c, f, l_k, finished, exist = flowaux(v, e, v_in, vo, v_c, f, l_k, k)
-        k += 1
-        if not exist:
-            return None, None
-        if count > timeout:
-            raise TimeoutError("max iteration number n={} reached".format(timeout))
-    return f, l_k
+    v_c = output - input
+    return flowaux(nodes, edges, input, output, v_c, f, l_k, k)
 
 
-def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
+def flowaux(nodes, edges, input, output, v_c, f, l_k, k):
     """Function to find one layer of the flow.
 
     Ref: Mhalla and Perdrix, International Colloquium on Automata,
@@ -283,23 +215,24 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
 
     Parameters
     ----------
-    v: set
+    nodes: set
         labels of all qubits (nodes)
-    e: set
+    edges: set
         edges
-    v_in: set
-        input qubit set
-    v_out: set
-        output qubit set U set of qubits in layers 0...k-1.
+    input: set
+        set of node labels for input
+    output: set
+        set of node labels for output
     v_c: set
-        correction qubit set in layer k
-    f: list of sets
-        f(i) for all qubits i
-    l_k: np.array
-        1D array for all qubits labeling layer number
-    k: current layer number.
-    meas_plane: array of length |v| containing 'x','y','z','xy','yz',xz'.
-        measurement planes xy, yz, xz or Pauli measurement x,y,z.
+        correction candidate qubits
+    f: dict
+        flow function. f[i] is the qubit to be measured after qubit i.
+    l_k: dict
+        layers obtained by flow algorithm. l_k[d] is a node set of depth d.
+    k: int
+        current layer number.
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
     Outputs
     -------
@@ -320,8 +253,8 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
     c_prime = set()
 
     for q in v_c:
-        N = search_neighbor(q, e)
-        p_set = N & (v - v_out)
+        N = search_neighbor(q, edges)
+        p_set = N & (nodes - output)
         if len(p_set) == 1:
             p = list(p_set)[0]
             f[p] = q
@@ -330,21 +263,19 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
             c_prime = c_prime | {q}
     # determine whether there exists flow
     if not v_out_prime:
-        finished = True
-        if v_out == v:
-            exist = True
+        if output == nodes:
+            return f, l_k
         else:
-            exist = False
-    else:
-        finished = False
-        exist = True
-    return (
-        v_out | v_out_prime,
-        (v_c - c_prime) | (v_out_prime & (v - v_in)),
+            return None, None
+    return flowaux(
+        nodes,
+        edges,
+        input,
+        output | v_out_prime,
+        (v_c - c_prime) | (v_out_prime & (nodes - input)),
         f,
         l_k,
-        finished,
-        exist,
+        k + 1,
     )
 
 
@@ -372,34 +303,34 @@ def search_neighbor(node, edges):
     return N
 
 
-def find_flow(g, v_in, v_out, meas_plane=None, timeout=100):
+def find_flow(graph, input, output, meas_planes, mode="single"):
     """Function to determine whether there exists flow or gflow
 
     Parameters
     ---------
-    g: nx.Graph
+    graph: nx.Graph
         graph (incl. in and out)
-    v_in: set
+    input: set
         set of node labels for input
-    v_out: set
+    output: set
         set of node labels for output
-    timeout: int
-        number of iterations allowed before timeout
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     """
-    f, l_k = gflow(g, v_in, v_out, meas_plane, timeout)
-    if f:
-        print("gflow found")
-        print("g is ", f)
-        print("l_k is ", l_k)
-    else:
-        print("no gflow found, finding flow")
-    f, l_k = flow(g, v_in, v_out, timeout=timeout)
+    f, l_k = flow(graph, input, output, meas_planes)
     if f:
         print("flow found")
         print("f is ", f)
         print("l_k is ", l_k)
     else:
-        print("no flow found")
+        print("no flow found, finding gflow")
+    g, l_k = gflow(graph, input, output, meas_planes)
+    if g:
+        print("gflow found")
+        print("g is ", g)
+        print("l_k is ", l_k)
+    else:
+        print("no gflow found")
 
 
 def get_min_depth(l_k):
@@ -461,3 +392,382 @@ def get_layers(l_k):
     for i in l_k.keys():
         layers[l_k[i]].append(i)
     return d, layers
+
+
+class GF2Solver:
+    """Solver for GF(2) linear equations"""
+
+    def __init__(self, graph, input, output):
+        """Constructor for GF2Solver
+
+        Parameters
+        ----------
+        graph: nx.Graph
+            graph (incl. in and out)
+        input: set
+            set of node labels for input
+        output: set
+            set of node labels for output
+        """
+        self.graph = graph
+        self.input = input
+        self.output = output
+
+    def get_adjacency_matrix(self):
+        """Get adjacency matrix of the graph
+
+        Returns
+        -------
+        adjacency_matrix: np.array
+            adjacency matrix of the graph
+        node_list: list
+            ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
+
+        """
+        node_list = list(self.graph.nodes)
+        node_list.sort()
+        adjacency_matrix = nx.adjacency_matrix(self.graph, nodelist=node_list).todense()
+        return adjacency_matrix, node_list
+
+    def solve(self, adjacency_matrix, RHS_map, node_order_col):
+        """Solve the linear equations
+
+        Parameters
+        ----------
+        adjacency_matrix: np.array
+            reduced adjacency matrix of the graph
+        RHS_map: dict
+            RHS of the linear equations. RHS_map[NODE] is the right hand side of the equations for the NODE.
+        node_order_col: list
+            ordered list of nodes. node_order_col[i] is the node label of i-th column of the adjacency matrix.
+
+        Returns
+        -------
+        all_solutions: dict
+            solutions of the linear equations. all_solutions[NODE] is the gflow map of NODE. Note that solutions generally contain uncertainty because the equations are not always square. Therefore, solutions in this step is represented by abstract class. See `SolutionNode` and `find_all_solutions` for details.
+        uncertainty: set
+            set of nodes which are not determined by the linear equations.
+        """
+        LHS, RHS, node_order_col, RHS_order = self.forward_elimination(
+            adjacency_matrix, node_order_col, RHS_map
+        )
+        all_solutions, uncertainty = self.backward_substitution(
+            LHS, RHS, node_order_col, RHS_order
+        )
+        return all_solutions, uncertainty
+
+    @staticmethod
+    def forward_elimination(adjacency_matrix, node_order_col, RHS_map):
+        """Forward elimination of the linear equations
+
+        Parameters
+        ----------
+        adjacency_matrix: np.array
+            reduced adjacency matrix of the graph
+        node_order_col: list
+            ordered list of nodes. node_order_col[i] is the node label of i-th column of the adjacency matrix.
+        RHS_map: dict
+            RHS of the linear equations. RHS_map[NODE] is the right hand side of the equations for the NODE.
+
+        Returns
+        -------
+        LHS: np.array
+            LHS of the linear equations. Generally, LHS is not a square matrix.
+        RHS: np.array
+            RHS of the linear equations.
+        node_order_col: list
+            ordered list of nodes. node_order_col[i] is the node label of i-th column of the adjacency matrix. This is sometimes modified when the pivot column is swapped.
+        RHS_order: list
+            ordered list of nodes. RHS_order[i] is the node label of i-th column of the RHS matrix.
+        """
+        dim_O_notI = adjacency_matrix.shape[1]
+
+        RHS_order = [node for node in RHS_map.keys()]
+        B = np.zeros((len(adjacency_matrix), len(RHS_map)))
+        for node, vec in RHS_map.items():
+            ind = RHS_order.index(node)
+            B[:, ind] = vec
+
+        expanded_matrix = np.concatenate((adjacency_matrix, B), axis=1)
+
+        # gaussian elimination
+        max_rank = min(adjacency_matrix.shape)
+        for row in range(max_rank):
+            # find the pivot row
+            if expanded_matrix[row, row] == 0:
+                pivot_row = np.where(expanded_matrix[row:, row] != 0)[0]
+                if len(pivot_row) == 0:
+                    # pivot column
+                    pivot_col = np.where(
+                        expanded_matrix[row:, row : adjacency_matrix.shape[1]] != 0
+                    )
+                    if len(pivot_col[1]) == 0:
+                        break
+                    pivot_col = pivot_col[1][0] + row
+                    # swap the pivot column with the current column
+                    expanded_matrix[:, [row, pivot_col]] = expanded_matrix[
+                        :, [pivot_col, row]
+                    ]
+                    # swap the indices vector
+                    node_order_col[row], node_order_col[pivot_col] = (
+                        node_order_col[pivot_col],
+                        node_order_col[row],
+                    )
+                    # find the pivot row
+                    pivot_row = np.where(expanded_matrix[row:, row] != 0)[0]
+                    assert len(pivot_row) > 0, "pivot row not found"
+
+                pivot_row = pivot_row[0] + row
+                # swap the pivot row with the current row
+                expanded_matrix[[row, pivot_row]] = expanded_matrix[[pivot_row, row]]
+            # perform row operations to eliminate the current column
+            for row_eliminated in range(row + 1, expanded_matrix.shape[0]):
+                if expanded_matrix[row_eliminated, row] != 0:
+                    expanded_matrix[row_eliminated, :] = (
+                        expanded_matrix[row_eliminated] + expanded_matrix[row, :]
+                    ) % 2
+
+        LHS = expanded_matrix[:, :dim_O_notI]
+        RHS = expanded_matrix[:, dim_O_notI:]
+        return LHS, RHS, node_order_col, RHS_order
+
+    @staticmethod
+    def backward_substitution(LHS, RHS, node_order_col, RHS_order):
+        """Backward substitution of the linear equations
+
+        Parameters
+        ----------
+        LHS: np.array
+            LHS of the linear equations. Generally, LHS is not a square matrix.
+        RHS: np.array
+            RHS of the linear equations.
+        node_order_col: list
+            ordered list of nodes. node_order_col[i] is the node label of i-th column of the adjacency matrix.
+        RHS_order: list
+            ordered list of nodes. RHS_order[i] is the node label of i-th column of the RHS matrix.
+
+        Returns
+        -------
+        all_solutions: dict
+            solutions of the linear equations. all_solutions[NODE] is the gflow map of NODE. Note that solutions generally contain uncertainty because the equations are not always square. Therefore, solutions in this step is represented by abstract class. See `SolutionNode` and `find_all_solutions` for details.
+        uncertainty: set
+            set of nodes which are not determined by the linear equations.
+        """
+        # find the rank of the LHS matrix
+        all_solutions = dict()
+
+        for j in range(len(RHS_order)):
+            candidate = RHS_order[j]
+            RHS_vector = RHS[:, j]
+            # perform back substitution
+            all_solutions[candidate] = dict()
+            rank = min(LHS.shape)
+            for row in range(LHS.shape[0] - 1, -1, -1):
+                if row >= rank:
+                    if RHS_vector[row] != 0:
+                        # no solution. empty dict is returned
+                        break
+                    continue
+
+                if LHS[row, row] == 0:
+                    if RHS_vector[row] != 0:
+                        # no solution. empty dict is returned
+                        break
+                    else:
+                        rank -= 1
+                        continue
+                # find the current solution
+                uncertainty = set()
+                for col in range(rank, LHS.shape[1]):
+                    if LHS[row, col] != 0:
+                        uncertainty |= {node_order_col[col]}
+                currect_sol = SolutionNode(
+                    node_order_col[row], RHS_vector[row, 0], uncertainty
+                )
+                for col in range(row + 1, rank):
+                    if LHS[row, col] != 0:
+                        currect_sol.subtract(
+                            all_solutions[candidate][node_order_col[col]]
+                        )
+                all_solutions[candidate][node_order_col[row]] = currect_sol
+        uncertainty = {node_order_col[col] for col in range(rank, LHS.shape[1])}
+
+        return all_solutions, uncertainty
+
+
+def find_single_solution(solution, uncertainty):
+    """
+    Find a single gflow solution. This is a special case of `find_all_solutions()`. See `find_all_solutions()` for details.
+
+    Parameters
+    ----------
+    solution: dict
+        solution for specified node.
+    uncertainty: set
+        set of nodes which are not determined by the linear equations.
+
+    Returns
+    -------
+    substituted_solution: set
+        set of nodes which are determined by the uncertainty map.
+    """
+    substituted_solution = set()
+    uncertainty_map = dict(zip(uncertainty, [0] * len(uncertainty)))
+    for solution_node in solution.values():
+        if solution_node.substitute(uncertainty_map):
+            substituted_solution |= {solution_node.node_index}
+    return substituted_solution
+
+
+def find_all_solutions(solutions, uncertainty):
+    """
+    Find all gflow solutions.
+
+    Parameters
+    ----------
+    solutions: dict
+        solution for specified node.
+    uncertainty: set
+        set of nodes which are not determined by the linear equations.
+
+    Returns
+    -------
+    all_substituded_solutions: dict
+        all possible maximally delayed gflow solutions. Keys of the dict are the uncertainty map. Values of the dict are the set of nodes which are determined by the uncertainty map.
+    """
+    if uncertainty == set():
+        all_substituded_solutions = dict()
+        all_substituded_solutions["no uncertainty"] = set()
+        for solution_node in solutions.values():
+            if solution_node.substitute({}):
+                all_substituded_solutions["no uncertainty"] |= {
+                    solution_node.node_index
+                }
+        return all_substituded_solutions
+    all_uncertainty = product([0, 1], repeat=len(uncertainty))
+    all_substituded_solutions = dict()
+    for uncertainty in all_uncertainty:
+        uncertainty_map = dict(zip(uncertainty, uncertainty))
+        all_substituded_solutions[uncertainty] = set()
+        for solution_node in solutions.values():
+            if solution_node.substitute(uncertainty_map):
+                all_substituded_solutions[uncertainty] |= {solution_node.node_index}
+            for node, value in uncertainty_map.items():
+                if value:
+                    all_substituded_solutions[uncertainty] |= {node}
+    return all_substituded_solutions
+
+
+def remove_nodes_from_row(matrix, node_order_list, nodes):
+    """
+    Remove the selected rows from the adjacency matrix.
+
+    Parameters
+    ----------
+    matrix: np.array
+        adjacency matrix
+    node_order_list: list
+        ordered list of nodes. node_order_list[i] is the node label of i-th row/column of the adjacency matrix.
+    nodes: list
+        list of nodes to be removed.
+
+    Returns
+    -------
+    matrix: np.array
+        adjacency matrix with removed rows.
+    """
+    rows = [node_order_list.index(node) for node in nodes]
+    # create a copy of the matrix
+    matrix = matrix.copy()
+    # remove the selected rows
+    matrix = np.delete(matrix, rows, axis=0)
+    # return the matrix
+    return matrix
+
+
+def remove_nodes_from_column(matrix, node_order_list, nodes):
+    """
+    Remove the selected columns from the adjacency matrix.
+
+    Parameters
+    ----------
+    matrix: np.array
+        adjacency matrix
+    node_order_list: list
+        ordered list of nodes. node_order_list[i] is the node label of i-th row/column of the adjacency matrix.
+
+    Returns
+    -------
+    matrix: np.array
+        adjacency matrix with removed columns.
+    """
+    columns = [node_order_list.index(node) for node in nodes]
+    # create a copy of the matrix
+    matrix = matrix.copy()
+    # remove the selected columns
+    matrix = np.delete(matrix, columns, axis=1)
+    # return the matrix
+    return matrix
+
+
+class SolutionNode:
+    """
+    Class to represent a solution node. This is an abstract class for uncertainty of gflow.
+    """
+
+    def __init__(self, node_index, parity, uncertainty):
+        """
+        Constructor for SolutionNode
+
+        Parameters
+        ----------
+        node_index: int
+            node index of the solution node.
+        parity: int
+            parity of the solution node.
+        uncertainty: set
+            set of nodes which are not determined by the linear equations.
+        """
+        self.node_index = node_index
+        self.parity = parity
+        self.uncertainty = uncertainty
+
+    def substitute(self, uncertainty_map):
+        """
+        Substitute the uncertainty map to the solution node.
+
+        Parameters
+        ----------
+        uncertainty_map: dict
+            uncertainty map. uncertainty_map[node] is the parity of the node.
+
+        Returns
+        -------
+        solution: bool
+            whether the solution node is included in the correction map or not
+        """
+        solution = self.parity
+        for undeterminded_node in self.uncertainty:
+            solution += uncertainty_map[undeterminded_node]
+        solution = solution % 2
+        return solution
+
+    def subtract(self, other):
+        """
+        Subtract the other solution node from the current solution node.
+
+        Parameters
+        ----------
+        other: SolutionNode
+            other solution node to be subtracted.
+        """
+        self.parity = (self.parity + other.parity) % 2
+        self.uncertainty - other.uncertainty
+
+    def print_solution(self):
+        """
+        Print the solution node.
+        """
+        print("node index: ", self.node_index)
+        print("parity: ", self.parity)
+        print("uncertainty nodes: ", self.uncertainty)

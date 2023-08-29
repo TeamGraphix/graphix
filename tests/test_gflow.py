@@ -13,7 +13,8 @@ class TestGflow(unittest.TestCase):
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
-        f, l_k = flow(G, input, output)
+        meas_plane = {i: "XY" for i in range(6)}
+        f, l_k = flow(G, input, output, meas_plane)
         expected_f = {0: 3, 1: 4, 2: 5, 3: 6, 4: 7, 5: 8}
         expected_lk = {0: 4, 1: 3, 2: 2, 3: 1, 4: 1, 5: 1, 6: 0, 7: 0, 8: 0}
         self.assertEqual(f, expected_f)
@@ -27,7 +28,8 @@ class TestGflow(unittest.TestCase):
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
-        g, l_k = gflow(G, input, output)
+        meas_plane = {i: "XY" for i in range(6)}
+        g, l_k = gflow(G, input, output, meas_plane)
         expected_g = {0: {3, 4, 5}, 1: {4, 5}, 2: {5}, 3: {6}, 4: {7}, 5: {8}}
         expected_lk = {0: 2, 1: 2, 2: 2, 3: 1, 4: 1, 5: 1, 6: 0, 7: 0, 8: 0}
         self.assertEqual(g, expected_g)
@@ -55,7 +57,8 @@ class TestGflow(unittest.TestCase):
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
-        f, l_k = flow(G, input, output)
+        meas_plane = {i: "XY" for i in range(1, 11)}
+        f, l_k = flow(G, input, output, meas_plane)
         self.assertIsNone(f)
         self.assertIsNone(l_k)
 
@@ -81,7 +84,8 @@ class TestGflow(unittest.TestCase):
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
-        g, l_k = gflow(G, input, output)
+        meas_plane = {i: "XY" for i in range(1, 11)}
+        g, l_k = gflow(G, input, output, meas_plane)
         self.assertIsNone(g)
         self.assertIsNone(l_k)
 
