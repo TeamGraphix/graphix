@@ -5,8 +5,8 @@ from typing import Union
 
 
 def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
-
-    opsu = np.array([i["parameter"] * i["parameter"].conj() * i["operator"].conj().T @ i["operator"] for i in data])
+    # NOTE use np.conjugate() instead of object.conj() to certify behaviour when using non-numpy float/complex types
+    opsu = np.array([i["parameter"] * np.conj(i["parameter"]) * i["operator"].conj().T @ i["operator"] for i in data])
 
     if not np.allclose(np.sum(opsu, axis=0), np.eye(2 ** int(np.log2(len(data[0]["operator"]))))):
         raise ValueError(f"The specified channel is not normalized. {np.sum(opsu, axis=0)}")
@@ -22,8 +22,6 @@ def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
     # check all the same dimensions and that they are square matrices
     if len(dims) != 1:
         raise ValueError(f"All provided Kraus operators do not have the same dimension {dims}!")
-
-    # reuse check_square
 
     # NOTE need an assert here???
     check_square(data[0]["operator"])

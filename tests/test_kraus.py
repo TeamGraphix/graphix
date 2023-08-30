@@ -29,6 +29,7 @@ class TestChannel(unittest.TestCase):
         assert mychannel.nqubit == 1
         assert mychannel.size == 2
         assert isinstance(mychannel.kraus_ops, (list, np.ndarray, tuple))
+        assert mychannel.is_normalized
 
     def test_init_with_data_fail(self):
         "test for unsuccessful intialization"
@@ -126,6 +127,7 @@ class TestChannel(unittest.TestCase):
         assert isinstance(dephase_channel, Channel)
         assert dephase_channel.nqubit == 1
         assert dephase_channel.size == 2
+        assert dephase_channel.is_normalized
 
         for i in range(len(dephase_channel.kraus_ops)):
             np.testing.assert_allclose(dephase_channel.kraus_ops[i]["parameter"], data[i]["parameter"])
@@ -146,6 +148,7 @@ class TestChannel(unittest.TestCase):
         assert isinstance(depol_channel, Channel)
         assert depol_channel.nqubit == 1
         assert depol_channel.size == 4
+        assert depol_channel.is_normalized
 
         for i in range(len(depol_channel.kraus_ops)):
             np.testing.assert_allclose(depol_channel.kraus_ops[i]["parameter"], data[i]["parameter"])
@@ -166,6 +169,7 @@ class TestChannel(unittest.TestCase):
         assert isinstance(dephase_channel_2_qubit, Channel)
         assert dephase_channel_2_qubit.nqubit == 2
         assert dephase_channel_2_qubit.size == 4
+        assert dephase_channel_2_qubit.is_normalized
 
         for i in range(len(dephase_channel_2_qubit.kraus_ops)):
             np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["parameter"], data[i]["parameter"])

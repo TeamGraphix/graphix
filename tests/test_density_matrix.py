@@ -3,13 +3,14 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-import scipy
+
 
 from graphix import Circuit
 from graphix.kraus import Channel, create_dephasing_channel, create_depolarising_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
+import tests.random_objects as randobj
 
 
 class TestDensityMatrix(unittest.TestCase):
@@ -34,7 +35,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # check with hermitian dm but not unit trace
         with self.assertRaises(ValueError):
-            DensityMatrix(data=rand_herm(2 ** np.random.randint(2, 5)))
+            DensityMatrix(data=randobj.rand_herm(2 ** np.random.randint(2, 5)))
         # check with non hermitian dm but unit trace
         with self.assertRaises(ValueError):
             l = 2 ** np.random.randint(2, 5)
@@ -59,7 +60,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # check square and hermitian but with incorrect dimension (non-qubit type)
         with self.assertRaises(ValueError):
-            tmp = rand_herm(5)
+            tmp = randobj.rand_herm(5)
             DensityMatrix(data=tmp / tmp.trace())
 
     def test_init_without_data_success(self):
@@ -80,7 +81,7 @@ class TestDensityMatrix(unittest.TestCase):
     def test_init_with_data_success(self):
         for n in range(3):
             # tmp  = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data = rand_herm(2**n)
+            data = randobj.rand_herm(2**n)
             data /= np.trace(data)
             dm = DensityMatrix(data=data)
             assert dm.Nqubit == n
@@ -90,7 +91,7 @@ class TestDensityMatrix(unittest.TestCase):
     def test_evolve_single_fail(self):
         dm = DensityMatrix(nqubit=2)
         # generate random 4 x 4 unitary matrix
-        op = rand_unit(4)
+        op = randobj.rand_unit(4)
 
         with self.assertRaises(AssertionError):
             dm.evolve_single(op, 2)
@@ -99,7 +100,7 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_evolve_single_success(self):
         # generate random 2 x 2 unitary matrix
-        op = rand_unit(2)
+        op = randobj.rand_unit(2)
         n = 10
         for i in range(n):
             sv = Statevec(nqubit=n)
@@ -127,11 +128,11 @@ class TestDensityMatrix(unittest.TestCase):
     def test_tensor_with_data_success(self):
         for n in range(3):
             # tmp_a = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data_a = rand_herm(2**n)
+            data_a = randobj.rand_herm(2**n)
             data_a /= np.trace(data_a)
             dm_a = DensityMatrix(data=data_a)
             # tmp_b = np.random.rand(2**(n + 1), 2**(n + 1)) + 1j * np.random.rand(2**(n + 1), 2**(n + 1))
-            data_b = rand_herm(2 ** (n + 1))
+            data_b = randobj.rand_herm(2 ** (n + 1))
             data_b /= np.trace(data_b)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
@@ -281,7 +282,7 @@ class TestDensityMatrix(unittest.TestCase):
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         dm_single = deepcopy(dm)
 
-        op = rand_unit(2**N_qubits_op)
+        op = randobj.rand_unit(2**N_qubits_op)
         i = np.random.randint(0, N_qubits)
 
         # need a list format for a single target
@@ -296,7 +297,7 @@ class TestDensityMatrix(unittest.TestCase):
         N_qubits_op = 2
 
         # random unitary
-        op = rand_unit(2**N_qubits_op)
+        op = randobj.rand_unit(2**N_qubits_op)
         # random pair of indices
         edge = tuple(random.sample(range(N_qubits), 2))
 
@@ -325,7 +326,7 @@ class TestDensityMatrix(unittest.TestCase):
         N_qubits_op = 3
 
         # random unitary
-        op = rand_unit(2**N_qubits_op)
+        op = randobj.rand_unit(2**N_qubits_op)
         # 3 random indices
         targets = tuple(random.sample(range(N_qubits), 3))
 
@@ -364,7 +365,7 @@ class TestDensityMatrix(unittest.TestCase):
         N_qubits_op = 3
 
         # random unitary
-        op = rand_unit(2**N_qubits_op)
+        op = randobj.rand_unit(2**N_qubits_op)
         # 3 random indices
         targets = tuple(random.sample(range(N_qubits), 3))
 
@@ -396,7 +397,7 @@ class TestDensityMatrix(unittest.TestCase):
     # TODO the test for normalization is done at initialization with data. Now check that all operations conserve the norm.
     def test_normalize(self):
         #  tmp = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
-        data = rand_herm(2 ** np.random.randint(2, 4))
+        data = randobj.rand_herm(2 ** np.random.randint(2, 4))
         # data /= data.trace()
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
@@ -451,8 +452,8 @@ class TestDensityMatrix(unittest.TestCase):
 
         # check on single qubit first
         # # create random density matrix
-        # data = rand_herm(2 ** np.random.randint(2, 4))
-        data = rand_herm(2)
+        # data = randobj.rand_herm(2 ** np.random.randint(2, 4))
+        data = randobj.rand_herm(2)
         data /= np.trace(data)
         dm = DensityMatrix(data=data)
 
@@ -543,8 +544,8 @@ class TestDensityMatrix(unittest.TestCase):
 
         # check on single qubit first
         # # create random density matrix
-        # data = rand_herm(2 ** np.random.randint(2, 4))
-        data = rand_herm(2)
+        # data = randobj.rand_herm(2 ** np.random.randint(2, 4))
+        data = randobj.rand_herm(2)
         data /= np.trace(data)
         dm = DensityMatrix(data=data)
 
@@ -667,9 +668,9 @@ class TestDensityMatrix(unittest.TestCase):
         # build DensityMatrix
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
 
-        # create dephasing channel
+        # create random channel
         probs = np.random.rand(3) + 1j * np.random.rand(3)
-        # HACK NOT SOUND AT ALL. Done by hand to be sure that the last parameter is defined (sqrt).
+        # WARNING NOT SOUND AT ALL. Done by hand to be sure that the last parameter is defined (sqrt).
         # TODO modify.
         probs /= 1.2 * np.sqrt(np.sum(np.abs(probs) ** 2))
         channel = Channel(
@@ -937,109 +938,3 @@ class DensityMatrixBackendTest(unittest.TestCase):
     #     ) / np.sqrt(8)
     #     exact_qft_state = qft_matrix @ sv.psi.flatten()
     #     np.testing.assert_allclose(dm_backend.state.fidelity(noisy_state), dm_backend.state.fidelity(exact_qft_state))
-
-
-def rand_herm(l: int):
-    """
-    generate random hermitian matrix of size l*l
-    """
-    tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
-    return tmp + tmp.conj().T
-
-
-def rand_unit(l: int):
-    """
-    generate random unitary matrix of size l*l from hermitian matrix
-    """
-    return scipy.linalg.expm(1j * rand_herm(l))
-
-# code from Qutip
-# https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
-
-UNITS = np.array([1, 1j])
-# TODO implement and checks
-def randnz(shape, norm=1): # 1 / np.sqrt(2)
-    	
-    # [Mis12] Miszczak, Generating and using truly random quantum states in Mathematica, Computer Physics Communications 183 1, 118-124 (2012). doi:10.1016/j.cpc.2011.08.002.
-
-    """
-    Returns an array of standard normal complex random variates.
-    The Ginibre ensemble corresponds to setting ``norm = 1`` [Mis12]_.
-
-    Parameters
-    ----------
-    shape : tuple
-        Shape of the returned array of random variates.
-    norm : float
-        Scale of the returned random variates, or 'ginibre' to draw
-        from the Ginibre ensemble.
-    """
-    if norm == 'ginibre':
-        norm = 1
-    return np.sum(np.random.randn(*(shape + (2,))) * UNITS, axis=-1) 
-
-# for generating random Kraus operators
-# see in rand_super_bcsz https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html 
-# based on [KNPPZ21] https://arxiv.org/abs/2011.02994 preprint but has explicit form
-# see also [BCSZ08] https://arxiv.org/abs/0804.2361
-# TODO a bit of work but why not. Look at the question of rank.
-
-def random_channel(size: int, dim: int) -> Channel:
-    """
-    generate random channel in Kraus representation.
-    Parameters
-    ----------
-    size : int
-        total number of Kraus operators
-    dim : int
-        dimension of the operators. Must be a multiple of 2.
-
-    Returns
-    -------
-    Channel object
-        containing the corresponding Kraus operators
-    """
-
-    # Maybe no so useful since do comparison by hand ... so not random number but fixed. Like size = 5.
-    # Check dimension
-    # TODO update with checks when done.
-    pass
-    # TODO start back here for random channel generation [if useful]
-    # assert dim & dim - 1 == 0
-
-    # data = []
-    # # all except one
-    # for i in range(size - 1):
-    #     data[i] = {"parameter": np.random.rand(), "operator": np.random.rand(dim, dim) + 1j * np.random.rand(dim, dim)}
-
-    # # final
-    # data[size - 1]["parameter"]
-    # return
-
-
-class TestUtilities(unittest.TestCase):
-
-    # not 2**n as for QM but doesn't matter.
-    def test_rand_herm(self):
-        tmp = rand_herm(np.random.randint(2, 20))
-        np.testing.assert_allclose(tmp, tmp.conj().T)
-
-    def test_rand_unit(self):
-        d = np.random.randint(2, 20)
-        tmp = rand_unit(d)
-
-        # check by applying to a random state
-        # can compare both vectors directly since no global phase introduced in the computation.
-        psi = np.random.rand(d) + 1j * np.random.rand(d)
-        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
-        np.testing.assert_allclose(tmp @ tmp.conj().T @ psi, psi)
-        np.testing.assert_allclose(tmp.conj().T @ tmp @ psi, psi)
-
-        # direct assert equal identity doesn't seem to work. Precision issues?
-        # np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d))
-        # np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d))
-
-
-if __name__ == "__main__":
-    np.random.seed(2)
-    unittest.main()
