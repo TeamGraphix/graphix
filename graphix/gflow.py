@@ -102,8 +102,8 @@ def gflowaux(
         return g, l_k
     non_output = nodes - output
     correction_candidate = output - input
-    solver = GF2Solver(graph, input, output)
-    adjacency_matrix, node_order_list = solver.get_adjacency_matrix()
+    solver = GF2Solver()
+    adjacency_matrix, node_order_list = get_adjacency_matrix(graph)
     adjacency_matrix_row_reduced = remove_nodes_from_row(adjacency_matrix, node_order_list, output)
     adjacency_matrix_reduced = remove_nodes_from_column(
         adjacency_matrix_row_reduced, node_order_list, nodes - correction_candidate
@@ -155,7 +155,7 @@ def gflowaux(
         return gflowaux(graph, input, output | corrected, meas_planes, k + 1, l_k, g, mode=mode)
 
 
-def flow(graph, input, output, meas_planes):
+def flow(graph, input, output, meas_planes=None):
     """Causal flow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
@@ -174,7 +174,7 @@ def flow(graph, input, output, meas_planes):
         set of node labels for input
     output: set
         set of node labels for output
-    meas_planes: int
+    meas_planes: int(optional)
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i. Note that an underlying graph has a causal flow only if all measurement planes are "XY".
 
     Returns
@@ -186,6 +186,9 @@ def flow(graph, input, output, meas_planes):
     """
     nodes = set(graph.nodes)
     edges = set(graph.edges)
+
+    if meas_planes is None:
+        meas_planes = {i: "XY" for i in (nodes - output)}
 
     for plane in meas_planes.values():
         if plane not in ["X", "Y", "XY"]:
@@ -294,7 +297,7 @@ def search_neighbor(node, edges):
     return N
 
 
-def find_flow(graph, input, output, meas_planes, mode="single"):
+def find_flow(graph, input, output, meas_planes=None, mode="single"):
     """Function to determine whether there exists flow or gflow
 
     Parameters
@@ -305,9 +308,11 @@ def find_flow(graph, input, output, meas_planes, mode="single"):
         set of node labels for input
     output: set
         set of node labels for output
-    meas_planes: dict
+    meas_planes: dict(optional)
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     """
+    if meas_planes is None:
+        meas_planes = {i: "XY" for i in (set(graph.nodes) - output)}
     f, l_k = flow(graph, input, output, meas_planes)
     if f:
         print("flow found")
@@ -315,7 +320,7 @@ def find_flow(graph, input, output, meas_planes, mode="single"):
         print("l_k is ", l_k)
     else:
         print("no flow found, finding gflow")
-    g, l_k = gflow(graph, input, output, meas_planes)
+    g, l_k = gflow(graph, input, output, meas_planes, mode=mode)
     if g:
         print("gflow found")
         print("g is ", g)
@@ -388,37 +393,9 @@ def get_layers(l_k):
 class GF2Solver:
     """Solver for GF(2) linear equations"""
 
-    def __init__(self, graph, input, output):
-        """Constructor for GF2Solver
-
-        Parameters
-        ----------
-        graph: nx.Graph
-            graph (incl. in and out)
-        input: set
-            set of node labels for input
-        output: set
-            set of node labels for output
-        """
-        self.graph = graph
-        self.input = input
-        self.output = output
-
-    def get_adjacency_matrix(self):
-        """Get adjacency matrix of the graph
-
-        Returns
-        -------
-        adjacency_matrix: np.array
-            adjacency matrix of the graph
-        node_list: list
-            ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
-
-        """
-        node_list = list(self.graph.nodes)
-        node_list.sort()
-        adjacency_matrix = nx.adjacency_matrix(self.graph, nodelist=node_list).todense()
-        return adjacency_matrix, node_list
+    def __init__(self):
+        """Constructor for GF2Solver"""
+        pass
 
     def solve(self, adjacency_matrix, RHS_map, node_order_col):
         """Solve the linear equations
@@ -621,16 +598,34 @@ def find_all_solutions(solutions, uncertainty):
         return all_substituded_solutions
     all_uncertainty = product([0, 1], repeat=len(uncertainty))
     all_substituded_solutions = dict()
-    for uncertainty in all_uncertainty:
-        uncertainty_map = dict(zip(uncertainty, uncertainty))
-        all_substituded_solutions[uncertainty] = set()
+    for uncertainty_values in all_uncertainty:
+        uncertainty_map = dict(zip(uncertainty, uncertainty_values))
+        key = str(uncertainty_map)
+        all_substituded_solutions[key] = set()
         for solution_node in solutions.values():
             if solution_node.substitute(uncertainty_map):
-                all_substituded_solutions[uncertainty] |= {solution_node.node_index}
+                all_substituded_solutions[key] |= {solution_node.node_index}
             for node, value in uncertainty_map.items():
                 if value:
-                    all_substituded_solutions[uncertainty] |= {node}
+                    all_substituded_solutions[key] |= {node}
     return all_substituded_solutions
+
+
+def get_adjacency_matrix(graph):
+    """Get adjacency matrix of the graph
+
+    Returns
+    -------
+    adjacency_matrix: np.array
+        adjacency matrix of the graph
+    node_list: list
+        ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
+
+    """
+    node_list = list(graph.nodes)
+    node_list.sort()
+    adjacency_matrix = nx.adjacency_matrix(graph, nodelist=node_list).todense()
+    return adjacency_matrix, node_list
 
 
 def remove_nodes_from_row(matrix, node_order_list, nodes):
