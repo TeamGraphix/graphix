@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A new option whether to write down all maximally delayed gflow or not in `gflow.gflow` (#80)
+
 ### Changed
 
+- Implemented GF(2) solver independent from `z3-solver` (#80)
+
 ### Fixed
+
+- Fixed conditional branch in `gflow.gflowaux` (#80)
 
 ## [0.2.5] - 2023-08-17
 
