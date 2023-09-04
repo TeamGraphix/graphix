@@ -116,7 +116,7 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=1000):
     if meas_plane is None:
         meas_plane = {u: "XY" for u in v}
 
-    gamma = nx.to_numpy_matrix(g)  # adjacency matrix
+    gamma = nx.to_numpy_array(g)  # adjacency matrix
     index_list = list(g.nodes)  # match g.nodes with gamma's index
     l_k = {i: 0 for i in v}  # contains k, layer number initialized to default (0).
     g = dict()  # contains the correction set g(i) for i\in V.
