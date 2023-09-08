@@ -8,13 +8,13 @@
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
 [![Downloads](https://static.pepy.tech/badge/graphix)](https://pepy.tech/project/graphix)
 
-**Graphix** is a measurement-based quantum computing (MBQC) compiler, which makes it easier to generate, optimize and simulate MBQC *measurement patterns*.
+**Graphix** is a measurement-based quantum computing (MBQC) compiler to generate, optimize and simulate MBQC *measurement patterns*.
 
 ## Feature
 
-- We integrate an efficient [graph state simulator](https://graphix.readthedocs.io/en/latest/lc-mbqc.html) as an optimization routine of MBQC *measurement pattern*, with which we can classically [preprocess all Pauli measurements](https://graphix.readthedocs.io/en/latest/tutorial.html#performing-pauli-measurements) (corresponding to the elimination of all Clifford gates in the gate network - c.f. [Gottesman-Knill theorem](https://en.wikipedia.org/wiki/Gottesman–Knill_theorem)), significantly reducing the required size of graph state to run the computation.
-- We implement tensor-network simulation of MBQC with which thousands of qubits (graph nodes) can be simulated with modest computing resources (e.g. laptop), without approximation.
-- Our pattern-based construction and optimization routines are suitable for high-level optimization to run quantum algorithms on MBQC quantum hardware with minimal resource state size requirements. We plan to add quantum hardware emulators (and quantum hardware) as pattern execution backends.
+- We integrate an efficient [graph state simulator](https://graphix.readthedocs.io/en/latest/lc-mbqc.html) as an optimization routine of MBQC *measurement pattern*, with which we can classically [preprocess all Pauli measurements](https://graphix.readthedocs.io/en/latest/tutorial.html#performing-pauli-measurements) (corresponding to the elimination of all Clifford gates in the gate network - c.f. [Gottesman-Knill theorem](https://en.wikipedia.org/wiki/Gottesman–Knill_theorem) and more general pattern rewriting method based on [ZX diagram rewriting](https://arxiv.org/abs/2003.01664)), reducing the required size of graph state to run the computation.
+- We implement tensor-network simulation backend for MBQC with which thousands of qubits (graph nodes) can be simulated with modest computing resources (e.g. laptop), without approximation.
+- We are developing density matrix simulation backend for noisy MBQC simulations with customizable noise models.
 
 ## Installation
 Install `graphix` with `pip`:
@@ -47,17 +47,16 @@ Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you
 
 ## Citing
 
-> S. Sunami and M. Fukushima. "Graphix: optimizing and simulating measurement-based quantum computation on local-Clifford decorated graph", 
-> [arXiv:2212.11975](https://arxiv.org/abs/2212.11975) (2022).
+> Shinichi Sunami and Masato Fukushima, Graphix. (2023) https://doi.org/10.5281/zenodo.7861382
 
-Update on the paper: [^1]
+Update on the [arXiv paper](https://arxiv.org/pdf/2212.11975.pdf): [^1]
 
-[^1]: Following the release of this arXiv preprint, we were made aware of a previous work by [Backens et al.](https://quantum-journal.org/papers/q-2021-03-25-421/) where Pauli measurement elimination method for MBQC was developed in the context of circuit optimization. 
-Many thanks for letting us know about this work, we will properly mention this work in the next version of our paper.
+[^1]: Following the release of this arXiv preprint, we were made aware of [Backens et al.](https://quantum-journal.org/papers/q-2021-03-25-421/) and related work, where graph-theoretic simplification (Pauli measurement elimination) of patterns were shown.
+Many thanks for letting us know about this work - at the time of the writing we were not aware of these important relevant works but will certainly properly mention in the new version; we are working on significant restructuring and rewriting of the paper and hope to update the paper this autumn.
 
 ## Contributing
 
-We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking requests and bugs. 
+We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking feature requests and bugs reports. 
 
 ## Discord Server
 

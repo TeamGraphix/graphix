@@ -2,6 +2,7 @@ Introduction to LC-MBQC
 =======================
 
 In :doc:`intro`, we looked at how to generate and optimize MBQC command sequence to realize universal quantum computations. Here, we further optimize the measurement pattern to significantly reduce the number of operations required. For this, we use efficient graph simulator :class:`~graphix.graphsim.GraphState` which we explain below.
+Note that this pattern simplification is very similar (and in fact a subset of) optimizations using `ZX calculus <https://zxcalculus.com/>`_; see for example, `this paper <https://arxiv.org/abs/2003.01664>`_
 
 Graph state simulator
 ---------------------

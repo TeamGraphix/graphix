@@ -1,8 +1,10 @@
 import unittest
+
+import numpy as np
+
 from graphix.graphsim import GraphState
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec, meas_op
-import numpy as np
 
 
 def get_state(g):
@@ -37,21 +39,21 @@ class TestGraphSim(unittest.TestCase):
         g.measure_x(0)
         gstate.evolve_single(meas_op(0), [0])  # x meas
         gstate.normalize()
-        gstate.ptrace([0])
+        gstate.remove_qubit(0)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_y(1, choice=0)
         gstate.evolve_single(meas_op(0.5 * np.pi), [0])  # y meas
         gstate.normalize()
-        gstate.ptrace([0])
+        gstate.remove_qubit(0)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_z(3)
         gstate.evolve_single(meas_op(0.5 * np.pi, plane="YZ"), 1)  # z meas
         gstate.normalize()
-        gstate.ptrace([1])
+        gstate.remove_qubit(1)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
