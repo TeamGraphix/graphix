@@ -397,7 +397,16 @@ def get_layers(l_k):
 
 
 class GF2Solver:
-    """Solver for GF(2) linear equations"""
+    """Solver for GF(2) linear equations
+
+    Generalization of well-known Gauss-Jordan elimination onto GF2 and non-square matrix.
+
+    Step 1. GF2Solver.forward_elimination
+        Conduct row elimination and column pivoting when necessary.
+        We get a standard form of n x m matrix and kernel of matrix here.
+    Step 2. GF2Solver.backward_substitution
+        We get solutions for each node.
+    """
 
     def __init__(self):
         """Constructor for GF2Solver"""
