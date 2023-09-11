@@ -41,6 +41,8 @@ def gflow(graph, input, output, meas_planes, mode="single"):
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    mode: str
+        "single", "all", or "abstract". "single" returns a single solution for each qubit, while "all" returns all solutions. "abstract" returns the abstract solution. user has to substitute uncertainty map into abstract solution manually.
 
     Returns
     -------
@@ -87,7 +89,7 @@ def gflowaux(
     g: dict
         gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
     mode: str
-        "single" or "all". "single" returns a single solution for each qubit, while "all" returns all solutions.
+        "single", "all", or "abstract". "single" returns a single solution for each qubit, while "all" returns all solutions. "abstract" returns the abstract solution. user has to substitute uncertainty map into abstract solution manually.
 
     Returns
     -------
@@ -140,10 +142,14 @@ def gflowaux(
             all_solutions[candidate][candidate] = SolutionNode(candidate, 1, set())
         if mode == "single":
             g[candidate] = find_single_solution(all_solutions[candidate], uncertainty)
+            l_k[candidate] = k
         elif mode == "all":
             g[candidate] = find_all_solutions(all_solutions[candidate], uncertainty)
+            l_k[candidate] = k
+        elif mode == "abstract":
+            g[candidate] = all_solutions[candidate]
+            l_k[candidate] = {"layer": k, "uncertainty": uncertainty}
 
-        l_k[candidate] = k
         corrected |= {candidate}
 
     if len(corrected) == 0:

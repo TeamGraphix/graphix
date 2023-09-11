@@ -56,9 +56,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
-        meas_planes = {}
-        for i in measuring_nodes:
-            meas_planes[i] = "XY"
+        meas_planes = {i: "XY" for i in measuring_nodes}
 
     # search for flow first
     f, l_k = flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
