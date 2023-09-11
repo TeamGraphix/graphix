@@ -403,9 +403,9 @@ class GF2Solver:
 
     Step 1. GF2Solver.forward_elimination
         Conduct row elimination and column pivoting when necessary.
-        We get a standard form of n x m matrix and kernel of matrix here.
+        We get a standard form of n x m matrix.
     Step 2. GF2Solver.backward_substitution
-        We get solutions for each node.
+        We get solutions for each node and kernel of the matrix.
     """
 
     def __init__(self):
