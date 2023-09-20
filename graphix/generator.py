@@ -75,6 +75,7 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
                     if k not in measured:
                         pattern.seq.append(["Z", k, [j]])
                 pattern.seq.append(["X", f[j], [j]])
+        pattern.input_nodes = inputs
         pattern.output_nodes = outputs
         pattern.Nnode = len(graph.nodes)
     else:
@@ -99,6 +100,7 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
                         pattern.seq.append(["Z", k, [j]])
                     for k in set(g[j]) - set([j]):
                         pattern.seq.append(["X", k, [j]])
+            pattern.input_nodes = inputs
             pattern.output_nodes = outputs
             pattern.Nnode = len(graph.nodes)
         else:

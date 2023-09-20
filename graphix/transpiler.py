@@ -187,6 +187,7 @@ class Circuit:
         pattern : :class:`graphix.pattern.Pattern` object
         """
         Nnode = self.width
+        inputs = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
         pattern = Pattern(self.width)
         for instr in self.instruction:
@@ -260,6 +261,7 @@ class Circuit:
                     )
             else:
                 raise ValueError("Unknown instruction, commands not added")
+        pattern.input_nodes = inputs
         pattern.output_nodes = out
         pattern.Nnode = Nnode
         return pattern
