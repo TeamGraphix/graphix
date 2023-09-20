@@ -16,7 +16,7 @@ class TestExtraction(unittest.TestCase):
         self.assertEqual(len(clusters), 1)
         self.assertEqual(clusters[0] == Cluster(type=ClusterType.GHZ, graph=gs), True)
 
-    # we consider everything smaller than 4, a GHZ
+    # We define any cluster whose size is smaller than 4, a GHZ cluster
     def test_cluster_extraction_small_ghz_cluster_1(self):
         gs = graphix.GraphState()
         nodes = [0, 1, 2]
@@ -28,7 +28,7 @@ class TestExtraction(unittest.TestCase):
         self.assertEqual(len(clusters), 1)
         self.assertEqual(clusters[0] == Cluster(type=ClusterType.GHZ, graph=gs), True)
 
-    # we consider everything smaller than 4, a GHZ
+    # We define any cluster whose size is smaller than 4, a GHZ cluster
     def test_cluster_extraction_small_ghz_cluster_2(self):
         gs = graphix.GraphState()
         nodes = [0, 1]

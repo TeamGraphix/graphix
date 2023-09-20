@@ -16,6 +16,16 @@ class ClusterType(Enum):
 
 
 class Cluster:
+    """Cluster object.
+
+    Parameters
+    ----------
+    type : :class:`ClusterType` object
+        Type of the cluster.
+    graph : :class:`graphix.GraphState` object
+        Graph state of the cluster.
+    """
+
     def __init__(self, type: ClusterType, graph: graphix.GraphState = None):
         self.graph = graph
         self.type = type
@@ -50,6 +60,11 @@ def extract_clusters_from_graph(
         Maximum size of ghz clusters
     max_lin:
         Maximum size of linear clusters
+
+    Returns
+    -------
+    list
+        List of :class:`Cluster` objects.
     """
     adjdict = nx.to_dict_of_dicts(graph)
     number_of_edges = graph.number_of_edges()
@@ -119,6 +134,11 @@ def create_cluster(node_ids: list[int], root: int | None = None) -> Cluster:
         List of node ids.
     root : int
         Root of the ghz cluster. If None, it's a linear cluster.
+
+    Returns
+    -------
+    :class:`Cluster` object
+        Cluster object.
     """
     cluster_type = None
     edges = []
