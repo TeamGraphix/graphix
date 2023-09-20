@@ -38,12 +38,12 @@ def extract_clusters_from_graph(
     max_ghz: int | float = np.inf,
     max_lin: int | float = np.inf,
 ) -> list[Cluster]:
-    """Extract GHZ clusters and Linear clusters circuit from MBQC pattern.
+    """Extract GHZ clusters and Linear clusters circuit from :class:`graphix.GraphState`.
 
     Parameters
     ----------
     graph : :class:`graphix.GraphState` object
-        Graph state corresponding to the pattern.
+        Graph state.
     phasedict : dict
         Dictionary of phases for each node.
     max_ghz:
