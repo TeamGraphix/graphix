@@ -11,7 +11,7 @@ class ClusterType(Enum):
     LINEAR = "LINEAR"
     NONE = "99"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -30,13 +30,13 @@ class Cluster:
         self.graph = graph
         self.type = type
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.type) + str(self.graph.nodes)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.type) + str(self.graph.nodes)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, Cluster):
             raise TypeError("cannot compare Cluster with non-Cluster object")
 
@@ -154,7 +154,7 @@ def create_cluster(node_ids: list[int], root: int | None = None) -> Cluster:
     return Cluster(type=cluster_type, graph=tmp_graph)
 
 
-def get_fusion_nodes(c1: Cluster, c2: Cluster):
+def get_fusion_nodes(c1: Cluster, c2: Cluster) -> list[int]:
     """Get the nodes that are fused between two clusters.
 
     Parameters
