@@ -43,7 +43,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, width=0, input_nodes=[], output_nodes=[]):
+    def __init__(self, width=0, input_nodes=None, output_nodes=[]):
         """
         :param width:  number of input/output qubits
         """
@@ -779,7 +779,7 @@ class Pattern:
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
-        vin = set(self.input_nodes)
+        vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         f, l_k = flow(G, vin, vout)
         if f is None:
@@ -808,8 +808,10 @@ class Pattern:
         isolated = list(nx.isolates(G))
         if isolated:
             raise ValueError("The input graph must be connected")
+        vin = set(self.input_nodes) if self.input_nodes is not None else set()
+        vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = gflow(G, set(self.input_nodes), set(self.output_nodes), meas_plane=meas_plane)
+        g, l_k = gflow(G, vin, vout, meas_plane=meas_plane)
         if not g:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
@@ -1620,6 +1622,7 @@ class LocalPattern:
             if node.result is not None:
                 pattern.results[node.index] = node.result
         pattern.seq = Nseq + Eseq + Mseq + Xseq + Zseq + Cseq
+        self.Nnodes = len(Nseq)
         return pattern
 
 
@@ -1681,10 +1684,10 @@ def measure_pauli(pattern, leave_inputs, copy=False):
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_inputs)
-    if leave_inputs:
-        new_inputs = pattern.input_nodes
+    if not leave_inputs and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
+        new_inputs = None
     else:
-        new_inputs = list(set(pattern.input_nodes) - set([i[0][1] for i in to_measure]))
+        new_inputs = pattern.input_nodes
     for cmd in to_measure:
         # extract signals for adaptive angle.
         if cmd[1] in ["+X", "-X"]:

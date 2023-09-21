@@ -60,7 +60,7 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
     if f:
         # flow found
         depth, layers = get_layers(l_k)
-        pattern = Pattern(len(inputs))
+        pattern = Pattern(input_nodes=inputs, output_nodes=outputs, width=len(inputs))
         pattern.seq = [["N", i] for i in inputs]
         for i in set(graph.nodes) - set(inputs):
             pattern.seq.append(["N", i])
@@ -75,8 +75,6 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
                     if k not in measured:
                         pattern.seq.append(["Z", k, [j]])
                 pattern.seq.append(["X", f[j], [j]])
-        pattern.input_nodes = inputs
-        pattern.output_nodes = outputs
         pattern.Nnode = len(graph.nodes)
     else:
         # no flow found - we try gflow
@@ -84,7 +82,7 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
         if g:
             # gflow found
             depth, layers = get_layers(l_k)
-            pattern = Pattern(len(inputs))
+            pattern = Pattern(input_nodes=inputs, output_nodes=outputs, width=len(inputs))
             pattern.seq = [["N", i] for i in inputs]
             for i in set(graph.nodes) - set(inputs):
                 pattern.seq.append(["N", i])
@@ -100,8 +98,6 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
                         pattern.seq.append(["Z", k, [j]])
                     for k in set(g[j]) - set([j]):
                         pattern.seq.append(["X", k, [j]])
-            pattern.input_nodes = inputs
-            pattern.output_nodes = outputs
             pattern.Nnode = len(graph.nodes)
         else:
             raise ValueError("no flow or gflow found")
