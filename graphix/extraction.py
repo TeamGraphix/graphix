@@ -49,6 +49,7 @@ def extract_clusters_from_graph(
     max_lin: int | float = np.inf,
 ) -> list[Cluster]:
     """Extract GHZ clusters and Linear clusters circuit from :class:`graphix.GraphState`.
+    Extraction algorithm is based on https://arxiv.org/abs/2210.09251.
 
     Parameters
     ----------
