@@ -1203,14 +1203,14 @@ class Pattern:
         result = exe.run()
         return result
 
-    def perform_pauli_measurements(self, leave_inputs=False):
+    def perform_pauli_measurements(self, leave_input=False):
         """Perform Pauli measurements in the pattern using
         efficient stabilizer simulator.
 
         .. seealso:: :func:`measure_pauli`
 
         """
-        measure_pauli(self, leave_inputs, copy=False)
+        measure_pauli(self, leave_input, copy=False)
 
     def to_qasm3(self, filename):
         """Export measurement pattern to OpenQASM 3.0 file
@@ -1650,7 +1650,7 @@ def xor_combination_list(list1, list2):
     return result
 
 
-def measure_pauli(pattern, leave_inputs, copy=False):
+def measure_pauli(pattern, leave_input, copy=False):
     """Perform Pauli measurement of a pattern by fast graph state simulator
     uses the decorated-graph method implemented in graphix.graphsim to perform
     the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1661,7 +1661,7 @@ def measure_pauli(pattern, leave_inputs, copy=False):
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    leave_inputs : bool
+    leave_input : bool
         True: input nodes will not be removed
         False: all the nodes measured in Pauli bases will be removed
     copy : bool
@@ -1683,8 +1683,8 @@ def measure_pauli(pattern, leave_inputs, copy=False):
     vop_init = pattern.get_vops(conj=False)
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
-    to_measure, non_pauli_meas = pauli_nodes(pattern, leave_inputs)
-    if not leave_inputs and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
+    to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
+    if not leave_input and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
         new_inputs = None
     else:
         new_inputs = pattern.input_nodes
@@ -1772,14 +1772,14 @@ def measure_pauli(pattern, leave_inputs, copy=False):
         pattern._pauli_preprocessed = True
 
 
-def pauli_nodes(pattern, leave_inputs):
+def pauli_nodes(pattern, leave_input):
     """returns the list of measurement commands that are in Pauli bases
     and that are not dependent on any non-Pauli measurements
 
     Parameters
     ----------
     pattern : graphix.Pattern object
-    leave_inputs : bool
+    leave_input : bool
 
     Returns
     -------
@@ -1794,9 +1794,7 @@ def pauli_nodes(pattern, leave_inputs):
     non_pauli_node = []
     for cmd in m_commands:
         pm = is_pauli_measurement(cmd, ignore_vop=True)
-        if pm is not None and (
-            cmd[1] not in pattern.input_nodes or not leave_inputs
-        ):  # Pauli measurement to be removed
+        if pm is not None and (cmd[1] not in pattern.input_nodes or not leave_input):  # Pauli measurement to be removed
             if pm in ["+X", "-X"]:
                 t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node)))
                 if t_cond:  # cmd depend on non-Pauli measurement
