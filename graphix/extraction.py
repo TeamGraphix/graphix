@@ -9,9 +9,9 @@ import networkx as nx
 class ClusterType(Enum):
     GHZ = "GHZ"
     LINEAR = "LINEAR"
-    NONE = "99"
+    NONE = None
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
 
@@ -78,6 +78,9 @@ def extract_clusters_from_graph(
     for v in adjdict.keys():
         if len(adjdict[v]) > 2:
             neighbors_list.append((v, len(adjdict[v])))
+        # If there is an isolated node, add it to the list.
+        if len(adjdict[v]) == 0:
+            cluster_list.append(create_cluster([v], root=v))
 
     # Find GHZ clusters in the graph and remove their edges from the graph.
     # All nodes that have more than 2 edges become the roots of the GHZ clusters.
