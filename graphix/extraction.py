@@ -161,7 +161,10 @@ def create_cluster(node_ids: list[int], root: int | None = None) -> Cluster:
 
 
 def get_fusion_nodes(c1: Cluster, c2: Cluster) -> list[int]:
-    """Get the nodes that are fused between two clusters.
+    """Get the nodes that are fused between two clusters. Currently, we consider only type-I fusion.
+    See [2] for the definition of fusion.
+
+    [2] Daniel E. Browne and Terry Rudolph. Resource-efficient linear optical quantum computation. Physical Review Letters, 95(1):010501, 2005.
 
     Parameters
     ----------
