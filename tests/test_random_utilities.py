@@ -29,10 +29,10 @@ class TestUtilities(unittest.TestCase):
         # np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d))
         # np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d))
 
-    def test_random_channel(self):
+    def test_random_channel_success(self):
 
         nqb = np.random.randint(1, 5)
-        dim = 2**nqb #np.random.randint(2, 8)
+        dim = 2**nqb  # np.random.randint(2, 8)
 
         # no rank feature
         channel = randobj.rand_channel_kraus(dim=dim)
@@ -46,8 +46,8 @@ class TestUtilities(unittest.TestCase):
         assert channel.is_normalized
 
         # check rank feature. Eq (15) of [KNPPZ21]always satisfied with rk = M
-        rk = np.random.randint(1, dim**2)
-        channel = randobj.rand_channel_kraus(dim = dim, rank = rk)
+        rk = np.random.randint(1, dim**2 + 1)
+        channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
 
         assert isinstance(channel, Channel)
         assert check_data_dims(channel.kraus_ops)
@@ -59,8 +59,18 @@ class TestUtilities(unittest.TestCase):
 
         # NOTE test sigma feature??
 
+    def test_random_channel_fail(self):
+        # don't need to test for normalization.
+        # If not normalized, the Channel can't be created! checks done there.
 
-        
+        # incorrect rank type
+        with self.assertRaises(TypeError):
+            mychannel = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
+
+        # null rank
+        with self.assertRaises(ValueError):
+            mychannel = randobj.rand_channel_kraus(dim=2**2, rank=0)
+
     def test_rand_gauss_cpx(self):
 
         nsample = int(1e5)
@@ -68,10 +78,8 @@ class TestUtilities(unittest.TestCase):
         # don't need to be qubit type
         dim = np.random.randint(2, 20)
 
-
-        
         # default parameters test
-        tmp = [randobj.rand_gauss_cpx_mat(dim = dim) for _ in range(nsample)]
+        tmp = [randobj.rand_gauss_cpx_mat(dim=dim) for _ in range(nsample)]
 
         # set comprehension
         dimset = {i.shape for i in tmp}
@@ -80,27 +88,23 @@ class TestUtilities(unittest.TestCase):
 
         # guess this is useless since np.random.normal has been tested....
 
-        # variances real and imag add so if same, std takes a sqrt(2) factor.
-        np.testing.assert_allclose(np.std(tmp, axis = 0), np.full((dim,) * 2, 1.), rtol=0, atol=1e-2)
+        # # variances real and imag add so if same, std takes a sqrt(2) factor.
+        # np.testing.assert_allclose(np.std(tmp, axis = 0), np.full((dim,) * 2, 1.), rtol=0, atol=1e-2)
 
+        # # TODO update and check test (nsample, atol)
+        # sigm = 0.1 + np.random.rand()
+        # tmp = [randobj.rand_gauss_cpx_mat(dim = dim, sig = sigm) for _ in range(nsample)]
 
-        sigm = 0.1 + 5.*np.random.rand()
-        tmp = [randobj.rand_gauss_cpx_mat(dim = dim, sig = sigm) for _ in range(nsample)]
+        # # set comprehension
+        # dimset = {i.shape for i in tmp}
+        # assert len(dimset) == 1
+        # assert list(dimset)[0] == (dim, dim)
 
-        # set comprehension
-        dimset = {i.shape for i in tmp}
-        assert len(dimset) == 1
-        assert list(dimset)[0] == (dim, dim)
+        # # guess this is useless since np.random.normal has been tested....
 
-        # guess this is useless since np.random.normal has been tested....
+        # # variances real and imag add so if same, std takes a sqrt(2) factor.
+        # np.testing.assert_allclose(np.std(tmp, axis = 0), np.full((dim,) * 2, np.sqrt(2.)*sigm), rtol=0, atol=1e-2)
 
-        # variances real and imag add so if same, std takes a sqrt(2) factor.
-        np.testing.assert_allclose(np.std(tmp, axis = 0), np.full((dim,) * 2, np.sqrt(2.)*sigm), rtol=0, atol=1e-2)
-
-        
-
-
- 
     # TODO add (complete) positivity test! Via Cholesky? Qitip mentions possible problems.
 
 

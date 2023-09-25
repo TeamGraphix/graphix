@@ -1,7 +1,7 @@
 import numpy as np
 
 from graphix.ops import Ops
-from graphix.Checks.channel_checks import check_data_normalization, check_data_dims, check_data_values_type
+from graphix.Checks.channel_checks import check_data_normalization, check_data_dims, check_data_values_type, check_rank
 
 
 class Channel:
@@ -40,7 +40,7 @@ class Channel:
         kraus_data : array_like
             array of Kraus operator data.
             array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
-
+            only works for square Kraus operators
         Raises
         ------
         ValueError
@@ -68,6 +68,7 @@ class Channel:
 
         # np.asarray(data, dtype=np.complex128)
         # number of Kraus operators in the Channel
+        assert check_rank(kraus_data)
         self.size = len(kraus_data)
 
     def __repr__(self):

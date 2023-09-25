@@ -21,7 +21,7 @@ class DensityMatrix:
         Parameters
         ----------
             data : DensityMatrix, list, tuple, np.ndarray or None
-                Density matrix.
+                Density matrix of shape (2**nqubits, 2**nqubits).
             nqubit : int
                 Number of qubits. Default is 1. If both `data` and `nqubit` are specified, `nqubit` is ignored.
         """
@@ -275,7 +275,9 @@ class DensityMatrix:
         result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
         tmp_dm = deepcopy(self)
 
-        assert isinstance(channel, Channel)
+        # TODO: not tested yet.
+        if not isinstance(channel, Channel):
+            raise TypeError("Can't apply a channel that is not a Channel object.")
 
         # too many deepcopy?
         for i in channel.kraus_ops:
@@ -287,7 +289,7 @@ class DensityMatrix:
             # else:
             #     tmp_dm.evolve(i["operator"], qargs)
             tmp_dm.evolve(i["operator"], qargs)
-            result_array += i["parameter"] * i["parameter"].conj() * tmp_dm.rho
+            result_array += i["parameter"] * np.conj(i["parameter"]) * tmp_dm.rho
             # reinitialize to input density matrix
             tmp_dm = deepcopy(self)
 

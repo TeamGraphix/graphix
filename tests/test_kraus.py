@@ -8,6 +8,7 @@ from graphix.kraus import (
     create_dephasing_channel,
     create_depolarising_channel,
 )
+import tests.random_objects as randobj
 
 from graphix.ops import Ops
 
@@ -115,6 +116,11 @@ class TestChannel(unittest.TestCase):
                     {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
                 ]
             )
+
+        # incorrect rank (number of kraus_operators)
+        # use a random channel to do that.
+        with self.assertRaises(ValueError):
+            mychannel = randobj.rand_channel_kraus(dim=2**2, rank=20)
 
     def test_dephasing_channel(self):
 

@@ -64,6 +64,7 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
     ----------
      dim : int
         Linear dimension of the (square) matrix of each Kraus operator.
+        Only square operators (so far)!
 
     rank : int
         Choi rank ie the number of Kraus operators.
@@ -76,21 +77,30 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 
     """
 
-    # TODO check complete positivity!
+    # TODO check complete positivity?
+    # immediate from Kraus decomposition
     # use Cholesky decomp?
     # https://math.stackexchange.com/questions/87528/a-practical-way-to-check-if-a-matrix-is-positive-definite
     # https://numpy.org/doc/stable/reference/generated/numpy.linalg.cholesky.html
 
+    # default is full rank.
     if rank is None:
         rank = dim**2
 
     if sig == "ginibre":
         sig = 1.0 / np.sqrt(2 * dim)
 
-    assert 1 <= rank <= dim**2
+    # Condition in def 2 and eq 15 of [KNPPZ21]
+    # the smaller than d**2 checked in the Channel class __init__
+
+    if not isinstance(rank, int):
+        raise TypeError("The rank of a Kraus expansion must be an integer.")
+
+    if not 1 <= rank:
+        raise ValueError("The rank of a Kraus expansion must be greater than 1.")
 
     pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
     Hmat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
     kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(Hmat))
 
-    return Channel([{"parameter": 1.0, "operator": kraus_list[i]} for i in range(rank)])
+    return Channel([{"parameter": 1.0 + 0.0 * 1j, "operator": kraus_list[i]} for i in range(rank)])
