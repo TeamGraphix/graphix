@@ -1,4 +1,6 @@
 """
+.. _gallery:qft:
+
 Minimizing the pattern space
 ============================
 
@@ -11,7 +13,7 @@ for any quantum algorithms running on MBQC.
 We will demonstrate this by simulating QFT on three qubits.
 First, import relevant modules and define additional gates we'll use:
 """
-#%%
+# %%
 import numpy as np
 from graphix import Circuit
 import networkx as nx
@@ -34,7 +36,7 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
-#%%
+# %%
 # Now let us define a circuit to apply QFT to three-qubit |011> state (input=6).
 
 
@@ -66,7 +68,7 @@ nx.draw(g)
 plt.show()
 print(len(nodes))
 
-#%%
+# %%
 # This is a graph with 49 qubits, whose statevector is very hard to simulate in ordinary computers.
 # As such, instead of preparing the graph state at the start of the compuation, we opt to prepare
 # qubits as late as possible, so that (destructive) measurements will reduce the burden while we wait.
@@ -78,14 +80,14 @@ pattern.shift_signals()
 pattern.print_pattern(lim=20)
 print(pattern.max_space())
 
-#%%
+# %%
 # now compare with below:
 
 pattern.minimize_space()
 pattern.print_pattern(lim=20)
 print(pattern.max_space())
 
-#%%
+# %%
 # The maximum space has gone down to 4 which should be very easily simulated on laptops.
 # Let us check the answer is correct, by comparing with statevector simulation.
 
@@ -93,7 +95,7 @@ out_state = pattern.simulate_pattern()
 state = circuit.simulate_statevector()
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 
-#%%
+# %%
 # Finally, check the output state:
 st_expected = [np.exp(2 * np.pi * 1j * 3 * i / 8) / np.sqrt(8) for i in range(8)]
 out_stv = out_state.flatten()
