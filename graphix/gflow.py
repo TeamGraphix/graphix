@@ -554,7 +554,7 @@ class GF2Solver:
                 for col in range(rank, LHS.shape[1]):
                     if LHS[row, col] != 0:
                         uncertainty |= {node_order_col[col]}
-                currect_sol = SolutionNode(node_order_col[row], RHS_vector[row, 0], uncertainty)
+                currect_sol = SolutionNode(node_order_col[row], RHS_vector[row], uncertainty)
                 for col in range(row + 1, rank):
                     if LHS[row, col] != 0:
                         currect_sol.subtract(all_solutions[candidate][node_order_col[col]])
@@ -639,7 +639,7 @@ def get_adjacency_matrix(graph):
     """
     node_list = list(graph.nodes)
     node_list.sort()
-    adjacency_matrix = nx.adjacency_matrix(graph, nodelist=node_list).todense()
+    adjacency_matrix = nx.to_numpy_array(graph, nodelist=node_list)
     return adjacency_matrix, node_list
 
 
