@@ -276,7 +276,7 @@ class Statevec:
     def remove_qubit(self, qarg):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
-        
+
         For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
         1 \dots 11 ]`, this method returns
 
@@ -300,7 +300,7 @@ class Statevec:
             be used after single-qubit measurements.
             Care needs to be taken when using this method.
             Checks for separability will be implemented soon as an option.
-        
+
         .. seealso::
             :meth:`graphix.sim.statevec.Statevec.ptrace` and warning therein.
 
