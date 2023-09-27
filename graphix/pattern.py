@@ -44,7 +44,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, width=0, output_nodes=[]):
+    def __init__(self, width=0, input_nodes=None, output_nodes=[]):
         """
         :param width:  number of input/output qubits
         """
@@ -52,6 +52,7 @@ class Pattern:
         self.width = width
         self.seq = [["N", i] for i in range(width)]  # where command sequence is stored
         self.results = {}  # measurement results from the graph state simulator
+        self.input_nodes = input_nodes  # input nodes
         self.output_nodes = output_nodes  # output nodes
         self.Nnode = width  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
@@ -104,6 +105,16 @@ class Pattern:
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
         self.output_nodes = output_nodes
+
+    def set_input_nodes(self, input_nodes):
+        """arrange the order of input_nodes.
+
+        Parameters
+        ----------
+        input_nodes: list of int
+            input nodes order determined by user. each index corresponds to that of logical qubits.
+        """
+        self.input_nodes = input_nodes
 
     def __repr__(self):
         return f"graphix.pattern.Pattern object with {len(self.seq)} commands and {self.width} output qubits"
@@ -194,6 +205,7 @@ class Pattern:
                     "Xsignal": [],
                     "Xsignals": [],
                     "Zsignal": [],
+                    "input": False,
                     "output": False,
                 }
             elif cmd[0] == "E":
@@ -224,9 +236,11 @@ class Pattern:
         for index in node_prop.keys():
             if index in self.output_nodes:
                 node_prop[index]["output"] = True
+            if index in self.input_nodes:
+                node_prop[index]["input"] = True
             node = CommandNode(index, **node_prop[index])
             nodes[index] = node
-        return LocalPattern(nodes, self.output_nodes, morder)
+        return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 
     def standardize(self, method="local"):
         """Executes standardization of the pattern.
@@ -766,7 +780,7 @@ class Pattern:
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
-        vin = {i for i in range(self.width)}
+        vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         f, l_k = flow(G, vin, vout)
         if f is None:
@@ -795,8 +809,10 @@ class Pattern:
         isolated = list(nx.isolates(G))
         if isolated:
             raise ValueError("The input graph must be connected")
+        vin = set(self.input_nodes) if self.input_nodes is not None else set()
+        vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = gflow(G, set(), set(self.output_nodes), meas_plane=meas_plane)
+        g, l_k = gflow(G, vin, vout, meas_plane=meas_plane)
         if not g:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
@@ -1218,14 +1234,14 @@ class Pattern:
         result = exe.run()
         return result
 
-    def perform_pauli_measurements(self):
+    def perform_pauli_measurements(self, leave_input=False):
         """Perform Pauli measurements in the pattern using
         efficient stabilizer simulator.
 
         .. seealso:: :func:`measure_pauli`
 
         """
-        measure_pauli(self, copy=False)
+        measure_pauli(self, leave_input, copy=False)
 
     def view_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
@@ -1311,11 +1327,13 @@ class CommandNode:
         signal domain
     vop : int
         value for clifford index
+    input : bool
+        whether the node is an input or not
     output : bool
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, output, Xsignal=[], Xsignals=[]):
+    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]):
         """
         Parameters
         ----------
@@ -1338,6 +1356,9 @@ class CommandNode:
         Zsignal : list
             signal domain for Z byproduct correction
 
+        input : bool
+            whether the node is an input or not
+
         output : bool
             whether the node is an output or not
         """
@@ -1349,6 +1370,7 @@ class CommandNode:
         self.Xsignals = Xsignals
         self.Zsignal = Zsignal  # appeared at most e + 1
         self.vop = Mprop[4] if len(Mprop) == 5 else 0
+        self.input = input
         self.output = output
 
     def is_standard(self):
@@ -1515,6 +1537,9 @@ class LocalPattern:
     nodes : set
         set of nodes with distributed command sequences
 
+    input_nodes : list
+        list of input node indices.
+
     output_nodes : list
         list of output node indices.
 
@@ -1526,7 +1551,7 @@ class LocalPattern:
        stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
-    def __init__(self, nodes=dict(), output_nodes=[], morder=[]):
+    def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
         """
         Parameters
         ----------
@@ -1538,6 +1563,7 @@ class LocalPattern:
             list of node indices in a measurement order. defaults to [].
         """
         self.nodes = nodes  # dict of Pattern.CommandNode
+        self.input_nodes = input_nodes
         self.output_nodes = output_nodes
         self.morder = morder
         self.signal_destination = {i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()} for i in self.nodes.keys()}
@@ -1634,7 +1660,7 @@ class LocalPattern:
             standardized global pattern
         """
         assert self.is_standard()
-        pattern = Pattern(output_nodes=self.output_nodes, width=len(self.output_nodes))
+        pattern = Pattern(input_nodes=self.input_nodes, output_nodes=self.output_nodes, width=len(self.output_nodes))
         Nseq = [["N", i] for i in self.nodes.keys()]
         Eseq = []
         Mseq = []
@@ -1660,6 +1686,7 @@ class LocalPattern:
             if node.result is not None:
                 pattern.results[node.index] = node.result
         pattern.seq = Nseq + Eseq + Mseq + Xseq + Zseq + Cseq
+        self.Nnodes = len(Nseq)
         return pattern
 
 
@@ -1687,7 +1714,7 @@ def xor_combination_list(list1, list2):
     return result
 
 
-def measure_pauli(pattern, copy=False):
+def measure_pauli(pattern, leave_input, copy=False):
     """Perform Pauli measurement of a pattern by fast graph state simulator
     uses the decorated-graph method implemented in graphix.graphsim to perform
     the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1698,6 +1725,9 @@ def measure_pauli(pattern, copy=False):
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
+    leave_input : bool
+        True: input nodes will not be removed
+        False: all the nodes measured in Pauli bases will be removed
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
@@ -1717,7 +1747,11 @@ def measure_pauli(pattern, copy=False):
     vop_init = pattern.get_vops(conj=False)
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
-    to_measure, non_pauli_meas = pauli_nodes(pattern)
+    to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
+    if not leave_input and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
+        new_inputs = None
+    else:
+        new_inputs = pattern.input_nodes
     for cmd in to_measure:
         # extract signals for adaptive angle.
         if cmd[1] in ["+X", "-X"]:
@@ -1789,24 +1823,27 @@ def measure_pauli(pattern, copy=False):
     if copy:
         pat = deepcopy(pattern)
         pat.seq = new_seq
+        pat.input_nodes = new_inputs
         pat.Nnode = len(graph_state.nodes)
         pat.results = results
         pat._pauli_preprocessed = True
         return pat
     else:
         pattern.seq = new_seq
+        pattern.input_nodes = new_inputs
         pattern.Nnode = len(graph_state.nodes)
         pattern.results = results
         pattern._pauli_preprocessed = True
 
 
-def pauli_nodes(pattern):
+def pauli_nodes(pattern, leave_input):
     """returns the list of measurement commands that are in Pauli bases
     and that are not dependent on any non-Pauli measurements
 
     Parameters
     ----------
     pattern : graphix.Pattern object
+    leave_input : bool
 
     Returns
     -------
@@ -1821,7 +1858,7 @@ def pauli_nodes(pattern):
     non_pauli_node = []
     for cmd in m_commands:
         pm = is_pauli_measurement(cmd, ignore_vop=True)
-        if pm is not None:  # Pauli measurement
+        if pm is not None and (cmd[1] not in pattern.input_nodes or not leave_input):  # Pauli measurement to be removed
             if pm in ["+X", "-X"]:
                 t_cond = np.any(np.isin(cmd[5], np.array(non_pauli_node)))
                 if t_cond:  # cmd depend on non-Pauli measurement

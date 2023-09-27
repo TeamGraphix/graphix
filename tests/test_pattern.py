@@ -91,6 +91,20 @@ class TestPattern(unittest.TestCase):
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
+    def test_pauli_measurment_leave_input(self):
+        nqubits = 3
+        depth = 3
+        for i in range(10):
+            circuit = rc.get_rand_circuit(nqubits, depth)
+            pattern = circuit.transpile()
+            pattern.standardize(method="global")
+            pattern.shift_signals(method="global")
+            pattern.perform_pauli_measurements(leave_input=True)
+            pattern.minimize_space()
+            state = circuit.simulate_statevector()
+            state_mbqc = pattern.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
     def test_pauli_measurment_opt_gate(self):
         nqubits = 3
         depth = 3
@@ -156,6 +170,34 @@ class TestPattern(unittest.TestCase):
         isolated_nodes = pattern.get_isolated_nodes()
         # 48-node is the isolated and output node.
         isolated_nodes_ref = {48}
+
+        np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
+
+    def test_pauli_measurement_leave_input(self):
+        # test pattern is obtained from 3-qubit QFT with pauli measurement
+        circuit = Circuit(3)
+        for i in range(3):
+            circuit.h(i)
+        circuit.x(1)
+        circuit.x(2)
+
+        # QFT
+        circuit.h(2)
+        cp(circuit, np.pi / 4, 0, 2)
+        cp(circuit, np.pi / 2, 1, 2)
+        circuit.h(1)
+        cp(circuit, np.pi / 2, 0, 1)
+        circuit.h(0)
+        swap(circuit, 0, 2)
+
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        pattern.perform_pauli_measurements(leave_input=True)
+
+        isolated_nodes = pattern.get_isolated_nodes()
+        # There is no isolated node.
+        isolated_nodes_ref = set()
 
         np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
 
