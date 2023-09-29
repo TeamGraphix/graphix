@@ -2,6 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.linalg
 from graphix.kraus import Channel
+from graphix.sim.density_matrix import DensityMatrix
 
 
 def rand_herm(l: int):
@@ -23,7 +24,49 @@ def rand_unit(l: int):
 # https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
 
 UNITS = np.array([1, 1j])
-# TODO implement and checks
+# TODO implement random DM distinct from statevector? allows for non-pure states?
+# not necessary dm since arbitrary dim here.
+
+
+def rand_dm(dim: int, rank: int = None):
+    """
+    Returns a "density matrix" ie a positive-semidefinite (hence Hermitian) matrix with unit trace
+    Note, not a proper DM since its dim can be something else than a power of 2.
+    The rank is random between 1 (pure) and dim if not specified
+    Thanks to Ulysse Chabaud.
+
+    Parameters
+    ----------
+    dim : int
+        Linear dimension of the (square) matrix
+    rank : int (default None)
+        If rank not specified then random between 1 and matrix dimension
+        If rank is one : then pure state else mixed state.
+    """
+    # if not provided, use a random value.
+    if rank is None:
+        rank = np.random.randint(1, dim + 1)
+
+    # randomly choose eigenvalues rank eigenvalues between 0 and 1 (excluded)
+    evals = np.random.rand(rank)
+
+    # pad with zeros everywhere else to match dimensions
+    padded_evals = np.zeros(dim)
+    padded_evals[:len(evals)] = evals
+    
+
+    # normalize by the trace
+    # np.diag: if arg is 1D array, constructs the 2D array with the corresponding diagonal
+    # if arg is 2D, extracts the diagonal
+
+    dm = np.diag(padded_evals / np.sum(padded_evals))
+
+    # generate a random unitary
+
+    randU = rand_unit(dim)
+    dm = randU @ dm @ randU.transpose().conj()
+
+    return DensityMatrix(data=dm)
 
 
 def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
@@ -67,7 +110,7 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
         Only square operators (so far)!
 
     rank : int
-        Choi rank ie the number of Kraus operators.
+        Choi rank ie the number of Kraus operators. Must be between one and dim**2.
         WARNING Qutip mentions complete positivity issues for not full rank
 
     sig : cf rand_cpx
