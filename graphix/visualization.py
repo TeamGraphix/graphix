@@ -137,7 +137,10 @@ class GraphVisualizer:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
         # Draw the labels
-        nx.draw_networkx_labels(self.G, pos)
+        fontsize = 12
+        if max(self.G.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
+        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
 
         x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
         x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
@@ -242,7 +245,10 @@ class GraphVisualizer:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
         # Draw the labels
-        nx.draw_networkx_labels(self.G, pos)
+        fontsize = 12
+        if max(self.G.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
+        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
 
         x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
         x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
@@ -311,6 +317,7 @@ class GraphVisualizer:
                 edge_path[edge] = [pos[edge[0]], pos[edge[1]]]
             else:
                 iteration = 0
+                nodes = self.G.nodes()
                 bezier_path = [pos[edge[0]]]
                 bezier_path.append(pos[edge[1]])
                 while True:
@@ -322,7 +329,7 @@ class GraphVisualizer:
                     for i in range(len(bezier_path) - 1):
                         start = bezier_path[i]
                         end = bezier_path[i + 1]
-                        for node in self.G.nodes():
+                        for node in nodes:
                             if node != edge[0] and node != edge[1] and self.edge_intersects_node(start, end, pos[node]):
                                 intersect = True
                                 ctrl_points.append(
@@ -333,13 +340,14 @@ class GraphVisualizer:
                                         ),
                                     ]
                                 )
+                                nodes = set(nodes) - {node}
                     if not intersect:
                         break
                     else:
                         for i, ctrl_point in enumerate(ctrl_points):
                             bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
-
-                edge_path[edge] = self.check_path(bezier_path)
+            bezier_path = self.check_path(bezier_path)
+            edge_path[edge] = bezier_path
 
         return edge_path
 
@@ -445,29 +453,28 @@ class GraphVisualizer:
             curve += np.outer(comb(n, i) * ((1 - t) ** (n - i)) * (t**i), np.array(point))
         return curve
 
-    @staticmethod
-    def check_path(path):
+    def check_path(self, path):
         """
         if there is an acute angle in the path, merge points
         """
         path = np.array(path)
-        while True:
-            fl = False
+        acute = True
+        while acute:
             for i in range(len(path) - 2):
                 v1 = path[i + 1] - path[i]
                 v2 = path[i + 2] - path[i + 1]
                 if np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)) < np.cos(3 * np.pi / 4):
-                    fl = True
                     if i == len(path) - 3:
                         path = np.delete(path, i + 1, 0)
                         break
-                    mean = (path[i + 1] + path[i + 2]) / 2
-                    path = np.delete(path, i + 1, 0)
-                    path = np.delete(path, i + 1, 0)
-                    path = np.insert(path, i + 1, mean, 0)
-                    break
-            if not fl:
-                break
+                    else:
+                        mean = (path[i + 1] + path[i + 2]) / 2
+                        path = np.delete(path, i + 1, 0)
+                        path = np.delete(path, i + 1, 0)
+                        path = np.insert(path, i + 1, mean, 0)
+                        break
+            else:
+                acute = False
         return path.tolist()
 
 

@@ -1260,12 +1260,13 @@ class Pattern:
             Filename of the saved plot.
         """
 
-        v_in = [i for i in range(self.width)]
         nodes, edges = self.get_graph()
         g = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
-        vis = GraphVisualizer(g, v_in, self.output_nodes)
+        vin = self.input_nodes if self.input_nodes is not None else []
+        vout = self.output_nodes
+        vis = GraphVisualizer(g, vin, vout)
         if pauli_indicator:
             angles = self.get_angles()
         else:
