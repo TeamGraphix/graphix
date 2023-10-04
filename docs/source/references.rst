@@ -8,6 +8,7 @@ Module reference
     modifier
     simulator
     graphsim
+    extraction
     flow
     clifford
     device_interface
