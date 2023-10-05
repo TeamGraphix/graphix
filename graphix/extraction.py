@@ -16,7 +16,7 @@ class ResourceType(Enum):
 
 
 class ResourceGraph:
-    """ resource graph state object.
+    """resource graph state object.
 
     Parameters
     ----------

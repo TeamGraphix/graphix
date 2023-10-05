@@ -8,6 +8,7 @@ from graphix.device_interface import PatternRunner
 from graphix.graphsim import GraphState
 from graphix.gflow import flow, gflow, get_layers
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
+from graphix.visualization import GraphVisualizer
 from copy import deepcopy
 
 
@@ -888,6 +889,20 @@ class Pattern:
                 meas_plane[cmd[1]] = mplane
         return meas_plane
 
+    def get_angles(self):
+        """Get measurement angles of the pattern.
+
+        Returns
+        -------
+        angles : dict
+            measurement angles of the each node.
+        """
+        angles = {}
+        for cmd in self.seq:
+            if cmd[0] == "M":
+                angles[cmd[1]] = cmd[3]
+        return angles
+
     def get_max_degree(self):
         """Get max degree of a pattern
 
@@ -1211,6 +1226,40 @@ class Pattern:
 
         """
         measure_pauli(self, leave_input, copy=False)
+
+    def draw_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
+        """Visualize the underlying graph of the pattern with flow or gflow structure.
+
+        Parameters
+        ----------
+        figsize : tuple
+            Figure size of the plot.
+        pauli_indicator : bool
+            If True, the nodes are colored according to the measurement angles.
+        local_clifford_indicator : bool
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        save : bool
+            If True, the plot is saved as a png file.
+        filename : str
+            Filename of the saved plot.
+        """
+
+        nodes, edges = self.get_graph()
+        g = nx.Graph()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+        vin = self.input_nodes if self.input_nodes is not None else []
+        vout = self.output_nodes
+        vis = GraphVisualizer(g, vin, vout)
+        if pauli_indicator:
+            angles = self.get_angles()
+        else:
+            angles = None
+        if local_clifford_indicator:
+            local_clifford = self.get_vops()
+        else:
+            local_clifford = None
+        vis.visualize(figsize=figsize, angles=angles, local_clifford=local_clifford, save=save, filename=filename)
 
     def to_qasm3(self, filename):
         """Export measurement pattern to OpenQASM 3.0 file
