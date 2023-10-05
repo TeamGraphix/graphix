@@ -903,22 +903,6 @@ class Pattern:
                 angles[cmd[1]] = cmd[3]
         return angles
 
-    def get_local_clifford(self):
-        """Get local clifford gates of the pattern.
-
-        Returns
-        -------
-        local_clifford : dict
-            local clifford index of the each node.
-        """
-        local_clifford = {}
-        for cmd in self.seq:
-            if cmd[0] == "C":
-                local_clifford[cmd[1]] = cmd[2]
-            elif cmd[0] == "M" and len(cmd) == 7:
-                local_clifford[cmd[1]] = cmd[6]
-        return local_clifford
-
     def get_max_degree(self):
         """Get max degree of a pattern
 
@@ -1243,7 +1227,7 @@ class Pattern:
         """
         measure_pauli(self, leave_input, copy=False)
 
-    def view_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
+    def draw_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
         Parameters
@@ -1272,7 +1256,7 @@ class Pattern:
         else:
             angles = None
         if local_clifford_indicator:
-            local_clifford = self.get_local_clifford()
+            local_clifford = self.get_vops()
         else:
             local_clifford = None
         vis.visualize(figsize=figsize, angles=angles, local_clifford=local_clifford, save=save, filename=filename)

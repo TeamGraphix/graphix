@@ -55,15 +55,16 @@ class GraphVisualizer:
 
         f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out))
         if f:
+            print("Flow found.")
             self.visualize_w_flow(f, l_k, angles, local_clifford, figsize, save, filename)
         else:
             g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out))
             if g:
+                print("No flow found. Gflow found.")
                 self.visualize_w_gflow(g, l_k, angles, local_clifford, figsize, save, filename)
             else:
                 print("No flow or gflow found.")
-                nx.draw(self.G, with_labels=True)
-                plt.show()
+                self.visualize_wo_structure(angles, local_clifford, save, filename)
 
     def visualize_w_flow(self, f, l_k, angles=None, local_clifford=None, figsize=None, save=False, filename=None):
         """
@@ -269,6 +270,72 @@ class GraphVisualizer:
             plt.savefig(filename)
         plt.show()
 
+    def visualize_wo_structure(self, angles=None, local_clifford=None, save=False, filename=None):
+        """
+        visualizes the graph without flow or gflow.
+
+        Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
+        or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
+        different layers of the graph. This function does not return anything but plots the graph
+        using matplotlib's pyplot.
+
+        Parameters
+        ----------
+        f : dict
+            flow mapping.
+        l_k : dict
+            Layer mapping.
+        angles : dict
+            Measurement angles for each nodes on the graph (unit of pi), except output nodes.
+            If not None, the nodes with Pauli measurement angles are colored light blue.
+        local_clifford : dict
+            Indexes of local clifford operations for each nodes.
+            If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        figsize : tuple
+            Figure size of the plot.
+        save : bool
+            If True, the plot is saved as a png file.
+        filename : str
+            Filename of the saved plot.
+        """
+
+        scale = max(2 * np.log(len(self.G.nodes())), 5)
+        plt.figure(figsize=(scale, (2 / 3) * scale))
+        k_val = 2 / np.sqrt(len(self.G.nodes()))
+        pos = nx.spring_layout(self.G, k=k_val)  # Layout for the nodes
+
+        # Draw the edges
+        nx.draw_networkx_edges(self.G, pos, edge_color="black")
+
+        # Draw the nodes with different colors based on their role (input, output, or other)
+        for node in self.G.nodes():
+            color = "black"  # default color for 'other' nodes
+            inner_color = "white"
+            if node in self.v_in:
+                color = "red"
+            if node in self.v_out:
+                inner_color = "lightgray"
+            elif angles is not None and (angles[node] == 0 or angles[node] == 1 / 2):
+                inner_color = "lightblue"
+            plt.scatter(
+                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
+            )  # Draw the nodes manually with scatter()
+
+        if local_clifford is not None:
+            for node in self.G.nodes():
+                if node in local_clifford.keys():
+                    plt.text(*pos[node] + np.array([0.04, 0.04]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+
+        # Draw the labels
+        fontsize = 12
+        if max(self.G.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
+        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
+
+        if save:
+            plt.savefig(filename)
+        plt.show()
+
     def get_figsize(self, l_k):
         """
         Returns the figure size of the graph.
@@ -459,7 +526,11 @@ class GraphVisualizer:
         """
         path = np.array(path)
         acute = True
+        max_iter = 100
+        iter = 0
         while acute:
+            if iter > max_iter:
+                break
             for i in range(len(path) - 2):
                 v1 = path[i + 1] - path[i]
                 v2 = path[i + 2] - path[i + 1]
@@ -473,6 +544,7 @@ class GraphVisualizer:
                         path = np.delete(path, i + 1, 0)
                         path = np.insert(path, i + 1, mean, 0)
                         break
+                iter += 1
             else:
                 acute = False
         return path.tolist()
