@@ -12,4 +12,5 @@ Module reference
     flow
     clifford
     device_interface
+    visualization
 

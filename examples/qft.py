@@ -16,8 +16,6 @@ First, import relevant modules and define additional gates we'll use:
 # %%
 import numpy as np
 from graphix import Circuit
-import networkx as nx
-import matplotlib.pyplot as plt
 
 
 def cp(circuit, theta, control, target):
@@ -59,13 +57,8 @@ swap(circuit, 0, 2)
 
 # transpile and plot the graph
 pattern = circuit.transpile()
-nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-np.random.seed(100)
-nx.draw(g)
-plt.show()
+pattern.draw_graph()
+nodes, _ = pattern.get_graph()
 print(len(nodes))
 
 # %%

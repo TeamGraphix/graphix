@@ -12,7 +12,7 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 """
 
-
+#%%
 from graphix import Circuit
 import networkx as nx
 import numpy as np
@@ -94,6 +94,11 @@ graph_params = {"with_labels": False, "node_size": 150, "node_color": get_clr_li
 nx.draw(g, pos=pos, **graph_params)
 
 #%%
+# Similar visualization can be done by calling our recently added :class:`graphix.visualization.GraphVisualizer` class, accessible through :meth:`graphix.pattern.Pattern.draw_graph()`
+pattern.draw_graph()
+
+
+#%%
 # perform Pauli measurements and plot the new (minimal) graph to perform the same quantum computation
 
 pattern.perform_pauli_measurements()
@@ -127,3 +132,5 @@ out_state = pattern.simulate_pattern()
 state = circuit.simulate_statevector()
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 # sphinx_gallery_thumbnail_number = 2
+
+# %%

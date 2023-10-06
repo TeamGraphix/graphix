@@ -16,6 +16,7 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 First, let us import relevant modules:
 """
+#%%
 import numpy as np
 from graphix import Circuit
 import networkx as nx
@@ -61,13 +62,7 @@ circuit.h(2)
 
 pattern = circuit.transpile()
 pattern.print_pattern(lim=15)
-nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-np.random.seed(100)
-nx.draw(g)
-plt.show()
+pattern.draw_graph()
 
 #%%
 # this seems to require quite a large graph state.
@@ -83,19 +78,15 @@ pattern.print_pattern(lim=15)
 
 pattern.perform_pauli_measurements()
 pattern.print_pattern(lim=16, filter=["N", "M", "C"])
-nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-np.random.seed(100)
-nx.draw(g)
-plt.show()
+pattern.draw_graph()
 
 #%%
-# Since all operations are Clifford, all measurements in the measurement pattern are Pauli measurements:
+# Since all operations of the original circuit are Clifford, all measurements in the measurement pattern are Pauli measurements:
 # So the preprocessing has done all the necessary computations, and all nodes are isolated with no further measurements required.
 # Let us make sure the result is correct:
 
 out_state = pattern.simulate_pattern()
 state = circuit.simulate_statevector()
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
+
+# %%
