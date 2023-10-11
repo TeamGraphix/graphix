@@ -13,7 +13,9 @@ The methods and modules we use are the followings:
     3. :meth:`~graphix.pattern.Pattern.simulate_pattern`
         Circuit simulation using pattern matching.
     4. :mod:`paddle_quantum.mbqc`
-        Circuit simulation using :mod:`paddle_quantum.mbqc`.
+        Pattern simulation using :mod:`paddle_quantum.mbqc`.
+    5. :mod:`mentpy`
+        Pattern simulation using :mod:`mentpy`.
 """
 
 # %%
@@ -25,11 +27,11 @@ import numpy as np
 from graphix import Circuit
 from graphix.clifford import CLIFFORD_MUL
 from graphix.sim.statevec import Statevec, StatevectorBackend, meas_op
-from paddle import to_tensor
+from paddle import to_tensor  # TODO: in macOS, this line might cause error
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
 from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
 from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
-
+import mentpy as mp
 
 # %%
 # Next, we define the simulation runner:
@@ -261,21 +263,44 @@ for width, depth in test_cases_for_paddle_quantum:
     print(f"nqubit: {width}, depth: {depth}, time: {end - start}")
 
 # %%
+# Here we take benchmarking for MBQC simulation using `mentpy`.
+
+DEPTH = 2  # For mentpy, due to its specific structure, we need to set depth to 2 instead of 1.
+test_cases_for_mentpy = [(i, DEPTH) for i in range(2, 13)]
+mentpy_time = []
+
+for width, depth in test_cases_for_mentpy:
+    grid_cluster = mp.templates.grid_cluster(n=width, m=depth)
+    random_state = mp.utils.generate_haar_random_states(n_qubits=width)
+    simulator = mp.PatternSimulator(grid_cluster, backend="numpy-sv", window_size=width)
+    simulator.reset(input_state=random_state)
+    angles = np.zeros(width)
+    start = perf_counter()
+    simulator.run(angles=angles)
+    end = perf_counter()
+    mentpy_time.append(end - start)
+
+    print(f"nqubit: {width}, depth: {depth}, time: {end - start}")
+
+# %%
 # Lastly, we see the simulation times for different methods.
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
-ax.scatter([case[0] for case in test_cases_old], old_pattern_time, label="pattern simulator with ptrace(old)")
-ax.scatter([case[0] for case in test_cases], pattern_time, label="pattern simulator with remove_qubit(new)")
-ax.scatter([case[0] for case in test_cases], circuit_time, label="circuit simulator")
-ax.scatter([case[0] for case in test_cases_for_paddle_quantum], paddle_quantum_time, label="paddle_quantum")
+ax.scatter([case[0] for case in test_cases_old], old_pattern_time, label="graphix pattern simulator with ptrace(old)")
+ax.scatter([case[0] for case in test_cases], pattern_time, label="graphix pattern simulator with remove_qubit(new)")
+ax.scatter([case[0] for case in test_cases], circuit_time, label="graphix circuit simulator")
+ax.scatter(
+    [case[0] for case in test_cases_for_paddle_quantum], paddle_quantum_time, label="paddle_quantum pattern simulator"
+)
+ax.scatter([case[0] for case in test_cases_for_mentpy], mentpy_time, label="mentpy pattern simulator")
 ax.set(
     xlabel="nqubit",
     ylabel="time (s)",
     yscale="log",
     title="Time to simulate random circuits",
 )
-fig.legend(bbox_to_anchor=(0.6, 0.9))
+fig.legend(bbox_to_anchor=(0.65, 0.9))
 fig.show()
 
 # %%
