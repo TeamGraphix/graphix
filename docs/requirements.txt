@@ -67,3 +67,5 @@ matplotlib
 scikit-learn
 seaborn
 ipython
+
+-r ../benchmarks/requirements.txt

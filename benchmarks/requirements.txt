@@ -1,0 +1,3 @@
+paddlepaddle==2.5.1
+paddle-quantum
+mentpy>=0.1
