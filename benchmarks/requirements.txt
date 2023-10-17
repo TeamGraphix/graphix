@@ -1,3 +1,3 @@
-paddlepaddle==2.5.1
+paddlepaddle~=2.3
 paddle-quantum
 mentpy==0.1.0a8
