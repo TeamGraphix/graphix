@@ -289,7 +289,9 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter([case[0] for case in test_cases_old], old_pattern_time, label="graphix pattern simulator with ptrace(old)")
 ax.scatter([case[0] for case in test_cases], pattern_time, label="graphix pattern simulator with remove_qubit(new)")
-ax.scatter([case[0] for case in test_cases], circuit_time, label="graphix circuit simulator")
+ax.scatter(
+    [case[0] for case in test_cases], circuit_time, label="graphix circuit simulator (for reference))", marker="x"
+)
 ax.scatter(
     [case[0] for case in test_cases_for_paddle_quantum], paddle_quantum_time, label="paddle_quantum pattern simulator"
 )
