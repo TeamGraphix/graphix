@@ -1,11 +1,21 @@
+import sys
 import unittest
+from unittest.mock import MagicMock
+
 import numpy as np
+import qiskit
+from qiskit_aer import Aer
+
+import graphix
 from graphix.device_interface import PatternRunner
-import tests.random_circuit as rc
-from qiskit import Aer
+
+# Bypass the import error of graphix_ibmq
+gx_ibmq_mock = MagicMock()
+sys.modules["graphix_ibmq.runner"] = gx_ibmq_mock
 
 
 def modify_statevector(statevector, output_qubit):
+    statevector = np.asarray(statevector)
     N = round(np.log2(len(statevector)))
     new_statevector = np.zeros(2 ** len(output_qubit), dtype=complex)
     for i in range(len(statevector)):
@@ -19,14 +29,35 @@ def modify_statevector(statevector, output_qubit):
 
 class TestPatternRunner(unittest.TestCase):
     def test_ibmq_backend(self):
-        nqubits = 5
-        depth = 5
-        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs)
+        # circuit in qiskit
+        qc = qiskit.QuantumCircuit(3)
+        qc.h(0)
+        qc.rx(1.23, 1)
+        qc.rz(1.23, 2)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        qc.save_statevector()
+        sim = Aer.get_backend("aer_simulator")
+        job = qiskit.execute(qc, sim)
+        result = job.result()
+
+        # Mock
+        gx_ibmq_mock.IBMQBackend().circ = qc
+        gx_ibmq_mock.IBMQBackend().simulate.return_value = result
+        gx_ibmq_mock.IBMQBackend().circ_output = [0, 1, 2]
+
+        # circuit in graphix
+        circuit = graphix.Circuit(3)
+        circuit.h(1)
+        circuit.h(2)
+        circuit.rx(1, 1.23)
+        circuit.rz(2, 1.23)
+        circuit.cnot(0, 1)
+        circuit.cnot(1, 2)
+
         pattern = circuit.transpile()
         state = pattern.simulate_pattern()
 
-        sim = Aer.get_backend("aer_simulator")
         runner = PatternRunner(pattern, backend="ibmq", save_statevector=True)
         sim_result = runner.simulate(format_result=False)
         state_qiskit = sim_result.get_statevector(runner.backend.circ)
