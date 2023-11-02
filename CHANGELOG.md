@@ -13,6 +13,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.2.7] - 2023-10-06
+
+### Added
+
+- Visualization tool of resource state for a pattern, with flow or gflow structures (#78)
+- Visualize the resource state by calling `Pattern.draw_graph()`
+- Tool to extract fusion network from the resource state of a pattern (#87).
+
+### Changed
+
+### Fixed
+
+## [0.2.6] - 2023-09-29
+
+### Added
+
+- `input_nodes` attribute added to the pattern class (#88)
+- `leave_input` optional argument to `Pattern.perform_pauli_measurements()` which leaves the input qubits unmeasured during the optimization.
+
+### Changed
+
+- bump networkx version to 3.* (#82)
+
 ## [0.2.5] - 2023-08-17
 
 ### Added
