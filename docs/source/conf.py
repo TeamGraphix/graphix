@@ -59,4 +59,5 @@ sphinx_gallery_conf = {
     "examples_dirs": ["../../examples", "../../benchmarks"],  # path to your example scripts
     "gallery_dirs": ["gallery", "benchmarks"],  # path to where to save gallery generated output
     "filename_pattern": "/",
+    "thumbnail_size": [(400, 280), (700, 500)]
 }
