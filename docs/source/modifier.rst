@@ -30,6 +30,8 @@ Pattern Optimization
 
     .. automethod:: minimize_space
 
+    .. automethod:: draw_graph
+
     .. automethod:: max_space
 
     .. automethod:: get_layers
