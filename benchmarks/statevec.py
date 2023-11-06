@@ -88,7 +88,7 @@ def simple_random_circuit(nqubit, depth):
 # %%
 # We define the test cases: shallow (depth=1) random circuits, only changing the number of qubits.
 
-test_cases = [(i, 1) for i in range(2, 24)]
+test_cases = [(i, 1) for i in range(2, 22)]
 
 pattern_time = []
 circuit_time = []
@@ -149,7 +149,7 @@ def simple_random_circuit_for_paddle_quantum(width, depth):
     return circuit
 
 
-test_cases_for_paddle_quantum = [(i, 1) for i in range(2, 23)]
+test_cases_for_paddle_quantum = [(i, 1) for i in range(2, 22)]
 paddle_quantum_time = []
 
 for width, depth in test_cases_for_paddle_quantum:
