@@ -20,9 +20,8 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 from graphix import Circuit
-from graphix.clifford import CLIFFORD_MUL
-from graphix.sim.statevec import Statevec, StatevectorBackend, meas_op
-from paddle import to_tensor  # TODO: in macOS, this line might cause error
+from graphix.sim.statevec import StatevectorBackend
+from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
 from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
 from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
@@ -60,7 +59,8 @@ def run(backend):
 def simple_random_circuit(nqubit, depth):
     r"""Generate a random circuit.
 
-    This function generates a circuit with nqubit qubits and depth layers, having layers of CNOT and Rz gates with random placements.
+    This function generates a circuit with nqubit qubits and depth layers,
+    having layers of CNOT and Rz gates with random placements.
 
     Parameters
     ----------
@@ -123,7 +123,8 @@ for nqubit, depth in test_cases:
 def simple_random_circuit_for_paddle_quantum(width, depth):
     r"""Generate a random circuit for paddle.
 
-    This function generates a circuit with nqubit qubits and depth layers, having layers of CNOT and Rz gates with random placements.
+    This function generates a circuit with nqubit qubits and depth layers,
+    having layers of CNOT and Rz gates with random placements.
 
     Parameters
     ----------
@@ -190,7 +191,8 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter([case[0] for case in test_cases], pattern_time, label="graphix pattern simulator with remove_qubit(new)")
 ax.scatter(
-    [case[0] for case in test_cases], circuit_time, label="direct statevector sim of original gate-based circuit (for reference)", marker="x"
+    [case[0] for case in test_cases], circuit_time,
+    label="direct statevector sim of original gate-based circuit (for reference)", marker="x"
 )
 ax.scatter(
     [case[0] for case in test_cases_for_paddle_quantum], paddle_quantum_time, label="paddle_quantum pattern simulator"
