@@ -2,7 +2,6 @@ import unittest
 
 import galois
 import numpy as np
-from sympy import MutableDenseMatrix
 
 from graphix.linalg import MatGF2
 
@@ -17,7 +16,7 @@ def prepare_test_matrix():
     test_case["rank"] = 0
     test_case["RHS_input"] = np.array([[]], dtype=int)
     test_case["RHS_forward_elimnated"] = np.array([[]], dtype=int)
-    test_case["x"] = MutableDenseMatrix(np.array([[]]))
+    test_case["x"] = [[]]
     test_case["kernel_dim"] = 0
     test_cases.append(test_case)
 
@@ -28,7 +27,7 @@ def prepare_test_matrix():
     test_case["rank"] = 1
     test_case["RHS_input"] = np.array([[1], [1], [1]], dtype=int)
     test_case["RHS_forward_elimnated"] = np.array([[1], [0], [0]], dtype=int)
-    test_case["x"] = MutableDenseMatrix(np.array([[1]]))
+    test_case["x"] = [[1]]
     test_case["kernel_dim"] = 0
     test_cases.append(test_case)
 
@@ -50,7 +49,7 @@ def prepare_test_matrix():
     test_case["rank"] = 10
     test_case["RHS_input"] = np.ones(10).reshape(10, 1).astype(int)
     test_case["RHS_forward_elimnated"] = np.ones(10).reshape(10, 1).astype(int)
-    test_case["x"] = MutableDenseMatrix(np.ones((10, 1)))
+    test_case["x"] = list(np.ones((10, 1)))
     test_case["kernel_dim"] = 0
     test_cases.append(test_case)
 
@@ -63,9 +62,7 @@ def prepare_test_matrix():
     test_case["rank"] = 3
     test_case["RHS_input"] = np.array([[1], [1], [1]], dtype=int)
     test_case["RHS_forward_elimnated"] = np.array([[1], [1], [0]], dtype=int)
-    test_case["x"] = MutableDenseMatrix(
-        np.array([[1], [1], [0]])
-    )  # nan for no solution
+    test_case["x"] = list(np.array([[1], [1], [0]]))  # nan for no solution
     test_case["kernel_dim"] = 0
     test_cases.append(test_case)
 
@@ -100,7 +97,7 @@ def prepare_test_matrix():
     test_case["rank"] = 2
     test_case["RHS_input"] = np.array([[1], [1], [1]], dtype=int)
     test_case["RHS_forward_elimnated"] = np.array([[1], [1], [0]], dtype=int)
-    test_case["x"] = MutableDenseMatrix(np.array([[1], [1]]))
+    test_case["x"] = [[1], [1]]
     test_case["kernel_dim"] = 0
     test_cases.append(test_case)
 

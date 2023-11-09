@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A new option whether to write down all maximally delayed gflow or not in `gflow.gflow` (#80)
+- A new option `mode` whether to write down all maximally delayed gflow or not in `gflow.gflow` (#80)
+- Created `MatGF2` class that computes elementary operations and Gauss-Jordan elimination on GF2 field. This class is implemented for gflow finding algorithm. (#80)
 
 ### Changed
 
-- Implemented GF(2) solver independent from `z3-solver` (#80)
+- Removed `z3-solver` and added `galois` and `sympy` in `requirements.txt` (#80)
+
+### Removed
+
+- Removed `timeout` option from `gflow.flow` and `gflow.gflow` because iteration number is not a good index for (g)flow finding algorithm
 
 ### Fixed
 
