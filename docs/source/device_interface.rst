@@ -2,7 +2,7 @@ Device Interface
 ==================
 
 :mod:`graphix.device_interface` module
-+++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++
 
 .. currentmodule:: graphix.device_interface
 
@@ -14,4 +14,3 @@ Device Interface
 
     .. automethod:: retrieve_result
 
-    .. automethod:: format_result

@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -30,13 +30,14 @@ info = {
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    "python_requires": ">=3.8,<3.11",
+    "python_requires": ">=3.8,<3.12",
     "install_requires": requirements,
-    "extras_require": {'extra': ['graphix-ibmq'], 'test': ['graphix-ibmq']},
+    "extras_require": {"extra": ["graphix-ibmq"], "test": ["qiskit", "qiskit-aer"]},
 }
 
 setup(**(info))

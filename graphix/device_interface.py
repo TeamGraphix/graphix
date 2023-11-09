@@ -53,7 +53,7 @@ class PatternRunner:
             raise ValueError("unknown backend")
 
     def simulate(self, **kwargs):
-        """ "Perform the simulation.
+        """Perform the simulation.
 
         Parameters
         ----------
