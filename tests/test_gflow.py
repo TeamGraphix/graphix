@@ -1,7 +1,9 @@
 import unittest
+
 import networkx as nx
-from graphix.gflow import gflow, flow
 import numpy as np
+
+from graphix.gflow import flow, gflow
 
 
 class TestGflow(unittest.TestCase):
@@ -50,6 +52,7 @@ class TestGflow(unittest.TestCase):
         expected_lk = {0: 2, 1: 1, 2: 0, 3: 2, 4: 1, 5: 0}
         self.assertEqual(g, expected_g)
         self.assertEqual(l_k, expected_lk)
+        print(g)
 
     def test_noflow(self):
         nodes = [i for i in range(1, 13)]
