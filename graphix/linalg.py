@@ -1,6 +1,6 @@
 import galois
 import numpy as np
-from sympy import Expr, Integer, MutableDenseMatrix, Xor, nan, symbols
+import sympy as sp
 
 
 class MatGF2:
@@ -9,8 +9,10 @@ class MatGF2:
     def __init__(self, data):
         """constructor for matrix of GF2
 
-        Args:
-            data (array_like): input data
+        Parameters
+        ----------
+        data: array_like
+            input data
         """
         if isinstance(data, MatGF2):
             self.data = data.data
@@ -36,65 +38,94 @@ class MatGF2:
             other = MatGF2(other)
         return MatGF2(self.data - other.data)
 
-    def add_row(self, row=None):
+    def copy(self):
+        return MatGF2(self.data.copy())
+
+    def add_row(self, array_to_add=None, row=None):
         """add a row to the matrix
 
-        Args:
-            row (int, optional): index to add a new row. Defaults to None.
+        Parameters
+        ----------
+        array_to_add: array_like(optional)
+            row to add. Defaults to None. if None, add a zero row.
+        row: int(optional)
+            index to add a new row. Defaults to None.
         """
         if row is None:
             row = self.data.shape[0]
-        self.data = np.insert(self.data, row, 0, axis=0)
+        if array_to_add is None:
+            array_to_add = np.zeros((1, self.data.shape[1]), dtype=int)
+        array_to_add = array_to_add.reshape((1, self.data.shape[1]))
+        self.data = np.insert(self.data, row, array_to_add, axis=0)
 
-    def add_col(self, col=None):
+    def add_col(self, array_to_add=None, col=None):
         """add a column to the matrix
 
-        Args:
-            col (int, optional): index to add a new column. Defaults to None.
+        Parameters
+        ----------
+        array_to_add: array_like(optional)
+            column to add. Defaults to None. if None, add a zero column.
+        col: int(optional)
+            index to add a new column. Defaults to None.
         """
         if col is None:
             col = self.data.shape[1]
-        self.data = np.insert(self.data, col, 0, axis=1)
+        if array_to_add is None:
+            array_to_add = np.zeros((1, self.data.shape[0]), dtype=int)
+        array_to_add = array_to_add.reshape((1, self.data.shape[0]))
+        self.data = np.insert(self.data, col, array_to_add, axis=1)
 
     def remove_row(self, row):
         """remove a row from the matrix
 
-        Args:
-            row (int): index to remove a row
+        Parameters
+        ----------
+        row: int
+            index to remove a row
         """
         self.data = np.delete(self.data, row, axis=0)
 
     def remove_col(self, col):
         """remove a column from the matrix
 
-        Args:
-            col (int): index to remove a column
+        Parameters
+        ----------
+        col: int
+            index to remove a column
         """
         self.data = np.delete(self.data, col, axis=1)
 
     def swap_row(self, row1, row2):
         """swap two rows
 
-        Args:
-            row1 (int): row index
-            row2 (int): row index
+        Parameters
+        ----------
+        row1: int
+            row index
+        row2: int
+            row index
         """
         self.data[[row1, row2]] = self.data[[row2, row1]]
 
     def swap_col(self, col1, col2):
         """swap two columns
 
-        Args:
-            col1 (int): column index
-            col2 (int): column index
+        Parameters
+        ----------
+        col1: int
+            column index
+        col2: int
+            column index
         """
         self.data[:, [col1, col2]] = self.data[:, [col2, col1]]
 
     def is_canonical_form(self):
         """check if the matrix is in a canonical(Row reduced echelon form) form
 
-        Returns:
-            bool: True if the matrix is in canonical form
+        Returns
+        -------
+        bool: bool
+            True if the matrix is in canonical form
         """
         diag = self.data.diagonal()
         nonzero_diag_index = diag.nonzero()[0]
@@ -119,8 +150,10 @@ class MatGF2:
     def get_rank(self):
         """get the rank of the matrix
 
-        Returns:
-            int: rank of the matrix
+        Returns
+        -------
+        int: int
+            rank of the matrix
         """
         if not self.is_canonical_form():
             A = self.forward_eliminate(copy=True)[0]
@@ -134,15 +167,24 @@ class MatGF2:
 
         |A B| --\ |I X|
         |C D| --/ |0 0|
+        where X is an arbitrary matrix
 
-        Args:
-            b (array_like, otional): Left hand side of the system of equations. Defaults to None.
-            copy (bool, optional): copy the matrix or not. Defaults to False.
+        Parameters
+        ----------
+        b: array_like(otional)
+            Left hand side of the system of equations. Defaults to None.
+        copy: bool(optional)
+            copy the matrix or not. Defaults to False.
 
-        Returns:
-            (MatGF2, MatGF2, list list): the forward eliminated matrix,
-            the forward eliminated right hand side,
-            row permutation,
+        Returns
+        -------
+        A: MatGF2
+            forward eliminated matrix
+        b: MatGF2
+            forward eliminated right hand side
+        row_pertumutation: list
+            row permutation
+        col_pertumutation: list
             column permutation
         """
         if copy:
@@ -183,27 +225,39 @@ class MatGF2:
     def backward_substitute(self, b):
         """backward substitute the matrix
 
-        Args:
-            b (array_like): right hand side of the system of equations
+        Parameters
+        ----------
+        b: array_like
+            right hand side of the system of equations
 
-        Returns:
-            (sympy.MutableDenseMatrix, list-of-sympy.Symbol): answer of the system of equations, kernel of the matrix.
+        Returns
+        -------
+        x: sympy.MutableDenseMatrix
+            answer of the system of equations
+        kernels: list-of-sympy.Symbol
+            kernel of the matrix.
             matrix x contains sympy.Symbol if the input matrix is not full rank.
             nan-column vector means that there is no solution.
         """
         rank = self.get_rank()
         b = MatGF2(b)
-        x = MutableDenseMatrix(np.zeros((self.data.shape[1], b.data.shape[1])))
-        kernels = symbols("x0:%d" % (self.data.shape[1] - rank))
+        x = list()
+        kernels = sp.symbols("x0:%d" % (self.data.shape[1] - rank))
         for col in range(b.data.shape[1]):
+            x_col = list()
             b_col = b.data[:, col]
             if np.count_nonzero(b_col[rank:]) != 0:
-                for row in range(self.data.shape[1]):
-                    x[row, col] = nan
+                x_col = [sp.nan for i in range(rank)]
+                x.append(x_col)
+                continue
             for row in range(rank - 1, -1, -1):
-                x[row, col] = Integer(b_col[row])
+                sol = sp.true if b_col[row] == 1 else sp.false
                 kernel_index = np.nonzero(self.data[row, rank:])[0]
                 for k in kernel_index:
-                    x[row, col] = Expr(Xor(x[row, col], kernels[k]))
+                    sol ^= kernels[k]
+                x_col.insert(0, sol)
+            x.append(x_col)
+
+        x = np.array(x).T
 
         return x, kernels
