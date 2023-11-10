@@ -9,7 +9,7 @@ from graphix.pattern import Pattern
 from graphix.gflow import flow, gflow, get_layers, find_odd_neighbor
 
 
-def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
+def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     r"""Generate the measurement pattern from open graph and measurement angles.
 
     This function takes an open graph G = (nodes, edges, input, outputs),
@@ -44,8 +44,8 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
         list of node indices for input nodes
     outputs : list
         list of node indices for output nodes
-    timeout : int
-        optional argument for flow and gflow search depth
+    meas_planes : dict(optional)
+        measurement planes for each nodes on the graph, except output nodes
 
     Returns
     -------
@@ -55,8 +55,11 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
     assert len(inputs) == len(outputs)
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
+    if meas_planes is None:
+        meas_planes = {i: "XY" for i in measuring_nodes}
+
     # search for flow first
-    f, l_k = flow(graph, set(inputs), set(outputs), timeout=timeout)
+    f, l_k = flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
     if f:
         # flow found
         depth, layers = get_layers(l_k)
@@ -78,7 +81,7 @@ def generate_from_graph(graph, angles, inputs, outputs, timeout=100):
         pattern.Nnode = len(graph.nodes)
     else:
         # no flow found - we try gflow
-        g, l_k = gflow(graph, set(inputs), set(outputs), timeout=timeout)
+        g, l_k = gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
         if g:
             # gflow found
             depth, layers = get_layers(l_k)

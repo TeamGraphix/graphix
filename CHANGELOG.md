@@ -8,10 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- internal updates of gflow and linear algebra functionalities:
+    - A new option `mode` in `gflow.gflow`, specifying whether to obtain all possible maximally delayed gflow or not (#80)
+    - New `MatGF2` class that computes elementary operations and Gauss-Jordan elimination on GF2 field, for faster gflow-finding (#80)
 
 ### Changed
+- Removed `z3-solver` and added `galois` and `sympy` in `requirements.txt` (#80)
+
+### Removed
+- Removed `timeout` optional arguments from `gflow.flow` and `gflow.gflow`. 
 
 ### Fixed
+- Bugfix conditional branch in `gflow.gflowaux` (#80)
 
 ## [0.2.8] - 2023-11-05
 

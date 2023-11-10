@@ -13,8 +13,9 @@ class TestGenerator(unittest.TestCase):
         angles = np.random.randn(6)
         results = []
         repeats = 3  # for testing the determinism of a pattern
+        meas_planes = {i: "XY" for i in range(6)}
         for _ in range(repeats):
-            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs))
+            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
             pattern.minimize_space()
             state = pattern.simulate_pattern()
@@ -29,10 +30,11 @@ class TestGenerator(unittest.TestCase):
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
         angles = np.random.randn(6)
+        meas_planes = {i: "XY" for i in range(1, 6)}
         results = []
         repeats = 3  # for testing the determinism of a pattern
         for _ in range(repeats):
-            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs))
+            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
             pattern.minimize_space()
             state = pattern.simulate_pattern()
@@ -60,7 +62,8 @@ class TestGenerator(unittest.TestCase):
         angles = dict()
         for cmd in pattern.get_measurement_commands():
             angles[cmd[1]] = cmd[3]
-        pattern2 = generate_from_graph(g, angles, input, pattern.output_nodes)
+        meas_planes = pattern.get_meas_plane()
+        pattern2 = generate_from_graph(g, angles, input, pattern.output_nodes, meas_planes)
         # check that the new one runs and returns correct result
         pattern2.standardize()
         pattern2.shift_signals()
