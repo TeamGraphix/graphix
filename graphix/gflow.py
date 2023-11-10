@@ -31,8 +31,7 @@ def gflow(graph, input, output, meas_planes, mode="single"):
     qubits in g(i), depending on the measurement outcome.
 
     For more details of gflow, see Browne et al., NJP 9, 250 (2007).
-
-    We use the extended gflow finding algorithm proposed by Backens et al., Quantum 5, 421 (2021).
+    We use the extended gflow finding algorithm in Backens et al., Quantum 5, 421 (2021).
 
     Parameters
     ----------
@@ -208,7 +207,6 @@ def flow(graph, input, output, meas_planes=None):
     """Causal flow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
-
     For more detail of causal flow, see Danos and Kashefi, PRA 74, 052310 (2006).
 
     Original algorithm by Mhalla and Perdrix,
