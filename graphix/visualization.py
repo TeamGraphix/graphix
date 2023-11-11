@@ -19,15 +19,21 @@ class GraphVisualizer:
         list of output nodes
     """
 
-    def __init__(self, G, v_in, v_out):
+    def __init__(self, G, v_in, v_out, meas_plane=None):
         """
         G: networkx graph
         v_in: list of input nodes
         v_out: list of output nodes
+        meas_plane: dict specifying the measurement planes for each node, except output nodes.
+            if None, all measurements are assumed to be in XY-plane.
         """
         self.G = G
         self.v_in = v_in
         self.v_out = v_out
+        if meas_plane is None:
+            self.meas_plane = {i: "XY" for i in iter(G.nodes)}
+        else:
+            self.meas_plane = meas_plane
 
     def visualize(self, angles=None, local_clifford=None, figsize=None, save=False, filename=None):
         """
@@ -58,7 +64,7 @@ class GraphVisualizer:
             print("Flow found.")
             self.visualize_w_flow(f, l_k, angles, local_clifford, figsize, save, filename)
         else:
-            g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out))
+            g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
             if g:
                 print("No flow found. Gflow found.")
                 self.visualize_w_gflow(g, l_k, angles, local_clifford, figsize, save, filename)
