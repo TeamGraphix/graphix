@@ -59,7 +59,7 @@ class GraphVisualizer:
             Filename of the saved plot.
         """
 
-        f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out))
+        f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_plane)
         if f:
             print("Flow found.")
             self.visualize_w_flow(f, l_k, angles, local_clifford, figsize, save, filename)
