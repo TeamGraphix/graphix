@@ -137,7 +137,7 @@ def gflowaux(
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
         elif meas_planes[node] == "YZ":
-            vec = adj_mat_row_reduced.data[:, i_row].reshape(vec.data.shape)
+            vec.data = adj_mat_row_reduced.data[:, i_row].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
 
     adj_mat, b, _, col_pertumutation = adj_mat.forward_eliminate(b)
