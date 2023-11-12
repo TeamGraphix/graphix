@@ -1238,5 +1238,9 @@ class Circuit:
                 state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rzz":
                 state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
+            elif self.instruction[i][0] == "CCX":
+                state.evolve(Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]])
+            else:
+                raise ValueError(f"Unknown instruction: {self.instruction[i][0]}")
 
         return state
