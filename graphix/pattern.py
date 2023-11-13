@@ -782,7 +782,8 @@ class Pattern:
         G.add_edges_from(edges)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        f, l_k = flow(G, vin, vout)
+        meas_planes = self.get_meas_plane()
+        f, l_k = flow(G, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
         depth, layer = get_layers(l_k)
@@ -1250,7 +1251,8 @@ class Pattern:
         g.add_edges_from(edges)
         vin = self.input_nodes if self.input_nodes is not None else []
         vout = self.output_nodes
-        vis = GraphVisualizer(g, vin, vout)
+        meas_planes = self.get_meas_plane()
+        vis = GraphVisualizer(g, vin, vout, meas_planes)
         if pauli_indicator:
             angles = self.get_angles()
         else:
