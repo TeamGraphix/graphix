@@ -253,9 +253,10 @@ mentpy_time = []
 for width in test_cases_for_mentpy:
     graphix_circuit = graphix_circuits[width]
     mentpy_circuit = translate_graphix_rc_into_mentpy_circuit(graphix_circuit)
-    pattern = graphix_circuit.transpile()
-    pattern.draw_graph()
-    mp.draw(mentpy_circuit)
+    # you can check the mentpy circuit and graphix circuit
+    # pattern = graphix_circuit.transpile()
+    # pattern.draw_graph()
+    # mp.draw(mentpy_circuit)
     simulator = mp.PatternSimulator(mentpy_circuit, backend="numpy-sv")
     angles = np.zeros(len(mentpy_circuit.trainable_nodes))
     start = perf_counter()
