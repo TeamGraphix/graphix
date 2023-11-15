@@ -25,7 +25,7 @@ except ImportError:
 class GraphState:
     """Factory class for graph state simulator."""
 
-    def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx=False):  # TODO: change to True
+    def __new__(cls, nodes=None, edges=None, vops=None, use_rustworkx=False):  # TODO: change to True
         """
         Parameters
         ----------
@@ -39,7 +39,10 @@ class GraphState:
         """
         if use_rustworkx:
             if RUSTWORKX_INSTALLED:
-                return RustworkxGraphState(nodes=nodes, edges=edges, vops=vops)
+                # somehow RustworkxGraphState(nodes=nodes, edges=edges, vops=vops) does not work
+                instance = RustworkxGraphState()
+                instance.__init__(nodes=nodes, edges=edges, vops=vops)
+                return instance
             else:
                 warnings.warn("rustworkx is not installed. Using networkx instead.")
         return NetworkxGraphState(nodes=nodes, edges=edges, vops=vops)
@@ -48,16 +51,36 @@ class GraphState:
 class BaseGraphState:
     """Base class for graph state simulator."""
 
+    def __init__(self, nodes=None, edges=None, vops=None):
+        """
+        Parameters
+        ----------
+        nodes : iterable container
+            A container of nodes (list, dict, etc)
+        edges : list
+            list of tuples (i,j) for pairs to be entangled.
+        vops : dict
+            dict of local Clifford gates with keys for node indices and
+            values for Clifford index (see graphix.clifford.CLIFFORD)
+        """
+        super().__init__()
+
     # @abstractmethod
     # def ...
 
 
-class RustworkxGraphState(BaseGraphState, rx.PyGraph if RUSTWORKX_INSTALLED else object):
+class RustworkxGraphState(BaseGraphState, rx.PyGraph):
     """Graph state simulator implemented with rustworkx"""
 
     def __init__(self, nodes=None, edges=None, vops=None):
-        super().__init__()
         raise NotImplementedError
+        super().__init__(nodes=nodes, edges=edges, vops=vops)
+        if nodes is not None:
+            self.add_nodes_from(nodes)
+        if edges is not None:
+            self.add_edges_from(edges)
+        if vops is not None:
+            self.apply_vops(vops)
 
 
 class NetworkxGraphState(BaseGraphState, nx.Graph):
