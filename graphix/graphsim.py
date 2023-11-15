@@ -5,7 +5,6 @@ M. Elliot, B. Eastin & C. Caves,
     JPhysA 43, 025301 (2010) and PRA 77, 042307 (2008)
 
 """
-import sys
 import warnings
 
 import networkx as nx
@@ -14,10 +13,12 @@ from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
-RUSTWORKX_INSTALLED = "rustworkx" in sys.modules
-if RUSTWORKX_INSTALLED:
+RUSTWORKX_INSTALLED = False
+try:
     import rustworkx as rx
-else:
+
+    RUSTWORKX_INSTALLED = True
+except ImportError:
     rx = None
 
 
@@ -51,7 +52,7 @@ class BaseGraphState:
     # def ...
 
 
-class RustworkxGraphState(BaseGraphState, rx.Graph if rx else object):
+class RustworkxGraphState(BaseGraphState, rx.PyGraph if RUSTWORKX_INSTALLED else object):
     """Graph state simulator implemented with rustworkx"""
 
     def __init__(self, nodes=None, edges=None, vops=None):
