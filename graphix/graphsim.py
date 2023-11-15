@@ -5,15 +5,62 @@ M. Elliot, B. Eastin & C. Caves,
     JPhysA 43, 025301 (2010) and PRA 77, 042307 (2008)
 
 """
+import sys
+import warnings
+
 import networkx as nx
-import numpy as np
-from graphix.clifford import CLIFFORD_MUL, CLIFFORD_HSZ_DECOMPOSITION
-from graphix.sim.statevec import Statevec
+
+from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
+from graphix.sim.statevec import Statevec
+
+RUSTWORKX_INSTALLED = "rustworkx" in sys.modules
+if RUSTWORKX_INSTALLED:
+    import rustworkx as rx
+else:
+    rx = None
 
 
-class GraphState(nx.Graph):
-    """Graph state simulator
+class GraphState:
+    """Factory class for graph state simulator."""
+
+    def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx=False):  # TODO: change to True
+        """
+        Parameters
+        ----------
+        nodes : iterable container
+            A container of nodes (list, dict, etc)
+        edges : list
+            list of tuples (i,j) for pairs to be entangled.
+        vops : dict
+            dict of local Clifford gates with keys for node indices and
+            values for Clifford index (see graphix.clifford.CLIFFORD)
+        """
+        if use_rustworkx:
+            if RUSTWORKX_INSTALLED:
+                return RustworkxGraphState(nodes=nodes, edges=edges, vops=vops)
+            else:
+                warnings.warn("rustworkx is not installed. Using networkx instead.")
+        return NetworkxGraphState(nodes=nodes, edges=edges, vops=vops)
+
+
+class BaseGraphState:
+    """Base class for graph state simulator."""
+
+    # @abstractmethod
+    # def ...
+
+
+class RustworkxGraphState(BaseGraphState, rx.Graph if rx else object):
+    """Graph state simulator implemented with rustworkx"""
+
+    def __init__(self, nodes=None, edges=None, vops=None):
+        super().__init__()
+        raise NotImplementedError
+
+
+class NetworkxGraphState(BaseGraphState, nx.Graph):
+    """Graph state simulator implemented with networkx.
 
     Performs Pauli measurements on graph states.
     Inherits methods and attributes from networkx.Graph.
