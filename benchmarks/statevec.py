@@ -66,6 +66,7 @@ def simple_random_circuit(nqubit, depth):
 
 DEPTH = 1
 test_cases = [i for i in range(2, 22)]
+graphix_circuits = {}
 
 pattern_time = []
 circuit_time = []
@@ -76,6 +77,7 @@ circuit_time = []
 
 for nqubit in test_cases:
     circuit = simple_random_circuit(nqubit, DEPTH)
+    graphix_circuits[nqubit] = circuit
     pattern = circuit.transpile()
     pattern.standardize()
     pattern.minimize_space()
@@ -97,41 +99,35 @@ for nqubit in test_cases:
 # Here we take benchmarking for MBQC simulation using `paddle_quantum`.
 
 
-def simple_random_circuit_for_paddle_quantum(width, depth):
-    """Generate a random circuit for paddle.
-
-    This function generates a circuit with nqubit qubits and depth layers,
-    having layers of CNOT and Rz gates with random placements.
+def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -> PaddleCircuit:
+    """Translate graphix circuit into paddle_quantum circuit.
 
     Parameters
     ----------
-    width : int
-        number of qubits
-    depth : int
-        number of layers
+        graphix_circuit : Circuit
+            graphix circuit
 
     Returns
     -------
-    circuit : paddle_quantum.mbqc.qobject.Circuit
-        generated circuit
+        paddle_quantum_circuit : PaddleCircuit
+            paddle_quantum circuit
     """
-    qubit_index = [i for i in range(width)]
-    circuit = PaddleCircuit(width)
-    for _ in range(depth):
-        np.random.shuffle(qubit_index)
-        for j in range(len(qubit_index) // 2):
-            circuit.cnot(which_qubits=[qubit_index[2 * j], qubit_index[2 * j + 1]])
-        for j in range(len(qubit_index)):
-            circuit.rz(which_qubit=qubit_index[j], theta=to_tensor(2 * np.pi * np.random.random(), dtype="float64"))
-    return circuit
+    paddle_quantum_circuit = PaddleCircuit(graphix_circuit.width)
+    for instr in graphix_circuit.instruction:
+        if instr[0] == "CNOT":
+            paddle_quantum_circuit.cnot(which_qubits=instr[1])
+        elif instr[0] == "Rz":
+            paddle_quantum_circuit.rz(which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64"))
+    return paddle_quantum_circuit
 
 
 test_cases_for_paddle_quantum = [i for i in range(2, 22)]
 paddle_quantum_time = []
 
 for width in test_cases_for_paddle_quantum:
-    cir = simple_random_circuit_for_paddle_quantum(width, DEPTH)
-    pat = PaddleTranspile(cir)
+    graphix_circuit = graphix_circuits[width]
+    paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit)
+    pat = PaddleTranspile(paddle_quantum_circuit)
     mbqc = PaddleMBQC()
     mbqc.set_pattern(pat)
     start = perf_counter()
@@ -213,51 +209,51 @@ def _rz_dummy(gs: mp.GraphState, input_node: int, ancilla: list, measurements: d
     return ancilla[1]
 
 
-def translate_graphix_rc_into_mentpy_circuit(circuit: Circuit) -> MentpyCircuit:
+def translate_graphix_rc_into_mentpy_circuit(graphix_circuit: Circuit) -> MentpyCircuit:
     """Translate graphix circuit into mentpy circuit.
 
     Parameters
     ----------
-        circuit : Circuit
+        graphix_circuit : Circuit
             graphix circuit
 
     Returns
     -------
-        mentpy_circ : MentpyCircuit
+        mentpy_circuit : MentpyCircuit
             mentpy circuit
     """
-    gs = mp.GraphState()
-    gs.add_nodes_from([i for i in range(circuit.width)])
+    mentpy_graph_state = mp.GraphState()
+    mentpy_graph_state.add_nodes_from([i for i in range(graphix_circuit.width)])
     measurements = {}
-    Nnode = circuit.width
-    input = [j for j in range(circuit.width)]
-    out = [j for j in range(circuit.width)]
-    for instr in circuit.instruction:
+    Nnode = graphix_circuit.width
+    input = [j for j in range(graphix_circuit.width)]
+    out = [j for j in range(graphix_circuit.width)]
+    for instr in graphix_circuit.instruction:
         if instr[0] == "CNOT":
             ancilla = [Nnode, Nnode + 1]
             out[instr[1][0]], out[instr[1][1]] = _cnot_dummy(
-                gs, out[instr[1][0]], out[instr[1][1]], ancilla, measurements
+                mentpy_graph_state, out[instr[1][0]], out[instr[1][1]], ancilla, measurements
             )
             Nnode += 2
         elif instr[0] == "Rz":
             ancilla = [Nnode, Nnode + 1]
-            out[instr[1]] = _rz_dummy(gs, out[instr[1]], ancilla, measurements, instr[2])
+            out[instr[1]] = _rz_dummy(mentpy_graph_state, out[instr[1]], ancilla, measurements, instr[2])
             Nnode += 2
 
-    mentpy_circ = MentpyCircuit(gs, input_nodes=input, output_nodes=out)
+    mentpy_circuit = MentpyCircuit(mentpy_graph_state, input_nodes=input, output_nodes=out)
     for node, op in measurements.items():
-        if node in mentpy_circ._trainable_nodes:
-            mentpy_circ[node] = op
-    return mentpy_circ
+        if node in mentpy_circuit._trainable_nodes:
+            mentpy_circuit[node] = op
+    return mentpy_circuit
 
 
 test_cases_for_mentpy = [i for i in range(2, 13)]
 mentpy_time = []
 
 for width in test_cases_for_mentpy:
-    graphix_circuit = simple_random_circuit(width, DEPTH)
-    pattern = graphix_circuit.transpile()
+    graphix_circuit = graphix_circuits[width]
     mentpy_circuit = translate_graphix_rc_into_mentpy_circuit(graphix_circuit)
+    pattern = graphix_circuit.transpile()
     pattern.draw_graph()
     mp.draw(mentpy_circuit)
     simulator = mp.PatternSimulator(mentpy_circuit, backend="numpy-sv")
