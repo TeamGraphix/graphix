@@ -5,7 +5,11 @@ M. Elliot, B. Eastin & C. Caves,
     JPhysA 43, 025301 (2010) and PRA 77, 042307 (2008)
 
 """
+from __future__ import annotations
+
 import warnings
+from abc import ABC, abstractmethod
+from typing import List, Optional, Sequence, Tuple
 
 import networkx as nx
 
@@ -25,7 +29,7 @@ except ImportError:
 class GraphState:
     """Factory class for graph state simulator."""
 
-    def __new__(cls, nodes=None, edges=None, vops=None, use_rustworkx=False):  # TODO: change to True
+    def __new__(cls, nodes=None, edges=None, vops=None, use_rustworkx: bool = False):  # TODO: change to True
         """
         Parameters
         ----------
@@ -48,39 +52,257 @@ class GraphState:
         return NetworkxGraphState(nodes=nodes, edges=edges, vops=vops)
 
 
-class BaseGraphState:
+class BaseGraphState(ABC):
     """Base class for graph state simulator."""
 
-    def __init__(self, nodes=None, edges=None, vops=None):
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def apply_vops(self, vops):
+        """Apply local Clifford operators to the graph state from a dictionary
+
+        Parameters
+        ----------
+            vops : dict
+                dict containing node indices as keys and
+                local Clifford indices as values (see graphix.clifford.CLIFFORD)
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_nodes_from(self, nodes, loop=False, sign=False, hollow=False) -> None:
+        """Add nodes and initialize node properties.
+
         Parameters
         ----------
         nodes : iterable container
             A container of nodes (list, dict, etc)
-        edges : list
-            list of tuples (i,j) for pairs to be entangled.
-        vops : dict
-            dict of local Clifford gates with keys for node indices and
-            values for Clifford index (see graphix.clifford.CLIFFORD)
+
+        Returns
+        ----------
+        None
         """
-        super().__init__()
-
-    # @abstractmethod
-    # def ...
-
-
-class RustworkxGraphState(BaseGraphState, rx.PyGraph):
-    """Graph state simulator implemented with rustworkx"""
-
-    def __init__(self, nodes=None, edges=None, vops=None):
         raise NotImplementedError
-        super().__init__(nodes=nodes, edges=edges, vops=vops)
-        if nodes is not None:
-            self.add_nodes_from(nodes)
-        if edges is not None:
-            self.add_edges_from(edges)
-        if vops is not None:
-            self.apply_vops(vops)
+
+    @abstractmethod
+    def add_edges_from(self, edges) -> None:
+        """Add edges and initialize node properties of newly added nodes.
+
+        Parameters
+        ----------
+        edges : iterable container
+            must be given as list of 2-tuples (u, v)
+
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_vops(self) -> dict:
+        """Apply local Clifford operators to the graph state from a dictionary
+
+        Parameters
+        ----------
+            vops : dict
+                dict containing node indices as keys and
+                local Clifford indices as values (see graphix.clifford.CLIFFORD)
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def flip_fill(self, node):
+        """Flips the fill (local H) of a node.
+
+        Parameters
+        ----------
+        node : int
+            graph node to flip the fill
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def flip_sign(self, node):
+        """Flips the sign (local Z) of a node.
+        Note that application of Z gate is different from `flip_sign`
+        if there exist an edge from the node.
+
+        Parameters
+        ----------
+        node : int
+            graph node to flip the sign
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def advance(self, node):
+        """Flips the loop (local S) of a node.
+        If the loop already exist, sign is also flipped,
+        reflecting the relation SS=Z.
+        Note that application of S gate is different from `advance`
+        if there exist an edge from the node.
+
+        Parameters
+        ----------
+        node : int
+            graph node to advance the loop.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def h(self, node):
+        """Apply H gate to a qubit (node).
+
+        Parameters
+        ----------
+        node : int
+            graph node to apply H gate
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def s(self, node):
+        """Apply S gate to a qubit (node).
+
+        Parameters
+        ----------
+        node : int
+            graph node to apply S gate
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def z(self, node):
+        """Apply Z gate to a qubit (node).
+
+        Parameters
+        ----------
+        node : int
+            graph node to apply Z gate
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def equivalent_graph_E1(self, node):
+        """Tranform a graph state to a different graph state
+        representing the same stabilizer state.
+        This rule applies only to a node with loop.
+
+        Parameters
+        ----------
+        node1 : int
+            A graph node with a loop to apply rule E1
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def equivalent_graph_E2(self, node1, node2):
+        """Tranform a graph state to a different graph state
+        representing the same stabilizer state.
+        This rule applies only to two connected nodes without loop.
+
+        Parameters
+        ----------
+        node1, node2 : int
+            connected graph nodes to apply rule E2
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def local_complement(self, node):
+        """Perform local complementation of a graph
+
+        Parameters
+        ----------
+        node : int
+            chosen node for the local complementation
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def equivalent_fill_node(self, node):
+        """Fill the chosen node by graph transformation rules E1 and E2,
+        If the selected node is hollow and isolated, it cannot be filled
+        and warning is thrown.
+
+        Parameters
+        ----------
+        node : int
+            node to fill.
+
+        Returns
+        ----------
+        result : int
+            if the selected node is hollow and isolated, `result` is 1.
+            if filled and isolated, 2.
+            otherwise it is 0.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def measure_x(self, node, choice=0):
+        """perform measurement in X basis
+        According to original paper, we realise X measurement by
+        applying H gate to the measured node before Z measurement.
+
+        Parameters
+        ----------
+        node : int
+            qubit index to be measured
+        choice : int, 0 or 1
+            choice of measurement outcome. observe (-1)^choice
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def measure_y(self, node, choice=0):
+        """perform measurement in Y basis
+        According to original paper, we realise Y measurement by
+        applying S,Z and H gate to the measured node before Z measurement.
+
+        Parameters
+        ----------
+        node : int
+            qubit index to be measured
+        choice : int, 0 or 1
+            choice of measurement outcome. observe (-1)^choice
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def measure_z(self, node, choice=0):
+        """perform measurement in Z basis
+        To realize the simple Z measurement on undecorated graph state,
+        we first fill the measured node (remove local H gate)
+
+        Parameters
+        ----------
+        node : int
+            qubit index to be measured
+        choice : int, 0 or 1
+            choice of measurement outcome. observe (-1)^choice
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def draw(self, fill_color="C0", **kwargs):
+        """Draw decorated graph state.
+        Negative nodes are indicated by negative sign of node labels.
+
+        Parameters
+        ----------
+        fill_color : str, optional
+            fill color of nodes
+        kwargs : keyword arguments, optional
+            additional arguments to supply networkx.draw().
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_statevector(self):
+        raise NotImplementedError
 
 
 class NetworkxGraphState(BaseGraphState, nx.Graph):
@@ -136,7 +358,7 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
                 elif lc == 4:
                     self.s(node)
 
-    def add_nodes_from(self, nodes):
+    def add_nodes_from(self, nodes, loop=False, sign=False, hollow=False):
         """Add nodes and initialize node properties.
 
         Parameters
@@ -144,7 +366,7 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
         nodes : iterable container
             A container of nodes (list, dict, etc)
         """
-        super().add_nodes_from(nodes, loop=False, sign=False, hollow=False)
+        nx.Graph.add_nodes_from(self, nodes, loop=loop, sign=sign, hollow=hollow)
 
     def add_edges_from(self, edges):
         """Add edges and initialize node properties of newly added nodes.
@@ -154,7 +376,7 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
         edges : iterable container
             must be given as list of 2-tuples (u, v)
         """
-        super().add_edges_from(edges)
+        nx.Graph.add_edges_from(self, edges)
         for i in self.nodes:
             if "loop" not in self.nodes[i]:
                 self.nodes[i]["loop"] = False  # True for having loop
@@ -493,3 +715,16 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
             if self.nodes[mapping[i]]["hollow"]:
                 gstate.evolve_single(Ops.h, i)
         return gstate
+
+
+class RustworkxGraphState(BaseGraphState, rx.PyGraph):
+    """Graph state simulator implemented with rustworkx"""
+
+    def __init__(self, nodes=None, edges=None, vops=None):
+        super().__init__()
+        if nodes is not None:
+            self.add_nodes_from(nodes)
+        if edges is not None:
+            self.add_edges_from_no_data(edges)
+        if vops is not None:
+            self.apply_vops(vops)
