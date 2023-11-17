@@ -1,15 +1,17 @@
 """MBQC pattern according to Measurement Calculus
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
-import numpy as np
-import networkx as nx
-from graphix.simulator import PatternSimulator
-from graphix.device_interface import PatternRunner
-from graphix.graphsim import GraphState
-from graphix.gflow import flow, gflow, get_layers
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
-from graphix.visualization import GraphVisualizer
 from copy import deepcopy
+
+import networkx as nx
+import numpy as np
+
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.device_interface import PatternRunner
+from graphix.gflow import flow, get_layers, gflow
+from graphix.graphsim import GraphState
+from graphix.simulator import PatternSimulator
+from graphix.visualization import GraphVisualizer
 
 
 class Pattern:
@@ -44,7 +46,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, width=0, input_nodes=None, output_nodes=[]):
+    def __init__(self, width=0, input_nodes=None, output_nodes=[], use_rustworkx=True):
         """
         :param width:  number of input/output qubits
         """
@@ -56,6 +58,7 @@ class Pattern:
         self.output_nodes = output_nodes  # output nodes
         self.Nnode = width  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
+        self._use_rustworkx = use_rustworkx  # flag for using rustworkx for graph state simulation
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -1225,7 +1228,7 @@ class Pattern:
         .. seealso:: :func:`measure_pauli`
 
         """
-        measure_pauli(self, leave_input, copy=False)
+        measure_pauli(self, leave_input, copy=False, use_rustworkx=self._use_rustworkx)
 
     def draw_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
@@ -1699,7 +1702,7 @@ def xor_combination_list(list1, list2):
     return result
 
 
-def measure_pauli(pattern, leave_input, copy=False):
+def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=True):
     """Perform Pauli measurement of a pattern by fast graph state simulator
     uses the decorated-graph method implemented in graphix.graphsim to perform
     the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1730,7 +1733,7 @@ def measure_pauli(pattern, leave_input, copy=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
