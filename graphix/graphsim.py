@@ -29,24 +29,10 @@ except ImportError:
 class GraphState:
     """Factory class for graph state simulator."""
 
-    def __new__(cls, nodes=None, edges=None, vops=None, use_rustworkx: bool = False):  # TODO: change to True
-        """
-        Parameters
-        ----------
-        nodes : iterable container
-            A container of nodes (list, dict, etc)
-        edges : list
-            list of tuples (i,j) for pairs to be entangled.
-        vops : dict
-            dict of local Clifford gates with keys for node indices and
-            values for Clifford index (see graphix.clifford.CLIFFORD)
-        """
+    def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx: bool = False):  # TODO: change to True
         if use_rustworkx:
             if RUSTWORKX_INSTALLED:
-                # somehow RustworkxGraphState(nodes=nodes, edges=edges, vops=vops) does not work
-                instance = RustworkxGraphState()
-                instance.__init__(nodes=nodes, edges=edges, vops=vops)
-                return instance
+                return RustworkxGraphState(nodes=nodes, edges=edges, vops=vops)
             else:
                 warnings.warn("rustworkx is not installed. Using networkx instead.")
         return NetworkxGraphState(nodes=nodes, edges=edges, vops=vops)
@@ -57,6 +43,21 @@ class BaseGraphState(ABC):
 
     def __init__(self):
         super().__init__()
+
+    @property
+    @abstractmethod
+    def nodes(self):
+        return self._graph.nodes
+
+    @property
+    @abstractmethod
+    def edges(self):
+        return self._graph.edges
+
+    @property
+    @abstractmethod
+    def graph(self):
+        return self._graph
 
     @abstractmethod
     def apply_vops(self, vops):
@@ -305,7 +306,7 @@ class BaseGraphState(ABC):
         raise NotImplementedError
 
 
-class NetworkxGraphState(BaseGraphState, nx.Graph):
+class NetworkxGraphState(BaseGraphState):
     """Graph state simulator implemented with networkx.
 
     Performs Pauli measurements on graph states.
@@ -333,6 +334,7 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
             values for Clifford index (see graphix.clifford.CLIFFORD)
         """
         super().__init__()
+        self._graph = nx.Graph()
         if nodes is not None:
             self.add_nodes_from(nodes)
         if edges is not None:
@@ -366,7 +368,7 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
         nodes : iterable container
             A container of nodes (list, dict, etc)
         """
-        nx.Graph.add_nodes_from(self, nodes, loop=loop, sign=sign, hollow=hollow)
+        self._graph.add_nodes_from(self, nodes, loop=loop, sign=sign, hollow=hollow)
 
     def add_edges_from(self, edges):
         """Add edges and initialize node properties of newly added nodes.
@@ -376,12 +378,12 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
         edges : iterable container
             must be given as list of 2-tuples (u, v)
         """
-        nx.Graph.add_edges_from(self, edges)
-        for i in self.nodes:
-            if "loop" not in self.nodes[i]:
-                self.nodes[i]["loop"] = False  # True for having loop
-                self.nodes[i]["sign"] = False  # True for minus
-                self.nodes[i]["hollow"] = False  # True for hollow node
+        self._graph.add_edges_from(self, edges)
+        for i in self._graph.nodes:
+            if "loop" not in self._graph.nodes[i]:
+                self._graph.nodes[i]["loop"] = False  # True for having loop
+                self._graph.nodes[i]["sign"] = False  # True for minus
+                self._graph.nodes[i]["hollow"] = False  # True for hollow node
 
     def get_vops(self):
         """Returns a dict containing clifford labels for each nodes.
@@ -717,11 +719,12 @@ class NetworkxGraphState(BaseGraphState, nx.Graph):
         return gstate
 
 
-class RustworkxGraphState(BaseGraphState, rx.PyGraph):
+class RustworkxGraphState(BaseGraphState):
     """Graph state simulator implemented with rustworkx"""
 
     def __init__(self, nodes=None, edges=None, vops=None):
         super().__init__()
+        self.graph = rx.PyGraph()
         if nodes is not None:
             self.add_nodes_from(nodes)
         if edges is not None:
