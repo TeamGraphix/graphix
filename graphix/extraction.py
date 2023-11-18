@@ -1,9 +1,14 @@
 from __future__ import annotations
+
 from enum import Enum
 
-import graphix
-import numpy as np
 import networkx as nx
+import numpy as np
+from rustworkx import PyGraph
+
+from graphix.graphsim.graphstate import GraphState
+from graphix.graphsim.nx_graphstate import NetworkxGraphState
+from graphix.graphsim.rx_graphstate import RustworkxGraphState
 
 
 class ResourceType(Enum):
@@ -22,11 +27,11 @@ class ResourceGraph:
     ----------
     type : :class:`ResourceType` object
         Type of the cluster.
-    graph : :class:`graphix.GraphState` object
+    graph : :class:`~graphix.graphsim.GraphState` object
         Graph state of the cluster.
     """
 
-    def __init__(self, type: ResourceType, graph: graphix.GraphState = None):
+    def __init__(self, type: ResourceType, graph: GraphState = None):
         self.graph = graph
         self.type = type
 
@@ -44,18 +49,18 @@ class ResourceGraph:
 
 
 def get_fusion_network_from_graph(
-    graph: graphix.GraphState,
+    graph: GraphState,
     max_ghz: int | float = np.inf,
     max_lin: int | float = np.inf,
 ) -> list[ResourceGraph]:
-    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`graphix.GraphState`.
+    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`~graphix.graphsim.GraphState`.
     Extraction algorithm is based on [1].
 
     [1] Zilk et al., A compiler for universal photonic quantum computers, 2022 `arXiv:2210.09251 <https://arxiv.org/abs/2210.09251>`_
 
     Parameters
     ----------
-    graph : :class:`graphix.GraphState` object
+    graph : :class:`~graphix.graphsim.GraphState` object
         Graph state.
     phasedict : dict
         Dictionary of phases for each node.
@@ -69,6 +74,8 @@ def get_fusion_network_from_graph(
     list
         List of :class:`ResourceGraph` objects.
     """
+    if isinstance(graph.graph, PyGraph):
+        raise NotImplementedError
     adjdict = nx.to_dict_of_dicts(graph)
     number_of_edges = graph.number_of_edges()
     resource_list = []
@@ -154,7 +161,7 @@ def create_resource_graph(node_ids: list[int], root: int | None = None) -> Resou
     else:
         edges = [(node_ids[i], node_ids[i + 1]) for i in range(len(node_ids)) if i + 1 < len(node_ids)]
         cluster_type = ResourceType.LINEAR
-    tmp_graph = graphix.GraphState()
+    tmp_graph = GraphState()
     tmp_graph.add_nodes_from(node_ids)
     tmp_graph.add_edges_from(edges)
     return ResourceGraph(type=cluster_type, graph=tmp_graph)

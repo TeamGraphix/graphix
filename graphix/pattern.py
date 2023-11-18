@@ -9,7 +9,7 @@ import numpy as np
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import flow, get_layers, gflow
-from graphix.graphsim import GraphState
+from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 
