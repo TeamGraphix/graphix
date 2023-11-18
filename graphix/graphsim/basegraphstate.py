@@ -39,6 +39,9 @@ class BaseGraphState(ABC):
 
     @abstractmethod
     def degree(self):
+        """Returns an iterator for (node, degree) tuples,
+        where degree is the number of edges adjacent to the node
+        """
         raise NotImplementedError
 
     @abstractmethod
