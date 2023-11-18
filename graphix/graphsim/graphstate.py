@@ -8,17 +8,6 @@ M. Elliot, B. Eastin & C. Caves,
 from __future__ import annotations
 
 import warnings
-from abc import ABC, abstractmethod
-from typing import Union
-
-import networkx as nx
-
-from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
-from graphix.ops import Ops
-from graphix.sim.statevec import Statevec
-
-from .nx_graphstate import NetworkxGraphState
-from .rx_graphstate import RustworkxGraphState
 
 RUSTWORKX_INSTALLED = False
 try:
@@ -28,8 +17,8 @@ try:
 except ImportError:
     rx = None
 
-
-GraphObject: Union[nx.Graph, rx.PyGraph]
+from .nx_graphstate import NetworkxGraphState
+from .rx_graphstate import RustworkxGraphState
 
 
 class GraphState:

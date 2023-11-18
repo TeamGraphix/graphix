@@ -37,16 +37,11 @@ class BaseGraphState(ABC):
     def graph(self):
         raise NotImplementedError
 
-    @property
-    @abstractmethod
-    def adj(self):
-        raise NotImplementedError
-
-    @property
     @abstractmethod
     def degree(self):
         raise NotImplementedError
 
+    @abstractmethod
     def neighbors(self, node) -> iter:
         """Returns an iterator over all neighbors of node n.
 
@@ -60,8 +55,9 @@ class BaseGraphState(ABC):
         iter
             An iterator over all neighbors of node n.
         """
-        return iter(self._graph.neighbors(node))
+        raise NotImplementedError
 
+    @abstractmethod
     def subgraph(self, nodes: list) -> GraphObject:
         """Returns a subgraph of the graph.
 
@@ -75,7 +71,7 @@ class BaseGraphState(ABC):
         GraphObject
             A subgraph of the graph.
         """
-        return self._graph.subgraph(nodes)
+        raise NotImplementedError
 
     @abstractmethod
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
@@ -107,6 +103,7 @@ class BaseGraphState(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def remove_node(self, node: int) -> None:
         """Remove a node from the graph.
 
@@ -119,8 +116,9 @@ class BaseGraphState(ABC):
         ----------
         None
         """
-        self._graph.remove_node(node)
+        raise NotImplementedError
 
+    @abstractmethod
     def remove_nodes_from(self, nodes: list[int]) -> None:
         """Remove all nodes specified in the list.
 
@@ -133,8 +131,9 @@ class BaseGraphState(ABC):
         ----------
         None
         """
-        self._graph.remove_nodes_from(nodes)
+        raise NotImplementedError
 
+    @abstractmethod
     def remove_edge(self, u: int, v: int) -> None:
         """Remove an edge from the graph.
 
@@ -149,8 +148,9 @@ class BaseGraphState(ABC):
         ----------
         None
         """
-        self._graph.remove_edge(u, v)
+        raise NotImplementedError
 
+    @abstractmethod
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Remove all edges specified in the list.
 
@@ -163,7 +163,7 @@ class BaseGraphState(ABC):
         ----------
         None
         """
-        self._graph.remove_edges_from(edges)
+        raise NotImplementedError
 
     @abstractmethod
     def apply_vops(self, vops: dict):

@@ -55,17 +55,12 @@ class NetworkxGraphState(BaseGraphState):
 
     @property
     def graph(self):
-        return self._graph.graph
+        return self._graph
 
-    @property
-    def adj(self):
-        return self._graph.adj
-
-    @property
     def degree(self):
-        return self._graph.degree
+        return self._graph.degree()
 
-    def apply_vops(self, vops):
+    def apply_vops(self, vops: dict):
         """Apply local Clifford operators to the graph state from a dictionary
 
         Parameters
@@ -102,6 +97,7 @@ class NetworkxGraphState(BaseGraphState):
             must be given as list of 2-tuples (u, v)
         """
         self._graph.add_edges_from(edges)
+        # adding edges may add new nodes
         for i in self._graph.nodes:
             if "loop" not in self._graph.nodes[i]:
                 self._graph.nodes[i]["loop"] = False  # True for having loop
@@ -124,7 +120,99 @@ class NetworkxGraphState(BaseGraphState):
             The number of edges in the graph. If u and v are specified,
             return the number of edges between those nodes.
         """
+        if u is None and v is None:
+            return len(self._graph.edges)
+        elif u is None or v is None:
+            raise ValueError("u and v must be specified together")
         return self._graph.number_of_edges(u, v)
+
+    def neighbors(self, node) -> iter:
+        """Returns an iterator over all neighbors of node n.
+
+        Parameters
+        ----------
+        node : int
+            A node in the graph
+
+        Returns
+        ----------
+        iter
+            An iterator over all neighbors of node n.
+        """
+        return self._graph.neighbors(node)
+
+    def subgraph(self, nodes: list) -> nx.Graph:
+        """Returns a subgraph of the graph.
+
+        Parameters
+        ----------
+        nodes : list
+            A list of node indices to generate the subgraph from.
+
+        Returns
+        ----------
+        GraphObject
+            A subgraph of the graph.
+        """
+        return self._graph.subgraph(nodes)
+
+    def remove_node(self, node: int) -> None:
+        """Remove a node from the graph.
+
+        Parameters
+        ----------
+        node : int
+            A node in the graph
+
+        Returns
+        ----------
+        None
+        """
+        self._graph.remove_node(node)
+
+    def remove_nodes_from(self, nodes: list[int]) -> None:
+        """Remove all nodes specified in the list.
+
+        Parameters
+        ----------
+        nodes : list
+            A list of nodes to remove from the graph.
+
+        Returns
+        ----------
+        None
+        """
+        self._graph.remove_nodes_from(nodes)
+
+    def remove_edge(self, u: int, v: int) -> None:
+        """Remove an edge from the graph.
+
+        Parameters
+        ----------
+        u : int
+            A node in the graph
+        v : int
+            A node in the graph
+
+        Returns
+        ----------
+        None
+        """
+        self._graph.remove_edge(u, v)
+
+    def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
+        """Remove all edges specified in the list.
+
+        Parameters
+        ----------
+        edges : list of tuples
+            A list of edges to remove from the graph.
+
+        Returns
+        ----------
+        None
+        """
+        self._graph.remove_edges_from(edges)
 
     def adjacency(self) -> iter:
         """Returns an iterator over (node, adjacency dict) tuples for all nodes.
