@@ -1,3 +1,4 @@
+import numpy as np
 from networkx import Graph
 from networkx.utils import graphs_equal
 
@@ -14,10 +15,20 @@ from .rx_graphstate import RustworkxGraphState
 
 
 def convert_rustworkx_to_networkx(graph: PyGraph) -> Graph:
-    """Convert a rustworkx PyGraph to a networkx graph."""
+    """Convert a rustworkx PyGraph to a networkx graph.
+
+    .. caution::
+        The node in the rustworkx graph must be a tuple of the form (node_num, node_data),
+        where node_num is an integer and node_data is a dictionary of node data.
+    """
     if not isinstance(graph, PyGraph):
         raise TypeError("graph must be a rustworkx PyGraph")
-    node_list = list(graph.nodes())
+    node_list = graph.nodes()
+    if not all(
+        isinstance(node, tuple) and len(node) == 2 and (int(node[0]) == node[0]) and isinstance(node[1], dict)
+        for node in node_list
+    ):
+        raise TypeError("All the nodes in the graph must be tuple[int, dict]")
     edge_list = list(graph.edge_list())
     g = Graph()
     for node in node_list:
@@ -29,7 +40,7 @@ def convert_rustworkx_to_networkx(graph: PyGraph) -> Graph:
     return g
 
 
-def is_graph_equal(graph1: BaseGraphState, graph2: BaseGraphState) -> bool:
+def is_graphs_equal(graph1: BaseGraphState, graph2: BaseGraphState) -> bool:
     """Check if graphs are equal.
 
     Parameters

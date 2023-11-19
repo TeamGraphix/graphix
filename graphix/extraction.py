@@ -10,7 +10,7 @@ from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.nx_graphstate import NetworkxGraphState
 from graphix.graphsim.rx_graphstate import RustworkxGraphState
-from graphix.graphsim.utils import is_graph_equal
+from graphix.graphsim.utils import is_graphs_equal
 
 
 class ResourceType(Enum):
@@ -47,7 +47,7 @@ class ResourceGraph:
         if not isinstance(other, ResourceGraph):
             raise TypeError("cannot compare ResourceGraph with other object")
 
-        return is_graph_equal(self.graph, other.graph) and self.type == other.type
+        return is_graphs_equal(self.graph, other.graph) and self.type == other.type
 
 
 def get_fusion_network_from_graph(
