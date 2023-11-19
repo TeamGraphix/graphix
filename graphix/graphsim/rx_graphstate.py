@@ -258,6 +258,10 @@ class RustworkxGraphState(BaseGraphState):
         nidx = self._nodes.get_node_index(node)
         self._graph.remove_node(nidx)
         self._nodes.remove_node(node)
+        edge_list = list(self._edges)
+        for e in edge_list:
+            if node in e:
+                self._edges.remove_edge(e)
 
     def remove_nodes_from(self, nodes: list[int]) -> None:
         """Remove all nodes specified in the list.
@@ -271,10 +275,8 @@ class RustworkxGraphState(BaseGraphState):
         ----------
         None
         """
-        self._nodes.remove_nodes_from(nodes)
         for n in nodes:
-            nidx = self._nodes.get_node_index(n)
-            self._graph.remove_node(nidx)
+            self.remove_node(n)
 
     def remove_edge(self, u: int, v: int) -> None:
         """Remove an edge from the graph.
@@ -307,11 +309,8 @@ class RustworkxGraphState(BaseGraphState):
         ----------
         None
         """
-        self._edges.remove_edges_from(edges)
-        for u, v in edges:
-            uidx = self._nodes.get_node_index(u)
-            vidx = self._nodes.get_node_index(v)
-            self._graph.remove_edge(uidx, vidx)
+        for e in edges:
+            self.remove_edge(e[0], e[1])
 
     def apply_vops(self, vops: dict):
         """Apply local Clifford operators to the graph state from a dictionary
@@ -340,7 +339,8 @@ class RustworkxGraphState(BaseGraphState):
             A container of nodes (list, dict, etc)
         """
         node_indices = self._graph.add_nodes_from([(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes])
-        self._nodes.add_nodes_from(nodes, [{"loop": False, "sign": False, "hollow": False}] * len(nodes), node_indices)
+        for nidx in node_indices:
+            self._nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
 
     def add_edges_from(self, edges):
         """Add edges and initialize node properties of newly added nodes.
@@ -353,15 +353,15 @@ class RustworkxGraphState(BaseGraphState):
         for u, v in edges:
             # adding edges may add new nodes
             if u not in self._nodes:
-                eidx = self._graph.add_node((u, {"loop": False, "sign": False, "hollow": False}))
-                self._nodes.add_node(u, {"loop": False, "sign": False, "hollow": False}, eidx)
+                nidx = self._graph.add_node((u, {"loop": False, "sign": False, "hollow": False}))
+                self._nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
             if v not in self._nodes:
-                eidx = self._graph.add_node((v, {"loop": False, "sign": False, "hollow": False}))
-                self._nodes.add_node(v, {"loop": False, "sign": False, "hollow": False}, eidx)
+                nidx = self._graph.add_node((v, {"loop": False, "sign": False, "hollow": False}))
+                self._nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
             uidx = self._nodes.get_node_index(u)
             vidx = self._nodes.get_node_index(v)
             eidx = self._graph.add_edge(uidx, vidx, None)
-            self._edges.add_edge((u, v), None, eidx)
+            self._edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
 
     def get_vops(self):
         """Returns a dict containing clifford labels for each nodes.
@@ -396,9 +396,7 @@ class RustworkxGraphState(BaseGraphState):
         node : int
             graph node to flip the fill
         """
-        nidx = self._nodes.get_node_index(node)
         self._nodes[node]["hollow"] = not self._nodes[node]["hollow"]
-        self._graph[nidx][1]["hollow"] = not self._graph[nidx][1]["hollow"]
 
     def flip_sign(self, node):
         """Flips the sign (local Z) of a node.
@@ -410,9 +408,7 @@ class RustworkxGraphState(BaseGraphState):
         node : int
             graph node to flip the sign
         """
-        nidx = self._nodes.get_node_index(node)
         self._nodes[node]["sign"] = not self._nodes[node]["sign"]
-        self._graph[nidx][1]["sign"] = not self._graph[nidx][1]["sign"]
 
     def advance(self, node):
         """Flips the loop (local S) of a node.
@@ -427,12 +423,10 @@ class RustworkxGraphState(BaseGraphState):
             graph node to advance the loop.
         """
         nidx = self._nodes.get_node_index(node)
-        if self._graph[nidx][1]["loop"]:
-            self._graph[nidx][1]["loop"] = False
+        if self._nodes[node]["loop"]:
             self._nodes[node]["loop"] = False
             self.flip_sign(node)
         else:
-            self._graph[nidx][1]["loop"] = True
             self._nodes[node]["loop"] = True
 
     def h(self, node):
@@ -453,11 +447,9 @@ class RustworkxGraphState(BaseGraphState):
         node : int
             graph node to apply S gate
         """
-        nidx = self._nodes.get_node_index(node)
-        if self._graph[nidx][1]["hollow"]:
-            if self._graph[nidx][1]["loop"]:
+        if self._nodes[node]["hollow"]:
+            if self._nodes[node]["loop"]:
                 self.flip_fill(node)
-                self._graph[nidx][1]["loop"] = False
                 self._nodes[node]["loop"] = False
                 self.local_complement(node)
                 for i in self.neighbors(node):
@@ -466,7 +458,7 @@ class RustworkxGraphState(BaseGraphState):
                 self.local_complement(node)
                 for i in self.neighbors(node):
                     self.advance(i)
-                if self._graph[nidx][1]["sign"]:
+                if self._nodes[node]["sign"]:
                     for i in self.neighbors(node):
                         self.flip_sign(i)
         else:  # solid
@@ -480,11 +472,10 @@ class RustworkxGraphState(BaseGraphState):
         node : int
             graph node to apply Z gate
         """
-        nidx = self._nodes.get_node_index(node)
-        if self._graph[nidx][1]["hollow"]:
+        if self._nodes[node]["hollow"]:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-            if self._graph[nidx][1]["loop"]:
+            if self._nodes[node]["loop"]:
                 self.flip_sign(node)
         else:  # solid
             self.flip_sign(node)
@@ -499,15 +490,14 @@ class RustworkxGraphState(BaseGraphState):
         node1 : int
             A graph node with a loop to apply rule E1
         """
-        nidx = self._nodes.get_node_index(node)
-        if not self._graph[nidx][1]["loop"]:
+        if not self._nodes[node]["loop"]:
             raise ValueError("node must have loop")
         self.flip_fill(node)
         self.local_complement(node)
         for i in self.neighbors(node):
             self.advance(i)
         self.flip_sign(node)
-        if self._graph[nidx][1]["sign"]:
+        if self._nodes[node]["sign"]:
             for i in self.neighbors(node):
                 self.flip_sign(i)
 
@@ -523,12 +513,10 @@ class RustworkxGraphState(BaseGraphState):
         """
         if (node1, node2) not in list(self._edges) and (node2, node1) not in list(self._edges):
             raise ValueError("nodes must be connected by an edge")
-        nidx1 = self._nodes.get_node_index(node1)
-        nidx2 = self._nodes.get_node_index(node2)
-        if self._graph[nidx1][1]["loop"] or self._graph[nidx2][1]["loop"]:
+        if self._nodes[node1]["loop"] or self._nodes[node2]["loop"]:
             raise ValueError("nodes must not have loop")
-        sg1 = self.nodes[node1]["sign"]
-        sg2 = self.nodes[node2]["sign"]
+        sg1 = self._nodes[node1]["sign"]
+        sg2 = self._nodes[node2]["sign"]
         self.flip_fill(node1)
         self.flip_fill(node2)
         # local complement along edge between node1, node2
