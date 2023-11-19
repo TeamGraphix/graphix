@@ -1,82 +1,27 @@
-"""Optimum generalized flow finding algorithm
+"""flow finding algorithm
 
-For a given open graph (G, I, O), this iterative method
-finds a generalized flow (gflow) [NJP 9, 250 (2007)] in polynomial time.
-In particular, this outputs gflow with minimum depth.
-We implemented a modification according to definition of
-Pauli flow (NJP 9, 250 (2007)).
+For a given underlying graph (G, I, O, meas_plane), this method finds a (generalized) flow [NJP 9, 250 (2007)] in polynomincal time.
+In particular, this outputs gflow with minimum depth, maximally delayed gflow.
 
 Ref: Mhalla and Perdrix, International Colloquium on Automata,
 Languages, and Programming (Springer, 2008), pp. 857-868.
+Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
 
+from itertools import product
+
 import networkx as nx
 import numpy as np
-import z3
-import copy
+import sympy as sp
+
+from graphix.linalg import MatGF2
 
 
-def solvebool(A, b):
-    """solves linear equations of booleans
+def gflow(graph, input, output, meas_planes, mode="single"):
+    """Maximally delayed gflow finding algorithm
 
-    Solves Ax=b, where A is n*m matrix and b is 1*m array, both of booleans.
-    for example, for A=[[0,1,1],[1,0,1]] and b=[1,0], we solve:
-        XOR(x1,x2) = 1
-
-        XOR(x0,x2) = 0
-    for which (one of) the solution is [x0,x1,x2]=[1,0,1]
-
-    Uses Z3, a theorem prover from Microsoft Research.
-
-    Parameters
-    ----------
-    A: np.array
-        n*m array of 1s and 0s, or booleans
-    b: np.array
-        length m array of 1s and 0s, or booleans
-
-    Returns
-    --------
-    x: np.array
-        length n array of 1s and 0s satisfying Ax=b.
-        if no solution is found, returns False.
-    """
-
-    def xor_n(a):
-        if len(a) == 1:
-            return a[0]
-        elif len(a) > 1:
-            return z3.Xor(a[0], xor_n(a[1:]))
-
-    # create list of params
-    p = []
-    for i in range(A.shape[1]):
-        p.append(z3.Bool(i))
-    p = np.array(p)
-
-    # add constraints
-    s = z3.Solver()
-    for i in range(len(b)):
-        arr = np.asarray(A[i, :]).flatten().astype(np.bool8)
-        if arr.any():
-            if b[i] == 0:
-                s.add(z3.Not(xor_n(p[arr])))
-            else:
-                s.add(xor_n(p[arr]))
-
-    # solve
-    if s.check() == z3.sat:  # there's solution
-        ans = s.model()
-        return np.array([ans[p[i]] for i in range(A.shape[1])])
-    else:  # no solution found
-        return False
-
-
-def gflow(g, v_in, v_out, meas_plane=None, timeout=1000):
-    """Optimum generalized flow finding algorithm
-
-    For open graph g with input and output, this returns optimum gflow.
+    For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
 
     gflow consist of function g(i) where i is the qubit labels,
     and strict partial ordering < or layers labels l_k where each element
@@ -86,147 +31,182 @@ def gflow(g, v_in, v_out, meas_plane=None, timeout=1000):
     qubits in g(i), depending on the measurement outcome.
 
     For more details of gflow, see Browne et al., NJP 9, 250 (2007).
-
-    Original algorithm by Mhalla and Perdrix,
-    International Colloquium on Automata, Languages, and Programming (Springer, 2008),
-    pp. 857-868.
+    We use the extended gflow finding algorithm in Backens et al., Quantum 5, 421 (2021).
 
     Parameters
     ----------
-    g: nx.Graph
+    graph: nx.Graph
         graph (incl. in and out)
-    v_in: set
+    input: set
         set of node labels for input
-    v_out: set
+    output: set
         set of node labels for output
-    timeout: int
-        number of iterations allowed before timeout
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    mode: str(optional)
+        The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
+            - "single": Returrns a single solution
+            - "all": Returns all possible solutions
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects, requiring user substitution to get a concrete answer.
+        Default is "single".
 
     Returns
     -------
-    g: list of sets
-        list of length |g| where each set is the correcting nodes for
-        the measurements of each qubits. function g() in gflow.
-    l_k: np.array
-        1D array of length |g|, where elements are layer of each qubits
-        corresponds to the strict partial ordering < in gflow.
-        Measurements must proceed in decreasing order of layer numbers.
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-    v = set(g.nodes)
-    if meas_plane is None:
-        meas_plane = {u: "XY" for u in v}
-
-    gamma = nx.to_numpy_array(g)  # adjacency matrix
-    index_list = list(g.nodes)  # match g.nodes with gamma's index
-    l_k = {i: 0 for i in v}  # contains k, layer number initialized to default (0).
-    g = dict()  # contains the correction set g(i) for i\in V.
-    k = 1
-    vo = copy.deepcopy(v_out)
-    finished = False
-    count = 0
-    while not finished:
-        count += 1
-        vo, g, l_k, finished, exist = gflowaux(v, gamma, index_list, v_in, vo, g, l_k, k, meas_plane)
-        k = k + 1
-        if not exist:
-            return None, None
-        if count > timeout:
-            raise TimeoutError("max iteration number n={} reached".format(timeout))
-    return g, l_k
+    l_k = dict()
+    g = dict()
+    for node in graph.nodes:
+        l_k[node] = 0
+    return gflowaux(graph, input, output, meas_planes, 1, l_k, g, mode=mode)
 
 
-def gflowaux(v, gamma, index_list, v_in, v_out, g, l_k, k, meas_plane):
+def gflowaux(
+    graph,
+    input: set,
+    output: set,
+    meas_planes: dict,
+    k: int,
+    l_k: dict,
+    g: dict,
+    mode,
+):
     """Function to find one layer of the gflow.
 
-    Ref: Mhalla and Perdrix, International Colloquium on Automata,
-    Languages, and Programming (Springer, 2008), pp. 857-868.
+    Ref: Backens et al., Quantum 5, 421 (2021).
 
     Parameters
     ----------
-    v: set
-        labels of all qubits (nodes)
-    gamma: np.array
-        adjacency matrix of graph
-    index_list: list of ints
-        this list connects between index of gamma and node number of Graph.
-    v_in: set
-        input qubit set
-    v_out: set
-        output qubit set U set of qubits in layers 0...k-1.
-    g: list of sets
-        g(i) for all qubits i
-    l_k: np.array
-        1D array for all qubits labeling layer number
-    k: current layer number.
-    meas_plane: array of length |v| containing 'X','Y','Z','XY','YZ','XZ'.
-        measurement planes xy, yz, xz or Pauli measurement x,y,z.
+    graph: nx.Graph
+        graph (incl. in and out)
+    input: set
+        set of node labels for input
+    output: set
+        set of node labels for output
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    k: int
+        current layer number.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    mode: str(optional)
+        The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
+            - "single": Returrns a single solution
+            - "all": Returns all possible solutions
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects, requiring user substitution to get a concrete answer.
 
-    Outputs
+    Returns
     -------
-    v_out: set
-        output qubit set U set of qubits in layers 0...k+1.
-    g: list of sets
-        updated g(i) for all qubits i
-    l_k: np.array
-        updated 1D array for all qubits labeling layer number
-    finished: bool
-        whether iteration ends or not
-    exist: bool
-        whether gflow exists or not
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
 
-    c_set = set()
-    v_rem = v - v_out  # remaining vertices
-    v_rem_list = list(v_rem)
-    n = len(v_rem)
-    v_correct = v_out - v_in
-    v_correct_list = list(v_correct)
+    nodes = set(graph.nodes)
+    if output == nodes:
+        return g, l_k
+    non_output = nodes - output
+    correction_candidate = output - input
+    adj_mat, node_order_list = get_adjacency_matrix(graph)
+    node_order_row = node_order_list.copy()
+    node_order_row.sort()
+    node_order_col = node_order_list.copy()
+    node_order_col.sort()
+    for out in output:
+        adj_mat.remove_row(node_order_row.index(out))
+        node_order_row.remove(out)
+    adj_mat_row_reduced = adj_mat.copy()  # later use for construct RHS
+    for node in nodes - correction_candidate:
+        adj_mat.remove_col(node_order_col.index(node))
+        node_order_col.remove(node)
 
-    index_0 = [[index_list.index(i)] for i in iter(v_rem)]  # for slicing rows
-    index_1 = [index_list.index(i) for i in iter(v_correct)]  # for slicing columns
+    b = MatGF2(np.zeros((adj_mat.data.shape[0], len(non_output)), dtype=int))
+    for i_row in range(len(node_order_row)):
+        node = node_order_row[i_row]
+        vec = MatGF2(np.zeros(len(node_order_row), dtype=int))
+        if meas_planes[node] == "XY":
+            vec.data[i_row] = 1
+        elif meas_planes[node] == "XZ":
+            vec.data[i_row] = 1
+            vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
+            vec = vec + vec_add
+        elif meas_planes[node] == "YZ":
+            vec.data = adj_mat_row_reduced.data[:, i_row].reshape(vec.data.shape)
+        b.data[:, i_row] = vec.data
 
-    # if index_0 or index_1 is blank, skip the calculation below
-    if len(index_0) * len(index_1):
-        gamma_sub = gamma[index_0, index_1]
+    adj_mat, b, _, col_pertumutation = adj_mat.forward_eliminate(b)
+    x, kernels = adj_mat.backward_substitute(b)
 
-        for u in iter(v_rem):
-            if meas_plane[u] == "Z":
-                c_set = c_set | {u}
-                g[u] = set()
-                l_k[u] = k
-                continue
-            elif meas_plane[u] in ["XY", "XZ", "X", "Y"]:
-                Iu = np.zeros(n, dtype=np.int8)
-                Iu[v_rem_list.index(u)] = 1
-            elif meas_plane[u] == "YZ":
-                Iu = np.ones(n, dtype=np.int8)
-                Iu[v_rem_list.index(u)] = 0
+    corrected_nodes = set()
+    for i_row in range(len(node_order_row)):
+        non_out_node = node_order_row[i_row]
+        x_col = x[:, i_row]
+        if x_col[0] == sp.nan:  # no solution
+            continue
+        if mode == "single":
+            sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
+            sol = np.array(sol_list)
+            sol_index = sol.nonzero()[0]
+            g[non_out_node] = set(node_order_col[col_pertumutation[i]] for i in sol_index)
+            if meas_planes[non_out_node] in ["XZ", "YZ"]:
+                g[non_out_node] |= {non_out_node}
 
-            Ix = solvebool(gamma_sub.astype(np.int8), Iu.astype(np.int8))
-            inds = np.where(Ix)[0]
+        elif mode == "all":
+            g[non_out_node] = set()
+            binary_combinations = product([0, 1], repeat=len(kernels))
+            for binary_combination in binary_combinations:
+                sol_list = [x_col[i].subs(zip(kernels, binary_combination)) for i in range(len(x_col))]
+                kernel_list = [True if i == 1 else False for i in binary_combination]
+                sol_list.extend(kernel_list)
+                sol = np.array(sol_list)
+                sol_index = sol.nonzero()[0]
+                g_i = set(node_order_col[col_pertumutation[i]] for i in sol_index)
+                if meas_planes[non_out_node] in ["XZ", "YZ"]:
+                    g_i |= {non_out_node}
 
-            if len(inds) > 0:  # has solution
-                c_set = c_set | {u}
-                g[u] = set(v_correct_list[ind_] for ind_ in inds)
-                l_k[u] = k
-    if not c_set:
-        finished = True
-        if v_out == v:
-            exist = True
+                g[non_out_node] |= {frozenset(g_i)}
+
+        elif mode == "abstract":
+            g[non_out_node] = dict()
+            for i in range(len(x_col)):
+                node = node_order_col[col_pertumutation[i]]
+                g[non_out_node][node] = x_col[i]
+            for i in range(len(kernels)):
+                g[non_out_node][node_order_col[col_pertumutation[len(x_col) + i]]] = kernels[i]
+            if meas_planes[non_out_node] in ["XZ", "YZ"]:
+                g[non_out_node][non_out_node] = sp.true
+
+        l_k[non_out_node] = k
+        corrected_nodes |= {non_out_node}
+
+    if len(corrected_nodes) == 0:
+        if output == nodes:
+            return g, l_k
         else:
-            exist = False
+            return None, None
     else:
-        finished = False
-        exist = True
+        return gflowaux(
+            graph,
+            input,
+            output | corrected_nodes,
+            meas_planes,
+            k + 1,
+            l_k,
+            g,
+            mode=mode,
+        )
 
-    return v_out | c_set, g, l_k, finished, exist
 
-
-def flow(g, v_in, v_out, meas_plane=None, timeout=10000):
+def flow(graph, input, output, meas_planes=None):
     """Causal flow finding algorithm
 
-    For open graph g with input and output, this returns causal flow.
-
+    For open graph g with input, output, and measurement planes, this returns causal flow.
     For more detail of causal flow, see Danos and Kashefi, PRA 74, 052310 (2006).
 
     Original algorithm by Mhalla and Perdrix,
@@ -235,47 +215,41 @@ def flow(g, v_in, v_out, meas_plane=None, timeout=10000):
 
     Parameters
     ----------
-    g: nx.Graph
+    graph: nx.Graph
         graph (incl. in and out)
-    v_in: set
+    input: set
         set of node labels for input
-    v_out: set
+    output: set
         set of node labels for output
-    timeout: int
-        number of iterations allowed before timeout
+    meas_planes: int(optional)
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i. Note that an underlying graph has a causal flow only if all measurement planes are "XY".
+        if not specified, all measurement planes are interpreted as "XY".
 
     Returns
     -------
     f: list of nodes
-        list of length |g| where each node corrects the measurements of each qubits. function f() in flow.
-    l_k: np.array
-        1D array of length |g|, where elements are layer of each qubits
-        corresponds to the strict partial ordering < in flow.
-        Measurements must proceed in decreasing order of layer numbers.
+        causal flow function. f[i] is the qubit to be measured after qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-    v = set(g.nodes)
-    e = set(g.edges)
+    nodes = set(graph.nodes)
+    edges = set(graph.edges)
 
-    l_k = {i: 0 for i in v}
+    if meas_planes is None:
+        meas_planes = {i: "XY" for i in (nodes - output)}
+
+    for plane in meas_planes.values():
+        if plane not in ["X", "Y", "XY"]:
+            return None, None
+
+    l_k = {i: 0 for i in nodes}
     f = dict()
     k = 1
-    vo = copy.deepcopy(v_out)
-    finished = False
-    exist = True
-    count = 0
-    v_c = v_out - v_in
-    while not finished:
-        count += 1
-        vo, v_c, f, l_k, finished, exist = flowaux(v, e, v_in, vo, v_c, f, l_k, k)
-        k += 1
-        if not exist:
-            return None, None
-        if count > timeout:
-            raise TimeoutError("max iteration number n={} reached".format(timeout))
-    return f, l_k
+    v_c = output - input
+    return flowaux(nodes, edges, input, output, v_c, f, l_k, k)
 
 
-def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
+def flowaux(nodes, edges, input, output, v_c, f, l_k, k):
     """Function to find one layer of the flow.
 
     Ref: Mhalla and Perdrix, International Colloquium on Automata,
@@ -283,45 +257,38 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
 
     Parameters
     ----------
-    v: set
+    nodes: set
         labels of all qubits (nodes)
-    e: set
+    edges: set
         edges
-    v_in: set
-        input qubit set
-    v_out: set
-        output qubit set U set of qubits in layers 0...k-1.
+    input: set
+        set of node labels for input
+    output: set
+        set of node labels for output
     v_c: set
-        correction qubit set in layer k
-    f: list of sets
-        f(i) for all qubits i
-    l_k: np.array
-        1D array for all qubits labeling layer number
-    k: current layer number.
-    meas_plane: array of length |v| containing 'x','y','z','xy','yz',xz'.
-        measurement planes xy, yz, xz or Pauli measurement x,y,z.
+        correction candidate qubits
+    f: dict
+        flow function. f[i] is the qubit to be measured after qubit i.
+    l_k: dict
+        layers obtained by flow algorithm. l_k[d] is a node set of depth d.
+    k: int
+        current layer number.
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
     Outputs
     -------
-    v_out: set
-        output qubit set U set of qubits in layers 0...k+1.
-    v_c: set
-        correction qubit set updated in the k-th layer.
-    f: list of sets
-        updated f(i) for all qubits i
-    l_k: np.array
-        updated 1D array for all qubits labeling layer number
-    finished: bool
-        whether iteration ends or not
-    exist: bool
-        whether gflow exists or not
+    f: list of nodes
+        causal flow function. f[i] is the qubit to be measured after qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
     v_out_prime = set()
     c_prime = set()
 
     for q in v_c:
-        N = search_neighbor(q, e)
-        p_set = N & (v - v_out)
+        N = search_neighbor(q, edges)
+        p_set = N & (nodes - output)
         if len(p_set) == 1:
             p = list(p_set)[0]
             f[p] = q
@@ -330,21 +297,19 @@ def flowaux(v, e, v_in, v_out, v_c, f, l_k, k):
             c_prime = c_prime | {q}
     # determine whether there exists flow
     if not v_out_prime:
-        finished = True
-        if v_out == v:
-            exist = True
+        if output == nodes:
+            return f, l_k
         else:
-            exist = False
-    else:
-        finished = False
-        exist = True
-    return (
-        v_out | v_out_prime,
-        (v_c - c_prime) | (v_out_prime & (v - v_in)),
+            return None, None
+    return flowaux(
+        nodes,
+        edges,
+        input,
+        output | v_out_prime,
+        (v_c - c_prime) | (v_out_prime & (nodes - input)),
         f,
         l_k,
-        finished,
-        exist,
+        k + 1,
     )
 
 
@@ -372,34 +337,42 @@ def search_neighbor(node, edges):
     return N
 
 
-def find_flow(g, v_in, v_out, meas_plane=None, timeout=100):
+def find_flow(graph, input, output, meas_planes=None, mode="single"):
     """Function to determine whether there exists flow or gflow
 
     Parameters
     ---------
-    g: nx.Graph
+    graph: nx.Graph
         graph (incl. in and out)
-    v_in: set
+    input: set
         set of node labels for input
-    v_out: set
+    output: set
         set of node labels for output
-    timeout: int
-        number of iterations allowed before timeout
+    meas_planes: dict(optional)
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    mode: str(optional)
+        This is the option for gflow.
+        The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
+            - "single": Returrns a single solution
+            - "all": Returns all possible solutions
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects, requiring user substitution to get a concrete answer.
     """
-    f, l_k = gflow(g, v_in, v_out, meas_plane, timeout)
-    if f:
-        print("gflow found")
-        print("g is ", f)
-        print("l_k is ", l_k)
-    else:
-        print("no gflow found, finding flow")
-    f, l_k = flow(g, v_in, v_out, timeout=timeout)
+    if meas_planes is None:
+        meas_planes = {i: "XY" for i in (set(graph.nodes) - output)}
+    f, l_k = flow(graph, input, output, meas_planes)
     if f:
         print("flow found")
         print("f is ", f)
         print("l_k is ", l_k)
     else:
-        print("no flow found")
+        print("no flow found, finding gflow")
+    g, l_k = gflow(graph, input, output, meas_planes, mode=mode)
+    if g:
+        print("gflow found")
+        print("g is ", g)
+        print("l_k is ", l_k)
+    else:
+        print("no gflow found")
 
 
 def get_min_depth(l_k):
@@ -461,3 +434,21 @@ def get_layers(l_k):
     for i in l_k.keys():
         layers[l_k[i]].append(i)
     return d, layers
+
+
+def get_adjacency_matrix(graph):
+    """Get adjacency matrix of the graph
+
+    Returns
+    -------
+    adjacency_matrix: graphix.linalg.MatGF2
+        adjacency matrix of the graph. the matrix is defined on GF(2) field.
+    node_list: list
+        ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
+
+    """
+    node_list = list(graph.nodes)
+    node_list.sort()
+    adjacency_matrix = nx.to_numpy_array(graph, nodelist=node_list)
+    adjacency_matrix = MatGF2(adjacency_matrix.astype(int))
+    return adjacency_matrix, node_list
