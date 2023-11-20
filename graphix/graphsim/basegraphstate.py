@@ -4,10 +4,13 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 import networkx as nx
+from networkx.classes.reportviews import EdgeView, NodeView
 
 from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
+
+from .rxgraphviews import EdgeList, NodeList
 
 RUSTWORKX_INSTALLED = False
 try:
@@ -17,21 +20,24 @@ try:
 except ImportError:
     rx = None
 
-GraphObject: Union[nx.Graph, rx.PyGraph]
+NodesObject = Union[NodeView, NodeList]
+EdgesObject = Union[EdgeView, EdgeList]
+GraphObject = Union[nx.Graph, rx.PyGraph]
 
 
 class BaseGraphState(ABC):
     """Base class for graph state simulator.
 
     Performs Pauli measurements on graph states.
-    Inherits methods and attributes from networkx.Graph.
+    You can choose between networkx and rustworkx as the backend.
+    The default is rustworkx if installed, otherwise networkx.
 
     ref: M. Elliot, B. Eastin & C. Caves, JPhysA 43, 025301 (2010)
     and PRA 77, 042307 (2008)
 
     Each node has attributes:
         :`hollow`: True if node is hollow (has local H operator)
-        :`sign`: True if node has negative sign
+        :`sign`: True if node has negative sign (local Z operator)
         :`loop`: True if node has loop (local S operator)
     """
 
@@ -40,28 +46,28 @@ class BaseGraphState(ABC):
 
     @property
     @abstractmethod
-    def nodes(self):
+    def nodes(self) -> NodesObject:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def edges(self):
+    def edges(self) -> EdgesObject:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def graph(self):
+    def graph(self) -> GraphObject:
         raise NotImplementedError
 
     @abstractmethod
-    def degree(self):
+    def degree(self) -> iter[tuple[int, int]]:
         """Returns an iterator for (node, degree) tuples,
         where degree is the number of edges adjacent to the node
         """
         raise NotImplementedError
 
     @abstractmethod
-    def neighbors(self, node) -> iter:
+    def neighbors(self, node: int) -> iter:
         """Returns an iterator over all neighbors of node n.
 
         Parameters
@@ -184,14 +190,18 @@ class BaseGraphState(ABC):
         """
         raise NotImplementedError
 
-    def apply_vops(self, vops: dict):
+    def apply_vops(self, vops: dict) -> None:
         """Apply local Clifford operators to the graph state from a dictionary
 
         Parameters
         ----------
-            vops : dict
-                dict containing node indices as keys and
-                local Clifford indices as values (see graphix.clifford.CLIFFORD)
+        vops : dict
+            dict containing node indices as keys and
+            local Clifford indices as values (see graphix.clifford.CLIFFORD)
+
+        Returns
+        ----------
+        None
         """
         for node, vop in vops.items():
             for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
@@ -203,7 +213,7 @@ class BaseGraphState(ABC):
                     self.s(node)
 
     @abstractmethod
-    def add_nodes_from(self, nodes) -> None:
+    def add_nodes_from(self, nodes: list[int]) -> None:
         """Add nodes and initialize node properties.
 
         Parameters
@@ -218,7 +228,7 @@ class BaseGraphState(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def add_edges_from(self, edges) -> None:
+    def add_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Add edges and initialize node properties of newly added nodes.
 
         Parameters
@@ -253,17 +263,21 @@ class BaseGraphState(ABC):
             vops[i] = vop
         return vops
 
-    def flip_fill(self, node):
+    def flip_fill(self, node: int) -> None:
         """Flips the fill (local H) of a node.
 
         Parameters
         ----------
         node : int
             graph node to flip the fill
+
+        Returns
+        ----------
+        None
         """
         self.nodes[node]["hollow"] = not self.nodes[node]["hollow"]
 
-    def flip_sign(self, node):
+    def flip_sign(self, node) -> None:
         """Flips the sign (local Z) of a node.
         Note that application of Z gate is different from `flip_sign`
         if there exist an edge from the node.
@@ -272,10 +286,14 @@ class BaseGraphState(ABC):
         ----------
         node : int
             graph node to flip the sign
+
+        Returns
+        ----------
+        None
         """
         self.nodes[node]["sign"] = not self.nodes[node]["sign"]
 
-    def advance(self, node):
+    def advance(self, node: int) -> None:
         """Flips the loop (local S) of a node.
         If the loop already exist, sign is also flipped,
         reflecting the relation SS=Z.
@@ -286,6 +304,10 @@ class BaseGraphState(ABC):
         ----------
         node : int
             graph node to advance the loop.
+
+        Returns
+        ----------
+        None
         """
         if self.nodes[node]["loop"]:
             self.nodes[node]["loop"] = False
@@ -293,23 +315,31 @@ class BaseGraphState(ABC):
         else:
             self.nodes[node]["loop"] = True
 
-    def h(self, node):
+    def h(self, node: int) -> None:
         """Apply H gate to a qubit (node).
 
         Parameters
         ----------
         node : int
             graph node to apply H gate
+
+        Returns
+        ----------
+        None
         """
         self.flip_fill(node)
 
-    def s(self, node):
+    def s(self, node: int) -> None:
         """Apply S gate to a qubit (node).
 
         Parameters
         ----------
         node : int
             graph node to apply S gate
+
+        Returns
+        ----------
+        None
         """
         if self.nodes[node]["hollow"]:
             if self.nodes[node]["loop"]:
@@ -328,13 +358,17 @@ class BaseGraphState(ABC):
         else:  # solid
             self.advance(node)
 
-    def z(self, node):
+    def z(self, node: int) -> None:
         """Apply Z gate to a qubit (node).
 
         Parameters
         ----------
         node : int
             graph node to apply Z gate
+
+        Returns
+        ----------
+        None
         """
         if self.nodes[node]["hollow"]:
             for i in self.neighbors(node):
@@ -344,7 +378,7 @@ class BaseGraphState(ABC):
         else:  # solid
             self.flip_sign(node)
 
-    def equivalent_graph_E1(self, node):
+    def equivalent_graph_E1(self, node: int) -> None:
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to a node with loop.
@@ -353,6 +387,10 @@ class BaseGraphState(ABC):
         ----------
         node1 : int
             A graph node with a loop to apply rule E1
+
+        Returns
+        ----------
+        None
         """
         if not self.nodes[node]["loop"]:
             raise ValueError("node must have loop")
@@ -365,7 +403,7 @@ class BaseGraphState(ABC):
             for i in self.neighbors(node):
                 self.flip_sign(i)
 
-    def equivalent_graph_E2(self, node1, node2):
+    def equivalent_graph_E2(self, node1: int, node2: int) -> None:
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to two connected nodes without loop.
@@ -374,6 +412,10 @@ class BaseGraphState(ABC):
         ----------
         node1, node2 : int
             connected graph nodes to apply rule E2
+
+        Returns
+        ----------
+        None
         """
         if (node1, node2) not in list(self.edges) and (node2, node1) not in list(self.edges):
             raise ValueError("nodes must be connected by an edge")
@@ -399,17 +441,21 @@ class BaseGraphState(ABC):
                 self.flip_sign(i)
 
     @abstractmethod
-    def local_complement(self, node):
+    def local_complement(self, node: int) -> None:
         """Perform local complementation of a graph
 
         Parameters
         ----------
         node : int
             chosen node for the local complementation
+
+        Returns
+        ----------
+        None
         """
         raise NotImplementedError
 
-    def equivalent_fill_node(self, node):
+    def equivalent_fill_node(self, node: int) -> int:
         """Fill the chosen node by graph transformation rules E1 and E2,
         If the selected node is hollow and isolated, it cannot be filled
         and warning is thrown.
@@ -448,7 +494,7 @@ class BaseGraphState(ABC):
             else:
                 return 0
 
-    def measure_x(self, node, choice=0):
+    def measure_x(self, node: int, choice: int = 0) -> int:
         """perform measurement in X basis
         According to original paper, we realise X measurement by
         applying H gate to the measured node before Z measurement.
@@ -459,7 +505,14 @@ class BaseGraphState(ABC):
             qubit index to be measured
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
+
+        Returns
+        ----------
+        result : int
+            measurement outcome. 0 or 1.
         """
+        if choice not in [0, 1]:
+            raise ValueError("choice must be 0 or 1")
         # check if isolated
         if len(list(self.neighbors(node))) == 0:
             if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
@@ -474,7 +527,7 @@ class BaseGraphState(ABC):
             self.h(node)
             return self.measure_z(node, choice=choice)
 
-    def measure_y(self, node, choice=0):
+    def measure_y(self, node: int, choice: int = 0) -> int:
         """perform measurement in Y basis
         According to original paper, we realise Y measurement by
         applying S,Z and H gate to the measured node before Z measurement.
@@ -485,13 +538,20 @@ class BaseGraphState(ABC):
             qubit index to be measured
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
+
+        Returns
+        ----------
+        result : int
+            measurement outcome. 0 or 1.
         """
+        if choice not in [0, 1]:
+            raise ValueError("choice must be 0 or 1")
         self.s(node)
         self.z(node)
         self.h(node)
         return self.measure_z(node, choice=choice)
 
-    def measure_z(self, node, choice=0):
+    def measure_z(self, node: int, choice: int = 0) -> int:
         """perform measurement in Z basis
         To realize the simple Z measurement on undecorated graph state,
         we first fill the measured node (remove local H gate)
@@ -502,7 +562,14 @@ class BaseGraphState(ABC):
             qubit index to be measured
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
+
+        Returns
+        ----------
+        result : int
+            measurement outcome. 0 or 1.
         """
+        if choice not in [0, 1]:
+            raise ValueError("choice must be 0 or 1")
         isolated = self.equivalent_fill_node(node)
         if choice:
             for i in self.neighbors(node):
@@ -514,7 +581,7 @@ class BaseGraphState(ABC):
         self.remove_node(node)
         return result
 
-    def draw(self, fill_color="C0", **kwargs):
+    def draw(self, fill_color: str = "C0", **kwargs):
         """Draw decorated graph state.
         Negative nodes are indicated by negative sign of node labels.
 

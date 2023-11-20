@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import networkx as nx
+from networkx.classes.reportviews import EdgeView, NodeView
 
 from .basegraphstate import BaseGraphState
 
@@ -30,19 +31,19 @@ class NXGraphState(BaseGraphState):
             self.apply_vops(vops)
 
     @property
-    def nodes(self):
+    def nodes(self) -> NodeView:
         return self._graph.nodes
 
     @property
-    def edges(self):
+    def edges(self) -> EdgeView:
         return self._graph.edges
 
     @property
-    def graph(self):
+    def graph(self) -> nx.Graph:
         return self._graph
 
-    def degree(self):
-        return self._graph.degree()
+    def degree(self) -> iter[tuple[int, int]]:
+        return iter(self._graph.degree())
 
     def add_nodes_from(self, nodes):
         """Add nodes and initialize node properties.
