@@ -218,8 +218,8 @@ class BaseGraphState(ABC):
 
         Parameters
         ----------
-        nodes : iterable container
-            A container of nodes (list, dict, etc)
+        nodes : list[int]
+            A list of nodes.
 
         Returns
         ----------
@@ -233,7 +233,7 @@ class BaseGraphState(ABC):
 
         Parameters
         ----------
-        edges : iterable container
+        edges : list[tuple[int, int]]
             must be given as list of 2-tuples (u, v)
 
         Returns

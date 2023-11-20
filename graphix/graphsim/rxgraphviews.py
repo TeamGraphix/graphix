@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class NodeList:
     """Node list class for RXGraphState
     In rustworkx, node data is stored in a tuple (node_num, node_data),

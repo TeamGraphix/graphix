@@ -7,17 +7,19 @@ from .basegraphstate import BaseGraphState
 
 
 class NXGraphState(BaseGraphState):
-    """Graph state simulator implemented with networkx."""
+    """Graph state simulator implemented with networkx.
+    See :class:`~graphix.graphsim.basegraphstate.BaseGraphState` for more details.
+    """
 
-    def __init__(self, nodes=None, edges=None, vops=None):
+    def __init__(self, nodes: list[int] = None, edges: list[tuple[int, int]] = None, vops: dict[int, int] = None):
         """
         Parameters
         ----------
-        nodes : iterable container
+        nodes : list[int]
             A container of nodes (list, dict, etc)
-        edges : list
+        edges : list[tuple[int, int]]
             list of tuples (i,j) for pairs to be entangled.
-        vops : dict
+        vops : dict[int, int]
             dict of local Clifford gates with keys for node indices and
             values for Clifford index (see graphix.clifford.CLIFFORD)
         """
@@ -46,23 +48,9 @@ class NXGraphState(BaseGraphState):
         return iter(self._graph.degree())
 
     def add_nodes_from(self, nodes):
-        """Add nodes and initialize node properties.
-
-        Parameters
-        ----------
-        nodes : iterable container
-            A container of nodes (list, dict, etc)
-        """
         self._graph.add_nodes_from(nodes, loop=False, sign=False, hollow=False)
 
     def add_edges_from(self, edges):
-        """Add edges and initialize node properties of newly added nodes.
-
-        Parameters
-        ----------
-        edges : iterable container
-            must be given as list of 2-tuples (u, v)
-        """
         self._graph.add_edges_from(edges)
         # adding edges may add new nodes
         for i in self._graph.nodes:
@@ -72,21 +60,6 @@ class NXGraphState(BaseGraphState):
                 self._graph.nodes[i]["hollow"] = False  # True for hollow node
 
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
-        """Returns the number of edges between two nodes.
-
-        Parameters
-        ----------
-        u : int, optional
-            A node in the graph
-        v : int, optional
-            A node in the graph
-
-        Returns
-        ----------
-        int
-            The number of edges in the graph. If u and v are specified,
-            return the number of edges between those nodes.
-        """
         if u is None and v is None:
             return len(self.edges)
         elif u is None or v is None:
@@ -94,111 +67,27 @@ class NXGraphState(BaseGraphState):
         return self._graph.number_of_edges(u, v)
 
     def neighbors(self, node) -> iter:
-        """Returns an iterator over all neighbors of node n.
-
-        Parameters
-        ----------
-        node : int
-            A node in the graph
-
-        Returns
-        ----------
-        iter
-            An iterator over all neighbors of node n.
-        """
         return self._graph.neighbors(node)
 
     def subgraph(self, nodes: list) -> nx.Graph:
-        """Returns a subgraph of the graph.
-
-        Parameters
-        ----------
-        nodes : list
-            A list of node indices to generate the subgraph from.
-
-        Returns
-        ----------
-        GraphObject
-            A subgraph of the graph.
-        """
         return self._graph.subgraph(nodes)
 
     def remove_node(self, node: int) -> None:
-        """Remove a node from the graph.
-
-        Parameters
-        ----------
-        node : int
-            A node in the graph
-
-        Returns
-        ----------
-        None
-        """
         self._graph.remove_node(node)
 
     def remove_nodes_from(self, nodes: list[int]) -> None:
-        """Remove all nodes specified in the list.
-
-        Parameters
-        ----------
-        nodes : list
-            A list of nodes to remove from the graph.
-
-        Returns
-        ----------
-        None
-        """
         self._graph.remove_nodes_from(nodes)
 
     def remove_edge(self, u: int, v: int) -> None:
-        """Remove an edge from the graph.
-
-        Parameters
-        ----------
-        u : int
-            A node in the graph
-        v : int
-            A node in the graph
-
-        Returns
-        ----------
-        None
-        """
         self._graph.remove_edge(u, v)
 
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
-        """Remove all edges specified in the list.
-
-        Parameters
-        ----------
-        edges : list of tuples
-            A list of edges to remove from the graph.
-
-        Returns
-        ----------
-        None
-        """
         self._graph.remove_edges_from(edges)
 
     def adjacency(self) -> iter:
-        """Returns an iterator over (node, adjacency dict) tuples for all nodes.
-
-        Returns
-        ----------
-        iter
-            An iterator over (node, adjacency dictionary) for all nodes in the graph.
-        """
         return self._graph.adjacency()
 
     def local_complement(self, node):
-        """Perform local complementation of a graph
-
-        Parameters
-        ----------
-        node : int
-            chosen node for the local complementation
-        """
         g = self.subgraph(list(self.neighbors(node)))
         g_new = nx.complement(g)
         self.remove_edges_from(g.edges)

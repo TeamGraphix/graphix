@@ -11,9 +11,22 @@ else:
 
 
 class RXGraphState(BaseGraphState):
-    """Graph state simulator implemented with rustworkx"""
+    """Graph state simulator implemented with rustworkx.
+    See :class:`~graphix.graphsim.basegraphstate.BaseGraphState` for more details.
+    """
 
-    def __init__(self, nodes=None, edges=None, vops=None):
+    def __init__(self, nodes: list[int] = None, edges: list[tuple[int, int]] = None, vops: dict[int, int] = None):
+        """
+        Parameters
+        ----------
+        nodes : list[int]
+            A container of nodes (list, dict, etc)
+        edges : list[tuple[int, int]]
+            list of tuples (i,j) for pairs to be entangled.
+        vops : dict[int, int]
+            dict of local Clifford gates with keys for node indices and
+            values for Clifford index (see graphix.clifford.CLIFFORD)
+        """
         super().__init__()
         self._graph = rx.PyGraph()
         self._nodes = NodeList()
@@ -46,53 +59,14 @@ class RXGraphState(BaseGraphState):
         return iter(ret)
 
     def neighbors(self, node) -> iter:
-        """Returns an iterator over all neighbors of node n.
-
-        Parameters
-        ----------
-        node : int
-            A node in the graph
-
-        Returns
-        ----------
-        iter
-            An iterator over all neighbors of node n.
-        """
         nidx = self.nodes.get_node_index(node)
         return iter(self._graph.neighbors(nidx))
 
     def subgraph(self, nodes: list) -> rx.PyGraph:
-        """Returns a subgraph of the graph.
-
-        Parameters
-        ----------
-        nodes : list
-            A list of node indices to generate the subgraph from.
-
-        Returns
-        ----------
-        PyGraph
-            A subgraph of the graph.
-        """
         nidx = [self.nodes.get_node_index(n) for n in nodes]
         return self._graph.subgraph(nidx)
 
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
-        """Returns the number of edges between two nodes.
-
-        Parameters
-        ----------
-        u : int, optional
-            A node in the graph
-        v : int, optional
-            A node in the graph
-
-        Returns
-        ----------
-        int
-            The number of edges in the graph. If u and v are specified,
-            return the number of edges between those nodes.
-        """
         if u is None and v is None:
             return len(self.edges)
         elif u is None or v is None:
@@ -102,13 +76,6 @@ class RXGraphState(BaseGraphState):
         return len(self._graph.get_all_edge_data(uidx, vidx))
 
     def adjacency(self) -> iter:
-        """Returns an iterator over (node, adjacency dict) tuples for all nodes.
-
-        Returns
-        ----------
-        iter
-            An iterator over (node, adjacency dictionary) for all nodes in the graph.
-        """
         ret = []
         for n in self.nodes:
             nidx = self.nodes.get_node_index(n)
@@ -120,17 +87,6 @@ class RXGraphState(BaseGraphState):
         return iter(ret)
 
     def remove_node(self, node: int) -> None:
-        """Remove a node from the graph.
-
-        Parameters
-        ----------
-        node : int
-            A node in the graph
-
-        Returns
-        ----------
-        None
-        """
         nidx = self.nodes.get_node_index(node)
         self._graph.remove_node(nidx)
         self.nodes.remove_node(node)
@@ -140,74 +96,25 @@ class RXGraphState(BaseGraphState):
                 self.edges.remove_edge(e)
 
     def remove_nodes_from(self, nodes: list[int]) -> None:
-        """Remove all nodes specified in the list.
-
-        Parameters
-        ----------
-        nodes : list
-            A list of nodes to remove from the graph.
-
-        Returns
-        ----------
-        None
-        """
         for n in nodes:
             self.remove_node(n)
 
     def remove_edge(self, u: int, v: int) -> None:
-        """Remove an edge from the graph.
-
-        Parameters
-        ----------
-        u : int
-            A node in the graph
-        v : int
-            A node in the graph
-
-        Returns
-        ----------
-        None
-        """
         uidx = self.nodes.get_node_index(u)
         vidx = self.nodes.get_node_index(v)
         self._graph.remove_edge(uidx, vidx)
         self.edges.remove_edge((u, v))
 
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
-        """Remove all edges specified in the list.
-
-        Parameters
-        ----------
-        edges : list of tuples
-            A list of edges to remove from the graph.
-
-        Returns
-        ----------
-        None
-        """
         for e in edges:
             self.remove_edge(e[0], e[1])
 
     def add_nodes_from(self, nodes: list[int]):
-        """Add nodes and initialize node properties.
-
-        Parameters
-        ----------
-        nodes : iterable container
-            A container of nodes (list, dict, etc)
-        """
         node_indices = self._graph.add_nodes_from([(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes])
         for nidx in node_indices:
             self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
 
     def add_edges_from(self, edges):
-        """Add edges and initialize node properties of newly added nodes.
-
-        Parameters
-        ----------
-        edges : iterable container
-            must be given as list of 2-tuples (u, v)
-        """
         for u, v in edges:
             # adding edges may add new nodes
             if u not in self.nodes:
@@ -222,13 +129,6 @@ class RXGraphState(BaseGraphState):
             self._edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
 
     def local_complement(self, node):
-        """Perform local complementation of a graph
-
-        Parameters
-        ----------
-        node : int
-            chosen node for the local complementation
-        """
         g = self.subgraph(list(self.neighbors(node)))
         g_new = rx.complement(g)
         g_edge_list = []
