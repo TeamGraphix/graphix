@@ -1,11 +1,5 @@
 from __future__ import annotations
 
-import networkx as nx
-
-from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
-from graphix.ops import Ops
-from graphix.sim.statevec import Statevec
-
 from .basegraphstate import BaseGraphState
 from .graphstate import RUSTWORKX_INSTALLED
 
@@ -16,7 +10,7 @@ else:
 
 
 class NodeList:
-    """Node list class for RustworkxGraphState
+    """Node list class for RXGraphState
     In rustworkx, node data is stored in a tuple (node_num, node_data),
     and adding/removing nodes by node_num is not supported.
     This class defines a node list with node_num as key.
@@ -76,7 +70,7 @@ class NodeList:
 
 
 class EdgeList:
-    """Edge list class for RustworkxGraphState
+    """Edge list class for RXGraphState
     In rustworkx, edge data is stored in a tuple (parent, child, edge_data),
     and adding/removing edges by (parent, child) is not supported.
     This class defines a edge list with (parent, child) as key.
@@ -137,7 +131,7 @@ class EdgeList:
             self.remove_edge(enum)
 
 
-class RustworkxGraphState(BaseGraphState):
+class RXGraphState(BaseGraphState):
     """Graph state simulator implemented with rustworkx"""
 
     def __init__(self, nodes=None, edges=None, vops=None):
@@ -239,8 +233,11 @@ class RustworkxGraphState(BaseGraphState):
         ret = []
         for n in self.nodes:
             nidx = self.nodes.get_node_index(n)
-            adjacencies = self._graph.adj(nidx)
-            ret.append((n, adjacencies))
+            adjacency_dict = self._graph.adj(nidx)
+            new_adjacency_dict = {}
+            for nidx, _ in adjacency_dict.items():
+                new_adjacency_dict[self.nodes.get_node_index(nidx)] = {}  # replace None with {}
+            ret.append((n, new_adjacency_dict))
         return iter(ret)
 
     def remove_node(self, node: int) -> None:

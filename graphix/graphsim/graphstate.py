@@ -18,8 +18,8 @@ except ImportError:
     rx = None
 
 from .basegraphstate import BaseGraphState
-from .nx_graphstate import NetworkxGraphState
-from .rx_graphstate import RustworkxGraphState
+from .nxgraphstate import NXGraphState
+from .rxgraphstate import RXGraphState
 
 
 class GraphState:
@@ -28,7 +28,7 @@ class GraphState:
     def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx: bool = True) -> BaseGraphState:
         if use_rustworkx:
             if RUSTWORKX_INSTALLED:
-                return RustworkxGraphState(nodes=nodes, edges=edges, vops=vops)
+                return RXGraphState(nodes=nodes, edges=edges, vops=vops)
             else:
                 warnings.warn("rustworkx is not installed. Using networkx instead.")
-        return NetworkxGraphState(nodes=nodes, edges=edges, vops=vops)
+        return NXGraphState(nodes=nodes, edges=edges, vops=vops)

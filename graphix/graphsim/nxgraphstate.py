@@ -2,25 +2,11 @@ from __future__ import annotations
 
 import networkx as nx
 
-from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
-
 from .basegraphstate import BaseGraphState
 
 
-class NetworkxGraphState(BaseGraphState):
-    """Graph state simulator implemented with networkx.
-
-    Performs Pauli measurements on graph states.
-    Inherits methods and attributes from networkx.Graph.
-
-    ref: M. Elliot, B. Eastin & C. Caves, JPhysA 43, 025301 (2010)
-    and PRA 77, 042307 (2008)
-
-    Each node has attributes:
-        :`hollow`: True if node is hollow
-        :`sign`: True if node has negative sign
-        :`loop`: True if node has loop
-    """
+class NXGraphState(BaseGraphState):
+    """Graph state simulator implemented with networkx."""
 
     def __init__(self, nodes=None, edges=None, vops=None):
         """

@@ -21,7 +21,19 @@ GraphObject: Union[nx.Graph, rx.PyGraph]
 
 
 class BaseGraphState(ABC):
-    """Base class for graph state simulator."""
+    """Base class for graph state simulator.
+
+    Performs Pauli measurements on graph states.
+    Inherits methods and attributes from networkx.Graph.
+
+    ref: M. Elliot, B. Eastin & C. Caves, JPhysA 43, 025301 (2010)
+    and PRA 77, 042307 (2008)
+
+    Each node has attributes:
+        :`hollow`: True if node is hollow (has local H operator)
+        :`sign`: True if node has negative sign
+        :`loop`: True if node has loop (local S operator)
+    """
 
     def __init__(self):
         super().__init__()
@@ -530,7 +542,7 @@ class BaseGraphState(ABC):
         g.add_edges_from(edges)
         nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
 
-    def to_statevector(self):
+    def to_statevector(self) -> Statevec:
         node_list = list(self.nodes)
         nqubit = len(self.nodes)
         gstate = Statevec(nqubit=nqubit)

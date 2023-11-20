@@ -1,4 +1,3 @@
-import numpy as np
 from networkx import Graph
 from networkx.utils import graphs_equal
 
@@ -10,8 +9,8 @@ else:
     PyGraph = None
 
 from .basegraphstate import BaseGraphState
-from .nx_graphstate import NetworkxGraphState
-from .rx_graphstate import RustworkxGraphState
+from .nxgraphstate import NXGraphState
+from .rxgraphstate import RXGraphState
 
 
 def convert_rustworkx_to_networkx(graph: PyGraph) -> Graph:
@@ -52,15 +51,15 @@ def is_graphs_equal(graph1: BaseGraphState, graph2: BaseGraphState) -> bool:
     bool
         True if graphs are equal, False otherwise.
     """
-    if isinstance(graph1, RustworkxGraphState):
+    if isinstance(graph1, RXGraphState):
         graph1 = convert_rustworkx_to_networkx(graph1.graph)
-    elif isinstance(graph1, NetworkxGraphState):
+    elif isinstance(graph1, NXGraphState):
         graph1 = graph1.graph
     else:
         raise TypeError(f"Unknown graph type {type(graph1)}")
-    if isinstance(graph2, RustworkxGraphState):
+    if isinstance(graph2, RXGraphState):
         graph2 = convert_rustworkx_to_networkx(graph2.graph)
-    elif isinstance(graph2, NetworkxGraphState):
+    elif isinstance(graph2, NXGraphState):
         graph2 = graph2.graph
     else:
         raise TypeError(f"Unknown graph type {type(graph2)}")

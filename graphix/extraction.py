@@ -3,13 +3,11 @@ from __future__ import annotations
 from copy import deepcopy
 from enum import Enum
 
-import networkx as nx
 import numpy as np
 
 from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
-from graphix.graphsim.nx_graphstate import NetworkxGraphState
-from graphix.graphsim.rx_graphstate import RustworkxGraphState
+from graphix.graphsim.rxgraphstate import RXGraphState
 from graphix.graphsim.utils import is_graphs_equal
 
 
@@ -76,7 +74,7 @@ def get_fusion_network_from_graph(
     list
         List of :class:`ResourceGraph` objects.
     """
-    use_rustworkx = isinstance(graph, RustworkxGraphState)
+    use_rustworkx = isinstance(graph, RXGraphState)
 
     adjdict = deepcopy({n: adj for n, adj in graph.adjacency()})
 
