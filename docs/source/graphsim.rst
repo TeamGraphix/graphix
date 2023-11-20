@@ -24,4 +24,10 @@ This provides an efficient graph state simulator using the decorated graph metho
     :members:
     :undoc-members:
 
+.. autoclass:: NodeList
+    :members:
+    :undoc-members:
 
+.. autoclass:: EdgeList
+    :members:
+    :undoc-members:
