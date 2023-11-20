@@ -166,8 +166,8 @@ class RustworkxGraphState(BaseGraphState):
 
     def degree(self):
         ret = []
-        for n in self._nodes:
-            nidx = self._nodes.get_node_index(n)
+        for n in self.nodes:
+            nidx = self.nodes.get_node_index(n)
             degree = self._graph.degree(nidx)
             ret.append((n, degree))
         return iter(ret)
@@ -185,7 +185,7 @@ class RustworkxGraphState(BaseGraphState):
         iter
             An iterator over all neighbors of node n.
         """
-        nidx = self._nodes.get_node_index(node)
+        nidx = self.nodes.get_node_index(node)
         return iter(self._graph.neighbors(nidx))
 
     def subgraph(self, nodes: list) -> rx.PyGraph:
@@ -201,7 +201,7 @@ class RustworkxGraphState(BaseGraphState):
         PyGraph
             A subgraph of the graph.
         """
-        nidx = [self._nodes.get_node_index(n) for n in nodes]
+        nidx = [self.nodes.get_node_index(n) for n in nodes]
         return self._graph.subgraph(nidx)
 
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
@@ -221,11 +221,11 @@ class RustworkxGraphState(BaseGraphState):
             return the number of edges between those nodes.
         """
         if u is None and v is None:
-            return len(self._edges)
+            return len(self.edges)
         elif u is None or v is None:
             raise ValueError("u and v must be specified together")
-        uidx = self._nodes.get_node_index(u)
-        vidx = self._nodes.get_node_index(v)
+        uidx = self.nodes.get_node_index(u)
+        vidx = self.nodes.get_node_index(v)
         return len(self._graph.get_all_edge_data(uidx, vidx))
 
     def adjacency(self) -> iter:
@@ -237,8 +237,8 @@ class RustworkxGraphState(BaseGraphState):
             An iterator over (node, adjacency dictionary) for all nodes in the graph.
         """
         ret = []
-        for n in self._nodes:
-            nidx = self._nodes.get_node_index(n)
+        for n in self.nodes:
+            nidx = self.nodes.get_node_index(n)
             adjacencies = self._graph.adj(nidx)
             ret.append((n, adjacencies))
         return iter(ret)
@@ -255,13 +255,13 @@ class RustworkxGraphState(BaseGraphState):
         ----------
         None
         """
-        nidx = self._nodes.get_node_index(node)
+        nidx = self.nodes.get_node_index(node)
         self._graph.remove_node(nidx)
-        self._nodes.remove_node(node)
-        edge_list = list(self._edges)
+        self.nodes.remove_node(node)
+        edge_list = list(self.edges)
         for e in edge_list:
             if node in e:
-                self._edges.remove_edge(e)
+                self.edges.remove_edge(e)
 
     def remove_nodes_from(self, nodes: list[int]) -> None:
         """Remove all nodes specified in the list.
@@ -292,10 +292,10 @@ class RustworkxGraphState(BaseGraphState):
         ----------
         None
         """
-        uidx = self._nodes.get_node_index(u)
-        vidx = self._nodes.get_node_index(v)
+        uidx = self.nodes.get_node_index(u)
+        vidx = self.nodes.get_node_index(v)
         self._graph.remove_edge(uidx, vidx)
-        self._edges.remove_edge((u, v))
+        self.edges.remove_edge((u, v))
 
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Remove all edges specified in the list.
@@ -312,24 +312,6 @@ class RustworkxGraphState(BaseGraphState):
         for e in edges:
             self.remove_edge(e[0], e[1])
 
-    def apply_vops(self, vops: dict):
-        """Apply local Clifford operators to the graph state from a dictionary
-
-        Parameters
-        ----------
-            vops : dict
-                dict containing node indices as keys and
-                local Clifford indices as values (see graphix.clifford.CLIFFORD)
-        """
-        for node, vop in vops.items():
-            for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
-                if lc == 3:
-                    self.z(node)
-                elif lc == 6:
-                    self.h(node)
-                elif lc == 4:
-                    self.s(node)
-
     def add_nodes_from(self, nodes: list[int]):
         """Add nodes and initialize node properties.
 
@@ -340,7 +322,7 @@ class RustworkxGraphState(BaseGraphState):
         """
         node_indices = self._graph.add_nodes_from([(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes])
         for nidx in node_indices:
-            self._nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
+            self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
 
     def add_edges_from(self, edges):
         """Add edges and initialize node properties of newly added nodes.
@@ -352,187 +334,16 @@ class RustworkxGraphState(BaseGraphState):
         """
         for u, v in edges:
             # adding edges may add new nodes
-            if u not in self._nodes:
+            if u not in self.nodes:
                 nidx = self._graph.add_node((u, {"loop": False, "sign": False, "hollow": False}))
-                self._nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
-            if v not in self._nodes:
+                self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
+            if v not in self.nodes:
                 nidx = self._graph.add_node((v, {"loop": False, "sign": False, "hollow": False}))
-                self._nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
-            uidx = self._nodes.get_node_index(u)
-            vidx = self._nodes.get_node_index(v)
+                self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
+            uidx = self.nodes.get_node_index(u)
+            vidx = self.nodes.get_node_index(v)
             eidx = self._graph.add_edge(uidx, vidx, None)
             self._edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
-
-    def get_vops(self):
-        """Returns a dict containing clifford labels for each nodes.
-        labels 0 - 23 specify one of 24 single-qubit Clifford gates.
-        see graphq.clifford for the definition of all unitaries.
-
-        Returns
-        ----------
-        vops : dict
-            clifford gate indices as defined in `graphq.clifford`.
-
-
-        .. seealso:: :mod:`graphix.clifford`
-        """
-        vops = {}
-        for nidx in self._graph.node_indexes():
-            vop = 0
-            if self._graph[nidx][1]["sign"]:
-                vop = CLIFFORD_MUL[3, vop]
-            if self._graph[nidx][1]["loop"]:
-                vop = CLIFFORD_MUL[4, vop]
-            if self._graph[nidx][1]["hollow"]:
-                vop = CLIFFORD_MUL[6, vop]
-            vops[self._graph[nidx][0]] = vop
-        return vops
-
-    def flip_fill(self, node):
-        """Flips the fill (local H) of a node.
-
-        Parameters
-        ----------
-        node : int
-            graph node to flip the fill
-        """
-        self._nodes[node]["hollow"] = not self._nodes[node]["hollow"]
-
-    def flip_sign(self, node):
-        """Flips the sign (local Z) of a node.
-        Note that application of Z gate is different from `flip_sign`
-        if there exist an edge from the node.
-
-        Parameters
-        ----------
-        node : int
-            graph node to flip the sign
-        """
-        self._nodes[node]["sign"] = not self._nodes[node]["sign"]
-
-    def advance(self, node):
-        """Flips the loop (local S) of a node.
-        If the loop already exist, sign is also flipped,
-        reflecting the relation SS=Z.
-        Note that application of S gate is different from `advance`
-        if there exist an edge from the node.
-
-        Parameters
-        ----------
-        node : int
-            graph node to advance the loop.
-        """
-        nidx = self._nodes.get_node_index(node)
-        if self._nodes[node]["loop"]:
-            self._nodes[node]["loop"] = False
-            self.flip_sign(node)
-        else:
-            self._nodes[node]["loop"] = True
-
-    def h(self, node):
-        """Apply H gate to a qubit (node).
-
-        Parameters
-        ----------
-        node : int
-            graph node to apply H gate
-        """
-        self.flip_fill(node)
-
-    def s(self, node):
-        """Apply S gate to a qubit (node).
-
-        Parameters
-        ----------
-        node : int
-            graph node to apply S gate
-        """
-        if self._nodes[node]["hollow"]:
-            if self._nodes[node]["loop"]:
-                self.flip_fill(node)
-                self._nodes[node]["loop"] = False
-                self.local_complement(node)
-                for i in self.neighbors(node):
-                    self.advance(i)
-            else:
-                self.local_complement(node)
-                for i in self.neighbors(node):
-                    self.advance(i)
-                if self._nodes[node]["sign"]:
-                    for i in self.neighbors(node):
-                        self.flip_sign(i)
-        else:  # solid
-            self.advance(node)
-
-    def z(self, node):
-        """Apply Z gate to a qubit (node).
-
-        Parameters
-        ----------
-        node : int
-            graph node to apply Z gate
-        """
-        if self._nodes[node]["hollow"]:
-            for i in self.neighbors(node):
-                self.flip_sign(i)
-            if self._nodes[node]["loop"]:
-                self.flip_sign(node)
-        else:  # solid
-            self.flip_sign(node)
-
-    def equivalent_graph_E1(self, node):
-        """Tranform a graph state to a different graph state
-        representing the same stabilizer state.
-        This rule applies only to a node with loop.
-
-        Parameters
-        ----------
-        node1 : int
-            A graph node with a loop to apply rule E1
-        """
-        if not self._nodes[node]["loop"]:
-            raise ValueError("node must have loop")
-        self.flip_fill(node)
-        self.local_complement(node)
-        for i in self.neighbors(node):
-            self.advance(i)
-        self.flip_sign(node)
-        if self._nodes[node]["sign"]:
-            for i in self.neighbors(node):
-                self.flip_sign(i)
-
-    def equivalent_graph_E2(self, node1, node2):
-        """Tranform a graph state to a different graph state
-        representing the same stabilizer state.
-        This rule applies only to two connected nodes without loop.
-
-        Parameters
-        ----------
-        node1, node2 : int
-            connected graph nodes to apply rule E2
-        """
-        if (node1, node2) not in list(self._edges) and (node2, node1) not in list(self._edges):
-            raise ValueError("nodes must be connected by an edge")
-        if self._nodes[node1]["loop"] or self._nodes[node2]["loop"]:
-            raise ValueError("nodes must not have loop")
-        sg1 = self._nodes[node1]["sign"]
-        sg2 = self._nodes[node2]["sign"]
-        self.flip_fill(node1)
-        self.flip_fill(node2)
-        # local complement along edge between node1, node2
-        self.local_complement(node1)
-        self.local_complement(node2)
-        self.local_complement(node1)
-        for i in iter(set(self.neighbors(node1)) & set(self.neighbors(node2))):
-            self.flip_sign(i)
-        if sg1:
-            self.flip_sign(node1)
-            for i in self.neighbors(node1):
-                self.flip_sign(i)
-        if sg2:
-            self.flip_sign(node2)
-            for i in self.neighbors(node2):
-                self.flip_sign(i)
 
     def local_complement(self, node):
         """Perform local complementation of a graph
@@ -542,8 +353,8 @@ class RustworkxGraphState(BaseGraphState):
         node : int
             chosen node for the local complementation
         """
-        g = self.subgraph(list(self.neighbors(node))).copy()
-        g_new = rx.complement(g).copy()
+        g = self.subgraph(list(self.neighbors(node)))
+        g_new = rx.complement(g)
         g_edge_list = []
         for uidx, vidx in g.edge_list():
             u = g.get_node_data(uidx)[0]
@@ -556,156 +367,3 @@ class RustworkxGraphState(BaseGraphState):
             g_new_eidx_list.append((u, v))
         self.remove_edges_from(g_edge_list)
         self.add_edges_from(g_new_eidx_list)
-
-    def equivalent_fill_node(self, node):
-        """Fill the chosen node by graph transformation rules E1 and E2,
-        If the selected node is hollow and isolated, it cannot be filled
-        and warning is thrown.
-
-        Parameters
-        ----------
-        node : int
-            node to fill.
-
-        Returns
-        ----------
-        result : int
-            if the selected node is hollow and isolated, `result` is 1.
-            if filled and isolated, 2.
-            otherwise it is 0.
-        """
-        if self.nodes[node]["hollow"]:
-            if self.nodes[node]["loop"]:
-                self.equivalent_graph_E1(node)
-                return 0
-            else:  # node = hollow and loopless
-                if len(list(self.neighbors(node))) == 0:
-                    return 1
-                for i in self.neighbors(node):
-                    if not self.nodes[i]["loop"]:
-                        self.equivalent_graph_E2(node, i)
-                        return 0
-                # if all neighbor has loop, pick one and apply E1, then E1 to the node.
-                i = next(self.neighbors(node))
-                self.equivalent_graph_E1(i)  # this gives loop to node.
-                self.equivalent_graph_E1(node)
-                return 0
-        else:
-            if len(list(self.neighbors(node))) == 0:
-                return 2
-            else:
-                return 0
-
-    def measure_x(self, node, choice=0):
-        """perform measurement in X basis
-        According to original paper, we realise X measurement by
-        applying H gate to the measured node before Z measurement.
-
-        Parameters
-        ----------
-        node : int
-            qubit index to be measured
-        choice : int, 0 or 1
-            choice of measurement outcome. observe (-1)^choice
-        """
-        # check if isolated
-        if len(list(self.neighbors(node))) == 0:
-            if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
-                choice_ = choice
-            elif self.nodes[node]["sign"]:  # isolated and state is |->
-                choice_ = 1
-            else:  # isolated and state is |+>
-                choice_ = 0
-            self.remove_node(node)
-            return choice_
-        else:
-            self.h(node)
-            return self.measure_z(node, choice=choice)
-
-    def measure_y(self, node, choice=0):
-        """perform measurement in Y basis
-        According to original paper, we realise Y measurement by
-        applying S,Z and H gate to the measured node before Z measurement.
-
-        Parameters
-        ----------
-        node : int
-            qubit index to be measured
-        choice : int, 0 or 1
-            choice of measurement outcome. observe (-1)^choice
-        """
-        self.s(node)
-        self.z(node)
-        self.h(node)
-        return self.measure_z(node, choice=choice)
-
-    def measure_z(self, node, choice=0):
-        """perform measurement in Z basis
-        To realize the simple Z measurement on undecorated graph state,
-        we first fill the measured node (remove local H gate)
-
-        Parameters
-        ----------
-        node : int
-            qubit index to be measured
-        choice : int, 0 or 1
-            choice of measurement outcome. observe (-1)^choice
-        """
-        isolated = self.equivalent_fill_node(node)
-        if choice:
-            for i in self.neighbors(node):
-                self.flip_sign(i)
-        if not isolated:
-            result = choice
-        else:
-            result = int(self.nodes[node]["sign"])
-        self.remove_node(node)
-        return result
-
-    def draw(self, fill_color="C0", **kwargs):
-        """Draw decorated graph state.
-        Negative nodes are indicated by negative sign of node labels.
-
-        Parameters
-        ----------
-        fill_color : str, optional
-            fill color of nodes
-        kwargs : keyword arguments, optional
-            additional arguments to supply networkx.draw().
-        """
-        nqubit = len(self.nodes)
-        nodes = list(self.nodes)
-        edges = list(self.edges)
-        labels = {i: i for i in iter(self.nodes)}
-        colors = [fill_color for i in range(nqubit)]
-        for i in range(nqubit):
-            if self.nodes[nodes[i]]["loop"]:
-                edges.append((nodes[i], nodes[i]))
-            if self.nodes[nodes[i]]["hollow"]:
-                colors[i] = "white"
-            if self.nodes[nodes[i]]["sign"]:
-                labels[nodes[i]] = -1 * labels[nodes[i]]
-        g = nx.Graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
-        nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
-
-    def to_statevector(self):
-        node_list = list(self.nodes)
-        nqubit = len(self.nodes)
-        gstate = Statevec(nqubit=nqubit)
-        # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
-        imapping = {node_list[i]: i for i in range(nqubit)}
-        mapping = [node_list[i] for i in range(nqubit)]
-        for i, j in self.edges:
-            gstate.entangle((imapping[i], imapping[j]))
-        for i in range(nqubit):
-            if self.nodes[mapping[i]]["sign"]:
-                gstate.evolve_single(Ops.z, i)
-        for i in range(nqubit):
-            if self.nodes[mapping[i]]["loop"]:
-                gstate.evolve_single(Ops.s, i)
-        for i in range(nqubit):
-            if self.nodes[mapping[i]]["hollow"]:
-                gstate.evolve_single(Ops.h, i)
-        return gstate

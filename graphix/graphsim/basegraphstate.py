@@ -5,6 +5,10 @@ from typing import Union
 
 import networkx as nx
 
+from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
+from graphix.ops import Ops
+from graphix.sim.statevec import Statevec
+
 RUSTWORKX_INSTALLED = False
 try:
     import rustworkx as rx
@@ -168,7 +172,6 @@ class BaseGraphState(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def apply_vops(self, vops: dict):
         """Apply local Clifford operators to the graph state from a dictionary
 
@@ -178,7 +181,14 @@ class BaseGraphState(ABC):
                 dict containing node indices as keys and
                 local Clifford indices as values (see graphix.clifford.CLIFFORD)
         """
-        raise NotImplementedError
+        for node, vop in vops.items():
+            for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
+                if lc == 3:
+                    self.z(node)
+                elif lc == 6:
+                    self.h(node)
+                elif lc == 4:
+                    self.s(node)
 
     @abstractmethod
     def add_nodes_from(self, nodes) -> None:
@@ -210,7 +220,6 @@ class BaseGraphState(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_vops(self) -> dict:
         """Apply local Clifford operators to the graph state from a dictionary
 
@@ -220,9 +229,18 @@ class BaseGraphState(ABC):
                 dict containing node indices as keys and
                 local Clifford indices as values (see graphix.clifford.CLIFFORD)
         """
-        raise NotImplementedError
+        vops = {}
+        for i in self.nodes:
+            vop = 0
+            if self.nodes[i]["sign"]:
+                vop = CLIFFORD_MUL[3, vop]
+            if self.nodes[i]["loop"]:
+                vop = CLIFFORD_MUL[4, vop]
+            if self.nodes[i]["hollow"]:
+                vop = CLIFFORD_MUL[6, vop]
+            vops[i] = vop
+        return vops
 
-    @abstractmethod
     def flip_fill(self, node):
         """Flips the fill (local H) of a node.
 
@@ -231,9 +249,8 @@ class BaseGraphState(ABC):
         node : int
             graph node to flip the fill
         """
-        raise NotImplementedError
+        self.nodes[node]["hollow"] = not self.nodes[node]["hollow"]
 
-    @abstractmethod
     def flip_sign(self, node):
         """Flips the sign (local Z) of a node.
         Note that application of Z gate is different from `flip_sign`
@@ -244,9 +261,8 @@ class BaseGraphState(ABC):
         node : int
             graph node to flip the sign
         """
-        raise NotImplementedError
+        self.nodes[node]["sign"] = not self.nodes[node]["sign"]
 
-    @abstractmethod
     def advance(self, node):
         """Flips the loop (local S) of a node.
         If the loop already exist, sign is also flipped,
@@ -259,9 +275,12 @@ class BaseGraphState(ABC):
         node : int
             graph node to advance the loop.
         """
-        raise NotImplementedError
+        if self.nodes[node]["loop"]:
+            self.nodes[node]["loop"] = False
+            self.flip_sign(node)
+        else:
+            self.nodes[node]["loop"] = True
 
-    @abstractmethod
     def h(self, node):
         """Apply H gate to a qubit (node).
 
@@ -270,9 +289,8 @@ class BaseGraphState(ABC):
         node : int
             graph node to apply H gate
         """
-        raise NotImplementedError
+        self.flip_fill(node)
 
-    @abstractmethod
     def s(self, node):
         """Apply S gate to a qubit (node).
 
@@ -281,9 +299,23 @@ class BaseGraphState(ABC):
         node : int
             graph node to apply S gate
         """
-        raise NotImplementedError
+        if self.nodes[node]["hollow"]:
+            if self.nodes[node]["loop"]:
+                self.flip_fill(node)
+                self.nodes[node]["loop"] = False
+                self.local_complement(node)
+                for i in self.neighbors(node):
+                    self.advance(i)
+            else:
+                self.local_complement(node)
+                for i in self.neighbors(node):
+                    self.advance(i)
+                if self.nodes[node]["sign"]:
+                    for i in self.neighbors(node):
+                        self.flip_sign(i)
+        else:  # solid
+            self.advance(node)
 
-    @abstractmethod
     def z(self, node):
         """Apply Z gate to a qubit (node).
 
@@ -292,9 +324,14 @@ class BaseGraphState(ABC):
         node : int
             graph node to apply Z gate
         """
-        raise NotImplementedError
+        if self.nodes[node]["hollow"]:
+            for i in self.neighbors(node):
+                self.flip_sign(i)
+            if self.nodes[node]["loop"]:
+                self.flip_sign(node)
+        else:  # solid
+            self.flip_sign(node)
 
-    @abstractmethod
     def equivalent_graph_E1(self, node):
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
@@ -305,9 +342,17 @@ class BaseGraphState(ABC):
         node1 : int
             A graph node with a loop to apply rule E1
         """
-        raise NotImplementedError
+        if not self.nodes[node]["loop"]:
+            raise ValueError("node must have loop")
+        self.flip_fill(node)
+        self.local_complement(node)
+        for i in self.neighbors(node):
+            self.advance(i)
+        self.flip_sign(node)
+        if self.nodes[node]["sign"]:
+            for i in self.neighbors(node):
+                self.flip_sign(i)
 
-    @abstractmethod
     def equivalent_graph_E2(self, node1, node2):
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
@@ -318,7 +363,28 @@ class BaseGraphState(ABC):
         node1, node2 : int
             connected graph nodes to apply rule E2
         """
-        raise NotImplementedError
+        if (node1, node2) not in list(self.edges) and (node2, node1) not in list(self.edges):
+            raise ValueError("nodes must be connected by an edge")
+        if self.nodes[node1]["loop"] or self.nodes[node2]["loop"]:
+            raise ValueError("nodes must not have loop")
+        sg1 = self.nodes[node1]["sign"]
+        sg2 = self.nodes[node2]["sign"]
+        self.flip_fill(node1)
+        self.flip_fill(node2)
+        # local complement along edge between node1, node2
+        self.local_complement(node1)
+        self.local_complement(node2)
+        self.local_complement(node1)
+        for i in iter(set(self.neighbors(node1)) & set(self.neighbors(node2))):
+            self.flip_sign(i)
+        if sg1:
+            self.flip_sign(node1)
+            for i in self.neighbors(node1):
+                self.flip_sign(i)
+        if sg2:
+            self.flip_sign(node2)
+            for i in self.neighbors(node2):
+                self.flip_sign(i)
 
     @abstractmethod
     def local_complement(self, node):
@@ -331,7 +397,6 @@ class BaseGraphState(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def equivalent_fill_node(self, node):
         """Fill the chosen node by graph transformation rules E1 and E2,
         If the selected node is hollow and isolated, it cannot be filled
@@ -349,9 +414,28 @@ class BaseGraphState(ABC):
             if filled and isolated, 2.
             otherwise it is 0.
         """
-        raise NotImplementedError
+        if self.nodes[node]["hollow"]:
+            if self.nodes[node]["loop"]:
+                self.equivalent_graph_E1(node)
+                return 0
+            else:  # node = hollow and loopless
+                if len(list(self.neighbors(node))) == 0:
+                    return 1
+                for i in self.neighbors(node):
+                    if not self.nodes[i]["loop"]:
+                        self.equivalent_graph_E2(node, i)
+                        return 0
+                # if all neighbor has loop, pick one and apply E1, then E1 to the node.
+                i = next(self.neighbors(node))
+                self.equivalent_graph_E1(i)  # this gives loop to node.
+                self.equivalent_graph_E1(node)
+                return 0
+        else:
+            if len(list(self.neighbors(node))) == 0:
+                return 2
+            else:
+                return 0
 
-    @abstractmethod
     def measure_x(self, node, choice=0):
         """perform measurement in X basis
         According to original paper, we realise X measurement by
@@ -364,9 +448,20 @@ class BaseGraphState(ABC):
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
         """
-        raise NotImplementedError
+        # check if isolated
+        if len(list(self.neighbors(node))) == 0:
+            if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
+                choice_ = choice
+            elif self.nodes[node]["sign"]:  # isolated and state is |->
+                choice_ = 1
+            else:  # isolated and state is |+>
+                choice_ = 0
+            self.remove_node(node)
+            return choice_
+        else:
+            self.h(node)
+            return self.measure_z(node, choice=choice)
 
-    @abstractmethod
     def measure_y(self, node, choice=0):
         """perform measurement in Y basis
         According to original paper, we realise Y measurement by
@@ -379,9 +474,11 @@ class BaseGraphState(ABC):
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
         """
-        raise NotImplementedError
+        self.s(node)
+        self.z(node)
+        self.h(node)
+        return self.measure_z(node, choice=choice)
 
-    @abstractmethod
     def measure_z(self, node, choice=0):
         """perform measurement in Z basis
         To realize the simple Z measurement on undecorated graph state,
@@ -394,9 +491,17 @@ class BaseGraphState(ABC):
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
         """
-        raise NotImplementedError
+        isolated = self.equivalent_fill_node(node)
+        if choice:
+            for i in self.neighbors(node):
+                self.flip_sign(i)
+        if not isolated:
+            result = choice
+        else:
+            result = int(self.nodes[node]["sign"])
+        self.remove_node(node)
+        return result
 
-    @abstractmethod
     def draw(self, fill_color="C0", **kwargs):
         """Draw decorated graph state.
         Negative nodes are indicated by negative sign of node labels.
@@ -408,8 +513,39 @@ class BaseGraphState(ABC):
         kwargs : keyword arguments, optional
             additional arguments to supply networkx.draw().
         """
-        raise NotImplementedError
+        nqubit = len(self.nodes)
+        nodes = list(self.nodes)
+        edges = list(self.edges)
+        labels = {i: i for i in iter(self.nodes)}
+        colors = [fill_color for _ in range(nqubit)]
+        for i in range(nqubit):
+            if self.nodes[nodes[i]]["loop"]:
+                edges.append((nodes[i], nodes[i]))
+            if self.nodes[nodes[i]]["hollow"]:
+                colors[i] = "white"
+            if self.nodes[nodes[i]]["sign"]:
+                labels[nodes[i]] = -1 * labels[nodes[i]]
+        g = nx.Graph()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+        nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
 
-    @abstractmethod
     def to_statevector(self):
-        raise NotImplementedError
+        node_list = list(self.nodes)
+        nqubit = len(self.nodes)
+        gstate = Statevec(nqubit=nqubit)
+        # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
+        imapping = {node_list[i]: i for i in range(nqubit)}
+        mapping = [node_list[i] for i in range(nqubit)]
+        for i, j in self.edges:
+            gstate.entangle((imapping[i], imapping[j]))
+        for i in range(nqubit):
+            if self.nodes[mapping[i]]["sign"]:
+                gstate.evolve_single(Ops.z, i)
+        for i in range(nqubit):
+            if self.nodes[mapping[i]]["loop"]:
+                gstate.evolve_single(Ops.s, i)
+        for i in range(nqubit):
+            if self.nodes[mapping[i]]["hollow"]:
+                gstate.evolve_single(Ops.h, i)
+        return gstate
