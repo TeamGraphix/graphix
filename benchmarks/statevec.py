@@ -25,8 +25,6 @@ from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
 from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
 from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
-from mentpy import MBQCircuit as MentpyCircuit
-import mentpy as mp
 
 # %%
 # Next, we define a random circuit generator:
@@ -117,7 +115,8 @@ def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -
         if instr[0] == "CNOT":
             paddle_quantum_circuit.cnot(which_qubits=instr[1])
         elif instr[0] == "Rz":
-            paddle_quantum_circuit.rz(which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64"))
+            paddle_quantum_circuit.rz(
+                which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64"))
     return paddle_quantum_circuit
 
 
@@ -126,7 +125,8 @@ paddle_quantum_time = []
 
 for width in test_cases_for_paddle_quantum:
     graphix_circuit = graphix_circuits[width]
-    paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit)
+    paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(
+        graphix_circuit)
     pat = PaddleTranspile(paddle_quantum_circuit)
     mbqc = PaddleMBQC()
     mbqc.set_pattern(pat)
@@ -138,147 +138,18 @@ for width in test_cases_for_paddle_quantum:
     print(f"nqubit: {width}, depth: {DEPTH}, time: {end - start}")
 
 # %%
-# Here we take benchmarking for MBQC simulation using `mentpy`.
-
-
-def _cnot_dummy(gs: mp.GraphState, control_node: int, target_node: int, ancilla: list, measurements: dict) -> int:
-    """approximate MBQC commands for CNOT gate.
-    NOTE: This function is dummy. It aims to provide a pattern which is approximately equivalent to the CNOT gate.
-    Since mentpy does not support byproduct correction, we just put a X measurement on the ancilla node as an
-    alternative.
-
-    Parameters
-    ----------
-        gs : mp.GraphState
-            graph state
-        control_node : int
-            input node on graph
-        target_node : int
-            target node on graph
-        ancilla : list
-            ancilla node indices to be added to graph
-        measurements : dict
-            measurement operators
-
-    Returns
-    -------
-        output_node : int
-            output node
-    """
-    assert len(ancilla) == 2
-    gs.add_nodes_from(ancilla)
-    gs.add_edges_from([(target_node, ancilla[0]), (control_node, ancilla[0]), (ancilla[0], ancilla[1])])
-    measurements[target_node] = mp.Ment(0, "XY")
-    measurements[ancilla[0]] = mp.Ment(0, "XY")
-    # NOTE: dummy measurement
-    measurements[ancilla[1]] = mp.Ment("X")
-    return control_node, ancilla[1]
-
-
-def _rz_dummy(gs: mp.GraphState, input_node: int, ancilla: list, measurements: dict, angle: float) -> int:
-    """approximate MBQC commands for Z rotation gate.
-    NOTE: This function is dummy. It aims to provide a pattern which is approximately equivalent to the Z rotation
-    gate. Since mentpy does not support byproduct correction, we just put a X measurement on the ancilla node as
-    an alternative.
-
-    Parameters
-    ----------
-        gs : mp.GraphState
-            graph state
-        input_node : int
-            input node on graph
-        ancilla : list
-            ancilla node indices to be added to graph
-        measurements : dict
-            measurement operators
-        angle : float
-            rotation angle
-
-    Returns
-    -------
-        output_node : int
-            output node
-    """
-    assert len(ancilla) == 2
-    gs.add_nodes_from(ancilla)
-    gs.add_edges_from([(input_node, ancilla[0]), (ancilla[0], ancilla[1])])
-    measurements[input_node] = mp.Ment(-angle / np.pi, "XY")
-    measurements[ancilla[0]] = mp.Ment(0, "XY")
-    # NOTE: dummy measurement
-    measurements[ancilla[1]] = mp.Ment("X")
-    return ancilla[1]
-
-
-def translate_graphix_rc_into_mentpy_circuit(graphix_circuit: Circuit) -> MentpyCircuit:
-    """Translate graphix circuit into mentpy circuit.
-
-    Parameters
-    ----------
-        graphix_circuit : Circuit
-            graphix circuit
-
-    Returns
-    -------
-        mentpy_circuit : MentpyCircuit
-            mentpy circuit
-    """
-    mentpy_graph_state = mp.GraphState()
-    mentpy_graph_state.add_nodes_from([i for i in range(graphix_circuit.width)])
-    measurements = {}
-    Nnode = graphix_circuit.width
-    input = [j for j in range(graphix_circuit.width)]
-    out = [j for j in range(graphix_circuit.width)]
-    for instr in graphix_circuit.instruction:
-        if instr[0] == "CNOT":
-            ancilla = [Nnode, Nnode + 1]
-            out[instr[1][0]], out[instr[1][1]] = _cnot_dummy(
-                mentpy_graph_state, out[instr[1][0]], out[instr[1][1]], ancilla, measurements
-            )
-            Nnode += 2
-        elif instr[0] == "Rz":
-            ancilla = [Nnode, Nnode + 1]
-            out[instr[1]] = _rz_dummy(mentpy_graph_state, out[instr[1]], ancilla, measurements, instr[2])
-            Nnode += 2
-
-    mentpy_circuit = MentpyCircuit(mentpy_graph_state, input_nodes=input, output_nodes=out)
-    for node, op in measurements.items():
-        if node in mentpy_circuit._trainable_nodes:
-            mentpy_circuit[node] = op
-    return mentpy_circuit
-
-
-test_cases_for_mentpy = [i for i in range(2, 13)]
-mentpy_time = []
-
-for width in test_cases_for_mentpy:
-    graphix_circuit = graphix_circuits[width]
-    mentpy_circuit = translate_graphix_rc_into_mentpy_circuit(graphix_circuit)
-    # you can check the mentpy circuit and graphix circuit
-    # pattern = graphix_circuit.transpile()
-    # pattern.draw_graph()
-    # mp.draw(mentpy_circuit)
-    simulator = mp.PatternSimulator(mentpy_circuit, backend="numpy-sv")
-    angles = np.zeros(len(mentpy_circuit.trainable_nodes))
-    start = perf_counter()
-    simulator.run(angles=angles)
-    end = perf_counter()
-    mentpy_time.append(end - start)
-
-    print(f"nqubit: {width}, depth: {DEPTH}, time: {end - start}")
-
-
-# %%
 # Lastly, we compare the simulation times.
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ax.scatter(
-    test_cases, circuit_time, label="direct statevector sim of original gate-based circuit (for reference)", marker="x"
+    test_cases, circuit_time,
+    label="direct statevector sim of original gate-based circuit (for reference)", marker="x"
 )
 ax.scatter(test_cases, pattern_time, label="graphix pattern simulator")
-ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time, label="paddle_quantum pattern simulator")
-ax.scatter(test_cases_for_mentpy, mentpy_time, label="mentpy pattern simulator")
+ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time,
+           label="paddle_quantum pattern simulator")
 ax.set(
     xlabel="nqubit",
     ylabel="time (s)",
