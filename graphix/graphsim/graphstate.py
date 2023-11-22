@@ -9,15 +9,7 @@ from __future__ import annotations
 
 import warnings
 
-RUSTWORKX_INSTALLED = False
-try:
-    import rustworkx as rx
-
-    RUSTWORKX_INSTALLED = True
-except ImportError:
-    rx = None
-
-from .basegraphstate import BaseGraphState
+from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
 from .nxgraphstate import NXGraphState
 from .rxgraphstate import RXGraphState
 

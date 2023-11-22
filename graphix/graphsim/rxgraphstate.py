@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from .basegraphstate import BaseGraphState
-from .graphstate import RUSTWORKX_INSTALLED
+from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
 
 if RUSTWORKX_INSTALLED:

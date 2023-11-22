@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 import networkx as nx
+from networkx import Graph
 from networkx.classes.reportviews import EdgeView, NodeView
 
 from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
@@ -15,14 +16,16 @@ from .rxgraphviews import EdgeList, NodeList
 RUSTWORKX_INSTALLED = False
 try:
     import rustworkx as rx
+    from rustworkx import PyGraph
 
     RUSTWORKX_INSTALLED = True
-except ImportError:
+except ModuleNotFoundError:
     rx = None
+    PyGraph = None
 
 NodesObject = Union[NodeView, NodeList]
 EdgesObject = Union[EdgeView, EdgeList]
-GraphObject = Union[nx.Graph, rx.PyGraph]
+GraphObject = Union[Graph, PyGraph]
 
 
 class BaseGraphState(ABC):
