@@ -258,8 +258,8 @@ class Statevec:
             This method currently assumes qubits in qargs to be separable from the rest
             (checks not implemented for speed).
             Otherwise, the state returned will be forced to be pure which will result in incorrect output.
-            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development (PR #64),
-            is merged.
+            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development
+            (PR #64), is merged.
 
         Parameters
         ----------
@@ -277,22 +277,27 @@ class Statevec:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
-        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
+        For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over
+        :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
         1 \dots 11 ]`, this method returns
 
         .. math::
             \begin{align}
                 \ket{\psi}' =&
-                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
-                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
-                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10} \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
+                    c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 00}
+                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 00} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 01}
+                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 01} \\
+                    & + c_{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k}}0_{\mathrm{k+1}} \dots 10}
+                    \ket{0 \dots 0_{\mathrm{k-1}}0_{\mathrm{k+1}} \dots 10} \\
                     & + \dots \\
-                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11} \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
+                    & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11}
+                    \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
            \end{align}
 
         (after normalization) for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`\ket{1}` state,
-        above will return zero amplitudes; in such a case the returned state will be the one above with :math:`0_{\mathrm{k}}`
-        replaced with :math:`1_{\mathrm{k}}` .
+        above will return zero amplitudes; in such a case the returned state will be the one above with
+        :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}` .
 
         .. warning::
             This method assumes the qubit with index `qarg` to be separable from the rest,
