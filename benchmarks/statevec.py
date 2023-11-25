@@ -5,12 +5,10 @@ Statevector simulation of MBQC patterns
 Here we benchmark our statevector simulator for MBQC.
 
 The methods and modules we use are the followings:
-    1. :meth:`~graphix.pattern.Pattern.simulate_pattern`
+    1. :meth:`graphix.pattern.Pattern.simulate_pattern`
         Pattern simulator with statevector backend.
     2. :mod:`paddle_quantum.mbqc`
         Pattern simulation using :mod:`paddle_quantum.mbqc`.
-    3. :mod:`mentpy`
-        Pattern simulation using :mod:`mentpy`.
 """
 
 # %%
@@ -20,18 +18,17 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 from graphix import Circuit
-from graphix.sim.statevec import StatevectorBackend
 from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
 from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
 from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
 
 # %%
-# Next, we define a random circuit generator:
+# Next, define a circuit to be transpiled into measurement pattern:
 
 
 def simple_random_circuit(nqubit, depth):
-    r"""Generate a random circuit.
+    r"""Generate a test circuit for benchmarking.
 
     This function generates a circuit with nqubit qubits and depth layers,
     having layers of CNOT and Rz gates with random placements.
@@ -71,21 +68,22 @@ circuit_time = []
 
 # %%
 # We then run simulations.
-# First, we run the pattern simulations and circuit simulation.
+# First, we run the pattern simulation using `graphix`. 
+# For reference, we perform simple statevector simulation of the original gate network.
+# Since transpilation into MBQC involves a significant increase in qubit number, the MBQC simulation is inherently slower as we will see.
 
-for nqubit in test_cases:
-    circuit = simple_random_circuit(nqubit, DEPTH)
-    graphix_circuits[nqubit] = circuit
+for width in test_cases:
+    circuit = simple_random_circuit(width, DEPTH)
+    graphix_circuits[width] = circuit
     pattern = circuit.transpile()
     pattern.standardize()
     pattern.minimize_space()
-    max_qubit_num = 20 if nqubit < 20 else 50
-    backend = StatevectorBackend(pattern, max_qubit_num=max_qubit_num)
-    print(f"max space for nqubit={nqubit} circuit is ", max_qubit_num)
+    nodes, edges = pattern.get_graph()
+    nqubit = len(nodes)
     start = perf_counter()
-    backend.pattern.simulate_pattern(max_qubit_num=max_qubit_num)
+    pattern.simulate_pattern(max_qubit_num=30)
     end = perf_counter()
-    print(f"nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
+    print(f"width: {width}, nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
     pattern_time.append(end - start)
     start = perf_counter()
     circuit.simulate_statevector()
@@ -94,7 +92,7 @@ for nqubit in test_cases:
 
 
 # %%
-# Here we take benchmarking for MBQC simulation using `paddle_quantum`.
+# Here we benchmark `paddle_quantum`, using the same original gate network and use `paddle_quantum.mbqc` module to transpile into a measurement pattern.
 
 
 def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -> PaddleCircuit:
@@ -135,7 +133,7 @@ for width in test_cases_for_paddle_quantum:
     end = perf_counter()
     paddle_quantum_time.append(end - start)
 
-    print(f"nqubit: {width}, depth: {DEPTH}, time: {end - start}")
+    print(f"width: {width}, depth: {DEPTH}, time: {end - start}")
 
 # %%
 # Lastly, we compare the simulation times.
@@ -145,13 +143,13 @@ ax = fig.add_subplot(111)
 
 ax.scatter(
     test_cases, circuit_time,
-    label="direct statevector sim of original gate-based circuit (for reference)", marker="x"
+    label="direct statevector sim of original gate-based circuit (reference)", marker="x"
 )
 ax.scatter(test_cases, pattern_time, label="graphix pattern simulator")
 ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time,
            label="paddle_quantum pattern simulator")
 ax.set(
-    xlabel="nqubit",
+    xlabel="Width of the original circuit",
     ylabel="time (s)",
     yscale="log",
     title="Time to simulate random circuits",
@@ -160,3 +158,9 @@ fig.legend(bbox_to_anchor=(0.85, 0.9))
 fig.show()
 
 # %%
+# MBQC simulation is a lot slower than the simulation of original gate network, since the number of qubit involved is significantly larger.
+# 
+
+import importlib.metadata
+# print package versions.
+[print("{} - {}".format(pkg, importlib.metadata.version(pkg))) for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]]

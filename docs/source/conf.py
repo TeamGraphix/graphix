@@ -61,7 +61,7 @@ sphinx_gallery_conf = {
     # path to where to save gallery generated output
     "gallery_dirs": ["gallery", "benchmarks"],
     "filename_pattern": "/",
-    "thumbnail_size": (700, 500),
+    "thumbnail_size": (800, 550),
 }
 html_context = {
     "css_files": [
