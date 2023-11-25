@@ -1,0 +1,12 @@
+@import url("theme.css");
+
+
+.wy-nav-content {
+    max-width: 100%;
+}
+
+.rst-content img {
+  max-width: 240px;
+  min-width: 220px;
+  min-height: 140px;
+}

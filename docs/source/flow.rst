@@ -10,5 +10,3 @@ flow and gflow
 .. autofunction:: gflow
 
 .. autofunction:: flow
-
-.. autofunction:: solvebool
