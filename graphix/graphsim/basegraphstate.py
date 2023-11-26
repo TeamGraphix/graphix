@@ -420,7 +420,7 @@ class BaseGraphState(ABC):
         ----------
         None
         """
-        if (node1, node2) not in list(self.edges) and (node2, node1) not in list(self.edges):
+        if (node1, node2) not in self.edges and (node2, node1) not in self.edges:
             raise ValueError("nodes must be connected by an edge")
         if self.nodes[node1]["loop"] or self.nodes[node2]["loop"]:
             raise ValueError("nodes must not have loop")

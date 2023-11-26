@@ -53,11 +53,15 @@ class NXGraphState(BaseGraphState):
     def add_edges_from(self, edges):
         self._graph.add_edges_from(edges)
         # adding edges may add new nodes
-        for i in self._graph.nodes:
-            if "loop" not in self._graph.nodes[i]:
-                self._graph.nodes[i]["loop"] = False  # True for having loop
-                self._graph.nodes[i]["sign"] = False  # True for minus
-                self._graph.nodes[i]["hollow"] = False  # True for hollow node
+        for u, v in edges:
+            if u not in self._graph.nodes:
+                self._graph.nodes[u]["loop"] = False
+                self._graph.nodes[u]["sign"] = False
+                self._graph.nodes[u]["hollow"] = False
+            if v not in self._graph.nodes:
+                self._graph.nodes[v]["loop"] = False
+                self._graph.nodes[v]["sign"] = False
+                self._graph.nodes[v]["hollow"] = False
 
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
         if u is None and v is None:

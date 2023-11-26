@@ -40,10 +40,9 @@ class NodeList:
     def add_nodes_from(self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]):
         if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
             raise ValueError("node_nums, node_datas and node_indices must have the same length")
-        for nnum in node_nums:
-            if nnum in self.num_to_data:
-                raise ValueError(f"Node {nnum} already exists")
         for nnum, ndata, nidx in zip(node_nums, node_datas, node_indices):
+            if nnum in self.nodes:
+                continue
             self.add_node(nnum, ndata, nidx)
 
     def remove_node(self, nnum: int):
@@ -55,9 +54,8 @@ class NodeList:
 
     def remove_nodes_from(self, node_nums: list[int]):
         for nnum in node_nums:
-            if nnum not in self.num_to_data:
-                raise ValueError(f"Node {nnum} does not exist")
-        for nnum in node_nums:
+            if nnum not in self.nodes:
+                continue
             self.remove_node(nnum)
 
 
@@ -102,10 +100,9 @@ class EdgeList:
     def add_edges_from(self, edge_nums: list[tuple[int, int]], edge_datas: list[dict], edge_indices: list[int]):
         if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
             raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
-        for enum in edge_nums:
-            if enum in self.num_to_data:
-                raise ValueError(f"Edge {enum} already exists")
         for enum, edata, eidx in zip(edge_nums, edge_datas, edge_indices):
+            if enum in self.edges:
+                continue
             self.add_edge(enum, edata, eidx)
 
     def remove_edge(self, enum: tuple[int, int]):
@@ -117,7 +114,6 @@ class EdgeList:
 
     def remove_edges_from(self, edge_nums: list[tuple[int, int]]):
         for enum in edge_nums:
-            if enum not in self.num_to_data:
-                raise ValueError(f"Edge {enum} does not exist")
-        for enum in edge_nums:
+            if enum not in self.edges:
+                continue
             self.remove_edge(enum)
