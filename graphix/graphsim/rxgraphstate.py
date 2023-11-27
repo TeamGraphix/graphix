@@ -125,7 +125,7 @@ class RXGraphState(BaseGraphState):
             uidx = self.nodes.get_node_index(u)
             vidx = self.nodes.get_node_index(v)
             eidx = self._graph.add_edge(uidx, vidx, None)
-            self._edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
+            self.edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
 
     def local_complement(self, node):
         g = self.subgraph(list(self.neighbors(node)))
