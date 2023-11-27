@@ -21,6 +21,8 @@ class GraphVisualizer:
 
     def __init__(self, G, v_in, v_out, meas_plane=None):
         """
+        Parameters
+        ----------
         G: networkx graph
         v_in: list of input nodes
         v_out: list of output nodes

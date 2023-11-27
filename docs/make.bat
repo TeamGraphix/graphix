@@ -23,6 +23,12 @@ if errorlevel 9009 (
 	exit /b 1
 )
 
+if "%1" == "clean" (
+    echo Cleaning build directory...
+    rmdir /s /q %BUILDDIR%
+    exit /b 0
+)
+
 if "%1" == "" goto help
 
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
