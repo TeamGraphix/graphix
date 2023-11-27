@@ -11,7 +11,7 @@ class StatevectorBackend:
 
     def __init__(self, pattern, max_qubit_num=20):
         """
-        Parameteres
+        Parameters
         -----------
         pattern : :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.

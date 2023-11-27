@@ -1,6 +1,7 @@
 """flow finding algorithm
 
-For a given underlying graph (G, I, O, meas_plane), this method finds a (generalized) flow [NJP 9, 250 (2007)] in polynomincal time.
+For a given underlying graph (G, I, O, meas_plane), this method finds a (generalized) flow [NJP 9, 250 (2007)]
+in polynomincal time.
 In particular, this outputs gflow with minimum depth, maximally delayed gflow.
 
 Ref: Mhalla and Perdrix, International Colloquium on Automata,
@@ -44,10 +45,12 @@ def gflow(graph, input, output, meas_planes, mode="single"):
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     mode: str(optional)
-        The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
+        The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
             - "single": Returrns a single solution
             - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects, requiring user substitution to get a concrete answer.
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+              requiring user substitution to get a concrete answer.
+
         Default is "single".
 
     Returns
@@ -95,10 +98,11 @@ def gflowaux(
     g: dict
         gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
     mode: str(optional)
-        The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
+        The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
             - "single": Returrns a single solution
             - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects, requiring user substitution to get a concrete answer.
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+              requiring user substitution to get a concrete answer.
 
     Returns
     -------
@@ -222,8 +226,9 @@ def flow(graph, input, output, meas_planes=None):
     output: set
         set of node labels for output
     meas_planes: int(optional)
-        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i. Note that an underlying graph has a causal flow only if all measurement planes are "XY".
-        if not specified, all measurement planes are interpreted as "XY".
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+        Note that an underlying graph has a causal flow only if all measurement planes are "XY".
+        If not specified, all measurement planes are interpreted as "XY".
 
     Returns
     -------
@@ -355,7 +360,8 @@ def find_flow(graph, input, output, meas_planes=None, mode="single"):
         The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
             - "single": Returrns a single solution
             - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects, requiring user substitution to get a concrete answer.
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+            requiring user substitution to get a concrete answer.
     """
     if meas_planes is None:
         meas_planes = {i: "XY" for i in (set(graph.nodes) - output)}
