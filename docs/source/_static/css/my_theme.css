@@ -5,8 +5,14 @@
   max-width: 100%;
 }
 
-.rst-content img {
+.rst-content img:not([alt="https://mybinder.org/badge_logo.svg"]):not([alt="qft"]) {
   max-width: 100%;
   min-width: 220px;
   min-height: 240px;
+}
+
+.rst-content img[alt="qft"] {
+  max-width: 100%;
+  min-width: 220px;
+  min-height: 150px;
 }
