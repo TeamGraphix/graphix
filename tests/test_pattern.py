@@ -225,12 +225,12 @@ class TestPattern(unittest.TestCase):
         np.testing.assert_equal(meas_plane, ref_meas_plane)
 
 
-class TestPatternWithNetworkx(unittest.TestCase):
+class TestPatternWithRustworkX(unittest.TestCase):
     def test_standardize(self):
         nqubits = 2
         depth = 1
         circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile(use_rustworkx=False)
+        pattern = circuit.transpile(use_rustworkx=True)
         pattern.standardize(method="global")
         np.testing.assert_equal(pattern.is_standard(), True)
         state = circuit.simulate_statevector()
@@ -241,7 +241,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         nqubits = 5
         depth = 5
         circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile(use_rustworkx=False)
+        pattern = circuit.transpile(use_rustworkx=True)
         pattern.standardize(method="global")
         pattern.minimize_space()
         state = circuit.simulate_statevector()
@@ -253,7 +253,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 5
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
-        pattern = circuit.transpile(use_rustworkx=False)
+        pattern = circuit.transpile(use_rustworkx=True)
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements()
@@ -268,7 +268,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
             depth = 5
             pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
             circuit = rc.generate_gate(nqubits, depth, pairs)
-            pattern = circuit.transpile(use_rustworkx=False)
+            pattern = circuit.transpile(use_rustworkx=True)
             pattern.standardize(method="global")
             pattern.minimize_space()
             np.testing.assert_equal(pattern.max_space(), nqubits + 1)
@@ -277,7 +277,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         nqubits = 2
         depth = 1
         circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile(use_rustworkx=False)
+        pattern = circuit.transpile(use_rustworkx=True)
         pattern.standardize(method="global")
         pattern.parallelize_pattern()
         state = circuit.simulate_statevector()
@@ -289,7 +289,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 1
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile(use_rustworkx=False)
+            pattern = circuit.transpile(use_rustworkx=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             np.testing.assert_equal(pattern.is_standard(), True)
@@ -302,7 +302,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile(use_rustworkx=False)
+            pattern = circuit.transpile(use_rustworkx=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements()
@@ -316,7 +316,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile(use_rustworkx=False)
+            pattern = circuit.transpile(use_rustworkx=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements(leave_input=True)
@@ -330,7 +330,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.transpile(opt=True, use_rustworkx=False)
+            pattern = circuit.transpile(opt=True, use_rustworkx=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements()
@@ -344,7 +344,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True, use_rustworkx=False)
+            pattern = circuit.standardize_and_transpile(opt=True, use_rustworkx=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements()
@@ -358,7 +358,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True, use_rustworkx=False)
+            pattern = circuit.standardize_and_transpile(opt=True, use_rustworkx=True)
             pattern.perform_pauli_measurements()
             pattern.minimize_space()
             state = circuit.simulate_statevector()
@@ -382,7 +382,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         circuit.h(0)
         swap(circuit, 0, 2)
 
-        pattern = circuit.transpile(use_rustworkx=False)
+        pattern = circuit.transpile(use_rustworkx=True)
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements()
@@ -410,7 +410,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
         circuit.h(0)
         swap(circuit, 0, 2)
 
-        pattern = circuit.transpile(use_rustworkx=False)
+        pattern = circuit.transpile(use_rustworkx=True)
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(leave_input=True)
@@ -424,7 +424,7 @@ class TestPatternWithNetworkx(unittest.TestCase):
     def test_get_meas_plane(self):
         preset_meas_plane = ["XY", "XY", "XY", "YZ", "YZ", "YZ", "XZ", "XZ", "XZ"]
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
-        pattern = Pattern(len(preset_meas_plane), use_rustworkx=False)
+        pattern = Pattern(len(preset_meas_plane), use_rustworkx=True)
         pattern.set_output_nodes([i for i in range(len(preset_meas_plane))])
         for i in range(len(preset_meas_plane)):
             pattern.add(["M", i, preset_meas_plane[i], 0, [], [], vop_list[i % 3]])

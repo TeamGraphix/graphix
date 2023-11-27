@@ -17,7 +17,7 @@ from .rxgraphstate import RXGraphState
 class GraphState:
     """Factory class for graph state simulator."""
 
-    def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx: bool = True) -> BaseGraphState:
+    def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx: bool = False) -> BaseGraphState:
         if use_rustworkx:
             if RUSTWORKX_INSTALLED:
                 return RXGraphState(nodes=nodes, edges=edges, vops=vops)

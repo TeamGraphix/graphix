@@ -117,14 +117,14 @@ class TestGraphSim(unittest.TestCase):
         self.assertTrue(is_graphs_equal(g, exp_g))
 
 
-class TestGraphSimWithNetworkx(unittest.TestCase):
+class TestGraphSimWithRustworkX(unittest.TestCase):
     def test_fig2(self):
         """Example of three single-qubit measurements
         presented in Fig.2 of M. Elliot et al (2010)
         """
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=False)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=True)
         gstate = get_state(g)
         g.measure_x(0)
         gstate.evolve_single(meas_op(0), [0])  # x meas
@@ -150,7 +150,7 @@ class TestGraphSimWithNetworkx(unittest.TestCase):
     def test_E2(self):
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=False)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=True)
         g.h(3)
         gstate = get_state(g)
 
@@ -177,7 +177,7 @@ class TestGraphSimWithNetworkx(unittest.TestCase):
     def test_E1(self):
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=False)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=True)
         g.nodes[3]["loop"] = True
         gstate = get_state(g)
         g.equivalent_graph_E1(3)
@@ -197,7 +197,7 @@ class TestGraphSimWithNetworkx(unittest.TestCase):
         nqubit = 6
         edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]
         exp_edges = [(0, 1), (1, 2), (0, 2), (2, 3), (3, 4), (4, 0)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=False)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=True)
         g.local_complement(1)
         exp_g = GraphState(nodes=np.arange(nqubit), edges=exp_edges)
         self.assertTrue(is_graphs_equal(g, exp_g))
@@ -207,14 +207,14 @@ class TestGraphSimUtils(unittest.TestCase):
     def test_is_graphs_equal_nx_nx(self):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=False)
-        g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=False)
+        g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
+        g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         self.assertTrue(is_graphs_equal(g1, g2))
 
     def test_is_graphs_equal_nx_rx(self):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=False)
+        g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         self.assertTrue(is_graphs_equal(g1, g2))
 
@@ -222,7 +222,7 @@ class TestGraphSimUtils(unittest.TestCase):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
-        g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=False)
+        g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         self.assertTrue(is_graphs_equal(g1, g2))
 
     def test_is_graphs_equal_rx_rx(self):
