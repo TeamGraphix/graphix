@@ -2,11 +2,11 @@
 
 
 .wy-nav-content {
-    max-width: 100%;
+  max-width: 100%;
 }
 
 .rst-content img {
-  max-width: 330px;
+  max-width: 100%;
   min-width: 220px;
   min-height: 240px;
 }
