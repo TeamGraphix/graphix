@@ -15,6 +15,9 @@ class NodeList:
         self.num_to_data = {nnum: node_datas[nidx] for nidx, nnum in zip(node_indices, node_nums)}
         self.num_to_idx = {nnum: nidx for nidx, nnum in zip(node_indices, node_nums)}
 
+    def __contains__(self, nnum: int):
+        return nnum in self.nodes
+
     def __getitem__(self, nnum: int):
         return self.num_to_data[nnum]
 
@@ -74,6 +77,9 @@ class EdgeList:
         self.edges = set(edge_nums)
         self.num_to_data = {enum: edge_datas[eidx] for eidx, enum in zip(edge_indices, edge_nums)}
         self.num_to_idx = {enum: eidx for eidx, enum in zip(edge_indices, edge_nums)}
+
+    def __contains__(self, enum: tuple[int, int]):
+        return enum in self.edges
 
     def __getitem__(self, enum: tuple[int, int]):
         return self.num_to_data[enum]
