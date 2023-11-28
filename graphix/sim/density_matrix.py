@@ -55,7 +55,7 @@ class DensityMatrix:
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
 
     def evolve_single(self, op, i):
-        """Single-qudit operation.
+        """Single-qubit operation.
 
         Parameters
         ----------
@@ -140,6 +140,31 @@ class DensityMatrix:
         #     [i for i in qargs] + [i + self.Nqubit for i in list(qargs)],
         # )
         # self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+
+    def expectation_single(self, op, i):
+        """Expectation value of single-qubit operator.
+
+        Args:
+            op (np.array): 2*2 Hermite operator
+            loc (int): Index of qubit on which to apply operator.
+        Returns:
+            complex: expectation value (real for hermitian ops!).
+        """
+
+        assert i >= 0 and i < self.Nqubit
+        if op.shape != (2, 2):
+            raise ValueError("op must be 2*2 matrix.")
+
+        st1 = deepcopy(self)
+        st1.normalize()
+
+        # reshape
+        rho_tensor = st1.rho.reshape((2,) * st1.Nqubit * 2)
+        rho_tensor = np.tensordot(op, rho_tensor, axes=[1, i])
+        rho_tensor = np.moveaxis(rho_tensor, 0, i)
+        st1.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+
+        return np.trace(st1.rho)
 
     def dims(self):
         return self.rho.shape
@@ -306,7 +331,7 @@ class DensityMatrix:
 class DensityMatrixBackend:
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=False):
         """
         Parameters
         ----------
@@ -324,6 +349,10 @@ class DensityMatrixBackend:
         self.node_index = []
         self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
+
+        # whether to compute the probability
+        # TODO if there is a noise model, force it to 1
+        self.pr_calc = pr_calc
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
 
@@ -390,17 +419,43 @@ class DensityMatrixBackend:
             cmd : list
                 measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        result = np.random.choice([0, 1])
-        self.results[cmd[1]] = result
 
         s_signal = np.sum([self.results[j] for j in cmd[4]])
         t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
+
         if len(cmd) == 7:
-            m_op = meas_op(angle, vop=cmd[6], plane=cmd[2], choice=result)
+            vop = cmd[6]
         else:
-            m_op = meas_op(angle, plane=cmd[2], choice=result)
+            vop = 0
+
+        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
         loc = self.node_index.index(cmd[1])
+
+        # check if compute the probability
+        if self.pr_calc:
+
+            result = 0
+            m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+
+            # probability to measure in the |+_angle> state.
+            # NOT EFFICIENT AT ALL since expectation_single calls evolve_single...
+            ### TODO ### tr(rho * Pi) = tr(Pi * rho * Pi) ### self.state.expectation_single(m_op, loc)
+
+            prob_0 = self.state.expectation_single(m_op, loc)
+
+            # choose the measurement result randomly according to the computed probability
+            # just modify result and operator if the outcome turns out to be 1
+            if np.random.rand() > prob_0:
+                result = 1
+                m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+
+        # choose the measurement result randomly
+        else:
+            result = np.random.choice([0, 1])
+            m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+
+        self.results[cmd[1]] = result
+
         self.state.evolve_single(m_op, loc)
         self.state.normalize()
         # perform ptrace right after measurement as in real devices
