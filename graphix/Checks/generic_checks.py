@@ -24,7 +24,7 @@ def check_square(matrix: np.ndarray) -> bool:
 
 def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     """
-    check if a densitymatrix is positive semidefinite by diagonalizing.
+    check if a density matrix is positive semidefinite by diagonalizing.
     After check_square and check_hermitian (osef) so that it already is square with power of 2 dimension.
 
 
@@ -44,7 +44,8 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     # if no error: eigenvals are real
 
     evals = np.linalg.eigvalsh(matrix)
-
+    print(matrix)
+    print(evals)
     # remove small negatives like -1e-17
     evals[np.abs(evals) < tol] = 0
 

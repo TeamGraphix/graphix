@@ -10,6 +10,9 @@ from graphix.kraus import (
 )
 import tests.random_objects as randobj
 
+# thiese imports don't work for some reason
+# from graphix.Checks.channel_checks import build_choi, check_cp
+
 from graphix.ops import Ops
 
 
@@ -180,6 +183,25 @@ class TestChannel(unittest.TestCase):
         for i in range(len(dephase_channel_2_qubit.kraus_ops)):
             np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["parameter"], data[i]["parameter"])
             np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+    # TODO uncomment these tests    
+    # def test_check_choi(self):
+    #     """Try generating the Choi state on simple 1-qubit examples."""
+    #     p = 0.1
+    #     mychannel = create_dephasing_channel(p)
+    #     Choi_state = build_choi(mychannel)
+
+    #     assert np.allclose(
+    #         Choi_state.rho, 0.5 * np.array([[1, 0, 0, 1 - 2 * p], [0, 0, 0, 0], [0, 0, 0, 0], [1 - 2 * p, 0, 0, 1]])
+    #     )
+    #     # TODO restart here!
+
+    #     pass
+
+    # def test_check_cp(self):
+    #     """_summary_"""
+
+    #     mychannel = randobj.rand_channel_kraus(dim=2**2)
+    #     pass
 
     # def test_to_kraus_fail(self):
     #     A_wrong = [[0, 1, 2], [3, 4, 5]]

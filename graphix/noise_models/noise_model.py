@@ -6,8 +6,8 @@ import abc
 class NoiseModel(abc.ABC):
     """No noise"""
 
-    # TODO does that have to be an abstract method? Guess so if generic dephase model with parameter.
-    # @abc.abstractmethod
+    # define the noise model parameters in there
+    @abc.abstractmethod
     def __init__(self):
         pass
 

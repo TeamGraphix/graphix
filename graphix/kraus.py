@@ -12,7 +12,7 @@ class Channel:
     nqubit : int
         number of qubits acted on by the Kraus operators
     size : int
-        number of Kraus operators
+        number of Kraus operators (== Choi rank)
     kraus_ops : array_like(dict())
         the data in format
         array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
@@ -62,7 +62,8 @@ class Channel:
         # check that the channel is properly normalized i.e
         # \sum_K_i^\dagger K_i = Identity
         assert check_data_normalization(kraus_data)
-
+        # TODO
+        # add self.dim = kraus_data[0]["operator"].shape[0]?
         self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
         self.kraus_ops = kraus_data
 
@@ -76,6 +77,15 @@ class Channel:
 
     def is_normalized(self):
         return check_data_normalization(self.kraus_ops)
+
+    def is_cp(self):
+        res = False
+        try:
+            check_cp(self)
+        except:
+            res = False
+
+        return res
 
 
 def create_dephasing_channel(prob: float) -> Channel:

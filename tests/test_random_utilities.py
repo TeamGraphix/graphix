@@ -119,20 +119,19 @@ class TestUtilities(unittest.TestCase):
 
         # Generate a random mixed state from state vectors (equiprobable though)
         # We know this is PSD
-        # test on 4 qubits
 
-        nqb = np.random.randint(2,7)
+        nqb = np.random.randint(2, 7)
 
         dim = 2**nqb
         m = np.random.randint(1, dim)
 
-        dm = np.zeros((dim,)*2, dtype=np.complex128)
-        
+        dm = np.zeros((dim,) * 2, dtype=np.complex128)
+
         # TODO optimize that
         for _ in range(m):
             psi = np.random.rand(dim) + 1j * np.random.rand(dim)
             psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
-            dm += np.outer(psi, psi.conj())/m
+            dm += np.outer(psi, psi.conj()) / m
 
         # assert check_square(dm)
         # assert check_hermitian(dm)
@@ -142,32 +141,30 @@ class TestUtilities(unittest.TestCase):
     def test_check_psd_fail(self):
 
         # not hermitian
-        # BUG see below
-        # don't include 1 since eigvalsh take the real part if the matrix is just one number.
-        # weird.
-        # eveything works with any integer but no error raised when using a random.randint...
-        l =   7#np.random.randint(2, 20)
+        # don't use dim = 2, too easy to have a PSD matrix.
+        # NOTE useless test since eigvalsh treats the matrix as hermitian and takes only the L or U part
+
+        l = np.random.randint(5, 20)
 
         mat = np.random.rand(l, l) + 1j * np.random.rand(l, l)
 
         # eigvalsh doesn't raise a LinAlgError since just use upper or lower part of the matrix.
         # with self.assertRaises(np.linalg.LinAlgError):
-        # instead normal error
+        # instead Value error
         with self.assertRaises(ValueError):
             check_psd(mat)
 
         # hermitian but not positive eigenvalues
-        mat = randobj.rand_herm(l) 
+        mat = randobj.rand_herm(l)
 
-        with self.assertRaises(ValueError): # or LinAlgError?
+        with self.assertRaises(ValueError):  # or LinAlgError?
             check_psd(mat)
-
 
     def test_rand_dm(self):
         # needs to be power of 2 dimension since builds a DM object
-        dm = randobj.rand_dm(2**np.random.randint(2, 5))
+        dm = randobj.rand_dm(2 ** np.random.randint(2, 5))
 
-        assert isinstance(dm, DensityMatrix)    
+        assert isinstance(dm, DensityMatrix)
         assert check_square(dm.rho)
         assert check_hermitian(dm.rho)
         assert check_psd(dm.rho)
@@ -175,11 +172,11 @@ class TestUtilities(unittest.TestCase):
 
     def test_rand_dm_rank(self):
         # check the rank feature
-        
-        rk = 3
-        dm = randobj.rand_dm(2**np.random.randint(2, 5), rank = rk)
 
-        assert isinstance(dm, DensityMatrix)    
+        rk = 3
+        dm = randobj.rand_dm(2 ** np.random.randint(2, 5), rank=rk)
+
+        assert isinstance(dm, DensityMatrix)
         assert check_square(dm.rho)
         assert check_hermitian(dm.rho)
         assert check_psd(dm.rho)

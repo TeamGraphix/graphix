@@ -92,6 +92,7 @@ class DensityMatrix:
         else:
             raise ValueError(f"The provided data has incorrect shape {op.shape}.")
 
+        # TODO rename. Not a dim but a number of qubits
         op_dim = np.log2(len(op))
         if not np.isclose(op_dim, int(op_dim)):
             raise ValueError("Incorrect operator dimension: not consistent with qubits.")

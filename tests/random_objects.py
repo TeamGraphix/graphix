@@ -52,8 +52,7 @@ def rand_dm(dim: int, rank: int = None):
 
     # pad with zeros everywhere else to match dimensions
     padded_evals = np.zeros(dim)
-    padded_evals[:len(evals)] = evals
-    
+    padded_evals[: len(evals)] = evals
 
     # normalize by the trace
     # np.diag: if arg is 1D array, constructs the 2D array with the corresponding diagonal
@@ -109,7 +108,7 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
         Linear dimension of the (square) matrix of each Kraus operator.
         Only square operators (so far)!
 
-    rank : int
+    rank : int (default dimension**2 (maximum rank))
         Choi rank ie the number of Kraus operators. Must be between one and dim**2.
         WARNING Qutip mentions complete positivity issues for not full rank
 
