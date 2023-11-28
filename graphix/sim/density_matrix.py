@@ -151,9 +151,11 @@ class DensityMatrix:
             complex: expectation value (real for hermitian ops!).
         """
 
-        assert i >= 0 and i < self.Nqubit
+        if i < 0 or i >= self.Nqubit:
+            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.Nqubit-1}.")
+
         if op.shape != (2, 2):
-            raise ValueError("op must be 2*2 matrix.")
+            raise ValueError("op must be 2x2 matrix.")
 
         st1 = deepcopy(self)
         st1.normalize()
@@ -353,6 +355,8 @@ class DensityMatrixBackend:
         # whether to compute the probability
         # TODO if there is a noise model, force it to 1
         self.pr_calc = pr_calc
+        if pr_calc == True:
+            print("Computing probabilities!!!")
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
 
@@ -441,7 +445,11 @@ class DensityMatrixBackend:
             # NOT EFFICIENT AT ALL since expectation_single calls evolve_single...
             ### TODO ### tr(rho * Pi) = tr(Pi * rho * Pi) ### self.state.expectation_single(m_op, loc)
 
-            prob_0 = self.state.expectation_single(m_op, loc)
+            # exp vals of any operator can be complex. Converts to np.ndarray.
+            # If complex w/o small returns the complex number so errors will come out.
+            prob_0 = np.real_if_close(self.state.expectation_single(m_op, loc))
+
+            print(f"Computing probabilities!!! prob0 = {prob_0}")
 
             # choose the measurement result randomly according to the computed probability
             # just modify result and operator if the outcome turns out to be 1

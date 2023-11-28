@@ -65,6 +65,10 @@ def rand_dm(dim: int, rank: int = None):
     randU = rand_unit(dim)
     dm = randU @ dm @ randU.transpose().conj()
 
+    # or just [Miszczak11] but no control over the rank.
+    # tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
+    # np.dot(tmp, tmp.conj().T)
+
     return DensityMatrix(data=dm)
 
 

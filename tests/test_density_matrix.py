@@ -110,6 +110,26 @@ class TestDensityMatrix(unittest.TestCase):
             dm.evolve_single(op, i)
             assert np.allclose(dm.rho, expected_density_matrix)
 
+    def test_expectation_single_fail(self):
+        nqb = 3
+        dm = DensityMatrix(nqubit = nqb)
+
+        # wrong dimensions
+        # generate random 4 x 4 unitary matrix
+        op = randobj.rand_unit(4)
+
+        with self.assertRaises(ValueError):
+            dm.expectation_single(op, 2)
+        with self.assertRaises(ValueError):
+            dm.expectation_single(op, 1)
+
+        # wrong qubit undices
+        op = randobj.rand_unit(2)
+        with self.assertRaises(ValueError):
+            dm.expectation_single(op, -3)
+        with self.assertRaises(ValueError):
+            dm.expectation_single(op, nqb + 3)
+
     def test_tensor_fail(self):
         dm = DensityMatrix(nqubit=1)
         with self.assertRaises(TypeError):
@@ -808,6 +828,8 @@ class DensityMatrixBackendTest(unittest.TestCase):
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
 
     def test_measure_pr_calc(self):
+
+        # circuit there just to provide a measurement command to try out. Weird.
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile()
@@ -818,6 +840,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern.seq[-4])
 
+        # 3-qubit linear graph state: |+0+> + |-1->
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)

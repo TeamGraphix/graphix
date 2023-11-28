@@ -37,11 +37,16 @@ class PatternSimulator:
             self.noise_model = None
             self.backend = StatevectorBackend(pattern, **kwargs)
         elif backend == "densitymatrix":
-            self.backend = DensityMatrixBackend(pattern, **kwargs)
+
             if noise_model is None:
                 set_noise_model(self, BaseNoiseModel)
+                # no noise: no need to compute probabilities
+                self.backend = DensityMatrixBackend(pattern, **kwargs)
             else:
                 set_noise_model(self, noise_model)
+                # if noise: have to compute the probabilities
+                self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
+
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
             self.backend = TensorNetworkBackend(pattern, **kwargs)
