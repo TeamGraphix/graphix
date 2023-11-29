@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.2.9] - 2023-11-29
+
 ### Added
 - internal updates of gflow and linear algebra functionalities:
     - A new option `mode` in `gflow.gflow`, specifying whether to obtain all possible maximally delayed gflow or not (#80)
