@@ -1,6 +1,6 @@
 """
 Large-scale simulations with tensor network simulator
-===================
+=====================================================
 
 In this example, we demonstrate simulation of MBQC involving 10k+ nodes.
 
@@ -14,7 +14,6 @@ Firstly, let us import relevant modules and define the circuit:
 # %%
 import numpy as np
 from graphix import Circuit
-import networkx as nx
 
 
 def cp(circuit, theta, control, target):
@@ -81,7 +80,8 @@ pattern.perform_pauli_measurements()
 # To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that one of the statevector amplitudes is what it is expected to be:
 
-import time
+import time  # noqa: E402
+
 t1 = time.time()
 tn = pattern.simulate_pattern(backend="tensornetwork")
 value = tn.get_basis_amplitude(0)
