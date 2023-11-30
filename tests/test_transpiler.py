@@ -1,7 +1,12 @@
 import unittest
+
 import numpy as np
-from graphix.transpiler import Circuit
+
 import tests.random_circuit as rc
+from graphix.transpiler import Circuit
+
+SEED = 42
+rc.set_seed(SEED)
 
 
 class TestTranspiler_UnitGates(unittest.TestCase):
