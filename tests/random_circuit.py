@@ -11,12 +11,12 @@ def set_seed(seed):
 
 
 def get_rng(seed=None):
-    if seed is None and GLOBAL_SEED is None:
-        return np.random.default_rng()
+    if seed is not None:
+        return np.random.default_rng(seed)
     elif seed is None and GLOBAL_SEED is not None:
         return np.random.default_rng(GLOBAL_SEED)
     else:
-        return np.random.default_rng(seed)
+        np.random.default_rng()
 
 
 def first_rotation(circuit, nqubits, rng):
