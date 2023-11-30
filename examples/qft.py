@@ -35,14 +35,14 @@ def swap(circuit, a, b):
 
 
 # %%
-# Now let us define a circuit to apply QFT to three-qubit |011> state (input=6).
+# Now let us define a circuit to apply QFT to three-qubit ``|011>`` state (input=6).
 
 
 circuit = Circuit(3)
 for i in range(3):
     circuit.h(i)
 
-# prepare |011> state
+# prepare ``|011>`` state
 circuit.x(1)
 circuit.x(2)
 

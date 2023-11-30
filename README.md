@@ -27,10 +27,10 @@ Install together with device interface:
 ```bash
 $ pip install graphix[extra]
 ```
-this will install `graphix` and [IBMQ interface](https://github.com/TeamGraphix/graphix-ibmq) to run MBQC patterns on IBM devices and Aer simulator.
+this will install `graphix` and inteface for [IBMQ](https://github.com/TeamGraphix/graphix-ibmq) and [Perceval](https://github.com/TeamGraphix/graphix-perceval) to run MBQC patterns on superconducting and optical QPUs and their simulators.
 
-We are currently adding more quantum device interfaces.
-Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you have any particular device in mind!
+<!-- We are currently adding more quantum device interface.
+Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you have any particular device in mind! -->
 
 
 ## Next Steps
