@@ -46,7 +46,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, width=0, input_nodes=None, output_nodes=[], use_rustworkx=True):
+    def __init__(self, width=0, input_nodes=None, output_nodes=[]):
         """
         :param width:  number of input/output qubits
         """
@@ -58,7 +58,6 @@ class Pattern:
         self.output_nodes = output_nodes  # output nodes
         self.Nnode = width  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
-        self._use_rustworkx = use_rustworkx  # flag for using rustworkx for graph state simulation
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -1222,14 +1221,14 @@ class Pattern:
         result = exe.run()
         return result
 
-    def perform_pauli_measurements(self, leave_input=False):
+    def perform_pauli_measurements(self, leave_input=False, use_rustworkx=False):
         """Perform Pauli measurements in the pattern using
         efficient stabilizer simulator.
 
         .. seealso:: :func:`measure_pauli`
 
         """
-        measure_pauli(self, leave_input, copy=False, use_rustworkx=self._use_rustworkx)
+        measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
 
     def draw_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
@@ -1704,7 +1703,7 @@ def xor_combination_list(list1, list2):
     return result
 
 
-def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=True):
+def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     """Perform Pauli measurement of a pattern by fast graph state simulator
     uses the decorated-graph method implemented in graphix.graphsim to perform
     the measurements in Pauli bases, and then sort remaining nodes back into

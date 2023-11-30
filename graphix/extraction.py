@@ -143,7 +143,7 @@ def get_fusion_network_from_graph(
     return resource_list
 
 
-def create_resource_graph(node_ids: list[int], root: int | None = None, use_rustworkx=True) -> ResourceGraph:
+def create_resource_graph(node_ids: list[int], root: int | None = None, use_rustworkx=False) -> ResourceGraph:
     """Create a resource graph state (GHZ or linear) from node ids.
 
     Parameters

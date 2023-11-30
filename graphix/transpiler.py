@@ -176,7 +176,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["I", qubit])
 
-    def transpile(self, opt=False, use_rustworkx=True):
+    def transpile(self, opt=False):
         """gate-to-MBQC transpile function.
 
         Parameters
@@ -191,7 +191,7 @@ class Circuit:
         Nnode = self.width
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
-        pattern = Pattern(input_nodes=input, width=self.width, use_rustworkx=use_rustworkx)
+        pattern = Pattern(input_nodes=input, width=self.width)
         pattern.seq = [["N", i] for i in input]
         for instr in self.instruction:
             if instr[0] == "CNOT":
@@ -268,7 +268,7 @@ class Circuit:
         pattern.Nnode = Nnode
         return pattern
 
-    def standardize_and_transpile(self, opt=True, use_rustworkx=True):
+    def standardize_and_transpile(self, opt=True):
         """gate-to-MBQC transpile function.
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
@@ -456,7 +456,7 @@ class Circuit:
             command_seq.append(cmd)
         for cmd in x_cmds:
             command_seq.append(cmd)
-        pattern = Pattern(input_nodes=inputs, output_nodes=out, width=self.width, use_rustworkx=use_rustworkx)
+        pattern = Pattern(input_nodes=inputs, output_nodes=out, width=self.width)
         pattern.Nnode = Nnode
         pattern.seq = command_seq
         return pattern
