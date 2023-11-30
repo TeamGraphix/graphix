@@ -1778,7 +1778,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
-    isolates = list(nx.isolates(graph_state))
+    isolates = graph_state.get_isolates()
     for node in non_pauli_meas:
         if (node in isolates) and (node not in pattern.output_nodes):
             graph_state.remove_node(node)

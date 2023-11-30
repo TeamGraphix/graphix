@@ -142,3 +142,7 @@ class RXGraphState(BaseGraphState):
             g_new_eidx_list.append((u, v))
         self.remove_edges_from(g_edge_list)
         self.add_edges_from(g_new_eidx_list)
+
+    def get_isolates(self) -> list[int]:
+        # return list(rx.isolates(self.graph))  # will work with rustworkx>=0.14.0
+        return [nnum for nnum, deg in self.degree() if deg == 0]

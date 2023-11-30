@@ -96,3 +96,6 @@ class NXGraphState(BaseGraphState):
         g_new = nx.complement(g)
         self.remove_edges_from(g.edges)
         self.add_edges_from(g_new.edges)
+
+    def get_isolates(self) -> list[int]:
+        return list(nx.isolates(self.graph))

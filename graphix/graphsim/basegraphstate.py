@@ -245,6 +245,17 @@ class BaseGraphState(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def get_isolates(self) -> list[int]:
+        """Returns a list of isolated nodes (nodes with no edges).
+
+        Returns
+        ----------
+        list[int]
+            A list of isolated nodes.
+        """
+        raise NotImplementedError
+
     def get_vops(self) -> dict:
         """Apply local Clifford operators to the graph state from a dictionary
 
