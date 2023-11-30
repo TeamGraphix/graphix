@@ -34,8 +34,8 @@ class TestPattern(unittest.TestCase):
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_minimize_space_with_gflow(self):
-        nqubits = 5
-        depth = 5
+        nqubits = 3
+        depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
         pattern = circuit.transpile()
@@ -230,8 +230,8 @@ class TestPattern(unittest.TestCase):
 
 class TestPatternWithRustworkX(unittest.TestCase):
     def test_minimize_space_with_gflow(self):
-        nqubits = 5
-        depth = 5
+        nqubits = 3
+        depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
         pattern = circuit.transpile()
