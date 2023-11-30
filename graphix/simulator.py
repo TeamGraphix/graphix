@@ -7,7 +7,7 @@ Simulates MBQC by executing the pattern.
 from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.density_matrix import DensityMatrixBackend
-from graphix.noise_models.base_noise_model import BaseNoiseModel
+from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.noise_models.noise_model import NoiseModel
 
 
@@ -34,16 +34,17 @@ class PatternSimulator:
         assert len(pattern.output_nodes) > 0
 
         if backend == "statevector" and noise_model is None:
-            self.noise_model = None
+            self.noise_model = None  # set_noise_model only works with NoiseModels objects..
             self.backend = StatevectorBackend(pattern, **kwargs)
         elif backend == "densitymatrix":
 
             if noise_model is None:
-                set_noise_model(self, BaseNoiseModel)
+                self.noise_model = None
+                # self.set_noise_model(BaseNoiseModel)
                 # no noise: no need to compute probabilities
                 self.backend = DensityMatrixBackend(pattern, **kwargs)
-            else:
-                set_noise_model(self, noise_model)
+            if noise_model is not None:
+                self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities
                 self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
 
@@ -61,7 +62,7 @@ class PatternSimulator:
         self.node_index = []
 
     def set_noise_model(self, model):
-        assert issubclass(model, NoiseModel)
+        # assert issubclass(model, NoiseModel)
         self.noise_model = model
 
     def run(self):
@@ -73,6 +74,7 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
+
         if self.noise_model == None:
             for cmd in self.pattern.seq:
                 if cmd[0] == "N":
@@ -92,25 +94,27 @@ class PatternSimulator:
                 if self.pattern.seq[-1] == cmd:
                     self.backend.finalize()
         else:
+            self.noise_model.assign_simulator(self)
             for cmd in self.pattern.seq:
                 if cmd[0] == "N":  # prepare clean qubit and apply channel
                     self.backend.add_nodes([cmd[1]])
-                    self.backend.apply_channel(self.noise_model.entangle(), cmd[1])
-                elif cmd[0] == "E":
+                    self.backend.apply_channel(self.noise_model.prepare_qubit(), [cmd[1]])
+                elif cmd[0] == "E":  # for "E" cmd[1] is already a tuyple
                     self.backend.entangle_nodes(cmd[1])  # for some reaon entangle doesn't get the whole command
                     self.backend.apply_channel(self.noise_model.entangle(), cmd[1])
-                elif cmd[0] == "M":  # apply channel before measuring
-                    self.backend.apply_channel(self.noise_model.measure(), cmd[1])
+                elif cmd[0] == "M":  # apply channel before measuring, measure, confuse_result
+                    self.backend.apply_channel(self.noise_model.measure(), [cmd[1]])
                     self.backend.measure(cmd)
+                    self.noise_model.confuse_result(cmd)
                 elif cmd[0] == "X":
                     self.backend.correct_byproduct(cmd)
-                    self.backend.apply_channel(self.noise_model.byproduct_x(), cmd[1])
+                    self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd[1]])
                 elif cmd[0] == "Z":
                     self.backend.correct_byproduct(cmd)
-                    self.backend.apply_channel(self.noise_model.byproduct_z(), cmd[1])
+                    self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd[1]])
                 elif cmd[0] == "C":  # TODO work on that to see waht are the allow cliffords
                     self.backend.apply_clifford(cmd)
-                    self.noise_model.clifford(cmd)
+                    self.backend.apply_channel(self.noise_model.clifford(), [cmd[1]])
                 elif cmd[0] == "T":  # TODO work on this one. Do like the others?
                     # T command is a flag for one clock cycle in simulated experiment,
                     # to be added via hardware-agnostic pattern modifier
@@ -154,12 +158,12 @@ class NoisyPatternSimulator:
         self.state = self.backend.state
         self.node_index = []
         if noise_model is None:
-            set_noise_model(self, BaseNoiseModel)
+            self.set_noise_model(BaseNoiseModel)
         else:
-            set_noise_model(self, noise_model)
+            self.set_noise_model(noise_model)
 
     def set_noise_model(self, model):
-        assert issubclass(model, NoiseModel)
+        # assert issubclass(model, NoiseModel)
         self.noise_model = model
 
     def run(self):

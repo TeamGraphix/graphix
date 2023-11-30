@@ -78,14 +78,14 @@ class Channel:
     def is_normalized(self):
         return check_data_normalization(self.kraus_ops)
 
-    def is_cp(self):
-        res = False
-        try:
-            check_cp(self)
-        except:
-            res = False
+    # def is_cp(self):
+    #     res = False
+    #     try:
+    #         check_cp(self)
+    #     except:
+    #         res = False
 
-        return res
+    #     return res
 
 
 def create_dephasing_channel(prob: float) -> Channel:
@@ -124,6 +124,44 @@ def create_depolarising_channel(prob: float) -> Channel:
     )
 
 
+def create_2_qubit_depolarising_channel(prob: float) -> Channel:
+    """two-qubit depolarising channel
+    .. math::
+        \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z} \otimes \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z}
+
+    Parameters
+    ----------
+    prob : float
+        The probability associated to the channel
+
+    Returns
+    -------
+    Channel object
+        containing the corresponding Kraus operators
+    """
+
+    return Channel(
+        [
+            {"parameter": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.z)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.x)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
+        ]
+    )
+
+
 def create_2_qubit_dephasing_channel(prob: float) -> Channel:
     """two-qubit dephasing channel
     .. math::
@@ -139,7 +177,7 @@ def create_2_qubit_dephasing_channel(prob: float) -> Channel:
     Channel object
         containing the corresponding Kraus operators
     """
-    # NOTE kinf of useless since just the tensor product of single-qubit channels.
+    # NOTE kind of useless since just the tensor product of single-qubit channels.
     # There for testing purposes only.
     return Channel(
         [

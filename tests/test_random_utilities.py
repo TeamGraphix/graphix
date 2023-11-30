@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import tests.random_objects as randobj
-from graphix.kraus import Channel
+from graphix.channels import Channel
 from graphix.Checks.channel_checks import check_data_dims
 from graphix.Checks.generic_checks import check_psd, check_unit_trace, check_hermitian, check_square
 from graphix.sim.density_matrix import DensityMatrix

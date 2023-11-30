@@ -6,7 +6,7 @@ import numpy as np
 
 
 from graphix import Circuit
-from graphix.kraus import Channel, create_dephasing_channel, create_depolarising_channel
+from graphix.channels import Channel, create_dephasing_channel, create_depolarising_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
@@ -112,7 +112,7 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_expectation_single_fail(self):
         nqb = 3
-        dm = DensityMatrix(nqubit = nqb)
+        dm = DensityMatrix(nqubit=nqb)
 
         # wrong dimensions
         # generate random 4 x 4 unitary matrix
@@ -123,12 +123,36 @@ class TestDensityMatrix(unittest.TestCase):
         with self.assertRaises(ValueError):
             dm.expectation_single(op, 1)
 
-        # wrong qubit undices
+        # wrong qubit indices
         op = randobj.rand_unit(2)
         with self.assertRaises(ValueError):
             dm.expectation_single(op, -3)
         with self.assertRaises(ValueError):
             dm.expectation_single(op, nqb + 3)
+
+    def test_expectation_single_sucess(self):
+
+        """compare to pure state case"""
+        nqb = np.random.randint(1, 4)
+        # NOTE a statevector object so can't use its methods
+        target_qubit = np.random.randint(0, nqb)
+
+        psi = np.random.rand(2**nqb) + 1j * np.random.rand(2**nqb)
+        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
+        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
+
+        op = randobj.rand_unit(2)
+
+        dm.expectation_single(op, target_qubit)
+
+        # by hand: copy paste from SV backend
+
+        psi1 = np.tensordot(op, psi.reshape((2,) * nqb), (1, target_qubit))
+        psi1 = np.moveaxis(psi1, 0, target_qubit)
+        psi1 = psi1.reshape(2**nqb)
+        print(np.dot(psi1.conjugate(), psi), dm.expectation_single(op, target_qubit))
+        # watch out ordering. Expval unitary is cpx so psi1 on the right to match DM.
+        np.testing.assert_allclose(np.dot(psi.conjugate(), psi1), dm.expectation_single(op, target_qubit))
 
     def test_tensor_fail(self):
         dm = DensityMatrix(nqubit=1)
@@ -843,6 +867,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         # 3-qubit linear graph state: |+0+> + |-1->
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
+
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
 
     def test_correct_byproduct(self):
@@ -875,121 +900,6 @@ class DensityMatrixBackendTest(unittest.TestCase):
         psi = backend.state.psi
 
         np.testing.assert_allclose(rho, np.outer(psi, psi.conj()))
-
-    # def test_dephase(self):
-    #     def run(p, pattern, max_qubit_num=12):
-    #         backend = DensityMatrixBackend(pattern, max_qubit_num=max_qubit_num)
-    #         for cmd in pattern.seq:
-    #             if cmd[0] == "N":
-    #                 backend.add_nodes([cmd[1]])
-    #             elif cmd[0] == "E":
-    #                 backend.entangle_nodes(cmd[1])
-    #                 backend.dephase(p)
-    #             elif cmd[0] == "M":
-    #                 backend.measure(cmd)
-    #                 backend.dephase(p)
-    #             elif cmd[0] == "X":
-    #                 backend.correct_byproduct(cmd)
-    #                 backend.dephase(p)
-    #             elif cmd[0] == "Z":
-    #                 backend.correct_byproduct(cmd)
-    #                 backend.dephase(p)
-    #             elif cmd[0] == "C":
-    #                 backend.apply_clifford(cmd)
-    #                 backend.dephase(p)
-    #             elif cmd[0] == "T":
-    #                 backend.dephase(p)
-    #             else:
-    #                 raise ValueError("invalid commands")
-    #             if pattern.seq[-1] == cmd:
-    #                 backend.finalize()
-    #         return backend
-
-    #     # Test for Rx(pi/4)
-    #     circ = Circuit(1)
-    #     circ.rx(0, np.pi / 4)
-    #     pattern = circ.transpile()
-    #     backend1 = run(0, pattern)
-    #     backend2 = run(1, pattern)
-    #     np.testing.assert_allclose(backend1.state.rho, backend2.state.rho)
-
-    #     # Test for Rz(pi/3)
-    #     circ = Circuit(1)
-    #     circ.rz(0, np.pi / 3)
-    #     pattern = circ.transpile()
-    #     dm_backend = run(1, pattern)
-    #     sv_backend = StatevectorBackend(pattern)
-    #     sv_backend.add_nodes([0, 1, 2])
-    #     sv_backend.entangle_nodes((0, 1))
-    #     sv_backend.entangle_nodes((1, 2))
-    #     sv_backend.measure(pattern.seq[-4])
-    #     sv_backend.measure(pattern.seq[-3])
-    #     sv_backend.correct_byproduct(pattern.seq[-2])
-    #     sv_backend.correct_byproduct(pattern.seq[-1])
-    #     sv_backend.finalize()
-    #     np.testing.assert_allclose(dm_backend.state.fidelity(sv_backend.state.psi), 0.25)
-
-    #     # Test for 3-qubit QFT
-    #     def cp(circuit, theta, control, target):
-    #         """Controlled rotation gate, decomposed"""
-    #         circuit.rz(control, theta / 2)
-    #         circuit.rz(target, theta / 2)
-    #         circuit.cnot(control, target)
-    #         circuit.rz(target, -1 * theta / 2)
-    #         circuit.cnot(control, target)
-
-    #     def swap(circuit, a, b):
-    #         """swap gate, decomposed"""
-    #         circuit.cnot(a, b)
-    #         circuit.cnot(b, a)
-    #         circuit.cnot(a, b)
-
-    #     def qft_circ():
-    #         circ = Circuit(3)
-    #         for i in range(3):
-    #             circ.h(i)
-    #         circ.x(1)
-    #         circ.x(2)
-
-    #         circ.h(2)
-    #         cp(circ, np.pi / 4, 0, 2)
-    #         cp(circ, np.pi / 2, 1, 2)
-    #         circ.h(1)
-    #         cp(circ, np.pi / 2, 0, 1)
-    #         circ.h(0)
-    #         swap(circ, 0, 2)
-    #         return circ
-
-    #     # no-noise case
-    #     circ = qft_circ()
-    #     pattern = circ.transpile()
-    #     dm_backend = run(0, pattern)
-    #     state = circ.simulate_statevector().flatten()
-    #     np.testing.assert_allclose(dm_backend.state.fidelity(state), 1)
-
-    #     # noisy case vs exact 3-qubit QFT result
-    #     circ = qft_circ()
-    #     pattern = circ.transpile()
-    #     p = np.random.rand() * 0 + 0.8
-    #     dm_backend = run(p, pattern)
-    #     noisy_state = circ.simulate_statevector().flatten()
-
-    #     sv = Statevec(nqubit=3)
-    #     omega = np.exp(2j * np.pi / 8)
-    #     qft_matrix = np.array(
-    #         [
-    #             [1, 1, 1, 1, 1, 1, 1, 1],
-    #             [1, omega, omega**2, omega**3, omega**4, omega**5, omega**6, omega**7],
-    #             [1, omega**2, omega**4, omega**6, 1, omega**2, omega**4, omega**6],
-    #             [1, omega**3, omega**6, omega, omega**4, omega**7, omega**2, omega**5],
-    #             [1, omega**4, 1, omega**4, 1, omega**4, 1, omega**4],
-    #             [1, omega**5, omega**2, omega**7, omega**4, omega, omega**6, omega**3],
-    #             [1, omega**6, omega**4, omega**2, 1, omega**6, omega**4, omega**2],
-    #             [1, omega**7, omega**6, omega**5, omega**4, omega**3, omega**2, omega],
-    #         ]
-    #     ) / np.sqrt(8)
-    #     exact_qft_state = qft_matrix @ sv.psi.flatten()
-    #     np.testing.assert_allclose(dm_backend.state.fidelity(noisy_state), dm_backend.state.fidelity(exact_qft_state))
 
 
 if __name__ == "__main__":

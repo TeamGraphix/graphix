@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.linalg
-from graphix.kraus import Channel
+from graphix.channels import Channel
 from graphix.sim.density_matrix import DensityMatrix
 
 

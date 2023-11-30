@@ -8,7 +8,7 @@ from copy import deepcopy
 import numpy as np
 
 import graphix.Checks.generic_checks as generic_checks
-from graphix.kraus import Channel
+from graphix.channels import Channel
 from graphix.ops import Ops
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
 
@@ -47,7 +47,7 @@ class DensityMatrix:
             self.Nqubit = int(np.log2(len(data)))
 
             self.rho = data
-
+        # NOTE don't check for PSD here since more expensive.
         assert generic_checks.check_hermitian(self.rho)
         assert generic_checks.check_unit_trace(self.rho)
 
@@ -493,6 +493,25 @@ class DensityMatrixBackend:
                     self.node_index[move_from],
                     self.node_index[i],
                 )
+
+    def apply_clifford(self, channel: Channel, qargs):
+        """backend version of apply_channel
+        Parameters
+        ----------
+            qargs : list of ints. Target qubits
+        """
+        loc = self.node_index.index(cmd[1])
+        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
+
+    def apply_channel(self, channel: Channel, qargs):
+        """backend version of apply_channel
+        Parameters
+        ----------
+            qargs : list of ints. Target qubits
+        """
+
+        indices = [self.node_index.index(i) for i in qargs]
+        self.state.apply_channel(channel, indices)
 
     def finalize(self):
         """To be run at the end of pattern simulation."""

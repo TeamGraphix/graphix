@@ -2,9 +2,10 @@ import unittest
 
 import numpy as np
 
-from graphix.kraus import (
+from graphix.channels import (
     Channel,
     create_2_qubit_dephasing_channel,
+    create_2_qubit_depolarising_channel,
     create_dephasing_channel,
     create_depolarising_channel,
 )
@@ -173,17 +174,51 @@ class TestChannel(unittest.TestCase):
             {"parameter": np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, Ops.z)},
         ]
 
-        dephase_channel_2_qubit = create_2_qubit_dephasing_channel(prob)
+        depol_channel_2_qubit = create_2_qubit_dephasing_channel(prob)
 
-        assert isinstance(dephase_channel_2_qubit, Channel)
-        assert dephase_channel_2_qubit.nqubit == 2
-        assert dephase_channel_2_qubit.size == 4
-        assert dephase_channel_2_qubit.is_normalized
+        assert isinstance(depol_channel_2_qubit, Channel)
+        assert depol_channel_2_qubit.nqubit == 2
+        assert depol_channel_2_qubit.size == 4
+        assert depol_channel_2_qubit.is_normalized
 
-        for i in range(len(dephase_channel_2_qubit.kraus_ops)):
-            np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["parameter"], data[i]["parameter"])
-            np.testing.assert_allclose(dephase_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
-    # TODO uncomment these tests    
+        for i in range(len(depol_channel_2_qubit.kraus_ops)):
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["parameter"], data[i]["parameter"])
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+
+    def test_2_qubit_depolarising_channel(self):
+
+        prob = np.random.rand()
+        data = [
+            {"parameter": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.z)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.x)},
+            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
+        ]
+
+        depol_channel_2_qubit = create_2_qubit_depolarising_channel(prob)
+
+        assert isinstance(depol_channel_2_qubit, Channel)
+        assert depol_channel_2_qubit.nqubit == 2
+        assert depol_channel_2_qubit.size == 16
+        assert depol_channel_2_qubit.is_normalized
+
+        for i in range(len(depol_channel_2_qubit.kraus_ops)):
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["parameter"], data[i]["parameter"])
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+
+    # TODO uncomment these tests
     # def test_check_choi(self):
     #     """Try generating the Choi state on simple 1-qubit examples."""
     #     p = 0.1
