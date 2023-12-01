@@ -6,6 +6,9 @@ from graphix.channels import (
     create_depolarising_channel,
     create_2_qubit_depolarising_channel,
 )
+from graphix.ops import Ops
+
+import tests.random_objects as randobj
 
 
 class TestNoiseModel(NoiseModel):
@@ -29,10 +32,18 @@ class TestNoiseModel(NoiseModel):
     def entangle(self):
         """return noise model to qubits that happens after the CZ gate"""
         return create_2_qubit_depolarising_channel(self.entanglement_error_prob)
+        # randobj.rand_channel_kraus(dim=4)#
 
     def measure(self):
         """apply noise to qubit to be measured."""
         return create_depolarising_channel(self.measure_channel_prob)
+
+    # randobj.rand_channel_kraus(dim=2, rank=3)
+
+    # randobj.rand_channel_kraus(dim=2)
+    # Random Pauli channel
+    # Channel([{"parameter": np.sqrt(0.3), "operator": np.eye(2)},{"parameter": np.sqrt(0.005), "operator": Ops.x},{"parameter": np.sqrt(0.1), "operator": Ops.y},{"parameter": np.sqrt(1.-0.3-0.005-0.1), "operator": Ops.z}])
+    # create_depolarising_channel(self.measure_channel_prob)
 
     # Channel([{"parameter": 1.0, "operator": np.eye(2)}])
 

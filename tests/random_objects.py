@@ -75,7 +75,7 @@ def rand_dm(dim: int, rank: int = None):
 def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
 
     # [Mis12] Miszczak, Generating and using truly random quantum states in Mathematica, Computer Physics Communications 183 1, 118-124 (2012). doi:10.1016/j.cpc.2011.08.002.
-
+    # Majumdar Scher https://arxiv.org/abs/1904.01813 for Ginibre ensemble definition
     """
     Returns an array of standard normal complex random variates.
     The Ginibre ensemble corresponds to setting ``norm = 1`` [Mis12]_.
