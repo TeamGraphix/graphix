@@ -38,7 +38,7 @@ class Circuit:
     def cnot(self, control, target):
         """CNOT gate
 
-        Prameters
+        Parameters
         ---------
         control : int
             control qubit
@@ -53,7 +53,7 @@ class Circuit:
     def h(self, qubit):
         """Hadamard gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -64,7 +64,7 @@ class Circuit:
     def s(self, qubit):
         """S gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -75,7 +75,7 @@ class Circuit:
     def x(self, qubit):
         """Pauli X gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -86,7 +86,7 @@ class Circuit:
     def y(self, qubit):
         """Pauli Y gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -97,7 +97,7 @@ class Circuit:
     def z(self, qubit):
         """Pauli Z gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -108,7 +108,7 @@ class Circuit:
     def rx(self, qubit, angle):
         """X rotation gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -121,7 +121,7 @@ class Circuit:
     def ry(self, qubit, angle):
         """Y rotation gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -134,7 +134,7 @@ class Circuit:
     def rz(self, qubit, angle):
         """Z rotation gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit
@@ -154,7 +154,7 @@ class Circuit:
         and realizes rotation expressed by
         :math:`e^{-i \frac{\theta}{2} Z_c Z_t}`.
 
-        Prameters
+        Parameters
         ---------
         control : int
             control qubit
@@ -187,7 +187,7 @@ class Circuit:
     def i(self, qubit):
         """identity (teleportation) gate
 
-        Prameters
+        Parameters
         ---------
         qubit : int
             target qubit

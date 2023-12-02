@@ -4,6 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import sys
 import os
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -55,7 +56,24 @@ html_theme_options = {
 }
 
 sphinx_gallery_conf = {
-    "examples_dirs": "../../examples",  # path to your example scripts
-    "gallery_dirs": "gallery",  # path to where to save gallery generated output
-    'filename_pattern': '/'
+    # path to your example scripts
+    "examples_dirs": ["../../examples", "../../benchmarks"],
+    # path to where to save gallery generated output
+    "gallery_dirs": ["gallery", "benchmarks"],
+    "filename_pattern": "/",
+    "thumbnail_size": (800, 550),
+}
+html_context = {
+    "css_files": [
+        "_static/basic.css",
+        "_static/pygments.css",
+        "_static/sg_gallery-binder.css",
+        "_static/sg_gallery-dataframe.css",
+        "_static/sg_gallery-rendered-html.css",
+        "_static/sg_gallery.css",
+        "_static/css/badge_only.css",
+        "_static/css/theme.css",
+        "_static/css/my_theme.css",
+        "_static/css/custom.css",
+    ],
 }

@@ -35,7 +35,7 @@ Pattern Generation
     .. automethod:: rz
 
 :mod:`graphix.generator` module
-+++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++
 
 .. currentmodule:: graphix.generator
 

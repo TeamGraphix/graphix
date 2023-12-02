@@ -6,5 +6,6 @@
 **/build
 dist/*
 docs/source/gallery/**
+docs/source/benchmarks/**
 .tox/
 .python-version

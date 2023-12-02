@@ -1,6 +1,6 @@
 """
 Using Tensor Network simulator
-=============================
+==============================
 
 In this example, we simulate a circuit to create Greenberger-Horne-Zeilinger(GHZ) state with a tensor network simulator.
 
@@ -23,7 +23,7 @@ n = 100
 print(f"{n}-qubit GHZ state generation")
 circuit = Circuit(n)
 
-# initialize to |0> state.
+# initialize to ``|0>`` state.
 for i in range(n):
     circuit.h(i)
 
@@ -50,7 +50,7 @@ nx.draw(g, pos=pos, node_size=15)
 plt.show()
 
 # %%
-# Calculate the amplitudes of |00...0> and |11...1> states.
+# Calculate the amplitudes of ``|00...0>`` and ``|11...1>`` states.
 
 tn = pattern.simulate_pattern(backend="tensornetwork")
 print(f"The amplitude of |00...0>: {tn.get_basis_amplitude(0)}")
