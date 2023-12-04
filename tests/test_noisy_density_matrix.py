@@ -17,8 +17,13 @@ from graphix.noise_models.test_noise_model import TestNoiseModel
 
 class NoisyDensityMatrixBackendTest(unittest.TestCase):
     """Test for Noisy DensityMatrixBackend simultation."""
+
+    def setUp(self):
+        #self.rng = np.random.default_rng(seed=421)
+        np.random.seed(42)  # 42 vs 422
+ 
+
     # NOTE possible to declare common variables here?
-    
 
     # test noiseless noisy vs noiseless
     def test_noiseless_noisy_hadamard(self):
@@ -28,12 +33,12 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         ncirc.h(0)
         hadamardpattern = ncirc.transpile()
         # no noise
-        noiselessres = hadamardpattern.simulate_pattern(backend='densitymatrix')
+        noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix")
         # noiseless noise model
-        noisynoiselessres = hadamardpattern.simulate_pattern(backend='densitymatrix', noise_model=NoiselessNoiseModel())
-        np.testing.assert_allclose(noiselessres.rho, np.array([[1., 0.],[0., 0.]]))
+        noisynoiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", noise_model=NoiselessNoiseModel())
+        np.testing.assert_allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
         # result should be |0>
-        np.testing.assert_allclose(noisynoiselessres.rho, np.array([[1., 0.],[0., 0.]]))
+        np.testing.assert_allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
 
     # test measurement confuse outcome
     def test_noisy_measure_confuse_hadamard(self):
@@ -43,9 +48,11 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         ncirc.h(0)
         hadamardpattern = ncirc.transpile()
         # measurement error only
-        res = hadamardpattern.simulate_pattern(backend='densitymatrix', noise_model=TestNoiseModel(measure_error_prob=1.))
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=1.0)
+        )
         # result should be |1>
-        np.testing.assert_allclose(res.rho, np.array([[0., 0.],[0., 1.]]))
+        np.testing.assert_allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 
     def test_noisy_measure_channel_hadamard(self):
 
@@ -53,10 +60,13 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         ncirc = Circuit(1)
         ncirc.h(0)
         hadamardpattern = ncirc.transpile()
+        measure_channel_pr = np.random.rand() # self.rng.random()
         # measurement error only
-        res = hadamardpattern.simulate_pattern(backend='densitymatrix', noise_model=TestNoiseModel(measure_channel_prob=1.))
-        # no analytical output yet
-        # np.testing.assert_allclose(res.rho, np.array([[0., 0.],[0., 1.]]))
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix", noise_model=TestNoiseModel(measure_channel_prob=measure_channel_pr)
+        )
+        # just TP the depolarizing channel
+        np.testing.assert_allclose(res.rho, np.array([[1 - 2 * measure_channel_pr / 3.0, 0.0], [0.0, 2 * measure_channel_pr / 3.0]]))
 
     # test Pauli X error
     # error = 0.75 gives maximally mixed Id/2
@@ -68,9 +78,17 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         hadamardpattern = ncirc.transpile()
         # x error only
         x_error_pr = np.random.rand()
-        res = hadamardpattern.simulate_pattern(backend='densitymatrix', noise_model=TestNoiseModel(x_error_prob=x_error_pr))                          
-        # analytical result since deterministic pattern output is |0>
-        np.testing.assert_allclose(res.rho, np.array([[1-2*x_error_pr/3., 0.],[0., 2*x_error_pr/3.]]))
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix", noise_model=TestNoiseModel(x_error_prob=x_error_pr)
+        )
+        # analytical result since deterministic pattern output is |0>.
+        # if no X applied, no noise. If x applied x nosie
+
+        print("state \n", res.rho)
+
+        assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
+            res.rho, np.array([[1 - 2 * x_error_pr / 3.0, 0.0], [0.0, 2 * x_error_pr / 3.0]])
+        )
 
     # test entanglement error
     def test_noisy_entanglement_hadamard(self):
@@ -81,13 +99,19 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         hadamardpattern = ncirc.transpile()
         # x error only
         entanglement_error_pr = np.random.rand()
-        res = hadamardpattern.simulate_pattern(backend='densitymatrix', noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr))                          
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix", noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr)
+        )
         # analytical result
-        np.testing.assert_allclose(res.rho, np.array([[1-4*entanglement_error_pr/3. +8*entanglement_error_pr**2/9, 0.],[0., 4*entanglement_error_pr/3. - 8*entanglement_error_pr**2/9]]))
-
-
-
-       
+        np.testing.assert_allclose(
+            res.rho,
+            np.array(
+                [
+                    [1 - 4 * entanglement_error_pr / 3.0 + 8 * entanglement_error_pr**2 / 9, 0.0],
+                    [0.0, 4 * entanglement_error_pr / 3.0 - 8 * entanglement_error_pr**2 / 9],
+                ]
+            ),
+        )
 
     # def test_dephase(self):
     #     def run(p, pattern, max_qubit_num=12):

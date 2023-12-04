@@ -10,6 +10,9 @@ from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.noise_models.noise_model import NoiseModel
 
+# remove if needed
+import numpy as np
+
 
 class PatternSimulator:
     """MBQC simulator
@@ -108,10 +111,19 @@ class PatternSimulator:
                     self.noise_model.confuse_result(cmd)
                 elif cmd[0] == "X":
                     self.backend.correct_byproduct(cmd)
-                    self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd[1]])
+                    # NOTE not a good idea: do noise inside the backend???
+                    # since recompute twice the same thing
+                    # apply noise only if byproduct applied!
+                    if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+                        print("cond in sim true", [self.results[j] for j in cmd[2]])
+                        # simulator.results == backend.result
+                        self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd[1]])
                 elif cmd[0] == "Z":
                     self.backend.correct_byproduct(cmd)
-                    self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd[1]])
+                    # apply noise only if byproduct applied!
+                    if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+                        # simulator.results == backend.result
+                        self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd[1]])
                 elif cmd[0] == "C":  # TODO work on that to see waht are the allow cliffords
                     self.backend.apply_clifford(cmd)
                     self.backend.apply_channel(self.noise_model.clifford(), [cmd[1]])

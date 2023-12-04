@@ -52,8 +52,11 @@ class TestNoiseModel(NoiseModel):
         cmd = "M"
         """
         # NOTE put self.measure_error_prob as argument of the method? Nope! Called in simulator
+
+        print("before", self.simulator.results[cmd[1]])
         if np.random.rand() < self.measure_error_prob:
             self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
+        print("after", self.simulator.results[cmd[1]])
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""

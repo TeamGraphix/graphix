@@ -453,7 +453,9 @@ class DensityMatrixBackend:
 
             # choose the measurement result randomly according to the computed probability
             # just modify result and operator if the outcome turns out to be 1
-            if np.random.rand() > prob_0:
+            r = np.random.rand()
+            print("random number is", r)
+            if r > prob_0:
                 result = 1
                 m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
 
@@ -461,7 +463,7 @@ class DensityMatrixBackend:
         else:
             result = np.random.choice([0, 1])
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-
+        # print("here is the measurement outcome", result)
         self.results[cmd[1]] = result
 
         self.state.evolve_single(m_op, loc)
