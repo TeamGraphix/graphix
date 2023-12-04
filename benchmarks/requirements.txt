@@ -1,2 +1,4 @@
 paddlepaddle==2.4.0rc0
 paddle-quantum==2.2.0
+networkx==3.2.1
+rustworkx==0.13.2
