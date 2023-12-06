@@ -126,6 +126,7 @@ def create_depolarising_channel(prob: float) -> Channel:
 
 def create_2_qubit_depolarising_channel(prob: float) -> Channel:
     """two-qubit depolarising channel (tensor of two single qubit depolarising channels not the Quest one)
+    Kraus operators:
     .. math::
         \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z} \otimes \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z}
 

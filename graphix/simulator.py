@@ -78,7 +78,7 @@ class PatternSimulator:
             in the representation depending on the backend used.
         """
 
-        if self.noise_model == None:
+        if self.noise_model is None:
             for cmd in self.pattern.seq:
                 if cmd[0] == "N":
                     self.backend.add_nodes([cmd[1]])

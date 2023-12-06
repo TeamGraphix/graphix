@@ -19,7 +19,15 @@ class TestNoiseModel(NoiseModel):
     :type NoiseModel: class
     """
 
-    def __init__(self, x_error_prob=0.0, entanglement_error_prob=0.0, measure_channel_prob=0.0, measure_error_prob=0.0):
+    def __init__(
+        self,
+        prepare_error_prob=0.0,
+        x_error_prob=0.0,
+        entanglement_error_prob=0.0,
+        measure_channel_prob=0.0,
+        measure_error_prob=0.0,
+    ):
+        self.prepare_error_prob = prepare_error_prob
         self.x_error_prob = x_error_prob
         self.entanglement_error_prob = entanglement_error_prob
         self.measure_error_prob = measure_error_prob
@@ -27,7 +35,7 @@ class TestNoiseModel(NoiseModel):
 
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return create_depolarising_channel(self.prepare_error_prob)
 
     def entangle(self):
         """return noise model to qubits that happens after the CZ gate"""
