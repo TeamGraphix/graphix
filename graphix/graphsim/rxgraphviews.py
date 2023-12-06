@@ -77,6 +77,14 @@ class EdgeList:
         self.edges = set(edge_nums)
         self.num_to_data = {enum: edge_datas[eidx] for eidx, enum in zip(edge_indices, edge_nums)}
         self.num_to_idx = {enum: eidx for eidx, enum in zip(edge_indices, edge_nums)}
+        self.nnum_to_edges = {}
+        for enum in edge_nums:
+            if enum[0] not in self.nnum_to_edges:
+                self.nnum_to_edges[enum[0]] = set()
+            if enum[1] not in self.nnum_to_edges:
+                self.nnum_to_edges[enum[1]] = set()
+            self.nnum_to_edges[enum[0]].add(enum)
+            self.nnum_to_edges[enum[1]].add(enum)
 
     def __contains__(self, enum: tuple[int, int]):
         return enum in self.edges
@@ -102,6 +110,12 @@ class EdgeList:
         self.edges.add(enum)
         self.num_to_data[enum] = edata
         self.num_to_idx[enum] = eidx
+        if enum[0] not in self.nnum_to_edges:
+            self.nnum_to_edges[enum[0]] = set()
+        if enum[1] not in self.nnum_to_edges:
+            self.nnum_to_edges[enum[1]] = set()
+        self.nnum_to_edges[enum[0]].add(enum)
+        self.nnum_to_edges[enum[1]].add(enum)
 
     def add_edges_from(self, edge_nums: list[tuple[int, int]], edge_datas: list[dict], edge_indices: list[int]):
         if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
@@ -117,9 +131,26 @@ class EdgeList:
         self.edges.remove(enum)
         del self.num_to_data[enum]
         del self.num_to_idx[enum]
+        if enum[0] not in self.nnum_to_edges:
+            self.nnum_to_edges[enum[0]] = set()
+        if enum[1] not in self.nnum_to_edges:
+            self.nnum_to_edges[enum[1]] = set()
+        self.nnum_to_edges[enum[0]].remove(enum)
+        self.nnum_to_edges[enum[1]].remove(enum)
 
     def remove_edges_from(self, edge_nums: list[tuple[int, int]]):
         for enum in edge_nums:
             if enum not in self.edges:
                 continue
             self.remove_edge(enum)
+
+    def remove_edges_by_node(self, nnum: int):
+        if nnum in self.nnum_to_edges:
+            for enum in self.nnum_to_edges[nnum]:
+                self.edges.remove(enum)
+                del self.num_to_data[enum]
+                del self.num_to_idx[enum]
+                if enum[0] == nnum:
+                    self.nnum_to_edges[enum[1]].remove(enum)
+                else:
+                    self.nnum_to_edges[enum[0]].remove(enum)

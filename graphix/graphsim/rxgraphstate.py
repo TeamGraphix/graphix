@@ -89,10 +89,7 @@ class RXGraphState(BaseGraphState):
         nidx = self.nodes.get_node_index(node)
         self._graph.remove_node(nidx)
         self.nodes.remove_node(node)
-        edge_list = list(self.edges)
-        for e in edge_list:
-            if node in e:
-                self.edges.remove_edge(e)
+        self.edges.remove_edges_by_node(node)
 
     def remove_nodes_from(self, nodes: list[int]) -> None:
         for n in nodes:
