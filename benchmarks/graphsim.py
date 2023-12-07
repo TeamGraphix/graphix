@@ -67,7 +67,7 @@ def random_clifford_circuit(nqubits, depth, seed=42):
 
 
 # %%
-# We define the test cases
+# We generate a set of random Clifford circuits with different widths.
 
 DEPTH = 3
 test_cases = [i for i in range(2, 300, 10)]
@@ -83,32 +83,32 @@ for i in test_cases:
 
 # %%
 # We then run simulations.
-# First, we run the pattern optimization using `networkx`.
+# First, we run the pattern optimization using networkx.
 networkx_time = []
 networkx_node = []
 
-for i, (pattern, num_nodes) in graphix_patterns.items():
+for width, (pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements()
     end = perf_counter()
     networkx_node.append(num_nodes)
-    print(f"width: {i}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
+    print(f"width: {width}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
     networkx_time.append(end - start)
 
 
 # %%
-# Next, we run the pattern optimization using `rustworkx`.
+# Next, we run the pattern optimization using rustworkx.
 rustworkx_time = []
 rustworkx_node = []
 
-for i, (pattern, num_nodes) in graphix_patterns.items():
+for width, (pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements(use_rustworkx=True)
     end = perf_counter()
     rustworkx_node.append(num_nodes)
-    print(f"width: {i}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
+    print(f"width: {width}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
     rustworkx_time.append(end - start)
 
 # %%
@@ -131,8 +131,7 @@ ax.legend()
 fig.show()
 
 # %%
-# MBQC simulation is a lot slower than the simulation of original gate network, since the number of qubit involved
-# is significantly larger.
+# Performing pattern optimization using rustworkx is slightly faster than networkx.
 
 import importlib.metadata  # noqa: E402
 
