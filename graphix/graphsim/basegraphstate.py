@@ -1,60 +1,210 @@
-"""Graph simulator
+from __future__ import annotations
 
-Graph state simulator, according to
-M. Elliot, B. Eastin & C. Caves,
-    JPhysA 43, 025301 (2010) and PRA 77, 042307 (2008)
+from abc import ABC, abstractmethod
+from typing import Union
 
-"""
 import networkx as nx
-import numpy as np
-from graphix.clifford import CLIFFORD_MUL, CLIFFORD_HSZ_DECOMPOSITION
-from graphix.sim.statevec import Statevec
+from networkx import Graph
+from networkx.classes.reportviews import EdgeView, NodeView
+
+from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
+from graphix.sim.statevec import Statevec
+
+from .rxgraphviews import EdgeList, NodeList
+
+RUSTWORKX_INSTALLED = False
+try:
+    import rustworkx as rx
+    from rustworkx import PyGraph
+
+    RUSTWORKX_INSTALLED = True
+except ModuleNotFoundError:
+    rx = None
+    PyGraph = None
+
+NodesObject = Union[NodeView, NodeList]
+EdgesObject = Union[EdgeView, EdgeList]
+GraphObject = Union[Graph, PyGraph]
 
 
-class GraphState(nx.Graph):
-    """Graph state simulator
+class BaseGraphState(ABC):
+    """Base class for graph state simulator.
 
     Performs Pauli measurements on graph states.
-    Inherits methods and attributes from networkx.Graph.
+    You can choose between networkx and rustworkx as the backend.
+    The default is rustworkx if installed, otherwise networkx.
 
     ref: M. Elliot, B. Eastin & C. Caves, JPhysA 43, 025301 (2010)
     and PRA 77, 042307 (2008)
 
     Each node has attributes:
-        :`hollow`: True if node is hollow
-        :`sign`: True if node has negative sign
-        :`loop`: True if node has loop
+        :`hollow`: True if node is hollow (has local H operator)
+        :`sign`: True if node has negative sign (local Z operator)
+        :`loop`: True if node has loop (local S operator)
     """
 
-    def __init__(self, nodes=None, edges=None, vops=None):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    @abstractmethod
+    def nodes(self) -> NodesObject:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def edges(self) -> EdgesObject:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def graph(self) -> GraphObject:
+        raise NotImplementedError
+
+    @abstractmethod
+    def degree(self) -> iter[tuple[int, int]]:
+        """Returns an iterator for (node, degree) tuples,
+        where degree is the number of edges adjacent to the node
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def neighbors(self, node: int) -> iter:
+        """Returns an iterator over all neighbors of node n.
+
         Parameters
         ----------
-        nodes : iterable container
-            A container of nodes (list, dict, etc)
-        edges : list
-            list of tuples (i,j) for pairs to be entangled.
-        vops : dict
-            dict of local Clifford gates with keys for node indices and
-            values for Clifford index (see graphix.clifford.CLIFFORD)
-        """
-        super().__init__()
-        if nodes is not None:
-            self.add_nodes_from(nodes)
-        if edges is not None:
-            self.add_edges_from(edges)
-        if vops is not None:
-            self.apply_vops(vops)
+        node : int
+            A node in the graph
 
-    def apply_vops(self, vops):
+        Returns
+        ----------
+        iter
+            An iterator over all neighbors of node n.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def subgraph(self, nodes: list) -> GraphObject:
+        """Returns a subgraph of the graph.
+
+        Parameters
+        ----------
+        nodes : list
+            A list of node indices to generate the subgraph from.
+
+        Returns
+        ----------
+        GraphObject
+            A subgraph of the graph.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
+        """Returns the number of edges between two nodes.
+
+        Parameters
+        ----------
+        u : int, optional
+            A node in the graph
+        v : int, optional
+            A node in the graph
+
+        Returns
+        ----------
+        int
+            The number of edges in the graph. If u and v are specified,
+            return the number of edges between those nodes.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def adjacency(self) -> iter:
+        """Returns an iterator over (node, adjacency dict) tuples for all nodes.
+
+        Returns
+        ----------
+        iter
+            An iterator over (node, adjacency dictionary) for all nodes in the graph.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove_node(self, node: int) -> None:
+        """Remove a node from the graph.
+
+        Parameters
+        ----------
+        node : int
+            A node in the graph
+
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove_nodes_from(self, nodes: list[int]) -> None:
+        """Remove all nodes specified in the list.
+
+        Parameters
+        ----------
+        nodes : list
+            A list of nodes to remove from the graph.
+
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove_edge(self, u: int, v: int) -> None:
+        """Remove an edge from the graph.
+
+        Parameters
+        ----------
+        u : int
+            A node in the graph
+        v : int
+            A node in the graph
+
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
+        """Remove all edges specified in the list.
+
+        Parameters
+        ----------
+        edges : list of tuples
+            A list of edges to remove from the graph.
+
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    def apply_vops(self, vops: dict) -> None:
         """Apply local Clifford operators to the graph state from a dictionary
 
         Parameters
         ----------
-            vops : dict
-                dict containing node indices as keys and
-                local Clifford indices as values (see graphix.clifford.CLIFFORD)
+        vops : dict
+            dict containing node indices as keys and
+            local Clifford indices as values (see graphix.clifford.CLIFFORD)
+
+        Returns
+        ----------
+        None
         """
         for node, vop in vops.items():
             for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
@@ -65,43 +215,55 @@ class GraphState(nx.Graph):
                 elif lc == 4:
                     self.s(node)
 
-    def add_nodes_from(self, nodes):
+    @abstractmethod
+    def add_nodes_from(self, nodes: list[int]) -> None:
         """Add nodes and initialize node properties.
 
         Parameters
         ----------
-        nodes : iterable container
-            A container of nodes (list, dict, etc)
-        """
-        super().add_nodes_from(nodes, loop=False, sign=False, hollow=False)
+        nodes : list[int]
+            A list of nodes.
 
-    def add_edges_from(self, edges):
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Add edges and initialize node properties of newly added nodes.
 
         Parameters
         ----------
-        edges : iterable container
+        edges : list[tuple[int, int]]
             must be given as list of 2-tuples (u, v)
-        """
-        super().add_edges_from(edges)
-        for i in self.nodes:
-            if "loop" not in self.nodes[i]:
-                self.nodes[i]["loop"] = False  # True for having loop
-                self.nodes[i]["sign"] = False  # True for minus
-                self.nodes[i]["hollow"] = False  # True for hollow node
-
-    def get_vops(self):
-        """Returns a dict containing clifford labels for each nodes.
-        labels 0 - 23 specify one of 24 single-qubit Clifford gates.
-        see graphq.clifford for the definition of all unitaries.
 
         Returns
         ----------
-        vops : dict
-            clifford gate indices as defined in `graphq.clifford`.
+        None
+        """
+        raise NotImplementedError
 
+    @abstractmethod
+    def get_isolates(self) -> list[int]:
+        """Returns a list of isolated nodes (nodes with no edges).
 
-        .. seealso:: :mod:`graphix.clifford`
+        Returns
+        ----------
+        list[int]
+            A list of isolated nodes.
+        """
+        raise NotImplementedError
+
+    def get_vops(self) -> dict:
+        """Apply local Clifford operators to the graph state from a dictionary
+
+        Parameters
+        ----------
+            vops : dict
+                dict containing node indices as keys and
+                local Clifford indices as values (see graphix.clifford.CLIFFORD)
         """
         vops = {}
         for i in self.nodes:
@@ -115,17 +277,21 @@ class GraphState(nx.Graph):
             vops[i] = vop
         return vops
 
-    def flip_fill(self, node):
+    def flip_fill(self, node: int) -> None:
         """Flips the fill (local H) of a node.
 
         Parameters
         ----------
         node : int
             graph node to flip the fill
+
+        Returns
+        ----------
+        None
         """
         self.nodes[node]["hollow"] = not self.nodes[node]["hollow"]
 
-    def flip_sign(self, node):
+    def flip_sign(self, node) -> None:
         """Flips the sign (local Z) of a node.
         Note that application of Z gate is different from `flip_sign`
         if there exist an edge from the node.
@@ -134,10 +300,14 @@ class GraphState(nx.Graph):
         ----------
         node : int
             graph node to flip the sign
+
+        Returns
+        ----------
+        None
         """
         self.nodes[node]["sign"] = not self.nodes[node]["sign"]
 
-    def advance(self, node):
+    def advance(self, node: int) -> None:
         """Flips the loop (local S) of a node.
         If the loop already exist, sign is also flipped,
         reflecting the relation SS=Z.
@@ -148,6 +318,10 @@ class GraphState(nx.Graph):
         ----------
         node : int
             graph node to advance the loop.
+
+        Returns
+        ----------
+        None
         """
         if self.nodes[node]["loop"]:
             self.nodes[node]["loop"] = False
@@ -155,23 +329,31 @@ class GraphState(nx.Graph):
         else:
             self.nodes[node]["loop"] = True
 
-    def h(self, node):
+    def h(self, node: int) -> None:
         """Apply H gate to a qubit (node).
 
         Parameters
         ----------
         node : int
             graph node to apply H gate
+
+        Returns
+        ----------
+        None
         """
         self.flip_fill(node)
 
-    def s(self, node):
+    def s(self, node: int) -> None:
         """Apply S gate to a qubit (node).
 
         Parameters
         ----------
         node : int
             graph node to apply S gate
+
+        Returns
+        ----------
+        None
         """
         if self.nodes[node]["hollow"]:
             if self.nodes[node]["loop"]:
@@ -190,13 +372,17 @@ class GraphState(nx.Graph):
         else:  # solid
             self.advance(node)
 
-    def z(self, node):
+    def z(self, node: int) -> None:
         """Apply Z gate to a qubit (node).
 
         Parameters
         ----------
         node : int
             graph node to apply Z gate
+
+        Returns
+        ----------
+        None
         """
         if self.nodes[node]["hollow"]:
             for i in self.neighbors(node):
@@ -206,7 +392,7 @@ class GraphState(nx.Graph):
         else:  # solid
             self.flip_sign(node)
 
-    def equivalent_graph_E1(self, node):
+    def equivalent_graph_E1(self, node: int) -> None:
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to a node with loop.
@@ -215,8 +401,13 @@ class GraphState(nx.Graph):
         ----------
         node1 : int
             A graph node with a loop to apply rule E1
+
+        Returns
+        ----------
+        None
         """
-        assert self.nodes[node]["loop"]
+        if not self.nodes[node]["loop"]:
+            raise ValueError("node must have loop")
         self.flip_fill(node)
         self.local_complement(node)
         for i in self.neighbors(node):
@@ -226,7 +417,7 @@ class GraphState(nx.Graph):
             for i in self.neighbors(node):
                 self.flip_sign(i)
 
-    def equivalent_graph_E2(self, node1, node2):
+    def equivalent_graph_E2(self, node1: int, node2: int) -> None:
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to two connected nodes without loop.
@@ -235,9 +426,15 @@ class GraphState(nx.Graph):
         ----------
         node1, node2 : int
             connected graph nodes to apply rule E2
+
+        Returns
+        ----------
+        None
         """
-        assert (node1, node2) in list(self.edges) or (node2, node1) in list(self.edges)
-        assert not self.nodes[node1]["loop"] and not self.nodes[node2]["loop"]
+        if (node1, node2) not in self.edges and (node2, node1) not in self.edges:
+            raise ValueError("nodes must be connected by an edge")
+        if self.nodes[node1]["loop"] or self.nodes[node2]["loop"]:
+            raise ValueError("nodes must not have loop")
         sg1 = self.nodes[node1]["sign"]
         sg2 = self.nodes[node2]["sign"]
         self.flip_fill(node1)
@@ -257,20 +454,22 @@ class GraphState(nx.Graph):
             for i in self.neighbors(node2):
                 self.flip_sign(i)
 
-    def local_complement(self, node):
+    @abstractmethod
+    def local_complement(self, node: int) -> None:
         """Perform local complementation of a graph
 
         Parameters
         ----------
         node : int
             chosen node for the local complementation
-        """
-        g = self.subgraph(list(self.neighbors(node)))
-        g_new = nx.complement(g)
-        self.remove_edges_from(g.edges)
-        self.add_edges_from(g_new.edges)
 
-    def equivalent_fill_node(self, node):
+        Returns
+        ----------
+        None
+        """
+        raise NotImplementedError
+
+    def equivalent_fill_node(self, node: int) -> int:
         """Fill the chosen node by graph transformation rules E1 and E2,
         If the selected node is hollow and isolated, it cannot be filled
         and warning is thrown.
@@ -309,7 +508,7 @@ class GraphState(nx.Graph):
             else:
                 return 0
 
-    def measure_x(self, node, choice=0):
+    def measure_x(self, node: int, choice: int = 0) -> int:
         """perform measurement in X basis
         According to original paper, we realise X measurement by
         applying H gate to the measured node before Z measurement.
@@ -320,7 +519,14 @@ class GraphState(nx.Graph):
             qubit index to be measured
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
+
+        Returns
+        ----------
+        result : int
+            measurement outcome. 0 or 1.
         """
+        if choice not in [0, 1]:
+            raise ValueError("choice must be 0 or 1")
         # check if isolated
         if len(list(self.neighbors(node))) == 0:
             if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
@@ -335,7 +541,7 @@ class GraphState(nx.Graph):
             self.h(node)
             return self.measure_z(node, choice=choice)
 
-    def measure_y(self, node, choice=0):
+    def measure_y(self, node: int, choice: int = 0) -> int:
         """perform measurement in Y basis
         According to original paper, we realise Y measurement by
         applying S,Z and H gate to the measured node before Z measurement.
@@ -346,13 +552,20 @@ class GraphState(nx.Graph):
             qubit index to be measured
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
+
+        Returns
+        ----------
+        result : int
+            measurement outcome. 0 or 1.
         """
+        if choice not in [0, 1]:
+            raise ValueError("choice must be 0 or 1")
         self.s(node)
         self.z(node)
         self.h(node)
         return self.measure_z(node, choice=choice)
 
-    def measure_z(self, node, choice=0):
+    def measure_z(self, node: int, choice: int = 0) -> int:
         """perform measurement in Z basis
         To realize the simple Z measurement on undecorated graph state,
         we first fill the measured node (remove local H gate)
@@ -363,7 +576,14 @@ class GraphState(nx.Graph):
             qubit index to be measured
         choice : int, 0 or 1
             choice of measurement outcome. observe (-1)^choice
+
+        Returns
+        ----------
+        result : int
+            measurement outcome. 0 or 1.
         """
+        if choice not in [0, 1]:
+            raise ValueError("choice must be 0 or 1")
         isolated = self.equivalent_fill_node(node)
         if choice:
             for i in self.neighbors(node):
@@ -375,7 +595,7 @@ class GraphState(nx.Graph):
         self.remove_node(node)
         return result
 
-    def draw(self, fill_color="C0", **kwargs):
+    def draw(self, fill_color: str = "C0", **kwargs):
         """Draw decorated graph state.
         Negative nodes are indicated by negative sign of node labels.
 
@@ -390,7 +610,7 @@ class GraphState(nx.Graph):
         nodes = list(self.nodes)
         edges = list(self.edges)
         labels = {i: i for i in iter(self.nodes)}
-        colors = [fill_color for i in range(nqubit)]
+        colors = [fill_color for _ in range(nqubit)]
         for i in range(nqubit):
             if self.nodes[nodes[i]]["loop"]:
                 edges.append((nodes[i], nodes[i]))
@@ -403,7 +623,7 @@ class GraphState(nx.Graph):
         g.add_edges_from(edges)
         nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
 
-    def to_statevector(self):
+    def to_statevector(self) -> Statevec:
         node_list = list(self.nodes)
         nqubit = len(self.nodes)
         gstate = Statevec(nqubit=nqubit)

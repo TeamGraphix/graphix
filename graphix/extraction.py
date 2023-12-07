@@ -1,9 +1,14 @@
 from __future__ import annotations
+
+from copy import deepcopy
 from enum import Enum
 
-import graphix
 import numpy as np
-import networkx as nx
+
+from graphix.graphsim.basegraphstate import BaseGraphState
+from graphix.graphsim.graphstate import GraphState
+from graphix.graphsim.rxgraphstate import RXGraphState
+from graphix.graphsim.utils import is_graphs_equal
 
 
 class ResourceType(Enum):
@@ -22,11 +27,11 @@ class ResourceGraph:
     ----------
     type : :class:`ResourceType` object
         Type of the cluster.
-    graph : :class:`graphix.GraphState` object
+    graph : :class:`~graphix.graphsim.GraphState` object
         Graph state of the cluster.
     """
 
-    def __init__(self, type: ResourceType, graph: graphix.GraphState = None):
+    def __init__(self, type: ResourceType, graph: GraphState = None):
         self.graph = graph
         self.type = type
 
@@ -40,22 +45,22 @@ class ResourceGraph:
         if not isinstance(other, ResourceGraph):
             raise TypeError("cannot compare ResourceGraph with other object")
 
-        return nx.utils.graphs_equal(self.graph, other.graph) and self.type == other.type
+        return is_graphs_equal(self.graph, other.graph) and self.type == other.type
 
 
 def get_fusion_network_from_graph(
-    graph: graphix.GraphState,
+    graph: BaseGraphState,
     max_ghz: int | float = np.inf,
     max_lin: int | float = np.inf,
 ) -> list[ResourceGraph]:
-    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`graphix.GraphState`.
+    """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`~graphix.graphsim.GraphState`.
     Extraction algorithm is based on [1].
 
     [1] Zilk et al., A compiler for universal photonic quantum computers, 2022 `arXiv:2210.09251 <https://arxiv.org/abs/2210.09251>`_
 
     Parameters
     ----------
-    graph : :class:`graphix.GraphState` object
+    graph : :class:`~graphix.graphsim.GraphState` object
         Graph state.
     phasedict : dict
         Dictionary of phases for each node.
@@ -69,7 +74,10 @@ def get_fusion_network_from_graph(
     list
         List of :class:`ResourceGraph` objects.
     """
-    adjdict = nx.to_dict_of_dicts(graph)
+    use_rustworkx = isinstance(graph, RXGraphState)
+
+    adjdict = deepcopy({n: adj for n, adj in graph.adjacency()})
+
     number_of_edges = graph.number_of_edges()
     resource_list = []
     neighbors_list = []
@@ -80,7 +88,7 @@ def get_fusion_network_from_graph(
             neighbors_list.append((v, len(adjdict[v])))
         # If there is an isolated node, add it to the list.
         if len(adjdict[v]) == 0:
-            resource_list.append(create_resource_graph([v], root=v))
+            resource_list.append(create_resource_graph([v], root=v, use_rustworkx=use_rustworkx))
 
     # Find GHZ graphs in the graph and remove their edges from the graph.
     # All nodes that have more than 2 edges become the roots of the GHZ clusters.
@@ -92,7 +100,7 @@ def get_fusion_network_from_graph(
                 nodes.append(n)
                 del adjdict[n][v]
                 number_of_edges -= 1
-            resource_list.append(create_resource_graph(nodes, root=v))
+            resource_list.append(create_resource_graph(nodes, root=v, use_rustworkx=use_rustworkx))
 
     # Find Linear clusters in the remaining graph and remove their edges from the graph.
     while number_of_edges != 0:
@@ -109,11 +117,15 @@ def get_fusion_network_from_graph(
 
                 # We define any cluster whose size is smaller than 4, a GHZ cluster
                 if len(nodes) == 3:
-                    resource_list.append(create_resource_graph([nodes[1], nodes[0], nodes[2]], root=nodes[1]))
+                    resource_list.append(
+                        create_resource_graph(
+                            [nodes[1], nodes[0], nodes[2]], root=nodes[1], use_rustworkx=use_rustworkx
+                        )
+                    )
                 elif len(nodes) == 2:
-                    resource_list.append(create_resource_graph(nodes, root=nodes[0]))
+                    resource_list.append(create_resource_graph(nodes, root=nodes[0], use_rustworkx=use_rustworkx))
                 else:
-                    resource_list.append(create_resource_graph(nodes))
+                    resource_list.append(create_resource_graph(nodes, use_rustworkx=use_rustworkx))
 
         # If a cycle exists in the graph, extract one 3-qubit ghz cluster from the cycle.
         for v in adjdict.keys():
@@ -126,12 +138,12 @@ def get_fusion_network_from_graph(
                 del adjdict[v][neighbors[1]]
                 number_of_edges -= 2
 
-                resource_list.append(create_resource_graph(nodes, root=v))
+                resource_list.append(create_resource_graph(nodes, root=v, use_rustworkx=use_rustworkx))
                 break
     return resource_list
 
 
-def create_resource_graph(node_ids: list[int], root: int | None = None) -> ResourceGraph:
+def create_resource_graph(node_ids: list[int], root: int | None = None, use_rustworkx=False) -> ResourceGraph:
     """Create a resource graph state (GHZ or linear) from node ids.
 
     Parameters
@@ -154,7 +166,7 @@ def create_resource_graph(node_ids: list[int], root: int | None = None) -> Resou
     else:
         edges = [(node_ids[i], node_ids[i + 1]) for i in range(len(node_ids)) if i + 1 < len(node_ids)]
         cluster_type = ResourceType.LINEAR
-    tmp_graph = graphix.GraphState()
+    tmp_graph = GraphState(use_rustworkx=use_rustworkx)
     tmp_graph.add_nodes_from(node_ids)
     tmp_graph.add_edges_from(edges)
     return ResourceGraph(type=cluster_type, graph=tmp_graph)

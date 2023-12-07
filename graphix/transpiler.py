@@ -3,9 +3,11 @@
 accepts desired gate operations and transpile into MBQC measurement patterns.
 
 """
-import numpy as np
-from graphix.ops import Ops
 from copy import deepcopy
+
+import numpy as np
+
+from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
 
