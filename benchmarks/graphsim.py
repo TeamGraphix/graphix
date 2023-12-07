@@ -107,48 +107,14 @@ for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
     rustworkx_time.append(end - start)
 
 # %%
-# For reference, we also perform Anders and Briegel's stabilizer circuit simulator based on
-# graph state representation.
-# See https://arxiv.org/abs/quant-ph/0504117v2 or https://github.com/libtangle/graph-state for more details.
-
-from graph_state import GraphState as ABGraphState
-
-ab_time = []
-ab_node = []
-
-for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
-    g = ABGraphState(width)
-    start = perf_counter()
-    for instruction in circuit.instruction:
-        if instruction[0] == "CNOT":
-            g.cx(instruction[1][0], instruction[1][1])
-        elif instruction[0] == "H":
-            g.h(instruction[1])
-        elif instruction[0] == "S":
-            g.s(instruction[1])
-        elif instruction[0] == "X":
-            g.x(instruction[1])
-        elif instruction[0] == "Z":
-            g.z(instruction[1])
-        elif instruction[0] == "Y":
-            g.y(instruction[1])
-        else:
-            raise ValueError("Unknown instruction")
-    end = perf_counter()
-    ab_node.append(num_nodes)
-    print(f"width: {width}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
-    ab_time.append(end - start)
-
-# %%
 # Lastly, we compare the simulation times.
-assert networkx_node == rustworkx_node == ab_node
+assert networkx_node == rustworkx_node
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ax.scatter(networkx_node, networkx_time, label="networkx", color="blue")
 ax.scatter(rustworkx_node, rustworkx_time, label="rustworkx", color="red")
-ax.scatter(ab_node, ab_time, label="Anders and Briegel's graph state simulator", color="green")
 ax.set(
     xlabel="Number of nodes in the graph state",
     xscale="log",
