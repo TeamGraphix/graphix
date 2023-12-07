@@ -39,27 +39,21 @@ def genpair(n_qubits, count, rng):
 def random_clifford_circuit(nqubits, depth, seed=42):
     rng = np.random.default_rng(seed)
     circuit = Circuit(nqubits)
-    gate_choice = list(range(8))
+    gate_choice = list(range(5))
     for _ in range(depth):
         for j, k in genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
         for j in range(nqubits):
             k = rng.choice(gate_choice)
-            if k == 0:
-                circuit.ry(j, np.pi / 2)
-            elif k == 1:
-                circuit.rz(j, np.pi / 2)
-            elif k == 2:
-                circuit.rx(j, np.pi / 2)
-            elif k == 3:  # H
+            if k == 0:  # H
                 circuit.h(j)
-            elif k == 4:  # S
+            elif k == 1:  # S
                 circuit.s(j)
-            elif k == 5:  # X
+            elif k == 2:  # X
                 circuit.x(j)
-            elif k == 6:  # Z
+            elif k == 3:  # Z
                 circuit.z(j)
-            elif k == 7:  # Y
+            elif k == 4:  # Y
                 circuit.y(j)
             else:
                 pass
@@ -78,7 +72,7 @@ for i in test_cases:
     pattern = circuit.transpile()
     pattern.standardize()
     nodes, edges = pattern.get_graph()
-    graphix_patterns[i] = (pattern, len(nodes))
+    graphix_patterns[i] = (circuit, pattern, len(nodes))
 
 
 # %%
@@ -87,7 +81,7 @@ for i in test_cases:
 networkx_time = []
 networkx_node = []
 
-for width, (pattern, num_nodes) in graphix_patterns.items():
+for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements()
@@ -102,7 +96,7 @@ for width, (pattern, num_nodes) in graphix_patterns.items():
 rustworkx_time = []
 rustworkx_node = []
 
-for width, (pattern, num_nodes) in graphix_patterns.items():
+for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements(use_rustworkx=True)
@@ -112,14 +106,48 @@ for width, (pattern, num_nodes) in graphix_patterns.items():
     rustworkx_time.append(end - start)
 
 # %%
+# For reference, we also perform Anders and Briegel's stabilizer circuit simulator based on
+# graph state representation.
+# See https://arxiv.org/abs/quant-ph/0504117v2 or https://github.com/libtangle/graph-state for more details.
+
+from graph_state import GraphState as ABGraphState
+
+ab_time = []
+ab_node = []
+
+for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
+    g = ABGraphState(width)
+    start = perf_counter()
+    for instruction in circuit.instruction:
+        if instruction[0] == "CNOT":
+            g.cx(instruction[1][0], instruction[1][1])
+        elif instruction[0] == "H":
+            g.h(instruction[1])
+        elif instruction[0] == "S":
+            g.s(instruction[1])
+        elif instruction[0] == "X":
+            g.x(instruction[1])
+        elif instruction[0] == "Z":
+            g.z(instruction[1])
+        elif instruction[0] == "Y":
+            g.y(instruction[1])
+        else:
+            raise ValueError("Unknown instruction")
+    end = perf_counter()
+    ab_node.append(num_nodes)
+    print(f"width: {width}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
+    ab_time.append(end - start)
+
+# %%
 # Lastly, we compare the simulation times.
-assert networkx_node == rustworkx_node
+assert networkx_node == rustworkx_node == ab_node
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ax.scatter(networkx_node, networkx_time, label="networkx", color="blue")
 ax.scatter(rustworkx_node, rustworkx_time, label="rustworkx", color="red")
+ax.scatter(ab_node, ab_time, label="Anders and Briegel's graph state simulator", color="green")
 ax.set(
     xlabel="Number of nodes in the graph state",
     xscale="log",
