@@ -22,51 +22,63 @@ import numpy as np
 from graphix import Circuit
 
 # %%
-# Next, define a circuit to be transpiled into measurement pattern:
-
-rng = np.random.default_rng(42)
+# Next, define a function to generate random Clifford circuits.
 
 
-def simple_random_circuit(nqubit, depth):
-    r"""Generate a test circuit for benchmarking.
+def genpair(n_qubits, count, rng):
+    pairs = []
+    for i in range(count):
+        choice = [j for j in range(n_qubits)]
+        x = rng.choice(choice)
+        choice.pop(x)
+        y = rng.choice(choice)
+        pairs.append((x, y))
+    return pairs
 
-    This function generates a circuit with nqubit qubits and depth layers,
-    having layers of CNOT and Rz gates with random placements.
 
-    Parameters
-    ----------
-    nqubit : int
-        number of qubits
-    depth : int
-        number of layers
-
-    Returns
-    -------
-    circuit : graphix.transpiler.Circuit object
-        generated circuit
-    """
-    qubit_index = [i for i in range(nqubit)]
-    circuit = Circuit(nqubit)
+def random_clifford_circuit(nqubits, depth, seed=42):
+    rng = np.random.default_rng(seed)
+    circuit = Circuit(nqubits)
+    gate_choice = list(range(8))
     for _ in range(depth):
-        rng.shuffle(qubit_index)
-        for j in range(len(qubit_index) // 2):
-            circuit.cnot(qubit_index[2 * j], qubit_index[2 * j + 1])
-        for j in range(len(qubit_index)):
-            circuit.rz(qubit_index[j], 2 * np.pi * rng.random())
+        for j, k in genpair(nqubits, 2, rng):
+            circuit.cnot(j, k)
+        for j in range(nqubits):
+            k = rng.choice(gate_choice)
+            if k == 0:
+                circuit.ry(j, np.pi / 2)
+            elif k == 1:
+                circuit.rz(j, np.pi / 2)
+            elif k == 2:
+                circuit.rx(j, np.pi / 2)
+            elif k == 3:  # H
+                circuit.h(j)
+            elif k == 4:  # S
+                circuit.s(j)
+            elif k == 5:  # X
+                circuit.x(j)
+            elif k == 6:  # Z
+                circuit.z(j)
+            elif k == 7:  # Y
+                circuit.y(j)
+            else:
+                pass
     return circuit
 
 
 # %%
 # We define the test cases
 
-test_cases = [i for i in range(1, 50, 5)]
+DEPTH = 3
+test_cases = [i for i in range(2, 300, 10)]
 graphix_patterns = {}
 
 for i in test_cases:
-    circuit = simple_random_circuit(i, i)
+    circuit = random_clifford_circuit(i, DEPTH)
     pattern = circuit.transpile()
     pattern.standardize()
-    graphix_patterns[i] = pattern
+    nodes, edges = pattern.get_graph()
+    graphix_patterns[i] = (pattern, len(nodes))
 
 
 # %%
@@ -75,15 +87,13 @@ for i in test_cases:
 networkx_time = []
 networkx_node = []
 
-for i, pattern in graphix_patterns.items():
+for i, (pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements()
     end = perf_counter()
-    nodes, edges = pattern_copy.get_graph()
-    num_nodes = len(nodes)
     networkx_node.append(num_nodes)
-    print(f"width: {i}, number of nodes: {num_nodes}, depth: {i}, time: {end - start}")
+    print(f"width: {i}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
     networkx_time.append(end - start)
 
 
@@ -92,15 +102,13 @@ for i, pattern in graphix_patterns.items():
 rustworkx_time = []
 rustworkx_node = []
 
-for i, pattern in graphix_patterns.items():
+for i, (pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
-    pattern_copy.perform_pauli_measurements()
+    pattern_copy.perform_pauli_measurements(use_rustworkx=True)
     end = perf_counter()
-    nodes, edges = pattern_copy.get_graph()
-    num_nodes = len(nodes)
     rustworkx_node.append(num_nodes)
-    print(f"width: {i}, number of nodes: {num_nodes}, depth: {i}, time: {end - start}")
+    print(f"width: {i}, number of nodes: {num_nodes}, depth: {DEPTH}, time: {end - start}")
     rustworkx_time.append(end - start)
 
 # %%
@@ -129,4 +137,5 @@ fig.show()
 import importlib.metadata  # noqa: E402
 
 # print package versions.
-[print("{} - {}".format(pkg, importlib.metadata.version(pkg))) for pkg in ["graphix", "networkx", "rustworkx"]]
+for pkg in ["graphix", "networkx", "rustworkx"]:
+    print("{} - {}".format(pkg, importlib.metadata.version(pkg)))
