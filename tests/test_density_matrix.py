@@ -60,8 +60,10 @@ class TestDensityMatrix(unittest.TestCase):
 
         # check square and hermitian but with incorrect dimension (non-qubit type)
         with self.assertRaises(ValueError):
-            tmp = randobj.rand_herm(5)
-            DensityMatrix(data=tmp / tmp.trace())
+            # not really a dm since not PSD but ok.
+            data = randobj.rand_herm(5)
+            data /= np.trace(data)
+            DensityMatrix(data=data)
 
     def test_init_without_data_success(self):
         for n in range(3):
@@ -79,8 +81,8 @@ class TestDensityMatrix(unittest.TestCase):
             assert np.allclose(dm.rho, expected_density_matrix)
 
     def test_init_with_data_success(self):
+        # don't use rand_dm here since want to check
         for n in range(3):
-            # tmp  = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
             data = randobj.rand_herm(2**n)
             data /= np.trace(data)
             dm = DensityMatrix(data=data)
@@ -130,9 +132,12 @@ class TestDensityMatrix(unittest.TestCase):
         with self.assertRaises(ValueError):
             dm.expectation_single(op, nqb + 3)
 
-    def test_expectation_single_sucess(self):
+    def test_expectation_single_success(self):
 
-        """compare to pure state case"""
+        """compare to pure state case
+        hence only pure states
+        but by linearity ok"""
+
         nqb = np.random.randint(1, 4)
         # NOTE a statevector object so can't use its methods
         target_qubit = np.random.randint(0, nqb)
@@ -150,7 +155,7 @@ class TestDensityMatrix(unittest.TestCase):
         psi1 = np.tensordot(op, psi.reshape((2,) * nqb), (1, target_qubit))
         psi1 = np.moveaxis(psi1, 0, target_qubit)
         psi1 = psi1.reshape(2**nqb)
-        print(np.dot(psi1.conjugate(), psi), dm.expectation_single(op, target_qubit))
+
         # watch out ordering. Expval unitary is cpx so psi1 on the right to match DM.
         np.testing.assert_allclose(np.dot(psi.conjugate(), psi1), dm.expectation_single(op, target_qubit))
 
@@ -171,14 +176,13 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_tensor_with_data_success(self):
         for n in range(3):
-            # tmp_a = np.random.rand(2**n, 2**n) + 1j * np.random.rand(2**n, 2**n)
-            data_a = randobj.rand_herm(2**n)
-            data_a /= np.trace(data_a)
+
+            data_a =randobj.rand_dm(2**n, dm_dtype=False)
             dm_a = DensityMatrix(data=data_a)
-            # tmp_b = np.random.rand(2**(n + 1), 2**(n + 1)) + 1j * np.random.rand(2**(n + 1), 2**(n + 1))
-            data_b = randobj.rand_herm(2 ** (n + 1))
-            data_b /= np.trace(data_b)
+    
+            data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False)
             dm_b = DensityMatrix(data=data_b)
+
             dm_a.tensor(dm_b)
             assert dm_a.Nqubit == 2 * n + 1
             assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
@@ -527,15 +531,10 @@ class TestDensityMatrix(unittest.TestCase):
         np.testing.assert_allclose(expected_dm.trace(), 1.0)
         np.testing.assert_allclose(dm.rho, expected_dm)
 
-        # check on single qubit against evolve (already tested)? But built on evolve.
-        # check against statevector backend?
-        # NEWFEATURE build random statevector and check normalization there too.
-        # so do it by hand for now.
-        # # create random density matrix
+      
 
         N_qubits = np.random.randint(2, 5)
 
-        # target qubit index
         i = np.random.randint(0, N_qubits)
 
         # create random density matrix from statevector

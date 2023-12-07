@@ -28,9 +28,8 @@ UNITS = np.array([1, 1j])
 # not necessary dm since arbitrary dim here.
 
 
-def rand_dm(dim: int, rank: int = None):
-    """
-    Returns a "density matrix" ie a positive-semidefinite (hence Hermitian) matrix with unit trace
+def rand_dm(dim: int, rank: int = None, dm_dtype = True) -> DensityMatrix:
+    """ Returns a "density matrix" as a DensityMatrix object ie a positive-semidefinite (hence Hermitian) matrix with unit trace
     Note, not a proper DM since its dim can be something else than a power of 2.
     The rank is random between 1 (pure) and dim if not specified
     Thanks to Ulysse Chabaud.
@@ -42,7 +41,19 @@ def rand_dm(dim: int, rank: int = None):
     rank : int (default None)
         If rank not specified then random between 1 and matrix dimension
         If rank is one : then pure state else mixed state.
+
+    :param dim: Linear dimension of the (square) matrix
+    :type dim: int
+    :param rank: If rank not specified then random between 1 and matrix dimension
+        If rank is one : then pure state else mixed state. Defaults to None
+    :type rank: int, optional
+    :param dm_dtype: If True returns a :class:`graphix.sim.density_matrix.DensityMatrix` or a numpy.ndarray if False. Defaults to True.
+    :type dm_dtype: bool, optional
+    :return: Random density matrix as a :class:`graphix.sim.density_matrix.DensityMatrix` object.
+    :rtype: :class:`graphix.sim.density_matrix.DensityMatrix` or numpy.ndarray.
+
     """
+
     # if not provided, use a random value.
     if rank is None:
         rank = np.random.randint(1, dim + 1)
@@ -69,7 +80,10 @@ def rand_dm(dim: int, rank: int = None):
     # tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
     # np.dot(tmp, tmp.conj().T)
 
-    return DensityMatrix(data=dm)
+    if dm_dtype:
+        return DensityMatrix(data = dm)
+    else:
+        return dm
 
 
 def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
