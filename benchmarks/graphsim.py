@@ -71,6 +71,7 @@ for i in test_cases:
     circuit = random_clifford_circuit(i, DEPTH)
     pattern = circuit.transpile()
     pattern.standardize()
+    pattern.shift_signals()
     nodes, edges = pattern.get_graph()
     graphix_patterns[i] = (circuit, pattern, len(nodes))
 
