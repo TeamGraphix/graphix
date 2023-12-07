@@ -2,3 +2,4 @@ paddlepaddle==2.4.0rc0
 paddle-quantum==2.2.0
 networkx==3.2.1
 rustworkx==0.13.2
+-e git+https://github.com/libtangle/graph-state.git@f8952857edad4c04da78798f0de2fba938e050e7#egg=graph-state
