@@ -177,9 +177,9 @@ class TestDensityMatrix(unittest.TestCase):
     def test_tensor_with_data_success(self):
         for n in range(3):
 
-            data_a =randobj.rand_dm(2**n, dm_dtype=False)
+            data_a = randobj.rand_dm(2**n, dm_dtype=False)
             dm_a = DensityMatrix(data=data_a)
-    
+
             data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False)
             dm_b = DensityMatrix(data=data_b)
 
@@ -530,8 +530,6 @@ class TestDensityMatrix(unittest.TestCase):
 
         np.testing.assert_allclose(expected_dm.trace(), 1.0)
         np.testing.assert_allclose(dm.rho, expected_dm)
-
-      
 
         N_qubits = np.random.randint(2, 5)
 

@@ -115,7 +115,7 @@ class TestUtilities(unittest.TestCase):
     # do it here or elsewhere?
     # tested out of graphix. Think since need a PSD matrix to test..
 
-# check psd on DM object (rand_dm) but validate the data ie rand_psd
+    # check psd on DM object (rand_dm) but validate the data ie rand_psd
     def test_check_psd_success(self):
 
         # Generate a random mixed state from state vectors (equiprobable though)
@@ -174,9 +174,7 @@ class TestUtilities(unittest.TestCase):
     # try with incorrect dimension
     def test_rand_dm_fail(self):
         with self.assertRaises(ValueError):
-            dm = randobj.rand_dm(2 ** np.random.randint(2, 5)+1)
-
-
+            dm = randobj.rand_dm(2 ** np.random.randint(2, 5) + 1)
 
     def test_rand_dm_rank(self):
         # check the rank feature

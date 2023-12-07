@@ -330,7 +330,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
                 ),
             )
         )
-    
+
     # test measurement confuse outcome
     def test_noisy_measure_confuse_rz(self):
 
@@ -339,9 +339,11 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
             backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=1.0)
         )
         # result X, XZ or Z
-        
-        assert (np.allclose(res.rho, Ops.x @ self.rz_exact_res @ Ops.x) or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
-        or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
+
+        assert (
+            np.allclose(res.rho, Ops.x @ self.rz_exact_res @ Ops.x)
+            or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
+            or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
         )
 
         # arbitrary probability
@@ -352,11 +354,12 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
             backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=measure_error_pr)
         )
         # just add the case without readout errors
-        assert (np.allclose(res.rho, self.rz_exact_res) or np.allclose(res.rho, Ops.x @ self.rz_exact_res @ Ops.x)  or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
-        or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
+        assert (
+            np.allclose(res.rho, self.rz_exact_res)
+            or np.allclose(res.rho, Ops.x @ self.rz_exact_res @ Ops.x)
+            or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
+            or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
         )
-
-
 
 
 # NOTE useless if we use pytest
