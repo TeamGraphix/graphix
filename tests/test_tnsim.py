@@ -11,6 +11,11 @@ from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
 
 
+SEED = 42
+rc.set_seed(SEED)
+
+
+
 def random_op(sites, dtype=np.complex128, seed=0):
     np.random.seed(seed)
     size = 2**sites

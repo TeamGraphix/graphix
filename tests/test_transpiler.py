@@ -6,6 +6,11 @@ import tests.random_circuit as rc
 from graphix.transpiler import Circuit
 
 
+SEED = 42
+rc.set_seed(SEED)
+
+
+
 class TestTranspiler_UnitGates(unittest.TestCase):
     def test_cnot(self):
         circuit = Circuit(2)
