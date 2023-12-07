@@ -106,6 +106,7 @@ class PatternSimulator:
                     self.backend.entangle_nodes(cmd[1])  # for some reaon entangle doesn't get the whole command
                     self.backend.apply_channel(self.noise_model.entangle(), cmd[1])
                 elif cmd[0] == "M":  # apply channel before measuring, measure, confuse_result
+                    # or binary channel but requires the two outcomes...Seems OK.
                     self.backend.apply_channel(self.noise_model.measure(), [cmd[1]])
                     self.backend.measure(cmd)
                     self.noise_model.confuse_result(cmd)
@@ -115,14 +116,13 @@ class PatternSimulator:
                     # since recompute twice the same thing
                     # apply noise only if byproduct applied!
                     if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-                        print("cond in sim true", [self.results[j] for j in cmd[2]])
-                        # simulator.results == backend.result
+                        print("Xcond in sim true", [self.results[j] for j in cmd[2]])
                         self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd[1]])
                 elif cmd[0] == "Z":
                     self.backend.correct_byproduct(cmd)
                     # apply noise only if byproduct applied!
                     if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-                        # simulator.results == backend.result
+                        print("Zcond in sim true", [self.results[j] for j in cmd[2]])
                         self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd[1]])
                 elif cmd[0] == "C":  # TODO work on that to see waht are the allow cliffords
                     self.backend.apply_clifford(cmd)

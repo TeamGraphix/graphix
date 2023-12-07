@@ -23,12 +23,14 @@ class TestNoiseModel(NoiseModel):
         self,
         prepare_error_prob=0.0,
         x_error_prob=0.0,
+        z_error_prob=0.0,
         entanglement_error_prob=0.0,
         measure_channel_prob=0.0,
         measure_error_prob=0.0,
     ):
         self.prepare_error_prob = prepare_error_prob
         self.x_error_prob = x_error_prob
+        self.z_error_prob = z_error_prob
         self.entanglement_error_prob = entanglement_error_prob
         self.measure_error_prob = measure_error_prob
         self.measure_channel_prob = measure_channel_prob
@@ -72,7 +74,7 @@ class TestNoiseModel(NoiseModel):
 
     def byproduct_z(self):
         """apply noise to qubits after Z gate correction"""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return create_depolarising_channel(self.z_error_prob)  # Channel([{"parameter": 1.0, "operator": np.eye(2)}])
 
     def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""
