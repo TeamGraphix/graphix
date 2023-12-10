@@ -997,7 +997,7 @@ class Circuit:
             second control node on graph
         target_node : int
             target node on graph
-        ancilla : list of two ints
+        ancilla : list of int
             ancilla node indices to be added to graph
 
         Returns
@@ -1122,7 +1122,7 @@ class Circuit:
             second control node on graph
         target_node : int
             target node on graph
-        ancilla : list of two ints
+        ancilla : list of int
             ancilla node indices to be added to graph
 
         Returns
