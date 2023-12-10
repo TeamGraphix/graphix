@@ -5,10 +5,8 @@ import numpy as np
 import tests.random_circuit as rc
 from graphix.transpiler import Circuit
 
-
 SEED = 42
 rc.set_seed(SEED)
-
 
 
 class TestTranspiler_UnitGates(unittest.TestCase):
@@ -115,6 +113,24 @@ class TestTranspiler_UnitGates(unittest.TestCase):
 
 
 class TestTranspiler_Opt(unittest.TestCase):
+    def test_ccx_opt(self):
+        for i in range(2**3):
+            circuit = Circuit(3)
+            # prepare |000>
+            circuit.h(0)
+            circuit.h(1)
+            circuit.h(2)
+            # prepare |i> (i = 0, 1, ..., 7)
+            for idx, j in enumerate(format(i, "03b")[::-1]):
+                if j == "1":
+                    circuit.x(idx)
+            circuit.ccx(0, 1, 2)
+            pattern = circuit.transpile(opt=True)
+            pattern.minimize_space()
+            state = circuit.simulate_statevector()
+            state_mbqc = pattern.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
     def test_transpile_opt(self):
         nqubits = 2
         depth = 1
