@@ -4,16 +4,14 @@ from copy import deepcopy
 
 import numpy as np
 
-
+import tests.random_objects as randobj
 from graphix import Circuit
 from graphix.channels import Channel, create_dephasing_channel, create_depolarising_channel
-from graphix.ops import Ops
-from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
-import tests.random_objects as randobj
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.noise_models.test_noise_model import TestNoiseModel
 from graphix.ops import Ops
+from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
 
 
 class NoisyDensityMatrixBackendTest(unittest.TestCase):
@@ -83,7 +81,6 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     # test Pauli X error
-    # error = 0.75 gives maximally mixed Id/2
     def test_noisy_X_hadamard(self):
 
         # x error only
@@ -130,7 +127,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
             res.rho, np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]])
         )
 
-    ###  now test rz gate
+    ###  Test rz gate
 
     # test noiseless noisy vs noiseless
     def test_noiseless_noisy_rz(self):
@@ -215,7 +212,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         res = self.rzpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(measure_channel_prob=measure_channel_pr)
         )
-        # just TP the depolarizing channel
+
         np.testing.assert_allclose(
             res.rho,
             0.5
@@ -347,7 +344,6 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
         # arbitrary probability
-        # arbitrary probability
         measure_error_pr = self.rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
         res = self.rzpattern.simulate_pattern(
@@ -362,7 +358,6 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
 
-# NOTE useless if we use pytest
 if __name__ == "__main__":
     np.random.seed(32)
     unittest.main()

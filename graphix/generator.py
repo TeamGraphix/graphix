@@ -5,8 +5,9 @@ MBQC pattern generator
 
 
 import numpy as np
+
+from graphix.gflow import find_odd_neighbor, flow, get_layers, gflow
 from graphix.pattern import Pattern
-from graphix.gflow import flow, gflow, get_layers, find_odd_neighbor
 
 
 def generate_from_graph(graph, angles, inputs, outputs, timeout=100):

@@ -93,27 +93,27 @@ class DensityMatrix:
             raise ValueError(f"The provided data has incorrect shape {op.shape}.")
 
         # TODO rename. Not a dim but a number of qubits
-        op_dim = np.log2(len(op))
-        if not np.isclose(op_dim, int(op_dim)):
+        nqb_op = np.log2(len(op))
+        if not np.isclose(nqb_op, int(nqb_op)):
             raise ValueError("Incorrect operator dimension: not consistent with qubits.")
-        op_dim = int(op_dim)
+        nqb_op = int(nqb_op)
 
-        if op_dim != len(qargs):
+        if nqb_op != len(qargs):
             raise ValueError("The dimension of the operator doesn't match the number of targets.")
 
         for i in qargs:
             if i < 0 or i >= self.Nqubit:
                 raise ValueError("Incorrect target indices.")
-        if len(set(qargs)) != op_dim:
+        if len(set(qargs)) != nqb_op:
             raise ValueError("A repeated target qubit index is not possible.")
 
-        op_tensor = op.reshape((2,) * 2 * op_dim)
+        op_tensor = op.reshape((2,) * 2 * nqb_op)
 
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
 
         rho_tensor = np.tensordot(
-            np.tensordot(op_tensor, rho_tensor, axes=[tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)]),
-            op.conj().T.reshape((2,) * 2 * op_dim),
+            np.tensordot(op_tensor, rho_tensor, axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)]),
+            op.conj().T.reshape((2,) * 2 * nqb_op),
             axes=[tuple(i + self.Nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
         )
         rho_tensor = np.moveaxis(
@@ -122,24 +122,6 @@ class DensityMatrix:
             [i for i in qargs] + [i + self.Nqubit for i in reversed(list(qargs))],
         )
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
-
-        # # Original and alternative way : tensor transpose instead of matrix (QM) transpose
-
-        # op_tensor = op.reshape((2,) * 2 * op_dim)
-
-        # rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-
-        # rho_tensor = np.tensordot(
-        #     np.tensordot(op_tensor, rho_tensor, axes=[tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)]),
-        #     op_tensor.conj().T,
-        #     axes=[tuple(i + self.Nqubit for i in reversed(qargs)), tuple(i for i in range(len(qargs)))],
-        # )
-        # rho_tensor = np.moveaxis(
-        #     rho_tensor,
-        #     [i for i in range(len(list(qargs)))] + [-i for i in range(1, len(list(qargs)) + 1)],
-        #     [i for i in qargs] + [i + self.Nqubit for i in list(qargs)],
-        # )
-        # self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
     def expectation_single(self, op, i):
         """Expectation value of single-qubit operator.
@@ -160,7 +142,6 @@ class DensityMatrix:
         st1 = deepcopy(self)
         st1.normalize()
 
-        # reshape
         rho_tensor = st1.rho.reshape((2,) * st1.Nqubit * 2)
         rho_tensor = np.tensordot(op, rho_tensor, axes=[1, i])
         rho_tensor = np.moveaxis(rho_tensor, 0, i)
@@ -193,22 +174,6 @@ class DensityMatrix:
             edge : (int, int) or [int, int]
                 Edge to apply CNOT gate.
         """
-        # i, j = edge
-
-        # already an attribute
-        # n = int(np.log2(self.rho.shape[0]))
-        # assert i >= 0 and j >= 0
-        # assert self.Nqubit > i and self.Nqubit > j
-        # assert i != j
-
-        # rho_tensor = self.rho.reshape((2,) * n * 2)
-        # rho_tensor = np.tensordot(
-        #     np.tensordot(CNOT_TENSOR, rho_tensor, axes=[(2, 3), edge]),
-        #     CNOT_TENSOR.conj().T,
-        #     axes=[(edge[1] + n, edge[0] + n), [0, 1]],
-        # )
-        # rho_tensor = np.moveaxis(rho_tensor, (0, 1, -1, -2), (edge[0], edge[1], edge[0] + n, edge[1] + n))
-        # self.rho = rho_tensor.reshape((2**n, 2**n))
 
         self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
 
@@ -261,9 +226,8 @@ class DensityMatrix:
         rho_res = np.tensordot(
             np.eye(2**qargs_num).reshape((2,) * qargs_num * 2), rho_res, axes=(list(range(2 * qargs_num)), trace_axes)
         )
-        # NOTE no need to normalize when taking partial trace!
-        # TODO or assert norm is still one?
-        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))  # / np.linalg.norm(rho_res)
+
+        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
         self.Nqubit = nqubit_after
 
     def fidelity(self, statevec):
@@ -297,35 +261,24 @@ class DensityMatrix:
             This shouldn't happen since :class:`graphix.kraus.Channel` objects are normalized by construction.
         ....
         """
-        # Can't initialize a dm to all 0s since not unit trace.
-        # Use arrays instead.
-        # DensityMatrix(np.zeros((2 ** self.Nqubit, 2 ** self.Nqubit)))
+
         result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
         tmp_dm = deepcopy(self)
 
-        # TODO: not tested yet.
         if not isinstance(channel, Channel):
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
-        # too many deepcopy?
         for i in channel.kraus_ops:
-            # evolve.
-            # TODO not optimal
-            # evolve works for a single qubit
-            # if len(qargs) == 1:
-            #     tmp_dm.evolve_single(i["operator"], qargs)
-            # else:
-            #     tmp_dm.evolve(i["operator"], qargs)
             tmp_dm.evolve(i["operator"], qargs)
             result_array += i["parameter"] * np.conj(i["parameter"]) * tmp_dm.rho
             # reinitialize to input density matrix
             tmp_dm = deepcopy(self)
 
-        # avoid problems by using deepcopy? Performance?
+        # Performance?
         self.rho = deepcopy(result_array)
 
         # The channel is normalised by construction if everything is ok.
-        # TODO use self.is_normalized when implementend
+        # TODO use self.is_normalized when implemented
         if not np.allclose(self.rho.trace(), 1.0):
             raise ValueError("The output density is not normalized, something went wrong while applying channel.")
 
@@ -353,31 +306,11 @@ class DensityMatrixBackend:
         self.max_qubit_num = max_qubit_num
 
         # whether to compute the probability
-        # TODO if there is a noise model, force it to 1
         self.pr_calc = pr_calc
         if pr_calc == True:
             print("Computing probabilities!!!")
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-
-    # def dephase(self, p=0):
-    #     """Apply dephasing channel to all nodes. Phase is flipped with probability p.
-
-    #     :math:`(1-p) \rho + p Z \rho Z`
-
-    #     Parameters
-    #     ----------
-    #         p : float
-    #             dephase probability
-    #     """
-    #     n = int(np.log2(self.state.rho.shape[0]))
-    #     Z = np.array([[1, 0], [0, -1]])
-    #     rho_tensor = self.state.rho.reshape((2,) * n * 2)
-    #     for node in range(n):
-    #         dephase_part = np.tensordot(np.tensordot(Z, rho_tensor, axes=(1, node)), Z, axes=(node + n, 0))
-    #         dephase_part = np.moveaxis(dephase_part, (0, -1), (node, node + n))
-    #         rho_tensor = (1 - p) * rho_tensor + p * dephase_part
-    #     self.state.rho = rho_tensor.reshape((2**n, 2**n))
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix
@@ -442,14 +375,12 @@ class DensityMatrixBackend:
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
 
             # probability to measure in the |+_angle> state.
-            # NOT EFFICIENT AT ALL since expectation_single calls evolve_single...
-            ### TODO ### tr(rho * Pi) = tr(Pi * rho * Pi) ### self.state.expectation_single(m_op, loc)
+            # NOTE NOT EFFICIENT since expectation_single calls evolve_single...
+            ### TODO ### tr(rho * Pi) = tr(Pi * rho * Pi)
 
             # exp vals of any operator can be complex. Converts to np.ndarray.
-            # If complex w/o small returns the complex number so errors will come out.
+            # If complex w/o small imaginary part returns the complex number so errors will come out.
             prob_0 = np.real_if_close(self.state.expectation_single(m_op, loc))
-
-            print(f"Computing probabilities!!! prob0 = {prob_0}")
 
             # choose the measurement result randomly according to the computed probability
             # just modify result and operator if the outcome turns out to be 1
@@ -463,7 +394,7 @@ class DensityMatrixBackend:
         else:
             result = np.random.choice([0, 1])
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-        # print("here is the measurement outcome", result)
+
         self.results[cmd[1]] = result
 
         self.state.evolve_single(m_op, loc)

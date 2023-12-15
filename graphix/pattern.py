@@ -1,14 +1,16 @@
 """MBQC pattern according to Measurement Calculus
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
-import numpy as np
-import networkx as nx
-from graphix.simulator import PatternSimulator
-from graphix.device_interface import PatternRunner
-from graphix.graphsim import GraphState
-from graphix.gflow import flow, gflow, get_layers
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
 from copy import deepcopy
+
+import networkx as nx
+import numpy as np
+
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.device_interface import PatternRunner
+from graphix.gflow import flow, get_layers, gflow
+from graphix.graphsim import GraphState
+from graphix.simulator import PatternSimulator
 
 
 class Pattern:

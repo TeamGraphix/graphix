@@ -1,8 +1,10 @@
 import unittest
+
 import numpy as np
-from graphix.device_interface import PatternRunner
-import tests.random_circuit as rc
 from qiskit import Aer
+
+import tests.random_circuit as rc
+from graphix.device_interface import PatternRunner
 
 
 def modify_statevector(statevector, output_qubit):

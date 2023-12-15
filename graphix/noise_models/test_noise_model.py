@@ -42,7 +42,7 @@ class TestNoiseModel(NoiseModel):
     def entangle(self):
         """return noise model to qubits that happens after the CZ gate"""
         return create_2_qubit_depolarising_channel(self.entanglement_error_prob)
-        # randobj.rand_channel_kraus(dim=4)#
+        # randobj.rand_channel_kraus(dim=4)
 
     def measure(self):
         """apply noise to qubit to be measured."""
@@ -50,18 +50,10 @@ class TestNoiseModel(NoiseModel):
 
     # randobj.rand_channel_kraus(dim=2, rank=3)
 
-    # randobj.rand_channel_kraus(dim=2)
-    # Random Pauli channel
-    # Channel([{"parameter": np.sqrt(0.3), "operator": np.eye(2)},{"parameter": np.sqrt(0.005), "operator": Ops.x},{"parameter": np.sqrt(0.1), "operator": Ops.y},{"parameter": np.sqrt(1.-0.3-0.005-0.1), "operator": Ops.z}])
-    # create_depolarising_channel(self.measure_channel_prob)
-
-    # Channel([{"parameter": 1.0, "operator": np.eye(2)}])
-
     def confuse_result(self, cmd):
         """assign wrong measurement result
         cmd = "M"
         """
-        # NOTE put self.measure_error_prob as argument of the method? Nope! Called in simulator
 
         print("before", self.simulator.results[cmd[1]])
         if np.random.rand() < self.measure_error_prob:
@@ -70,11 +62,13 @@ class TestNoiseModel(NoiseModel):
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
-        return create_depolarising_channel(self.x_error_prob)  # create_dephasing_channel(self.x_error_prob)
+        return create_depolarising_channel(self.x_error_prob)
+        # create_dephasing_channel(self.x_error_prob)
 
     def byproduct_z(self):
         """apply noise to qubits after Z gate correction"""
-        return create_depolarising_channel(self.z_error_prob)  # Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return create_depolarising_channel(self.z_error_prob)
+        # Channel([{"parameter": 1.0, "operator": np.eye(2)}])
 
     def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""

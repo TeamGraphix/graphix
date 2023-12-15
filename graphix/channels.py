@@ -1,7 +1,7 @@
 import numpy as np
 
+from graphix.Checks.channel_checks import check_data_dims, check_data_normalization, check_data_values_type, check_rank
 from graphix.ops import Ops
-from graphix.Checks.channel_checks import check_data_normalization, check_data_dims, check_data_values_type, check_rank
 
 
 class Channel:
@@ -30,8 +30,6 @@ class Channel:
 
     """
 
-    # TODO json compatibility and allow to import channels from file?
-    # TODO ? or *data and build from several (parameter, operator) couples?
     def __init__(self, kraus_data):
         """
         Parameters
@@ -62,8 +60,7 @@ class Channel:
         # check that the channel is properly normalized i.e
         # \sum_K_i^\dagger K_i = Identity
         assert check_data_normalization(kraus_data)
-        # TODO
-        # add self.dim = kraus_data[0]["operator"].shape[0]?
+
         self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
         self.kraus_ops = kraus_data
 

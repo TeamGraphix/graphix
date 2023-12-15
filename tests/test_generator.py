@@ -1,6 +1,8 @@
 import unittest
-import numpy as np
+
 import networkx as nx
+import numpy as np
+
 import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
 

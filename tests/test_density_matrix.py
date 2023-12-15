@@ -4,13 +4,12 @@ from copy import deepcopy
 
 import numpy as np
 
-
+import tests.random_objects as randobj
 from graphix import Circuit
 from graphix.channels import Channel, create_dephasing_channel, create_depolarising_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
-import tests.random_objects as randobj
 
 
 class TestDensityMatrix(unittest.TestCase):

@@ -1,7 +1,9 @@
 import unittest
+
 import networkx as nx
-from graphix.gflow import gflow, flow
 import numpy as np
+
+from graphix.gflow import flow, gflow
 
 
 class TestGflow(unittest.TestCase):

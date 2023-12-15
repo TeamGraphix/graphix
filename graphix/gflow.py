@@ -11,10 +11,11 @@ Languages, and Programming (Springer, 2008), pp. 857-868.
 
 """
 
+import copy
+
 import networkx as nx
 import numpy as np
 import z3
-import copy
 
 
 def solvebool(A, b):

@@ -7,9 +7,10 @@ M. Elliot, B. Eastin & C. Caves,
 """
 import networkx as nx
 import numpy as np
-from graphix.clifford import CLIFFORD_MUL, CLIFFORD_HSZ_DECOMPOSITION
-from graphix.sim.statevec import Statevec
+
+from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
+from graphix.sim.statevec import Statevec
 
 
 class GraphState(nx.Graph):
