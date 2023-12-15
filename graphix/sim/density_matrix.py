@@ -43,6 +43,7 @@ class DensityMatrix:
             else:
                 raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
 
+
             assert generic_checks.check_square(data)
             self.Nqubit = int(np.log2(len(data)))
 
@@ -50,6 +51,7 @@ class DensityMatrix:
         # NOTE don't check for PSD here since more expensive.
         assert generic_checks.check_hermitian(self.rho)
         assert generic_checks.check_unit_trace(self.rho)
+
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -91,8 +93,7 @@ class DensityMatrix:
                 raise ValueError(f"The provided operator has shape {op.shape} and is not a square matrix.")
         else:
             raise ValueError(f"The provided data has incorrect shape {op.shape}.")
-
-        # TODO rename. Not a dim but a number of qubits
+        
         nqb_op = np.log2(len(op))
         if not np.isclose(nqb_op, int(nqb_op)):
             raise ValueError("Incorrect operator dimension: not consistent with qubits.")
@@ -286,6 +287,7 @@ class DensityMatrix:
 class DensityMatrixBackend:
     """MBQC simulator with density matrix method."""
 
+
     def __init__(self, pattern, max_qubit_num=12, pr_calc=False):
         """
         Parameters
@@ -311,6 +313,7 @@ class DensityMatrixBackend:
             print("Computing probabilities!!!")
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
+
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix
@@ -427,7 +430,7 @@ class DensityMatrixBackend:
                     self.node_index[i],
                 )
 
-    def apply_clifford(self, channel: Channel, qargs):
+    def apply_clifford(self, cmd):
         """backend version of apply_channel
         Parameters
         ----------

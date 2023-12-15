@@ -12,6 +12,7 @@ class NoiseModel(abc.ABC):
         pass
 
     # shared by all objects of the child class.
+
     def assign_simulator(self, simulator):
         self.simulator = simulator
 
