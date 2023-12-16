@@ -59,12 +59,14 @@ state_out = pattern.simulate_pattern(backend='statevector')
 ```
 
 ### and more.. 
-- See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `Graphix`.
-- Try demos on browser with mybinder.org: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD)
+- See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
+- You can try demos on browser with mybinder.org: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD)
 
 - Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
 
 - For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
+
+- Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
 ## Citing
 
