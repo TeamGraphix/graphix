@@ -70,7 +70,7 @@ print(f"Number of edges: {len(edges)}")
 # %%
 # Using efficient graph state simulator `graphix.GraphSim`, we can classically preprocess Pauli measurements.
 # We are currently improving the speed of this process by using rust-based graph manipulation backend.
-pattern.perform_pauli_measurements()
+pattern.perform_pauli_measurements(use_rustworkx=True)
 
 
 # %%

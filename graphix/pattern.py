@@ -1235,6 +1235,7 @@ class Pattern:
         node_distance=(1, 1),
         figsize=None,
         pauli_indicator=True,
+        show_loop=False,
         local_clifford_indicator=False,
         save=False,
         filename=None,
@@ -1249,6 +1250,8 @@ class Pattern:
             Figure size of the plot.
         pauli_indicator : bool
             If True, the nodes are colored according to the measurement angles.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to False.
         local_clifford_indicator : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         save : bool
@@ -1278,6 +1281,7 @@ class Pattern:
             figsize=figsize,
             angles=angles,
             local_clifford=local_clifford,
+            show_loop=show_loop,
             save=save,
             filename=filename,
         )

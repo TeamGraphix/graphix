@@ -333,104 +333,12 @@ print(pattern.max_space())
 
 # %%
 # Plot the resource state. Node positions are determined by the flow-finding algorithm.
-nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-
-from graphix.gflow import flow  # noqa: E402
-
-f, l_k = flow(g, set(range(n_qubits)), set(pattern.output_nodes))
-
-flow = [[i] for i in range(n_qubits)]
-for i in range(n_qubits):
-    contd = True
-    val = i
-    while contd:
-        try:
-            val = f[val]
-            flow[i].append(val)
-        except KeyError:
-            contd = False
-longest = np.max([len(flow[i]) for i in range(n_qubits)])
-
-pos = dict()
-for i in range(n_qubits):
-    length = len(flow[i])
-    fac = longest / (length - 1)
-    for j in range(len(flow[i])):
-        pos[flow[i][j]] = (fac * j, -i)
-
-
-# determine wheher or not a node will be measured in Pauli basis
-def get_clr_list(pattern):
-    nodes, edges = pattern.get_graph()
-    meas_list = pattern.get_measurement_commands()
-    g = nx.Graph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
-    clr_list = []
-    for i in g.nodes:
-        for cmd in meas_list:
-            if cmd[1] == i:
-                if cmd[3] in [-1, -0.5, 0, 0.5, 1]:
-                    clr_list.append([0.5, 0.5, 0.5])
-                else:
-                    clr_list.append([1, 1, 1])
-        if i in pattern.output_nodes:
-            clr_list.append([0.8, 0.8, 0.8])
-    return clr_list
-
-
-graph_params = {
-    "with_labels": True,
-    "alpha": 0.8,
-    "node_size": 350,
-    "node_color": get_clr_list(pattern),
-    "edgecolors": "k",
-}
-
-nx.draw(g, pos=pos, **graph_params)
+pattern.draw_graph()
 
 # %%
 # The resource state after Pauli measurement preprocessing:
-pattern.perform_pauli_measurements()
-nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-graph_params = {
-    "with_labels": True,
-    "alpha": 0.8,
-    "node_size": 350,
-    "node_color": get_clr_list(pattern),
-    "edgecolors": "k",
-}
-
-pos = {  # hand-typed for better look
-    3: (0, 0),
-    4: (1, 0),
-    5: (2, 0),
-    7: (3, 0),
-    11: (0, -1),
-    12: (3, -1),
-    13: (4, -1),
-    15: (5, -1),
-    20: (4, 0),
-    21: (5, 0),
-    22: (6, 0),
-    23: (7, 0),
-    25: (8, 0),
-    27: (9, 0),
-    28: (6, -1),
-    29: (7, -1),
-    30: (8, -1),
-    31: (9, -1),
-    33: (10, -1),
-    35: (11, -1),
-}
-
-nx.draw(g, pos=pos, **graph_params)
+pattern.perform_pauli_measurements(leave_input=False)
+pattern.draw_graph()
 
 # %%
 # Qubit Resource plot
