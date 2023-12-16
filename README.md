@@ -31,7 +31,7 @@ this will install `graphix` and inteface for [IBMQ](https://github.com/TeamGraph
 
 ## Using graphix
 
-### Generating pattern from a circuit and inspecting the resource graph with information flow (arrows)
+### generating pattern from a circuit
 ```python
 from graphix import Circuit
 circuit = Circuit(4)
@@ -42,20 +42,21 @@ pattern.draw_graph()
 ```
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="logo" width="750">
 
-(QAOA circuit, see [this example](examples/qaoa.py))
+(QAOA circuit, see [this example](examples/qaoa.py). Arrows indicate the [information flow](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are other edges of the graph.)
 
-### Preprocessing Pauli measurements and visualizing the resulting graph with generalized flow
+### preprocessing Pauli measurements
 ```python
 pattern.perform_pauli_measurements(leave_input=False)
 pattern.draw_graph(show_loop=False)
 ```
-<img src="https://github.com/TeamGraphix/graphix/assets/33350509/0153b704-7697-4c50-96d1-31fb82bf9b4d" alt="logo" width="140">
+<img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="logo" width="140">
 
-### Simulating the pattern
+(here, the graph has [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)
+
+### simulating the pattern
 ```python
 state_out = pattern.simulate_pattern(backend='statevec')
 ```
-
 
 ### and more.. 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `Graphix`.

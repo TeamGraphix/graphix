@@ -38,7 +38,14 @@ class GraphVisualizer:
             self.meas_plane = meas_plane
 
     def visualize(
-        self, angles=None, local_clifford=None, node_distance=(1, 1), show_loop=False, figsize=None, save=False, filename=None
+        self,
+        angles=None,
+        local_clifford=None,
+        node_distance=(1, 1),
+        show_loop=True,
+        figsize=None,
+        save=False,
+        filename=None,
     ):
         """
         Visualizes the graph with flow or gflow structure.
@@ -56,7 +63,7 @@ class GraphVisualizer:
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
         show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to False.
+            whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
@@ -75,7 +82,9 @@ class GraphVisualizer:
             g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
             if g:
                 print("No flow found. Gflow found.")
-                self.visualize_w_gflow(g, l_k, angles, local_clifford, node_distance, show_loop, figsize, save, filename)
+                self.visualize_w_gflow(
+                    g, l_k, angles, local_clifford, node_distance, show_loop, figsize, save, filename
+                )
             else:
                 print("No flow or gflow found.")
                 self.visualize_wo_structure(angles, local_clifford, node_distance, save, filename)
@@ -188,7 +197,16 @@ class GraphVisualizer:
         plt.show()
 
     def visualize_w_gflow(
-        self, g, l_k, angles=None, local_clifford=None, node_distance=(1, 1), show_loop=False, figsize=None, save=False, filename=None
+        self,
+        g,
+        l_k,
+        angles=None,
+        local_clifford=None,
+        node_distance=(1, 1),
+        show_loop=True,
+        figsize=None,
+        save=False,
+        filename=None,
     ):
         """
         visualizes the graph with flow structure.
@@ -213,7 +231,7 @@ class GraphVisualizer:
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to False.
+            whether or not to show loops for graphs with gflow. defaulted to True.
         figsize : tuple
             Figure size of the plot.
         save : bool
