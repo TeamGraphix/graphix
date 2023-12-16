@@ -42,12 +42,12 @@ pattern.draw_graph()
 ```
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="logo" width="750">
 
-(QAOA circuit, see [this example](examples/qaoa.py). Arrows indicate the [information flow](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are other edges of the graph.)
+(QAOA circuit, see [this example](examples/qaoa.py). Arrows indicate the [*information flow*](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are other edges of the graph.)
 
 ### preprocessing Pauli measurements
 ```python
-pattern.perform_pauli_measurements(leave_input=False)
-pattern.draw_graph(show_loop=False)
+pattern.perform_pauli_measurements()
+pattern.draw_graph()
 ```
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="logo" width="140">
 
