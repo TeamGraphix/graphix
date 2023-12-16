@@ -10,6 +10,7 @@ import numpy as np
 import graphix.Checks.generic_checks as generic_checks
 from graphix.channels import Channel
 from graphix.ops import Ops
+from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
 
 
@@ -309,8 +310,6 @@ class DensityMatrixBackend:
 
         # whether to compute the probability
         self.pr_calc = pr_calc
-        if pr_calc == True:
-            print("Computing probabilities!!!")
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
 

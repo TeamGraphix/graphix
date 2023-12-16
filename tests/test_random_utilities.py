@@ -4,8 +4,7 @@ import numpy as np
 
 import tests.random_objects as randobj
 from graphix.channels import Channel
-from graphix.Checks.channel_checks import check_data_dims
-from graphix.Checks.generic_checks import check_hermitian, check_psd, check_square, check_unit_trace
+from graphix.linalg_validations import check_data_dims, check_hermitian, check_psd, check_square, check_unit_trace
 from graphix.sim.density_matrix import DensityMatrix
 
 

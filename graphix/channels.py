@@ -1,6 +1,6 @@
 import numpy as np
 
-from graphix.Checks.channel_checks import check_data_dims, check_data_normalization, check_data_values_type, check_rank
+from graphix.linalg_validations import check_data_dims, check_data_normalization, check_data_values_type, check_rank
 from graphix.ops import Ops
 
 
@@ -16,12 +16,6 @@ class Channel:
     kraus_ops : array_like(dict())
         the data in format
         array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
-
-
-    Methods
-    -------
-    says(sound=None)
-        Prints the animals name and what sound it makes
 
     Returns
     -------
