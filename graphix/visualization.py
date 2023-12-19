@@ -23,10 +23,14 @@ class GraphVisualizer:
         """
         Parameters
         ----------
-        G: networkx graph
-        v_in: list of input nodes
-        v_out: list of output nodes
-        meas_plane: dict specifying the measurement planes for each node, except output nodes.
+        G : :class:`networkx.graph.Graph` object 
+            networkx graph
+        v_in : list
+            list of input nodes
+        v_out : list
+            list of output nodes
+        meas_plane : dict 
+            dict specifying the measurement planes for each node, except output nodes.
             if None, all measurements are assumed to be in XY-plane.
         """
         self.G = G
@@ -580,7 +584,9 @@ class GraphVisualizer:
 
     @staticmethod
     def edge_intersects_node(start, end, node_pos, buffer=0.2):
-        """Determine if an edge intersects a node."""
+        """
+        Determine if an edge intersects a node.
+        """
         start = np.array(start)
         end = np.array(end)
         if np.all(start == end):
@@ -602,7 +608,9 @@ class GraphVisualizer:
 
     @staticmethod
     def control_point(start, end, node_pos, distance=0.6):
-        """Generate a control point to bend the edge around a node."""
+        """
+        Generate a control point to bend the edge around a node.
+        """
         edge_vector = np.array(end) - np.array(start)
         # Rotate the edge vector 90 degrees or -90 degrees according to the node position
         cross = np.cross(edge_vector, np.array(node_pos) - np.array(start))
@@ -616,6 +624,9 @@ class GraphVisualizer:
 
     @staticmethod
     def bezier_curve(bezier_path, t):
+        """
+        Generate a bezier curve from a list of points.
+        """
         n = len(bezier_path) - 1  # order of the curve
         curve = np.zeros((len(t), 2))
         for i, point in enumerate(bezier_path):
