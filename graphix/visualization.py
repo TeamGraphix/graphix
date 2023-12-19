@@ -23,13 +23,13 @@ class GraphVisualizer:
         """
         Parameters
         ----------
-        G : :class:`networkx.graph.Graph` object 
+        G : :class:`networkx.graph.Graph` object
             networkx graph
         v_in : list
             list of input nodes
         v_out : list
             list of output nodes
-        meas_plane : dict 
+        meas_plane : dict
             dict specifying the measurement planes for each node, except output nodes.
             if None, all measurements are assumed to be in XY-plane.
         """
