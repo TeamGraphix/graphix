@@ -1230,15 +1230,28 @@ class Pattern:
         """
         measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
 
-    def draw_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
+    def draw_graph(
+        self,
+        node_distance=(1, 1),
+        figsize=None,
+        pauli_indicator=True,
+        show_loop=True,
+        local_clifford_indicator=False,
+        save=False,
+        filename=None,
+    ):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
         Parameters
         ----------
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
         pauli_indicator : bool
             If True, the nodes are colored according to the measurement angles.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
         local_clifford_indicator : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         save : bool
@@ -1263,7 +1276,15 @@ class Pattern:
             local_clifford = self.get_vops()
         else:
             local_clifford = None
-        vis.visualize(figsize=figsize, angles=angles, local_clifford=local_clifford, save=save, filename=filename)
+        vis.visualize(
+            node_distance=node_distance,
+            figsize=figsize,
+            angles=angles,
+            local_clifford=local_clifford,
+            show_loop=show_loop,
+            save=save,
+            filename=filename,
+        )
 
     def to_qasm3(self, filename):
         """Export measurement pattern to OpenQASM 3.0 file

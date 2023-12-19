@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   By setting the `use_rustworkx` option to True while using `Pattern.perform_pauli_measurements()`,
   graphix will run pattern optimization using `rustworkx` (#98)
 
+### Fixed
+
+- Fixed gflow-based graph visualization (#107)
+
 ## [0.2.9] - 2023-11-29
 
 ### Added
