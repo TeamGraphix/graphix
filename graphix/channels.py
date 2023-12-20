@@ -5,13 +5,13 @@ from graphix.ops import Ops
 
 
 class KrausChannel:
-    """quantum channel class in the Kraus representation. 
+    """quantum channel class in the Kraus representation.
     Defined by Kraus operators $K_i$ with scalar prefactors ('coef') $c_i$,
     where the channel act on density matrix as
     .. math::
         \rho' = \sum K_i^\dagger \rho K_i
 
-    the data should satisfy 
+    the data should satisfy
     .. math::
         \sum K_i^\dagger K_i = I
 
@@ -150,4 +150,3 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
             {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
         ]
     )
-

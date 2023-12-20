@@ -91,7 +91,7 @@ class DensityMatrix:
                 raise ValueError(f"The provided operator has shape {op.shape} and is not a square matrix.")
         else:
             raise ValueError(f"The provided data has incorrect shape {op.shape}.")
-        
+
         nqb_op = np.log2(len(op))
         if not np.isclose(nqb_op, int(nqb_op)):
             raise ValueError("Incorrect operator dimension: not consistent with qubits.")
@@ -370,7 +370,7 @@ class DensityMatrixBackend:
             result = 0
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
             prob_0 = np.real(self.state.expectation_single(m_op, loc))
-            
+
             # choose the measurement result randomly according to the computed probability
             # just modify result and operator if the outcome turns out to be 1
             r = np.random.rand()

@@ -45,7 +45,9 @@ class PatternSimulator:
                 self.noise_model = None
                 # no noise: no need to compute probabilities
                 self.backend = DensityMatrixBackend(pattern, **kwargs)
-                warnings.warn("Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument ")
+                warnings.warn(
+                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument "
+                )
             if noise_model is not None:
                 self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities

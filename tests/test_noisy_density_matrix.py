@@ -40,6 +40,7 @@ class TestNoiseModel(NoiseModel):
     def entangle(self):
         """return noise model to qubits that happens after the CZ gate"""
         return two_qubit_depolarising_channel(self.entanglement_error_prob)
+
     def measure(self):
         """apply noise to qubit to be measured."""
         return depolarising_channel(self.measure_channel_prob)

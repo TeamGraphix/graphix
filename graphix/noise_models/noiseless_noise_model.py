@@ -27,8 +27,7 @@ class NoiselessNoiseModel(NoiseModel):
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def confuse_result(self, cmd):
-        """assign wrong measurement result
-        """
+        """assign wrong measurement result"""
         p = 0.0
         if np.random.rand() < p:
             self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]

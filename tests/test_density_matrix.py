@@ -110,7 +110,7 @@ class TestDensityMatrix(unittest.TestCase):
             dm = DensityMatrix(nqubit=n)
             dm.evolve_single(op, i)
             assert np.allclose(dm.rho, expected_density_matrix)
-            
+
     def test_expectation_single_fail(self):
         nqb = 3
         dm = DensityMatrix(nqubit=nqb)
@@ -330,7 +330,6 @@ class TestDensityMatrix(unittest.TestCase):
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         dm_single = deepcopy(dm)
 
-
         op = randobj.rand_unit(2**N_qubits_op)
         i = np.random.randint(0, N_qubits)
 
@@ -372,7 +371,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # random unitary
         op = randobj.rand_unit(2**N_qubits_op)
-        
+
         # 3 random indices
         targets = tuple(random.sample(range(N_qubits), 3))
 
@@ -431,7 +430,7 @@ class TestDensityMatrix(unittest.TestCase):
         #  tmp = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
 
         data = randobj.rand_herm(2 ** np.random.randint(2, 4))
-        
+
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
         assert np.allclose(np.trace(dm.rho), 1)
@@ -779,7 +778,6 @@ class TestDensityMatrix(unittest.TestCase):
             dm.apply_channel("a", [i])
 
 
-
 class DensityMatrixBackendTest(unittest.TestCase):
     """Test for DensityMatrixBackend class."""
 
@@ -833,7 +831,6 @@ class DensityMatrixBackendTest(unittest.TestCase):
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
-
 
     def test_measure_pr_calc(self):
 
