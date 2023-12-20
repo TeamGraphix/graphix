@@ -269,7 +269,7 @@ class DensityMatrix:
 
         for k_op in channel.kraus_ops:
             tmp_dm.evolve(k_op["operator"], qargs)
-            result_array += k_op["parameter"] * np.conj(k_op["parameter"]) * tmp_dm.rho
+            result_array += k_op["coef"] * np.conj(k_op["coef"]) * tmp_dm.rho
             # reinitialize to input density matrix
             tmp_dm = deepcopy(self)
 

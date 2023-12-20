@@ -6,7 +6,7 @@ import numpy as np
 
 import tests.random_objects as randobj
 from graphix import Circuit
-from graphix.channels import KrausChannel, dephasing_kraus_channel, depolarising_kraus_channel
+from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
@@ -494,7 +494,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        dephase_channel = dephasing_kraus_channel(prob)
+        dephase_channel = dephasing_channel(prob)
 
         # useless since checked in apply_channel method.
         assert isinstance(dephase_channel, KrausChannel)
@@ -530,7 +530,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        dephase_channel = dephasing_kraus_channel(prob)
+        dephase_channel = dephasing_channel(prob)
 
         # useless since checked in apply_channel method.
         assert isinstance(dephase_channel, KrausChannel)
@@ -579,7 +579,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        depol_channel = depolarising_kraus_channel(prob)
+        depol_channel = depolarising_channel(prob)
 
         # useless since checked in apply_channel method.
         assert isinstance(depol_channel, KrausChannel)
@@ -621,7 +621,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        depol_channel = depolarising_kraus_channel(prob)
+        depol_channel = depolarising_channel(prob)
 
         # useless since checked in apply_channel method.
         assert isinstance(depol_channel, KrausChannel)
@@ -714,7 +714,7 @@ class TestDensityMatrix(unittest.TestCase):
         for elem in channel.kraus_ops:  # kraus_ops is a list of dicts
             psi_evolved = np.tensordot(elem["operator"], psi.reshape((2,) * N_qubits), (1, i))
             psi_evolved = np.moveaxis(psi_evolved, 0, i)
-            expected_dm += elem["parameter"] * np.conj(elem["parameter"]) * np.outer(psi_evolved, np.conj(psi_evolved))
+            expected_dm += elem["coef"] * np.conj(elem["coef"]) * np.outer(psi_evolved, np.conj(psi_evolved))
 
         # compare
         np.testing.assert_allclose(expected_dm.trace(), 1.0)
@@ -756,7 +756,7 @@ class TestDensityMatrix(unittest.TestCase):
                 elem["operator"].reshape((2,) * 2 * nqb), psi.reshape((2,) * N_qubits), ((2, 3), qubits)
             )
             psi_evolved = np.moveaxis(psi_evolved, (0, 1), qubits)
-            expected_dm += elem["parameter"] * np.conj(elem["parameter"]) * np.outer(psi_evolved, np.conj(psi_evolved))
+            expected_dm += elem["coef"] * np.conj(elem["coef"]) * np.outer(psi_evolved, np.conj(psi_evolved))
 
         np.testing.assert_allclose(expected_dm.trace(), 1.0)
         np.testing.assert_allclose(dm.rho, expected_dm)

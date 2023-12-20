@@ -38,7 +38,7 @@ class KrausChannel:
         ----------
         kraus_data : array_like
             array of Kraus operator data.
-            array_like(dict): [{parameter: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
+            array_like(dict): [{coef: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
             only works for square Kraus operators
 
         Raises

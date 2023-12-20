@@ -50,10 +50,10 @@ class TestNoiseModel(NoiseModel):
         cmd = "M"
         """
 
-        print("before", self.simulator.results[cmd[1]])
+        # print("before", self.simulator.results[cmd[1]])
         if np.random.rand() < self.measure_error_prob:
             self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
-        print("after", self.simulator.results[cmd[1]])
+        # print("after", self.simulator.results[cmd[1]])
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
@@ -66,7 +66,7 @@ class TestNoiseModel(NoiseModel):
     def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""
         # TODO list separate different Cliffords to allow customization
-        return KrausChannel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def tick_clock(self):
         """notion of time in real devices - this is where we apply effect of T1 and T2.

@@ -76,7 +76,7 @@ def check_unit_trace(matrix: np.ndarray) -> bool:
 
 def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
     # NOTE use np.conjugate() instead of object.conj() to certify behaviour when using non-numpy float/complex types
-    opsu = np.array([i["parameter"] * np.conj(i["parameter"]) * i["operator"].conj().T @ i["operator"] for i in data])
+    opsu = np.array([i["coef"] * np.conj(i["coef"]) * i["operator"].conj().T @ i["operator"] for i in data])
 
     if not np.allclose(np.sum(opsu, axis=0), np.eye(2 ** int(np.log2(len(data[0]["operator"]))))):
         raise ValueError(f"The specified channel is not normalized. {np.sum(opsu, axis=0)}")
@@ -104,7 +104,7 @@ def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
 
     if value_types == [True]:
 
-        key0_values = list(set([list(i.keys())[0] == "parameter" for i in data]))
+        key0_values = list(set([list(i.keys())[0] == "coef" for i in data]))
         key1_values = list(set([list(i.keys())[1] == "operator" for i in data]))
 
         if key0_values == [True] and key1_values == [True]:
@@ -117,7 +117,7 @@ def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
 
                 if operator_dtypes == [True]:
                     par_types = list(
-                        set([isinstance(i["parameter"], (float, complex, np.float64, np.complex128)) for i in data])
+                        set([isinstance(i["coef"], (float, complex, np.float64, np.complex128)) for i in data])
                     )
 
                     if par_types == [True]:
@@ -132,7 +132,7 @@ def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
             else:
                 raise TypeError("All operators don't have the same type and must be np.ndarray.")
         else:
-            raise KeyError("The keys of the indivudal Kraus operators must be parameter and operator.")
+            raise KeyError("The keys of the indivudal Kraus operators must be coef and operator.")
     else:
         raise TypeError("All values are not dictionaries.")
 
