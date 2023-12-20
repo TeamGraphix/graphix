@@ -50,10 +50,9 @@ class TestNoiseModel(NoiseModel):
         cmd = "M"
         """
 
-        # print("before", self.simulator.results[cmd[1]])
         if np.random.rand() < self.measure_error_prob:
             self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
-        # print("after", self.simulator.results[cmd[1]])
+
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
