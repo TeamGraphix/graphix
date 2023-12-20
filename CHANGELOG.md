@@ -13,11 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-
 ## [0.2.5] - 2023-08-17
 
 ### Added
-
 
 - Fast alternative to partial trace (`Statevec.remove_qubit`) for a separable (post-measurement) qubit (#73)
 
