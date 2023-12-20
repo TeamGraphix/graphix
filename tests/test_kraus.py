@@ -4,10 +4,10 @@ import numpy as np
 
 import tests.random_objects as randobj
 from graphix.channels import (
-    Channel,
-    create_2_qubit_depolarising_channel,
-    create_dephasing_channel,
-    create_depolarising_channel,
+    KrausChannel,
+    two_qubit_depolarising_channel,
+    dephasing_channel,
+    depolarising_channel,
 )
 from graphix.ops import Ops
 
@@ -19,10 +19,10 @@ class TestChannel(unittest.TestCase):
         "test for successful intialization"
 
         prob = np.random.rand()
-        mychannel = Channel(
+        mychannel = KrausChannel(
             [
-                {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
             ]
         )
         assert isinstance(mychannel.nqubit, int)
@@ -38,81 +38,81 @@ class TestChannel(unittest.TestCase):
 
         # empty data
         with self.assertRaises(ValueError):
-            mychannel = Channel([])
+            mychannel = KrausChannel([])
 
         # incorrect parameter type
         with self.assertRaises(TypeError):
-            mychannel = Channel("a")
+            mychannel = KrausChannel("a")
 
         # incorrect "parameter" key
         with self.assertRaises(KeyError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parmer": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                    {"coefficients": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
                 ]
             )
 
         # incorrect "operator" key
         with self.assertRaises(KeyError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                    {"coef": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
                 ]
             )
 
         # incorrect parameter type
         with self.assertRaises(TypeError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                    {"coef": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
                 ]
             )
 
         # incorrect operator type
         with self.assertRaises(TypeError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": np.sqrt(1 - prob), "operator": "a"},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                    {"coef": np.sqrt(1 - prob), "operator": "a"},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
                 ]
             )
 
         # incorrect operator dimension
         with self.assertRaises(ValueError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                    {"coef": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
                 ]
             )
 
         # incorrect operator dimension: square but not qubits
         with self.assertRaises(ValueError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": np.sqrt(1 - prob), "operator": np.random.rand(3, 3)},
-                    {"parameter": np.sqrt(prob), "operator": np.random.rand(3, 3)},
+                    {"coef": np.sqrt(1 - prob), "operator": np.random.rand(3, 3)},
+                    {"coef": np.sqrt(prob), "operator": np.random.rand(3, 3)},
                 ]
             )
 
         # doesn't square to 1. Not normalized. Parameter.
         with self.assertRaises(ValueError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                    {"coef": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
                 ]
             )
 
         # doesn't square to 1. Not normalized. Operator.
         with self.assertRaises(ValueError):
-            mychannel = Channel(
+            mychannel = KrausChannel(
                 [
-                    {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                    {"parameter": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
+                    {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
                 ]
             )
 
@@ -125,11 +125,11 @@ class TestChannel(unittest.TestCase):
 
         prob = np.random.rand()
         data = [
-            {"parameter": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-            {"parameter": np.sqrt(prob), "operator": Ops.z},
+            {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+            {"coef": np.sqrt(prob), "operator": Ops.z},
         ]
-        dephase_channel = create_dephasing_channel(prob)
-        assert isinstance(dephase_channel, Channel)
+        dephase_channel = dephasing_channel(prob)
+        assert isinstance(dephase_channel, KrausChannel)
         assert dephase_channel.nqubit == 1
         assert dephase_channel.size == 2
         assert dephase_channel.is_normalized
@@ -142,15 +142,15 @@ class TestChannel(unittest.TestCase):
 
         prob = np.random.rand()
         data = [
-            {"parameter": np.sqrt(1 - prob), "operator": np.eye(2)},
-            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.x},
-            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.y},
-            {"parameter": np.sqrt(prob / 3.0), "operator": Ops.z},
+            {"coef": np.sqrt(1 - prob), "operator": np.eye(2)},
+            {"coef": np.sqrt(prob / 3.0), "operator": Ops.x},
+            {"coef": np.sqrt(prob / 3.0), "operator": Ops.y},
+            {"coef": np.sqrt(prob / 3.0), "operator": Ops.z},
         ]
 
-        depol_channel = create_depolarising_channel(prob)
+        depol_channel = depolarising_channel(prob)
 
-        assert isinstance(depol_channel, Channel)
+        assert isinstance(depol_channel, KrausChannel)
         assert depol_channel.nqubit == 1
         assert depol_channel.size == 4
         assert depol_channel.is_normalized
@@ -163,27 +163,27 @@ class TestChannel(unittest.TestCase):
 
         prob = np.random.rand()
         data = [
-            {"parameter": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
-            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
-            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
-            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
-            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
-            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
-            {"parameter": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.y, Ops.z)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.x)},
-            {"parameter": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
+            {"coef": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.z)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.x)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
         ]
 
-        depol_channel_2_qubit = create_2_qubit_depolarising_channel(prob)
+        depol_channel_2_qubit = two_qubit_depolarising_channel(prob)
 
-        assert isinstance(depol_channel_2_qubit, Channel)
+        assert isinstance(depol_channel_2_qubit, KrausChannel)
         assert depol_channel_2_qubit.nqubit == 2
         assert depol_channel_2_qubit.size == 16
         assert depol_channel_2_qubit.is_normalized

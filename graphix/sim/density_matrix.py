@@ -8,7 +8,7 @@ from copy import deepcopy
 import numpy as np
 
 from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace
-from graphix.channels import Channel
+from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
@@ -239,14 +239,14 @@ class DensityMatrix:
         """
         return np.abs(statevec.conj() @ self.rho @ statevec)
 
-    def apply_channel(self, channel: Channel, qargs):
+    def apply_channel(self, channel: KrausChannel, qargs):
         """Applies a channel to a density matrix.
 
         Parameters
         ----------
         :rho: density matrix.
-        channel: :class:`graphix.kraus.Channel` object
-            Channel to be applied to the density matrix
+        channel: :class:`graphix.channel.KrausChannel` object
+            KrausChannel to be applied to the density matrix
         qargs: target qubit indices
 
         Returns
@@ -257,19 +257,19 @@ class DensityMatrix:
         ------
         ValueError
             If the final density matrix is not normalized after application of the channel.
-            This shouldn't happen since :class:`graphix.kraus.Channel` objects are normalized by construction.
+            This shouldn't happen since :class:`graphix.channel.KrausChannel` objects are normalized by construction.
         ....
         """
 
         result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
         tmp_dm = deepcopy(self)
 
-        if not isinstance(channel, Channel):
+        if not isinstance(channel, KrausChannel):
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
-        for i in channel.kraus_ops:
-            tmp_dm.evolve(i["operator"], qargs)
-            result_array += i["parameter"] * np.conj(i["parameter"]) * tmp_dm.rho
+        for k_op in channel.kraus_ops:
+            tmp_dm.evolve(k_op["operator"], qargs)
+            result_array += k_op["parameter"] * np.conj(k_op["parameter"]) * tmp_dm.rho
             # reinitialize to input density matrix
             tmp_dm = deepcopy(self)
 
@@ -424,7 +424,7 @@ class DensityMatrixBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
-    def apply_channel(self, channel: Channel, qargs):
+    def apply_channel(self, channel: KrausChannel, qargs):
         """backend version of apply_channel
         Parameters
         ----------

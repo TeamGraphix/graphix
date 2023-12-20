@@ -4,15 +4,9 @@ import numpy as np
 
 from graphix import Circuit
 from graphix.noise_models.noise_model import NoiseModel
-from graphix.channels import Channel, create_depolarising_channel
+from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
-from tests.test_noise_model import TestNoiseModel
 from graphix.ops import Ops
-from graphix.channels import (
-    Channel,
-    create_depolarising_channel,
-    create_2_qubit_depolarising_channel,
-)
 
 
 class TestNoiseModel(NoiseModel):
@@ -41,18 +35,14 @@ class TestNoiseModel(NoiseModel):
 
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""
-        return create_depolarising_channel(self.prepare_error_prob)
+        return depolarising_channel(self.prepare_error_prob)
 
     def entangle(self):
         """return noise model to qubits that happens after the CZ gate"""
-        return create_2_qubit_depolarising_channel(self.entanglement_error_prob)
-        # randobj.rand_channel_kraus(dim=4)
-
+        return two_qubit_depolarising_channel(self.entanglement_error_prob)
     def measure(self):
         """apply noise to qubit to be measured."""
-        return create_depolarising_channel(self.measure_channel_prob)
-
-    # randobj.rand_channel_kraus(dim=2, rank=3)
+        return depolarising_channel(self.measure_channel_prob)
 
     def confuse_result(self, cmd):
         """assign wrong measurement result
@@ -66,18 +56,16 @@ class TestNoiseModel(NoiseModel):
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
-        return create_depolarising_channel(self.x_error_prob)
-        # create_dephasing_channel(self.x_error_prob)
+        return depolarising_channel(self.x_error_prob)
 
     def byproduct_z(self):
         """apply noise to qubits after Z gate correction"""
-        return create_depolarising_channel(self.z_error_prob)
-        # Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return depolarising_channel(self.z_error_prob)
 
     def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""
         # TODO list separate different Cliffords to allow customization
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"parameter": 1.0, "operator": np.eye(2)}])
 
     def tick_clock(self):
         """notion of time in real devices - this is where we apply effect of T1 and T2.

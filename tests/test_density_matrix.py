@@ -6,7 +6,7 @@ import numpy as np
 
 import tests.random_objects as randobj
 from graphix import Circuit
-from graphix.channels import Channel, create_dephasing_channel, create_depolarising_channel
+from graphix.channels import KrausChannel, dephasing_kraus_channel, depolarising_kraus_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
@@ -495,10 +495,10 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        dephase_channel = create_dephasing_channel(prob)
+        dephase_channel = dephasing_kraus_channel(prob)
 
         # useless since checked in apply_channel method.
-        assert isinstance(dephase_channel, Channel)
+        assert isinstance(dephase_channel, KrausChannel)
         # useless since checked in the constructor.
         assert dephase_channel.is_normalized()
 
@@ -531,10 +531,10 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        dephase_channel = create_dephasing_channel(prob)
+        dephase_channel = dephasing_kraus_channel(prob)
 
         # useless since checked in apply_channel method.
-        assert isinstance(dephase_channel, Channel)
+        assert isinstance(dephase_channel, KrausChannel)
         # useless since checked in the constructor.
         assert dephase_channel.is_normalized()
 
@@ -580,10 +580,10 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        depol_channel = create_depolarising_channel(prob)
+        depol_channel = depolarising_kraus_channel(prob)
 
         # useless since checked in apply_channel method.
-        assert isinstance(depol_channel, Channel)
+        assert isinstance(depol_channel, KrausChannel)
         # useless since checked in the constructor.
         assert depol_channel.is_normalized()
 
@@ -622,10 +622,10 @@ class TestDensityMatrix(unittest.TestCase):
 
         # create dephasing channel
         prob = np.random.rand()
-        depol_channel = create_depolarising_channel(prob)
+        depol_channel = depolarising_kraus_channel(prob)
 
         # useless since checked in apply_channel method.
-        assert isinstance(depol_channel, Channel)
+        assert isinstance(depol_channel, KrausChannel)
         # useless since checked in the constructor.
         assert depol_channel.is_normalized()
 

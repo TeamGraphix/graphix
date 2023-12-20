@@ -1,6 +1,6 @@
 import numpy as np
 from graphix.noise_models.noise_model import NoiseModel
-from graphix.channels import Channel
+from graphix.channels import KrausChannel
 
 
 class NoiselessNoiseModel(NoiseModel):
@@ -16,15 +16,15 @@ class NoiselessNoiseModel(NoiseModel):
 
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def entangle(self):
         """return noise model to qubits that happens after the CZ gats"""
-        return Channel([{"parameter": 1.0, "operator": np.eye(4)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(4)}])
 
     def measure(self):
         """apply noise to qubit to be measured."""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def confuse_result(self, cmd):
         """assign wrong measurement result
@@ -35,15 +35,15 @@ class NoiselessNoiseModel(NoiseModel):
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def byproduct_z(self):
         """apply noise to qubits after Z gate correction"""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""
-        return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def tick_clock(self):
         """notion of time in real devices - this is where we apply effect of T1 and T2.

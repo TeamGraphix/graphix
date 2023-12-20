@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 import tests.random_objects as randobj
-from graphix.channels import Channel
+from graphix.channels import KrausChannel
 from graphix.linalg_validations import check_data_dims, check_hermitian, check_psd, check_square, check_unit_trace
 from graphix.sim.density_matrix import DensityMatrix
 
@@ -39,7 +39,7 @@ class TestUtilities(unittest.TestCase):
         # no rank feature
         channel = randobj.rand_channel_kraus(dim=dim)
 
-        assert isinstance(channel, Channel)
+        assert isinstance(channel, KrausChannel)
         assert check_data_dims(channel.kraus_ops)
         assert channel.kraus_ops[0]["operator"].shape == (dim, dim)
         assert channel.nqubit == nqb
@@ -49,7 +49,7 @@ class TestUtilities(unittest.TestCase):
         rk = np.random.randint(1, dim**2 + 1)
         channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
 
-        assert isinstance(channel, Channel)
+        assert isinstance(channel, KrausChannel)
         assert check_data_dims(channel.kraus_ops)
         assert channel.kraus_ops[0]["operator"].shape == (dim, dim)
         assert channel.nqubit == nqb
