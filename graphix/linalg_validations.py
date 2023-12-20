@@ -2,12 +2,6 @@ import numpy as np
 from typing import Union
 
 
-# TODO separate the check for power of 2 dimension from the rest
-# TODO investigate numpy.typing for ndarray NDArray or ArrayLike (can be converted to arrays)
-# https://stackoverflow.com/questions/35673895/type-hinting-annotation-pep-484-for-numpy-ndarray
-# https://numpy.org/doc/stable/reference/typing.html#module-numpy.typing
-
-
 def check_square(matrix: np.ndarray) -> bool:
     """
     check if matrix is a square matrix with a power of 2 dimension.

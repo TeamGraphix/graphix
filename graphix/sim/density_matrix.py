@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import numpy as np
 
-import graphix.Checks.generic_checks as generic_checks
+from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace
 from graphix.channels import Channel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
@@ -44,15 +44,12 @@ class DensityMatrix:
             else:
                 raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
 
-
-            assert generic_checks.check_square(data)
+            assert check_square(data)
             self.Nqubit = int(np.log2(len(data)))
 
             self.rho = data
-        # NOTE don't check for PSD here since more expensive.
-        assert generic_checks.check_hermitian(self.rho)
-        assert generic_checks.check_unit_trace(self.rho)
-
+        assert check_hermitian(self.rho)
+        assert check_unit_trace(self.rho)
 
     def __repr__(self):
         return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
@@ -279,15 +276,12 @@ class DensityMatrix:
         # Performance?
         self.rho = deepcopy(result_array)
 
-        # The channel is normalised by construction if everything is ok.
-        # TODO use self.is_normalized when implemented
         if not np.allclose(self.rho.trace(), 1.0):
-            raise ValueError("The output density is not normalized, something went wrong while applying channel.")
+            raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
 
 class DensityMatrixBackend:
     """MBQC simulator with density matrix method."""
-
 
     def __init__(self, pattern, max_qubit_num=12, pr_calc=False):
         """
@@ -298,6 +292,9 @@ class DensityMatrixBackend:
             max_qubit_num : int
                 optional argument specifying the maximum number of qubits
                 to be stored in the statevector at a time.
+            pr_calc : bool
+                whether or not to compute the probability distribution before choosing the measurement result.
+                if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
@@ -312,7 +309,6 @@ class DensityMatrixBackend:
         self.pr_calc = pr_calc
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix
@@ -370,29 +366,19 @@ class DensityMatrixBackend:
         angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
         loc = self.node_index.index(cmd[1])
 
-        # check if compute the probability
         if self.pr_calc:
-
             result = 0
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-
-            # probability to measure in the |+_angle> state.
-            # NOTE NOT EFFICIENT since expectation_single calls evolve_single...
-            ### TODO ### tr(rho * Pi) = tr(Pi * rho * Pi)
-
-            # exp vals of any operator can be complex. Converts to np.ndarray.
-            # If complex w/o small imaginary part returns the complex number so errors will come out.
-            prob_0 = np.real_if_close(self.state.expectation_single(m_op, loc))
-
+            prob_0 = np.real(self.state.expectation_single(m_op, loc))
+            
             # choose the measurement result randomly according to the computed probability
             # just modify result and operator if the outcome turns out to be 1
             r = np.random.rand()
-            print("random number is", r)
             if r > prob_0:
                 result = 1
                 m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
 
-        # choose the measurement result randomly
+        # choose the measurement result with 50%/50% probabilities
         else:
             result = np.random.choice([0, 1])
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
@@ -401,7 +387,7 @@ class DensityMatrixBackend:
 
         self.state.evolve_single(m_op, loc)
         self.state.normalize()
-        # perform ptrace right after measurement as in real devices
+        # perform ptrace right after the measurement (destructive measurement).
         self.state.ptrace(loc)
         self.node_index.remove(cmd[1])
 

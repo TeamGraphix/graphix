@@ -1,5 +1,3 @@
-import numpy as np
-from graphix.sim.density_matrix import DensityMatrix
 import abc
 
 

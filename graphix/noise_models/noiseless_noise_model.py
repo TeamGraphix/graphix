@@ -28,7 +28,6 @@ class NoiselessNoiseModel(NoiseModel):
 
     def confuse_result(self, cmd):
         """assign wrong measurement result
-        cmd = "M"
         """
         p = 0.0
         if np.random.rand() < p:
@@ -44,7 +43,6 @@ class NoiselessNoiseModel(NoiseModel):
 
     def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""
-        # TODO list separate different Cliffords to allow customization
         return Channel([{"parameter": 1.0, "operator": np.eye(2)}])
 
     def tick_clock(self):

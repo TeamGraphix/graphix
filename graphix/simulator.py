@@ -9,7 +9,8 @@ import numpy as np
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
-
+from graphix.noise_models import NoiseModel
+import warnings
 
 
 class PatternSimulator:
@@ -24,12 +25,14 @@ class PatternSimulator:
         -----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: str, 'statevector' or 'tensornetwork'
+        backend: str, 'statevector', 'densitymatrix or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
+        noise_model: 
         kwargs: keyword args for specified backend.
 
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
-            :class:`graphix.sim.tensornet.TensorNetworkBackend`
+            :class:`graphix.sim.tensornet.TensorNetworkBackend`\
+            :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
@@ -38,23 +41,21 @@ class PatternSimulator:
             self.noise_model = None
             self.backend = StatevectorBackend(pattern, **kwargs)
         elif backend == "densitymatrix":
-
             if noise_model is None:
                 self.noise_model = None
                 # no noise: no need to compute probabilities
                 self.backend = DensityMatrixBackend(pattern, **kwargs)
+                warnings.warn("Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument ")
             if noise_model is not None:
                 self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities
-                # TODO update after exploration
                 self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
-
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         # TODO or just do the noiseless sim with a warning?
         elif backend in {"statevector", "tensornetwork", "mps"} and noise_model is not None:
-            raise ValueError(f"The backend {backend} doesn't support noise.")
+            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided")
         else:
             raise ValueError("Unknown backend.")
         self.pattern = pattern
@@ -160,9 +161,9 @@ class NoisyPatternSimulator:
         self.state = self.backend.state
         self.node_index = []
         if noise_model is None:
-            set_noise_model(self, BaseNoiseModel)
+            self.set_noise_model(self, NoiseModel)
         else:
-            set_noise_model(self, noise_model)
+            self.set_noise_model(self, noise_model)
 
     def set_noise_model(self, model):
         assert issubclass(model, NoiseModel)

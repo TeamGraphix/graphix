@@ -360,11 +360,6 @@ class TestDensityMatrix(unittest.TestCase):
         dm.evolve(op, edge)
         rho = dm.rho
 
-
-        # statevec calculation
-        # NOTE don't know if evolve has been tested in the SV backend.
-        # do it by hand for 2x2.
-
         psi = psi.reshape((2,) * N_qubits)
         psi = np.tensordot(op.reshape((2,) * 2 * N_qubits_op), psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
@@ -372,12 +367,10 @@ class TestDensityMatrix(unittest.TestCase):
         np.testing.assert_allclose(rho, expected_matrix)
 
         # 3-qubit gate
-
         N_qubits = np.random.randint(3, 5)
         N_qubits_op = 3
 
         # random unitary
-
         op = randobj.rand_unit(2**N_qubits_op)
         
         # 3 random indices
@@ -392,28 +385,12 @@ class TestDensityMatrix(unittest.TestCase):
         dm.evolve(op, targets)
         rho = dm.rho
 
-
-        # statevec calculation
-        # NOTE don't know if evolve has been tested in the SV backend.
-        # do it by hand 3x3.
-
-
         psi = psi.reshape((2,) * N_qubits)
         psi = np.tensordot(op.reshape((2,) * 2 * N_qubits_op), psi, ((3, 4, 5), targets))
         psi = np.moveaxis(psi, (0, 1, 2), targets)
         expected_matrix = np.outer(psi, psi.conj())
         np.testing.assert_allclose(rho, expected_matrix)
 
-
-        # TODO here or elsewhere compare pour Statevec.evolve().
-        # Cannot build Statevector object from data as DM.
-        # NEWFEATURE?
-        # psi_evolved_sv = psi.evolve(op, targets)
-        # assert np.allclose(rho, DensityMatrix(data=np.outer(psi_evolved_sv, psi_evolved_sv.conj())))
-
-        # random_qubit_gate?
-
-    # TODO by testing evolve, we remove the need for testing indepently CNOT, SWAP and CZ
     def test_evolve_fail(self):
 
         # test on 3-qubit gate just in case.
@@ -421,11 +398,8 @@ class TestDensityMatrix(unittest.TestCase):
         N_qubits_op = 3
 
         # random unitary
-
         op = randobj.rand_unit(2**N_qubits_op)
         # 3 random indices
-        targets = tuple(random.sample(range(N_qubits), 3))
-
         dm = DensityMatrix(nqubit=N_qubits)
 
         # dimension mismatch
