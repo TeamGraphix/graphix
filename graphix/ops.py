@@ -18,9 +18,9 @@ class States:
 class Ops:
     """Basic single- and two-qubits operators"""
 
-    x = np.array([[0, 1], [1, 0]])
-    y = np.array([[0, -1j], [1j, 0]])
-    z = np.array([[1, 0], [0, -1]])
+    x = np.array([[0, 1.0], [1.0, 0]])
+    y = np.array([[0, -1.0 * 1j], [1.0 * 1j, 0]])
+    z = np.array([[1.0, 0], [0, -1.0]])
     s = np.array([[1, 0], [0, 1j]])
     h = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
     cz = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
@@ -52,6 +52,7 @@ class Ops:
         ----------
         operator : 2*2 np.array
         """
+
         return np.array([[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]])
 
     @staticmethod

@@ -1,95 +1,198 @@
 import unittest
+
 import numpy as np
-from graphix.kraus import to_kraus, generate_dephasing_kraus, _is_kraus_op
+
+import tests.random_objects as randobj
+from graphix.channels import (
+    KrausChannel,
+    two_qubit_depolarising_channel,
+    dephasing_channel,
+    depolarising_channel,
+)
+from graphix.ops import Ops
 
 
-class TestKraus(unittest.TestCase):
-    def test_to_kraus_fail(self):
-        A_wrong = [[0, 1, 2], [3, 4, 5]]
-        A = [[0, 1], [2, 3]]
+class TestChannel(unittest.TestCase):
+    """Tests for Channel class"""
 
-        # data type is invalid
+    def test_init_with_data_success(self):
+        "test for successful intialization"
+
+        prob = np.random.rand()
+        mychannel = KrausChannel(
+            [
+                {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+            ]
+        )
+        assert isinstance(mychannel.nqubit, int)
+        assert mychannel.nqubit == 1
+        assert mychannel.size == 2
+        assert isinstance(mychannel.kraus_ops, (list, np.ndarray, tuple))
+        assert mychannel.is_normalized
+
+    def test_init_with_data_fail(self):
+        "test for unsuccessful intialization"
+
+        prob = np.random.rand()
+
+        # empty data
+        with self.assertRaises(ValueError):
+            mychannel = KrausChannel([])
+
+        # incorrect parameter type
         with self.assertRaises(TypeError):
-            to_kraus(1)
+            mychannel = KrausChannel("a")
+
+        # incorrect "parameter" key
+        with self.assertRaises(KeyError):
+            mychannel = KrausChannel(
+                [
+                    {"coefficients": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
+
+        # incorrect "operator" key
+        with self.assertRaises(KeyError):
+            mychannel = KrausChannel(
+                [
+                    {"coef": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
+
+        # incorrect parameter type
         with self.assertRaises(TypeError):
-            to_kraus("hello")
+            mychannel = KrausChannel(
+                [
+                    {"coef": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
+
+        # incorrect operator type
         with self.assertRaises(TypeError):
-            to_kraus({})
+            mychannel = KrausChannel(
+                [
+                    {"coef": np.sqrt(1 - prob), "operator": "a"},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
 
-        # (i) single unitary matrix A
+        # incorrect operator dimension
         with self.assertRaises(ValueError):
-            to_kraus([np.asarray(A_wrong, dtype=complex), 1])
+            mychannel = KrausChannel(
+                [
+                    {"coef": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
+
+        # incorrect operator dimension: square but not qubits
         with self.assertRaises(ValueError):
-            to_kraus([A_wrong, 1])
+            mychannel = KrausChannel(
+                [
+                    {"coef": np.sqrt(1 - prob), "operator": np.random.rand(3, 3)},
+                    {"coef": np.sqrt(prob), "operator": np.random.rand(3, 3)},
+                ]
+            )
+
+        # doesn't square to 1. Not normalized. Parameter.
         with self.assertRaises(ValueError):
-            to_kraus([A, 1j])
+            mychannel = KrausChannel(
+                [
+                    {"coef": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ]
+            )
 
-        # (ii) single Kraus set
+        # doesn't square to 1. Not normalized. Operator.
         with self.assertRaises(ValueError):
-            to_kraus([[np.asarray(A_wrong, dtype=complex)]])
+            mychannel = KrausChannel(
+                [
+                    {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
+                ]
+            )
+
+        # incorrect rank (number of kraus_operators)
+        # use a random channel to do that.
         with self.assertRaises(ValueError):
-            to_kraus([[A_wrong]])
-        with self.assertRaises(ValueError):
-            to_kraus([[]])
-        with self.assertRaises(ValueError):
-            to_kraus([A, A])
-        with self.assertRaises(ValueError):
-            to_kraus([[A, A], [A, A]])
-        with self.assertRaises(AssertionError):
-            to_kraus([[A, 1], [A, A]])
+            randobj.rand_channel_kraus(dim=2**2, rank=20)
 
-    def test_to_kraus_success(self):
-        # (i) single unitary matrix A
-        A = [[0, 1], [2, 3]]
-        kraus = to_kraus((A, 1))
-        np.testing.assert_array_equal(kraus[0].data, np.asarray(A, dtype=complex))
-        self.assertEqual(kraus[0].qarg, 1)
+    def test_dephasing_channel(self):
 
-        kraus = to_kraus((np.asarray(A, dtype=complex), 1))
-        np.testing.assert_array_equal(kraus[0].data, np.asarray(A, dtype=complex))
-        self.assertEqual(kraus[0].qarg, 1)
+        prob = np.random.rand()
+        data = [
+            {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+            {"coef": np.sqrt(prob), "operator": Ops.z},
+        ]
+        dephase_channel = dephasing_channel(prob)
+        assert isinstance(dephase_channel, KrausChannel)
+        assert dephase_channel.nqubit == 1
+        assert dephase_channel.size == 2
+        assert dephase_channel.is_normalized
 
-        # (ii) single Kraus set
-        B = [[4, 5], [6, 7]]
-        kraus = to_kraus([(A, 1), (B, 2)])
-        np.testing.assert_array_equal(kraus[0].data, np.asarray(A, dtype=complex))
-        np.testing.assert_array_equal(kraus[1].data, np.asarray(B, dtype=complex))
-        self.assertEqual(kraus[0].qarg, 1)
-        self.assertEqual(kraus[1].qarg, 2)
+        for i in range(len(dephase_channel.kraus_ops)):
+            np.testing.assert_allclose(dephase_channel.kraus_ops[i]["coef"], data[i]["coef"])
+            np.testing.assert_allclose(dephase_channel.kraus_ops[i]["operator"], data[i]["operator"])
 
-        kraus = to_kraus([(np.asarray(A, dtype=complex), 1), (np.asarray(B, dtype=complex), 2)])
-        np.testing.assert_array_equal(kraus[0].data, np.asarray(A, dtype=complex))
-        np.testing.assert_array_equal(kraus[1].data, np.asarray(B, dtype=complex))
-        self.assertEqual(kraus[0].qarg, 1)
-        self.assertEqual(kraus[1].qarg, 2)
+    def test_depolarising_channel(self):
 
-    def test_generate_dephasing_kraus_fail(self):
-        with self.assertRaises(AssertionError):
-            generate_dephasing_kraus(2, 1)
-        with self.assertRaises(AssertionError):
-            generate_dephasing_kraus(0.5, "1")
+        prob = np.random.rand()
+        data = [
+            {"coef": np.sqrt(1 - prob), "operator": np.eye(2)},
+            {"coef": np.sqrt(prob / 3.0), "operator": Ops.x},
+            {"coef": np.sqrt(prob / 3.0), "operator": Ops.y},
+            {"coef": np.sqrt(prob / 3.0), "operator": Ops.z},
+        ]
 
-    def test_generate_dephasing_kraus_success(self):
-        p = 0.5
-        qarg = 1
-        dephase_kraus = generate_dephasing_kraus(p, qarg)
-        np.testing.assert_array_equal(dephase_kraus[0].data, np.asarray(np.sqrt(1 - p) * np.eye(2), dtype=complex))
-        np.testing.assert_array_equal(dephase_kraus[1].data, np.asarray(np.sqrt(p) * np.diag([1, -1]), dtype=complex))
-        self.assertEqual(dephase_kraus[0].qarg, qarg)
-        self.assertEqual(dephase_kraus[1].qarg, qarg)
+        depol_channel = depolarising_channel(prob)
 
-    def test__is_kraus_op_fail(self):
-        np.testing.assert_equal(_is_kraus_op(1), False)
-        np.testing.assert_equal(_is_kraus_op("hello"), False)
-        np.testing.assert_equal(_is_kraus_op([]), False)
-        np.testing.assert_equal(_is_kraus_op([[], []]), False)
-        np.testing.assert_equal(_is_kraus_op([[0, 1, 2], [3, 4, 5]]), False)
+        assert isinstance(depol_channel, KrausChannel)
+        assert depol_channel.nqubit == 1
+        assert depol_channel.size == 4
+        assert depol_channel.is_normalized
 
-    def test__is_kraus_op_success(self):
-        A = [[0, 1], [2, 3]]
-        np.testing.assert_equal(_is_kraus_op((A, 1)), True)
-        np.testing.assert_equal(_is_kraus_op((np.asarray(A, dtype=complex), 1)), True)
+        for i in range(len(depol_channel.kraus_ops)):
+            np.testing.assert_allclose(depol_channel.kraus_ops[i]["coef"], data[i]["coef"])
+            np.testing.assert_allclose(depol_channel.kraus_ops[i]["operator"], data[i]["operator"])
+
+    def test_2_qubit_depolarising_channel(self):
+
+        prob = np.random.rand()
+        data = [
+            {"coef": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.z)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.x)},
+            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
+        ]
+
+        depol_channel_2_qubit = two_qubit_depolarising_channel(prob)
+
+        assert isinstance(depol_channel_2_qubit, KrausChannel)
+        assert depol_channel_2_qubit.nqubit == 2
+        assert depol_channel_2_qubit.size == 16
+        assert depol_channel_2_qubit.is_normalized
+
+        for i in range(len(depol_channel_2_qubit.kraus_ops)):
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
 
 
 if __name__ == "__main__":
+    np.random.seed(2)
     unittest.main()
