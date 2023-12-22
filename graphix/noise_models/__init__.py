@@ -1,1 +1,2 @@
-from .base_noise_model import BaseNoiseModel
+from .noiseless_noise_model import NoiselessNoiseModel
+from .noise_model import NoiseModel

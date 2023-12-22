@@ -246,6 +246,7 @@ class Statevec:
             target qubits' indices
         """
         op_dim = int(np.log2(len(op)))
+        # TODO shape = (2,)* 2 * op_dim
         shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
         self.psi = np.tensordot(

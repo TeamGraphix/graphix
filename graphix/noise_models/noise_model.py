@@ -1,50 +1,51 @@
-import numpy as np
-from graphix.sim.density_matrix import DensityMatrix
 import abc
 
 
 class NoiseModel(abc.ABC):
-    """No noise"""
+    """Abstract base class for all noise models."""
 
+    # define the noise model parameters in there
+    @abc.abstractmethod
     def __init__(self):
         pass
 
-    # NOTE is this useful?
+    # shared by all objects of the child class.
+
     def assign_simulator(self, simulator):
         self.simulator = simulator
 
     @abc.abstractmethod
-    def prepare_qubit(self, cmd):
+    def prepare_qubit(self):
         """return qubit to be added with preparation errors."""
         pass
 
     @abc.abstractmethod
-    def entangle(self, cmd):
+    def entangle(self):
         """apply noise to qubits that happens in the CZ gate process"""
         pass
 
     @abc.abstractmethod
-    def measure(self, cmd):
+    def measure(self):
         """apply noise to qubits that happens in the measurement process"""
         pass
 
     @abc.abstractmethod
-    def confuse_result(self, cmd):
+    def confuse_result(self):
         """assign wrong measurement result"""
         pass
 
     @abc.abstractmethod
-    def byproduct_x(self, cmd):
+    def byproduct_x(self):
         """apply noise to qubits that happens in the X gate process"""
         pass
 
     @abc.abstractmethod
-    def byproduct_z(self, cmd):
+    def byproduct_z(self):
         """apply noise to qubits that happens in the Z gate process"""
         pass
 
     @abc.abstractmethod
-    def clifford(self, cmd):
+    def clifford(self):
         """apply noise to qubits that happens in the Clifford gate process"""
         # NOTE might be different depending on the gate.
         pass
