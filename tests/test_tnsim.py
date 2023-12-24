@@ -303,17 +303,15 @@ class TestTN(unittest.TestCase):
         np.testing.assert_almost_equal(value1, value2)
 
     def test_ccx(self):
-        for i in range(2**3):
-            circuit = Circuit(3)
-            # prepare |000>
-            circuit.h(0)
-            circuit.h(1)
-            circuit.h(2)
-            # prepare |i> (i = 0, 1, ..., 7)
-            for idx, j in enumerate(format(i, "03b")[::-1]):
-                if j == "1":
-                    circuit.x(idx)
+        nqubits = 4
+        depth = 6
+        for _ in range(10):
+            circuit = rc.get_rand_circuit(nqubits, depth)
             circuit.ccx(0, 1, 2)
+            pattern = circuit.transpile()
+            pattern.standardize()
+            pattern.shift_signals()
+            pattern.perform_pauli_measurements()
             pattern = circuit.transpile()
             pattern.minimize_space()
             state = circuit.simulate_statevector()
