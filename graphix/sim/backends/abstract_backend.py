@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, Union
 
 Tensor = Any
 
@@ -41,6 +41,10 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def jit(self, func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def jit(
+        self,
+        func: Callable[..., Any],
+        static_argnums: Optional[Union[int, Sequence[int]]] = None,
+    ) -> Callable[..., Any]:
         """Return a function that is JIT compiled."""
         raise NotImplementedError

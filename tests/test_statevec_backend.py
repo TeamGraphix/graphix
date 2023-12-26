@@ -1,13 +1,20 @@
-from copy import deepcopy
 import unittest
+from copy import deepcopy
 
 import numpy as np
+from parameterized import parameterized_class
 
+import graphix.sim
 from graphix.ops import States
+from graphix.sim.backends.backend_factory import _BACKENDS
 from graphix.sim.statevec import Statevec, meas_op
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestStatevec(unittest.TestCase):
+    def setUp(self):
+        graphix.sim.set_backend(self.backend)
+
     def test_remove_one_qubit(self):
         n = 10
         k = 3

@@ -14,6 +14,10 @@ class NumPyBackend(AbstractBackend):
     """A backend that uses NumPy for its computations."""
 
     @property
+    def name(self) -> str:
+        return "numpy"
+
+    @property
     def pi(self) -> float:
         return np.pi
 
@@ -101,6 +105,9 @@ class NumPyBackend(AbstractBackend):
     def eig(self, a: Tensor) -> Tensor:
         return np.linalg.eig(a)
 
+    def eigh(self, a: Tensor) -> Tensor:
+        return np.linalg.eigh(a)
+
     def mean(
         self,
         a: Tensor,
@@ -145,10 +152,10 @@ class NumPyBackend(AbstractBackend):
         return np.mod(x, y)
 
     def set_random_state(self, seed: Optional[int] = None, get_only: bool = False) -> Any:
-        g = np.random.default_rng(seed)
+        random_state = np.random.default_rng(seed)
         if get_only is False:
-            self.g = g
-        return g
+            self.random_state = random_state
+        return random_state
 
     def jit(self, func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         return func

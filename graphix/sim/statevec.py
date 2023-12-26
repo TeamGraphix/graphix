@@ -272,7 +272,7 @@ class Statevec:
         psi = self.psi
         rho = backend.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
         rho = backend.reshape(rho, (2**nqubit_after, 2**nqubit_after))
-        evals, evecs = backend.eig(rho)  # back to statevector
+        evals, evecs = backend.eigh(rho)  # back to statevector, density matrix is hermitian
         self.psi = backend.reshape(evecs[:, backend.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg):

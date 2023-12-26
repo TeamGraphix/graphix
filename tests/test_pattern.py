@@ -1,16 +1,23 @@
 import unittest
 
 import numpy as np
+from parameterized import parameterized_class
 
+import graphix.sim
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
+from graphix.sim.backends.backend_factory import _BACKENDS
 from graphix.transpiler import Circuit
 
 SEED = 42
 rc.set_seed(SEED)
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestPattern(unittest.TestCase):
+    def setUp(self):
+        graphix.sim.set_backend(self.backend)
+
     def test_standardize(self):
         nqubits = 2
         depth = 1
