@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 import numpy as np
-from numba import njit
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -144,7 +143,6 @@ class StatevectorBackend:
                 )
 
 
-@njit
 def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
