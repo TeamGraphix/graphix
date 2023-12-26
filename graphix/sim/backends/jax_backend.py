@@ -1,0 +1,2 @@
+class JaxBackend:
+    pass

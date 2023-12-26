@@ -6,6 +6,8 @@ from numba import njit
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 
+from .backends.settings import backend
+
 
 class StatevectorBackend:
     """MBQC simulator with statevector method."""
@@ -209,9 +211,9 @@ class Statevec:
             whether or not to start all qubits in + state or 0 state. Defaults to +
         """
         if plus_states:
-            self.psi = np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
+            self.psi = backend.ones((2,) * nqubit) / 2 ** (nqubit / 2)
         else:
-            self.psi = np.zeros((2,) * nqubit)
+            self.psi = backend.zeros((2,) * nqubit)
             self.psi[(0,) * nqubit] = 1
 
     def __repr__(self):
@@ -227,8 +229,8 @@ class Statevec:
         i : int
             qubit index
         """
-        self.psi = np.tensordot(op, self.psi, (1, i))
-        self.psi = np.moveaxis(self.psi, 0, i)
+        self.psi = backend.tensordot(op, self.psi, (1, i))
+        self.psi = backend.moveaxis(self.psi, 0, i)
 
     def evolve(self, op, qargs):
         """Multi-qubit operation
@@ -242,13 +244,13 @@ class Statevec:
         """
         op_dim = int(np.log2(len(op)))
         shape = [2 for _ in range(2 * op_dim)]
-        op_tensor = op.reshape(shape)
-        self.psi = np.tensordot(
+        op_tensor = backend.reshape(op, shape)
+        self.psi = backend.tensordot(
             op_tensor,
             self.psi,
             (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)),
         )
-        self.psi = np.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
+        self.psi = backend.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
 
     def dims(self):
         return self.psi.shape
@@ -270,10 +272,10 @@ class Statevec:
         """
         nqubit_after = len(self.psi.shape) - len(qargs)
         psi = self.psi
-        rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
-        rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
-        evals, evecs = np.linalg.eig(rho)  # back to statevector
-        self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
+        rho = backend.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
+        rho = backend.reshape(rho, (2**nqubit_after, 2**nqubit_after))
+        evals, evecs = backend.eig(rho)  # back to statevector
+        self.psi = backend.reshape(evecs[:, backend.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
@@ -330,9 +332,9 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
+        self.psi = backend.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), edge)
+        self.psi = backend.moveaxis(self.psi, (0, 1), edge)
 
     def tensor(self, other):
         r"""Tensor product state with other qubits.
@@ -346,7 +348,7 @@ class Statevec:
         psi_self = self.psi.flatten()
         psi_other = other.psi.flatten()
         total_num = len(self.dims()) + len(other.dims())
-        self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
+        self.psi = backend.reshape(backend.kron(psi_self, psi_other), (2,) * total_num)
 
     def CNOT(self, qubits):
         """apply CNOT
@@ -357,9 +359,9 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
+        self.psi = backend.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
+        self.psi = backend.moveaxis(self.psi, (0, 1), qubits)
 
     def swap(self, qubits):
         """swap qubits
@@ -370,9 +372,9 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
+        self.psi = backend.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
+        self.psi = backend.moveaxis(self.psi, (0, 1), qubits)
 
     def normalize(self):
         """normalize the state"""
@@ -401,7 +403,7 @@ class Statevec:
         st1.normalize()
         st2 = st1.deepcopy(st1)
         st1.evolve_single(op, loc)
-        return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
+        return backend.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
     def expectation_value(self, op, qargs):
         """Expectation value of multi-qubit operator.
@@ -421,9 +423,9 @@ class Statevec:
         st1.normalize()
         st2 = deepcopy(st1)
         st1.evolve(op, qargs)
-        return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
+        return backend.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
 
 def _get_statevec_norm(psi):
     """returns norm of the state"""
-    return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
+    return backend.sqrt(backend.sum(psi.flatten().conj() * psi.flatten()))

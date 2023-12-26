@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 Tensor = Any
 
@@ -33,4 +33,14 @@ class AbstractBackend:
     @abstractmethod
     def mod(self, a: Tensor, b: Tensor) -> Tensor:
         """Return the elementwise modulus of two arrays."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def reshape(self, a: Tensor, shape: Sequence[int]) -> Tensor:
+        """Return the reshaped array."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def jit(self, func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+        """Return a function that is JIT compiled."""
         raise NotImplementedError

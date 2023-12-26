@@ -6,6 +6,7 @@ import numpy as np
 
 from .abstract_backend import AbstractBackend
 
+default_dtype: str
 Tensor = Any
 
 
@@ -13,12 +14,18 @@ class NumPyBackend(AbstractBackend):
     """A backend that uses NumPy for its computations."""
 
     def eye(self, N: int, dtype: Optional[str] = None, M: Optional[int] = None) -> Tensor:
+        if dtype is None:
+            dtype = default_dtype
         return np.eye(N, M=M, dtype=dtype)
 
     def ones(self, shape: Sequence[int], dtype: Optional[str] = None) -> Tensor:
+        if dtype is None:
+            dtype = default_dtype
         return np.ones(shape, dtype=dtype)
 
     def zeros(self, shape: Sequence[int], dtype: Optional[str] = None) -> Tensor:
+        if dtype is None:
+            dtype = default_dtype
         return np.zeros(shape, dtype=dtype)
 
     def copy(self, a: Tensor) -> Tensor:
@@ -78,11 +85,17 @@ class NumPyBackend(AbstractBackend):
     def dtype(self, a: Tensor) -> str:
         return a.dtype.__str__()
 
-    def numpy(self, a: Tensor) -> Tensor:
-        return a
+    def tensordot(self, a: Tensor, b: Tensor, axes: Union[int, Tuple[Sequence[int], Sequence[int]]]) -> Tensor:
+        return np.tensordot(a, b, axes=axes)
 
-    def det(self, a: Tensor) -> Tensor:
-        return np.linalg.det(a)
+    def moveaxis(self, a: Tensor, source: Sequence[int], destination: Sequence[int]) -> Tensor:
+        return np.moveaxis(a, source, destination)
+
+    def reshape(self, a: Tensor, shape: Sequence[int]) -> Tensor:
+        return np.reshape(a, shape)
+
+    def eig(self, a: Tensor) -> Tensor:
+        return np.linalg.eig(a)
 
     def mean(
         self,
@@ -91,9 +104,6 @@ class NumPyBackend(AbstractBackend):
         keepdims: bool = False,
     ) -> Tensor:
         return np.mean(a, axis=axis, keepdims=keepdims)
-
-    def std(self, a: Tensor, axis: Optional[Sequence[int]] = None, keepdims: bool = False) -> Tensor:
-        return np.std(a, axis=axis, keepdims=keepdims)
 
     def min(self, a: Tensor, axis: Optional[int] = None) -> Tensor:
         return np.min(a, axis=axis)
@@ -107,14 +117,20 @@ class NumPyBackend(AbstractBackend):
     def argmin(self, a: Tensor, axis: int = 0) -> Tensor:
         return np.argmin(a, axis=axis)
 
-    def cumsum(self, a: Tensor, axis: Optional[int] = None) -> Tensor:
-        return np.cumsum(a, axis)
-
     def real(self, a: Tensor) -> Tensor:
         return np.real(a)
 
     def imag(self, a: Tensor) -> Tensor:
         return np.imag(a)
+
+    def dot(self, a: Tensor, b: Tensor) -> Tensor:
+        return np.dot(a, b)
+
+    def sqrt(self, a: Tensor) -> Tensor:
+        return np.sqrt(a)
+
+    def sum(self, a: Tensor, axis: Optional[Sequence[int]] = None, keepdims: bool = False) -> Tensor:
+        return np.sum(a, axis=axis, keepdims=keepdims)
 
     def arange(self, start: int, stop: Optional[int] = None, step: int = 1) -> Tensor:
         if stop is None:
