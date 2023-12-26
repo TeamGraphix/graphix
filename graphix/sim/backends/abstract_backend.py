@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional, Sequence
 
 Tensor = Any
 
 
-class AbstractBackend:
+class AbstractBackend(ABC):
     """An abstract backend class for all backends to inherit from."""
 
     @property

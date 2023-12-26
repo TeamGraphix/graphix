@@ -13,6 +13,10 @@ Tensor = Any
 class NumPyBackend(AbstractBackend):
     """A backend that uses NumPy for its computations."""
 
+    @property
+    def pi(self) -> float:
+        return np.pi
+
     def eye(self, N: int, dtype: Optional[str] = None, M: Optional[int] = None) -> Tensor:
         if dtype is None:
             dtype = default_dtype
@@ -145,3 +149,6 @@ class NumPyBackend(AbstractBackend):
         if get_only is False:
             self.g = g
         return g
+
+    def jit(self, func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+        return func
