@@ -48,44 +48,11 @@ class NumPyBackend(AbstractBackend):
     def cos(self, a: Tensor) -> Tensor:
         return np.cos(a)
 
-    def acos(self, a: Tensor) -> Tensor:
-        return np.arccos(a)
-
-    def acosh(self, a: Tensor) -> Tensor:
-        return np.arccosh(a)
-
-    def asin(self, a: Tensor) -> Tensor:
-        return np.arcsin(a)
-
-    def asinh(self, a: Tensor) -> Tensor:
-        return np.arcsinh(a)
-
-    def atan(self, a: Tensor) -> Tensor:
-        return np.arctan(a)
-
-    def atan2(self, y: Tensor, x: Tensor) -> Tensor:
-        return np.arctan2(y, x)
-
-    def atanh(self, a: Tensor) -> Tensor:
-        return np.arctanh(a)
-
-    def cosh(self, a: Tensor) -> Tensor:
-        return np.cosh(a)
-
     def tan(self, a: Tensor) -> Tensor:
         return np.tan(a)
 
-    def tanh(self, a: Tensor) -> Tensor:
-        return np.tanh(a)
-
-    def sinh(self, a: Tensor) -> Tensor:
-        return np.sinh(a)
-
     def size(self, a: Tensor) -> Tensor:
         return a.size
-
-    def eigvalsh(self, a: Tensor) -> Tensor:
-        return np.linalg.eigvalsh(a)
 
     def kron(self, a: Tensor, b: Tensor) -> Tensor:
         return np.kron(a, b)
