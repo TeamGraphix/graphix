@@ -124,5 +124,9 @@ class NumPyBackend(AbstractBackend):
             self.random_state = random_state
         return random_state
 
-    def jit(self, func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def jit(
+        self,
+        func: Callable[..., Any],
+        static_argnums: Optional[Union[int, Sequence[int]]] = None,
+    ) -> Callable[..., Any]:
         return func

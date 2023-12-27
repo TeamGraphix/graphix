@@ -1,3 +1,4 @@
+import platform
 import unittest
 from copy import deepcopy
 
@@ -13,6 +14,17 @@ from graphix.sim.statevec import Statevec, meas_op
 @parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestStatevec(unittest.TestCase):
     def setUp(self):
+        platform_name = platform.system()  # Calling sys.version_info throws Fatal Python error while using tox
+        python_version = (
+            platform.python_version_tuple()
+        )  # Calling sys.version_info throws Fatal Python error while using tox
+        if (
+            self.backend == "jax"
+            and platform_name == "Windows"
+            and python_version[0] == "3"
+            and python_version[1] == "8"
+        ):
+            self.skipTest("Jax does not support Windows with Python 3.8.")
         graphix.sim.set_backend(self.backend)
 
     def test_remove_one_qubit(self):

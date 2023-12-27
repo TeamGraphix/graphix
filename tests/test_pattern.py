@@ -1,3 +1,4 @@
+import platform
 import unittest
 
 import numpy as np
@@ -16,6 +17,17 @@ rc.set_seed(SEED)
 @parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestPattern(unittest.TestCase):
     def setUp(self):
+        platform_name = platform.system()  # Calling sys.platform throws Fatal Python error while using tox
+        python_version = (
+            platform.python_version_tuple()
+        )  # Calling sys.version_info throws Fatal Python error while using tox
+        if (
+            self.backend == "jax"
+            and platform_name == "Windows"
+            and python_version[0] == "3"
+            and python_version[1] == "8"
+        ):
+            self.skipTest("Jax does not support Windows with Python 3.8.")
         graphix.sim.set_backend(self.backend)
 
     def test_standardize(self):
@@ -261,6 +273,20 @@ def swap(circuit, a, b):
 
 @parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestLocalPattern(unittest.TestCase):
+    def setUp(self):
+        platform_name = platform.system()  # Calling sys.platform throws Fatal Python error while using tox
+        python_version = (
+            platform.python_version_tuple()
+        )  # Calling sys.version_info throws Fatal Python error while using tox
+        if (
+            self.backend == "jax"
+            and platform_name == "Windows"
+            and python_version[0] == "3"
+            and python_version[1] == "8"
+        ):
+            self.skipTest("Jax does not support Windows with Python 3.8.")
+        graphix.sim.set_backend(self.backend)
+
     def test_assert_equal_edge(self):
         test_case = [
             [(0, 1), (0, 1), True],

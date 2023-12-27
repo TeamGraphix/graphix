@@ -1,0 +1,13 @@
+# Style
+black==22.8.0
+
+# Tests
+pytest
+parameterized
+tox
+
+# Optional dependencies
+qiskit
+qiskit-aer
+rustworkx
+jax[cpu]
