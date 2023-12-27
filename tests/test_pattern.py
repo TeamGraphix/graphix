@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from parameterized import parameterized_class
+from parameterized import parameterized, parameterized_class
 
 import graphix.sim
 import tests.random_circuit as rc
@@ -40,7 +40,8 @@ class TestPattern(unittest.TestCase):
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_minimize_space_with_gflow(self):
+    @parameterized.expand([(False), (True)])
+    def test_minimize_space_with_gflow(self, use_rustworkx):
         nqubits = 3
         depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
@@ -48,7 +49,7 @@ class TestPattern(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements()
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
@@ -89,7 +90,8 @@ class TestPattern(unittest.TestCase):
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_pauli_measurment(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurment(self, use_rustworkx):
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -97,13 +99,14 @@ class TestPattern(unittest.TestCase):
             pattern = circuit.transpile()
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements()
+            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_pauli_measurment_leave_input(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurment_leave_input(self, use_rustworkx):
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -111,13 +114,14 @@ class TestPattern(unittest.TestCase):
             pattern = circuit.transpile()
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(leave_input=True)
+            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_pauli_measurment_opt_gate(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurment_opt_gate(self, use_rustworkx):
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -125,13 +129,14 @@ class TestPattern(unittest.TestCase):
             pattern = circuit.transpile(opt=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements()
+            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_pauli_measurment_opt_gate_transpiler(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurment_opt_gate_transpiler(self, use_rustworkx):
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -139,25 +144,27 @@ class TestPattern(unittest.TestCase):
             pattern = circuit.standardize_and_transpile(opt=True)
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements()
+            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self, use_rustworkx):
         nqubits = 3
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
             pattern = circuit.standardize_and_transpile(opt=True)
-            pattern.perform_pauli_measurements()
+            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_pauli_measurement(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurement(self, use_rustworkx):
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -177,7 +184,7 @@ class TestPattern(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements()
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
 
         isolated_nodes = pattern.get_isolated_nodes()
         # 48-node is the isolated and output node.
@@ -185,7 +192,8 @@ class TestPattern(unittest.TestCase):
 
         np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
 
-    def test_pauli_measurement_leave_input(self):
+    @parameterized.expand([(False), (True)])
+    def test_pauli_measurement_leave_input(self, use_rustworkx):
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -205,7 +213,7 @@ class TestPattern(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(leave_input=True)
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
 
         isolated_nodes = pattern.get_isolated_nodes()
         # There is no isolated node.
@@ -235,146 +243,6 @@ class TestPattern(unittest.TestCase):
         np.testing.assert_equal(meas_plane, ref_meas_plane)
 
 
-class TestPatternWithRustworkX(unittest.TestCase):
-    def test_minimize_space_with_gflow(self):
-        nqubits = 3
-        depth = 3
-        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs)
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(use_rustworkx=True)
-        pattern.minimize_space()
-        state = circuit.simulate_statevector()
-        state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-    def test_pauli_measurment(self):
-        nqubits = 3
-        depth = 3
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=True)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector()
-            state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-    def test_pauli_measurment_leave_input(self):
-        nqubits = 3
-        depth = 3
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=True, leave_input=True)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector()
-            state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-    def test_pauli_measurment_opt_gate(self):
-        nqubits = 3
-        depth = 3
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.transpile(opt=True)
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=True)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector()
-            state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-    def test_pauli_measurment_opt_gate_transpiler(self):
-        nqubits = 3
-        depth = 3
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True)
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=True)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector()
-            state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self):
-        nqubits = 3
-        depth = 3
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True)
-            pattern.perform_pauli_measurements(use_rustworkx=True)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector()
-            state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-    def test_pauli_measurement(self):
-        # test pattern is obtained from 3-qubit QFT with pauli measurement
-        circuit = Circuit(3)
-        for i in range(3):
-            circuit.h(i)
-        circuit.x(1)
-        circuit.x(2)
-
-        # QFT
-        circuit.h(2)
-        cp(circuit, np.pi / 4, 0, 2)
-        cp(circuit, np.pi / 2, 1, 2)
-        circuit.h(1)
-        cp(circuit, np.pi / 2, 0, 1)
-        circuit.h(0)
-        swap(circuit, 0, 2)
-
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(use_rustworkx=True)
-
-        isolated_nodes = pattern.get_isolated_nodes()
-        # 48-node is the isolated and output node.
-        isolated_nodes_ref = {48}
-
-        np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
-
-    def test_pauli_measurement_leave_input(self):
-        # test pattern is obtained from 3-qubit QFT with pauli measurement
-        circuit = Circuit(3)
-        for i in range(3):
-            circuit.h(i)
-        circuit.x(1)
-        circuit.x(2)
-
-        # QFT
-        circuit.h(2)
-        cp(circuit, np.pi / 4, 0, 2)
-        cp(circuit, np.pi / 2, 1, 2)
-        circuit.h(1)
-        cp(circuit, np.pi / 2, 0, 1)
-        circuit.h(0)
-        swap(circuit, 0, 2)
-
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(use_rustworkx=True, leave_input=True)
-
-        isolated_nodes = pattern.get_isolated_nodes()
-        # There is no isolated node.
-        isolated_nodes_ref = set()
-
-        np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
-
-
 def cp(circuit, theta, control, target):
     """Controlled rotation gate, decomposed"""
     circuit.rz(control, theta / 2)
@@ -391,6 +259,7 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestLocalPattern(unittest.TestCase):
     def test_assert_equal_edge(self):
         test_case = [
