@@ -30,9 +30,6 @@ class StatevectorBackend:
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
-        self.Nqubit = 0
-        self.to_trace = []
-        self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
@@ -46,6 +43,7 @@ class StatevectorBackend:
         """
         return len(self.state.dims())
 
+    @backend.jit
     def add_nodes(self, nodes):
         """add new qubit to internal statevector
         and assign the corresponding node number
@@ -61,7 +59,6 @@ class StatevectorBackend:
         sv_to_add = Statevec(nqubit=n)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
-        self.Nqubit += n
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
@@ -105,7 +102,6 @@ class StatevectorBackend:
 
         self.state.remove_qubit(loc)
         self.node_index.remove(cmd[1])
-        self.Nqubit -= 1
 
     def correct_byproduct(self, cmd):
         """Byproduct correction
@@ -142,6 +138,26 @@ class StatevectorBackend:
                     self.node_index[move_from],
                     self.node_index[i],
                 )
+
+    # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
+    def _tree_flatten(self):
+        children = (self.pattern, self.results, self.state, self.node_index)  # arrays / dynamic values
+        aux_data = {"max_qubit_num": self.max_qubit_num}  # static values
+        return (children, aux_data)
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        return cls(*children, **aux_data)
+
+
+try:
+    from jax import tree_util
+
+    tree_util.register_pytree_node(
+        StatevectorBackend, StatevectorBackend._tree_flatten, StatevectorBackend._tree_unflatten
+    )
+except ModuleNotFoundError:
+    pass
 
 
 @partial(backend.jit, static_argnums=(1, 2, 3))
@@ -219,6 +235,7 @@ class Statevec:
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
 
+    @backend.jit
     def evolve_single(self, op, i):
         """Single-qubit operation
 
@@ -229,14 +246,8 @@ class Statevec:
         i : int
             qubit index
         """
-        self.psi = self.__evolve_single(self.psi, op, i)
-
-    @staticmethod
-    @backend.jit
-    def __evolve_single(psi, op, i):
-        psi = backend.tensordot(op, psi, (1, i))
-        psi = backend.moveaxis(psi, 0, i)
-        return psi
+        self.psi = backend.tensordot(op, self.psi, (1, i))
+        self.psi = backend.moveaxis(self.psi, 0, i)
 
     def evolve(self, op, qargs):
         """Multi-qubit operation
@@ -283,6 +294,7 @@ class Statevec:
         evals, evecs = backend.eigh(rho)  # back to statevector, density matrix is hermitian
         self.psi = backend.reshape(evecs[:, backend.argmax(evals)], (2,) * nqubit_after)
 
+    @backend.jit
     def remove_qubit(self, qarg):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
@@ -324,11 +336,12 @@ class Statevec:
         qarg : int
             qubit index
         """
-        assert not np.isclose(_get_statevec_norm(self.psi), 0)
+        assert not backend.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        self.psi = psi if not backend.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
+    @backend.jit
     def entangle(self, edge):
         """connect graph nodes
 
@@ -337,17 +350,12 @@ class Statevec:
         edge : tuple of int
             (control, target) qubit indices
         """
-        self.psi = self.__entangle(self.psi, edge)
-
-    @staticmethod
-    @backend.jit
-    def __entangle(psi, edge):
         # contraction: 2nd index - control index, and 3rd index - target index.
-        psi = backend.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
+        self.psi = backend.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
         # sort back axes
-        psi = backend.moveaxis(psi, (0, 1), edge)
-        return psi
+        self.psi = backend.moveaxis(self.psi, (0, 1), edge)
 
+    @backend.jit
     def tensor(self, other):
         r"""Tensor product state with other qubits.
         Results in self :math:`\otimes` other.
@@ -357,13 +365,10 @@ class Statevec:
         other : :class:`graphix.sim.statevec.Statevec`
             statevector to be tensored with self
         """
-        self.psi = self.__tensor(self.psi, other.psi)
-
-    @staticmethod
-    @backend.jit
-    def __tensor(psi_self, psi_other):
-        total_num = len(psi_self.shape) + len(psi_other.shape)
-        return backend.reshape(backend.kron(psi_self.flatten(), psi_other.flatten()), (2,) * total_num)
+        psi_self = self.psi.flatten()
+        psi_other = other.psi.flatten()
+        total_num = len(self.dims()) + len(other.dims())
+        self.psi = backend.kron(psi_self, psi_other).reshape((2,) * total_num)
 
     def CNOT(self, qubits):
         """apply CNOT
@@ -391,6 +396,7 @@ class Statevec:
         # sort back axes
         self.psi = backend.moveaxis(self.psi, (0, 1), qubits)
 
+    @backend.jit
     def normalize(self):
         """normalize the state"""
         norm = _get_statevec_norm(self.psi)
@@ -439,6 +445,24 @@ class Statevec:
         st2 = deepcopy(st1)
         st1.evolve(op, qargs)
         return backend.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
+
+    # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
+    def _tree_flatten(self):
+        children = self.psi  # arrays / dynamic values
+        aux_data = None  # static values
+        return (children, aux_data)
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        return cls(*children, **aux_data)
+
+
+try:
+    from jax import tree_util
+
+    tree_util.register_pytree_node(Statevec, Statevec._tree_flatten, Statevec._tree_unflatten)
+except ModuleNotFoundError:
+    pass
 
 
 @backend.jit

@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from parameterized import parameterized_class
@@ -8,6 +9,10 @@ from graphix import extraction
 
 @parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])
 class TestExtraction(unittest.TestCase):
+    def setUp(self):
+        if sys.modules.get("rustworkx") is None and self.use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
+
     def test_cluster_extraction_one_ghz_cluster(self):
         gs = graphix.GraphState(use_rustworkx=self.use_rustworkx)
         nodes = [0, 1, 2, 3, 4]

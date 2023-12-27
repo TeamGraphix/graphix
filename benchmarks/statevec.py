@@ -59,14 +59,17 @@ def simple_random_circuit(nqubit, depth):
 
 
 # %%
-# We define the test cases: shallow (depth=1) random circuits, only changing the number of qubits.
+# First, we define the test cases.
 
-DEPTH = 1
-test_cases = [i for i in range(2, 25)]
-graphix_circuits = {}
+graphix_circuit_list = []
+width_list = []
+for width in range(2, 22):
+    circuit = simple_random_circuit(width, 1)
+    graphix_circuit_list.append((width, 1, len(circuit.instruction), circuit))
+    width_list.append(width)
 
-pattern_time = []
-circuit_time = []
+pattern_time_numpy = []
+circuit_time_numpy = []
 pattern_time_jax = []
 circuit_time_jax = []
 
@@ -77,9 +80,7 @@ circuit_time_jax = []
 # Since transpilation into MBQC involves a significant increase in qubit number,
 # the MBQC simulation is inherently slower as we will see.
 
-for width in test_cases:
-    circuit = simple_random_circuit(width, DEPTH)
-    graphix_circuits[width] = circuit
+for width, depth, num_gates, circuit in graphix_circuit_list:
     pattern = circuit.transpile()
     pattern.standardize()
     pattern.minimize_space()
@@ -88,12 +89,12 @@ for width in test_cases:
     start = perf_counter()
     pattern.simulate_pattern(max_qubit_num=30)
     end = perf_counter()
-    print(f"width: {width}, nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
-    pattern_time.append(end - start)
+    print(f"width: {width}, nqubit: {nqubit}, depth: {depth}, time: {end - start}")
+    pattern_time_numpy.append(end - start)
     start = perf_counter()
     circuit.simulate_statevector()
     end = perf_counter()
-    circuit_time.append(end - start)
+    circuit_time_numpy.append(end - start)
 
 # %%
 # We will also benchmark `graphix` with `jax` backend.
@@ -102,9 +103,7 @@ import graphix.sim
 
 graphix.sim.set_backend("jax")
 
-for width in test_cases:
-    circuit = simple_random_circuit(width, DEPTH)
-    graphix_circuits[width] = circuit
+for width, depth, num_gates, circuit in graphix_circuit_list:
     pattern = circuit.transpile()
     pattern.standardize()
     pattern.minimize_space()
@@ -113,7 +112,7 @@ for width in test_cases:
     start = perf_counter()
     pattern.simulate_pattern(max_qubit_num=30)
     end = perf_counter()
-    print(f"width: {width}, nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
+    print(f"width: {width}, nqubit: {nqubit}, depth: {depth}, time: {end - start}")
     pattern_time_jax.append(end - start)
     start = perf_counter()
     circuit.simulate_statevector()
@@ -147,11 +146,9 @@ def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -
     return paddle_quantum_circuit
 
 
-test_cases_for_paddle_quantum = [i for i in range(2, 22)]
 paddle_quantum_time = []
 
-for width in test_cases_for_paddle_quantum:
-    graphix_circuit = graphix_circuits[width]
+for width, depth, num_gates, graphix_circuit in graphix_circuit_list:
     paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit)
     pat = PaddleTranspile(paddle_quantum_circuit)
     mbqc = PaddleMBQC()
@@ -161,7 +158,7 @@ for width in test_cases_for_paddle_quantum:
     end = perf_counter()
     paddle_quantum_time.append(end - start)
 
-    print(f"width: {width}, depth: {DEPTH}, time: {end - start}")
+    print(f"width: {width}, depth: {depth}, time: {end - start}")
 
 # %%
 # Lastly, we compare the simulation times.
@@ -169,11 +166,11 @@ for width in test_cases_for_paddle_quantum:
 fig = plt.figure(figsize=(10, 6))
 ax = fig.add_subplot(111)
 
-ax.scatter(test_cases, circuit_time, label="direct statevector sim (numpy)", marker="x")
-ax.scatter(test_cases, circuit_time_jax, label="direct statevector sim (jax)", marker="x")
-ax.scatter(test_cases, pattern_time, label="graphix (numpy)")
-ax.scatter(test_cases, pattern_time_jax, label="graphix (jax)")
-ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time, label="paddle_quantum")
+ax.scatter(width_list, circuit_time_numpy, label="direct statevector sim (numpy)", marker="x")
+ax.scatter(width_list, circuit_time_jax, label="direct statevector sim (jax)", marker="x")
+ax.scatter(width_list, pattern_time_numpy, label="graphix (numpy)")
+ax.scatter(width_list, pattern_time_jax, label="graphix (jax)")
+ax.scatter(width_list, paddle_quantum_time, label="paddle_quantum", marker="^")
 ax.set(
     xlabel="Width of the original circuit",
     ylabel="time (s)",

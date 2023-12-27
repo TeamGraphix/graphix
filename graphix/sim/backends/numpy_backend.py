@@ -118,6 +118,11 @@ class NumPyBackend(AbstractBackend):
     def mod(self, x: Tensor, y: Tensor) -> Tensor:
         return np.mod(x, y)
 
+    def isclose(
+        self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
+    ) -> Tensor:
+        return np.isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
+
     def set_random_state(self, seed: Optional[int] = None, get_only: bool = False) -> Any:
         random_state = np.random.default_rng(seed)
         if get_only is False:

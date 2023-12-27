@@ -167,6 +167,13 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def isclose(
+        self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
+    ) -> Tensor:
+        """Return element-wise True if two arrays are element-wise equal within a tolerance."""
+        raise NotImplementedError
+
+    @abstractmethod
     def set_random_state(self, seed: Optional[int] = None, get_only: bool = False) -> Any:
         """Set the random state for the backend."""
         raise NotImplementedError

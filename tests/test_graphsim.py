@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy as np
@@ -34,6 +35,10 @@ def get_state(g):
 
 @parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])
 class TestGraphSim(unittest.TestCase):
+    def setUp(self):
+        if sys.modules.get("rustworkx") is None and self.use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
+
     def test_fig2(self):
         """Example of three single-qubit measurements
         presented in Fig.2 of M. Elliot et al (2010)

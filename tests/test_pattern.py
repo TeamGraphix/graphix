@@ -1,4 +1,4 @@
-import platform
+import sys
 import unittest
 
 import numpy as np
@@ -17,16 +17,7 @@ rc.set_seed(SEED)
 @parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestPattern(unittest.TestCase):
     def setUp(self):
-        platform_name = platform.system()  # Calling sys.platform throws Fatal Python error while using tox
-        python_version = (
-            platform.python_version_tuple()
-        )  # Calling sys.version_info throws Fatal Python error while using tox
-        if (
-            self.backend == "jax"
-            and platform_name == "Windows"
-            and python_version[0] == "3"
-            and python_version[1] == "8"
-        ):
+        if self.backend == "jax" and sys.platform == "win32" and sys.version_info < (3, 9):
             self.skipTest("Jax does not support Windows with Python 3.8.")
         graphix.sim.set_backend(self.backend)
 
@@ -54,6 +45,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_minimize_space_with_gflow(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
@@ -104,6 +97,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -119,6 +114,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_leave_input(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -134,6 +131,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_opt_gate(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -149,6 +148,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_opt_gate_transpiler(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -164,6 +165,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
         for i in range(10):
@@ -177,6 +180,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurement(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -206,6 +211,8 @@ class TestPattern(unittest.TestCase):
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurement_leave_input(self, use_rustworkx):
+        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
+            self.skipTest("rustworkx not installed")
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -274,16 +281,9 @@ def swap(circuit, a, b):
 @parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestLocalPattern(unittest.TestCase):
     def setUp(self):
-        platform_name = platform.system()  # Calling sys.platform throws Fatal Python error while using tox
-        python_version = (
-            platform.python_version_tuple()
-        )  # Calling sys.version_info throws Fatal Python error while using tox
-        if (
-            self.backend == "jax"
-            and platform_name == "Windows"
-            and python_version[0] == "3"
-            and python_version[1] == "8"
-        ):
+        if sys.modules.get("jax") is None and self.backend == "jax":
+            self.skipTest("jax not installed")
+        if self.backend == "jax" and sys.platform == "win32" and sys.version_info < (3, 9):
             self.skipTest("Jax does not support Windows with Python 3.8.")
         graphix.sim.set_backend(self.backend)
 
