@@ -1,4 +1,5 @@
 from copy import deepcopy
+from functools import partial
 
 import numpy as np
 
@@ -143,6 +144,7 @@ class StatevectorBackend:
                 )
 
 
+@partial(backend.jit, static_argnums=(1, 2, 3))
 def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
@@ -165,7 +167,7 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
         projection operator
 
     """
-    assert vop in np.arange(24)
+    assert 0 <= vop < 24
     assert choice in [0, 1]
     assert plane in ["XY", "YZ", "XZ"]
     if plane == "XY":
@@ -174,7 +176,7 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
         vec = (0, np.cos(angle), np.sin(angle))
     elif plane == "XZ":
         vec = (np.cos(angle), 0, np.sin(angle))
-    op_mat = np.eye(2, dtype=np.complex128) / 2
+    op_mat = backend.eye(2) / 2
     for i in range(3):
         op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
     op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
@@ -227,8 +229,14 @@ class Statevec:
         i : int
             qubit index
         """
-        self.psi = backend.tensordot(op, self.psi, (1, i))
-        self.psi = backend.moveaxis(self.psi, 0, i)
+        self.psi = self.__evolve_single(self.psi, op, i)
+
+    @staticmethod
+    @backend.jit
+    def __evolve_single(psi, op, i):
+        psi = backend.tensordot(op, psi, (1, i))
+        psi = backend.moveaxis(psi, 0, i)
+        return psi
 
     def evolve(self, op, qargs):
         """Multi-qubit operation
@@ -329,10 +337,16 @@ class Statevec:
         edge : tuple of int
             (control, target) qubit indices
         """
+        self.psi = self.__entangle(self.psi, edge)
+
+    @staticmethod
+    @backend.jit
+    def __entangle(psi, edge):
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = backend.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
+        psi = backend.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
         # sort back axes
-        self.psi = backend.moveaxis(self.psi, (0, 1), edge)
+        psi = backend.moveaxis(psi, (0, 1), edge)
+        return psi
 
     def tensor(self, other):
         r"""Tensor product state with other qubits.
@@ -343,10 +357,13 @@ class Statevec:
         other : :class:`graphix.sim.statevec.Statevec`
             statevector to be tensored with self
         """
-        psi_self = self.psi.flatten()
-        psi_other = other.psi.flatten()
-        total_num = len(self.dims()) + len(other.dims())
-        self.psi = backend.reshape(backend.kron(psi_self, psi_other), (2,) * total_num)
+        self.psi = self.__tensor(self.psi, other.psi)
+
+    @staticmethod
+    @backend.jit
+    def __tensor(psi_self, psi_other):
+        total_num = len(psi_self.shape) + len(psi_other.shape)
+        return backend.reshape(backend.kron(psi_self.flatten(), psi_other.flatten()), (2,) * total_num)
 
     def CNOT(self, qubits):
         """apply CNOT
@@ -424,6 +441,7 @@ class Statevec:
         return backend.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
 
+@backend.jit
 def _get_statevec_norm(psi):
     """returns norm of the state"""
     return backend.sqrt(backend.sum(psi.flatten().conj() * psi.flatten()))

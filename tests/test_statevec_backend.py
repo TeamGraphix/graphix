@@ -24,7 +24,7 @@ class TestStatevec(unittest.TestCase):
             and python_version[0] == "3"
             and python_version[1] == "8"
         ):
-            self.skipTest("Jax does not support Windows with Python 3.8.")
+            self.skipTest("`jaxlib` does not support Windows with Python 3.8.")
         graphix.sim.set_backend(self.backend)
 
     def test_remove_one_qubit(self):

@@ -15,13 +15,15 @@ The methods and modules we use are the followings:
 # Firstly, let us import relevant modules:
 
 from time import perf_counter
+
 import matplotlib.pyplot as plt
 import numpy as np
-from graphix import Circuit
 from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
-from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
 from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
+from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
+
+from graphix import Circuit
 
 # %%
 # Next, define a circuit to be transpiled into measurement pattern:
@@ -60,11 +62,13 @@ def simple_random_circuit(nqubit, depth):
 # We define the test cases: shallow (depth=1) random circuits, only changing the number of qubits.
 
 DEPTH = 1
-test_cases = [i for i in range(2, 22)]
+test_cases = [i for i in range(2, 25)]
 graphix_circuits = {}
 
 pattern_time = []
 circuit_time = []
+pattern_time_jax = []
+circuit_time_jax = []
 
 # %%
 # We then run simulations.
@@ -91,6 +95,30 @@ for width in test_cases:
     end = perf_counter()
     circuit_time.append(end - start)
 
+# %%
+# We will also benchmark `graphix` with `jax` backend.
+
+import graphix.sim
+
+graphix.sim.set_backend("jax")
+
+for width in test_cases:
+    circuit = simple_random_circuit(width, DEPTH)
+    graphix_circuits[width] = circuit
+    pattern = circuit.transpile()
+    pattern.standardize()
+    pattern.minimize_space()
+    nodes, edges = pattern.get_graph()
+    nqubit = len(nodes)
+    start = perf_counter()
+    pattern.simulate_pattern(max_qubit_num=30)
+    end = perf_counter()
+    print(f"width: {width}, nqubit: {nqubit}, depth: {DEPTH}, time: {end - start}")
+    pattern_time_jax.append(end - start)
+    start = perf_counter()
+    circuit.simulate_statevector()
+    end = perf_counter()
+    circuit_time_jax.append(end - start)
 
 # %%
 # Here we benchmark `paddle_quantum`, using the same original gate network and use `paddle_quantum.mbqc` module
@@ -138,21 +166,22 @@ for width in test_cases_for_paddle_quantum:
 # %%
 # Lastly, we compare the simulation times.
 
-fig = plt.figure()
+fig = plt.figure(figsize=(10, 6))
 ax = fig.add_subplot(111)
 
-ax.scatter(
-    test_cases, circuit_time, label="direct statevector sim of original gate-based circuit (reference)", marker="x"
-)
-ax.scatter(test_cases, pattern_time, label="graphix pattern simulator")
-ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time, label="paddle_quantum pattern simulator")
+ax.scatter(test_cases, circuit_time, label="direct statevector sim (numpy)", marker="x")
+ax.scatter(test_cases, circuit_time_jax, label="direct statevector sim (jax)", marker="x")
+ax.scatter(test_cases, pattern_time, label="graphix (numpy)")
+ax.scatter(test_cases, pattern_time_jax, label="graphix (jax)")
+ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time, label="paddle_quantum")
 ax.set(
     xlabel="Width of the original circuit",
     ylabel="time (s)",
     yscale="log",
     title="Time to simulate random circuits",
 )
-fig.legend(bbox_to_anchor=(0.85, 0.9))
+ax.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
+fig.tight_layout()
 fig.show()
 
 # %%
@@ -162,7 +191,5 @@ fig.show()
 import importlib.metadata  # noqa: E402
 
 # print package versions.
-[
+for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]:
     print("{} - {}".format(pkg, importlib.metadata.version(pkg)))
-    for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]
-]
