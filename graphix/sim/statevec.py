@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from copy import deepcopy
 from functools import partial
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 from .backends.settings import backend
 
@@ -12,7 +18,7 @@ from .backends.settings import backend
 class StatevectorBackend:
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20):
+    def __init__(self, pattern: Pattern, max_qubit_num: int = 20):
         """
         Parameters
         -----------
@@ -103,12 +109,13 @@ class StatevectorBackend:
         self.state.remove_qubit(loc)
         self.node_index.remove(cmd[1])
 
+    @backend.jit
     def correct_byproduct(self, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+        if backend.mod(backend.sum(np.array([self.results[j] for j in cmd[2]])), 2) == 1:
             loc = self.node_index.index(cmd[1])
             if cmd[0] == "X":
                 op = Ops.x
@@ -116,6 +123,7 @@ class StatevectorBackend:
                 op = Ops.z
             self.state.evolve_single(op, loc)
 
+    @backend.jit
     def apply_clifford(self, cmd):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD

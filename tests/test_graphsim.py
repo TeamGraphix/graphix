@@ -5,7 +5,11 @@ import numpy as np
 from networkx import Graph
 from networkx.utils import graphs_equal
 from parameterized import parameterized_class
-from rustworkx import PyGraph
+
+try:
+    from rustworkx import PyGraph
+except ModuleNotFoundError:
+    pass
 
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
@@ -124,6 +128,7 @@ class TestGraphSim(unittest.TestCase):
         self.assertTrue(is_graphs_equal(g, exp_g))
 
 
+@unittest.skipIf(sys.modules.get("rustworkx") is None, "rustworkx not installed")
 class TestGraphSimUtils(unittest.TestCase):
     def test_is_graphs_equal_nx_nx(self):
         nnode = 6
