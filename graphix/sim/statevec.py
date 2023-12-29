@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
@@ -18,7 +18,7 @@ from .backends.settings import backend
 class StatevectorBackend:
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern: Pattern, max_qubit_num: int = 20):
+    def __init__(self, pattern: Pattern, max_qubit_num: int = 20, seed: Optional[int] = None):
         """
         Parameters
         -----------
@@ -29,6 +29,9 @@ class StatevectorBackend:
         max_qubit_num : int
             optional argument specifying the maximum number of qubits
             to be stored in the statevector at a time.
+            Defaults to 20.
+        seed : int
+            optional argument for random number generator.
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
@@ -37,6 +40,7 @@ class StatevectorBackend:
         self.state = None
         self.node_index = []
         self.max_qubit_num = max_qubit_num
+        backend.set_random_state(seed)
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
 
@@ -66,6 +70,7 @@ class StatevectorBackend:
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
 
+    @backend.jit
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
 
@@ -78,6 +83,7 @@ class StatevectorBackend:
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
+    @backend.jit
     def measure(self, cmd):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
@@ -87,13 +93,13 @@ class StatevectorBackend:
             measurement command : ['M', node, plane angle, s_domain, t_domain]
         """
         # choose the measurement result randomly
-        result = np.random.choice([0, 1])
+        result = backend.random_choice(backend.array([0, 1]))
         self.results[cmd[1]] = result
 
         # extract signals for adaptive angle
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
+        s_signal = backend.sum(backend.array([self.results[j] for j in cmd[4]]))
+        t_signal = backend.sum(backend.array([self.results[j] for j in cmd[5]]))
+        angle = cmd[3] * backend.pi
         if len(cmd) == 7:
             vop = cmd[6]
         else:
@@ -131,11 +137,13 @@ class StatevectorBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
+    @backend.jit
     def finalize(self):
         """to be run at the end of pattern simulation."""
         self.sort_qubits()
         self.state.normalize()
 
+    @backend.jit
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""
         for i, ind in enumerate(self.pattern.output_nodes):
@@ -257,6 +265,7 @@ class Statevec:
         self.psi = backend.tensordot(op, self.psi, (1, i))
         self.psi = backend.moveaxis(self.psi, 0, i)
 
+    @backend.jit
     def evolve(self, op, qargs):
         """Multi-qubit operation
 
@@ -323,7 +332,7 @@ class Statevec:
                     & + \dots \\
                     & + c_{1 \dots 1_{\mathrm{k-1}}0_{\mathrm{k}}1_{\mathrm{k+1}} \dots 11}
                     \ket{1 \dots 1_{\mathrm{k-1}}1_{\mathrm{k+1}} \dots 11},
-           \end{align}
+            \end{align}
 
         (after normalization) for :math:`k =` qarg. If the :math:`k` th qubit is in :math:`\ket{1}` state,
         above will return zero amplitudes; in such a case the returned state will be the one above with
@@ -378,6 +387,7 @@ class Statevec:
         total_num = len(self.dims()) + len(other.dims())
         self.psi = backend.kron(psi_self, psi_other).reshape((2,) * total_num)
 
+    @backend.jit
     def CNOT(self, qubits):
         """apply CNOT
 
@@ -391,6 +401,7 @@ class Statevec:
         # sort back axes
         self.psi = backend.moveaxis(self.psi, (0, 1), qubits)
 
+    @backend.jit
     def swap(self, qubits):
         """swap qubits
 
@@ -410,6 +421,7 @@ class Statevec:
         norm = _get_statevec_norm(self.psi)
         self.psi = self.psi / norm
 
+    @backend.jit
     def flatten(self):
         """returns flattened statevector"""
         return self.psi.flatten()

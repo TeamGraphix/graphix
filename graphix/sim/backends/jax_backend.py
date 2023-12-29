@@ -10,6 +10,12 @@ Tensor = Any
 jax = None
 jnp = None
 jsp = None
+PRNGKeyArray = None
+
+
+class JaxRandomState:
+    def __init__(self, prngkey: PRNGKeyArray):
+        self.prngkey = prngkey
 
 
 class JaxBackend(AbstractBackend):
@@ -28,6 +34,7 @@ class JaxBackend(AbstractBackend):
 
         jnp = jax.numpy
         jsp = jax.scipy
+        PRNGKeyArray = jax.random.PRNGKeyArray
 
     @property
     def name(self) -> str:
@@ -36,6 +43,10 @@ class JaxBackend(AbstractBackend):
     @property
     def pi(self) -> float:
         return jnp.pi
+
+    def array(self, a: Any, dtype: Optional[str] = None) -> Tensor:
+        """Create an array."""
+        return jnp.array(a, dtype=dtype)
 
     def eye(self, N: int, dtype: Optional[str] = None, M: Optional[int] = None) -> Tensor:
         if dtype is None:
@@ -145,8 +156,23 @@ class JaxBackend(AbstractBackend):
         else:
             random_state = jax.random.PRNGKey(seed)
         if get_only is False:
-            self.random_state = random_state
-        return random_state
+            self.random_state = JaxRandomState(random_state)
+        return JaxRandomState(random_state)
+
+    def random_choice(
+        self,
+        a: Tensor,
+        p: Optional[Tensor] = None,
+        random_state: Optional[JaxRandomState] = None,
+    ) -> Tensor:
+        if random_state is None and self.random_state is None:
+            random_state = self.set_random_state(get_only=True)
+            return jax.random.choice(a=a, p=p, key=random_state.prngkey)
+        elif random_state is None and self.random_state is not None:
+            return jax.random.choice(a=a, p=p, key=self.random_state.prngkey)
+        if not isinstance(random_state, JaxRandomState):
+            raise TypeError("random_state must be of type JaxRandomState.")
+        return jax.random.choice(a=a, p=p, key=random_state.prngkey)
 
     def jit(
         self,

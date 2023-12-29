@@ -3,11 +3,17 @@ from __future__ import annotations
 from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
+from numpy.random import Generator
 
 from .abstract_backend import AbstractBackend
 
 default_dtype: str
 Tensor = Any
+
+
+class NumPyRandomState:
+    def __init__(self, rng: Generator):
+        self.rng = np.random.default_rng(rng)
 
 
 class NumPyBackend(AbstractBackend):
@@ -20,6 +26,10 @@ class NumPyBackend(AbstractBackend):
     @property
     def pi(self) -> float:
         return np.pi
+
+    def array(self, a: Any, dtype: Optional[str] = None) -> Tensor:
+        """Create an array."""
+        return np.array(a, dtype=dtype)
 
     def eye(self, N: int, dtype: Optional[str] = None, M: Optional[int] = None) -> Tensor:
         if dtype is None:
@@ -126,8 +136,22 @@ class NumPyBackend(AbstractBackend):
     def set_random_state(self, seed: Optional[int] = None, get_only: bool = False) -> Any:
         random_state = np.random.default_rng(seed)
         if get_only is False:
-            self.random_state = random_state
-        return random_state
+            self.random_state = NumPyRandomState(random_state)
+        return NumPyRandomState(random_state)
+
+    def random_choice(
+        self,
+        a: Tensor,
+        p: Optional[Tensor] = None,
+        random_state: Optional[NumPyRandomState] = None,
+    ) -> Tensor:
+        if random_state is None and self.random_state is None:
+            return np.random.choice(a, p=p)
+        elif random_state is None and self.random_state is not None:
+            return self.random_state.rng.choice(a, p=p)
+        if not isinstance(random_state, NumPyRandomState):
+            raise TypeError("random_state must be of type NumPyRandomState")
+        return random_state.rng.choice(a, p=p)
 
     def jit(
         self,

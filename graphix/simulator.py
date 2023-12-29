@@ -4,8 +4,33 @@ Simulates MBQC by executing the pattern.
 
 """
 
-from graphix.sim.tensornet import TensorNetworkBackend
+from graphix.sim.backends.settings import backend
 from graphix.sim.statevec import StatevectorBackend
+from graphix.sim.tensornet import TensorNetworkBackend
+
+
+def _conditional_decorator(dec, condition):
+    """Conditional decorator
+
+    Parameters
+    ----------
+    dec : decorator
+        decorator to be applied
+    condition : bool
+        condition to apply decorator
+
+    Returns
+    -------
+    decorator
+        decorated function
+    """
+
+    def decorator(func):
+        if not condition:
+            return func
+        return dec(func)
+
+    return decorator
 
 
 class PatternSimulator:
@@ -40,6 +65,7 @@ class PatternSimulator:
         self.state = self.backend.state
         self.node_index = []
 
+    @_conditional_decorator(backend.jit, isinstance(backend, StatevectorBackend))
     def run(self):
         """Perform the simulation.
 
