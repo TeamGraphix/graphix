@@ -524,10 +524,10 @@ class Circuit:
     def _commute_with_swap(self, target):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "SWAP"
-        if self._instr[target][1] == self._instr[target + 1][1][0]: 
+        if self._instr[target][1] == self._instr[target + 1][1][0]:
             self._instr[target][1] = self._instr[target + 1][1][1]
             self._commute_with_following(target)
-        elif self._instr[target][1] == self._instr[target + 1][1][1]: 
+        elif self._instr[target][1] == self._instr[target + 1][1][1]:
             self._instr[target][1] = self._instr[target + 1][1][0]
             self._commute_with_following(target)
         else:
