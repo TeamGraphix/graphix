@@ -55,10 +55,10 @@ class Circuit:
 
         Parameters
         ---------
-        control : int
-            control qubit
-        target : int
-            target qubit
+        qubit1 : int
+            first qubit to be swapped
+        qubit2 : int
+            second qubit to be swapped
         """
         assert qubit1 in np.arange(self.width)
         assert qubit2 in np.arange(self.width)
