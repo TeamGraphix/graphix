@@ -81,6 +81,8 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, seed=None):
         if use_rzz:
             for j, k in genpair(nqubits, 1, rng):
                 circuit.rzz(j, k, np.pi / 4)
+        for j, k in genpair(nqubits, 4, rng):
+            circuit.swap(j, k)
         for j in range(nqubits):
             k = rng.choice(gate_choice)
             if k == 0:

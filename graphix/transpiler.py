@@ -50,6 +50,21 @@ class Circuit:
         assert control != target
         self.instruction.append(["CNOT", [control, target]])
 
+    def swap(self, qubit1, qubit2):
+        """SWAP gate
+
+        Parameters
+        ---------
+        control : int
+            control qubit
+        target : int
+            target qubit
+        """
+        assert qubit1 in np.arange(self.width)
+        assert qubit2 in np.arange(self.width)
+        assert qubit1 != qubit2
+        self.instruction.append(["SWAP", [qubit1, qubit2]])
+
     def h(self, qubit):
         """Hadamard gate
 
@@ -220,6 +235,8 @@ class Circuit:
                 )
                 pattern.seq.extend(seq)
                 Nnode += 2
+            elif instr[0] == "SWAP":
+                out[instr[1][0]], out[instr[1][1]] = out[instr[1][1]], out[instr[1][0]]
             elif instr[0] == "I":
                 pass
             elif instr[0] == "H":
@@ -345,6 +362,9 @@ class Circuit:
                 self._instr.append(["XC", instr[1][1], seq[7][2]])
                 self._instr.append(["ZC", instr[1][1], seq[8][2]])
                 self._instr.append(["ZC", instr[1][0], seq[9][2]])
+            elif instr[0] == "SWAP":
+                out[instr[1][0]], out[instr[1][1]] = out[instr[1][1]], out[instr[1][0]]
+                self._instr.append(instr)
             elif instr[0] == "I":
                 pass
             elif instr[0] == "H":
@@ -501,6 +521,19 @@ class Circuit:
         pattern.seq = command_seq
         return pattern
 
+    def _commute_with_swap(self, target):
+        assert self._instr[target][0] in ["XC", "ZC"]
+        assert self._instr[target + 1][0] == "SWAP"
+        if self._instr[target][1] == self._instr[target + 1][1][0]: 
+            self._instr[target][1] = self._instr[target + 1][1][1]
+            self._commute_with_following(target)
+        elif self._instr[target][1] == self._instr[target + 1][1][1]: 
+            self._instr[target][1] = self._instr[target + 1][1][0]
+            self._commute_with_following(target)
+        else:
+            self._commute_with_following(target)
+        return target
+
     def _commute_with_cnot(self, target):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "CNOT"
@@ -642,6 +675,8 @@ class Circuit:
                 continue
             if self._instr[target + 1][0] == "CNOT":
                 target = self._commute_with_cnot(target)
+            elif self._instr[target + 1][0] == "SWAP":
+                target = self._commute_with_swap(target)
             elif self._instr[target + 1][0] == "H":
                 self._commute_with_H(target)
             elif self._instr[target + 1][0] == "S":
@@ -1225,6 +1260,8 @@ class Circuit:
         for i in range(len(self.instruction)):
             if self.instruction[i][0] == "CNOT":
                 state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))
+            elif self.instruction[i][0] == "SWAP":
+                state.swap((self.instruction[i][1][0], self.instruction[i][1][1]))
             elif self.instruction[i][0] == "I":
                 pass
             elif self.instruction[i][0] == "S":
