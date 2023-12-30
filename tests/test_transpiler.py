@@ -97,8 +97,7 @@ class TestTranspiler_UnitGates(unittest.TestCase):
         nqubits = 4
         depth = 6
         for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            circuit.ccx(0, 1, 2)
+            circuit = rc.get_rand_circuit(nqubits, depth, use_ccx=True)
             pattern = circuit.transpile()
             pattern.minimize_space()
             state = circuit.simulate_statevector()
@@ -111,7 +110,7 @@ class TestTranspiler_Opt(unittest.TestCase):
         nqubits = 4
         depth = 6
         for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, use_ccx=True)
             circuit.ccx(0, 1, 2)
             pattern = circuit.transpile(opt=True)
             pattern.minimize_space()
