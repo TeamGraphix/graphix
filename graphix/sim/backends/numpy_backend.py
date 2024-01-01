@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import warnings
 from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from numpy.random import Generator
 
 from .abstract_backend import AbstractBackend
+from .settings import default_dtype
 
-default_dtype: str
 Tensor = Any
 
 
@@ -26,6 +27,10 @@ class NumPyBackend(AbstractBackend):
     @property
     def pi(self) -> float:
         return np.pi
+
+    @property
+    def nan(self) -> float:
+        return np.nan
 
     def array(self, a: Any, dtype: Optional[str] = None) -> Tensor:
         """Create an array."""
@@ -128,10 +133,22 @@ class NumPyBackend(AbstractBackend):
     def mod(self, x: Tensor, y: Tensor) -> Tensor:
         return np.mod(x, y)
 
+    def put_along_axis(self, a: Tensor, indices: Tensor, values: Tensor, axis: int) -> Tensor:
+        return np.put_along_axis(a, indices, values, axis=axis)
+
     def isclose(
         self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
     ) -> Tensor:
         return np.isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
+
+    def equal(self, a: Tensor, b: Tensor) -> Tensor:
+        return np.equal(a, b)
+
+    def where(self, condition: Tensor, x: Tensor, y: Tensor) -> Tensor:
+        return np.where(condition, x, y)
+
+    def any(self, a: Tensor, axis: Optional[int] = None) -> Tensor:
+        return np.any(a, axis=axis)
 
     def set_random_state(self, seed: Optional[int] = None, get_only: bool = False) -> Any:
         random_state = np.random.default_rng(seed)
@@ -158,4 +175,11 @@ class NumPyBackend(AbstractBackend):
         func: Callable[..., Any],
         static_argnums: Optional[Union[int, Sequence[int]]] = None,
     ) -> Callable[..., Any]:
+        warnings.warn("jit is not supported in NumPy backend, returning the original function.")
         return func
+
+    def cond(self, pred: bool, true_fn: Callable[..., Any], false_fn: Callable[..., Any]) -> Callable[..., Any]:
+        return true_fn() if pred else false_fn()
+
+    def set_element(self, a: Tensor, index: int, value: Any) -> None:
+        a[index] = value

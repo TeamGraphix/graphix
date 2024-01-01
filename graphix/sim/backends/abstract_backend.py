@@ -22,6 +22,12 @@ class AbstractBackend(ABC):
         """Return the value of pi."""
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def nan(self) -> float:
+        """Return the value of nan."""
+        raise NotImplementedError
+
     @abstractmethod
     def array(self, a: Any, dtype: Optional[str] = None) -> Tensor:
         """Create an array."""
@@ -173,10 +179,30 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def put_along_axis(self, a: Tensor, indices: Tensor, values: Tensor, axis: int) -> Tensor:
+        """Put values into the destination array by matching 1d index and data slices."""
+        raise NotImplementedError
+
+    @abstractmethod
     def isclose(
         self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
     ) -> Tensor:
         """Return element-wise True if two arrays are element-wise equal within a tolerance."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def equal(self, a: Tensor, b: Tensor) -> Tensor:
+        """Return element-wise True if two arrays are element-wise equal."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def where(self, condition: Tensor, x: Tensor, y: Tensor) -> Tensor:
+        """Return elements chosen from x or y depending on condition."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def any(self, a: Tensor, axis: Optional[int] = None) -> Tensor:
+        """Test whether any array element along a given axis evaluates to True."""
         raise NotImplementedError
 
     @abstractmethod
@@ -231,4 +257,14 @@ class AbstractBackend(ABC):
         static_argnums: Optional[Union[int, Sequence[int]]] = None,
     ) -> Callable[..., Any]:
         """Return a function that is JIT compiled."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def cond(self, pred: bool, true_fn: Callable[..., Any], false_fn: Callable[..., Any]) -> Callable[..., Any]:
+        """Return true_fn() if the predicate pred is true else false_fn()."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_element(self, a: Tensor, index: int, value: Any) -> None:
+        """Set the value of an element in an array."""
         raise NotImplementedError

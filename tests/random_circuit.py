@@ -16,7 +16,7 @@ def get_rng(seed=None):
     elif seed is None and GLOBAL_SEED is not None:
         return np.random.default_rng(GLOBAL_SEED)
     else:
-        np.random.default_rng()
+        return np.random.default_rng()
 
 
 def first_rotation(circuit, nqubits, rng):

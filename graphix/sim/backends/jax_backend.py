@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
 from .abstract_backend import AbstractBackend
+from .settings import default_dtype
 
-default_dtype: str
 Tensor = Any
 
 jax = None
@@ -43,6 +43,10 @@ class JaxBackend(AbstractBackend):
     @property
     def pi(self) -> float:
         return jnp.pi
+
+    @property
+    def nan(self) -> float:
+        return jnp.nan
 
     def array(self, a: Any, dtype: Optional[str] = None) -> Tensor:
         """Create an array."""
@@ -145,10 +149,22 @@ class JaxBackend(AbstractBackend):
     def mod(self, x: Tensor, y: Tensor) -> Tensor:
         return jnp.mod(x, y)
 
+    def put_along_axis(self, a: Tensor, indices: Tensor, values: Tensor, axis: int) -> Tensor:  # FIXME:
+        return jnp.apply_along_axis(lambda x: jnp.put(x, indices, values, inplace=False), axis, a)
+
     def isclose(
         self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
     ) -> Tensor:
         return jnp.isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan)
+
+    def equal(self, a: Tensor, b: Tensor) -> Tensor:
+        return jnp.equal(a, b)
+
+    def where(self, condition: Tensor, x: Tensor, y: Tensor) -> Tensor:
+        return jnp.where(condition, x, y)
+
+    def any(self, a: Tensor, axis: Optional[int] = None) -> Tensor:
+        return jnp.any(a, axis=axis)
 
     def set_random_state(self, seed: Optional[int] = None, get_only: bool = False) -> Any:
         if seed is None:
@@ -179,4 +195,11 @@ class JaxBackend(AbstractBackend):
         func: Callable[..., Any],
         static_argnums: Optional[Union[int, Sequence[int]]] = None,
     ) -> Callable[..., Any]:
+        print("jax.jit")
         return jax.jit(func, static_argnums=static_argnums)
+
+    def cond(self, pred: bool, true_fn: Callable[..., Any], false_fn: Callable[..., Any]) -> Callable[..., Any]:
+        return jax.lax.cond(pred, true_fn, false_fn)
+
+    def set_element(self, a: Tensor, index: int, value: Any) -> None:
+        a.at[index].set(value)

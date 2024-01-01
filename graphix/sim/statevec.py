@@ -2,17 +2,29 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import partial
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Sequence
 
 import numpy as np
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 
+from .backends.backend_factory import backend
+
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
-from .backends.settings import backend
+
+def _update_global_variables():
+    """update global variables. numpy array cannot be used in jax.jit, so we need to convert to jax.numpy array"""
+    global CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
+    CLIFFORD = backend.array(CLIFFORD)
+    CLIFFORD_MUL = backend.array(CLIFFORD_MUL)
+    CLIFFORD_CONJ = backend.array(CLIFFORD_CONJ)
+    global CZ_TENSOR, CNOT_TENSOR, SWAP_TENSOR
+    CZ_TENSOR = backend.array(CZ_TENSOR)
+    CNOT_TENSOR = backend.array(CNOT_TENSOR)
+    SWAP_TENSOR = backend.array(SWAP_TENSOR)
 
 
 class StatevectorBackend:
@@ -34,15 +46,23 @@ class StatevectorBackend:
             optional argument for random number generator.
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
-        self.pattern = pattern
-        self.results = deepcopy(pattern.results)
-        self.state = None
-        self.node_index = []
-        self.max_qubit_num = max_qubit_num
-        backend.set_random_state(seed)
+        if not len(pattern.output_nodes) > 0:
+            raise ValueError("Pattern.output_nodes is empty. Set output nodes and try again")
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
+
+        self.pattern = pattern
+        self.results = deepcopy(pattern.results)
+        self.node_index = []
+        self.max_qubit_num = pattern.max_space()
+        backend.set_random_state(seed)
+        if backend.name == "jax":
+            # self.state = Statevec(fixed_nqubit=self.max_qubit_num) # TODO:
+            self.state = None
+        else:
+            self.state = None
+
+        _update_global_variables()
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -53,24 +73,23 @@ class StatevectorBackend:
         """
         return len(self.state.dims())
 
-    @backend.jit
     def add_nodes(self, nodes):
-        """add new qubit to internal statevector
-        and assign the corresponding node number
+        """add new qubits to internal statevector
+        and assign the corresponding node numbers
         to list self.node_index.
 
         Parameters
         ----------
         nodes : list of node indices
         """
+        # if backend.name == "numpy": # TODO:
         if not self.state:
             self.state = Statevec(nqubit=0)
-        n = len(nodes)
-        sv_to_add = Statevec(nqubit=n)
+        sv_to_add = Statevec(nqubit=len(nodes))
         self.state.tensor(sv_to_add)
+
         self.node_index.extend(nodes)
 
-    @backend.jit
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
 
@@ -83,7 +102,6 @@ class StatevectorBackend:
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    @backend.jit
     def measure(self, cmd):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
@@ -93,21 +111,25 @@ class StatevectorBackend:
             measurement command : ['M', node, plane angle, s_domain, t_domain]
         """
         # choose the measurement result randomly
-        result = backend.random_choice(backend.array([0, 1]))
+        result = backend.random_choice(backend.array([0, 1], dtype=np.int32))
         self.results[cmd[1]] = result
 
         # extract signals for adaptive angle
-        s_signal = backend.sum(backend.array([self.results[j] for j in cmd[4]]))
-        t_signal = backend.sum(backend.array([self.results[j] for j in cmd[5]]))
+        s_signal = backend.sum(backend.array([self.results[j] for j in cmd[4]], dtype=np.int32))
+        t_signal = backend.sum(backend.array([self.results[j] for j in cmd[5]], dtype=np.int32))
         angle = cmd[3] * backend.pi
         if len(cmd) == 7:
             vop = cmd[6]
         else:
-            vop = 0
+            vop = backend.array(0)
         if int(s_signal % 2) == 1:
             vop = CLIFFORD_MUL[1, vop]
+        # FIXME: replace above to this:
+        # vop = backend.where(backend.mod(s_signal, 2) == 1, vop, CLIFFORD_MUL[1, vop])
         if int(t_signal % 2) == 1:
             vop = CLIFFORD_MUL[3, vop]
+        # FIXME: replace above to this:
+        # vop = backend.where(backend.mod(t_signal, 2) == 1, vop, CLIFFORD_MUL[3, vop])
         m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(m_op, loc)
@@ -115,21 +137,32 @@ class StatevectorBackend:
         self.state.remove_qubit(loc)
         self.node_index.remove(cmd[1])
 
-    @backend.jit
     def correct_byproduct(self, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if backend.mod(backend.sum(np.array([self.results[j] for j in cmd[2]])), 2) == 1:
+
+        # original implementation:
+        # if backend.mod(backend.sum(backend.array([self.results[j] for j in cmd[2]])), 2) == 1:
+        #     loc = self.node_index.index(cmd[1])
+        #     if cmd[0] == "X":
+        #         op = Ops.x
+        #     elif cmd[0] == "Z":
+        #         op = Ops.z
+        #     self.state.evolve_single(op, loc)
+
+        def true_fun():
             loc = self.node_index.index(cmd[1])
             if cmd[0] == "X":
                 op = Ops.x
             elif cmd[0] == "Z":
                 op = Ops.z
-            self.state.evolve_single(op, loc)
+            return self.state._evolve_single(self.state.psi, op, loc)
 
-    @backend.jit
+        predicate = backend.mod(backend.sum(backend.array([self.results[j] for j in cmd[2]])), 2) == 1
+        self.state.psi = backend.cond(predicate, true_fun, lambda: self.state.psi)
+
     def apply_clifford(self, cmd):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
@@ -137,13 +170,11 @@ class StatevectorBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
-    @backend.jit
     def finalize(self):
         """to be run at the end of pattern simulation."""
         self.sort_qubits()
         self.state.normalize()
 
-    @backend.jit
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""
         for i, ind in enumerate(self.pattern.output_nodes):
@@ -176,7 +207,7 @@ except ModuleNotFoundError:
     pass
 
 
-@partial(backend.jit, static_argnums=(1, 2, 3))
+@partial(backend.jit, static_argnums=(2))
 def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
@@ -199,15 +230,22 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
         projection operator
 
     """
-    assert 0 <= vop < 24
-    assert choice in [0, 1]
-    assert plane in ["XY", "YZ", "XZ"]
+    # Error handling in jax is tricky
+    # https://github.com/google/jax/issues/4257
+    # TODO: use https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html
+    vop = backend.where(backend.any(vop == backend.arange(24)), vop, backend.nan)
+    choice = backend.where(backend.any(choice == backend.arange(2)), choice, backend.nan)
+    # variable's type will be casted to float64 when np.nan/jnp.nan is used in np.where/jnp.where, so we need to convert back to int32
+    vop = vop.astype(np.int32)
+    choice = choice.astype(np.int32)
     if plane == "XY":
-        vec = (np.cos(angle), np.sin(angle), 0)
+        vec = (backend.cos(angle), backend.sin(angle), 0)
     elif plane == "YZ":
-        vec = (0, np.cos(angle), np.sin(angle))
+        vec = (0, backend.cos(angle), backend.sin(angle))
     elif plane == "XZ":
-        vec = (np.cos(angle), 0, np.sin(angle))
+        vec = (backend.cos(angle), 0, backend.sin(angle))
+    else:
+        raise ValueError("plane must be 'XY', 'YZ' or 'ZX'")
     op_mat = backend.eye(2) / 2
     for i in range(3):
         op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
@@ -232,7 +270,7 @@ SWAP_TENSOR = np.array(
 class Statevec:
     """Simple statevector simulator"""
 
-    def __init__(self, nqubit=1, plus_states=True):
+    def __init__(self, nqubit: int = 1, plus_states: bool = True, fixed_nqubit: Optional[int] = None):
         """Initialize statevector
 
         Parameters
@@ -241,7 +279,11 @@ class Statevec:
             number of qubits. Defaults to 1.
         plus_states : bool, optional
             whether or not to start all qubits in + state or 0 state. Defaults to +
+        fixed_nqubit : int, optional
+            if not None, the number of qubits will be fixed to this value. nqubit will be ignored.
         """
+        if fixed_nqubit is not None:
+            nqubit = fixed_nqubit
         if plus_states:
             self.psi = backend.ones((2,) * nqubit) / 2 ** (nqubit / 2)
         else:
@@ -251,7 +293,6 @@ class Statevec:
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
 
-    @backend.jit
     def evolve_single(self, op, i):
         """Single-qubit operation
 
@@ -262,10 +303,15 @@ class Statevec:
         i : int
             qubit index
         """
-        self.psi = backend.tensordot(op, self.psi, (1, i))
-        self.psi = backend.moveaxis(self.psi, 0, i)
+        self.psi = self._evolve_single(self.psi, op, i)
 
-    @backend.jit
+    @staticmethod
+    def _evolve_single(psi, op, i):
+        """internal logic of `evolve_single`. This is to avoid leaking of self.psi in jax.jit"""
+        psi = backend.tensordot(op, psi, (1, i))
+        psi = backend.moveaxis(psi, 0, i)
+        return psi
+
     def evolve(self, op, qargs):
         """Multi-qubit operation
 
@@ -311,7 +357,6 @@ class Statevec:
         evals, evecs = backend.eigh(rho)  # back to statevector, density matrix is hermitian
         self.psi = backend.reshape(evecs[:, backend.argmax(evals)], (2,) * nqubit_after)
 
-    @backend.jit
     def remove_qubit(self, qarg):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
@@ -353,12 +398,24 @@ class Statevec:
         qarg : int
             qubit index
         """
-        assert not backend.isclose(_get_statevec_norm(self.psi), 0)
+        # Error handling in jax is tricky
+        # https://github.com/google/jax/issues/4257
+        # TODO: use https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html
+        # FIXME:
+        # self.psi = backend.where(backend.isclose(_get_statevec_norm(self.psi), 0), backend.nan, self.psi)
+        # if backend.name == "numpy":
+        #     psi = self.psi.take(indices=0, axis=qarg)
+        #     self.psi = backend.where(backend.isclose(_get_statevec_norm(psi), 0), self.psi.take(indices=1, axis=qarg), psi)
+        # else:
+        #     self.psi = backend.put_along_axis(self.psi, np.array([qarg]), 0, axis=0)
+        #     self.psi = backend.moveaxis(self.psi, 0, qarg)
+        # self.normalize()
+
+        assert not np.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not backend.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
-    @backend.jit
     def entangle(self, edge):
         """connect graph nodes
 
@@ -372,7 +429,6 @@ class Statevec:
         # sort back axes
         self.psi = backend.moveaxis(self.psi, (0, 1), edge)
 
-    @backend.jit
     def tensor(self, other):
         r"""Tensor product state with other qubits.
         Results in self :math:`\otimes` other.
@@ -387,7 +443,6 @@ class Statevec:
         total_num = len(self.dims()) + len(other.dims())
         self.psi = backend.kron(psi_self, psi_other).reshape((2,) * total_num)
 
-    @backend.jit
     def CNOT(self, qubits):
         """apply CNOT
 
@@ -401,7 +456,6 @@ class Statevec:
         # sort back axes
         self.psi = backend.moveaxis(self.psi, (0, 1), qubits)
 
-    @backend.jit
     def swap(self, qubits):
         """swap qubits
 
@@ -415,13 +469,11 @@ class Statevec:
         # sort back axes
         self.psi = backend.moveaxis(self.psi, (0, 1), qubits)
 
-    @backend.jit
     def normalize(self):
         """normalize the state"""
         norm = _get_statevec_norm(self.psi)
         self.psi = self.psi / norm
 
-    @backend.jit
     def flatten(self):
         """returns flattened statevector"""
         return self.psi.flatten()
@@ -468,8 +520,8 @@ class Statevec:
 
     # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
     def _tree_flatten(self):
-        children = self.psi  # arrays / dynamic values
-        aux_data = None  # static values
+        children = (self.psi,)  # arrays / dynamic values
+        aux_data = {}  # static values
         return (children, aux_data)
 
     @classmethod
@@ -485,7 +537,6 @@ except ModuleNotFoundError:
     pass
 
 
-@backend.jit
 def _get_statevec_norm(psi):
     """returns norm of the state"""
     return backend.sqrt(backend.sum(psi.flatten().conj() * psi.flatten()))

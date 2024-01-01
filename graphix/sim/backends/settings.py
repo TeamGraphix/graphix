@@ -1,31 +1,12 @@
 from __future__ import annotations
 
-import sys
-
-from .abstract_backend import AbstractBackend
-from .backend_factory import get_backend
-
-module_name = "graphix.sim"
-backend: AbstractBackend
-default_dtype = "complex128"
-
-
-def set_backend(backend_name: str = "numpy") -> None:
-    """Set the backend to use for all computations."""
-    backend = get_backend(backend_name)
-    for module in sys.modules:
-        if module.startswith(module_name):
-            setattr(sys.modules[module], "backend", backend)
-
-
-set_backend()
+default_dtype: str
 
 
 def set_default_dtype(dtype: str = "complex128") -> None:
     """Set the default dtype for all computations."""
-    for module in sys.modules:
-        if module.startswith(module_name):
-            setattr(sys.modules[module], "default_dtype", dtype)
+    global default_dtype
+    default_dtype = dtype
 
     try:
         from jax import config

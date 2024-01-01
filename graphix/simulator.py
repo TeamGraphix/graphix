@@ -3,34 +3,10 @@
 Simulates MBQC by executing the pattern.
 
 """
+from __future__ import annotations
 
-from graphix.sim.backends.settings import backend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
-
-
-def _conditional_decorator(dec, condition):
-    """Conditional decorator
-
-    Parameters
-    ----------
-    dec : decorator
-        decorator to be applied
-    condition : bool
-        condition to apply decorator
-
-    Returns
-    -------
-    decorator
-        decorated function
-    """
-
-    def decorator(func):
-        if not condition:
-            return func
-        return dec(func)
-
-    return decorator
 
 
 class PatternSimulator:
@@ -63,9 +39,7 @@ class PatternSimulator:
         self.pattern = pattern
         self.results = self.backend.results
         self.state = self.backend.state
-        self.node_index = []
 
-    @_conditional_decorator(backend.jit, isinstance(backend, StatevectorBackend))
     def run(self):
         """Perform the simulation.
 
@@ -89,7 +63,7 @@ class PatternSimulator:
             elif cmd[0] == "C":
                 self.backend.apply_clifford(cmd)
             else:
-                raise ValueError("invalid commands")
+                raise ValueError("invalid command: {}".format(cmd))
             if self.pattern.seq[-1] == cmd:
                 self.backend.finalize()
 

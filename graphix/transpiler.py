@@ -9,7 +9,6 @@ import numpy as np
 
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.backends.settings import backend
 from graphix.sim.statevec import Statevec
 
 

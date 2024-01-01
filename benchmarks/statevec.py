@@ -101,7 +101,7 @@ for width, depth, num_gates, circuit in graphix_circuit_list:
 
 import graphix.sim
 
-graphix.sim.set_backend("jax")
+sim_backend = graphix.sim.set_backend("jax")
 
 for width, depth, num_gates, circuit in graphix_circuit_list:
     pattern = circuit.transpile()
@@ -110,7 +110,7 @@ for width, depth, num_gates, circuit in graphix_circuit_list:
     nodes, edges = pattern.get_graph()
     nqubit = len(nodes)
     start = perf_counter()
-    pattern.simulate_pattern(max_qubit_num=30)
+    sim_backend.jit(pattern.simulate_pattern)(max_qubit_num=30)
     end = perf_counter()
     print(f"width: {width}, nqubit: {nqubit}, depth: {depth}, time: {end - start}")
     pattern_time_jax.append(end - start)
