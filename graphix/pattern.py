@@ -1330,6 +1330,7 @@ class Pattern:
 # except ModuleNotFoundError:
 #     pass
 
+
 class CommandNode:
     """A node decorated with a distributed command sequence.
 
