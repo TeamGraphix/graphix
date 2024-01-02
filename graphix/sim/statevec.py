@@ -72,6 +72,7 @@ class StatevectorBackend:
         """
         return len(self.state.dims())
 
+    # @backend.jit
     def add_nodes(self, nodes):
         """add new qubits to internal statevector
         and assign the corresponding node numbers
@@ -91,6 +92,7 @@ class StatevectorBackend:
 
         self.node_index.extend(nodes)
 
+    # @backend.jit
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
 
@@ -103,6 +105,7 @@ class StatevectorBackend:
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
+    # @backend.jit
     def measure(self, cmd):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
@@ -123,21 +126,17 @@ class StatevectorBackend:
             vop = cmd[6]
         else:
             vop = backend.array(0)
-        if int(s_signal % 2) == 1:
-            vop = CLIFFORD_MUL[1, vop]
-        # FIXME: replace above to this:
-        # vop = backend.where(backend.mod(s_signal, 2) == 1, vop, CLIFFORD_MUL[1, vop])
-        if int(t_signal % 2) == 1:
-            vop = CLIFFORD_MUL[3, vop]
-        # FIXME: replace above to this:
-        # vop = backend.where(backend.mod(t_signal, 2) == 1, vop, CLIFFORD_MUL[3, vop])
-        m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+        vop = backend.where(backend.mod(s_signal, 2) == 1, CLIFFORD_MUL[1, vop], vop)
+        vop = backend.where(backend.mod(t_signal, 2) == 1, CLIFFORD_MUL[3, vop], vop)
+        err, m_op = backend.wrap_by_checkify(meas_op)(angle, vop=vop, plane=cmd[2], choice=result)
+        if err is not None:
+            err.throw()
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(m_op, loc)
         self.state.remove_qubit(loc)
         self.node_index.remove(cmd[1])
 
-    @backend.jit
+    # @backend.jit
     def correct_byproduct(self, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
@@ -164,6 +163,7 @@ class StatevectorBackend:
         predicate = backend.mod(backend.sum(backend.array([self.results[j] for j in cmd[2]])), 2) == 1
         self.state.psi = backend.cond(predicate, true_fun, lambda: self.state.psi)
 
+    # @backend.jit
     def apply_clifford(self, cmd):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
@@ -171,13 +171,13 @@ class StatevectorBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
-    @backend.jit
+    # @backend.jit
     def finalize(self):
         """to be run at the end of pattern simulation."""
         self.sort_qubits()
         self.state.normalize()
 
-    @backend.jit
+    # @backend.jit
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""
         for i, ind in enumerate(self.pattern.output_nodes):
@@ -210,7 +210,7 @@ except ModuleNotFoundError:
     pass
 
 
-# @partial(backend.jit, static_argnums=(2))
+@partial(backend.jit, static_argnums=(2))
 def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
@@ -233,16 +233,16 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
         projection operator
 
     """
-    # Error handling in jax is tricky
-    # https://github.com/google/jax/issues/4257
-    # TODO: use https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html
-    assert vop in range(24)
-    # vop = backend.where(backend.any(vop == backend.arange(24)), vop, backend.nan)
-    assert choice in (0, 1)
-    # choice = backend.where(backend.any(choice == backend.arange(2)), choice, backend.nan)
-    # variable's type will be casted to float64 when np.nan/jnp.nan is used in np.where/jnp.where, so we need to convert back to int32
-    # vop = vop.astype(np.int32)
-    # choice = choice.astype(np.int32)
+    backend.debug_assert_true(
+        backend.logical_and(0 <= vop, vop < 24),
+        "vop must be in range(24), but got {vop}",
+        vop=backend.array(vop, dtype=np.int32),
+    )
+    backend.debug_assert_true(
+        backend.logical_or(choice == 0, choice == 1),
+        "choice must be 0 or 1, but got {choice}",
+        choice=backend.array(choice, dtype=np.int32),
+    )
     if plane == "XY":
         vec = (backend.cos(angle), backend.sin(angle), 0)
     elif plane == "YZ":

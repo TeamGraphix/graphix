@@ -191,5 +191,5 @@ fig.show()
 import importlib.metadata  # noqa: E402
 
 # print package versions.
-for pkg in ["numpy", "jax", "graphix", "paddlepaddle", "paddle-quantum"]:
+for pkg in ["numpy", "jax", "jaxlib", "graphix", "paddlepaddle", "paddle-quantum"]:
     print("{} - {}".format(pkg, importlib.metadata.version(pkg)))

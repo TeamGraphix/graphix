@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional, Sequence, Tuple, Union
 
 Tensor = Any
+Error = Any
 AbstractRandomState = Any
 
 
@@ -260,6 +261,33 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def fori_loop(
+        self, lower: int, upper: int, body_fun: Callable[..., Any], init_val: Any, *args: Any, **kwargs: Any
+    ) -> Any:
+        """Return a function that executes a for loop."""
+        raise NotImplementedError
+
+    @abstractmethod
     def set_element(self, a: Tensor, index: int, value: Any) -> None:
         """Set the value of an element in an array."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def wrap_by_checkify(self, func: Callable[..., Any]) -> Callable[..., tuple[Error, Any]]:
+        """Wrap a function with checkify."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def debug_assert_true(self, condition: bool, message: str, **kwargs) -> None:
+        """Assert that the condition is true."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def logical_or(self, a: Tensor, b: Tensor) -> Tensor:
+        """Return the truth value of a or b element-wise."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def logical_and(self, a: Tensor, b: Tensor) -> Tensor:
+        """Return the truth value of a and b element-wise."""
         raise NotImplementedError

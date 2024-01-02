@@ -1309,6 +1309,26 @@ class Pattern:
                 for line in cmd_to_qasm3(command):
                     file.write(line)
 
+    # TODO:
+    # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
+    # def _tree_flatten(self):
+    #     children = (self.width, self.seq, self.results, self.input_nodes, self.output_nodes, self.Nnode, self._pauli_preprocessed)  # arrays / dynamic values
+    #     aux_data = {}  # static values
+    #     return (children, aux_data)
+
+    # @classmethod
+    # def _tree_unflatten(cls, aux_data, children):
+    #     return cls(*children, **aux_data)
+
+
+# try:
+#     from jax import tree_util
+
+#     tree_util.register_pytree_node(
+#         Pattern, Pattern._tree_flatten, Pattern._tree_unflatten
+#     )
+# except ModuleNotFoundError:
+#     pass
 
 class CommandNode:
     """A node decorated with a distributed command sequence.

@@ -6,6 +6,8 @@ from typing import Any, Callable, Optional, Sequence, Tuple, Union
 import numpy as np
 from numpy.random import Generator
 
+from graphix.sim.backends.abstract_backend import Tensor
+
 from .abstract_backend import AbstractBackend
 from .settings import default_dtype
 
@@ -172,11 +174,33 @@ class NumPyBackend(AbstractBackend):
         func: Callable[..., Any],
         static_argnums: Optional[Union[int, Sequence[int]]] = None,
     ) -> Callable[..., Any]:
-        warnings.warn("jit is not supported in NumPy backend, returning the original function.")
         return func
 
     def cond(self, pred: bool, true_fn: Callable[..., Any], false_fn: Callable[..., Any]) -> Callable[..., Any]:
         return true_fn() if pred else false_fn()
 
+    def fori_loop(
+        self, lower: int, upper: int, body_fun: Callable[..., Any], init_val: Any, *args: Any, **kwargs: Any
+    ) -> Any:
+        val = init_val
+        for i in range(lower, upper):
+            val = body_fun(i, val)
+        return val
+
     def set_element(self, a: Tensor, index: int, value: Any) -> None:
         a[index] = value
+
+    def wrap_by_checkify(self, func: Callable[..., Any]) -> Callable[..., tuple[None, Any]]:
+        def wrapper(*args, **kwargs):
+            return None, func(*args, **kwargs)
+
+        return wrapper
+
+    def debug_assert_true(self, condition: bool, message: str, **kwargs) -> None:
+        assert condition, message.format(**kwargs)
+
+    def logical_and(self, a: Tensor, b: Tensor) -> Tensor:
+        return np.logical_and(a, b)
+
+    def logical_or(self, a: Tensor, b: Tensor) -> Tensor:
+        return np.logical_or(a, b)

@@ -1,12 +1,16 @@
 import itertools
+import sys
 import unittest
 
 import numpy as np
+from parameterized import parameterized_class
 from quimb.tensor import Tensor
 
+import graphix.sim
 import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
+from graphix.sim.backends.backend_factory import _BACKENDS
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
 
@@ -28,7 +32,15 @@ CZ = Ops.cz
 plus = States.plus
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestTN(unittest.TestCase):
+    def setUp(self):
+        if self.backend == "jax":
+            self.skipTest("jax does not work with `tensornetwork` backend for now.")
+        if self.backend == "jax" and sys.platform == "win32" and sys.version_info < (3, 9):
+            self.skipTest("`jaxlib` does not support Windows with Python 3.8.")
+        graphix.sim.set_backend(self.backend)
+
     def test_add_node(self):
         node_index = np.random.randint(0, 1000)
         tn = MBQCTensorNet()

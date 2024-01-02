@@ -6,10 +6,12 @@ from .abstract_backend import AbstractBackend
 from .settings import default_dtype
 
 Tensor = Any
+Error = Any
 
 jax = None
 jnp = None
 jsp = None
+checkify = None
 PRNGKeyArray = None
 
 
@@ -25,8 +27,11 @@ class JaxBackend(AbstractBackend):
         global jax  # jax package
         global jnp  # jax.numpy module
         global jsp  # jax.scipy module
+        global checkify  # jax.experimental.checkify module
+        global PRNGKeyArray  # jax.random.PRNGKeyArray class
         try:
             import jax
+            from jax.experimental import checkify
         except ModuleNotFoundError:
             raise ModuleNotFoundError(
                 "Jax is not installed. See https://jax.readthedocs.io/en/latest/installation.html for installation instructions."
@@ -146,7 +151,7 @@ class JaxBackend(AbstractBackend):
             return jnp.arange(start=0, stop=start, step=step)
         return jnp.arange(start=start, stop=stop, step=step)
 
-    def mod(self, x: Tensor, y: Tensor) -> Tensor:
+    def mod(self, x: Tensor, y: Tensor, dtype: Optional[str] = None) -> Tensor:
         return jnp.mod(x, y)
 
     def isclose(
@@ -197,5 +202,22 @@ class JaxBackend(AbstractBackend):
     def cond(self, pred: bool, true_fn: Callable[..., Any], false_fn: Callable[..., Any]) -> Callable[..., Any]:
         return jax.lax.cond(pred, true_fn, false_fn)
 
+    def fori_loop(
+        self, lower: int, upper: int, body_fun: Callable[..., Any], init_val: Any, *args: Any, **kwargs: Any
+    ) -> Any:
+        return jax.lax.fori_loop(lower, upper, body_fun, init_val, *args, **kwargs)
+
     def set_element(self, a: Tensor, index: int, value: Any) -> None:
         a.at[index].set(value)
+
+    def wrap_by_checkify(self, func: Callable[..., Any]) -> Callable[..., tuple[Error, Any]]:
+        return checkify.checkify(func)
+
+    def debug_assert_true(self, condition: bool, message: str, **kwargs) -> None:
+        return checkify.check(condition, message, **kwargs)
+
+    def logical_and(self, a: Tensor, b: Tensor) -> Tensor:
+        return jnp.logical_and(a, b)
+
+    def logical_or(self, a: Tensor, b: Tensor) -> Tensor:
+        return jnp.logical_or(a, b)

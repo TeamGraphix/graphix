@@ -29,8 +29,10 @@ def set_backend(backend_name: str = "numpy") -> AbstractBackend:
     # Class method decorators are evaluated at the time the class is defined,
     # not at the time the class is instantiated, so we need to reload the
     # statevec module to update the backend.
+    from graphix import simulator
     from graphix.sim import statevec
 
+    importlib.reload(simulator)
     importlib.reload(statevec)
 
     return backend
