@@ -98,6 +98,9 @@ for width, depth, num_gates, circuit in graphix_circuit_list:
 
 # %%
 # We will also benchmark `graphix` with `jax` backend.
+# https://jax.readthedocs.io/en/latest/faq.html#benchmarking-jax-code
+
+import jax
 
 import graphix.sim
 
@@ -110,7 +113,7 @@ for width, depth, num_gates, circuit in graphix_circuit_list:
     nodes, edges = pattern.get_graph()
     nqubit = len(nodes)
     start = perf_counter()
-    sim_backend.jit(pattern.simulate_pattern)(max_qubit_num=30)
+    jax.block_until_ready(pattern.simulate_pattern(max_qubit_num=30))
     end = perf_counter()
     print(f"width: {width}, nqubit: {nqubit}, depth: {depth}, time: {end - start}")
     pattern_time_jax.append(end - start)
@@ -188,5 +191,5 @@ fig.show()
 import importlib.metadata  # noqa: E402
 
 # print package versions.
-for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]:
+for pkg in ["numpy", "jax", "graphix", "paddlepaddle", "paddle-quantum"]:
     print("{} - {}".format(pkg, importlib.metadata.version(pkg)))

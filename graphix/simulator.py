@@ -40,7 +40,7 @@ class PatternSimulator:
         self.results = self.backend.results
         self.state = self.backend.state
 
-    def run(self):
+    def run(self):  # TODO: use fori_loop for scan
         """Perform the simulation.
 
         Returns

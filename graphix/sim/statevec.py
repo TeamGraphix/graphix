@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy, deepcopy
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
-from graphix.ops import Ops
+from graphix.ops import Ops, States
 
 from .backends.backend_factory import backend
 
@@ -57,8 +57,7 @@ class StatevectorBackend:
         self.max_qubit_num = pattern.max_space()
         backend.set_random_state(seed)
         if backend.name == "jax":
-            # self.state = Statevec(fixed_nqubit=self.max_qubit_num) # TODO:
-            self.state = None
+            self.state = Statevec(nqubit=0, fixed_nqubit=self.max_qubit_num)
         else:
             self.state = None
 
@@ -82,11 +81,13 @@ class StatevectorBackend:
         ----------
         nodes : list of node indices
         """
-        # if backend.name == "numpy": # TODO:
-        if not self.state:
-            self.state = Statevec(nqubit=0)
-        sv_to_add = Statevec(nqubit=len(nodes))
-        self.state.tensor(sv_to_add)
+        if backend.name == "numpy":
+            if not self.state:
+                self.state = Statevec(nqubit=0)
+            sv_to_add = Statevec(nqubit=len(nodes))
+            self.state.tensor(sv_to_add)
+        else:
+            self.state.add_qubits(len(nodes))
 
         self.node_index.extend(nodes)
 
@@ -133,10 +134,10 @@ class StatevectorBackend:
         m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(m_op, loc)
-
         self.state.remove_qubit(loc)
         self.node_index.remove(cmd[1])
 
+    @backend.jit
     def correct_byproduct(self, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
@@ -170,11 +171,13 @@ class StatevectorBackend:
         loc = self.node_index.index(cmd[1])
         self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
+    @backend.jit
     def finalize(self):
         """to be run at the end of pattern simulation."""
         self.sort_qubits()
         self.state.normalize()
 
+    @backend.jit
     def sort_qubits(self):
         """sort the qubit order in internal statevector"""
         for i, ind in enumerate(self.pattern.output_nodes):
@@ -207,7 +210,7 @@ except ModuleNotFoundError:
     pass
 
 
-@partial(backend.jit, static_argnums=(2))
+# @partial(backend.jit, static_argnums=(2))
 def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
@@ -233,11 +236,13 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
     # Error handling in jax is tricky
     # https://github.com/google/jax/issues/4257
     # TODO: use https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html
-    vop = backend.where(backend.any(vop == backend.arange(24)), vop, backend.nan)
-    choice = backend.where(backend.any(choice == backend.arange(2)), choice, backend.nan)
+    assert vop in range(24)
+    # vop = backend.where(backend.any(vop == backend.arange(24)), vop, backend.nan)
+    assert choice in (0, 1)
+    # choice = backend.where(backend.any(choice == backend.arange(2)), choice, backend.nan)
     # variable's type will be casted to float64 when np.nan/jnp.nan is used in np.where/jnp.where, so we need to convert back to int32
-    vop = vop.astype(np.int32)
-    choice = choice.astype(np.int32)
+    # vop = vop.astype(np.int32)
+    # choice = choice.astype(np.int32)
     if plane == "XY":
         vec = (backend.cos(angle), backend.sin(angle), 0)
     elif plane == "YZ":
@@ -280,9 +285,11 @@ class Statevec:
         plus_states : bool, optional
             whether or not to start all qubits in + state or 0 state. Defaults to +
         fixed_nqubit : int, optional
-            if not None, the number of qubits will be fixed to this value. nqubit will be ignored.
+            if not None, the number of qubits will be fixed to this value.
         """
         if fixed_nqubit is not None:
+            self.actual_nqubit = copy(nqubit)
+            self.fixed_nqubit = copy(fixed_nqubit)
             nqubit = fixed_nqubit
         if plus_states:
             self.psi = backend.ones((2,) * nqubit) / 2 ** (nqubit / 2)
@@ -292,6 +299,13 @@ class Statevec:
 
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
+
+    def add_qubits(self, nqubit: int):
+        """add qubits to the system only if the number of qubits is fixed"""
+        if hasattr(self, "actual_nqubit"):
+            self.actual_nqubit += nqubit
+        else:
+            raise ValueError("number of qubits is not fixed")
 
     def evolve_single(self, op, i):
         """Single-qubit operation
@@ -402,19 +416,29 @@ class Statevec:
         # https://github.com/google/jax/issues/4257
         # TODO: use https://jax.readthedocs.io/en/latest/debugging/checkify_guide.html
         # FIXME:
-        # self.psi = backend.where(backend.isclose(_get_statevec_norm(self.psi), 0), backend.nan, self.psi)
-        # if backend.name == "numpy":
-        #     psi = self.psi.take(indices=0, axis=qarg)
-        #     self.psi = backend.where(backend.isclose(_get_statevec_norm(psi), 0), self.psi.take(indices=1, axis=qarg), psi)
-        # else:
-        #     self.psi = backend.put_along_axis(self.psi, np.array([qarg]), 0, axis=0)
-        #     self.psi = backend.moveaxis(self.psi, 0, qarg)
-        # self.normalize()
-
         assert not np.isclose(_get_statevec_norm(self.psi), 0)
-        psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        # self.psi = backend.where(backend.isclose(_get_statevec_norm(self.psi), 0), backend.nan, self.psi)
+        if not hasattr(self, "actual_nqubit"):
+            psi = self.psi.take(indices=0, axis=qarg)
+            self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+            # self.psi = backend.where(
+            #     backend.isclose(_get_statevec_norm(psi), 0), self.psi.take(indices=1, axis=qarg), psi
+            # )
+        else:
+            self.actual_nqubit -= 1
+
+            psi = self.psi.take(indices=0, axis=qarg)
+            qubit_removed_psi = (
+                psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+            )
+
+            self.psi = backend.tensordot(qubit_removed_psi, backend.array(States.plus), axes=0)
         self.normalize()
+
+        # assert not np.isclose(_get_statevec_norm(self.psi), 0)
+        # psi = self.psi.take(indices=0, axis=qarg)
+        # self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        # self.normalize()
 
     def entangle(self, edge):
         """connect graph nodes
@@ -476,7 +500,14 @@ class Statevec:
 
     def flatten(self):
         """returns flattened statevector"""
-        return self.psi.flatten()
+        if not hasattr(self, "actual_nqubit"):
+            return self.psi.flatten()
+        else:
+            arr = self.psi.copy()
+            for _ in range(self.fixed_nqubit - self.actual_nqubit):
+                arr = arr.take(indices=0, axis=-1)
+            arr /= _get_statevec_norm(arr)
+            return arr.flatten()
 
     def expectation_single(self, op, loc):
         """Expectation value of single-qubit operator.
@@ -520,8 +551,8 @@ class Statevec:
 
     # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
     def _tree_flatten(self):
-        children = (self.psi,)  # arrays / dynamic values
-        aux_data = {}  # static values
+        children = (self.psi, self.actual_nqubit)  # arrays / dynamic values
+        aux_data = {"fixed_nqubit": self.fixed_nqubit}  # static values
         return (children, aux_data)
 
     @classmethod

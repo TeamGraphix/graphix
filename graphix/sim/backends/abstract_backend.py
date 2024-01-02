@@ -179,11 +179,6 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def put_along_axis(self, a: Tensor, indices: Tensor, values: Tensor, axis: int) -> Tensor:
-        """Put values into the destination array by matching 1d index and data slices."""
-        raise NotImplementedError
-
-    @abstractmethod
     def isclose(
         self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
     ) -> Tensor:

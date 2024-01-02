@@ -149,9 +149,6 @@ class JaxBackend(AbstractBackend):
     def mod(self, x: Tensor, y: Tensor) -> Tensor:
         return jnp.mod(x, y)
 
-    def put_along_axis(self, a: Tensor, indices: Tensor, values: Tensor, axis: int) -> Tensor:  # FIXME:
-        return jnp.apply_along_axis(lambda x: jnp.put(x, indices, values, inplace=False), axis, a)
-
     def isclose(
         self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
     ) -> Tensor:
@@ -195,7 +192,6 @@ class JaxBackend(AbstractBackend):
         func: Callable[..., Any],
         static_argnums: Optional[Union[int, Sequence[int]]] = None,
     ) -> Callable[..., Any]:
-        print("jax.jit")
         return jax.jit(func, static_argnums=static_argnums)
 
     def cond(self, pred: bool, true_fn: Callable[..., Any], false_fn: Callable[..., Any]) -> Callable[..., Any]:

@@ -133,9 +133,6 @@ class NumPyBackend(AbstractBackend):
     def mod(self, x: Tensor, y: Tensor) -> Tensor:
         return np.mod(x, y)
 
-    def put_along_axis(self, a: Tensor, indices: Tensor, values: Tensor, axis: int) -> Tensor:
-        return np.put_along_axis(a, indices, values, axis=axis)
-
     def isclose(
         self, a: Tensor, b: Tensor, rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = False
     ) -> Tensor:
