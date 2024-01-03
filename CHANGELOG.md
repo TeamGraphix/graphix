@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.2.10] - 2024-01-03
+
 ### Added
 
 - Added `rustworkx` as a backend for the graph state simulator
   - Only `networkx` backend was available for pattern optimization.
   By setting the `use_rustworkx` option to True while using `Pattern.perform_pauli_measurements()`,
   graphix will run pattern optimization using `rustworkx` (#98)
+- Added `.ccx` and `.swap` methods to `graphix.Circuit`.
 
 ### Fixed
 

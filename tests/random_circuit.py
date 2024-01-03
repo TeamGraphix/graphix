@@ -1,5 +1,5 @@
 import numpy as np
-
+from copy import deepcopy
 from graphix.transpiler import Circuit
 
 GLOBAL_SEED = None
@@ -71,7 +71,21 @@ def genpair(n_qubits, count, rng):
     return pairs
 
 
-def get_rand_circuit(nqubits, depth, use_rzz=False, seed=None):
+def gentriplet(n_qubits, count, rng):
+    triplets = []
+    for i in range(count):
+        choice = [j for j in range(n_qubits)]
+        x = rng.choice(choice)
+        choice.pop(x)
+        y = rng.choice(choice)
+        locy = np.where(y == np.array(deepcopy(choice)))[0][0]
+        choice.pop(locy)
+        z = rng.choice(choice)
+        triplets.append((x, y, z))
+    return triplets
+
+
+def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
     rng = get_rng(seed)
     circuit = Circuit(nqubits)
     gate_choice = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -79,8 +93,13 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, seed=None):
         for j, k in genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
         if use_rzz:
-            for j, k in genpair(nqubits, 1, rng):
+            for j, k in genpair(nqubits, 2, rng):
                 circuit.rzz(j, k, np.pi / 4)
+        if use_ccx:
+            for j, k, l in gentriplet(nqubits, 2, rng):
+                circuit.ccx(j, k, l)
+        for j, k in genpair(nqubits, 4, rng):
+            circuit.swap(j, k)
         for j in range(nqubits):
             k = rng.choice(gate_choice)
             if k == 0:
