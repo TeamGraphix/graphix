@@ -24,12 +24,6 @@ def cp(circuit, theta, control, target):
     circuit.cnot(control, target)
 
 
-def swap(circuit, a, b):
-    circuit.cnot(a, b)
-    circuit.cnot(b, a)
-    circuit.cnot(a, b)
-
-
 def qft_rotations(circuit, n):
     circuit.h(n)
     for qubit in range(n + 1, circuit.width):
@@ -38,7 +32,7 @@ def qft_rotations(circuit, n):
 
 def swap_registers(circuit, n):
     for qubit in range(n // 2):
-        swap(circuit, qubit, n - qubit - 1)
+        circuit.swap(qubit, n - qubit - 1)
     return circuit
 
 
@@ -49,9 +43,9 @@ def qft(circuit, n):
 
 
 # %%
-# We will simulate 45-qubit QFT, which requires graph states with more than 10000 nodes.
+# We will simulate 55-qubit QFT, which requires graph states with more than 10000 nodes.
 
-n = 45
+n = 55
 print("{}-qubit QFT".format(n))
 circuit = Circuit(n)
 
@@ -60,7 +54,7 @@ for i in range(n):
 qft(circuit, n)
 
 # standardize pattern
-pattern = circuit.transpile()
+pattern = circuit.transpile(opt=True)
 pattern.standardize()
 pattern.shift_signals()
 nodes, edges = pattern.get_graph()
@@ -89,3 +83,5 @@ t2 = time.time()
 print("amplitude of |00...0> is ", value)
 print("1/2^n (true answer) is", 1 / 2**n)
 print("approximate execution time in seconds: ", t2 - t1)
+
+# %%
