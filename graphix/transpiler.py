@@ -3,7 +3,10 @@
 accepts desired gate operations and transpile into MBQC measurement patterns.
 
 """
+from __future__ import annotations
+
 from copy import deepcopy
+from typing import Optional, Sequence
 
 import numpy as np
 
@@ -25,7 +28,7 @@ class Circuit:
         List containing the gate sequence applied.
     """
 
-    def __init__(self, width):
+    def __init__(self, width: int):
         """
         Parameters
         ----------
@@ -35,7 +38,7 @@ class Circuit:
         self.width = width
         self.instruction = []
 
-    def cnot(self, control, target):
+    def cnot(self, control: int, target: int):
         """CNOT gate
 
         Parameters
@@ -50,7 +53,7 @@ class Circuit:
         assert control != target
         self.instruction.append(["CNOT", [control, target]])
 
-    def swap(self, qubit1, qubit2):
+    def swap(self, qubit1: int, qubit2: int):
         """SWAP gate
 
         Parameters
@@ -65,7 +68,7 @@ class Circuit:
         assert qubit1 != qubit2
         self.instruction.append(["SWAP", [qubit1, qubit2]])
 
-    def h(self, qubit):
+    def h(self, qubit: int):
         """Hadamard gate
 
         Parameters
@@ -76,7 +79,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["H", qubit])
 
-    def s(self, qubit):
+    def s(self, qubit: int):
         """S gate
 
         Parameters
@@ -98,7 +101,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["X", qubit])
 
-    def y(self, qubit):
+    def y(self, qubit: int):
         """Pauli Y gate
 
         Parameters
@@ -109,7 +112,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Y", qubit])
 
-    def z(self, qubit):
+    def z(self, qubit: int):
         """Pauli Z gate
 
         Parameters
@@ -120,7 +123,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Z", qubit])
 
-    def rx(self, qubit, angle):
+    def rx(self, qubit: int, angle: float):
         """X rotation gate
 
         Parameters
@@ -133,7 +136,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Rx", qubit, angle])
 
-    def ry(self, qubit, angle):
+    def ry(self, qubit: int, angle: float):
         """Y rotation gate
 
         Parameters
@@ -146,7 +149,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Ry", qubit, angle])
 
-    def rz(self, qubit, angle):
+    def rz(self, qubit: int, angle: float):
         """Z rotation gate
 
         Parameters
@@ -159,7 +162,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["Rz", qubit, angle])
 
-    def rzz(self, control, target, angle):
+    def rzz(self, control: int, target: int, angle: float):
         r"""ZZ-rotation gate.
         Equivalent to the sequence
         CNOT(control, target),
@@ -182,7 +185,7 @@ class Circuit:
         assert target in np.arange(self.width)
         self.instruction.append(["Rzz", [control, target], angle])
 
-    def ccx(self, control1, control2, target):
+    def ccx(self, control1: int, control2: int, target: int):
         r"""CCX (Toffoli) gate.
 
         Prameters
@@ -199,7 +202,7 @@ class Circuit:
         assert target in np.arange(self.width)
         self.instruction.append(["CCX", [control1, control2, target]])
 
-    def i(self, qubit):
+    def i(self, qubit: int):
         """identity (teleportation) gate
 
         Parameters
@@ -210,7 +213,7 @@ class Circuit:
         assert qubit in np.arange(self.width)
         self.instruction.append(["I", qubit])
 
-    def transpile(self, opt=False):
+    def transpile(self, opt: bool = False):
         """gate-to-MBQC transpile function.
 
         Parameters
@@ -325,7 +328,7 @@ class Circuit:
         pattern.Nnode = Nnode
         return pattern
 
-    def standardize_and_transpile(self, opt=True):
+    def standardize_and_transpile(self, opt: bool = True):
         """gate-to-MBQC transpile function.
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
@@ -521,7 +524,7 @@ class Circuit:
         pattern.seq = command_seq
         return pattern
 
-    def _commute_with_swap(self, target):
+    def _commute_with_swap(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "SWAP"
         if self._instr[target][1] == self._instr[target + 1][1][0]:
@@ -534,7 +537,7 @@ class Circuit:
             self._commute_with_following(target)
         return target
 
-    def _commute_with_cnot(self, target):
+    def _commute_with_cnot(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "CNOT"
         if self._instr[target][0] == "XC" and self._instr[target][1] == self._instr[target + 1][1][0]:  # control
@@ -551,7 +554,7 @@ class Circuit:
             self._commute_with_following(target)
         return target
 
-    def _commute_with_H(self, target):
+    def _commute_with_H(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "H"
         if self._instr[target][1] == self._instr[target + 1][1]:
@@ -564,7 +567,7 @@ class Circuit:
         else:
             self._commute_with_following(target)
 
-    def _commute_with_S(self, target):
+    def _commute_with_S(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "S"
         if self._instr[target][1] == self._instr[target + 1][1]:
@@ -576,7 +579,7 @@ class Circuit:
         self._commute_with_following(target)
         return target
 
-    def _commute_with_Rx(self, target):
+    def _commute_with_Rx(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "Rx"
         if self._instr[target][1] == self._instr[target + 1][1]:
@@ -589,7 +592,7 @@ class Circuit:
         else:
             self._commute_with_following(target)
 
-    def _commute_with_Ry(self, target):
+    def _commute_with_Ry(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "Ry"
         if self._instr[target][1] == self._instr[target + 1][1]:
@@ -599,7 +602,7 @@ class Circuit:
         else:
             self._commute_with_following(target)
 
-    def _commute_with_Rz(self, target):
+    def _commute_with_Rz(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "Rz"
         if self._instr[target][1] == self._instr[target + 1][1]:
@@ -612,7 +615,7 @@ class Circuit:
         else:
             self._commute_with_following(target)
 
-    def _commute_with_Rzz(self, target):
+    def _commute_with_Rzz(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
         assert self._instr[target + 1][0] == "Rzz"
         if self._instr[target][0] == "XC":
@@ -623,7 +626,7 @@ class Circuit:
                 self._M[self._instr[target + 1][3]][4].extend(self._instr[target][2])
         self._commute_with_following(target)
 
-    def _commute_with_following(self, target):
+    def _commute_with_following(self, target: int):
         """Internal method to perform the commutation of
         two consecutive commands that commutes.
         commutes the target command with the following command.
@@ -637,7 +640,7 @@ class Circuit:
         self._instr.pop(target + 1)
         self._instr.insert(target, A)
 
-    def _find_byproduct_to_move(self, rev=False, skipnum=0):
+    def _find_byproduct_to_move(self, rev: bool = False, skipnum: int = 0):
         """Internal method for reordering commands
         Parameters
         ----------
@@ -695,7 +698,7 @@ class Circuit:
             target += 1
 
     @classmethod
-    def _cnot_command(self, control_node, target_node, ancilla):
+    def _cnot_command(self, control_node: int, target_node: int, ancilla: Sequence[int]):
         """MBQC commands for CNOT gate
 
         Parameters
@@ -729,7 +732,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _h_command(self, input_node, ancilla):
+    def _h_command(self, input_node: int, ancilla: int):
         """MBQC commands for Hadamard gate
 
         Parameters
@@ -753,7 +756,7 @@ class Circuit:
         return ancilla, seq
 
     @classmethod
-    def _s_command(self, input_node, ancilla):
+    def _s_command(self, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for S gate
 
         Parameters
@@ -781,7 +784,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _x_command(self, input_node, ancilla):
+    def _x_command(self, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for Pauli X gate
 
         Parameters
@@ -809,7 +812,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _y_command(self, input_node, ancilla):
+    def _y_command(self, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for Pauli Y gate
 
         Parameters
@@ -842,7 +845,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _z_command(self, input_node, ancilla):
+    def _z_command(self, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for Pauli Z gate
 
         Parameters
@@ -870,7 +873,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(self, input_node, ancilla, angle):
+    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float):
         """MBQC commands for X rotation gate
 
         Parameters
@@ -900,7 +903,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(self, input_node, ancilla, angle):
+    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float):
         """MBQC commands for Y rotation gate
 
         Parameters
@@ -935,7 +938,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(self, input_node, ancilla, angle):
+    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float):
         """MBQC commands for Z rotation gate
 
         Parameters
@@ -965,7 +968,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(self, input_node, ancilla, angle):
+    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float):
         """optimized MBQC commands for Z rotation gate
 
         Parameters
@@ -991,7 +994,7 @@ class Circuit:
         return input_node, seq
 
     @classmethod
-    def _rzz_command_opt(self, control_node, target_node, ancilla, angle):
+    def _rzz_command_opt(self, control_node: int, target_node: int, ancilla: int, angle: float):
         """Optimized MBQC commands for ZZ-rotation gate
 
         Parameters
@@ -1021,7 +1024,7 @@ class Circuit:
         return control_node, target_node, seq
 
     @classmethod
-    def _ccx_command(self, control_node1, control_node2, target_node, ancilla):
+    def _ccx_command(self, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
         """MBQC commands for CCX gate
 
         Parameters
@@ -1146,7 +1149,7 @@ class Circuit:
         return ancilla[17], ancilla[15], ancilla[13], seq
 
     @classmethod
-    def _ccx_command_opt(self, control_node1, control_node2, target_node, ancilla):
+    def _ccx_command_opt(self, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
         """Optimized MBQC commands for CCX gate
 
         Parameters
@@ -1210,17 +1213,15 @@ class Circuit:
         return ancilla[10], ancilla[9], ancilla[7], seq
 
     @classmethod
-    def _sort_outputs(self, pattern, output_nodes):
+    def _sort_outputs(self, pattern: Pattern, output_nodes: Sequence[int]):
         """Sort the node indices of ouput qubits.
 
         Parameters
         ---------
-        input_node : int
-            input node index
-        ancilla : list of two ints
-            ancilla node indices to be added to graph
-        angle : float
-            measurement angle in radian
+        pattern : :meth:`~graphix.pattern.Pattern`
+            pattern object
+        output_nodes : list of int
+            output node indices
 
         Returns
         ---------
@@ -1243,12 +1244,16 @@ class Circuit:
             elif pattern.seq[i][1] in old_out:
                 pattern.seq[i][1] = output_nodes[old_out.index(pattern.seq[i][1])]
 
-    def simulate_statevector(self, input_state=None):
+    def simulate_statevector(self, input_state: Optional[Statevec] = None):
         """Run statevector simultion of the gate sequence, using graphix.Statevec
+
+        Parameters
+        ----------
+        input_state : :meth:`~graphix.Statevec`
 
         Returns
         -------
-        stete : graphix.Statevec
+        stete : :meth:`~graphix.Statevec`
             output state of the statevector simulation.
         """
 
