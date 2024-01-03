@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Only `networkx` backend was available for pattern optimization.
   By setting the `use_rustworkx` option to True while using `Pattern.perform_pauli_measurements()`,
   graphix will run pattern optimization using `rustworkx` (#98)
+- Added `.ccx()` method to `graphix.Circuit`.
 
 ### Fixed
 
