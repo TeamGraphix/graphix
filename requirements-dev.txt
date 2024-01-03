@@ -10,5 +10,6 @@ tox
 qiskit
 qiskit-aer
 rustworkx
-jax[cpu]
-jax_dataclasses
+# jax does not work with python 3.8 on windows
+jax[cpu]; python_version <= '3.8' and sys_platform != 'win32'
+jax_dataclasses; python_version <= '3.8' and sys_platform != 'win32'
