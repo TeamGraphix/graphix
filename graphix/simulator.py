@@ -5,7 +5,7 @@ Simulates MBQC by executing the pattern.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from graphix.sim.backends.backend_factory import backend as sim_backend
 from graphix.sim.statevec import StatevectorBackend
@@ -24,13 +24,65 @@ except ModuleNotFoundError:
 
 @pytree_dataclass
 class JittablePatternCommand:
+    """Jittable pattern command
+    This class is used to make the pattern sequence jittable. This is necessary because
+    `jax` does not allow arrays of different shapes to be used in a jitted function.
+
+    Example:
+    .. code-block:: python
+        jpc = JittablePatternCommand(
+            ["N", "N", "E"],
+            jnp.array([1, 2, 2]),
+            jnp.array([(1, 1), (2, 2), (1, 2)]),
+            [None, None, None],
+            jnp.array([jnp.nan, jnp.nan, jnp.nan]),
+            jnp.array([[False, False], [False, False], [False, False]]),
+            jnp.array([[False, False], [False, False], [False, False]]),
+            jnp.array([[False, False], [False, False], [False, False]]),
+            jnp.array([-1, -1, -1]),
+        )
+
+    Parameters
+    ----------
+    name: str
+        command name
+    node: int
+        node index. Used for 'N', 'M', 'X', 'Z', 'C' commands. For 'E' command, it is the first node index.
+    edge: tuple[int, int]
+        edge. Used for 'E' command. For other commands, it is (node, node).
+    plane: str
+        measurement plane. Used for 'M' command. For other commands, it is None.
+    angle: float
+        measurement angle. Used for 'M' command. For other commands, it is `jnp.nan`.
+    s_domain: jax.Array of bool
+        s domain. Used for 'M' command. For other commands, it is `jnp.zeros(number_of_nodes)`.
+        If the measurement result is 0, the s domain is `jnp.zeros(number_of_nodes)`.
+        If the measurement result is 1, `s_domain[feedforward_domains] = True` where `feedforward_domains` is the
+        feedforward domains of the measurement node and rest of the elements are `False`.
+    t_domain: jax.Array of bool
+        t domain. Used for 'M' command. For other commands, it is `jnp.zeros(number_of_nodes)`.
+        If the measurement result is 0, the t domain is `jnp.zeros(number_of_nodes)`.
+        If the measurement result is 1, `t_domain[feedforward_domains] = True` where `feedforward_domains` is the
+        feedforward domains of the measurement node and rest of the elements are `False`.
+    signal_domain: jax.Array of bool
+        signal domain. Used for 'M' command. For other commands, it is `jnp.zeros(number_of_nodes)`.
+        The definition of signal domain is `signal_domain[signal_domains] = meaurement_result_of_signal_domains`
+        where `signal_domains` is the signal domains of the byproduct command and
+        `meaurement_result_of_signal_domains` is the measurement result of the signal domains. The rest of the elements
+        are `False`.
+    vop: int
+        value for clifford index. Used for 'C' command. It is an integer between 0 and 23.
+        For other commands, it is `-1`.
+    """
+
     name: jdc.Static[str]
     node: int
     edge: tuple[int, int]
-    plane: jdc.Static[str]
+    plane: jdc.Static[Optional[str]]
     angle: float
     s_domain: jax.Array
     t_domain: jax.Array
+    signal_domain: jax.Array
     vop: int
 
 
