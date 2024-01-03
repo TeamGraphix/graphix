@@ -3,8 +3,12 @@ import unittest
 from unittest.mock import MagicMock
 
 import numpy as np
-import qiskit
-from qiskit_aer import Aer
+
+try:
+    import qiskit
+    from qiskit_aer import Aer
+except ModuleNotFoundError:
+    pass
 
 import graphix
 from graphix.device_interface import PatternRunner
@@ -28,6 +32,7 @@ def modify_statevector(statevector, output_qubit):
 
 
 class TestPatternRunner(unittest.TestCase):
+    @unittest.skipIf(sys.modules.get("qiskit") is None, "qiskit not installed")
     def test_ibmq_backend(self):
         # circuit in qiskit
         qc = qiskit.QuantumCircuit(3)
