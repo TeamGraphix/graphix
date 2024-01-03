@@ -5,9 +5,37 @@ Simulates MBQC by executing the pattern.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from graphix.sim.backends.backend_factory import backend as sim_backend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
+
+try:
+    import jax
+    import jax_dataclasses as jdc
+    from jax_dataclasses import pytree_dataclass
+except ModuleNotFoundError:
+    pytree_dataclass = lambda x: x
+
+
+@pytree_dataclass
+class JittablePatternCommand:
+    name: jdc.Static[str]
+    node: int
+    edge: tuple[int, int]
+    plane: jdc.Static[str]
+    angle: float
+    s_domain: jax.Array
+    t_domain: jax.Array
+    vop: int
+
+
+def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # TODO:
+    pass
 
 
 class PatternSimulator:
@@ -16,7 +44,7 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend="statevector", **kwargs):
+    def __init__(self, pattern: Pattern, backend="statevector", **kwargs):
         """
         Parameters
         -----------

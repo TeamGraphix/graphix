@@ -112,7 +112,7 @@ class StatevectorBackend:
         Parameters
         ----------
         cmd : list
-            measurement command : ['M', node, plane angle, s_domain, t_domain]
+            measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
         # choose the measurement result randomly
         result = backend.random_choice(backend.array([0, 1], dtype=np.int32))

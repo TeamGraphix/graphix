@@ -11,3 +11,4 @@ qiskit
 qiskit-aer
 rustworkx
 jax[cpu]
+jax_dataclasses

@@ -37,7 +37,7 @@ info = {
     ],
     "python_requires": ">=3.8,<3.12",
     "install_requires": requirements,
-    "extras_require": {"extra": ["graphix-ibmq", "graphix-perceval"]},
+    "extras_require": {"extra": ["graphix-ibmq", "graphix-perceval"], "jax": ["jax", "jaxlib", "jax_dataclasses"]},
 }
 
 setup(**(info))
