@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+import numpy as np
+
 from graphix.sim.backends.backend_factory import backend as sim_backend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
@@ -23,18 +25,18 @@ except ModuleNotFoundError:
 
 
 @pytree_dataclass
-class JittablePatternCommand:
+class JittablePatternCommands:
     """Jittable pattern command
     This class is used to make the pattern sequence jittable. This is necessary because
     `jax` does not allow arrays of different shapes to be used in a jitted function.
 
     Example:
     .. code-block:: python
-        jpc = JittablePatternCommand(
-            ["N", "N", "E"],
+        jpc = JittablePatternCommands(
+            jnp.array([1, 1, 2]),
             jnp.array([1, 2, 2]),
             jnp.array([(1, 1), (2, 2), (1, 2)]),
-            [None, None, None],
+            jnp.array([-1, -1, -1]),
             jnp.array([jnp.nan, jnp.nan, jnp.nan]),
             jnp.array([[False, False], [False, False], [False, False]]),
             jnp.array([[False, False], [False, False], [False, False]]),
@@ -44,14 +46,15 @@ class JittablePatternCommand:
 
     Parameters
     ----------
-    name: str
-        command name
+    name: int
+        command name. 'N'==1, 'E'==2, 'M'==3, 'X'==4, 'Z'==5, 'C'==6.
     node: int
         node index. Used for 'N', 'M', 'X', 'Z', 'C' commands. For 'E' command, it is the first node index.
     edge: tuple[int, int]
         edge. Used for 'E' command. For other commands, it is (node, node).
-    plane: str
-        measurement plane. Used for 'M' command. For other commands, it is None.
+    plane: int
+        measurement plane. Used for 'M' command. 'XY'==0, 'YZ'==1, 'XZ'==2.
+        For other commands, it is -1.
     angle: float
         measurement angle. Used for 'M' command. For other commands, it is `jnp.nan`.
     s_domain: jax.Array of bool
@@ -75,10 +78,10 @@ class JittablePatternCommand:
         For other commands, it is `-1`.
     """
 
-    name: jdc.Static[str]
+    name: int
     node: int
     edge: tuple[int, int]
-    plane: jdc.Static[Optional[str]]
+    plane: int
     angle: float
     s_domain: jax.Array
     t_domain: jax.Array
@@ -86,8 +89,104 @@ class JittablePatternCommand:
     vop: int
 
 
-def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # TODO:
-    pass
+def _plane_to_jittable_plane(plane: str) -> int:
+    if plane == "XY":
+        return 0
+    elif plane == "YZ":
+        return 1
+    elif plane == "XZ":
+        return 2
+    else:
+        return -1
+
+
+def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # TODO: jnp or np array to jnp array, which is faster?
+    import jax.numpy as jnp
+
+    name = jnp.array([], dtype=np.int8)
+    node = jnp.array([], dtype=np.int64)
+    edge = jnp.array([], dtype=np.int64)
+    plane = jnp.array([], dtype=np.int8)
+    angle = jnp.array([], dtype=np.float64)
+    s_domain = jnp.array([], dtype=np.bool_)
+    t_domain = jnp.array([], dtype=np.bool_)
+    signal_domain = jnp.array([], dtype=np.bool_)
+    vop = jnp.array([], dtype=np.int8)
+
+    measurement_results = {}
+
+    for cmd in pattern.seq:
+        if cmd[0] == "N":
+            name = jnp.append(name, 1)
+            node = jnp.append(node, cmd[1])
+            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
+            plane = jnp.append(plane, -1)
+            angle = jnp.append(angle, jnp.nan)
+            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            vop = jnp.append(vop, -1)
+        elif cmd[0] == "E":
+            name = jnp.append(name, 2)
+            node = jnp.append(node, cmd[1][0])
+            edge = jnp.append(edge, jnp.array([cmd[1][0], cmd[1][1]], dtype=np.int64))
+            plane = jnp.append(plane, -1)
+            angle = jnp.append(angle, jnp.nan)
+            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            vop = jnp.append(vop, -1)
+        elif cmd[0] == "M":
+            result = sim_backend.random_choice(sim_backend.array([False, True]))
+            measurement_results[cmd[1]] = result
+
+            name = jnp.append(name, 3)
+            node = jnp.append(node, cmd[1])
+            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
+            plane = jnp.append(plane, _plane_to_jittable_plane(cmd[2]))
+            angle = jnp.append(angle, cmd[3])
+            s_domain = jnp.append(
+                s_domain, sim_backend.array([measurement_results.get(j, False) for j in cmd[4]], dtype=np.bool_)
+            )
+            t_domain = jnp.append(
+                t_domain, sim_backend.array([measurement_results.get(j, False) for j in cmd[5]], dtype=np.bool_)
+            )
+            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            vop = jnp.append(vop, -1)
+        elif cmd[0] == "X":
+            name = jnp.append(name, 4)
+            node = jnp.append(node, cmd[1])
+            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
+            plane = jnp.append(plane, -1)
+            angle = jnp.append(angle, jnp.nan)
+            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            vop = jnp.append(vop, -1)
+        elif cmd[0] == "Z":
+            name = jnp.append(name, 5)
+            node = jnp.append(node, cmd[1])
+            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
+            plane = jnp.append(plane, -1)
+            angle = jnp.append(angle, jnp.nan)
+            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            vop = jnp.append(vop, -1)
+        elif cmd[0] == "C":
+            name = jnp.append(name, 6)
+            node = jnp.append(node, cmd[1])
+            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
+            plane = jnp.append(plane, -1)
+            angle = jnp.append(angle, jnp.nan)
+            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
+            vop = jnp.append(vop, cmd[2])
+        else:
+            raise ValueError("invalid command: {}".format(cmd))
+
+    return JittablePatternCommands(name, node, edge, plane, angle, s_domain, t_domain, signal_domain, vop)
 
 
 class PatternSimulator:
