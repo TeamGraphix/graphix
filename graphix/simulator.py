@@ -25,14 +25,14 @@ except ModuleNotFoundError:
 
 
 @pytree_dataclass
-class JittablePatternCommands:
+class JittablePatternSequence:
     """Jittable pattern command
     This class is used to make the pattern sequence jittable. This is necessary because
     `jax` does not allow arrays of different shapes to be used in a jitted function.
 
     Example:
     .. code-block:: python
-        jpc = JittablePatternCommands(
+        jpc = JittablePatternSequenceu(
             jnp.array([1, 1, 2]),
             jnp.array([1, 2, 2]),
             jnp.array([(1, 1), (2, 2), (1, 2)]),
@@ -186,7 +186,7 @@ def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # TODO: jnp or np a
         else:
             raise ValueError("invalid command: {}".format(cmd))
 
-    return JittablePatternCommands(name, node, edge, plane, angle, s_domain, t_domain, signal_domain, vop)
+    return JittablePatternSequence(name, node, edge, plane, angle, s_domain, t_domain, signal_domain, vop)
 
 
 class PatternSimulator:
