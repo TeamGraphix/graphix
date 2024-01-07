@@ -161,9 +161,9 @@ class NumPyBackend(AbstractBackend):
         p: Optional[Tensor] = None,
         random_state: Optional[NumPyRandomState] = None,
     ) -> Tensor:
-        if random_state is None and self.random_state is None:
+        if random_state is None and hasattr(self, "random_state") is False:
             return np.random.choice(a, p=p)
-        elif random_state is None and self.random_state is not None:
+        elif random_state is None and hasattr(self, "random_state"):
             return self.random_state.rng.choice(a, p=p)
         if not isinstance(random_state, NumPyRandomState):
             raise TypeError("random_state must be of type NumPyRandomState")

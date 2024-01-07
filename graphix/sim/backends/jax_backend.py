@@ -183,10 +183,10 @@ class JaxBackend(AbstractBackend):
         p: Optional[Tensor] = None,
         random_state: Optional[JaxRandomState] = None,
     ) -> Tensor:
-        if random_state is None and self.random_state is None:
+        if random_state is None and hasattr(self, "random_state") is False:
             random_state = self.set_random_state(get_only=True)
             return jax.random.choice(a=a, p=p, key=random_state.prngkey)
-        elif random_state is None and self.random_state is not None:
+        elif random_state is None and hasattr(self, "random_state"):
             return jax.random.choice(a=a, p=p, key=self.random_state.prngkey)
         if not isinstance(random_state, JaxRandomState):
             raise TypeError("random_state must be of type JaxRandomState.")

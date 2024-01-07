@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 
 from graphix.sim.backends.backend_factory import backend as sim_backend
-from graphix.sim.statevec import StatevectorBackend
+from graphix.sim.statevec import JittableStatevectorBackend, StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
 
 if TYPE_CHECKING:
@@ -47,32 +47,24 @@ class JittablePatternSequence:
     Parameters
     ----------
     name: int
-        command name. 'N'==1, 'E'==2, 'M'==3, 'X'==4, 'Z'==5, 'C'==6.
+        command name. 'N'==0, 'E'==1, 'M'==2, 'X'==3, 'Z'==4, 'C'==5.
     node: int
-        node index. Used for 'N', 'M', 'X', 'Z', 'C' commands. For 'E' command, it is the first node index.
+        node index. Used for 'N', 'M', 'X', 'Z', 'C' commands. For 'E' command, it is -1.
     edge: tuple[int, int]
-        edge. Used for 'E' command. For other commands, it is (node, node).
+        edge. Used for 'E' command. For other commands, it is (-1, -1).
     plane: int
         measurement plane. Used for 'M' command. 'XY'==0, 'YZ'==1, 'XZ'==2.
         For other commands, it is -1.
     angle: float
         measurement angle. Used for 'M' command. For other commands, it is `jnp.nan`.
-    s_domain: jax.Array of bool
-        s domain. Used for 'M' command. For other commands, it is `jnp.zeros(number_of_nodes)`.
-        If the measurement result is 0, the s domain is `jnp.zeros(number_of_nodes)`.
-        If the measurement result is 1, `s_domain[feedforward_domains] = True` where `feedforward_domains` is the
-        feedforward domains of the measurement node and rest of the elements are `False`.
-    t_domain: jax.Array of bool
-        t domain. Used for 'M' command. For other commands, it is `jnp.zeros(number_of_nodes)`.
-        If the measurement result is 0, the t domain is `jnp.zeros(number_of_nodes)`.
-        If the measurement result is 1, `t_domain[feedforward_domains] = True` where `feedforward_domains` is the
-        feedforward domains of the measurement node and rest of the elements are `False`.
-    signal_domain: jax.Array of bool
-        signal domain. Used for 'M' command. For other commands, it is `jnp.zeros(number_of_nodes)`.
-        The definition of signal domain is `signal_domain[signal_domains] = meaurement_result_of_signal_domains`
-        where `signal_domains` is the signal domains of the byproduct command and
-        `meaurement_result_of_signal_domains` is the measurement result of the signal domains. The rest of the elements
-        are `False`.
+    m_result: bool
+        measurement result. Used for 'M' command. For other commands, it is `False`.
+    s_signal: bool
+        s domain. Used for 'M' command. For other commands, it is `False`.
+    t_signal: bool
+        t domain. Used for 'M' command. For other commands, it is `False`.
+    b_signal: bool
+        signal domain. Used for 'X' and 'Z' command. For other commands, it is `False`.
     vop: int
         value for clifford index. Used for 'C' command. It is an integer between 0 and 23.
         For other commands, it is `-1`.
@@ -83,9 +75,10 @@ class JittablePatternSequence:
     edge: tuple[int, int]
     plane: int
     angle: float
-    s_domain: jax.Array
-    t_domain: jax.Array
-    signal_domain: jax.Array
+    m_result: bool
+    s_signal: bool
+    t_signal: bool
+    b_signal: bool
     vop: int
 
 
@@ -100,93 +93,59 @@ def _plane_to_jittable_plane(plane: str) -> int:
         return -1
 
 
-def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # TODO: jnp or np array to jnp array, which is faster?
-    import jax.numpy as jnp
-
-    name = jnp.array([], dtype=np.int8)
-    node = jnp.array([], dtype=np.int64)
-    edge = jnp.array([], dtype=np.int64)
-    plane = jnp.array([], dtype=np.int8)
-    angle = jnp.array([], dtype=np.float64)
-    s_domain = jnp.array([], dtype=np.bool_)
-    t_domain = jnp.array([], dtype=np.bool_)
-    signal_domain = jnp.array([], dtype=np.bool_)
-    vop = jnp.array([], dtype=np.int8)
+def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # FIXME: does not work with pauli measurements
+    seq_length = len(pattern.seq)
+    name = np.zeros(seq_length, dtype=np.int8)
+    node = np.full(seq_length, -1, dtype=np.int64)
+    edge = np.full((seq_length, 2), -1, dtype=np.int64)
+    plane = np.full(seq_length, -1, dtype=np.int8)
+    angle = np.full(seq_length, np.nan, dtype=np.float64)
+    m_result = np.zeros(seq_length, dtype=np.bool_)
+    s_signal = np.zeros(seq_length, dtype=np.bool_)
+    t_signal = np.zeros(seq_length, dtype=np.bool_)
+    b_signal = np.zeros(seq_length, dtype=np.bool_)
+    vop = np.full(seq_length, -1, dtype=np.int8)
 
     measurement_results = {}
 
-    for cmd in pattern.seq:
+    for i, cmd in enumerate(pattern.seq):
         if cmd[0] == "N":
-            name = jnp.append(name, 1)
-            node = jnp.append(node, cmd[1])
-            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
-            plane = jnp.append(plane, -1)
-            angle = jnp.append(angle, jnp.nan)
-            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            vop = jnp.append(vop, -1)
+            name[i] = 0
+            node[i] = cmd[1]
         elif cmd[0] == "E":
-            name = jnp.append(name, 2)
-            node = jnp.append(node, cmd[1][0])
-            edge = jnp.append(edge, jnp.array([cmd[1][0], cmd[1][1]], dtype=np.int64))
-            plane = jnp.append(plane, -1)
-            angle = jnp.append(angle, jnp.nan)
-            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            vop = jnp.append(vop, -1)
+            name[i] = 1
+            edge[i] = np.array([cmd[1][0], cmd[1][1]], dtype=np.int64)
         elif cmd[0] == "M":
-            result = sim_backend.random_choice(sim_backend.array([False, True]))
+            result = sim_backend.random_choice(sim_backend.array([False, True], dtype=np.bool_))
             measurement_results[cmd[1]] = result
+            m_result[i] = result
 
-            name = jnp.append(name, 3)
-            node = jnp.append(node, cmd[1])
-            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
-            plane = jnp.append(plane, _plane_to_jittable_plane(cmd[2]))
-            angle = jnp.append(angle, cmd[3])
-            s_domain = jnp.append(
-                s_domain, sim_backend.array([measurement_results.get(j, False) for j in cmd[4]], dtype=np.bool_)
-            )
-            t_domain = jnp.append(
-                t_domain, sim_backend.array([measurement_results.get(j, False) for j in cmd[5]], dtype=np.bool_)
-            )
-            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            vop = jnp.append(vop, -1)
+            name[i] = 2
+            node[i] = cmd[1]
+            plane[i] = _plane_to_jittable_plane(cmd[2])
+            angle[i] = cmd[3]
+            for j in cmd[4]:
+                s_signal[i] ^= measurement_results[j]
+            for j in cmd[5]:
+                t_signal[i] ^= measurement_results[j]
         elif cmd[0] == "X":
-            name = jnp.append(name, 4)
-            node = jnp.append(node, cmd[1])
-            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
-            plane = jnp.append(plane, -1)
-            angle = jnp.append(angle, jnp.nan)
-            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            vop = jnp.append(vop, -1)
+            name[i] = 3
+            node[i] = cmd[1]
+            for j in cmd[2]:
+                b_signal[i] ^= measurement_results[j]
         elif cmd[0] == "Z":
-            name = jnp.append(name, 5)
-            node = jnp.append(node, cmd[1])
-            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
-            plane = jnp.append(plane, -1)
-            angle = jnp.append(angle, jnp.nan)
-            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            vop = jnp.append(vop, -1)
+            name[i] = 4
+            node[i] = cmd[1]
+            for j in cmd[2]:
+                b_signal[i] ^= measurement_results[j]
         elif cmd[0] == "C":
-            name = jnp.append(name, 6)
-            node = jnp.append(node, cmd[1])
-            edge = jnp.append(edge, jnp.array([cmd[1], cmd[1]], dtype=np.int64))
-            plane = jnp.append(plane, -1)
-            angle = jnp.append(angle, jnp.nan)
-            s_domain = jnp.append(s_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            t_domain = jnp.append(t_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            signal_domain = jnp.append(signal_domain, jnp.zeros(pattern.Nnode, dtype=np.bool_))
-            vop = jnp.append(vop, cmd[2])
+            name[i] = 5
+            node[i] = cmd[1]
+            vop[i] = cmd[2]
         else:
             raise ValueError("invalid command: {}".format(cmd))
 
-    return JittablePatternSequence(name, node, edge, plane, angle, s_domain, t_domain, signal_domain, vop)
+    return JittablePatternSequence(name, node, edge, plane, angle, m_result, s_signal, t_signal, b_signal, vop)
 
 
 class PatternSimulator:
@@ -211,16 +170,21 @@ class PatternSimulator:
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
         if backend == "statevector":
-            self.backend = StatevectorBackend(pattern, **kwargs)
+            if sim_backend.name == "numpy":
+                self.pattern = pattern
+                self.backend = StatevectorBackend(pattern, **kwargs)
+            else:
+                self.pattern = _pattern_seq_to_jittable_pattern_seq(pattern)
+                self.backend = JittableStatevectorBackend(pattern, **kwargs)
         elif backend in {"tensornetwork", "mps"}:
             if sim_backend.name != "numpy":
                 raise ValueError("tensornetwork backend only works with numpy backend")
+            self.pattern = pattern
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("unknown backend")
-        self.pattern = pattern
 
-    # @sim_backend.jit
+    @sim_backend.jit
     def run(self):
         """Perform the simulation.
 
@@ -230,48 +194,47 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
-        for cmd in self.pattern.seq:
-            if cmd[0] == "N":
-                self.backend.add_nodes([cmd[1]])
-            elif cmd[0] == "E":
-                self.backend.entangle_nodes(cmd[1])
-            elif cmd[0] == "M":
-                self.backend.measure(cmd)
-            elif cmd[0] == "X":
-                self.backend.correct_byproduct(cmd)
-            elif cmd[0] == "Z":
-                self.backend.correct_byproduct(cmd)
-            elif cmd[0] == "C":
-                self.backend.apply_clifford(cmd)
-            else:
-                raise ValueError("invalid command: {}".format(cmd))
-            if self.pattern.seq[-1] == cmd:
-                self.backend.finalize()
+        if isinstance(self.backend, JittableStatevectorBackend):
 
-        return self.backend.state
+            def loop_func(carry, x):
+                jax.lax.switch(  # FIXME: make backend agnostic
+                    x.name,
+                    [
+                        lambda: self.backend.add_node(x.node),
+                        lambda: self.backend.entangle_nodes(x.edge),
+                        lambda: self.backend.measure(x.node, x.plane, x.angle, x.s_signal, x.t_signal, x.m_result),
+                        lambda: self.backend.correct_byproduct(3, x.node, x.b_signal),
+                        lambda: self.backend.correct_byproduct(4, x.node, x.b_signal),
+                        lambda: self.backend.apply_clifford(x.node, x.vop),
+                    ],
+                )
+                return self.backend.state, None
 
-        # TODO: make it jittable
-        # def body_fun(i, state):
-        #     cmd = self.pattern.seq[i]
-        #     if cmd[0] == "N":
-        #         self.backend.add_nodes([cmd[1]])
-        #     elif cmd[0] == "E":
-        #         self.backend.entangle_nodes(cmd[1])
-        #     elif cmd[0] == "M":
-        #         self.backend.measure(cmd)
-        #     elif cmd[0] == "X":
-        #         self.backend.correct_byproduct(cmd)
-        #     elif cmd[0] == "Z":
-        #         self.backend.correct_byproduct(cmd)
-        #     elif cmd[0] == "C":
-        #         self.backend.apply_clifford(cmd)
-        #     else:
-        #         raise ValueError("invalid command: {}".format(cmd))
-        #     if self.pattern.seq[-1] == cmd:
-        #         self.backend.finalize()
-        #     return state
+            state, _ = jax.lax.scan(loop_func, self.backend.state, self.pattern)
+            self.backend.finalize()
 
-        # return sim_backend.fori_loop(0, len(self.pattern.seq), body_fun, None)
+            return self.backend.state
+
+        else:
+            for cmd in self.pattern.seq:
+                if cmd[0] == "N":
+                    self.backend.add_nodes([cmd[1]])
+                elif cmd[0] == "E":
+                    self.backend.entangle_nodes(cmd[1])
+                elif cmd[0] == "M":
+                    self.backend.measure(cmd)
+                elif cmd[0] == "X":
+                    self.backend.correct_byproduct(cmd)
+                elif cmd[0] == "Z":
+                    self.backend.correct_byproduct(cmd)
+                elif cmd[0] == "C":
+                    self.backend.apply_clifford(cmd)
+                else:
+                    raise ValueError("invalid command: {}".format(cmd))
+                if self.pattern.seq[-1] == cmd:
+                    self.backend.finalize()
+
+            return self.backend.state
 
     # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
     def _tree_flatten(self):
