@@ -1,10 +1,13 @@
+from copy import deepcopy
+import string
+
 import numpy as np
+from numpy.typing import NDArray
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
+
 from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
 from graphix.ops import States, Ops
-import string
-from copy import deepcopy
 
 
 class TensorNetworkBackend:
@@ -31,6 +34,21 @@ class TensorNetworkBackend:
             'auto'(default) :
                 Automatically select a preparation strategy based on the max degree of a graph
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
+
+        Attributes
+        ----------
+        pattern : graphix.Pattern
+            measurement pattern
+        output_nodes : list of int
+            output node indices at the end of MBQC operations.
+        results : dict
+            measurement results
+        graph_prep : str
+            graph preparation strategy
+        state : quimb.tensor.TensorNetwork
+            tensor network representation of the state
+        _isolated_nodes : list of int
+            isolated node indices
         """
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
@@ -49,9 +67,12 @@ class TensorNetworkBackend:
         else:
             raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
 
-        if self.graph_prep == "parallel":
+        if self.graph_prep == "sequential":
+            self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
+            self._decomposed_cz = _get_decomposed_cz()
+        elif self.graph_prep == "parallel":
             if not pattern.is_standard():
-                raise ValueError("parallel preparation strategy does not support not-standardized pattern")
+                raise ValueError("parallel preparation strategy does not support unstandardized pattern")
             nodes, edges = pattern.get_graph()
             self.state = MBQCTensorNet(
                 graph_nodes=nodes,
@@ -59,9 +80,6 @@ class TensorNetworkBackend:
                 default_output_nodes=pattern.output_nodes,
                 **kwargs,
             )
-        elif self.graph_prep == "sequential":
-            self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
-            self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
     def add_nodes(self, nodes):
@@ -72,10 +90,12 @@ class TensorNetworkBackend:
         nodes : iterator of int
             index set of the new nodes.
         """
-        if self.graph_prep == "sequential":
-            self.state.add_qubits(nodes)
-        elif self.graph_prep == "opt":
+        if self.graph_prep == "opt":
+            print(f"graph preparation strategy '{self.graph_prep}' is deprecated.")
+        elif self.graph_prep == "parallel":
             pass
+        elif self.graph_prep == "sequential":
+            self.state.add_qubits(nodes)
 
     def entangle_nodes(self, edge):
         """Make entanglement between nodes specified by edge.
@@ -85,7 +105,11 @@ class TensorNetworkBackend:
         edge : tuple of int
             edge specifies two target nodes of the CZ gate.
         """
-        if self.graph_prep == "sequential":
+        if self.graph_prep == "opt":
+            print(f"graph preparation strategy '{self.graph_prep}' is deprecated.")
+        elif self.graph_prep == "parallel":
+            pass
+        elif self.graph_prep == "sequential":
             old_inds = [self.state._dangling[str(node)] for node in edge]
             tids = self.state._get_tids_from_inds(old_inds, which="any")
             tensors = [self.state.tensor_map[tid] for tid in tids]
@@ -110,8 +134,6 @@ class TensorNetworkBackend:
                 ]
             )
             self.state.add_tensor_network(CZ_tn)
-        elif self.graph_prep == "opt":
-            pass
 
     def measure(self, cmd):
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
@@ -186,7 +208,7 @@ class TensorNetworkBackend:
 
 
 class MBQCTensorNet(TensorNetwork):
-    """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.core.TensorNetwork."""
+    """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.tensor_core.TensorNetwork."""
 
     def __init__(
         self,
@@ -207,8 +229,15 @@ class MBQCTensorNet(TensorNetwork):
             edge indices of the graph state.
         default_output_nodes : list of int
             output node indices at the end of MBQC operations, if known in advance.
-        ts (optional): quimb.tensor.core.TensorNetwork or empty list
+        ts (optional): quimb.tensor.tensor_core.TensorNetwork or empty list
             optional initial state.
+
+        Attributes
+        ----------
+        _dangling (dict[str, str]) : dict
+            dictionary of the dangling indices.
+        default_output_nodes : list of int
+            output node indices at the end of MBQC operations.
         """
         if isinstance(ts, MBQCTensorNet):
             super().__init__(ts=ts, **kwargs)
@@ -222,7 +251,7 @@ class MBQCTensorNet(TensorNetwork):
         if graph_nodes is not None and graph_edges is not None:
             self.set_graph_state(graph_nodes, graph_edges)
 
-    def get_open_tensor_from_index(self, index):
+    def get_open_tensor_from_index(self, index) -> NDArray:
         """Get tensor specified by node index. The tensor has a dangling edge.
 
         Parameters
@@ -254,8 +283,6 @@ class MBQCTensorNet(TensorNetwork):
             initial state of the new qubit.
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
         """
-        ind = gen_str()
-        tag = str(index)
         if state == "plus":
             vec = States.plus
         elif state == "minus":
@@ -272,6 +299,9 @@ class MBQCTensorNet(TensorNetwork):
             assert state.shape == (2,), "state must be 2-element np.ndarray"
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
             vec = state
+
+        ind = gen_str()
+        tag = str(index)
         tsr = qtn.Tensor(vec, [ind], [tag, "Open"])
         self.add_tensor(tsr)
         self._dangling[tag] = ind
@@ -315,12 +345,12 @@ class MBQCTensorNet(TensorNetwork):
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
             list of the above, to specify the initial state of each qubit.
         """
-        if type(states) != list:
+        if not isinstance(states, list):
             states = [states] * len(indices)
         for i, ind in enumerate(indices):
             self.add_qubit(ind, state=states[i])
 
-    def measure_single(self, index, basis="Z", bypass_probability_calculation=True, outcome=None):
+    def measure_single(self, index, basis="Z", bypass_probability_calculation=True, outcome=None) -> int:
         """Measure a node in specified basis. Note this does not perform the partial trace.
 
         Parameters
@@ -341,7 +371,7 @@ class MBQCTensorNet(TensorNetwork):
 
         Returns
         -------
-        int
+        result : int
             measurement result.
         """
         if bypass_probability_calculation:
@@ -350,7 +380,7 @@ class MBQCTensorNet(TensorNetwork):
             else:
                 result = np.random.choice([0, 1])
             # Basis state to be projected
-            if type(basis) == np.ndarray:
+            if isinstance(basis, np.ndarray):
                 if outcome is not None:
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
@@ -433,14 +463,15 @@ class MBQCTensorNet(TensorNetwork):
         normalize (optional): bool
             if True, normalize the coefficient by the norm of the entire state.
         indices (optional): list of int
-            target qubit indices to compute the coefficients, default is the MBQC output nodes (self.default_output_nodes).
+            target qubit indices to compute the coefficients, default is the MBQC output nodes
+            (self.default_output_nodes).
 
         Returns
         -------
         coef : complex
             coefficient
         """
-        if indices == None:
+        if indices is None:
             indices = self.default_output_nodes
         if isinstance(basis, str):
             basis = int(basis, 2)
@@ -502,7 +533,7 @@ class MBQCTensorNet(TensorNetwork):
         numpy.ndarray :
             statevector
         """
-        if indices == None:
+        if indices is None:
             n_qubit = len(self.default_output_nodes)
         else:
             n_qubit = len(indices)
@@ -544,21 +575,20 @@ class MBQCTensorNet(TensorNetwork):
         float :
             Expectation value
         """
-        if output_node_indices == None:
-            if self.default_output_nodes == None:
-                raise ValueError("output_nodes is not set.")
-            else:
-                target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
-                out_inds = self.default_output_nodes
-        else:
+        if output_node_indices:
             target_nodes = [output_node_indices[ind] for ind in qubit_indices]
             out_inds = output_node_indices
+        elif self.default_output_nodes:
+            target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
+            out_inds = self.default_output_nodes
+        else:
+            raise ValueError("output_nodes is not asignned.")
         op_dim = len(qubit_indices)
-        op = op.reshape([2 for _ in range(2 * op_dim)])
+        op = op.reshape([2,] * (2 * op_dim))
         new_ind_left = [gen_str() for _ in range(op_dim)]
         new_ind_right = [gen_str() for _ in range(op_dim)]
-        tn_cp_left = self.copy()
         op_ts = Tensor(op, new_ind_right + new_ind_left, ["Expectation Op.", "Close"])
+        tn_cp_left = self.copy()
         tn_cp_right = tn_cp_left.conj()
 
         # reindex & retag
@@ -591,12 +621,12 @@ class MBQCTensorNet(TensorNetwork):
         qubit_indices : list of int
             Applied positions of **logical** qubits.
         decompose : bool, optional
-            default True
-            whether a given operator will be decomposed or not. If True, operator is decomposed into Matrix Product Operator(MPO)
+            Defaults to True.
+            Whether the given operator will be decomposed or not.
+            If True, operator is decomposed into Matrix Product Operator(MPO)
         """
         if len(operator.shape) != len(qubit_indices) * 2:
-            shape = [2 for _ in range(2 * len(qubit_indices))]
-            operator = operator.reshape(shape)
+            operator = operator.reshape([2,] * (2 * len(qubit_indices)))
 
         # operator indices
         node_indices = [self.default_output_nodes[index] for index in qubit_indices]
@@ -610,7 +640,9 @@ class MBQCTensorNet(TensorNetwork):
             new_ind_list + old_ind_list,
             [str(index) for index in node_indices],
         )
-        if decompose:  # decompose tensor into Matrix Product Operator(MPO)
+        if not decompose:
+            op_tensor = ts
+        else:  # decompose tensor into Matrix Product Operator(MPO)
             tensors = []
             bond_inds = {0: None}
             for i in range(len(node_indices) - 1):
@@ -622,8 +654,6 @@ class MBQCTensorNet(TensorNetwork):
                 tensors.append(unit_tensor)
             tensors.append(ts)
             op_tensor = TensorNetwork(tensors)
-        else:
-            op_tensor = ts
         self.add(op_tensor)
 
     def copy(self, deep=False):
@@ -646,11 +676,11 @@ class MBQCTensorNet(TensorNetwork):
             return self.__class__(ts=self)
 
 
-def _get_decomposed_cz():
+def _get_decomposed_cz() -> list[Tensor]:
     """Returns the decomposed cz tensors. This is an internal method.
 
     CZ gate can be decomposed into two 3-rank tensors(Schmidt rank = 2).
-    Decomposing into low-rank tensors is important preprocessing for
+    Decomposing into low-rank tensors is an important preprocessing step for
     the optimal contraction path searching problem.
     So, in this backend, the DECOMPOSED_CZ gate is applied
     instead of the original CZ gate.
@@ -679,13 +709,12 @@ def _get_decomposed_cz():
     ]
 
 
-def gen_str():
+def gen_str() -> str:
     """Generate dummy string for einsum."""
-    result = qtn.rand_uuid()
-    return result
+    return qtn.rand_uuid()
 
 
-def proj_basis(angle, vop, plane, choice):
+def proj_basis(angle, vop, plane, choice) -> NDArray:
     """the projected statevector.
 
     Parameters
@@ -718,7 +747,7 @@ def proj_basis(angle, vop, plane, choice):
     return vec
 
 
-def outer_product(vectors):
+def outer_product(vectors) -> NDArray:
     """outer product of the given vectors
 
     Parameters
