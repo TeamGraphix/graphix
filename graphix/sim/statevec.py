@@ -160,7 +160,7 @@ class StatevectorBackend:
 class JittableStatevectorBackend:
     """Jittable MBQC simulator with statevector method."""
 
-    def __init__(self, pattern: Pattern, max_qubit_num: int = 20, seed: Optional[int] = None):
+    def __init__(self, fixed_nqubit: int, max_qubit_num: int = 20, seed: Optional[int] = None):
         """
         Parameters
         -----------
@@ -175,19 +175,10 @@ class JittableStatevectorBackend:
         seed : int
             optional argument for random number generator.
         """
-        # check that pattern has output nodes configured
-        if not len(pattern.output_nodes) > 0:
-            raise ValueError("Pattern.output_nodes is empty. Set output nodes and try again")
-        if pattern.max_space() > max_qubit_num:
+        if fixed_nqubit > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
 
-        self.pattern = pattern
-        self.max_qubit_num = pattern.max_space()
-        import jax.numpy as jnp  # FIXME: make it backend agnostic
-
-        self.node_index = jnp.full(self.max_qubit_num, -1, dtype=np.int32)
         backend.set_random_state(seed)
-        self.state = JittableStatevec(fixed_nqubit=self.max_qubit_num, plus_states=True)
 
         _update_global_variables()
 
@@ -200,7 +191,8 @@ class JittableStatevectorBackend:
         """
         return len(self.state.dims())
 
-    def add_node(self, node):
+    @staticmethod
+    def add_node(node, psi, actual_nqubit, node_index):
         """add new qubits to internal statevector
         and assign the corresponding node numbers
         to list self.node_index.
@@ -209,11 +201,10 @@ class JittableStatevectorBackend:
         ----------
         nodes : list of node indices
         """
-        self.state.add_qubits(1)
+        return psi, actual_nqubit + 1, node_index.at[actual_nqubit].set(node)
 
-        self.node_index.at[self.state.actual_nqubit - 1].set(node)
-
-    def entangle_nodes(self, edge):
+    @staticmethod
+    def entangle_nodes(edge, fixed_nqubit, psi, actual_nqubit, node_index):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -223,11 +214,12 @@ class JittableStatevectorBackend:
         """
         import jax.numpy as jnp  # FIXME: make it backend agnostic
 
-        target = jnp.where(self.node_index == edge[0], size=1)[0][0]
-        control = jnp.where(self.node_index == edge[1], size=1)[0][0]
-        self.state.entangle((target, control))
+        target = jnp.where(node_index == edge[0], size=1)[0][0]
+        control = jnp.where(node_index == edge[1], size=1)[0][0]
+        return JittableStatevec().entangle(psi, (target, control), fixed_nqubit), actual_nqubit, node_index
 
-    def measure(self, node, plane, angle, s_signal, t_signal, result, vop=None):
+    @staticmethod
+    def measure(node, plane, angle, s_signal, t_signal, result, vop, fixed_nqubit, psi, actual_nqubit, node_index):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -237,60 +229,81 @@ class JittableStatevectorBackend:
         """
 
         angle = angle * backend.pi
-        if vop is None:
-            vop = backend.array(0)
         vop = backend.where(backend.mod(s_signal, 2) == 1, CLIFFORD_MUL[1, vop], vop)
         vop = backend.where(backend.mod(t_signal, 2) == 1, CLIFFORD_MUL[3, vop], vop)
-        err, m_op = backend.wrap_by_checkify(jittable_meas_op)(angle, vop=vop, plane=plane, choice=result)
-        if err is not None:
-            err.throw()
+        m_op = jittable_meas_op(angle, vop=vop, plane=plane, choice=result)
         import jax.numpy as jnp  # FIXME: make it backend agnostic
 
-        loc = jnp.where(self.node_index == node, size=1)[0][0]
-        self.state.evolve_single(m_op, loc)
-        self.state.remove_qubit(loc)
-        self.node_index.remove(node)
+        loc = jnp.where(node_index == node, size=1)[0][0]
+        psi = JittableStatevec()._evolve_single(psi, m_op, loc, fixed_nqubit)
+        psi, actual_nqubit = JittableStatevec().remove_qubit(loc, psi, actual_nqubit, fixed_nqubit)
+        node_index = node_index.at[loc].set(-1)
 
-    def correct_byproduct(self, name, cmd, signal):
+        # node_index = backend.moveaxis(node_index, loc, -1)
+
+        node_index = backend.fori_loop(
+            0,
+            fixed_nqubit - 1,
+            lambda i, node_index: backend.where(
+                node_index[i] == -1, node_index.at[i].set(node_index[i + 1]), node_index
+            ),
+            node_index,
+        )
+        return psi, actual_nqubit, node_index
+
+    @staticmethod
+    def correct_byproduct(name, node, signal, fixed_nqubit, psi, actual_nqubit, node_index):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
+        import jax.numpy as jnp  # FIXME: make it backend agnostic
 
         def true_fun():
-            loc = self.node_index.index(cmd[1])
+            loc = jnp.where(node_index == node, size=1)[0][0]
             op = backend.where(name == 4, Ops.x, Ops.z)
-            return self.state._evolve_single(self.state.psi, op, loc)
+            return JittableStatevec()._evolve_single(psi, op, loc, fixed_nqubit)
 
-        self.state.psi = backend.cond(signal, true_fun, lambda: self.state.psi)
+        psi = backend.cond(signal, true_fun, lambda: psi)
+        return psi, actual_nqubit, node_index
 
-    def apply_clifford(self, node, vop):
+    @staticmethod
+    def apply_clifford(node, vop, fixed_nqubit, psi, actual_nqubit, node_index):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = self.node_index.index(node)
-        self.state.evolve_single(CLIFFORD[vop], loc)
+        import jax.numpy as jnp  # FIXME: make it backend agnostic
 
-    def finalize(self):
+        loc = jnp.where(node_index == node, size=1)[0][0]
+        JittableStatevec()._evolve_single(psi, CLIFFORD[vop], loc, fixed_nqubit)
+        return psi, actual_nqubit, node_index
+
+    @staticmethod
+    def finalize(output_nodes, psi, actual_nqubit, node_index):
         """to be run at the end of pattern simulation."""
-        self.sort_qubits()
-        self.state.normalize()
+        import jax.numpy as jnp  # FIXME: make it backend agnostic
 
-    def sort_qubits(self):
-        """sort the qubit order in internal statevector"""
-        for i, ind in enumerate(self.pattern.output_nodes):
-            if not self.node_index[i] == ind:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index[i], self.node_index[move_from] = (
-                    self.node_index[move_from],
-                    self.node_index[i],
+        # sort the qubit order in internal statevector
+        for i, ind in enumerate(output_nodes):
+            if not node_index[i] == ind:
+                move_from = jnp.where(node_index == ind, size=1)[0][0]
+                # swap
+                # contraction: 2nd index - control index, and 3rd index - target index.
+                psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), (i, move_from)))  # TODO: error
+                # sort back axes
+                psi = np.moveaxis(psi, (0, 1), (i, move_from))
+                # swap done
+                node_index[i], node_index[move_from] = (
+                    node_index[move_from],
+                    node_index[i],
                 )
+        psi /= _get_statevec_norm(psi)
+        return psi, actual_nqubit, node_index
 
     # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
     def _tree_flatten(self):
-        children = (self.pattern,)  # arrays / dynamic values
-        aux_data = {"max_qubit_num": self.max_qubit_num}  # static values
+        children = ()  # arrays / dynamic values
+        aux_data = {}  # static values
         return (children, aux_data)
 
     @classmethod
@@ -368,21 +381,6 @@ def jittable_meas_op(angle, vop, plane, choice):
         projection operator
 
     """
-    backend.debug_assert_true(
-        backend.logical_and(0 <= vop, vop < 24),
-        "vop must be in range(24), but got {vop}",
-        vop=backend.array(vop, dtype=np.int32),
-    )
-    backend.debug_assert_true(
-        backend.logical_and(0 <= plane, plane <= 2),
-        "plane must be 0 or 1 or 2, but got {plane}",
-        plane=backend.array(plane, dtype=np.int32),
-    )
-    backend.debug_assert_true(
-        backend.logical_or(choice == 0, choice == 1),
-        "choice must be 0 or 1, but got {choice}",
-        choice=backend.array(choice, dtype=np.int32),
-    )
     vec = backend.array([backend.cos(angle), backend.sin(angle), 0])
     op_mat = backend.eye(2) / 2
     op_mat += (-1) ** (choice) * vec[(0 + plane) % 3] * CLIFFORD[(0 + plane) % 3 + 1] / 2
@@ -638,30 +636,6 @@ class Statevec:
 class JittableStatevec:
     """Simple statevector simulator"""
 
-    def __init__(self, fixed_nqubit: int = 1, plus_states: bool = True):
-        """Initialize statevector
-
-        Parameters
-        ----------
-        nqubit : int, optional:
-            number of qubits. Defaults to 1.
-        plus_states : bool, optional
-            whether or not to start all qubits in + state or 0 state. Defaults to +
-        fixed_nqubit : int, optional
-            if not None, the number of qubits will be fixed to this value.
-        """
-        self.plus_states = plus_states
-        self.actual_nqubit = 0
-        self.fixed_nqubit = fixed_nqubit
-        if plus_states:
-            self.psi = backend.ones((2,) * fixed_nqubit) / 2 ** (fixed_nqubit / 2)
-        else:
-            self.psi = backend.zeros((2,) * fixed_nqubit)
-            self.psi[(0,) * fixed_nqubit] = 1
-
-    def __repr__(self):
-        return f"Statevec, data={self.psi}, shape={self.dims()}"
-
     def add_qubits(self, nqubit: int):
         """add qubits to the system only if the number of qubits is fixed"""
         self.actual_nqubit += nqubit
@@ -686,22 +660,25 @@ class JittableStatevec:
         # TODO: use jax.lax.scan instead of fori_loop
         # https://github.com/google/jax/discussions/3850
         # "always scan when you can!"
-        psi = psi.flatten()  # FIXME: why still leaking???
+        psi = psi.flatten()  # FIXME: why still leaking??? make all backend methods static?
 
         # op_full = backend.eye(2**self.fixed_nqubit)
         one_qubit_identity = backend.eye(2)
 
-        def loop_func(qarg, val):
-            one_qubit_op = backend.where(qarg == i, op, one_qubit_identity)
-            return backend.kron(val, one_qubit_op)
+        op_full = 1
 
-        op_full = backend.fori_loop(0, dim, loop_func, op_full)
+        for qarg in range(dim):
+            one_qubit_op = backend.where(qarg == i, op, one_qubit_identity)
+            op_full = backend.kron(one_qubit_op, op_full)
+
         psi = backend.dot(op_full, psi)
+        return psi.reshape((2,) * dim)
 
     def dims(self):
         return self.psi.shape
 
-    def remove_qubit(self, qarg):
+    @staticmethod
+    def remove_qubit(qarg, psi, actual_nqubit, fixed_nqubit):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
@@ -742,15 +719,28 @@ class JittableStatevec:
         qarg : int
             qubit index
         """
-        self.actual_nqubit -= 1
+        actual_nqubit -= 1
+        psi = psi.flatten()
+        qubit_removed_psi = backend.zeros(2 ** (fixed_nqubit - 1))
 
-        psi = self.psi.take(indices=0, axis=qarg)
-        qubit_removed_psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        def loop_func(i, qubit_removed_psi):  # big endian
+            front = (i << 1) & (((1 << qarg) - 1) << (fixed_nqubit - qarg))
+            middle = 1 << (fixed_nqubit - 1 - qarg)
+            end = i & ((1 << (qarg - 1)) - 1)
+            qubit_removed_psi = qubit_removed_psi.at[i].set(
+                backend.where(backend.isclose(psi[front + end], 0), psi[front + middle + end], psi[front + end])
+            )
+            return qubit_removed_psi
 
-        self.psi = backend.tensordot(qubit_removed_psi, backend.array(States.plus), axes=0)
-        self.normalize()
+        psi = backend.fori_loop(0, 2 ** (fixed_nqubit - 1), loop_func, qubit_removed_psi)
 
-    def entangle(self, edge):
+        psi = backend.tensordot(qubit_removed_psi, backend.array(States.plus), axes=0)
+        psi = psi.reshape((2,) * fixed_nqubit)
+        psi /= _get_statevec_norm(psi)
+        return psi, actual_nqubit
+
+    @staticmethod
+    def entangle(psi, edge, fixed_nqubit):
         """connect graph nodes
 
         Parameters
@@ -764,16 +754,16 @@ class JittableStatevec:
         # https://github.com/google/jax/discussions/3850
         # "always scan when you can!"
 
-        psi = self.psi.flatten()
+        psi = psi.flatten()
 
         def loop_func(i, val):
-            is_control_one = 1 & (i >> (self.fixed_nqubit - 1 - edge[0]))
-            is_target_one = 1 & (i >> (self.fixed_nqubit - 1 - edge[1]))
+            is_control_one = 1 & (i >> (fixed_nqubit - 1 - edge[0]))
+            is_target_one = 1 & (i >> (fixed_nqubit - 1 - edge[1]))
             val = backend.where(backend.logical_and(is_control_one, is_target_one), val.at[i].set(-1 * val[i]), val)
             return val
 
-        psi = backend.fori_loop(0, 2**self.fixed_nqubit, loop_func, psi)
-        self.psi = psi.reshape((2,) * self.fixed_nqubit)
+        psi = backend.fori_loop(0, 2**fixed_nqubit, loop_func, psi)
+        return psi.reshape((2,) * fixed_nqubit)
 
     def tensor(self, other):
         r"""Tensor product state with other qubits.

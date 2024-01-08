@@ -273,16 +273,6 @@ class AbstractBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def wrap_by_checkify(self, func: Callable[..., Any]) -> Callable[..., tuple[Error, Any]]:
-        """Wrap a function with checkify."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def debug_assert_true(self, condition: bool, message: str, **kwargs) -> None:
-        """Assert that the condition is true."""
-        raise NotImplementedError
-
-    @abstractmethod
     def logical_or(self, a: Tensor, b: Tensor) -> Tensor:
         """Return the truth value of a or b element-wise."""
         raise NotImplementedError

@@ -66,8 +66,8 @@ class JittablePatternSequence:
     b_signal: bool
         signal domain. Used for 'X' and 'Z' command. For other commands, it is `False`.
     vop: int
-        value for clifford index. Used for 'C' command. It is an integer between 0 and 23.
-        For other commands, it is `-1`.
+        value for clifford index. Used for 'M' and 'C' command. It is an integer between 0 and 23.
+        For other commands, it is `0`.
     """
 
     name: int
@@ -104,7 +104,7 @@ def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # FIXME: does not w
     s_signal = np.zeros(seq_length, dtype=np.bool_)
     t_signal = np.zeros(seq_length, dtype=np.bool_)
     b_signal = np.zeros(seq_length, dtype=np.bool_)
-    vop = np.full(seq_length, -1, dtype=np.int8)
+    vop = np.zeros(seq_length, dtype=np.int8)
 
     measurement_results = {}
 
@@ -128,6 +128,8 @@ def _pattern_seq_to_jittable_pattern_seq(pattern: Pattern):  # FIXME: does not w
                 s_signal[i] ^= measurement_results[j]
             for j in cmd[5]:
                 t_signal[i] ^= measurement_results[j]
+            if len(cmd) == 7:
+                vop[i] = cmd[6]
         elif cmd[0] == "X":
             name[i] = 3
             node[i] = cmd[1]
@@ -172,14 +174,20 @@ class PatternSimulator:
         if backend == "statevector":
             if sim_backend.name == "numpy":
                 self.pattern = pattern
+                self.fixed_nqubit = None
+                self.output_nodes = None
                 self.backend = StatevectorBackend(pattern, **kwargs)
             else:
                 self.pattern = _pattern_seq_to_jittable_pattern_seq(pattern)
-                self.backend = JittableStatevectorBackend(pattern, **kwargs)
+                self.fixed_nqubit = pattern.max_space()
+                self.output_nodes = pattern.output_nodes
+                self.backend = JittableStatevectorBackend(self.fixed_nqubit, **kwargs)
         elif backend in {"tensornetwork", "mps"}:
             if sim_backend.name != "numpy":
                 raise ValueError("tensornetwork backend only works with numpy backend")
             self.pattern = pattern
+            self.fixed_nqubit = None
+            self.output_nodes = None
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("unknown backend")
@@ -195,25 +203,60 @@ class PatternSimulator:
             in the representation depending on the backend used.
         """
         if isinstance(self.backend, JittableStatevectorBackend):
+            import jax.numpy as jnp  # FIXME: make backend agnostic
+
+            # JAX transformations require that functions explicitly return their outputs,
+            # and disallow saving intermediate values to global state.
+            psi = sim_backend.ones((2,) * self.fixed_nqubit) / 2 ** (self.fixed_nqubit / 2)
+            actual_nqubit = 0
+            node_index = jnp.full(self.fixed_nqubit, -1, dtype=np.int32)
 
             def loop_func(carry, x):
+                psi = carry[0]
+                actual_nqubit = carry[1]
+                node_index = carry[2]
                 jax.lax.switch(  # FIXME: make backend agnostic
                     x.name,
                     [
-                        lambda: self.backend.add_node(x.node),
-                        lambda: self.backend.entangle_nodes(x.edge),
-                        lambda: self.backend.measure(x.node, x.plane, x.angle, x.s_signal, x.t_signal, x.m_result),
-                        lambda: self.backend.correct_byproduct(3, x.node, x.b_signal),
-                        lambda: self.backend.correct_byproduct(4, x.node, x.b_signal),
-                        lambda: self.backend.apply_clifford(x.node, x.vop),
+                        lambda psi, actual_nqubit, node_index: self.backend.add_node(
+                            x.node, psi, actual_nqubit, node_index
+                        ),
+                        lambda psi, actual_nqubit, node_index: self.backend.entangle_nodes(
+                            x.edge, self.fixed_nqubit, psi, actual_nqubit, node_index
+                        ),
+                        lambda psi, actual_nqubit, node_index: self.backend.measure(
+                            x.node,
+                            x.plane,
+                            x.angle,
+                            x.s_signal,
+                            x.t_signal,
+                            x.m_result,
+                            x.vop,
+                            self.fixed_nqubit,
+                            psi,
+                            actual_nqubit,
+                            node_index,
+                        ),
+                        lambda psi, actual_nqubit, node_index: self.backend.correct_byproduct(
+                            3, x.node, x.b_signal, self.fixed_nqubit, psi, actual_nqubit, node_index
+                        ),
+                        lambda psi, actual_nqubit, node_index: self.backend.correct_byproduct(
+                            4, x.node, x.b_signal, self.fixed_nqubit, psi, actual_nqubit, node_index
+                        ),
+                        lambda psi, actual_nqubit, node_index: self.backend.apply_clifford(
+                            x.node, x.vop, self.fixed_nqubit, psi, actual_nqubit, node_index
+                        ),
                     ],
+                    psi,
+                    actual_nqubit,
+                    node_index,
                 )
-                return self.backend.state, None
+                return carry, None
 
-            state, _ = jax.lax.scan(loop_func, self.backend.state, self.pattern)
-            self.backend.finalize()
+            psi, _ = jax.lax.scan(loop_func, (psi, actual_nqubit, node_index), self.pattern)
+            psi, actual_nqubit, node_index = self.backend.finalize(self.output_nodes, psi, actual_nqubit, node_index)
 
-            return self.backend.state
+            return psi
 
         else:
             for cmd in self.pattern.seq:
@@ -239,7 +282,11 @@ class PatternSimulator:
     # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
     def _tree_flatten(self):
         children = ()  # arrays / dynamic values
-        aux_data = {"pattern": self.pattern, "backend": self.backend}  # static values
+        aux_data = {
+            "pattern": self.pattern,
+            "fixed_nqubit": self.fixed_nqubit,
+            "backend": self.backend,
+        }  # static values
         return (children, aux_data)
 
     @classmethod

@@ -190,15 +190,6 @@ class NumPyBackend(AbstractBackend):
     def set_element(self, a: Tensor, index: int, value: Any) -> None:
         a[index] = value
 
-    def wrap_by_checkify(self, func: Callable[..., Any]) -> Callable[..., tuple[None, Any]]:
-        def wrapper(*args, **kwargs):
-            return None, func(*args, **kwargs)
-
-        return wrapper
-
-    def debug_assert_true(self, condition: bool, message: str, **kwargs) -> None:
-        assert condition, message.format(**kwargs)
-
     def logical_and(self, a: Tensor, b: Tensor) -> Tensor:
         return np.logical_and(a, b)
 
