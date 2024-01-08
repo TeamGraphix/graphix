@@ -227,7 +227,7 @@ class MBQCTensorNet(TensorNetwork):
             node indices of the graph state.
         graph_edges (optional) : list of tuple of int
             edge indices of the graph state.
-        default_output_nodes : list of int
+        default_output_nodes (optional) : list of int
             output node indices at the end of MBQC operations, if known in advance.
         ts (optional): quimb.tensor.tensor_core.TensorNetwork or empty list
             optional initial state.
@@ -620,7 +620,7 @@ class MBQCTensorNet(TensorNetwork):
             operator.
         qubit_indices : list of int
             Applied positions of **logical** qubits.
-        decompose : bool, optional
+        decompose (optional) : bool
             Defaults to True.
             Whether the given operator will be decomposed or not.
             If True, operator is decomposed into Matrix Product Operator(MPO)
@@ -661,7 +661,7 @@ class MBQCTensorNet(TensorNetwork):
 
         Parameters
         ----------
-        deep : bool, optional
+        deep (optional) : bool
             Defaults to False.
             Whether to copy the underlying data as well.
 
