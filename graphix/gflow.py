@@ -154,10 +154,15 @@ def gflowaux(
         if x_col[0] == sp.nan:  # no solution
             continue
         if mode == "single":
-            sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
+            sol_list = [
+                x_col[i].subs(zip(kernels, [sp.false] * len(kernels)))
+                for i in range(len(x_col))
+            ]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
-            g[non_out_node] = set(node_order_col[col_pertumutation[i]] for i in sol_index)
+            g[non_out_node] = set(
+                node_order_col[col_pertumutation[i]] for i in sol_index
+            )
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
@@ -165,7 +170,10 @@ def gflowaux(
             g[non_out_node] = set()
             binary_combinations = product([0, 1], repeat=len(kernels))
             for binary_combination in binary_combinations:
-                sol_list = [x_col[i].subs(zip(kernels, binary_combination)) for i in range(len(x_col))]
+                sol_list = [
+                    x_col[i].subs(zip(kernels, binary_combination))
+                    for i in range(len(x_col))
+                ]
                 kernel_list = [True if i == 1 else False for i in binary_combination]
                 sol_list.extend(kernel_list)
                 sol = np.array(sol_list)
@@ -182,7 +190,9 @@ def gflowaux(
                 node = node_order_col[col_pertumutation[i]]
                 g[non_out_node][node] = x_col[i]
             for i in range(len(kernels)):
-                g[non_out_node][node_order_col[col_pertumutation[len(x_col) + i]]] = kernels[i]
+                g[non_out_node][
+                    node_order_col[col_pertumutation[len(x_col) + i]]
+                ] = kernels[i]
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
@@ -441,6 +451,37 @@ def get_layers(l_k):
         layers[l_k[i]].append(i)
     return d, layers
 
+def get_layers_from_flow(input: set, flow: dict[int, set]) -> dict[int, set], int:
+    """Get layers from flow.
+
+    Parameters
+    ----------
+    input: set
+        set of input nodes
+    flow: dict[int, set]
+        flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+
+    Returns
+    -------
+    layers: dict[int, set]
+        layers obtained from flow
+    depth: int
+        depth of the layers
+    """
+    layers = dict()
+    depth = 0
+    layers[depth] = input
+    while True:
+        depth += 1
+        layers[depth] = set()
+        for node in layers[depth - 1]:
+            layers[depth] |= flow[node]
+        if len(layers[depth]) == 0:
+            del layers[depth]
+            depth -= 1
+            break
+
+    return layers, depth
 
 def get_adjacency_matrix(graph):
     """Get adjacency matrix of the graph
@@ -458,3 +499,169 @@ def get_adjacency_matrix(graph):
     adjacency_matrix = nx.to_numpy_array(graph, nodelist=node_list)
     adjacency_matrix = MatGF2(adjacency_matrix.astype(int))
     return adjacency_matrix, node_list
+
+
+def check_flow(
+    graph: nx.Graph,
+    flow: dict[int, set],
+    meas_planes: dict[int, str] = {},
+) -> bool:
+    """Check whether the flow is valid.
+
+    Parameters
+    ----------
+    graph: nx.Graph
+        graph (incl. in and out)
+    flow: dict[int, set]
+        flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    meas_planes: dict[int, str](optional)
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+
+
+    Returns
+    -------
+    valid_flow: bool
+        True if the flow is valid. False otherwise.
+    """
+
+    valid_flow = True
+    inputs = get_input_from_flow(flow)
+    outputs = get_output_from_flow(flow)
+    # if meas_planes is given, check whether all measurement planes are "XY"
+    non_outputs = set(graph.nodes) - outputs
+    for node, plane in meas_planes.items():
+        if plane != "XY" or node not in non_outputs:
+            valid_flow = False
+            return valid_flow
+
+    layers, depth = get_layers_from_flow(inputs, flow)
+    node_order = []
+    for d in range(depth):
+        node_order.extend(list(layers[d]))
+    adjacency_matrix, _ = get_adjacency_matrix(graph)
+    adjacency_matrix.permute_col(node_order)
+    adjacency_matrix.permute_row(node_order)
+
+    flow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
+    for node, corrections in flow.items():
+        for correction in corrections:
+            row = node_order.index(node)
+            col = node_order.index(correction)
+            # check whether v < f(v)
+            if row >= col:
+                valid_flow = False
+                return valid_flow
+            # check whether the flow arrow is edge of the original graph
+            if adjacency_matrix[row, col] != 1:
+                valid_flow = False
+                return valid_flow
+            flow_matrix[row, col] = 1
+
+    Neighbor_f = flow_matrix @ adjacency_matrix
+
+    # check whether v < N(f(v))
+    triu = np.triu(Neighbor_f.data)
+    valid_flow = np.array_equal(triu, Neighbor_f.data)
+    return valid_flow
+
+
+def check_gflow(
+    graph: nx.Graph,
+    gflow: dict[int, set],
+    meas_planes: dict[int, str],
+) -> bool:
+    """Check whether the gflow is valid.
+
+    Parameters
+    ----------
+    graph: nx.Graph
+        graph (incl. in and out)
+    gflow: dict[int, set]
+        gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    meas_planes: dict[int, str]
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+
+    Returns
+    -------
+    valid_gflow: bool
+        True if the gflow is valid. False otherwise.
+    """
+    valid_gflow = True
+    inputs = get_input_from_flow(gflow)
+    
+    layers, depth = get_layers_from_flow(inputs, gflow)
+    node_order = []
+    for d in range(depth):
+        node_order.extend(list(layers[d]))
+    adjacency_matrix, _ = get_adjacency_matrix(graph)
+    adjacency_matrix.permute_col(node_order)
+    adjacency_matrix.permute_row(node_order)
+    
+    gflow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
+    
+    for node, corrections in gflow.items():
+        for correction in corrections:
+            row = node_order.index(node)
+            col = node_order.index(correction)
+            # check whether v <= g(v)
+            if row > col:
+                valid_gflow = False
+                return valid_gflow
+            gflow_matrix[row, col] = 1
+    
+    oddneighbor_g = gflow_matrix @ adjacency_matrix
+    triu = np.triu(oddneighbor_g.data)
+    valid_gflow = np.array_equal(triu, oddneighbor_g.data)
+    
+    # check for each measurement plane
+    for node, plane in meas_planes.items():
+        index = node_order.index(node)
+        if plane == "XY":
+            valid_gflow = (gflow_matrix[index, index] == 0) and (oddneighbor_g[index, index] == 1)
+        elif plane == "XZ":
+            valid_gflow = (gflow_matrix[index, index] == 1) and (oddneighbor_g[index, index] == 1)
+        elif plane == "YZ":
+            valid_gflow = (gflow_matrix[index, index] == 1) and (oddneighbor_g[index, index] == 0)
+    
+    return valid_gflow
+
+
+def get_input_from_flow(flow: dict[int, set]) -> set:
+    """Get input nodes from flow.
+
+    Parameters
+    ----------
+    flow: dict[int, set]
+        flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+
+    Returns
+    -------
+    inputs: set
+        set of input nodes
+    """
+    non_output = set(flow.keys())
+    for correction in flow.values():
+        non_output -= correction
+    inputs = non_output
+    return inputs
+
+
+def get_output_from_flow(flow: dict[int, set]) -> set:
+    """Get output nodes from flow.
+
+    Parameters
+    ----------
+    flow: dict[int, set]
+        flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+
+    Returns
+    -------
+    outputs: set
+        set of output nodes
+    """
+    non_outputs = set(flow.keys())
+    non_inputs = set()
+    for correction in flow.values():
+        non_inputs |= correction
+    outputs = non_inputs - non_outputs
+    return outputs
