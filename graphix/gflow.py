@@ -9,7 +9,6 @@ Languages, and Programming (Springer, 2008), pp. 857-868.
 Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
-
 from itertools import product
 
 import networkx as nx
@@ -154,15 +153,10 @@ def gflowaux(
         if x_col[0] == sp.nan:  # no solution
             continue
         if mode == "single":
-            sol_list = [
-                x_col[i].subs(zip(kernels, [sp.false] * len(kernels)))
-                for i in range(len(x_col))
-            ]
+            sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
-            g[non_out_node] = set(
-                node_order_col[col_pertumutation[i]] for i in sol_index
-            )
+            g[non_out_node] = set(node_order_col[col_pertumutation[i]] for i in sol_index)
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
@@ -170,10 +164,7 @@ def gflowaux(
             g[non_out_node] = set()
             binary_combinations = product([0, 1], repeat=len(kernels))
             for binary_combination in binary_combinations:
-                sol_list = [
-                    x_col[i].subs(zip(kernels, binary_combination))
-                    for i in range(len(x_col))
-                ]
+                sol_list = [x_col[i].subs(zip(kernels, binary_combination)) for i in range(len(x_col))]
                 kernel_list = [True if i == 1 else False for i in binary_combination]
                 sol_list.extend(kernel_list)
                 sol = np.array(sol_list)
@@ -190,9 +181,7 @@ def gflowaux(
                 node = node_order_col[col_pertumutation[i]]
                 g[non_out_node][node] = x_col[i]
             for i in range(len(kernels)):
-                g[non_out_node][
-                    node_order_col[col_pertumutation[len(x_col) + i]]
-                ] = kernels[i]
+                g[non_out_node][node_order_col[col_pertumutation[len(x_col) + i]]] = kernels[i]
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
@@ -451,7 +440,8 @@ def get_layers(l_k):
         layers[l_k[i]].append(i)
     return d, layers
 
-def get_layers_from_flow(input: set, flow: dict[int, set]) -> dict[int, set], int:
+
+def get_layers_from_flow(input: set, flow: dict[int, set]) -> tuple[dict[int, set], int]:
     """Get layers from flow.
 
     Parameters
@@ -482,6 +472,7 @@ def get_layers_from_flow(input: set, flow: dict[int, set]) -> dict[int, set], in
             break
 
     return layers, depth
+
 
 def get_adjacency_matrix(graph):
     """Get adjacency matrix of the graph
@@ -588,7 +579,7 @@ def check_gflow(
     """
     valid_gflow = True
     inputs = get_input_from_flow(gflow)
-    
+
     layers, depth = get_layers_from_flow(inputs, gflow)
     node_order = []
     for d in range(depth):
@@ -596,9 +587,9 @@ def check_gflow(
     adjacency_matrix, _ = get_adjacency_matrix(graph)
     adjacency_matrix.permute_col(node_order)
     adjacency_matrix.permute_row(node_order)
-    
+
     gflow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
-    
+
     for node, corrections in gflow.items():
         for correction in corrections:
             row = node_order.index(node)
@@ -608,11 +599,11 @@ def check_gflow(
                 valid_gflow = False
                 return valid_gflow
             gflow_matrix[row, col] = 1
-    
+
     oddneighbor_g = gflow_matrix @ adjacency_matrix
     triu = np.triu(oddneighbor_g.data)
     valid_gflow = np.array_equal(triu, oddneighbor_g.data)
-    
+
     # check for each measurement plane
     for node, plane in meas_planes.items():
         index = node_order.index(node)
@@ -622,7 +613,7 @@ def check_gflow(
             valid_gflow = (gflow_matrix[index, index] == 1) and (oddneighbor_g[index, index] == 1)
         elif plane == "YZ":
             valid_gflow = (gflow_matrix[index, index] == 1) and (oddneighbor_g[index, index] == 0)
-    
+
     return valid_gflow
 
 
