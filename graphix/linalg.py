@@ -119,6 +119,26 @@ class MatGF2:
         """
         self.data[:, [col1, col2]] = self.data[:, [col2, col1]]
 
+    def permute_row(self, row_permutation):
+        """permute rows
+
+        Parameters
+        ----------
+        row_permutation: array_like
+            row permutation
+        """
+        self.data = self.data[row_permutation]
+
+    def permute_col(self, col_permutation):
+        """permute columns
+
+        Parameters
+        ----------
+        col_permutation: array_like
+            column permutation
+        """
+        self.data = self.data[:, col_permutation]
+
     def is_canonical_form(self):
         """check if the matrix is in a canonical(Row reduced echelon form) form
 
