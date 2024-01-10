@@ -216,7 +216,8 @@ class JittableStatevectorBackend:
 
         target = jnp.where(node_index == edge[0], size=1)[0][0]
         control = jnp.where(node_index == edge[1], size=1)[0][0]
-        return JittableStatevec().entangle(psi, (target, control), fixed_nqubit), actual_nqubit, node_index
+        psi = JittableStatevec().entangle(psi, (target, control), fixed_nqubit)
+        return psi, actual_nqubit, node_index
 
     @staticmethod
     def measure(node, plane, angle, s_signal, t_signal, result, vop, fixed_nqubit, psi, actual_nqubit, node_index):
@@ -237,6 +238,7 @@ class JittableStatevectorBackend:
         loc = jnp.where(node_index == node, size=1)[0][0]
         psi = JittableStatevec()._evolve_single(psi, m_op, loc, fixed_nqubit)
         psi, actual_nqubit = JittableStatevec().remove_qubit(loc, psi, actual_nqubit, fixed_nqubit)
+
         node_index = node_index.at[loc].set(-1)
 
         # node_index = backend.moveaxis(node_index, loc, -1)
@@ -279,26 +281,36 @@ class JittableStatevectorBackend:
         return psi, actual_nqubit, node_index
 
     @staticmethod
-    def finalize(output_nodes, psi, actual_nqubit, node_index):
+    def finalize(output_nodes, fixed_nqubit, psi, actual_nqubit, node_index):
         """to be run at the end of pattern simulation."""
         import jax.numpy as jnp  # FIXME: make it backend agnostic
 
-        # sort the qubit order in internal statevector
-        for i, ind in enumerate(output_nodes):
-            if not node_index[i] == ind:
-                move_from = jnp.where(node_index == ind, size=1)[0][0]
-                # swap
-                # contraction: 2nd index - control index, and 3rd index - target index.
-                psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), (i, move_from)))  # TODO: error
-                # sort back axes
-                psi = np.moveaxis(psi, (0, 1), (i, move_from))
-                # swap done
-                node_index[i], node_index[move_from] = (
-                    node_index[move_from],
-                    node_index[i],
-                )
-        psi /= _get_statevec_norm(psi)
-        return psi, actual_nqubit, node_index
+        new_indices = jnp.zeros(len(output_nodes), dtype=np.int32)  # node_index -> output_nodes
+
+        for index_after, ind in enumerate(output_nodes):
+            if not node_index[index_after] == ind:
+                index_before = jnp.where(node_index == ind, size=1)[0][0]
+                new_indices = new_indices.at[index_before].set(index_after)
+
+        psi = psi.flatten()
+        psi_sorted = jnp.zeros_like(psi, dtype=np.complex128)
+
+        for i in range(2**actual_nqubit):
+            new_index = 0
+            for j in range(actual_nqubit):
+                new_index += (i & (1 << (actual_nqubit - j - 1))) << (actual_nqubit - new_indices[j] - 1)
+            psi_sorted = psi_sorted.at[new_index].set(psi[i])
+
+        psi_sorted = psi_sorted.reshape((2,) * fixed_nqubit)
+
+        import jax
+
+        jax.debug.print("actual_nqubit={actual_nqubit}", actual_nqubit=actual_nqubit)
+
+        for _ in range(fixed_nqubit - actual_nqubit):
+            psi_sorted = psi_sorted.take(indices=0, axis=-1)
+        psi_sorted /= _get_statevec_norm(psi_sorted)
+        return psi_sorted, node_index
 
     # https://jax.readthedocs.io/en/latest/faq.html#strategy-3-making-customclass-a-pytree
     def _tree_flatten(self):
@@ -660,7 +672,9 @@ class JittableStatevec:
         # TODO: use jax.lax.scan instead of fori_loop
         # https://github.com/google/jax/discussions/3850
         # "always scan when you can!"
-        psi = psi.flatten()  # FIXME: why still leaking??? make all backend methods static?
+        psi = psi.flatten()
+        import jax
+        import jax.numpy as jnp  # FIXME: make it backend agnostic
 
         # op_full = backend.eye(2**self.fixed_nqubit)
         one_qubit_identity = backend.eye(2)
@@ -671,7 +685,10 @@ class JittableStatevec:
             one_qubit_op = backend.where(qarg == i, op, one_qubit_identity)
             op_full = backend.kron(one_qubit_op, op_full)
 
-        psi = backend.dot(op_full, psi)
+        jax.debug.print("op_full={op_full}", op_full=op_full)
+        jax.debug.print("psi before matmul={psi}", psi=psi)
+        psi = jnp.matmul(op_full, psi)
+        jax.debug.print("psi after matmul={psi}", psi=psi)
         return psi.reshape((2,) * dim)
 
     def dims(self):
@@ -719,20 +736,25 @@ class JittableStatevec:
         qarg : int
             qubit index
         """
+        import jax
+
         actual_nqubit -= 1
         psi = psi.flatten()
+        jax.debug.print("psi before fori_loop ={psi}", psi=psi)
         qubit_removed_psi = backend.zeros(2 ** (fixed_nqubit - 1))
 
-        def loop_func(i, qubit_removed_psi):  # big endian
-            front = (i << 1) & (((1 << qarg) - 1) << (fixed_nqubit - qarg))
+        def loop_func(i, qubit_removed_psi):  # big endian FIXME:
+            front = (i & (((1 << qarg) - 1) << (fixed_nqubit - qarg))) >> 1
             middle = 1 << (fixed_nqubit - 1 - qarg)
-            end = i & ((1 << (qarg - 1)) - 1)
+            end = i & ((1 << (fixed_nqubit - qarg - 1)) - 1)
             qubit_removed_psi = qubit_removed_psi.at[i].set(
                 backend.where(backend.isclose(psi[front + end], 0), psi[front + middle + end], psi[front + end])
             )
             return qubit_removed_psi
 
         psi = backend.fori_loop(0, 2 ** (fixed_nqubit - 1), loop_func, qubit_removed_psi)
+
+        jax.debug.print("psi after fori_loop ={psi}", psi=psi)
 
         psi = backend.tensordot(qubit_removed_psi, backend.array(States.plus), axes=0)
         psi = psi.reshape((2,) * fixed_nqubit)

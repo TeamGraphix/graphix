@@ -215,7 +215,7 @@ class PatternSimulator:
                 psi = carry[0]
                 actual_nqubit = carry[1]
                 node_index = carry[2]
-                jax.lax.switch(  # FIXME: make backend agnostic
+                carry = jax.lax.switch(  # FIXME: make backend agnostic
                     x.name,
                     [
                         lambda psi, actual_nqubit, node_index: self.backend.add_node(
@@ -251,10 +251,17 @@ class PatternSimulator:
                     actual_nqubit,
                     node_index,
                 )
+                # jax.debug.print("name={name}", name=x.name)
+                # jax.debug.print("psi={psi}", psi=carry[0])
+                # jax.debug.print("actual_nqubit={actual_nqubit}", actual_nqubit=carry[1])
                 return carry, None
 
-            psi, _ = jax.lax.scan(loop_func, (psi, actual_nqubit, node_index), self.pattern)
-            psi, actual_nqubit, node_index = self.backend.finalize(self.output_nodes, psi, actual_nqubit, node_index)
+            tmp, _ = jax.lax.scan(loop_func, (psi, actual_nqubit, node_index), self.pattern)
+            jax.debug.print("{tmp}", tmp=tmp)
+            psi, actual_nqubit, node_index = tmp
+            psi, node_index = self.backend.finalize(
+                self.output_nodes, self.fixed_nqubit, psi, actual_nqubit, node_index
+            )
 
             return psi
 
