@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 import networkx as nx
-from graphix.gflow import flow, gflow
+from graphix.gflow import flow, gflow, check_flow, check_gflow
 
 
 class GraphForTest:
@@ -173,10 +173,34 @@ class TestGflow(unittest.TestCase):
                 )
                 self.assertEqual(test_graph.gflow_exist, g is not None)
 
-    def test_flow_checker(self):
-        pass
+    def test_check_flow(self):
+        flow_test_cases = dict()
+        flow_test_cases["no measurement"] = {
+            "empty flow": (True, dict()),
+            "measure output": (False, {1: {2}}),
+        }
+        flow_test_cases["line graph with flow and gflow"] = {
+            "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
+            "acausal flow": (False, {1: {3}, 3: {2}, 2: {5}, 4: {5}}),
+            "gflow": (False, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
+        }
+        flow_test_cases["graph with flow and gflow"] = {
+            "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
+            "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
+            "gflow": (False, {1: {3, 5}, 2: {4, 5}, 3: {4, 6}, 4: {6}}),
+        }
 
-    def test_gflow_checker(self):
+        test_graphs = generate_test_graphs()
+        for test_graph in test_graphs:
+            if test_graph.label not in flow_test_cases:
+                continue
+            with self.subTest(test_graph.label):
+                for test_case, (expected, flow) in flow_test_cases[test_graph.label].items():
+                    with self.subTest(test_case):
+                        valid = check_flow(test_graph.graph, flow, test_graph.meas_planes)
+                        self.assertEqual(expected, valid)
+
+    def test_check_gflow(self):
         pass
 
 
