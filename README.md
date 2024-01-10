@@ -8,13 +8,12 @@
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
 [![Downloads](https://static.pepy.tech/badge/graphix)](https://pepy.tech/project/graphix)
 
-**Graphix** is a measurement-based quantum computing (MBQC) compiler to generate, optimize and simulate MBQC *measurement patterns*.
-
-## Feature
-
-- We integrate an efficient [graph state simulator](https://graphix.readthedocs.io/en/latest/lc-mbqc.html) as an optimization routine of MBQC *measurement pattern*, with which we can classically [preprocess all Pauli measurements](https://graphix.readthedocs.io/en/latest/tutorial.html#performing-pauli-measurements) (corresponding to the elimination of all Clifford gates in the gate network - c.f. [Gottesman-Knill theorem](https://en.wikipedia.org/wiki/Gottesman–Knill_theorem) and more general pattern rewriting method based on [ZX diagram rewriting](https://arxiv.org/abs/2003.01664)), reducing the required size of graph state to run the computation.
-- We implement tensor-network simulation backend for MBQC with which thousands of qubits (graph nodes) can be simulated with modest computing resources (e.g. laptop), without approximation.
-- We are developing density matrix simulation backend for noisy MBQC simulations with customizable noise models.
+**Graphix** is a measurement-based quantum computing (MBQC) software package, featuring
+- the measurement calculus framework with integrated graphical rewrite rules for Pauli measurement preprocessing
+- circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
+- flow- and gflow-based graph visualization tools
+- statevector and tensornetwork pattern simulation backends
+- QPU interface and fusion network extraction tool
 
 ## Installation
 Install `graphix` with `pip`:
@@ -27,23 +26,47 @@ Install together with device interface:
 ```bash
 $ pip install graphix[extra]
 ```
-this will install `graphix` and [IBMQ interface](https://github.com/TeamGraphix/graphix-ibmq) to run MBQC patterns on IBM devices and Aer simulator.
-
-We are currently adding more quantum device interfaces.
-Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you have any particular device in mind!
+this will install `graphix` and inteface for [IBMQ](https://github.com/TeamGraphix/graphix-ibmq) and [Perceval](https://github.com/TeamGraphix/graphix-perceval) to run MBQC patterns on superconducting and optical QPUs and their simulators.
 
 
-## Next Steps
+## Using graphix
 
-- We have a few [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing basic usages of `Graphix`.
-- You can run demos on your browser:
-  - Preprocessing Clifford gates: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=deutsch-jozsa.ipynb)
-  - Using tensor-network simulator backend: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_tn.ipynb)
-  - QAOA circuit: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qaoa.ipynb)
+### generating pattern from a circuit
+```python
+from graphix import Circuit
+circuit = Circuit(4)
+circuit.h(0)
+...
+pattern = circuit.transpile()
+pattern.draw_graph()
+```
+<img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="logo" width="750">
 
-- Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more comprehensive guide.
+<small>note: this graph is generated from QAOA circuit, see [our example code](examples/qaoa.py). Arrows indicate the [*causal flow*](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. the vertical dashed partitions and the labels 'l:n' below indicate the execution *layers* or the order in the graph (measurements should happen from left to right, and nodes in the same layer can be measured simultaneously), based on the partial order associated with the (maximally-delayed) flow. </small>
+
+### preprocessing Pauli measurements
+```python
+pattern.perform_pauli_measurements()
+pattern.draw_graph()
+```
+<img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="logo" width="140">
+
+<small>(here, the graph has [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
+
+### simulating the pattern
+```python
+state_out = pattern.simulate_pattern(backend='statevector')
+```
+
+### and more.. 
+- See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
+- You can try demos on browser with mybinder.org: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD)
+
+- Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
 
 - For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
+
+- Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
 ## Citing
 
@@ -52,7 +75,7 @@ Please suggest in [issues](https://github.com/TeamGraphix/graphix/issues) if you
 Update on the [arXiv paper](https://arxiv.org/pdf/2212.11975.pdf): [^1]
 
 [^1]: Following the release of this arXiv preprint, we were made aware of [Backens et al.](https://quantum-journal.org/papers/q-2021-03-25-421/) and related work, where graph-theoretic simplification (Pauli measurement elimination) of patterns were shown.
-Many thanks for letting us know about this work - at the time of the writing we were not aware of these important relevant works but will certainly properly mention in the new version; we are working on significant restructuring and rewriting of the paper and hope to update the paper this autumn.
+Many thanks for letting us know about this work - at the time of the writing we were not aware of these important relevant works but will certainly properly mention in the new version; we are working on significant restructuring and rewriting of the paper and hope to update the paper soon.
 
 ## Contributing
 

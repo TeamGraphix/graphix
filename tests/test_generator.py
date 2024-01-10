@@ -1,8 +1,13 @@
 import unittest
-import numpy as np
+
 import networkx as nx
+import numpy as np
+
 import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
+
+SEED = 42
+rc.set_seed(SEED)
 
 
 class TestGenerator(unittest.TestCase):

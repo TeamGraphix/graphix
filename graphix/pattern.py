@@ -1,15 +1,17 @@
 """MBQC pattern according to Measurement Calculus
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
-import numpy as np
-import networkx as nx
-from graphix.simulator import PatternSimulator
-from graphix.device_interface import PatternRunner
-from graphix.graphsim import GraphState
-from graphix.gflow import flow, gflow, get_layers
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3, CLIFFORD_MEASURE
-from graphix.visualization import GraphVisualizer
 from copy import deepcopy
+
+import networkx as nx
+import numpy as np
+
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.device_interface import PatternRunner
+from graphix.gflow import flow, get_layers, gflow
+from graphix.graphsim.graphstate import GraphState
+from graphix.simulator import PatternSimulator
+from graphix.visualization import GraphVisualizer
 
 
 class Pattern:
@@ -1219,24 +1221,37 @@ class Pattern:
         result = exe.run()
         return result
 
-    def perform_pauli_measurements(self, leave_input=False):
+    def perform_pauli_measurements(self, leave_input=False, use_rustworkx=False):
         """Perform Pauli measurements in the pattern using
         efficient stabilizer simulator.
 
         .. seealso:: :func:`measure_pauli`
 
         """
-        measure_pauli(self, leave_input, copy=False)
+        measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
 
-    def draw_graph(self, figsize=None, pauli_indicator=True, local_clifford_indicator=False, save=False, filename=None):
+    def draw_graph(
+        self,
+        node_distance=(1, 1),
+        figsize=None,
+        pauli_indicator=True,
+        show_loop=True,
+        local_clifford_indicator=False,
+        save=False,
+        filename=None,
+    ):
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
         Parameters
         ----------
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
         pauli_indicator : bool
             If True, the nodes are colored according to the measurement angles.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
         local_clifford_indicator : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         save : bool
@@ -1261,7 +1276,15 @@ class Pattern:
             local_clifford = self.get_vops()
         else:
             local_clifford = None
-        vis.visualize(figsize=figsize, angles=angles, local_clifford=local_clifford, save=save, filename=filename)
+        vis.visualize(
+            node_distance=node_distance,
+            figsize=figsize,
+            angles=angles,
+            local_clifford=local_clifford,
+            show_loop=show_loop,
+            save=save,
+            filename=filename,
+        )
 
     def to_qasm3(self, filename):
         """Export measurement pattern to OpenQASM 3.0 file
@@ -1701,7 +1724,7 @@ def xor_combination_list(list1, list2):
     return result
 
 
-def measure_pauli(pattern, leave_input, copy=False):
+def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     """Perform Pauli measurement of a pattern by fast graph state simulator
     uses the decorated-graph method implemented in graphix.graphsim to perform
     the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1732,7 +1755,7 @@ def measure_pauli(pattern, leave_input, copy=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
@@ -1776,7 +1799,7 @@ def measure_pauli(pattern, leave_input, copy=False):
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
-    isolates = list(nx.isolates(graph_state))
+    isolates = graph_state.get_isolates()
     for node in non_pauli_meas:
         if (node in isolates) and (node not in pattern.output_nodes):
             graph_state.remove_node(node)

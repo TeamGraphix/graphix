@@ -415,7 +415,7 @@ def find_odd_neighbor(graph, candidate, vertices):
     """
     out = []
     for c in candidate:
-        if np.mod(len(set(graph.neighbor(c)) ^ vertices), 2) == 1:
+        if np.mod(len(set(graph.neighbors(c)) ^ vertices), 2) == 1:
             out.append(c)
     return out
 

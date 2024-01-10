@@ -1,12 +1,17 @@
-import unittest
 import itertools
+import unittest
+
 import numpy as np
 from quimb.tensor import Tensor
-from graphix.transpiler import Circuit
+
+import tests.random_circuit as rc
+from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
-from graphix.clifford import CLIFFORD
-import tests.random_circuit as rc
+from graphix.transpiler import Circuit
+
+SEED = 42
+rc.set_seed(SEED)
 
 
 def random_op(sites, dtype=np.complex128, seed=0):
@@ -296,6 +301,21 @@ class TestTN(unittest.TestCase):
         value1 = state.expectation_value(random_op2, [0, 1])
         value2 = tn_mbqc.expectation_value(random_op2, [0, 1])
         np.testing.assert_almost_equal(value1, value2)
+
+    def test_ccx(self):
+        nqubits = 4
+        depth = 6
+        for _ in range(10):
+            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit.ccx(0, 1, 2)
+            pattern = circuit.transpile()
+            pattern.minimize_space()
+            state = circuit.simulate_statevector()
+            tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+            random_op3 = random_op(3)
+            value1 = state.expectation_value(random_op3, [0, 1, 2])
+            value2 = tn_mbqc.expectation_value(random_op3, [0, 1, 2])
+            np.testing.assert_almost_equal(value1, value2)
 
     def test_with_graphtrans(self):
         nqubits = 4
