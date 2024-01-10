@@ -1,5 +1,7 @@
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+
 from graphix.transpiler import Circuit
 
 GLOBAL_SEED = None

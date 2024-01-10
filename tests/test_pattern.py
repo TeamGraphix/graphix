@@ -2,7 +2,9 @@ import sys
 import unittest
 
 import numpy as np
+
 from parameterized import parameterized, parameterized_class
+
 
 import graphix.sim
 import tests.random_circuit as rc
