@@ -9,6 +9,8 @@ Languages, and Programming (Springer, 2008), pp. 857-868.
 Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
+from __future__ import annotations
+
 from itertools import product
 
 import networkx as nx
@@ -18,7 +20,13 @@ import sympy as sp
 from graphix.linalg import MatGF2
 
 
-def gflow(graph, input, output, meas_planes, mode="single"):
+def gflow(
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    meas_planes: dict[int, str],
+    mode: str = "single",
+) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Maximally delayed gflow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
@@ -67,14 +75,14 @@ def gflow(graph, input, output, meas_planes, mode="single"):
 
 
 def gflowaux(
-    graph,
-    input: set,
-    output: set,
-    meas_planes: dict,
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    meas_planes: dict[int, str],
     k: int,
-    l_k: dict,
-    g: dict,
-    mode,
+    l_k: dict[int, int],
+    g: dict[int, set[int]],
+    mode: str = "single",
 ):
     """Function to find one layer of the gflow.
 
@@ -206,7 +214,12 @@ def gflowaux(
         )
 
 
-def flow(graph, input, output, meas_planes=None):
+def flow(
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    meas_planes: dict[int, str] = None,
+) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Causal flow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
@@ -253,7 +266,16 @@ def flow(graph, input, output, meas_planes=None):
     return flowaux(nodes, edges, input, output, v_c, f, l_k, k)
 
 
-def flowaux(nodes, edges, input, output, v_c, f, l_k, k):
+def flowaux(
+    nodes: set[int],
+    edges: set[tuple[int, int]],
+    input: set[int],
+    output: set[int],
+    v_c: set[int],
+    f: dict[int, set[int]],
+    l_k: dict[int, int],
+    k: int,
+):
     """Function to find one layer of the flow.
 
     Ref: Mhalla and Perdrix, International Colloquium on Automata,
@@ -317,14 +339,14 @@ def flowaux(nodes, edges, input, output, v_c, f, l_k, k):
     )
 
 
-def search_neighbor(node, edges):
+def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     """Function to find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
 
     Parameter
     -------
     node: int
         target node number whose neighboring nodes will be collected
-    edges: list of taples
+    edges: set of taples
         set of edges in the graph
 
     Outputs
@@ -341,7 +363,13 @@ def search_neighbor(node, edges):
     return N
 
 
-def find_flow(graph, input, output, meas_planes=None, mode="single"):
+def find_flow(
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    meas_planes: dict[int, str] = None,
+    mode: str = "single",
+) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Function to determine whether there exists flow or gflow
 
     Parameters
@@ -380,7 +408,7 @@ def find_flow(graph, input, output, meas_planes=None, mode="single"):
         print("no gflow found")
 
 
-def get_min_depth(l_k):
+def get_min_depth(l_k: dict[int, int]) -> int:
     """get minimum depth of graph.
 
     Parameters
@@ -396,7 +424,7 @@ def get_min_depth(l_k):
     return max(l_k.values())
 
 
-def find_odd_neighbor(graph, candidate, vertices):
+def find_odd_neighbor(graph: nx.Graph, candidate: set[int], vertices: set[int]) -> set[int]:
     """Returns the list containing the odd neighbor of a set of vertices.
 
     Parameters
@@ -415,12 +443,12 @@ def find_odd_neighbor(graph, candidate, vertices):
     """
     out = []
     for c in candidate:
-        if np.mod(len(set(graph.neighbors(c)) ^ vertices), 2) == 1:
+        if np.mod(len(set(graph.neighbor(c)) ^ vertices), 2) == 1:
             out.append(c)
     return out
 
 
-def get_layers(l_k):
+def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     """get components of each layer.
     Parameters
     -------
@@ -431,17 +459,17 @@ def get_layers(l_k):
     -------
     d: int
         minimum depth of graph
-    layers: dict of lists
+    layers: dict of set
         components of each layer
     """
     d = get_min_depth(l_k)
-    layers = {k: [] for k in range(d + 1)}
+    layers = {k: set() for k in range(d + 1)}
     for i in l_k.keys():
-        layers[l_k[i]].append(i)
+        layers[l_k[i]] |= {i}
     return d, layers
 
 
-def get_layers_from_flow(input: set, flow: dict[int, set]) -> tuple[dict[int, set], int]:
+def get_layers_from_flow(input: set[int], flow: dict[int, set]) -> tuple[dict[int, set], int]:
     """Get layers from flow.
 
     Parameters
@@ -470,11 +498,12 @@ def get_layers_from_flow(input: set, flow: dict[int, set]) -> tuple[dict[int, se
             del layers[depth]
             depth -= 1
             break
+        print(depth, layers[depth])
 
     return layers, depth
 
 
-def get_adjacency_matrix(graph):
+def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
     """Get adjacency matrix of the graph
 
     Returns
