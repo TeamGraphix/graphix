@@ -469,13 +469,34 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     return d, layers
 
 
-def get_layers_from_flow(input: set[int], flow: dict[int, set]) -> tuple[dict[int, set], int]:
-    """Get layers from flow.
+def get_dependence_flow(flow: dict[int, set[int]]) -> dict[int, set[int]]:
+    """Get dependence flow from flow.
 
     Parameters
     ----------
-    input: set
-        set of input nodes
+    flow: dict[int, set]
+        flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+
+    Returns
+    -------
+    dependence_flow: dict[int, set]
+        dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    """
+    inputs = get_input_from_flow(flow)
+    dependence_flow = {input: set() for input in inputs}
+    for node, corrections in flow.items():
+        for correction in corrections:
+            if correction not in dependence_flow.keys():
+                dependence_flow[correction] = set()
+            dependence_flow[correction] |= {node}
+    return dependence_flow
+
+
+def get_layers_from_flow(flow: dict[int, set]) -> tuple[dict[int, set], int]:
+    """Get layers from flow (incl. gflow).
+
+    Parameters
+    ----------
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
 
@@ -485,20 +506,34 @@ def get_layers_from_flow(input: set[int], flow: dict[int, set]) -> tuple[dict[in
         layers obtained from flow
     depth: int
         depth of the layers
+
+    Raises
+    ------
+    ValueError
+        If the flow is not valid(e.g. there is no partial order).
     """
     layers = dict()
     depth = 0
-    layers[depth] = input
+    outputs = get_output_from_flow(flow)
+    dependence_flow = get_dependence_flow(flow)
+    layers[depth] = outputs
+    left_nodes = set(flow.keys())
+    for left_node in left_nodes:
+        dependence_flow[left_node] -= outputs
     while True:
         depth += 1
         layers[depth] = set()
-        for node in layers[depth - 1]:
-            layers[depth] |= flow[node]
+        for node in left_nodes:
+            if len(dependence_flow[node]) == 0:
+                layers[depth] |= {node}
+        left_nodes -= layers[depth]
         if len(layers[depth]) == 0:
             del layers[depth]
             depth -= 1
-            break
-        print(depth, layers[depth])
+            if len(left_nodes) == 0:
+                break
+            else:
+                raise ValueError("Invalid flow")
 
     return layers, depth
 
@@ -545,7 +580,6 @@ def check_flow(
     """
 
     valid_flow = True
-    inputs = get_input_from_flow(flow)
     outputs = get_output_from_flow(flow)
     # if meas_planes is given, check whether all measurement planes are "XY"
     non_outputs = set(graph.nodes) - outputs
@@ -554,7 +588,11 @@ def check_flow(
             valid_flow = False
             return valid_flow
 
-    layers, depth = get_layers_from_flow(inputs, flow)
+    try:
+        layers, depth = get_layers_from_flow(flow)
+    except ValueError:
+        valid_flow = False
+        return valid_flow
     node_order = []
     for d in range(depth):
         node_order.extend(list(layers[d]))
@@ -607,9 +645,12 @@ def check_gflow(
         True if the gflow is valid. False otherwise.
     """
     valid_gflow = True
-    inputs = get_input_from_flow(gflow)
 
-    layers, depth = get_layers_from_flow(inputs, gflow)
+    try:
+        layers, depth = get_layers_from_flow(gflow)
+    except ValueError:
+        valid_flow = False
+        return valid_flow
     node_order = []
     for d in range(depth):
         node_order.extend(list(layers[d]))
