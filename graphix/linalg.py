@@ -38,6 +38,16 @@ class MatGF2:
             other = MatGF2(other)
         return MatGF2(self.data - other.data)
 
+    def __mul__(self, other):
+        if isinstance(other, np.ndarray):
+            other = MatGF2(other)
+        return MatGF2(self.data * other.data)
+
+    def __matmul__(self, other):
+        if isinstance(other, np.ndarray):
+            other = MatGF2(other)
+        return MatGF2(self.data @ other.data)
+
     def copy(self):
         return MatGF2(self.data.copy())
 
