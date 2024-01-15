@@ -1234,9 +1234,11 @@ class Pattern:
         self,
         node_distance=(1, 1),
         figsize=None,
+        gflow_from_pattern=False,
         pauli_indicator=True,
         show_loop=True,
         local_clifford_indicator=False,
+        meas_plane_indicator=False,
         save=False,
         filename=None,
     ):
@@ -1248,12 +1250,16 @@ class Pattern:
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
+        gflow_from_pattern : bool
+            If True, the gflow is calculated based on the pattern.
         pauli_indicator : bool
             If True, the nodes are colored according to the measurement angles.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         local_clifford_indicator : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        meas_plane_indicator : bool
+            If True, measurement planes are displayed adjacent to the nodes.
         save : bool
             If True, the plot is saved as a png file.
         filename : str
@@ -1272,6 +1278,10 @@ class Pattern:
             angles = self.get_angles()
         else:
             angles = None
+        if gflow_from_pattern:
+            pattern = deepcopy(self)
+        else:
+            pattern = None
         if local_clifford_indicator:
             local_clifford = self.get_vops()
         else:
@@ -1280,7 +1290,9 @@ class Pattern:
             node_distance=node_distance,
             figsize=figsize,
             angles=angles,
+            pattern_for_gflow=pattern,
             local_clifford=local_clifford,
+            meas_plane_indicator=meas_plane_indicator,
             show_loop=show_loop,
             save=save,
             filename=filename,

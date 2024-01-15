@@ -19,7 +19,7 @@ import sympy as sp
 from graphix.linalg import MatGF2
 
 
-def gflow(graph, input, output, meas_planes, mode="single"):
+def gflow(graph, input, output, meas_planes, mode="single", pattern=None):
     """Maximally delayed gflow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
@@ -47,11 +47,14 @@ def gflow(graph, input, output, meas_planes, mode="single"):
     mode: str(optional)
         The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
             - "single": Returrns a single solution
+            - "pattern": Returns a single solution consistent with a given pattern
             - "all": Returns all possible solutions
             - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
               requiring user substitution to get a concrete answer.
 
         Default is "single".
+    pattern: graphix.Pattern object(optional)
+        pattern to be based on. This is used only when mode is "pattern".
 
     Returns
     -------
@@ -60,6 +63,10 @@ def gflow(graph, input, output, meas_planes, mode="single"):
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
+    if mode == "pattern":
+        if pattern is None:
+            raise ValueError("pattern must be specified when mode is pattern")
+        g, l_k = gflow_from_pattern(pattern)
     l_k = dict()
     g = dict()
     for node in graph.nodes:
@@ -205,6 +212,55 @@ def gflowaux(
             g,
             mode=mode,
         )
+        
+        
+def gflow_from_pattern(pattern):
+    """Get gflow from pattern
+    
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+    
+    Returns
+    -------
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
+    """
+    nodes, _ = pattern.get_graph()
+    nodes = set(nodes)
+    layers = pattern.get_layers()
+    l_k = dict()
+    for l in layers[1].keys():
+        for n in layers[1][l]:
+            l_k[n] = l
+    lmax = max(l_k.values())
+    for node in l_k.keys():
+        l_k[node] = lmax - l_k[node] + 1
+    for output_node in pattern.output_nodes:
+        l_k[output_node] = 0
+    g = dict() 
+    for cmd in pattern.seq:
+        if cmd[0] == 'M':
+            g_in = cmd[1]
+            g_outs = set(cmd[2]) & nodes
+            for g_out in g_outs:
+                if g_out in g.keys():
+                    g[g_out] = g[g_out].union({g_in})
+                else:
+                    g[g_out] = {g_in}
+        if cmd[0] == 'X':
+            g_in = cmd[1]
+            g_outs = set(cmd[2]) & nodes
+            for g_out in g_outs:
+                if g_out in g.keys():
+                    g[g_out] = g[g_out].union({g_in})
+                else:
+                    g[g_out] = {g_in}
+                    
+    return g, l_k
 
 
 def flow(graph, input, output, meas_planes=None):
