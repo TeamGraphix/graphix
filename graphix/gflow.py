@@ -317,7 +317,7 @@ def flowaux(
         p_set = N & (nodes - output)
         if len(p_set) == 1:
             p = list(p_set)[0]
-            f[p] = q
+            f[p] = {q}
             l_k[p] = k
             v_out_prime = v_out_prime | {p}
             c_prime = c_prime | {q}
@@ -469,11 +469,13 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     return d, layers
 
 
-def get_dependence_flow(flow: dict[int, set[int]]) -> dict[int, set[int]]:
+def get_dependence_flow(inputs: set[int], flow: dict[int, set[int]]) -> dict[int, set[int]]:
     """Get dependence flow from flow.
 
     Parameters
     ----------
+    inputs: set[int]
+        set of input nodes
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
 
@@ -482,7 +484,7 @@ def get_dependence_flow(flow: dict[int, set[int]]) -> dict[int, set[int]]:
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    inputs = get_input_from_flow(flow)
+    # inputs = get_input_from_flow(flow)
     dependence_flow = {input: set() for input in inputs}
     for node, corrections in flow.items():
         for correction in corrections:
@@ -492,13 +494,17 @@ def get_dependence_flow(flow: dict[int, set[int]]) -> dict[int, set[int]]:
     return dependence_flow
 
 
-def get_layers_from_flow(flow: dict[int, set]) -> tuple[dict[int, set], int]:
+def get_layers_from_flow(flow: dict[int, set], inputs: set[int], outputs: set[int]) -> tuple[dict[int, set], int]:
     """Get layers from flow (incl. gflow).
 
     Parameters
     ----------
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    inputs: set
+        set of input nodes
+    outputs: set
+        set of output nodes
 
     Returns
     -------
@@ -514,27 +520,30 @@ def get_layers_from_flow(flow: dict[int, set]) -> tuple[dict[int, set], int]:
     """
     layers = dict()
     depth = 0
-    outputs = get_output_from_flow(flow)
-    dependence_flow = get_dependence_flow(flow)
-    layers[depth] = outputs
+    dependence_flow = get_dependence_flow(inputs, flow)
     left_nodes = set(flow.keys())
-    for left_node in left_nodes:
-        dependence_flow[left_node] -= outputs
+    for output in outputs:
+        if output in left_nodes:
+            raise ValueError("Invalid flow")
     while True:
-        depth += 1
         layers[depth] = set()
         for node in left_nodes:
             if len(dependence_flow[node]) == 0:
                 layers[depth] |= {node}
+            elif dependence_flow[node] == {node}:
+                layers[depth] |= {node}
         left_nodes -= layers[depth]
+        for node in left_nodes:
+            dependence_flow[node] -= layers[depth]
         if len(layers[depth]) == 0:
-            del layers[depth]
-            depth -= 1
             if len(left_nodes) == 0:
+                layers[depth] = outputs
+                depth += 1
                 break
             else:
                 raise ValueError("Invalid flow")
-
+        else:
+            depth += 1
     return layers, depth
 
 
@@ -558,6 +567,8 @@ def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
 
 def check_flow(
     graph: nx.Graph,
+    input: set[int],
+    output: set[int],
     flow: dict[int, set],
     meas_planes: dict[int, str] = {},
 ) -> bool:
@@ -580,25 +591,26 @@ def check_flow(
     """
 
     valid_flow = True
-    outputs = get_output_from_flow(flow)
+    non_outputs = set(graph.nodes) - output
     # if meas_planes is given, check whether all measurement planes are "XY"
-    non_outputs = set(graph.nodes) - outputs
     for node, plane in meas_planes.items():
         if plane != "XY" or node not in non_outputs:
             valid_flow = False
             return valid_flow
 
     try:
-        layers, depth = get_layers_from_flow(flow)
+        layers, depth = get_layers_from_flow(flow, input, output)
     except ValueError:
         valid_flow = False
         return valid_flow
     node_order = []
     for d in range(depth):
         node_order.extend(list(layers[d]))
-    adjacency_matrix, _ = get_adjacency_matrix(graph)
-    adjacency_matrix.permute_col(node_order)
-    adjacency_matrix.permute_row(node_order)
+    adjacency_matrix, node_list = get_adjacency_matrix(graph)
+    permute = [node_list.index(i) for i in node_order]
+    # permute = [node_order.index(i) for i in node_list]
+    adjacency_matrix.permute_col(permute)
+    adjacency_matrix.permute_row(permute)
 
     flow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
     for node, corrections in flow.items():
@@ -610,21 +622,44 @@ def check_flow(
                 valid_flow = False
                 return valid_flow
             # check whether the flow arrow is edge of the original graph
-            if adjacency_matrix[row, col] != 1:
+            if adjacency_matrix.data[row, col] != 1:
                 valid_flow = False
                 return valid_flow
-            flow_matrix[row, col] = 1
+            flow_matrix.data[row, col] = 1
 
+    # Neighbor_f = np.transpose((adjacency_matrix.data @ flow_matrix.data.T))
+    # print(f"{valid_flow=}")
+    # Neighbor_f = MatGF2(Neighbor_f)
     Neighbor_f = flow_matrix @ adjacency_matrix
-
+    # Neighbor_f = MatGF2(Neighbor_f.data)
     # check whether v < N(f(v))
     triu = np.triu(Neighbor_f.data)
-    valid_flow = np.array_equal(triu, Neighbor_f.data)
+    triu = MatGF2(triu)
+    dif = triu - Neighbor_f
+    # print(triu.data.shape)
+    # print(Neighbor_f.data.shape)
+    # print(np.sum(dif.data))
+    # print(np.count_nonzero(dif.data))
+    valid_flow &= np.count_nonzero(dif.data) == 0
+    # check non zero num
+    # print("triu non zero num", np.count_nonzero(triu.data))
+    # print("Neighbor_f non zero num", np.count_nonzero(Neighbor_f.data))
+    # get non_zero position of dif.data
+    # non_zero = dif.data.nonzero()
+    # for i in range(len(non_zero[0])):
+    #     row = non_zero[0][i]
+    #     col = non_zero[1][i]
+    #     print(f"{row=}, {col=}")
+    #     print("node label", node_order[row], node_order[col])
+    #     print("actual edge or not (if so, 1)", adjacency_matrix.data[row, col])
+    # valid_flow = np.array_equal(triu.data, Neighbor_f.data)
     return valid_flow
 
 
 def check_gflow(
     graph: nx.Graph,
+    input: set[int],
+    output: set[int],
     gflow: dict[int, set],
     meas_planes: dict[int, str],
 ) -> bool:
@@ -634,6 +669,10 @@ def check_gflow(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
+    input: set
+        set of node labels for input
+    output: set
+        set of node labels for output
     gflow: dict[int, set]
         gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
     meas_planes: dict[int, str]
@@ -645,18 +684,21 @@ def check_gflow(
         True if the gflow is valid. False otherwise.
     """
     valid_gflow = True
+    non_outputs = set(graph.nodes) - output
 
     try:
-        layers, depth = get_layers_from_flow(gflow)
+        layers, depth = get_layers_from_flow(gflow, input, output)
     except ValueError:
         valid_flow = False
         return valid_flow
     node_order = []
     for d in range(depth):
         node_order.extend(list(layers[d]))
-    adjacency_matrix, _ = get_adjacency_matrix(graph)
-    adjacency_matrix.permute_col(node_order)
-    adjacency_matrix.permute_row(node_order)
+    adjacency_matrix, node_list = get_adjacency_matrix(graph)
+    # permute = [node_order.index(i) for i in node_list]
+    permute = [node_list.index(i) for i in node_order]
+    adjacency_matrix.permute_col(permute)
+    adjacency_matrix.permute_row(permute)
 
     gflow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
 
@@ -668,21 +710,24 @@ def check_gflow(
             if row > col:
                 valid_gflow = False
                 return valid_gflow
-            gflow_matrix[row, col] = 1
+            gflow_matrix.data[row, col] = 1
 
     oddneighbor_g = gflow_matrix @ adjacency_matrix
     triu = np.triu(oddneighbor_g.data)
-    valid_gflow = np.array_equal(triu, oddneighbor_g.data)
+    triu = MatGF2(triu)
+    # print("nonzero num", np.count_nonzero(triu.data))
+    # print("nonzero num", np.count_nonzero(oddneighbor_g.data))
+    valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
 
     # check for each measurement plane
     for node, plane in meas_planes.items():
         index = node_order.index(node)
         if plane == "XY":
-            valid_gflow = (gflow_matrix[index, index] == 0) and (oddneighbor_g[index, index] == 1)
+            valid_gflow &= (gflow_matrix.data[index, index] == 0) and (oddneighbor_g.data[index, index] == 1)
         elif plane == "XZ":
-            valid_gflow = (gflow_matrix[index, index] == 1) and (oddneighbor_g[index, index] == 1)
+            valid_gflow &= (gflow_matrix.data[index, index] == 1) and (oddneighbor_g.data[index, index] == 1)
         elif plane == "YZ":
-            valid_gflow = (gflow_matrix[index, index] == 1) and (oddneighbor_g[index, index] == 0)
+            valid_gflow &= (gflow_matrix.data[index, index] == 1) and (oddneighbor_g.data[index, index] == 0)
 
     return valid_gflow
 

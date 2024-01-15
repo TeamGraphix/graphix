@@ -137,7 +137,7 @@ class MatGF2:
         row_permutation: array_like
             row permutation
         """
-        self.data = self.data[row_permutation]
+        self.data = self.data[row_permutation, :]
 
     def permute_col(self, col_permutation):
         """permute columns
