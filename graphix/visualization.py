@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from matplotlib import pyplot as plt
 import math
@@ -19,7 +21,7 @@ class GraphVisualizer:
         list of output nodes
     """
 
-    def __init__(self, G, v_in, v_out, meas_plane=None):
+    def __init__(self, G: nx.Graph, v_in: list[int], v_out: list[int], meas_plane: dict[str] | None = None):
         """
         Parameters
         ----------
@@ -43,15 +45,15 @@ class GraphVisualizer:
 
     def visualize(
         self,
-        angles=None,
-        pattern_for_gflow=None,
-        local_clifford=None,
-        meas_plane_indicator=False,
-        node_distance=(1, 1),
-        show_loop=True,
-        figsize=None,
-        save=False,
-        filename=None,
+        angles: dict[int, float] | None = None,
+        pattern_for_gflow: graphix.Pattern | None = None,
+        local_clifford: dict[int, int] | None = None,
+        meas_plane_indicator: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        show_loop: bool = True,
+        figsize: tuple[int, int] | None = None,
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         Visualizes the graph with flow or gflow structure.
@@ -130,15 +132,15 @@ class GraphVisualizer:
 
     def visualize_w_flow(
         self,
-        f,
-        l_k,
-        angles=None,
-        local_clifford=None,
-        meas_plane_indicator=False,
-        node_distance=(1, 1),
-        figsize=None,
-        save=False,
-        filename=None,
+        f: dict[int, int],
+        l_k: dict[int, int],
+        angles: dict[int, float] | None = None,
+        local_clifford: dict[int, int] | None = None,
+        meas_plane_indicator: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         visualizes the graph with flow structure.
@@ -195,7 +197,7 @@ class GraphVisualizer:
                     nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
                 else:
                     t = np.linspace(0, 1, 100)
-                    curve = self.bezier_curve(edge_path[edge], t)
+                    curve = self._bezier_curve(edge_path[edge], t)
                     plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -253,16 +255,16 @@ class GraphVisualizer:
 
     def visualize_w_gflow(
         self,
-        g,
-        l_k,
-        angles=None,
-        local_clifford=None,
-        meas_plane_indicator=False,
-        node_distance=(1, 1),
-        show_loop=True,
-        figsize=None,
-        save=False,
-        filename=None,
+        g: dict[int, set[int]],
+        l_k: dict[int, int],
+        angles: dict[int, float] | None = None,
+        local_clifford: dict[int, int] | None = None,
+        meas_plane_indicator: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        show_loop: bool = True,
+        figsize: tuple[int, int] | None = None,
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         visualizes the graph with flow structure.
@@ -312,7 +314,7 @@ class GraphVisualizer:
                 if edge[0] == edge[1]:  # self loop
                     if show_loop:
                         t = np.linspace(0, 1, 100)
-                        curve = self.bezier_curve(edge_path[edge], t)
+                        curve = self._bezier_curve(edge_path[edge], t)
                         plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
                         plt.annotate(
                             "",
@@ -333,7 +335,7 @@ class GraphVisualizer:
                     )  # Shorten the last edge not to hide arrow under the node
 
                     t = np.linspace(0, 1, 100)
-                    curve = self.bezier_curve(path, t)
+                    curve = self._bezier_curve(path, t)
 
                     plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
                     plt.annotate(
@@ -347,7 +349,7 @@ class GraphVisualizer:
                     nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
                 else:
                     t = np.linspace(0, 1, 100)
-                    curve = self.bezier_curve(edge_path[edge], t)
+                    curve = self._bezier_curve(edge_path[edge], t)
                     plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -405,12 +407,12 @@ class GraphVisualizer:
 
     def visualize_wo_structure(
         self,
-        angles=None,
-        local_clifford=None,
-        meas_plane_indicator=False,
-        node_distance=(1, 1),
-        save=False,
-        filename=None,
+        angles: dict[int, float] | None = None,
+        local_clifford: dict[int, int] | None = None,
+        meas_plane_indicator: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         visualizes the graph without flow or gflow.
@@ -487,7 +489,12 @@ class GraphVisualizer:
             plt.savefig(filename)
         plt.show()
 
-    def get_figsize(self, l_k, pos=None, node_distance=(1, 1)):
+    def get_figsize(
+        self,
+        l_k: dict[int, int],
+        pos: dict[int, tuple[float, float]] | None = None,
+        node_distance: tuple[int, int] = (1, 1),
+    ) -> tuple[int, int]:
         """
         Returns the figure size of the graph.
 
@@ -495,6 +502,10 @@ class GraphVisualizer:
         ----------
         l_k : dict
             Layer mapping.
+        pos : dict
+            dictionary of node positions.
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
 
         Returns
         -------
@@ -510,7 +521,7 @@ class GraphVisualizer:
 
         return figsize
 
-    def get_edge_path(self, fg, pos):
+    def get_edge_path(self, fg: dict[int, int | set[int]], pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
         Returns the path of edges.
 
@@ -567,12 +578,16 @@ class GraphVisualizer:
                         start = bezier_path[i]
                         end = bezier_path[i + 1]
                         for node in nodes:
-                            if node != edge[0] and node != edge[1] and self.edge_intersects_node(start, end, pos[node]):
+                            if (
+                                node != edge[0]
+                                and node != edge[1]
+                                and self._edge_intersects_node(start, end, pos[node])
+                            ):
                                 intersect = True
                                 ctrl_points.append(
                                     [
                                         i,
-                                        self.control_point(
+                                        self._control_point(
                                             bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
                                         ),
                                     ]
@@ -583,12 +598,12 @@ class GraphVisualizer:
                     else:
                         for i, ctrl_point in enumerate(ctrl_points):
                             bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
-            bezier_path = self.check_path(bezier_path)
+            bezier_path = self._check_path(bezier_path)
             edge_path[edge] = bezier_path
 
         return edge_path
 
-    def get_pos_from_flow(self, f, l_k):
+    def get_pos_from_flow(self, f: dict[int, int], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
         Returns the position of nodes based on the flow.
 
@@ -619,9 +634,16 @@ class GraphVisualizer:
             pos[node][0] = lmax - layer
         return pos
 
-    def get_pos_from_gflow(self, g, l_k):
+    def get_pos_from_gflow(self, g: dict[int, set[int]], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
         Returns the position of nodes based on the gflow.
+
+        Parameters
+        ----------
+        g : dict
+            gflow mapping.
+        l_k : dict
+            Layer mapping.
 
         Returns
         -------
@@ -657,7 +679,7 @@ class GraphVisualizer:
         return pos
 
     @staticmethod
-    def edge_intersects_node(start, end, node_pos, buffer=0.2):
+    def _edge_intersects_node(start, end, node_pos, buffer=0.2):
         """
         Determine if an edge intersects a node.
         """
@@ -681,7 +703,7 @@ class GraphVisualizer:
         return distance < buffer
 
     @staticmethod
-    def control_point(start, end, node_pos, distance=0.6):
+    def _control_point(start, end, node_pos, distance=0.6):
         """
         Generate a control point to bend the edge around a node.
         """
@@ -697,7 +719,7 @@ class GraphVisualizer:
         return control.tolist()
 
     @staticmethod
-    def bezier_curve(bezier_path, t):
+    def _bezier_curve(bezier_path, t):
         """
         Generate a bezier curve from a list of points.
         """
@@ -707,7 +729,7 @@ class GraphVisualizer:
             curve += np.outer(comb(n, i) * ((1 - t) ** (n - i)) * (t**i), np.array(point))
         return curve
 
-    def check_path(self, path):
+    def _check_path(self, path):
         """
         if there is an acute angle in the path, merge points
         """
@@ -738,4 +760,7 @@ class GraphVisualizer:
 
 
 def comb(n, r):
+    """
+    returns the binomial coefficient of n and r.
+    """
     return math.factorial(n) // (math.factorial(n - r) * math.factorial(r))
