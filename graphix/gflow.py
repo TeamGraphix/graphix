@@ -212,16 +212,16 @@ def gflowaux(
             g,
             mode=mode,
         )
-        
-        
+
+
 def gflow_from_pattern(pattern):
     """Get gflow from pattern
-    
+
     Parameters
     ----------
     pattern: graphix.Pattern object
         pattern to be based on
-    
+
     Returns
     -------
     g: dict
@@ -241,9 +241,9 @@ def gflow_from_pattern(pattern):
         l_k[node] = lmax - l_k[node] + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
-    g = dict() 
+    g = dict()
     for cmd in pattern.seq:
-        if cmd[0] == 'M':
+        if cmd[0] == "M":
             g_in = cmd[1]
             g_outs = set(cmd[2]) & nodes
             for g_out in g_outs:
@@ -251,7 +251,7 @@ def gflow_from_pattern(pattern):
                     g[g_out] = g[g_out].union({g_in})
                 else:
                     g[g_out] = {g_in}
-        if cmd[0] == 'X':
+        if cmd[0] == "X":
             g_in = cmd[1]
             g_outs = set(cmd[2]) & nodes
             for g_out in g_outs:
@@ -259,7 +259,7 @@ def gflow_from_pattern(pattern):
                     g[g_out] = g[g_out].union({g_in})
                 else:
                     g[g_out] = {g_in}
-                    
+
     return g, l_k
 
 

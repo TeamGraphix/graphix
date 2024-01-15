@@ -87,27 +87,58 @@ class GraphVisualizer:
         f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_plane)
         if f:
             print("Flow found.")
-            self.visualize_w_flow(f, l_k, angles, local_clifford, meas_plane_indicator, node_distance, figsize, save, filename)
+            self.visualize_w_flow(
+                f, l_k, angles, local_clifford, meas_plane_indicator, node_distance, figsize, save, filename
+            )
         else:
             if pattern_for_gflow is not None:
                 g, l_k = gflow.gflow_from_pattern(pattern_for_gflow)
                 print("No flow found. Gflow found.")
                 self.visualize_w_gflow(
-                    g, l_k, angles, local_clifford, meas_plane_indicator, node_distance, show_loop, figsize, save, filename
+                    g,
+                    l_k,
+                    angles,
+                    local_clifford,
+                    meas_plane_indicator,
+                    node_distance,
+                    show_loop,
+                    figsize,
+                    save,
+                    filename,
                 )
             else:
                 g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
                 if g:
                     print("No flow found. Gflow found.")
                     self.visualize_w_gflow(
-                        g, l_k, angles, local_clifford, meas_plane_indicator, node_distance, show_loop, figsize, save, filename
+                        g,
+                        l_k,
+                        angles,
+                        local_clifford,
+                        meas_plane_indicator,
+                        node_distance,
+                        show_loop,
+                        figsize,
+                        save,
+                        filename,
                     )
                 else:
                     print("No flow or gflow found.")
-                    self.visualize_wo_structure(angles, local_clifford, meas_plane_indicator, node_distance, save, filename)
+                    self.visualize_wo_structure(
+                        angles, local_clifford, meas_plane_indicator, node_distance, save, filename
+                    )
 
     def visualize_w_flow(
-        self, f, l_k, angles=None, local_clifford=None, meas_plane_indicator=False, node_distance=(1, 1), figsize=None, save=False, filename=None
+        self,
+        f,
+        l_k,
+        angles=None,
+        local_clifford=None,
+        meas_plane_indicator=False,
+        node_distance=(1, 1),
+        figsize=None,
+        save=False,
+        filename=None,
     ):
         """
         visualizes the graph with flow structure.
@@ -185,7 +216,7 @@ class GraphVisualizer:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
-                    
+
         if meas_plane_indicator:
             for node in self.G.nodes():
                 if node in self.meas_plane.keys():
@@ -337,7 +368,7 @@ class GraphVisualizer:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
-                    
+
         if meas_plane_indicator:
             for node in self.G.nodes():
                 if node in self.meas_plane.keys():
@@ -372,7 +403,15 @@ class GraphVisualizer:
             plt.savefig(filename)
         plt.show()
 
-    def visualize_wo_structure(self, angles=None, local_clifford=None, meas_plane_indicator=False, node_distance=(1, 1), save=False, filename=None):
+    def visualize_wo_structure(
+        self,
+        angles=None,
+        local_clifford=None,
+        meas_plane_indicator=False,
+        node_distance=(1, 1),
+        save=False,
+        filename=None,
+    ):
         """
         visualizes the graph without flow or gflow.
 
@@ -432,7 +471,7 @@ class GraphVisualizer:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.04, 0.04]), f"{local_clifford[node]}", fontsize=10, zorder=3)
-                    
+
         if meas_plane_indicator:
             for node in self.G.nodes():
                 if node in self.meas_plane.keys():
