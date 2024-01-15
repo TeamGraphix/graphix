@@ -1,9 +1,16 @@
+# %%
 from __future__ import annotations
 
 import unittest
 
 import networkx as nx
-from graphix.gflow import flow, gflow, check_flow, check_gflow
+import numpy as np
+from graphix.gflow import (check_flow, check_gflow, flow, get_input_from_flow,
+                           gflow)
+
+from tests.random_circuit import get_rand_circuit
+
+seed = 30
 
 
 class GraphForTest:
@@ -85,7 +92,7 @@ def generate_test_graphs() -> list[GraphForTest]:
     #  /      |
     # 1 - 4   |
     #    /    |
-    #   X     |
+    #   /     |
     #  /      |
     # 2 - 5   |
     #  \ /    |
@@ -117,7 +124,15 @@ def generate_test_graphs() -> list[GraphForTest]:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {0: "XY", 1: "XY", 2: "XZ", 3: "YZ"}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, False, True, "graph with gflow but no flow")
+    test_graph = GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        False,
+        True,
+        "graph with extended gflow but no flow",
+    )
     graphs.append(test_graph)
 
     # graph with no flow and no gflow
@@ -181,13 +196,13 @@ class TestGflow(unittest.TestCase):
         }
         flow_test_cases["line graph with flow and gflow"] = {
             "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
-            "acausal flow": (False, {1: {3}, 3: {2}, 2: {5}, 4: {5}}),
+            "acausal flow": (False, {1: {3}, 3: {2, 4}, 2: {1}, 4: {5}}),
             "gflow": (False, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
         }
         flow_test_cases["graph with flow and gflow"] = {
             "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
             "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
-            "gflow": (False, {1: {3, 5}, 2: {4, 5}, 3: {4, 6}, 4: {6}}),
+            "gflow": (False, {1: {3, 5}, 2: {4, 5}, 3: {5, 6}, 4: {6}}),
         }
 
         test_graphs = generate_test_graphs()
@@ -196,12 +211,104 @@ class TestGflow(unittest.TestCase):
                 continue
             with self.subTest(test_graph.label):
                 for test_case, (expected, flow) in flow_test_cases[test_graph.label].items():
-                    with self.subTest(test_case):
-                        valid = check_flow(test_graph.graph, flow, test_graph.meas_planes)
+                    with self.subTest([test_graph.label, test_case]):
+                        valid = check_flow(
+                            test_graph.graph,
+                            test_graph.inputs,
+                            test_graph.outputs,
+                            flow,
+                            test_graph.meas_planes,
+                        )
                         self.assertEqual(expected, valid)
 
     def test_check_gflow(self):
-        pass
+        gflow_test_cases = dict()
+        gflow_test_cases["no measurement"] = {
+            "empty flow": (True, dict()),
+            "measure output": (False, {1: {2}}),
+        }
+        gflow_test_cases["line graph with flow and gflow"] = {
+            "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
+            "acausal flow": (False, {1: {3}, 3: {2, 4}, 2: {1}, 4: {5}}),
+            "gflow": (True, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
+        }
+        gflow_test_cases["graph with flow and gflow"] = {
+            "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
+            "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
+            "gflow": (True, {1: {3, 5}, 2: {4, 5}, 3: {5, 6}, 4: {6}}),
+        }
+        gflow_test_cases["graph with extended gflow but no flow"] = {
+            "correct gflow": (
+                True,
+                {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
+            ),
+            "correct glow 2": (True, {0: {1, 2, 4}, 1: {3, 5}, 2: {2, 4}, 3: {3}}),
+            "incorrect gflow": (
+                False,
+                {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3, 4}},
+            ),
+            "incorrect gflow 2": (
+                False,
+                {0: {1, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
+            ),
+        }
+
+        test_graphs = generate_test_graphs()
+        for test_graph in test_graphs:
+            if test_graph.label not in gflow_test_cases:
+                continue
+            with self.subTest(test_graph.label):
+                for test_case, (expected, gflow) in gflow_test_cases[test_graph.label].items():
+                    with self.subTest([test_graph.label, test_case]):
+                        valid = check_gflow(
+                            test_graph.graph,
+                            test_graph.inputs,
+                            test_graph.outputs,
+                            gflow,
+                            test_graph.meas_planes,
+                        )
+                        self.assertEqual(expected, valid)
+
+    def test_with_rand_circ(self):
+        # test for large graph
+        # graph transpiled from circuit always has a flow
+        circ = get_rand_circuit(3, 1, seed=seed)
+        pattern = circ.transpile()
+        nodes, edges = pattern.get_graph()
+        graph = nx.Graph()
+        graph.add_nodes_from(nodes)
+        graph.add_edges_from(edges)
+        input = set(pattern.input_nodes)
+        output = set(pattern.output_nodes)
+        meas_planes = pattern.get_meas_plane()
+        f, l_k = flow(graph, input, output, meas_planes)
+        print(edges)
+        print(f)
+        valid = check_flow(graph, input, output, f, meas_planes)
+
+        self.assertEqual(True, valid)
+
+    def test_rand_circ_gflow(self):
+        # test for large graph
+        # pauli-node measured graph always has gflow
+        circ = get_rand_circuit(10, 10, seed=seed)
+        pattern = circ.transpile()
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        nodes, edges = pattern.get_graph()
+        graph = nx.Graph()
+        graph.add_nodes_from(nodes)
+        graph.add_edges_from(edges)
+        input = set()
+        output = set(pattern.output_nodes)
+        meas_planes = pattern.get_meas_plane()
+        g, l_k = gflow(graph, input, output, meas_planes)
+        input = get_input_from_flow(g)
+
+        valid = check_gflow(graph, input, output, g, meas_planes)
+
+        self.assertEqual(True, valid)
 
 
 if __name__ == "__main__":
