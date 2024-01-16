@@ -722,7 +722,7 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_apply_random_channel_two_qubits(self):
         """
-        test random 2-qubit channel.
+        test random 2-qubit channel on a rank 1 dm (pure state). Generalizes by linearity.
         Especially checks for complex parameters.
         """
 
