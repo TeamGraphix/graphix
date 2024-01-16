@@ -51,7 +51,8 @@ def get_fusion_network_from_graph(
     """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`graphix.GraphState`.
     Extraction algorithm is based on [1].
 
-    [1] Zilk et al., A compiler for universal photonic quantum computers, 2022 `arXiv:2210.09251 <https://arxiv.org/abs/2210.09251>`_
+    [1] Zilk et al., A compiler for universal photonic quantum computers,
+    2022 `arXiv:2210.09251 <https://arxiv.org/abs/2210.09251>`_
 
     Parameters
     ----------
@@ -164,7 +165,8 @@ def get_fusion_nodes(c1: ResourceGraph, c2: ResourceGraph) -> list[int]:
     """Get the nodes that are fused between two resource states. Currently, we consider only type-I fusion.
     See [2] for the definition of fusion operation.
 
-    [2] Daniel E. Browne and Terry Rudolph. Resource-efficient linear optical quantum computation. Physical Review Letters, 95(1):010501, 2005.
+    [2] Daniel E. Browne and Terry Rudolph. Resource-efficient linear optical quantum computation.
+    Physical Review Letters, 95(1):010501, 2005.
 
     Parameters
     ----------

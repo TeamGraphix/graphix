@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import unittest
+
 import numpy as np
+
 import tests.random_circuit as rc
 from graphix.transpiler import Circuit
 from graphix.pattern import Pattern, CommandNode

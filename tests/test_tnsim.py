@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 import unittest
 import itertools
+
 import numpy as np
 from quimb.tensor import Tensor
-from graphix.transpiler import Circuit
+
+from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
-from graphix.clifford import CLIFFORD
+from graphix.transpiler import Circuit
 import tests.random_circuit as rc
 
 

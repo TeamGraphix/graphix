@@ -1,7 +1,7 @@
+from __future__ import annotations
 import unittest
 
 import networkx as nx
-import numpy as np
 
 from graphix.gflow import flow, gflow
 

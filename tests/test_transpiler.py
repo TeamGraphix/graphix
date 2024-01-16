@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import unittest
+
 import numpy as np
+
 from graphix.transpiler import Circuit
 import tests.random_circuit as rc
 
