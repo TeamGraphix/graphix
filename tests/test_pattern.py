@@ -5,8 +5,8 @@ import unittest
 import numpy as np
 
 import tests.random_circuit as rc
+from graphix.pattern import CommandNode, Pattern
 from graphix.transpiler import Circuit
-from graphix.pattern import Pattern, CommandNode
 
 
 class TestPattern(unittest.TestCase):

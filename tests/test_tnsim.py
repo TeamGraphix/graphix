@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import unittest
 import itertools
+import unittest
 
 import numpy as np
 from quimb.tensor import Tensor
 
+import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
-import tests.random_circuit as rc
 
 
 def random_op(sites, dtype=np.complex128, seed=0):
