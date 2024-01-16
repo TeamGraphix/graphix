@@ -8,6 +8,10 @@ import tests.random_circuit as rc
 from graphix.transpiler import Circuit
 
 
+SEED = 42
+rc.set_seed(SEED)
+
+
 class TestTranspiler_UnitGates(unittest.TestCase):
     def test_cnot(self):
         circuit = Circuit(2)
@@ -92,8 +96,31 @@ class TestTranspiler_UnitGates(unittest.TestCase):
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
+    def test_ccx(self):
+        nqubits = 4
+        depth = 6
+        for _ in range(10):
+            circuit = rc.get_rand_circuit(nqubits, depth, use_ccx=True)
+            pattern = circuit.transpile()
+            pattern.minimize_space()
+            state = circuit.simulate_statevector()
+            state_mbqc = pattern.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
 
 class TestTranspiler_Opt(unittest.TestCase):
+    def test_ccx_opt(self):
+        nqubits = 4
+        depth = 6
+        for _ in range(10):
+            circuit = rc.get_rand_circuit(nqubits, depth, use_ccx=True)
+            circuit.ccx(0, 1, 2)
+            pattern = circuit.transpile(opt=True)
+            pattern.minimize_space()
+            state = circuit.simulate_statevector()
+            state_mbqc = pattern.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
     def test_transpile_opt(self):
         nqubits = 2
         depth = 1

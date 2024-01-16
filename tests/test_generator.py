@@ -8,6 +8,9 @@ import numpy as np
 import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
 
+SEED = 42
+rc.set_seed(SEED)
+
 
 class TestGenerator(unittest.TestCase):
     def test_pattern_generation_determinism_flow(self):
