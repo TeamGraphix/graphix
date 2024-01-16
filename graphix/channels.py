@@ -89,7 +89,7 @@ def dephasing_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    KrausChannel object
+    :class:`graphix.channel.KrausChannel` object
         containing the corresponding Kraus operators
     """
     return KrausChannel(
@@ -114,7 +114,45 @@ def depolarising_channel(prob: float) -> KrausChannel:
 
 
 def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
-    """two-qubit depolarising channel (tensor of two single qubit depolarising channels not the Quest one)
+    """two-qubit depolarising channel.
+    .. math::
+        \mathcal{E} (\rho) = (1-p) \rho + \frac{p}{15}  \sum_{P_i \in \{id, X, Y ,Z\}^{\otimes 2}/(id \otimes id)}P_i \rho P_i
+
+    Parameters
+    ----------
+    prob : float
+        The probability associated to the channel
+
+    Returns
+    -------
+    :class:`graphix.channel.KrausChannel` object
+        containing the corresponding Kraus operators
+    """
+
+    return KrausChannel(
+        [
+            {"coef": np.sqrt(1 - prob), "operator": np.kron(np.eye(2), np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.x)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.x)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.x)},
+        ]
+    )
+
+
+def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
+    """two-qubit tensor channel of single-qubit depolarising channels with same probability.
     Kraus operators:
     .. math::
         \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z} \otimes \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z}
@@ -126,7 +164,7 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    KrausChannel object
+    :class:`graphix.channel.KrausChannel` object
         containing the corresponding Kraus operators
     """
 

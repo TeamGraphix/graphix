@@ -5,6 +5,7 @@ import numpy as np
 import tests.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
+    two_qubit_depolarising_tensor_channel,
     two_qubit_depolarising_channel,
     dephasing_channel,
     depolarising_channel,
@@ -163,6 +164,39 @@ class TestChannel(unittest.TestCase):
 
         prob = np.random.rand()
         data = [
+            {"coef": np.sqrt(1 - prob), "operator": np.kron(np.eye(2), np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.x)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.x)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.z)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.y)},
+            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.x)},
+        ]
+
+        depol_channel_2_qubit = two_qubit_depolarising_channel(prob)
+
+        assert isinstance(depol_channel_2_qubit, KrausChannel)
+        assert depol_channel_2_qubit.nqubit == 2
+        assert depol_channel_2_qubit.size == 16
+        assert depol_channel_2_qubit.is_normalized
+
+        for i in range(len(depol_channel_2_qubit.kraus_ops)):
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
+            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+
+    def test_2_qubit_depolarising_tensor_channel(self):
+
+        prob = np.random.rand()
+        data = [
             {"coef": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
@@ -181,16 +215,16 @@ class TestChannel(unittest.TestCase):
             {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
         ]
 
-        depol_channel_2_qubit = two_qubit_depolarising_channel(prob)
+        depol_tensor_channel_2_qubit = two_qubit_depolarising_tensor_channel(prob)
 
-        assert isinstance(depol_channel_2_qubit, KrausChannel)
-        assert depol_channel_2_qubit.nqubit == 2
-        assert depol_channel_2_qubit.size == 16
-        assert depol_channel_2_qubit.is_normalized
+        assert isinstance(depol_tensor_channel_2_qubit, KrausChannel)
+        assert depol_tensor_channel_2_qubit.nqubit == 2
+        assert depol_tensor_channel_2_qubit.size == 16
+        assert depol_tensor_channel_2_qubit.is_normalized
 
-        for i in range(len(depol_channel_2_qubit.kraus_ops)):
-            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
-            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+        for i in range(len(depol_tensor_channel_2_qubit.kraus_ops)):
+            np.testing.assert_allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
+            np.testing.assert_allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
 
 
 if __name__ == "__main__":
