@@ -4,7 +4,12 @@ import numpy as np
 
 from graphix import Circuit
 from graphix.noise_models.noise_model import NoiseModel
-from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
+from graphix.channels import (
+    KrausChannel,
+    depolarising_channel,
+    two_qubit_depolarising_tensor_channel,
+    two_qubit_depolarising_channel,
+)
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 
@@ -39,6 +44,7 @@ class TestNoiseModel(NoiseModel):
 
     def entangle(self):
         """return noise model to qubits that happens after the CZ gate"""
+        # return two_qubit_depolarising_tensor_channel(self.entanglement_error_prob)
         return two_qubit_depolarising_channel(self.entanglement_error_prob)
 
     def measure(self):
@@ -52,7 +58,6 @@ class TestNoiseModel(NoiseModel):
 
         if np.random.rand() < self.measure_error_prob:
             self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
-
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
@@ -163,13 +168,24 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         res = self.hadamardpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr)
         )
-        # analytical result
+        # analytical result for tensor depolarizing channel
+        # np.testing.assert_allclose(
+        #     res.rho,
+        #     np.array(
+        #         [
+        #             [1 - 4 * entanglement_error_pr / 3.0 + 8 * entanglement_error_pr**2 / 9, 0.0],
+        #             [0.0, 4 * entanglement_error_pr / 3.0 - 8 * entanglement_error_pr**2 / 9],
+        #         ]
+        #     ),
+        # )
+
+        # analytical result for true 2-qubit depolarizing channel
         np.testing.assert_allclose(
             res.rho,
             np.array(
                 [
-                    [1 - 4 * entanglement_error_pr / 3.0 + 8 * entanglement_error_pr**2 / 9, 0.0],
-                    [0.0, 4 * entanglement_error_pr / 3.0 - 8 * entanglement_error_pr**2 / 9],
+                    [1 - 8 * entanglement_error_pr / 15.0, 0.0],
+                    [0.0, 8 * entanglement_error_pr / 15.0],
                 ]
             ),
         )
@@ -242,7 +258,29 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         res = self.rzpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr)
         )
-        # analytical result
+        # analytical result for tensor depolarizing channel
+        # np.testing.assert_allclose(
+        #     res.rho,
+        #     0.5
+        #     * np.array(
+        #         [
+        #             [
+        #                 1.0,
+        #                 (-3 + 4 * entanglement_error_pr) ** 3
+        #                 * (-3 * np.cos(self.alpha) + 1j * (3 - 4 * entanglement_error_pr) * np.sin(self.alpha))
+        #                 / 81,
+        #             ],
+        #             [
+        #                 (-3 + 4 * entanglement_error_pr) ** 3
+        #                 * (-3 * np.cos(self.alpha) - 1j * (3 - 4 * entanglement_error_pr) * np.sin(self.alpha))
+        #                 / 81,
+        #                 1.0,
+        #             ],
+        #         ]
+        #     ),
+        # )
+
+        # analytical result for true 2-qubit depolarizing channel
         np.testing.assert_allclose(
             res.rho,
             0.5
@@ -250,14 +288,10 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
                 [
                     [
                         1.0,
-                        (-3 + 4 * entanglement_error_pr) ** 3
-                        * (-3 * np.cos(self.alpha) + 1j * (3 - 4 * entanglement_error_pr) * np.sin(self.alpha))
-                        / 81,
+                        np.exp(-1j * self.alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
                     ],
                     [
-                        (-3 + 4 * entanglement_error_pr) ** 3
-                        * (-3 * np.cos(self.alpha) - 1j * (3 - 4 * entanglement_error_pr) * np.sin(self.alpha))
-                        / 81,
+                        np.exp(1j * self.alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
                         1.0,
                     ],
                 ]
