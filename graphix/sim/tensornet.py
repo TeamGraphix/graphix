@@ -8,6 +8,7 @@ from quimb.tensor import Tensor, TensorNetwork
 
 from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
 from graphix.ops import States, Ops
+from graphix.sim.statevec import Statevec
 
 
 class TensorNetworkBackend:
@@ -16,7 +17,7 @@ class TensorNetworkBackend:
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="auto", **kwargs):
+    def __init__(self, pattern, backend="tensornetwork", graph_prep="auto", **kwargs):
         """
 
         Parameters
@@ -51,6 +52,7 @@ class TensorNetworkBackend:
             isolated node indices
         """
         self.pattern = pattern
+        self.backend = backend
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
         if graph_prep in ["parallel", "sequential"]:
@@ -68,7 +70,7 @@ class TensorNetworkBackend:
             raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
 
         if self.graph_prep == "sequential":
-            self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
+            self.state = MBQCTensorNet(default_output_nodes=self.output_nodes, **kwargs)
             self._decomposed_cz = _get_decomposed_cz()
         elif self.graph_prep == "parallel":
             if not pattern.is_standard():
@@ -77,7 +79,7 @@ class TensorNetworkBackend:
             self.state = MBQCTensorNet(
                 graph_nodes=nodes,
                 graph_edges=edges,
-                default_output_nodes=pattern.output_nodes,
+                default_output_nodes=self.output_nodes,
                 **kwargs,
             )
         self._isolated_nodes = pattern.get_isolated_nodes()
@@ -204,7 +206,11 @@ class TensorNetworkBackend:
         self.state.evolve_single(cmd[1], node_op, "C")
 
     def finalize(self):
-        pass
+        if self.backend in {"tensornet", "mps"}:
+            pass
+        elif self.backend == "eco-statevec":
+            psi = self.state.get_statevec()
+            self.state = Statevec(psi=psi)
 
 
 class MBQCTensorNet(TensorNetwork):
@@ -674,6 +680,35 @@ class MBQCTensorNet(TensorNetwork):
             return deepcopy(self)
         else:
             return self.__class__(ts=self)
+
+    def get_statevec(self, skip=False, path_info=False, **kwagrs) -> NDArray:
+        """Take outer product of the tensors in the network and return the statevector.
+
+        Parameters
+        ----------
+        skip (optional) : bool
+            Defaults to False.
+            If True, skip the simplification of the network.
+        path_info (optional) : bool
+            Defaults to False.
+            If True, return the path information of the contraction.
+        """
+        if skip:
+            tn = self.copy()
+            output_inds = [
+                self._dangling[str(index)] for index in self.default_output_nodes
+            ]
+            statevec = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
+            return statevec
+        tn = self.copy()
+        tn_simplified = tn.full_simplify("ADCR")
+        output_inds = [
+            self._dangling[str(index)] for index in self.default_output_nodes
+        ]
+        statevec = tn_simplified.contract(output_inds=output_inds, **kwagrs)
+        if not path_info:
+            statevec = statevec.data.reshape(-1)
+        return statevec
 
 
 def _get_decomposed_cz() -> list[Tensor]:

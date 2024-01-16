@@ -3,9 +3,8 @@
 Simulates MBQC by executing the pattern.
 
 """
-
-from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.sim.statevec import StatevectorBackend
+from graphix.sim.tensornet import TensorNetworkBackend
 
 
 class PatternSimulator:
@@ -31,8 +30,8 @@ class PatternSimulator:
         assert len(pattern.output_nodes) > 0
         if backend == "statevector":
             self.backend = StatevectorBackend(pattern, **kwargs)
-        elif backend in {"tensornetwork", "mps"}:
-            self.backend = TensorNetworkBackend(pattern, **kwargs)
+        elif backend in {"tensornetwork", "mps", "eco-statevec"}:
+            self.backend = TensorNetworkBackend(pattern, backend, **kwargs)
         else:
             raise ValueError("unknown backend")
         self.pattern = pattern
