@@ -424,28 +424,26 @@ def get_min_depth(l_k: dict[int, int]) -> int:
     return max(l_k.values())
 
 
-def find_odd_neighbor(graph: nx.Graph, candidate: set[int], vertices: set[int]) -> set[int]:
-    """Returns the list containing the odd neighbor of a set of vertices.
+def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
+    """Returns the set containing the odd neighbor of a set of vertices.
 
     Parameters
     ----------
     graph : networkx.Graph
         underlying graph.
-    candidate : iterable
-        possible odd neighbors
     vertices : set
         set of nodes indices to find odd neighbors
 
     Returns
     -------
-    out : list
-        list of indices for odd neighbor of set `vertices`.
+    odd_neighbors : set
+        set of indices for odd neighbor of set `vertices`.
     """
-    out = []
-    for c in candidate:
-        if np.mod(len(set(graph.neighbor(c)) ^ vertices), 2) == 1:
-            out.append(c)
-    return out
+    odd_neighbors = set()
+    for vertex in vertices:
+        neighbors = set(graph.neighbors(vertex))
+        odd_neighbors ^= neighbors
+    return odd_neighbors
 
 
 def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
@@ -469,7 +467,9 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     return d, layers
 
 
-def get_dependence_flow(inputs: set[int], flow: dict[int, set[int]]) -> dict[int, set[int]]:
+def get_dependence_flow(
+    inputs: set[int], flow: dict[int, set[int]], odd_flow: dict[int, set[int]]
+) -> dict[int, set[int]]:
     """Get dependence flow from flow.
 
     Parameters
@@ -478,15 +478,21 @@ def get_dependence_flow(inputs: set[int], flow: dict[int, set[int]]) -> dict[int
         set of input nodes
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    odd_flow: dict[int, set]
+        odd flow neighbors of each node.
+        odd_flow[i] is the set of odd neighbors of f(i).
 
     Returns
     -------
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    # inputs = get_input_from_flow(flow)
     dependence_flow = {input: set() for input in inputs}
+    # concatenate flow and odd_flow
+    combined_flow = dict()
     for node, corrections in flow.items():
+        combined_flow[node] = corrections | odd_flow[node]
+    for node, corrections in combined_flow.items():
         for correction in corrections:
             if correction not in dependence_flow.keys():
                 dependence_flow[correction] = set()
@@ -494,13 +500,17 @@ def get_dependence_flow(inputs: set[int], flow: dict[int, set[int]]) -> dict[int
     return dependence_flow
 
 
-def get_layers_from_flow(flow: dict[int, set], inputs: set[int], outputs: set[int]) -> tuple[dict[int, set], int]:
+def get_layers_from_flow(
+    flow: dict[int, set], odd_flow: dict[int, set], inputs: set[int], outputs: set[int]
+) -> tuple[dict[int, set], int]:
     """Get layers from flow (incl. gflow).
 
     Parameters
     ----------
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    odd_flow: dict[int, set]
+        odd flow neighbors of each node.
     inputs: set
         set of input nodes
     outputs: set
@@ -520,7 +530,7 @@ def get_layers_from_flow(flow: dict[int, set], inputs: set[int], outputs: set[in
     """
     layers = dict()
     depth = 0
-    dependence_flow = get_dependence_flow(inputs, flow)
+    dependence_flow = get_dependence_flow(inputs, odd_flow, flow)
     left_nodes = set(flow.keys())
     for output in outputs:
         if output in left_nodes:
@@ -598,8 +608,10 @@ def check_flow(
             valid_flow = False
             return valid_flow
 
+    odd_flow = {node: find_odd_neighbor(graph, corrections) for node, corrections in flow.items()}
+
     try:
-        layers, depth = get_layers_from_flow(flow, input, output)
+        layers, depth = get_layers_from_flow(flow, odd_flow, input, output)
     except ValueError:
         valid_flow = False
         return valid_flow
@@ -608,7 +620,6 @@ def check_flow(
         node_order.extend(list(layers[d]))
     adjacency_matrix, node_list = get_adjacency_matrix(graph)
     permute = [node_list.index(i) for i in node_order]
-    # permute = [node_order.index(i) for i in node_list]
     adjacency_matrix.permute_col(permute)
     adjacency_matrix.permute_row(permute)
 
@@ -627,32 +638,13 @@ def check_flow(
                 return valid_flow
             flow_matrix.data[row, col] = 1
 
-    # Neighbor_f = np.transpose((adjacency_matrix.data @ flow_matrix.data.T))
-    # print(f"{valid_flow=}")
-    # Neighbor_f = MatGF2(Neighbor_f)
     Neighbor_f = flow_matrix @ adjacency_matrix
     # Neighbor_f = MatGF2(Neighbor_f.data)
     # check whether v < N(f(v))
     triu = np.triu(Neighbor_f.data)
     triu = MatGF2(triu)
     dif = triu - Neighbor_f
-    # print(triu.data.shape)
-    # print(Neighbor_f.data.shape)
-    # print(np.sum(dif.data))
-    # print(np.count_nonzero(dif.data))
     valid_flow &= np.count_nonzero(dif.data) == 0
-    # check non zero num
-    # print("triu non zero num", np.count_nonzero(triu.data))
-    # print("Neighbor_f non zero num", np.count_nonzero(Neighbor_f.data))
-    # get non_zero position of dif.data
-    # non_zero = dif.data.nonzero()
-    # for i in range(len(non_zero[0])):
-    #     row = non_zero[0][i]
-    #     col = non_zero[1][i]
-    #     print(f"{row=}, {col=}")
-    #     print("node label", node_order[row], node_order[col])
-    #     print("actual edge or not (if so, 1)", adjacency_matrix.data[row, col])
-    # valid_flow = np.array_equal(triu.data, Neighbor_f.data)
     return valid_flow
 
 
@@ -685,9 +677,12 @@ def check_gflow(
     """
     valid_gflow = True
     non_outputs = set(graph.nodes) - output
+    odd_flow = dict()
+    for non_output in non_outputs:
+        odd_flow[non_output] = find_odd_neighbor(graph, gflow[non_output])
 
     try:
-        layers, depth = get_layers_from_flow(gflow, input, output)
+        layers, depth = get_layers_from_flow(gflow, odd_flow, input, output)
     except ValueError:
         valid_flow = False
         return valid_flow
@@ -715,8 +710,6 @@ def check_gflow(
     oddneighbor_g = gflow_matrix @ adjacency_matrix
     triu = np.triu(oddneighbor_g.data)
     triu = MatGF2(triu)
-    # print("nonzero num", np.count_nonzero(triu.data))
-    # print("nonzero num", np.count_nonzero(oddneighbor_g.data))
     valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
 
     # check for each measurement plane
