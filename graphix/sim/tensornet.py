@@ -1,14 +1,15 @@
-from copy import deepcopy
+from __future__ import annotations
+
 import string
+from copy import deepcopy
 
 import numpy as np
-from numpy.typing import NDArray
 import quimb.tensor as qtn
-from quimb.tensor import Tensor, TensorNetwork
-
-from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
-from graphix.ops import States, Ops
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.ops import Ops, States
 from graphix.sim.statevec import Statevec
+from numpy.typing import NDArray
+from quimb.tensor import Tensor, TensorNetwork
 
 
 class TensorNetworkBackend:
@@ -590,7 +591,12 @@ class MBQCTensorNet(TensorNetwork):
         else:
             raise ValueError("output_nodes is not asignned.")
         op_dim = len(qubit_indices)
-        op = op.reshape([2,] * (2 * op_dim))
+        op = op.reshape(
+            [
+                2,
+            ]
+            * (2 * op_dim)
+        )
         new_ind_left = [gen_str() for _ in range(op_dim)]
         new_ind_right = [gen_str() for _ in range(op_dim)]
         op_ts = Tensor(op, new_ind_right + new_ind_left, ["Expectation Op.", "Close"])
@@ -632,7 +638,12 @@ class MBQCTensorNet(TensorNetwork):
             If True, operator is decomposed into Matrix Product Operator(MPO)
         """
         if len(operator.shape) != len(qubit_indices) * 2:
-            operator = operator.reshape([2,] * (2 * len(qubit_indices)))
+            operator = operator.reshape(
+                [
+                    2,
+                ]
+                * (2 * len(qubit_indices))
+            )
 
         # operator indices
         node_indices = [self.default_output_nodes[index] for index in qubit_indices]
@@ -695,16 +706,12 @@ class MBQCTensorNet(TensorNetwork):
         """
         if skip:
             tn = self.copy()
-            output_inds = [
-                self._dangling[str(index)] for index in self.default_output_nodes
-            ]
+            output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
             statevec = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
             return statevec
         tn = self.copy()
         tn_simplified = tn.full_simplify("ADCR")
-        output_inds = [
-            self._dangling[str(index)] for index in self.default_output_nodes
-        ]
+        output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
         statevec = tn_simplified.contract(output_inds=output_inds, **kwagrs)
         if not path_info:
             statevec = statevec.data.reshape(-1)
