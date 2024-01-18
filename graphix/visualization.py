@@ -1,4 +1,8 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -46,7 +50,7 @@ class GraphVisualizer:
     def visualize(
         self,
         angles: dict[int, float] | None = None,
-        pattern_for_gflow: graphix.Pattern | None = None,
+        pattern_for_gflow: Pattern | None = None,
         local_clifford: dict[int, int] | None = None,
         meas_plane_indicator: bool = False,
         node_distance: tuple[int, int] = (1, 1),

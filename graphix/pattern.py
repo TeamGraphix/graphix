@@ -1234,7 +1234,7 @@ class Pattern:
         self,
         node_distance=(1, 1),
         figsize=None,
-        gflow_from_pattern=False,
+        gflow_from_pattern=True,
         pauli_indicator=True,
         show_loop=True,
         local_clifford_indicator=False,

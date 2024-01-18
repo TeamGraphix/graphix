@@ -19,7 +19,7 @@ import sympy as sp
 from graphix.linalg import MatGF2
 
 
-def gflow(graph, input, output, meas_planes, mode="single", pattern=None):
+def gflow(graph, input, output, meas_planes, mode="single"):
     """Maximally delayed gflow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
@@ -47,7 +47,6 @@ def gflow(graph, input, output, meas_planes, mode="single", pattern=None):
     mode: str(optional)
         The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
             - "single": Returrns a single solution
-            - "pattern": Returns a single solution consistent with a given pattern
             - "all": Returns all possible solutions
             - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
               requiring user substitution to get a concrete answer.
@@ -63,10 +62,6 @@ def gflow(graph, input, output, meas_planes, mode="single", pattern=None):
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-    if mode == "pattern":
-        if pattern is None:
-            raise ValueError("pattern must be specified when mode is pattern")
-        g, l_k = gflow_from_pattern(pattern)
     l_k = dict()
     g = dict()
     for node in graph.nodes:
