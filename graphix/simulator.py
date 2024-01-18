@@ -57,7 +57,7 @@ class PatternSimulator:
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         # TODO or just do the noiseless sim with a warning?
         elif backend in {"statevector", "tensornetwork", "mps"} and noise_model is not None:
-            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided")
+            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         else:
             raise ValueError("Unknown backend.")
         self.pattern = pattern

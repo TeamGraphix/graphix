@@ -3,6 +3,8 @@ quantum states and operators
 """
 
 import numpy as np
+from itertools import product
+from functools import reduce
 
 
 class States:
@@ -38,6 +40,7 @@ class Ops:
             [0, 0, 0, 0, 0, 0, 1, 0],
         ]
     )
+    Pauli_ops = [np.eye(2), x, y, z]
 
     @staticmethod
     def Rx(theta):
@@ -103,3 +106,23 @@ class Ops:
         operator : 4*4 np.array
         """
         return Ops.cnot @ np.kron(np.eye(2), Ops.Rz(theta)) @ Ops.cnot
+
+    @staticmethod
+    def build_tensor_Pauli_ops(n_qubits: int):
+        """Method to build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}
+
+        :param n_qubits: number of copies (qubits) to consider
+        :type n_qubits: int
+        :return: the array of the 4^n operators of shape (2^n, 2^n)
+        :rtype: np.ndarray
+        """
+
+        if isinstance(n_qubits, int):
+            if not 1 <= n_qubits:
+                raise ValueError(f"The number of qubits must be an integer <= 1 and not {n_qubits}.")
+        else:
+            raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
+
+        tensor_Pauli_ops = [reduce(lambda x, y: np.kron(x, y), i) for i in product(Ops.Pauli_ops, repeat=n_qubits)]
+
+        return np.array(tensor_Pauli_ops)
