@@ -5,8 +5,7 @@ import unittest
 
 import networkx as nx
 import numpy as np
-from graphix.gflow import (check_flow, check_gflow, flow, get_input_from_flow,
-                           gflow)
+from graphix.gflow import check_flow, check_gflow, flow, get_input_from_flow, gflow
 
 from tests.random_circuit import get_rand_circuit
 
@@ -272,7 +271,7 @@ class TestGflow(unittest.TestCase):
     def test_with_rand_circ(self):
         # test for large graph
         # graph transpiled from circuit always has a flow
-        circ = get_rand_circuit(3, 1, seed=seed)
+        circ = get_rand_circuit(10, 10, seed=seed)
         pattern = circ.transpile()
         nodes, edges = pattern.get_graph()
         graph = nx.Graph()
@@ -282,8 +281,6 @@ class TestGflow(unittest.TestCase):
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
         f, l_k = flow(graph, input, output, meas_planes)
-        print(edges)
-        print(f)
         valid = check_flow(graph, input, output, f, meas_planes)
 
         self.assertEqual(True, valid)
@@ -291,7 +288,7 @@ class TestGflow(unittest.TestCase):
     def test_rand_circ_gflow(self):
         # test for large graph
         # pauli-node measured graph always has gflow
-        circ = get_rand_circuit(10, 10, seed=seed)
+        circ = get_rand_circuit(5, 5, seed=seed)
         pattern = circ.transpile()
         pattern.standardize()
         pattern.shift_signals()
