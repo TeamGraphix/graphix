@@ -128,11 +128,13 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
 
     
-    if isinstance(dim, int):
-        if not dim & (dim - 1) == 0:
-            raise ValueError(f"The dimension must be a power of 2 and not {dim}.")
-    else:
+    if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
+    
+    if not dim & (dim - 1) == 0:
+        raise ValueError(f"The dimension must be a power of 2 and not {dim}.")
+    
+        
     
     nqb = int(np.log2(dim))
 
@@ -140,12 +142,11 @@ def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
     # default is full rank.
     if rank is None:
         rank = dim**2
-    else: 
+    else:
         if not isinstance(rank, int):
             raise TypeError("The rank of a Kraus expansion must be an integer.")
-        else:
-            if not 1 <= rank:
-                raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
+        if not 1 <= rank:
+            raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
 
     # full probability has to have dim**2 operators.
     prob_list = np.zeros(dim**2)
@@ -163,7 +164,7 @@ def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
     params = prob_list[target_indices]
     ops = tensor_Pauli_ops[target_indices]
 
-    # TODO see how to use zip and dict to convert from tuple to dict 
+    # TODO see how to use zip and dict to convert from tuple to dict
     # https://www.tutorialspoint.com/How-I-can-convert-a-Python-Tuple-into-Dictionary
 
     data = [{"coef": np.sqrt(params[i]), "operator": ops[i]} for i in range(0, rank)]

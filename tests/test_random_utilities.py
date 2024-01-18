@@ -19,18 +19,11 @@ class TestUtilities(unittest.TestCase):
     def test_rand_unit(self):
         d = np.random.randint(2, 20)
         tmp = randobj.rand_unit(d)
+        print(type(tmp), tmp.dtype)
 
-        # check by applying to a random state
-        # can compare both vectors directly since no global phase introduced in the computation.
-        psi = np.random.rand(d) + 1j * np.random.rand(d)
-        psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
-        np.testing.assert_allclose(tmp @ tmp.conj().T @ psi, psi)
-        np.testing.assert_allclose(tmp.conj().T @ tmp @ psi, psi)
-        np.testing.assert_allclose(tmp.conj().T @ tmp @ psi, tmp @ tmp.conj().T @ psi)
-
-        # direct assert equal identity doesn't seem to work. Precision issues?
-        # np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d))
-        # np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d))
+        # different default values for testing.assert_allclose and all_close!
+        np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d), atol = 1e-15)
+        np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d), atol = 1e-15)
 
     def test_random_channel_success(self):
 
@@ -163,13 +156,13 @@ class TestUtilities(unittest.TestCase):
         assert np.all(dims == (2**nqb, 2**nqb))
 
     def test_pauli_tensor_ops_fail(self):
-        
+
         with self.assertRaises(TypeError):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(np.random.randint(2, 6) + 0.5)
 
         with self.assertRaises(ValueError):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(0)
-        
+
 
     def test_random_pauli_channel_success(self):
 
@@ -196,7 +189,7 @@ class TestUtilities(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             dm = randobj.rand_Pauli_channel_kraus(dim = 2**nqb + 1, rank = rk)
-        
+
 
 
 

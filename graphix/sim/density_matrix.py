@@ -30,9 +30,9 @@ class DensityMatrix:
             assert nqubit >= 0
             self.Nqubit = nqubit
             if plus_state:
-                self.rho = np.ones(2 ** (2 * nqubit)).reshape(2**nqubit, 2**nqubit) / 2**nqubit
+                self.rho = np.ones((2**nqubit, 2**nqubit)) / 2**nqubit
             else:
-                self.rho = np.zeros(2 ** (2 * nqubit)).reshape(2**nqubit, 2**nqubit)
+                self.rho = np.zeros((2**nqubit, 2**nqubit))
                 self.rho[0, 0] = 1.0
         else:
             if isinstance(data, DensityMatrix):
@@ -45,7 +45,7 @@ class DensityMatrix:
                 raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
 
             assert check_square(data)
-            self.Nqubit = int(np.log2(len(data)))
+            self.Nqubit = len(data).bit_length() - 1
 
             self.rho = data
         assert check_hermitian(self.rho)
@@ -100,9 +100,8 @@ class DensityMatrix:
         if nqb_op != len(qargs):
             raise ValueError("The dimension of the operator doesn't match the number of targets.")
 
-        for i in qargs:
-            if i < 0 or i >= self.Nqubit:
-                raise ValueError("Incorrect target indices.")
+        if not all(0 <= i < self.Nqubit for i in qargs):
+            raise ValueError("Incorrect target indices.")
         if len(set(qargs)) != nqb_op:
             raise ValueError("A repeated target qubit index is not possible.")
 
@@ -132,7 +131,7 @@ class DensityMatrix:
             complex: expectation value (real for hermitian ops!).
         """
 
-        if i < 0 or i >= self.Nqubit:
+        if not (0 <= i < self.Nqubit):
             raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.Nqubit-1}.")
 
         if op.shape != (2, 2):

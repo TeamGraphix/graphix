@@ -20,9 +20,9 @@ class States:
 class Ops:
     """Basic single- and two-qubits operators"""
 
-    x = np.array([[0, 1.0], [1.0, 0]])
-    y = np.array([[0, -1.0 * 1j], [1.0 * 1j, 0]])
-    z = np.array([[1.0, 0], [0, -1.0]])
+    x = np.array([[0, 1], [1, 0]])
+    y = np.array([[0, -1j], [1j, 0]])
+    z = np.array([[1, 0], [0, -1]])
     s = np.array([[1, 0], [0, 1j]])
     h = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
     cz = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
