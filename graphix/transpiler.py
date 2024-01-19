@@ -10,6 +10,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 
+from graphix.mgraph import MGraph
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
@@ -327,6 +328,189 @@ class Circuit:
         pattern.output_nodes = out
         pattern.Nnode = Nnode
         return pattern
+
+    def to_mgraph(self):
+        inputs = [i for i in range(self.width)]
+        mbqcgraph = MGraph(inputs=inputs, outputs=[i for i in range(self.width)])
+        num_nodes = len(inputs)
+        for instr in self.instruction:
+            if instr[0] == "CNOT":
+                control = mbqcgraph.output_nodes[instr[1][0]]
+                target = mbqcgraph.output_nodes[instr[1][1]]
+                mbqcgraph.add_node(num_nodes, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(control, num_nodes)
+
+                mbqcgraph.assign_measurement_info(target, "XY", 0)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+            elif instr[0] == "I":  # teleportation
+                target = mbqcgraph.output_nodes[instr[1]]
+                mbqcgraph.add_node(num_nodes, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+
+                mbqcgraph.assign_measurement_info(target, "XY", 0)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+
+            elif instr[0] == "H":
+                target = mbqcgraph.output_nodes[instr[1]]
+                mbqcgraph.add_node(num_nodes, output=True)
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.assign_measurement_info(target, "XY", 0)
+
+                mbqcgraph.flow[target] = {num_nodes}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes
+                num_nodes += 1
+
+            elif instr[0] == "S":
+                target = mbqcgraph.output_nodes[instr[1]]
+                mbqcgraph.add_node(num_nodes, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+
+                mbqcgraph.assign_measurement_info(target, "XY", -0.5)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+
+            elif instr[0] == "X":
+                target = mbqcgraph.output_nodes[instr[1]]
+                mbqcgraph.add_node(num_nodes, "XY", -1)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+
+                mbqcgraph.assign_measurement_info(target, "XY", 0)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+
+            elif instr[0] == "Y":
+                target = mbqcgraph.output_nodes[instr[1]]
+                mbqcgraph.add_node(num_nodes, "XY", 1.0)
+                mbqcgraph.add_node(num_nodes + 1, "XY", -0.5)
+                mbqcgraph.add_node(num_nodes + 2, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 3, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(num_nodes + 1, num_nodes + 2)
+                mbqcgraph.add_edge(num_nodes + 2, num_nodes + 3)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {num_nodes + 2}
+                mbqcgraph.flow[num_nodes + 2] = {num_nodes + 3}
+
+                mbqcgraph.assign_measurement_info(target, "XY", 0.5)
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 3
+                num_nodes += 4
+
+            elif instr[0] == "Z":
+                target = mbqcgraph.output_nodes[instr[1]]
+                mbqcgraph.add_node(num_nodes, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+
+                mbqcgraph.assign_measurement_info(target, "XY", -1)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+
+            elif instr[0] == "Rx":
+                target = mbqcgraph.output_nodes[instr[1]]
+                angle = instr[2]
+                mbqcgraph.add_node(num_nodes, "XY", -1 * angle / np.pi)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+
+                mbqcgraph.assign_measurement_info(target, "XY", 0)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+
+            elif instr[0] == "Ry":
+                target = mbqcgraph.output_nodes[instr[1]]
+                angle = instr[2]
+
+                mbqcgraph.add_node(num_nodes, "XY", -1 * angle / np.pi)
+                mbqcgraph.add_node(num_nodes + 1, "XY", -0.5)
+                mbqcgraph.add_node(num_nodes + 2, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 3, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(num_nodes + 1, num_nodes + 2)
+                mbqcgraph.add_edge(num_nodes + 2, num_nodes + 3)
+
+                mbqcgraph.assign_measurement_info(target, "XY", 0.5)
+
+                mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {num_nodes + 2}
+                mbqcgraph.flow[num_nodes + 2] = {num_nodes + 3}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 3
+                num_nodes += 4
+
+            elif instr[0] == "Rz":
+                target = mbqcgraph.output_nodes[instr[1]]
+                angle = instr[2]
+
+                mbqcgraph.add_node(num_nodes, "XY", 0)
+                mbqcgraph.add_node(num_nodes + 1, output=True)
+
+                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+
+                mbqcgraph.assign_measurement_info(target, "XY", -1 * angle / np.pi)
+
+                mbqcgraph.flow[target] = {num_nodes}
+
+                mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
+                num_nodes += 2
+
+            elif instr[0] == "Rzz":
+                raise NotImplementedError
+
+            else:
+                raise ValueError("Unknown instruction, nodes not added")
 
     def standardize_and_transpile(self, opt: bool = True):
         """gate-to-MBQC transpile function.
