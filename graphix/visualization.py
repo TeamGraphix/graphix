@@ -544,8 +544,11 @@ class GraphVisualizer:
         max_iter = 5
         edge_path = {}
         if type(next(iter(fg.values()))) is set:  # fg is gflow
-            edge_set1 = set(self.G.edges())
-            edge_set2 = {(k, v) for k, values in fg.items() for v in values}
+            edge_set1 = {(k, v) for k, values in fg.items() for v in values}
+            edge_set2 = set()
+            for edge in self.G.edges():
+                if edge not in edge_set1 and (edge[1], edge[0]) not in edge_set1:
+                    edge_set2.add(edge)
             edge_set = edge_set1.union(edge_set2)
         else:
             edge_set = set(self.G.edges())
