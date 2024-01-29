@@ -123,19 +123,17 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 
     return KrausChannel([{"coef": 1.0 + 0.0 * 1j, "operator": kraus_list[i]} for i in range(rank)])
 
+
 # or merge with previous with a "pauli" kwarg?
 ### continue here
 def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
 
-    
     if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
-    
+
     if not dim & (dim - 1) == 0:
         raise ValueError(f"The dimension must be a power of 2 and not {dim}.")
-    
-        
-    
+
     nqb = int(np.log2(dim))
 
     # max number of ops (Choi rank) is d**2
@@ -155,7 +153,7 @@ def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
     tmp_list /= tmp_list.sum()
 
     # fill the list and shuffle
-    prob_list[ :rank] = tmp_list
+    prob_list[:rank] = tmp_list
     np.random.shuffle(prob_list)
 
     tensor_Pauli_ops = Ops.build_tensor_Pauli_ops(nqb)
@@ -171,6 +169,5 @@ def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
 
     # NOTE retain a strong probability on the identity or not?
     # think we don't really care
-
 
     return KrausChannel(data)
