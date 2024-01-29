@@ -22,8 +22,8 @@ class TestUtilities(unittest.TestCase):
         print(type(tmp), tmp.dtype)
 
         # different default values for testing.assert_allclose and all_close!
-        np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d), atol = 1e-15)
-        np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d), atol = 1e-15)
+        np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d), atol=1e-15)
+        np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d), atol=1e-15)
 
     def test_random_channel_success(self):
 
@@ -149,7 +149,7 @@ class TestUtilities(unittest.TestCase):
         nqb = np.random.randint(2, 6)
         Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(nqb)
 
-        assert len(Pauli_tensor_ops) == 4 ** nqb
+        assert len(Pauli_tensor_ops) == 4**nqb
 
         dims = np.array([i.shape for i in Pauli_tensor_ops])
         # or np.apply_along_axis ?
@@ -163,12 +163,11 @@ class TestUtilities(unittest.TestCase):
         with self.assertRaises(ValueError):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(0)
 
-
     def test_random_pauli_channel_success(self):
 
         nqb = np.random.randint(2, 6)
-        rk = np.random.randint(1, 2**nqb+1)
-        Pauli_channel = randobj.rand_Pauli_channel_kraus(dim = 2**nqb, rank = rk) #default is full rank
+        rk = np.random.randint(1, 2**nqb + 1)
+        Pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
 
         assert isinstance(Pauli_channel, KrausChannel)
         assert Pauli_channel.nqubit == nqb
@@ -179,18 +178,16 @@ class TestUtilities(unittest.TestCase):
         nqb = 3
         rk = 2
         with self.assertRaises(TypeError):
-            dm = randobj.rand_Pauli_channel_kraus(dim = 2**nqb, rank = rk+0.5)
+            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
 
         with self.assertRaises(ValueError):
-            dm = randobj.rand_Pauli_channel_kraus(dim = 2**nqb + 0.5, rank = rk)
+            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
 
         with self.assertRaises(ValueError):
-            dm = randobj.rand_Pauli_channel_kraus(dim = 2**nqb, rank = -3)
+            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3)
 
         with self.assertRaises(ValueError):
-            dm = randobj.rand_Pauli_channel_kraus(dim = 2**nqb + 1, rank = rk)
-
-
+            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk)
 
 
 if __name__ == "__main__":
