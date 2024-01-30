@@ -8,6 +8,16 @@ import numpy as np
 from graphix.gflow import flow, gflow
 from graphix.pattern import Pattern
 
+COLOR_MAP = {
+    "XY": "chartreuse",
+    "YZ": "red",
+    "XZ": "gold",
+    None: "lightgray",
+    # "input": "slategrey",
+    "harmard": "deepskyblue",
+    "non-hadamard": "k",
+}
+
 
 class MGraph(nx.Graph):
     """Measurement graph
@@ -173,6 +183,17 @@ class MGraph(nx.Graph):
                 z_signals[node_fg] ^= {node}
 
         return x_signals, z_signals
+
+    def get_colors(self):
+        """get color for displaying measurement graph
+
+        Returns
+        -------
+        tuple[list[str], list[str]]: color map for nodes and edges
+        """
+        node_color = [COLOR_MAP[node["plane"]] for node in self.nodes.values()]
+        edge_color = ["deepskyblue" if e["hadamard"] else COLOR_MAP["non-hadamard"] for e in self.edges.values()]
+        return node_color, edge_color
 
     #############################
     # Elementary Graph Operations
