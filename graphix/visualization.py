@@ -52,7 +52,7 @@ class GraphVisualizer:
         angles: dict[int, float] | None = None,
         pattern_for_gflow: Pattern | None = None,
         local_clifford: dict[int, int] | None = None,
-        meas_plane_indicator: bool = False,
+        show_measurement_planes: bool = False,
         node_distance: tuple[int, int] = (1, 1),
         show_loop: bool = True,
         figsize: tuple[int, int] | None = None,
@@ -76,7 +76,7 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        meas_plane_indicator : bool
+        show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
@@ -94,7 +94,7 @@ class GraphVisualizer:
         if f:
             print("Flow found.")
             self.visualize_w_flow(
-                f, l_k, angles, local_clifford, meas_plane_indicator, node_distance, figsize, save, filename
+                f, l_k, angles, local_clifford, show_measurement_planes, node_distance, figsize, save, filename
             )
         else:
             if pattern_for_gflow is not None:
@@ -105,7 +105,7 @@ class GraphVisualizer:
                     l_k,
                     angles,
                     local_clifford,
-                    meas_plane_indicator,
+                    show_measurement_planes,
                     node_distance,
                     show_loop,
                     figsize,
@@ -121,7 +121,7 @@ class GraphVisualizer:
                         l_k,
                         angles,
                         local_clifford,
-                        meas_plane_indicator,
+                        show_measurement_planes,
                         node_distance,
                         show_loop,
                         figsize,
@@ -131,7 +131,7 @@ class GraphVisualizer:
                 else:
                     print("No flow or gflow found.")
                     self.visualize_wo_structure(
-                        angles, local_clifford, meas_plane_indicator, node_distance, save, filename
+                        angles, local_clifford, show_measurement_planes, node_distance, save, filename
                     )
 
     def visualize_w_flow(
@@ -140,7 +140,7 @@ class GraphVisualizer:
         l_k: dict[int, int],
         angles: dict[int, float] | None = None,
         local_clifford: dict[int, int] | None = None,
-        meas_plane_indicator: bool = False,
+        show_measurement_planes: bool = False,
         node_distance: tuple[int, int] = (1, 1),
         figsize: tuple[int, int] | None = None,
         save: bool = False,
@@ -166,7 +166,7 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        meas_plane_indicator : bool
+        show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
@@ -223,7 +223,7 @@ class GraphVisualizer:
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
-        if meas_plane_indicator:
+        if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_plane.keys():
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_plane[node]}", fontsize=9, zorder=3)
@@ -263,7 +263,7 @@ class GraphVisualizer:
         l_k: dict[int, int],
         angles: dict[int, float] | None = None,
         local_clifford: dict[int, int] | None = None,
-        meas_plane_indicator: bool = False,
+        show_measurement_planes: bool = False,
         node_distance: tuple[int, int] = (1, 1),
         show_loop: bool = True,
         figsize: tuple[int, int] | None = None,
@@ -290,7 +290,7 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        meas_plane_indicator : bool
+        show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
@@ -375,7 +375,7 @@ class GraphVisualizer:
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
-        if meas_plane_indicator:
+        if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_plane.keys():
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_plane[node]}", fontsize=9, zorder=3)
@@ -413,7 +413,7 @@ class GraphVisualizer:
         self,
         angles: dict[int, float] | None = None,
         local_clifford: dict[int, int] | None = None,
-        meas_plane_indicator: bool = False,
+        show_measurement_planes: bool = False,
         node_distance: tuple[int, int] = (1, 1),
         save: bool = False,
         filename: str | None = None,
@@ -438,7 +438,7 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        meas_plane_indicator : bool
+        show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
@@ -478,7 +478,7 @@ class GraphVisualizer:
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.04, 0.04]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
-        if meas_plane_indicator:
+        if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_plane.keys():
                     plt.text(*pos[node] + np.array([0.05, -0.04]), f"{self.meas_plane[node]}", fontsize=9, zorder=3)

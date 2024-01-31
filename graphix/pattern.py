@@ -1238,7 +1238,7 @@ class Pattern:
         pauli_indicator=True,
         show_loop=True,
         local_clifford_indicator=False,
-        meas_plane_indicator=False,
+        show_measurement_planes=False,
         save=False,
         filename=None,
     ):
@@ -1258,7 +1258,7 @@ class Pattern:
             whether or not to show loops for graphs with gflow. defaulted to True.
         local_clifford_indicator : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        meas_plane_indicator : bool
+        show_measurement_planes : bool
             If True, measurement planes are displayed adjacent to the nodes.
         save : bool
             If True, the plot is saved as a png file.
@@ -1292,7 +1292,7 @@ class Pattern:
             angles=angles,
             pattern_for_gflow=pattern,
             local_clifford=local_clifford,
-            meas_plane_indicator=meas_plane_indicator,
+            show_measurement_planes=show_measurement_planes,
             show_loop=show_loop,
             save=save,
             filename=filename,
