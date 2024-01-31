@@ -10,6 +10,8 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
 
+from __future__ import annotations
+
 from itertools import product
 
 import networkx as nx
@@ -19,7 +21,9 @@ import sympy as sp
 from graphix.linalg import MatGF2
 
 
-def gflow(graph, input, output, meas_planes, mode="single"):
+def gflow(
+    graph: nx.Graph, input: set[int], output: set[int], meas_planes: dict[int, str], mode: str = "single"
+) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Maximally delayed gflow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
@@ -68,15 +72,15 @@ def gflow(graph, input, output, meas_planes, mode="single"):
 
 
 def gflowaux(
-    graph,
-    input: set,
-    output: set,
-    meas_planes: dict,
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    meas_planes: dict[int, str],
     k: int,
-    l_k: dict,
-    g: dict,
-    mode,
-):
+    l_k: dict[int, int],
+    g: dict[int, set[int]],
+    mode: str,
+) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Function to find one layer of the gflow.
 
     Ref: Backens et al., Quantum 5, 421 (2021).
@@ -207,7 +211,9 @@ def gflowaux(
         )
 
 
-def flow(graph, input, output, meas_planes=None):
+def flow(
+    graph: nx.Graph, input: set[int], output: set[int], meas_planes: dict[int, str] | None = None
+) -> tuple[dict[int, int], dict[int, int]] | tuple[None, None]:
     """Causal flow finding algorithm
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
@@ -225,7 +231,7 @@ def flow(graph, input, output, meas_planes=None):
         set of node labels for input
     output: set
         set of node labels for output
-    meas_planes: int(optional)
+    meas_planes: dict(optional)
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
         Note that an underlying graph has a causal flow only if all measurement planes are "XY".
         If not specified, all measurement planes are interpreted as "XY".
@@ -254,7 +260,17 @@ def flow(graph, input, output, meas_planes=None):
     return flowaux(nodes, edges, input, output, v_c, f, l_k, k)
 
 
-def flowaux(nodes, edges, input, output, v_c, f, l_k, k):
+def flowaux(
+    nodes: set[int],
+    edges: set[tuple[int, int]],
+    input: set[int],
+    output: set[int],
+    v_c: set[int],
+    f: dict[int, int],
+    l_k: dict[int, int],
+    k: int,
+    meas_planes: dict[int, str] | None = None,
+) -> tuple[dict[int, int], dict[int, int]] | tuple[None, None]:
     """Function to find one layer of the flow.
 
     Ref: Mhalla and Perdrix, International Colloquium on Automata,
@@ -318,7 +334,9 @@ def flowaux(nodes, edges, input, output, v_c, f, l_k, k):
     )
 
 
-def pauliflow(graph, input, output, meas_planes=None, meas_angles=None):
+def pauliflow(
+    graph: nx.Graph, input: set[int], output: set[int], meas_planes: dict[int, str], meas_angles: dict[int, float]
+) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Maximally delayed Pauli flow finding algorithm
 
     For open graph g with input, output, measurement planes and measurement angles, this returns maximally delayed Pauli flow.
@@ -382,19 +400,19 @@ def pauliflow(graph, input, output, meas_planes=None, meas_angles=None):
 
 
 def pauliflowaux(
-    graph,
-    input: set,
-    output: set,
-    meas_planes: dict,
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    meas_planes: dict[int, str],
     k: int,
-    correction_candidate: set,
-    solved_nodes: set,
-    l_k: dict,
-    p: dict,
-    Lx: set,
-    Ly: set,
-    Lz: set,
-):
+    correction_candidate: set[int],
+    solved_nodes: set[int],
+    l_k: dict[int, int],
+    p: dict[int, set[int]],
+    Lx: set[int],
+    Ly: set[int],
+    Lz: set[int],
+) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Function to find one layer of the Pauli flow.
 
     Ref: Simmons et al., EPTCS 343, 2021, pp. 50-101 (arXiv:2109.05654).
@@ -569,7 +587,7 @@ def pauliflowaux(
         )
 
 
-def search_neighbor(node, edges):
+def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     """Function to find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
 
     Parameter
@@ -593,7 +611,9 @@ def search_neighbor(node, edges):
     return N
 
 
-def find_flow(graph, input, output, meas_planes=None, mode="single"):
+def find_flow(
+    graph: nx.Graph, input: set[int], output: set[int], meas_planes: dict[int, str] | None = None, mode: str = "single"
+):
     """Function to determine whether there exists flow or gflow
 
     Parameters
@@ -632,7 +652,7 @@ def find_flow(graph, input, output, meas_planes=None, mode="single"):
         print("no gflow found")
 
 
-def get_min_depth(l_k):
+def get_min_depth(l_k: dict[int, int]) -> int:
     """get minimum depth of graph.
 
     Parameters
@@ -648,7 +668,7 @@ def get_min_depth(l_k):
     return max(l_k.values())
 
 
-def find_odd_neighbor(graph, candidate, vertices):
+def find_odd_neighbor(graph: nx.Graph, candidate: list[int] | set[int], vertices: set[int]) -> list[int]:
     """Returns the list containing the odd neighbor of a set of vertices.
 
     Parameters
@@ -672,7 +692,7 @@ def find_odd_neighbor(graph, candidate, vertices):
     return out
 
 
-def get_layers(l_k):
+def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, list[int]]]:
     """get components of each layer.
     Parameters
     -------
@@ -693,7 +713,7 @@ def get_layers(l_k):
     return d, layers
 
 
-def get_adjacency_matrix(graph):
+def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
     """Get adjacency matrix of the graph
 
     Returns
