@@ -25,7 +25,7 @@ class GraphVisualizer:
         list of output nodes
     """
 
-    def __init__(self, G: nx.Graph, v_in: list[int], v_out: list[int], meas_plane: dict[str] | None = None):
+    def __init__(self, G: nx.Graph, v_in: list[int], v_out: list[int], meas_plane: dict[int, str] | None = None):
         """
         Parameters
         ----------
