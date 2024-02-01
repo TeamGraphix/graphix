@@ -5,7 +5,13 @@ import unittest
 
 import networkx as nx
 import numpy as np
-from graphix.gflow import check_flow, check_gflow, flow, get_input_from_flow, gflow
+from graphix.gflow import (
+    check_flow,
+    check_gflow,
+    flow,
+    get_input_from_flow,
+    gflow,
+)
 
 from tests.random_circuit import get_rand_circuit
 
@@ -301,7 +307,6 @@ class TestGflow(unittest.TestCase):
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
         g, l_k = gflow(graph, input, output, meas_planes)
-        input = get_input_from_flow(g)
 
         valid = check_gflow(graph, input, output, g, meas_planes)
 
