@@ -148,10 +148,9 @@ def gflowaux(
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
         elif meas_planes[node] == "YZ":
-            vec.data = adj_mat_row_reduced.data[:, i_row].reshape(vec.data.shape)
+            vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
-
-    adj_mat, b, _, col_pertumutation = adj_mat.forward_eliminate(b)
+    adj_mat, b, _, col_permutation = adj_mat.forward_eliminate(b)
     x, kernels = adj_mat.backward_substitute(b)
 
     corrected_nodes = set()
@@ -164,7 +163,7 @@ def gflowaux(
             sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
-            g[non_out_node] = set(node_order_col[col_pertumutation[i]] for i in sol_index)
+            g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
@@ -177,7 +176,7 @@ def gflowaux(
                 sol_list.extend(kernel_list)
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
-                g_i = set(node_order_col[col_pertumutation[i]] for i in sol_index)
+                g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
                 if meas_planes[non_out_node] in ["XZ", "YZ"]:
                     g_i |= {non_out_node}
 
@@ -186,10 +185,10 @@ def gflowaux(
         elif mode == "abstract":
             g[non_out_node] = dict()
             for i in range(len(x_col)):
-                node = node_order_col[col_pertumutation[i]]
+                node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
             for i in range(len(kernels)):
-                g[non_out_node][node_order_col[col_pertumutation[len(x_col) + i]]] = kernels[i]
+                g[non_out_node][node_order_col[col_permutation.index(len(x_col) + i)]] = kernels[i]
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
@@ -468,7 +467,9 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
 
 
 def get_dependence_flow(
-    inputs: set[int], flow: dict[int, set[int]], odd_flow: dict[int, set[int]]
+    inputs: set[int],
+    flow: dict[int, set[int]],
+    odd_flow: dict[int, set[int]],
 ) -> dict[int, set[int]]:
     """Get dependence flow from flow.
 
