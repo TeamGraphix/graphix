@@ -52,7 +52,6 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     pattern : graphix.pattern.Pattern object
         constructed pattern.
     """
-    assert len(inputs) == len(outputs)
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
@@ -74,10 +73,13 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
             for j in layers[i]:
                 measured.append(j)
                 pattern.seq.append(["M", j, "XY", angles[j], [], []])
-                for k in set(graph.neighbors(f[j])) - set([j]):
-                    if k not in measured:
-                        pattern.seq.append(["Z", k, [j]])
-                pattern.seq.append(["X", f[j], [j]])
+                neighbors = set()
+                for k in f[j]:
+                    neighbors = neighbors | set(graph.neighbors(k))
+                for k in neighbors - set([j]):
+                    # if k not in measured:
+                    pattern.seq.append(["Z", k, [j]])
+                pattern.seq.append(["X", f[j].pop(), [j]])
         pattern.Nnode = len(graph.nodes)
     else:
         # no flow found - we try gflow
@@ -91,15 +93,13 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
                 pattern.seq.append(["N", i])
             for e in graph.edges:
                 pattern.seq.append(["E", e])
-            remaining = set(measuring_nodes)
             for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
                 for j in layers[i]:
-                    pattern.seq.append(["M", j, "XY", angles[j], [], []])
-                    remaining = remaining - set([j])
-                    odd_neighbors = find_odd_neighbor(graph, remaining, set(g[j]))
-                    for k in odd_neighbors:
+                    pattern.seq.append(["M", j, meas_planes[j], angles[j], [], []])
+                    odd_neighbors = find_odd_neighbor(graph, g[j])
+                    for k in odd_neighbors - set([j]):
                         pattern.seq.append(["Z", k, [j]])
-                    for k in set(g[j]) - set([j]):
+                    for k in g[j] - set([j]):
                         pattern.seq.append(["X", k, [j]])
             pattern.Nnode = len(graph.nodes)
         else:
