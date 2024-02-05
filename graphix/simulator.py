@@ -38,7 +38,7 @@ class PatternSimulator:
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
 
-        if isinstance(backend, graphix.sim.backend.Backend):
+        if isinstance(backend, graphix.sim.base_backend.Backend):
             assert kwargs == dict()
             self.backend = backend
         elif backend == "statevector":

@@ -15,7 +15,7 @@ from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
 import graphix.sim.base_backend
 
 
-class DensityMatrix:
+class DensityMatrix(graphix.sim.base_backend.Backend):
     """DensityMatrix object."""
 
     def __init__(self, data=None, plus_state=True, nqubit=1):

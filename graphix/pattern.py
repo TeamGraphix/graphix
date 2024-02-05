@@ -7,12 +7,14 @@ from copy import deepcopy
 import networkx as nx
 import numpy as np
 
+from graphix.client import Client
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
+from graphix.sim.statevec import StatevectorBackend
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1269,6 +1271,14 @@ class Pattern:
                 nodes -= 1
                 N_list.append(nodes)
         return N_list
+
+    def simulate_pattern_delegated(self):
+        client = Client(pattern=self)
+        client.init_measurement_db()
+        backend = StatevectorBackend(pattern=client.pattern, measure_method=client.measure_method)
+        sim = PatternSimulator(backend=backend, pattern=client.pattern)
+        state = sim.run()
+        return state
 
     def simulate_pattern(self, backend="statevector", **kwargs):
         """Simulate the execution of the pattern by using
