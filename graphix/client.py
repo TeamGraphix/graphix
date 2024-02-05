@@ -3,7 +3,8 @@ import numpy as np
 
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
 import graphix.sim.base_backend
-
+import graphix.sim.statevec
+import graphix.simulator
 
 """
 Usage:
@@ -38,6 +39,8 @@ class Client:
         self.measurement_db = {}
         self.results = pattern.results.copy()
         self.measure_method = ClientMeasureMethod(self)
+        self.init_measurement_db()
+
 
     def init_measurement_db(self):
         for cmd in self.pattern:
@@ -54,6 +57,12 @@ class Client:
                 self.measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
                 # Erase the unnecessary items from the command to make sure they don't appear on the server's side
                 del cmd[2:]
+
+    def simulate_pattern(self):
+        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.pattern, measure_method=self.measure_method)
+        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.pattern)
+        state = sim.run()
+        return state
 
 
 class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):

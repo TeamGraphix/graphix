@@ -1274,11 +1274,7 @@ class Pattern:
 
     def simulate_pattern_delegated(self):
         client = Client(pattern=self)
-        client.init_measurement_db()
-        backend = StatevectorBackend(pattern=client.pattern, measure_method=client.measure_method)
-        sim = PatternSimulator(backend=backend, pattern=client.pattern)
-        state = sim.run()
-        return state
+        return client.simulate_pattern()
 
     def simulate_pattern(self, backend="statevector", **kwargs):
         """Simulate the execution of the pattern by using

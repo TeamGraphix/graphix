@@ -5,6 +5,7 @@ import numpy as np
 from parameterized import parameterized
 
 import tests.random_circuit as rc
+from graphix.client import Client
 from graphix.pattern import CommandNode, Pattern
 from graphix.transpiler import Circuit
 
@@ -51,6 +52,7 @@ class TestPattern(unittest.TestCase):
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector()
+
         state_mbqc = pattern.simulate_pattern_delegated()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -96,13 +98,17 @@ class TestPattern(unittest.TestCase):
         nqubits = 3
         depth = 3
         for i in range(10):
+            print("New Pauli Measurement test with i = ", i)
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
+            pattern.print_pattern()
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
             state = circuit.simulate_statevector()
+            pattern.print_pattern()
+            print(pattern.results)
             state_mbqc = pattern.simulate_pattern_delegated()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -166,10 +172,14 @@ class TestPattern(unittest.TestCase):
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
             pattern = circuit.standardize_and_transpile(opt=True)
+
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
+
             state = circuit.simulate_statevector()
+
             state_mbqc = pattern.simulate_pattern_delegated()
+
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     @parameterized.expand([(False), (True)])
