@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
+
 import numpy as np
 from matplotlib import pyplot as plt
 import math
@@ -19,7 +25,7 @@ class GraphVisualizer:
         list of output nodes
     """
 
-    def __init__(self, G, v_in, v_out, meas_plane=None):
+    def __init__(self, G: nx.Graph, v_in: list[int], v_out: list[int], meas_plane: dict[int, str] | None = None):
         """
         Parameters
         ----------
@@ -43,13 +49,15 @@ class GraphVisualizer:
 
     def visualize(
         self,
-        angles=None,
-        local_clifford=None,
-        node_distance=(1, 1),
-        show_loop=True,
-        figsize=None,
-        save=False,
-        filename=None,
+        angles: dict[int, float] | None = None,
+        pattern_for_gflow: Pattern | None = None,
+        local_clifford: dict[int, int] | None = None,
+        show_measurement_planes: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        show_loop: bool = True,
+        figsize: tuple[int, int] | None = None,
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         Visualizes the graph with flow or gflow structure.
@@ -63,9 +71,13 @@ class GraphVisualizer:
         angles : dict
             Measurement angles for each nodes on the graph (unit of pi), except output nodes.
             If not None, the nodes with Pauli measurement angles are colored light blue.
+        pattern_for_gflow : graphix.Pattern object
+            If not None, gflow is found from the pattern.
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, the measurement planes are displayed adjacent to the nodes.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -81,20 +93,58 @@ class GraphVisualizer:
         f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_plane)
         if f:
             print("Flow found.")
-            self.visualize_w_flow(f, l_k, angles, local_clifford, node_distance, figsize, save, filename)
+            self.visualize_w_flow(
+                f, l_k, angles, local_clifford, show_measurement_planes, node_distance, figsize, save, filename
+            )
         else:
-            g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
-            if g:
+            if pattern_for_gflow is not None:
+                g, l_k = gflow.gflow_from_pattern(pattern_for_gflow)
                 print("No flow found. Gflow found.")
                 self.visualize_w_gflow(
-                    g, l_k, angles, local_clifford, node_distance, show_loop, figsize, save, filename
+                    g,
+                    l_k,
+                    angles,
+                    local_clifford,
+                    show_measurement_planes,
+                    node_distance,
+                    show_loop,
+                    figsize,
+                    save,
+                    filename,
                 )
             else:
-                print("No flow or gflow found.")
-                self.visualize_wo_structure(angles, local_clifford, node_distance, save, filename)
+                g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
+                if g:
+                    print("No flow found. Gflow found.")
+                    self.visualize_w_gflow(
+                        g,
+                        l_k,
+                        angles,
+                        local_clifford,
+                        show_measurement_planes,
+                        node_distance,
+                        show_loop,
+                        figsize,
+                        save,
+                        filename,
+                    )
+                else:
+                    print("No flow or gflow found.")
+                    self.visualize_wo_structure(
+                        angles, local_clifford, show_measurement_planes, node_distance, save, filename
+                    )
 
     def visualize_w_flow(
-        self, f, l_k, angles=None, local_clifford=None, node_distance=(1, 1), figsize=None, save=False, filename=None
+        self,
+        f: dict[int, int],
+        l_k: dict[int, int],
+        angles: dict[int, float] | None = None,
+        local_clifford: dict[int, int] | None = None,
+        show_measurement_planes: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         visualizes the graph with flow structure.
@@ -116,6 +166,8 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, the measurement planes are displayed adjacent to the nodes.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
@@ -149,7 +201,7 @@ class GraphVisualizer:
                     nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
                 else:
                     t = np.linspace(0, 1, 100)
-                    curve = self.bezier_curve(edge_path[edge], t)
+                    curve = self._bezier_curve(edge_path[edge], t)
                     plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -170,6 +222,11 @@ class GraphVisualizer:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+
+        if show_measurement_planes:
+            for node in self.G.nodes():
+                if node in self.meas_plane.keys():
+                    plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_plane[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
@@ -202,15 +259,16 @@ class GraphVisualizer:
 
     def visualize_w_gflow(
         self,
-        g,
-        l_k,
-        angles=None,
-        local_clifford=None,
-        node_distance=(1, 1),
-        show_loop=True,
-        figsize=None,
-        save=False,
-        filename=None,
+        g: dict[int, set[int]],
+        l_k: dict[int, int],
+        angles: dict[int, float] | None = None,
+        local_clifford: dict[int, int] | None = None,
+        show_measurement_planes: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        show_loop: bool = True,
+        figsize: tuple[int, int] | None = None,
+        save: bool = False,
+        filename: str | None = None,
     ):
         """
         visualizes the graph with flow structure.
@@ -232,6 +290,8 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, the measurement planes are displayed adjacent to the nodes.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         show_loop : bool
@@ -258,7 +318,7 @@ class GraphVisualizer:
                 if edge[0] == edge[1]:  # self loop
                     if show_loop:
                         t = np.linspace(0, 1, 100)
-                        curve = self.bezier_curve(edge_path[edge], t)
+                        curve = self._bezier_curve(edge_path[edge], t)
                         plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
                         plt.annotate(
                             "",
@@ -279,7 +339,7 @@ class GraphVisualizer:
                     )  # Shorten the last edge not to hide arrow under the node
 
                     t = np.linspace(0, 1, 100)
-                    curve = self.bezier_curve(path, t)
+                    curve = self._bezier_curve(path, t)
 
                     plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
                     plt.annotate(
@@ -293,7 +353,7 @@ class GraphVisualizer:
                     nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
                 else:
                     t = np.linspace(0, 1, 100)
-                    curve = self.bezier_curve(edge_path[edge], t)
+                    curve = self._bezier_curve(edge_path[edge], t)
                     plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -314,6 +374,11 @@ class GraphVisualizer:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+
+        if show_measurement_planes:
+            for node in self.G.nodes():
+                if node in self.meas_plane.keys():
+                    plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_plane[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
@@ -344,7 +409,15 @@ class GraphVisualizer:
             plt.savefig(filename)
         plt.show()
 
-    def visualize_wo_structure(self, angles=None, local_clifford=None, node_distance=(1, 1), save=False, filename=None):
+    def visualize_wo_structure(
+        self,
+        angles: dict[int, float] | None = None,
+        local_clifford: dict[int, int] | None = None,
+        show_measurement_planes: bool = False,
+        node_distance: tuple[int, int] = (1, 1),
+        save: bool = False,
+        filename: str | None = None,
+    ):
         """
         visualizes the graph without flow or gflow.
 
@@ -365,6 +438,8 @@ class GraphVisualizer:
         local_clifford : dict
             Indexes of local clifford operations for each nodes.
             If not None, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, the measurement planes are displayed adjacent to the nodes.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
@@ -403,6 +478,11 @@ class GraphVisualizer:
                 if node in local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.04, 0.04]), f"{local_clifford[node]}", fontsize=10, zorder=3)
 
+        if show_measurement_planes:
+            for node in self.G.nodes():
+                if node in self.meas_plane.keys():
+                    plt.text(*pos[node] + np.array([0.05, -0.04]), f"{self.meas_plane[node]}", fontsize=9, zorder=3)
+
         # Draw the labels
         fontsize = 12
         if max(self.G.nodes()) >= 100:
@@ -413,7 +493,12 @@ class GraphVisualizer:
             plt.savefig(filename)
         plt.show()
 
-    def get_figsize(self, l_k, pos=None, node_distance=(1, 1)):
+    def get_figsize(
+        self,
+        l_k: dict[int, int],
+        pos: dict[int, tuple[float, float]] | None = None,
+        node_distance: tuple[int, int] = (1, 1),
+    ) -> tuple[int, int]:
         """
         Returns the figure size of the graph.
 
@@ -421,6 +506,10 @@ class GraphVisualizer:
         ----------
         l_k : dict
             Layer mapping.
+        pos : dict
+            dictionary of node positions.
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
 
         Returns
         -------
@@ -436,7 +525,7 @@ class GraphVisualizer:
 
         return figsize
 
-    def get_edge_path(self, fg, pos):
+    def get_edge_path(self, fg: dict[int, int | set[int]], pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
         Returns the path of edges.
 
@@ -455,8 +544,11 @@ class GraphVisualizer:
         max_iter = 5
         edge_path = {}
         if type(next(iter(fg.values()))) is set:  # fg is gflow
-            edge_set1 = set(self.G.edges())
-            edge_set2 = {(k, v) for k, values in fg.items() for v in values}
+            edge_set1 = {(k, v) for k, values in fg.items() for v in values}
+            edge_set2 = set()
+            for edge in self.G.edges():
+                if edge not in edge_set1 and (edge[1], edge[0]) not in edge_set1:
+                    edge_set2.add(edge)
             edge_set = edge_set1.union(edge_set2)
         else:
             edge_set = set(self.G.edges())
@@ -493,12 +585,16 @@ class GraphVisualizer:
                         start = bezier_path[i]
                         end = bezier_path[i + 1]
                         for node in nodes:
-                            if node != edge[0] and node != edge[1] and self.edge_intersects_node(start, end, pos[node]):
+                            if (
+                                node != edge[0]
+                                and node != edge[1]
+                                and self._edge_intersects_node(start, end, pos[node])
+                            ):
                                 intersect = True
                                 ctrl_points.append(
                                     [
                                         i,
-                                        self.control_point(
+                                        self._control_point(
                                             bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
                                         ),
                                     ]
@@ -509,12 +605,12 @@ class GraphVisualizer:
                     else:
                         for i, ctrl_point in enumerate(ctrl_points):
                             bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
-            bezier_path = self.check_path(bezier_path)
+            bezier_path = self._check_path(bezier_path)
             edge_path[edge] = bezier_path
 
         return edge_path
 
-    def get_pos_from_flow(self, f, l_k):
+    def get_pos_from_flow(self, f: dict[int, int], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
         Returns the position of nodes based on the flow.
 
@@ -545,9 +641,16 @@ class GraphVisualizer:
             pos[node][0] = lmax - layer
         return pos
 
-    def get_pos_from_gflow(self, g, l_k):
+    def get_pos_from_gflow(self, g: dict[int, set[int]], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
         Returns the position of nodes based on the gflow.
+
+        Parameters
+        ----------
+        g : dict
+            gflow mapping.
+        l_k : dict
+            Layer mapping.
 
         Returns
         -------
@@ -583,7 +686,7 @@ class GraphVisualizer:
         return pos
 
     @staticmethod
-    def edge_intersects_node(start, end, node_pos, buffer=0.2):
+    def _edge_intersects_node(start, end, node_pos, buffer=0.2):
         """
         Determine if an edge intersects a node.
         """
@@ -607,7 +710,7 @@ class GraphVisualizer:
         return distance < buffer
 
     @staticmethod
-    def control_point(start, end, node_pos, distance=0.6):
+    def _control_point(start, end, node_pos, distance=0.6):
         """
         Generate a control point to bend the edge around a node.
         """
@@ -623,7 +726,7 @@ class GraphVisualizer:
         return control.tolist()
 
     @staticmethod
-    def bezier_curve(bezier_path, t):
+    def _bezier_curve(bezier_path, t):
         """
         Generate a bezier curve from a list of points.
         """
@@ -633,7 +736,7 @@ class GraphVisualizer:
             curve += np.outer(comb(n, i) * ((1 - t) ** (n - i)) * (t**i), np.array(point))
         return curve
 
-    def check_path(self, path):
+    def _check_path(self, path):
         """
         if there is an acute angle in the path, merge points
         """
@@ -664,4 +767,7 @@ class GraphVisualizer:
 
 
 def comb(n, r):
+    """
+    returns the binomial coefficient of n and r.
+    """
     return math.factorial(n) // (math.factorial(n - r) * math.factorial(r))
