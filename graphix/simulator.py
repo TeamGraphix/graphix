@@ -6,12 +6,12 @@ Simulates MBQC by executing the pattern.
 
 import numpy as np
 
+import graphix.sim.base_backend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.noise_models import NoiseModel
 import warnings
-
 
 class PatternSimulator:
     """MBQC simulator
@@ -25,7 +25,8 @@ class PatternSimulator:
         -----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: str, 'statevector', 'densitymatrix or 'tensornetwork'
+        backend: :class:`graphix.sim.backend.Backend` object,
+            or 'statevector', or 'densitymatrix', or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
         noise_model:
         kwargs: keyword args for specified backend.
@@ -37,35 +38,31 @@ class PatternSimulator:
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
 
-        if backend == "statevector" and noise_model is None:
-            self.noise_model = None
+        if isinstance(backend, graphix.sim.backend.Backend):
+            assert kwargs == dict()
+            self.backend = backend
+        elif backend == "statevector":
             self.backend = StatevectorBackend(pattern, **kwargs)
         elif backend == "densitymatrix":
+            self.backend = DensityMatrixBackend(pattern, **kwargs)
             if noise_model is None:
-                self.noise_model = None
-                # no noise: no need to compute probabilities
-                self.backend = DensityMatrixBackend(pattern, **kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
                 )
-            if noise_model is not None:
-                self.set_noise_model(noise_model)
-                # if noise: have to compute the probabilities
-                self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
-        elif backend in {"tensornetwork", "mps"} and noise_model is None:
-            self.noise_model = None
+        elif backend in {"tensornetwork", "mps"}:
             self.backend = TensorNetworkBackend(pattern, **kwargs)
-        # TODO or just do the noiseless sim with a warning?
-        elif backend in {"statevector", "tensornetwork", "mps"} and noise_model is not None:
-            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         else:
             raise ValueError("Unknown backend.")
+        self.set_noise_model(noise_model)
         self.pattern = pattern
         self.results = self.backend.results
         self.state = self.backend.state
         self.node_index = []
 
     def set_noise_model(self, model):
+        if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
+            self.noise_model = None # if not initialized yet
+            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
     def run(self):

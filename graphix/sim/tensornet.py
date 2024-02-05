@@ -3,11 +3,12 @@ import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
 from graphix.ops import States, Ops
+import graphix.sim.backend
 import string
 from copy import deepcopy
 
 
-class TensorNetworkBackend:
+class TensorNetworkBackend(graphix.sim.backend.Backend):
     """Tensor Network Simulator for MBQC
 
     Executes the measurement pattern using TN expression of graph states.

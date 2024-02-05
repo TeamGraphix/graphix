@@ -4,7 +4,8 @@ import unittest
 import numpy as np
 
 from graphix.ops import States
-from graphix.sim.statevec import Statevec, meas_op
+from graphix.sim.statevec import Statevec
+import tests.test_graphsim
 
 
 class TestStatevec(unittest.TestCase):
@@ -15,7 +16,7 @@ class TestStatevec(unittest.TestCase):
         sv = Statevec(nqubit=n)
         for i in range(n):
             sv.entangle([i, (i + 1) % n])
-        m_op = meas_op(np.pi / 5)
+        m_op = tests.test_graphsim.meas_op(np.pi / 5)
         sv.evolve(m_op, [k])
         sv2 = deepcopy(sv)
 

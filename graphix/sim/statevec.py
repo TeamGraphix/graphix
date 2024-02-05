@@ -1,4 +1,5 @@
 from copy import deepcopy
+import typing
 
 import numpy as np
 
@@ -6,11 +7,10 @@ from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 import graphix.sim.base_backend
 
-
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20, pr_calc=True):
+    def __init__(self, pattern, max_qubit_num=20, pr_calc=True, measure_method=None):
         """
         Parameters
         -----------
@@ -37,7 +37,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
-        super().__init__(pr_calc)
+        super().__init__(pr_calc, measure_method)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -83,7 +83,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         Parameters
         ----------
         cmd : list
-            measurement command : ['M', node, plane angle, s_domain, t_domain]
+            measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
         loc = self._perform_measure(cmd)
         self.state.remove_qubit(loc)
@@ -124,45 +124,6 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
                     self.node_index[move_from],
                     self.node_index[i],
                 )
-
-
-# This function is no longer used
-def meas_op(angle, vop=0, plane="XY", choice=0):
-    """Returns the projection operator for given measurement angle and local Clifford op (VOP).
-
-    .. seealso:: :mod:`graphix.clifford`
-
-    Parameters
-    ----------
-    angle : float
-        original measurement angle in radian
-    vop : int
-        index of local Clifford (vop), see graphq.clifford.CLIFFORD
-    plane : 'XY', 'YZ' or 'ZX'
-        measurement plane on which angle shall be defined
-    choice : 0 or 1
-        choice of measurement outcome. measured eigenvalue would be (-1)**choice.
-
-    Returns
-    -------
-    op : numpy array
-        projection operator
-
-    """
-    assert vop in np.arange(24)
-    assert choice in [0, 1]
-    assert plane in ["XY", "YZ", "XZ"]
-    if plane == "XY":
-        vec = (np.cos(angle), np.sin(angle), 0)
-    elif plane == "YZ":
-        vec = (0, np.cos(angle), np.sin(angle))
-    elif plane == "XZ":
-        vec = (np.cos(angle), 0, np.sin(angle))
-    op_mat = np.eye(2, dtype=np.complex128) / 2
-    for i in range(3):
-        op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
-    op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
-    return op_mat
 
 
 CZ_TENSOR = np.array(

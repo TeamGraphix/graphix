@@ -14,8 +14,9 @@ except ModuleNotFoundError:
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
-from graphix.sim.statevec import Statevec, meas_op
-
+from graphix.sim.statevec import Statevec
+import graphix.clifford
+import graphix.pauli
 
 def get_state(g):
     node_list = list(g.nodes)
@@ -35,6 +36,34 @@ def get_state(g):
         if g.nodes[mapping[i]]["hollow"]:
             gstate.evolve_single(Ops.h, i)
     return gstate
+
+
+def meas_op(angle, plane: graphix.pauli.Plane = graphix.pauli.Plane.XY):
+    """Returns the projection operator for given measurement angle and local Clifford op (VOP).
+
+    .. seealso:: :mod:`graphix.clifford`
+
+    Parameters
+    ----------
+    angle : float
+        original measurement angle in radian
+    plane : 'XY', 'YZ' or 'ZX'
+        measurement plane on which angle shall be defined
+
+    Returns
+    -------
+    op : numpy array
+        projection operator
+
+    """
+    if plane == graphix.pauli.Plane.YZ:
+        vec = (0, np.cos(angle), np.sin(angle)) # tests rely on former convention
+    else:
+        vec = plane.polar(angle)
+    op_mat = np.eye(2, dtype=np.complex128) / 2
+    for i in range(3):
+        op_mat += vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
+    return op_mat
 
 
 @parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])
@@ -66,7 +95,7 @@ class TestGraphSim(unittest.TestCase):
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * np.pi, plane="YZ"), 1)  # z meas
+        gstate.evolve_single(meas_op(0.5 * np.pi, plane=graphix.pauli.Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
         gstate2 = get_state(g)

@@ -11,7 +11,7 @@ from graphix.linalg_validations import check_square, check_hermitian, check_unit
 from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
 import graphix.sim.base_backend
 
 
@@ -283,7 +283,7 @@ class DensityMatrix:
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, measure_method=None):
         """
         Parameters
         ----------
@@ -306,7 +306,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-        super().__init__(pr_calc)
+        super().__init__(pr_calc, measure_method)
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix
