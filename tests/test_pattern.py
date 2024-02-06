@@ -13,6 +13,15 @@ rc.set_seed(SEED)
 
 
 class TestPattern(unittest.TestCase):
+
+
+    # this fails without behaviour modification
+    def test_manual_generation(self):
+        pattern = Pattern(2)
+        pattern.add(["M", 0, 'XY', 0, [], []])
+
+
+
     def test_standardize(self):
         nqubits = 2
         depth = 1
