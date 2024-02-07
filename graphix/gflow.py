@@ -9,6 +9,7 @@ Languages, and Programming (Springer, 2008), pp. 857-868.
 Ref: Backens et al., Quantum 5, 421 (2021).
 
 """
+
 from __future__ import annotations
 
 from itertools import product
@@ -20,7 +21,7 @@ import sympy as sp
 from graphix.linalg import MatGF2
 
 
-def gflow(
+def find_gflow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
@@ -213,7 +214,7 @@ def gflowaux(
         )
 
 
-def flow(
+def find_flow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
@@ -362,51 +363,6 @@ def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     return N
 
 
-def find_flow(
-    graph: nx.Graph,
-    input: set[int],
-    output: set[int],
-    meas_planes: dict[int, str] = None,
-    mode: str = "single",
-) -> tuple[dict[int, set[int]], dict[int, int]]:
-    """Function to determine whether there exists flow or gflow
-
-    Parameters
-    ---------
-    graph: nx.Graph
-        graph (incl. in and out)
-    input: set
-        set of node labels for input
-    output: set
-        set of node labels for output
-    meas_planes: dict(optional)
-        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
-    mode: str(optional)
-        This is the option for gflow.
-        The gflow finding algorithm can yield multiple equivalent solutions. so there are three options
-            - "single": Returrns a single solution
-            - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
-            requiring user substitution to get a concrete answer.
-    """
-    if meas_planes is None:
-        meas_planes = {i: "XY" for i in (set(graph.nodes) - output)}
-    f, l_k = flow(graph, input, output, meas_planes)
-    if f:
-        print("flow found")
-        print("f is ", f)
-        print("l_k is ", l_k)
-    else:
-        print("no flow found, finding gflow")
-    g, l_k = gflow(graph, input, output, meas_planes, mode=mode)
-    if g:
-        print("gflow found")
-        print("g is ", g)
-        print("l_k is ", l_k)
-    else:
-        print("no gflow found")
-
-
 def get_min_depth(l_k: dict[int, int]) -> int:
     """get minimum depth of graph.
 
@@ -480,8 +436,8 @@ def get_dependence_flow(
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     odd_flow: dict[int, set]
-        odd flow neighbors of each node.
-        odd_flow[i] is the set of odd neighbors of f(i).
+        odd neighbors of flow or gflow.
+        odd_flow[i] is the set of odd neighbors of f(i), Odd(f(i)).
 
     Returns
     -------
@@ -511,7 +467,7 @@ def get_layers_from_flow(
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     odd_flow: dict[int, set]
-        odd flow neighbors of each node.
+        odd neighbors of flow or gflow. Odd(f(node))
     inputs: set
         set of input nodes
     outputs: set
@@ -576,7 +532,7 @@ def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
     return adjacency_matrix, node_list
 
 
-def check_flow(
+def verify_flow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
@@ -649,7 +605,7 @@ def check_flow(
     return valid_flow
 
 
-def check_gflow(
+def verify_gflow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
@@ -668,6 +624,7 @@ def check_gflow(
         set of node labels for output
     gflow: dict[int, set]
         gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
+        .. seealso:: :func:`gflow.gflow`
     meas_planes: dict[int, str]
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
@@ -691,7 +648,6 @@ def check_gflow(
     for d in range(depth):
         node_order.extend(list(layers[d]))
     adjacency_matrix, node_list = get_adjacency_matrix(graph)
-    # permute = [node_order.index(i) for i in node_list]
     permute = [node_list.index(i) for i in node_order]
     adjacency_matrix.permute_col(permute)
     adjacency_matrix.permute_row(permute)

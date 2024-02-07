@@ -3,10 +3,10 @@ MBQC pattern generator
 
 """
 
-
 import numpy as np
+
+from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
-from graphix.gflow import flow, gflow, get_layers, find_odd_neighbor
 
 
 def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
@@ -16,10 +16,10 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     specified by networks.Graph and two lists specifying input and output nodes.
     Currently we support XY-plane measurements.
 
-    Searches for the flow in the open graph using :func:`flow` and if found,
+    Searches for the flow in the open graph using :func:`find_flow` and if found,
     construct the measurement pattern according to the theorem 1 of [NJP 9, 250 (2007)].
 
-    Then, if no flow was found, searches for gflow using :func:`gflow`,
+    Then, if no flow was found, searches for gflow using :func:`find_gflow`,
     from which measurement pattern can be constructed from theorem 2 of [NJP 9, 250 (2007)].
 
     The constructed measurement pattern deterministically realize the unitary embedding
@@ -32,7 +32,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     angles :math:`\alpha_i` are applied to the measuring nodes,
     i.e. the randomness of the measurement is eliminated by the added byproduct commands.
 
-    .. seealso:: :func:`flow` :func:`gflow` :class:`graphix.pattern.Pattern`
+    .. seealso:: :func:`find_flow` :func:`find_gflow` :class:`graphix.pattern.Pattern`
 
     Parameters
     ----------
@@ -58,7 +58,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
         meas_planes = {i: "XY" for i in measuring_nodes}
 
     # search for flow first
-    f, l_k = flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
+    f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
     if f:
         # flow found
         depth, layers = get_layers(l_k)
@@ -83,7 +83,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
         pattern.Nnode = len(graph.nodes)
     else:
         # no flow found - we try gflow
-        g, l_k = gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
+        g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
         if g:
             # gflow found
             depth, layers = get_layers(l_k)

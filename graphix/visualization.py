@@ -1,7 +1,9 @@
+import math
+
+import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
-import math
-import networkx as nx
+
 from graphix import gflow
 
 
@@ -78,23 +80,39 @@ class GraphVisualizer:
             Filename of the saved plot.
         """
 
-        f, l_k = gflow.flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_plane)
+        f, l_k = gflow.find_flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_plane)
         if f:
             print("Flow found.")
             self.visualize_w_flow(f, l_k, angles, local_clifford, node_distance, figsize, save, filename)
         else:
-            g, l_k = gflow.gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
+            g, l_k = gflow.find_gflow(self.G, set(self.v_in), set(self.v_out), self.meas_plane)
             if g:
                 print("No flow found. Gflow found.")
                 self.visualize_w_gflow(
-                    g, l_k, angles, local_clifford, node_distance, show_loop, figsize, save, filename
+                    g,
+                    l_k,
+                    angles,
+                    local_clifford,
+                    node_distance,
+                    show_loop,
+                    figsize,
+                    save,
+                    filename,
                 )
             else:
                 print("No flow or gflow found.")
                 self.visualize_wo_structure(angles, local_clifford, node_distance, save, filename)
 
     def visualize_w_flow(
-        self, f, l_k, angles=None, local_clifford=None, node_distance=(1, 1), figsize=None, save=False, filename=None
+        self,
+        f,
+        l_k,
+        angles=None,
+        local_clifford=None,
+        node_distance=(1, 1),
+        figsize=None,
+        save=False,
+        filename=None,
     ):
         """
         visualizes the graph with flow structure.
@@ -139,7 +157,14 @@ class GraphVisualizer:
 
         # Draw the arrows
         for a, b in f.items():
-            nx.draw_networkx_edges(self.G, pos, edgelist=[(a, b)], edge_color="black", arrowstyle="->", arrows=True)
+            nx.draw_networkx_edges(
+                self.G,
+                pos,
+                edgelist=[(a, b)],
+                edge_color="black",
+                arrowstyle="->",
+                arrows=True,
+            )
 
         # Draw the dashed edges
         edge_path = self.get_edge_path(f, pos)
@@ -169,7 +194,12 @@ class GraphVisualizer:
         if local_clifford is not None:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
-                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+                    plt.text(
+                        *pos[node] + np.array([0.2, 0.2]),
+                        f"{local_clifford[node]}",
+                        fontsize=10,
+                        zorder=3,
+                    )
 
         # Draw the labels
         fontsize = 12
@@ -185,11 +215,18 @@ class GraphVisualizer:
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
             plt.axvline(
-                x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
+                x=(layer + 0.5) * node_distance[0],
+                color="gray",
+                linestyle="--",
+                alpha=0.5,
             )  # Draw line between layers
         for layer in range(min(l_k.values()), max(l_k.values()) + 1):
             plt.text(
-                layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
+                layer * node_distance[0],
+                y_min - 0.5,
+                f"l: {max(l_k.values()) - layer}",
+                ha="center",
+                va="top",
             )  # Add layer label at bottom
 
         plt.xlim(
@@ -268,7 +305,12 @@ class GraphVisualizer:
                         )
                 elif len(edge_path[edge]) == 2:  # straight line
                     nx.draw_networkx_edges(
-                        self.G, pos, edgelist=[edge], edge_color="black", arrowstyle="->", arrows=True
+                        self.G,
+                        pos,
+                        edgelist=[edge],
+                        edge_color="black",
+                        arrowstyle="->",
+                        arrows=True,
                     )
                 else:
                     path = edge_path[edge]
@@ -313,7 +355,12 @@ class GraphVisualizer:
         if local_clifford is not None:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
-                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+                    plt.text(
+                        *pos[node] + np.array([0.2, 0.2]),
+                        f"{local_clifford[node]}",
+                        fontsize=10,
+                        zorder=3,
+                    )
 
         # Draw the labels
         fontsize = 12
@@ -329,11 +376,18 @@ class GraphVisualizer:
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
             plt.axvline(
-                x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
+                x=(layer + 0.5) * node_distance[0],
+                color="gray",
+                linestyle="--",
+                alpha=0.5,
             )  # Draw line between layers
         for layer in range(min(l_k.values()), max(l_k.values()) + 1):
             plt.text(
-                layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
+                layer * node_distance[0],
+                y_min - 0.5,
+                f"l: {max(l_k.values()) - layer}",
+                ha="center",
+                va="top",
             )  # Add layer label at bottom
 
         plt.xlim(
@@ -344,7 +398,14 @@ class GraphVisualizer:
             plt.savefig(filename)
         plt.show()
 
-    def visualize_wo_structure(self, angles=None, local_clifford=None, node_distance=(1, 1), save=False, filename=None):
+    def visualize_wo_structure(
+        self,
+        angles=None,
+        local_clifford=None,
+        node_distance=(1, 1),
+        save=False,
+        filename=None,
+    ):
         """
         visualizes the graph without flow or gflow.
 
@@ -401,7 +462,12 @@ class GraphVisualizer:
         if local_clifford is not None:
             for node in self.G.nodes():
                 if node in local_clifford.keys():
-                    plt.text(*pos[node] + np.array([0.04, 0.04]), f"{local_clifford[node]}", fontsize=10, zorder=3)
+                    plt.text(
+                        *pos[node] + np.array([0.04, 0.04]),
+                        f"{local_clifford[node]}",
+                        fontsize=10,
+                        zorder=3,
+                    )
 
         # Draw the labels
         fontsize = 12
@@ -468,7 +534,10 @@ class GraphVisualizer:
 
                 def _point_from_node(pos, dist, angle):
                     angle = np.deg2rad(angle)
-                    return [pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle)]
+                    return [
+                        pos[0] + dist * np.cos(angle),
+                        pos[1] + dist * np.sin(angle),
+                    ]
 
                 bezier_path = [
                     _point_from_node(pos[edge[0]], 0.2, 170),
@@ -499,7 +568,10 @@ class GraphVisualizer:
                                     [
                                         i,
                                         self.control_point(
-                                            bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
+                                            bezier_path[0],
+                                            bezier_path[-1],
+                                            pos[node],
+                                            distance=0.6 / iteration,
                                         ),
                                     ]
                                 )

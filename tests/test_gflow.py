@@ -5,13 +5,8 @@ import unittest
 
 import networkx as nx
 import numpy as np
-from graphix.gflow import (
-    check_flow,
-    check_gflow,
-    flow,
-    get_input_from_flow,
-    gflow,
-)
+from graphix.gflow import (find_flow, find_gflow, get_input_from_flow,
+                           verify_flow, verify_gflow)
 
 from tests.random_circuit import get_rand_circuit
 
@@ -173,7 +168,7 @@ class TestGflow(unittest.TestCase):
         test_graphs = generate_test_graphs()
         for test_graph in test_graphs:
             with self.subTest(test_graph.label):
-                f, l_k = flow(
+                f, l_k = find_flow(
                     test_graph.graph,
                     test_graph.inputs,
                     test_graph.outputs,
@@ -185,7 +180,7 @@ class TestGflow(unittest.TestCase):
         test_graphs = generate_test_graphs()
         for test_graph in test_graphs:
             with self.subTest(test_graph.label):
-                g, l_k = gflow(
+                g, l_k = find_gflow(
                     test_graph.graph,
                     test_graph.inputs,
                     test_graph.outputs,
@@ -193,7 +188,7 @@ class TestGflow(unittest.TestCase):
                 )
                 self.assertEqual(test_graph.gflow_exist, g is not None)
 
-    def test_check_flow(self):
+    def test_verify_flow(self):
         flow_test_cases = dict()
         flow_test_cases["no measurement"] = {
             "empty flow": (True, dict()),
@@ -217,7 +212,7 @@ class TestGflow(unittest.TestCase):
             with self.subTest(test_graph.label):
                 for test_case, (expected, flow) in flow_test_cases[test_graph.label].items():
                     with self.subTest([test_graph.label, test_case]):
-                        valid = check_flow(
+                        valid = verify_flow(
                             test_graph.graph,
                             test_graph.inputs,
                             test_graph.outputs,
@@ -226,7 +221,7 @@ class TestGflow(unittest.TestCase):
                         )
                         self.assertEqual(expected, valid)
 
-    def test_check_gflow(self):
+    def test_verify_gflow(self):
         gflow_test_cases = dict()
         gflow_test_cases["no measurement"] = {
             "empty flow": (True, dict()),
@@ -265,7 +260,7 @@ class TestGflow(unittest.TestCase):
             with self.subTest(test_graph.label):
                 for test_case, (expected, gflow) in gflow_test_cases[test_graph.label].items():
                     with self.subTest([test_graph.label, test_case]):
-                        valid = check_gflow(
+                        valid = verify_gflow(
                             test_graph.graph,
                             test_graph.inputs,
                             test_graph.outputs,
@@ -286,8 +281,8 @@ class TestGflow(unittest.TestCase):
         input = set(pattern.input_nodes)
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        f, l_k = flow(graph, input, output, meas_planes)
-        valid = check_flow(graph, input, output, f, meas_planes)
+        f, l_k = find_flow(graph, input, output, meas_planes)
+        valid = verify_flow(graph, input, output, f, meas_planes)
 
         self.assertEqual(True, valid)
 
@@ -306,9 +301,9 @@ class TestGflow(unittest.TestCase):
         input = set()
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        g, l_k = gflow(graph, input, output, meas_planes)
+        g, l_k = find_gflow(graph, input, output, meas_planes)
 
-        valid = check_gflow(graph, input, output, g, meas_planes)
+        valid = verify_gflow(graph, input, output, g, meas_planes)
 
         self.assertEqual(True, valid)
 
