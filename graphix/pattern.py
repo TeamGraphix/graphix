@@ -1,6 +1,7 @@
 """MBQC pattern according to Measurement Calculus
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
+
 from copy import deepcopy
 
 import networkx as nx
@@ -8,7 +9,7 @@ import numpy as np
 
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
-from graphix.gflow import flow, get_layers, gflow
+from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
@@ -763,6 +764,8 @@ class Pattern:
                         min_edges = len(connected_edges)
                         next_node = i
                         removable_edges = connected_edges
+            if not (next_node > -1):
+                print(next_node)
             assert next_node > -1
             meas_order.append(next_node)
             dependency = self.update_dependency({next_node}, dependency)
@@ -785,7 +788,7 @@ class Pattern:
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
-        f, l_k = flow(G, vin, vout, meas_planes=meas_planes)
+        f, l_k = find_flow(G, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
         depth, layer = get_layers(l_k)
@@ -815,7 +818,7 @@ class Pattern:
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = gflow(G, vin, vout, meas_plane=meas_plane)
+        g, l_k = find_gflow(G, vin, vout, meas_plane=meas_plane)
         if not g:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
@@ -1682,7 +1685,11 @@ class LocalPattern:
             standardized global pattern
         """
         assert self.is_standard()
-        pattern = Pattern(input_nodes=self.input_nodes, output_nodes=self.output_nodes, width=len(self.output_nodes))
+        pattern = Pattern(
+            input_nodes=self.input_nodes,
+            output_nodes=self.output_nodes,
+            width=len(self.output_nodes),
+        )
         Nseq = [["N", i] for i in self.nodes.keys()]
         Eseq = []
         Mseq = []
