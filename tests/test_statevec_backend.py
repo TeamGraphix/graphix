@@ -1,13 +1,25 @@
-from copy import deepcopy
+import sys
 import unittest
+from copy import deepcopy
 
 import numpy as np
+from parameterized import parameterized_class
 
+import graphix.sim
 from graphix.ops import States
+from graphix.sim.backends.backend_factory import _BACKENDS
 from graphix.sim.statevec import Statevec, meas_op
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestStatevec(unittest.TestCase):
+    def setUp(self):
+        if sys.modules.get("jax") is None and self.backend == "jax":
+            self.skipTest("jax not installed")
+        if self.backend == "jax" and sys.platform == "win32" and sys.version_info < (3, 9):
+            self.skipTest("`jaxlib` does not support Windows with Python 3.8.")
+        graphix.sim.set_backend(self.backend)
+
     def test_remove_one_qubit(self):
         n = 10
         k = 3

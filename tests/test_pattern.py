@@ -2,17 +2,29 @@ import sys
 import unittest
 
 import numpy as np
-from parameterized import parameterized
 
+from parameterized import parameterized, parameterized_class
+
+
+import graphix.sim
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
+from graphix.sim.backends.backend_factory import _BACKENDS
 from graphix.transpiler import Circuit
 
 SEED = 42
 rc.set_seed(SEED)
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestPattern(unittest.TestCase):
+    def setUp(self):
+        if sys.modules.get("jax") is None and self.backend == "jax":
+            self.skipTest("jax not installed")
+        if self.backend == "jax" and sys.platform == "win32" and sys.version_info < (3, 9):
+            self.skipTest("Jax does not support Windows with Python 3.8.")
+        graphix.sim.set_backend(self.backend)
+
     def test_standardize(self):
         nqubits = 2
         depth = 1
@@ -270,7 +282,15 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
+@parameterized_class([{"backend": b} for b in _BACKENDS.keys()])
 class TestLocalPattern(unittest.TestCase):
+    def setUp(self):
+        if sys.modules.get("jax") is None and self.backend == "jax":
+            self.skipTest("jax not installed")
+        if self.backend == "jax" and sys.platform == "win32" and sys.version_info < (3, 9):
+            self.skipTest("Jax does not support Windows with Python 3.8.")
+        graphix.sim.set_backend(self.backend)
+
     def test_assert_equal_edge(self):
         test_case = [
             [(0, 1), (0, 1), True],
