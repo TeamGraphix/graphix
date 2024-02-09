@@ -415,6 +415,7 @@ class GraphVisualizer:
         local_clifford: dict[int, int] | None = None,
         show_measurement_planes: bool = False,
         node_distance: tuple[int, int] = (1, 1),
+        figsize: tuple[int, int] | None = None,
         save: bool = False,
         filename: str | None = None,
     ):
@@ -428,10 +429,6 @@ class GraphVisualizer:
 
         Parameters
         ----------
-        f : dict
-            flow mapping.
-        l_k : dict
-            Layer mapping.
         angles : dict
             Measurement angles for each nodes on the graph (unit of pi), except output nodes.
             If not None, the nodes with Pauli measurement angles are colored light blue.
@@ -449,15 +446,22 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-
-        scale = max(2 * np.log(len(self.G.nodes())), 5)
-        plt.figure(figsize=(scale, (2 / 3) * scale))
-        k_val = 2 / np.sqrt(len(self.G.nodes()))
-        pos = nx.spring_layout(self.G, k=k_val)  # Layout for the nodes
+        pos = self.get_pos_wo_structure()
         pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}  # Scale the layout
 
-        # Draw the edges
-        nx.draw_networkx_edges(self.G, pos, edge_color="black")
+        if figsize is None:
+            figsize = self.get_figsize(None, pos, node_distance=node_distance)
+        plt.figure(figsize=figsize)
+
+        edge_path = self.get_edge_path_wo_structure(pos)
+
+        for edge in edge_path.keys():
+            if len(edge_path[edge]) == 2:
+                nx.draw_networkx_edges(self.G, pos, edgelist=[edge])
+            else:
+                t = np.linspace(0, 1, 100)
+                curve = self._bezier_curve(edge_path[edge], t)
+                plt.plot(curve[:, 0], curve[:, 1], "k-", linewidth=1)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
         for node in self.G.nodes():
@@ -489,6 +493,16 @@ class GraphVisualizer:
             fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
         nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
 
+        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
+        y_min = min([pos[node][1] for node in self.G.nodes()])  # Get the minimum y coordinate
+        y_max = max([pos[node][1] for node in self.G.nodes()])  # Get the maximum y coordinate
+
+        plt.xlim(
+            x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
+        )  # Add some padding to the left and right
+        plt.ylim(y_min - 0.5, y_max + 0.5)  # Add some padding to the top and bottom
+
         if save:
             plt.savefig(filename)
         plt.show()
@@ -516,11 +530,14 @@ class GraphVisualizer:
         figsize : tuple
             figure size of the graph.
         """
-        width = (max(l_k.values()) + 1) * 0.8
+        if l_k is None:
+            width = len(set([pos[node][0] for node in self.G.nodes()])) * 0.8
+        else:
+            width = (max(l_k.values()) + 1) * 0.8
         if pos is not None:
             height = len(set([pos[node][1] for node in self.G.nodes()]))
-        elif len(self.v_in) > 0:
-            height = len(self.v_in)
+        elif len(self.v_out) > 0:
+            height = len(self.v_out)
         figsize = (width * node_distance[0], height * node_distance[1])
 
         return figsize
@@ -610,6 +627,57 @@ class GraphVisualizer:
 
         return edge_path
 
+    def get_edge_path_wo_structure(self, pos: dict[int, tuple[float, float]]) -> dict[int, list]:
+        """
+        Returns the path of edges.
+
+        Parameters
+        ----------
+        pos : dict
+            dictionary of node positions.
+
+        Returns
+        -------
+        edge_path : dict
+            dictionary of edge paths.
+        """
+        max_iter = 5
+        edge_path = {}
+        edge_set = set(self.G.edges())
+        for edge in edge_set:
+            iteration = 0
+            nodes = self.G.nodes()
+            bezier_path = [pos[edge[0]], pos[edge[1]]]
+            while True:
+                iteration += 1
+                intersect = False
+                if iteration > max_iter:
+                    break
+                ctrl_points = []
+                for i in range(len(bezier_path) - 1):
+                    start = bezier_path[i]
+                    end = bezier_path[i + 1]
+                    for node in nodes:
+                        if node != edge[0] and node != edge[1] and self._edge_intersects_node(start, end, pos[node]):
+                            intersect = True
+                            ctrl_points.append(
+                                [
+                                    i,
+                                    self._control_point(
+                                        bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
+                                    ),
+                                ]
+                            )
+                            nodes = set(nodes) - {node}
+                if not intersect:
+                    break
+                else:
+                    for i, ctrl_point in enumerate(ctrl_points):
+                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+            bezier_path = self._check_path(bezier_path)
+            edge_path[edge] = bezier_path
+        return edge_path
+
     def get_pos_from_flow(self, f: dict[int, int], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
         Returns the position of nodes based on the flow.
@@ -685,6 +753,99 @@ class GraphVisualizer:
 
         return pos
 
+    def get_pos_wo_structure(self) -> dict[int, tuple[float, float]]:
+        """
+        Returns the position of nodes based on the graph.
+
+        Returns
+        -------
+        pos : dict
+            dictionary of node positions.
+
+        Returns
+        -------
+        pos : dict
+            dictionary of node positions.
+        """
+
+        layer = dict()
+        connected_components = list(nx.connected_components(self.G))
+
+        for component in connected_components:
+            subgraph = self.G.subgraph(component)
+            initial_pos = {node: (0, 0) for node in component}
+
+            if len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) == 0:
+                pos = nx.spring_layout(subgraph)
+                # order the nodes based on the x-coordinate
+                order = sorted(pos, key=lambda x: pos[x][0])
+                for k, node in enumerate(order[::-1]):
+                    layer[node] = k
+
+            elif len(set(self.v_out) & set(component)) > 0 and len(set(self.v_in) & set(component)) == 0:
+                fixed_nodes = list(set(self.v_out) & set(component))
+                for i, node in enumerate(fixed_nodes):
+                    initial_pos[node] = (10, i)
+                    layer[node] = 0
+                pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+                # order the nodes based on the x-coordinate
+                order = sorted(pos, key=lambda x: pos[x][0])
+                order = [node for node in order if node not in fixed_nodes]
+                Nv = len(self.v_out)
+                for i, node in enumerate(order[::-1]):
+                    k = i // Nv + 1
+                    layer[node] = k
+
+            elif len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) != 0:
+                fixed_nodes = list(set(self.v_in) & set(component))
+                for i, node in enumerate(fixed_nodes):
+                    initial_pos[node] = (-10, i)
+                pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+                # order the nodes based on the x-coordinate
+                order = sorted(pos, key=lambda x: pos[x][0])
+                order = [node for node in order if node not in fixed_nodes]
+                Nv = len(self.v_in)
+                for i, node in enumerate(order[::-1]):
+                    k = i // Nv
+                    layer[node] = k
+                layer_input = max(layer.values()) + 1
+                for node in fixed_nodes:
+                    layer[node] = layer_input
+
+            else:
+                for i, node in enumerate(list(set(self.v_out) & set(component))):
+                    initial_pos[node] = (10, i)
+                    layer[node] = 0
+                for i, node in enumerate(list(set(self.v_in) & set(component))):
+                    initial_pos[node] = (-10, i)
+                fixed_nodes = list(set(self.v_out) & set(component)) + list(set(self.v_in) & set(component))
+                pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
+                # order the nodes based on the x-coordinate
+                order = sorted(pos, key=lambda x: pos[x][0])
+                order = [node for node in order if node not in fixed_nodes]
+                Nv = len(self.v_out)
+                for i, node in enumerate(order[::-1]):
+                    k = i // Nv + 1
+                    layer[node] = k
+                layer_input = max(layer.values()) + 1
+                for node in set(self.v_in) & set(component):
+                    layer[node] = layer_input
+
+        G_prime = self.G.copy()
+        G_prime.add_nodes_from(self.G.nodes())
+        G_prime.add_edges_from(self.G.edges())
+        l_max = max(layer.values())
+        l_reverse = {v: l_max - l for v, l in layer.items()}
+        nx.set_node_attributes(G_prime, l_reverse, "subset")
+        pos = nx.multipartite_layout(G_prime)
+        for node, layer in layer.items():
+            pos[node][0] = l_max - layer
+        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert.sort()
+        for node in self.G.nodes():
+            pos[node][1] = vert.index(pos[node][1])
+        return pos
+
     @staticmethod
     def _edge_intersects_node(start, end, node_pos, buffer=0.2):
         """
@@ -750,6 +911,9 @@ class GraphVisualizer:
             for i in range(len(path) - 2):
                 v1 = path[i + 1] - path[i]
                 v2 = path[i + 2] - path[i + 1]
+                if (v1 == 0).all() or (v2 == 0).all():
+                    path = np.delete(path, i + 1, 0)
+                    break
                 if np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)) < np.cos(3 * np.pi / 4):
                     if i == len(path) - 3:
                         path = np.delete(path, i + 1, 0)
