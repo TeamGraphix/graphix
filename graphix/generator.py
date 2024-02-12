@@ -62,46 +62,44 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     if f:
         # flow found
         depth, layers = get_layers(l_k)
-        pattern = Pattern(input_nodes=inputs, output_nodes=outputs, width=len(inputs))
-        pattern.seq = [["N", i] for i in inputs]
+        pattern = Pattern(input_nodes=inputs)
+        pattern.extend([["N", i] for i in inputs])
         for i in set(graph.nodes) - set(inputs):
-            pattern.seq.append(["N", i])
+            pattern.add(["N", i])
         for e in graph.edges:
-            pattern.seq.append(["E", e])
+            pattern.add(["E", e])
         measured = []
         for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
             for j in layers[i]:
                 measured.append(j)
-                pattern.seq.append(["M", j, "XY", angles[j], [], []])
+                pattern.add(["M", j, "XY", angles[j], [], []])
                 neighbors = set()
                 for k in f[j]:
                     neighbors = neighbors | set(graph.neighbors(k))
                 for k in neighbors - set([j]):
                     # if k not in measured:
-                    pattern.seq.append(["Z", k, [j]])
-                pattern.seq.append(["X", f[j].pop(), [j]])
-        pattern.Nnode = len(graph.nodes)
+                    pattern.add(["Z", k, [j]])
+                pattern.add(["X", f[j].pop(), [j]])
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
         if g:
             # gflow found
             depth, layers = get_layers(l_k)
-            pattern = Pattern(input_nodes=inputs, output_nodes=outputs, width=len(inputs))
-            pattern.seq = [["N", i] for i in inputs]
+            pattern = Pattern(input_nodes=inputs)
+            pattern.extend([["N", i] for i in inputs])
             for i in set(graph.nodes) - set(inputs):
-                pattern.seq.append(["N", i])
+                pattern.add(["N", i])
             for e in graph.edges:
-                pattern.seq.append(["E", e])
+                pattern.add(["E", e])
             for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
                 for j in layers[i]:
-                    pattern.seq.append(["M", j, meas_planes[j], angles[j], [], []])
+                    pattern.add(["M", j, meas_planes[j], angles[j], [], []])
                     odd_neighbors = find_odd_neighbor(graph, g[j])
                     for k in odd_neighbors - set([j]):
-                        pattern.seq.append(["Z", k, [j]])
+                        pattern.add(["Z", k, [j]])
                     for k in g[j] - set([j]):
-                        pattern.seq.append(["X", k, [j]])
-            pattern.Nnode = len(graph.nodes)
+                        pattern.add(["X", k, [j]])
         else:
             raise ValueError("no flow or gflow found")
 

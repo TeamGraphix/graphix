@@ -228,15 +228,15 @@ class Circuit:
         Nnode = self.width
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
-        pattern = Pattern(input_nodes=input, width=self.width)
-        pattern.seq = [["N", i] for i in input]
+        pattern = Pattern(input_nodes=input)
+        pattern.extend([["N", i] for i in range(self.width)])
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1][0]], out[instr[1][1]], seq = self._cnot_command(
                     out[instr[1][0]], out[instr[1][1]], ancilla
                 )
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "SWAP":
                 out[instr[1][0]], out[instr[1][1]] = out[instr[1][1]], out[instr[1][0]]
@@ -245,48 +245,48 @@ class Circuit:
             elif instr[0] == "H":
                 ancilla = Nnode
                 out[instr[1]], seq = self._h_command(out[instr[1]], ancilla)
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 1
             elif instr[0] == "S":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._s_command(out[instr[1]], ancilla)
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "X":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._x_command(out[instr[1]], ancilla)
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "Y":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
                 out[instr[1]], seq = self._y_command(out[instr[1]], ancilla)
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 4
             elif instr[0] == "Z":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._z_command(out[instr[1]], ancilla)
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "Rx":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._rx_command(out[instr[1]], ancilla, instr[2])
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "Ry":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
                 out[instr[1]], seq = self._ry_command(out[instr[1]], ancilla, instr[2])
-                pattern.seq.extend(seq)
+                pattern.extend(seq)
                 Nnode += 4
             elif instr[0] == "Rz":
                 if opt:
                     ancilla = Nnode
                     out[instr[1]], seq = self._rz_command_opt(out[instr[1]], ancilla, instr[2])
-                    pattern.seq.extend(seq)
+                    pattern.extend(seq)
                     Nnode += 1
                 else:
                     ancilla = [Nnode, Nnode + 1]
                     out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
-                    pattern.seq.extend(seq)
+                    pattern.extend(seq)
                     Nnode += 2
             elif instr[0] == "Rzz":
                 if opt:
@@ -294,7 +294,7 @@ class Circuit:
                     out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
                         out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
                     )
-                    pattern.seq.extend(seq)
+                    pattern.extend(seq)
                     Nnode += 1
                 else:
                     raise NotImplementedError(
@@ -310,7 +310,7 @@ class Circuit:
                         out[instr[1][2]],
                         seq,
                     ) = self._ccx_command_opt(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
-                    pattern.seq.extend(seq)
+                    pattern.extend(seq)
                     Nnode += 11
                 else:
                     ancilla = [Nnode + i for i in range(18)]
@@ -320,12 +320,11 @@ class Circuit:
                         out[instr[1][2]],
                         seq,
                     ) = self._ccx_command(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
-                    pattern.seq.extend(seq)
+                    pattern.extend(seq)
                     Nnode += 18
             else:
                 raise ValueError("Unknown instruction, commands not added")
-        pattern.output_nodes = out
-        pattern.Nnode = Nnode
+        pattern.reorder_output_nodes(out)
         return pattern
 
     def standardize_and_transpile(self, opt: bool = True):
@@ -519,9 +518,9 @@ class Circuit:
             command_seq.append(cmd)
         for cmd in x_cmds:
             command_seq.append(cmd)
-        pattern = Pattern(input_nodes=inputs, output_nodes=out, width=self.width)
-        pattern.Nnode = Nnode
-        pattern.seq = command_seq
+        pattern = Pattern(input_nodes=inputs)
+        pattern.extend(command_seq)
+        pattern.reorder_output_nodes(out)
         return pattern
 
     def _commute_with_swap(self, target: int):
@@ -1233,16 +1232,16 @@ class Circuit:
         old_out = deepcopy(output_nodes)
         output_nodes.sort()
         # check all commands and swap node indices
-        for i in range(len(pattern.seq)):
-            if pattern.seq[i][0] == "E":
-                j, k = pattern.seq[i][1]
+        for cmd in pattern:
+            if cmd[0] == "E":
+                j, k = cmd[1]
                 if j in old_out:
                     j = output_nodes[old_out.index(j)]
                 if k in old_out:
                     k = output_nodes[old_out.index(k)]
-                pattern.seq[i][1] = (j, k)
-            elif pattern.seq[i][1] in old_out:
-                pattern.seq[i][1] = output_nodes[old_out.index(pattern.seq[i][1])]
+                cmd[1] = (j, k)
+            elif cmd[1] in old_out:
+                cmd[1] = output_nodes[old_out.index(cmd[1])]
 
     def simulate_statevector(self, input_state: Optional[Statevec] = None):
         """Run statevector simultion of the gate sequence, using graphix.Statevec

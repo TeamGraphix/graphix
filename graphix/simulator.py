@@ -49,7 +49,7 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
-        for cmd in self.pattern.seq:
+        for cmd in self.pattern:
             if cmd[0] == "N":
                 self.backend.add_nodes([cmd[1]])
             elif cmd[0] == "E":
@@ -64,7 +64,6 @@ class PatternSimulator:
                 self.backend.apply_clifford(cmd)
             else:
                 raise ValueError("invalid commands")
-            if self.pattern.seq[-1] == cmd:
-                self.backend.finalize()
+        self.backend.finalize()
 
         return self.backend.state
