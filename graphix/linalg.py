@@ -38,6 +38,16 @@ class MatGF2:
             other = MatGF2(other)
         return MatGF2(self.data - other.data)
 
+    def __mul__(self, other):
+        if isinstance(other, np.ndarray):
+            other = MatGF2(other)
+        return MatGF2(self.data * other.data)
+
+    def __matmul__(self, other):
+        if isinstance(other, np.ndarray):
+            other = MatGF2(other)
+        return MatGF2(self.data @ other.data)
+
     def copy(self):
         return MatGF2(self.data.copy())
 
@@ -131,6 +141,26 @@ class MatGF2:
         """
         self.data[:, [col1, col2]] = self.data[:, [col2, col1]]
 
+    def permute_row(self, row_permutation):
+        """permute rows
+
+        Parameters
+        ----------
+        row_permutation: array_like
+            row permutation
+        """
+        self.data = self.data[row_permutation, :]
+
+    def permute_col(self, col_permutation):
+        """permute columns
+
+        Parameters
+        ----------
+        col_permutation: array_like
+            column permutation
+        """
+        self.data = self.data[:, col_permutation]
+
     def is_canonical_form(self):
         """check if the matrix is in a canonical(Row reduced echelon form) form
 
@@ -194,9 +224,9 @@ class MatGF2:
             forward eliminated matrix
         b: MatGF2
             forward eliminated right hand side
-        row_pertumutation: list
+        row_permutation: list
             row permutation
-        col_pertumutation: list
+        col_permutation: list
             column permutation
         """
         if copy:
@@ -207,8 +237,8 @@ class MatGF2:
             b = np.zeros((A.data.shape[0], 1), dtype=int)
         b = MatGF2(b)
         # Remember the row and column order
-        row_pertumutation = [i for i in range(A.data.shape[0])]
-        col_pertumutation = [i for i in range(A.data.shape[1])]
+        row_permutation = [i for i in range(A.data.shape[0])]
+        col_permutation = [i for i in range(A.data.shape[1])]
 
         # Gauss-Jordan Elimination
         max_rank = min(A.data.shape)
@@ -221,18 +251,23 @@ class MatGF2:
                 if pivot_row != row:
                     A.swap_row(row, pivot_row)
                     b.swap_row(row, pivot_row)
-                    row_pertumutation[row] = pivot_row
-                    row_pertumutation[pivot_row] = row
+                    former_row = row_permutation.index(row)
+                    former_pivot_row = row_permutation.index(pivot_row)
+                    row_permutation[former_row] = pivot_row
+                    row_permutation[former_pivot_row] = row
                 pivot_col = pivot[1][0] + row
                 if pivot_col != row:
                     A.swap_col(row, pivot_col)
-                    col_pertumutation[row] = pivot_col
-                    col_pertumutation[pivot_col] = row
+                    former_col = col_permutation.index(row)
+                    former_pivot_col = col_permutation.index(pivot_col)
+                    col_permutation[former_col] = pivot_col
+                    col_permutation[former_pivot_col] = row
+                assert A.data[row, row] == 1
             eliminate_rows = set(A.data[:, row].nonzero()[0]) - {row}
             for eliminate_row in eliminate_rows:
-                A.data[eliminate_row] += A.data[row]
-                b.data[eliminate_row] += b.data[row]
-        return A, b, row_pertumutation, col_pertumutation
+                A.data[eliminate_row, :] += A.data[row, :]
+                b.data[eliminate_row, :] += b.data[row, :]
+        return A, b, row_permutation, col_permutation
 
     def backward_substitute(self, b):
         """backward substitute the matrix
