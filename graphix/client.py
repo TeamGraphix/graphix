@@ -2,6 +2,7 @@ import dataclasses
 import numpy as np
 
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
+import graphix.ops
 import graphix.sim.base_backend
 import graphix.sim.statevec
 import graphix.simulator
@@ -27,7 +28,7 @@ class MeasureParameters:
 
 
 class Client:
-    def __init__(self, pattern, blind=False, secrets=None):
+    def __init__(self, pattern, blind=False, secrets={}):
         self.pattern = pattern
 
         """
@@ -36,13 +37,44 @@ class Client:
         - Measurement parameters : plane, angle, X and Z dependencies
         - Measurement outcome
         """
-        self.measurement_db = {}
         self.results = pattern.results.copy()
         self.measure_method = ClientMeasureMethod(self)
+        self.measurement_db = {}
         self.init_measurement_db()
+        self.byproduct_db = {}
+        self.init_byproduct_db()
+        self.backend_results = {}
+        self.blind = blind
+        # By default, no secrets
+        self.r_secret = False
+        self.secrets = {}
+        # Initialize the secrets
+        self.init_secrets(secrets)
 
+    def init_secrets(self, secrets):
+        if self.blind:
+            if 'r' in secrets:
+                # User wants to add an r-secret, either customized or generated on the fly
+                self.r_secret = True
+                self.secrets['r'] = {}
+                r_size = len(secrets['r'].keys())
+                if r_size == 0:
+                    # Need to generate the bit for each measured qubit
+                    for node in self.measurement_db:
+                        self.secrets['r'][node] = np.random.randint(0, 2)
+                elif r_size == len(self.measurement_db):
+                    self.secrets['r'] = secrets['r']
+                    # TODO : add more rigorous test of the r-secret format
+                else:
+                    raise ValueError("`r`secret has unappropriated length.")
+            # TODO : handle secrets `a`, `theta`
 
     def init_measurement_db(self):
+        """
+        Initializes the "database of measurement configurations and results" held by the customer
+        according to the pattern desired
+        Initial measurement outcomes are set to 0
+        """
         for cmd in self.pattern:
             if cmd[0] == 'M':
                 node = cmd[1]
@@ -62,7 +94,55 @@ class Client:
         backend = graphix.sim.statevec.StatevectorBackend(pattern=self.pattern, measure_method=self.measure_method)
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.pattern)
         state = sim.run()
+        self.backend_results = backend.results
+        self.decode_output_state(backend, state)
         return state
+
+
+    def decode_output_state(self, backend, state):
+        if self.blind:
+            for node in self.pattern.output_nodes:
+                if node in self.byproduct_db:
+                    z_decoding, x_decoding = self.decode_output(node)
+                    if z_decoding:
+                        state.evolve_single(op=graphix.ops.Ops.z, i=backend.node_index.index(node))
+                    if x_decoding:
+                        state.evolve_single(op=graphix.ops.Ops.x, i=backend.node_index.index(node))
+
+    def get_secrets_size(self):
+        secrets_size = {}
+        for secret in self.secrets:
+            secrets_size[secret] = len(self.secrets[secret])
+        return secrets_size
+
+    def init_byproduct_db(self):
+        for node in self.pattern.output_nodes:
+            self.byproduct_db[node] = {
+                'z-domain': [],
+                'x-domain': []
+            }
+
+        for cmd in self.pattern:
+            if cmd[0] == 'Z' or cmd[0] == 'X':
+                node = cmd[1]
+
+                if cmd[0] == 'Z':
+                    self.byproduct_db[node]['z-domain'] = cmd[2]
+                if cmd[0] == 'X':
+                    self.byproduct_db[node]['x-domain'] = cmd[2]
+
+    def decode_output(self, node):
+        z_decoding = 0
+        x_decoding = 0
+        if self.r_secret:
+            for z_dep_node in self.byproduct_db[node]['z-domain']:
+                z_decoding += self.secrets['r'][z_dep_node]
+            z_decoding = z_decoding % 2
+            for x_dep_node in self.byproduct_db[node]['x-domain']:
+                x_decoding += self.secrets['r'][x_dep_node]
+            x_decoding = x_decoding % 2
+
+        return z_decoding, x_decoding
 
 
 class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
@@ -83,4 +163,7 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
 
     def set_measure_result(self, cmd, result: bool) -> None:
         node = cmd[1]
+        if self.__client.r_secret:
+            r_value = self.__client.secrets['r'][node]
+            result = (result + r_value) % 2
         self.__client.results[node] = result
