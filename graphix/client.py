@@ -152,13 +152,15 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
     def get_measurement_description(self, cmd, results) -> graphix.sim.base_backend.MeasurementDescription:
         node = cmd[1]
         parameters = self.__client.measurement_db[node]
+        r_value = 0 if not self.__client.r_secret else self.__client.secrets['r'][node]
+        angle = parameters.angle + np.pi * r_value
         # extract signals for adaptive angle
         s_signal = np.sum(self.__client.results[j] for j in parameters.s_domain)
         t_signal = np.sum(self.__client.results[j] for j in parameters.t_domain)
         measure_update = graphix.pauli.MeasureUpdate.compute(
             parameters.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[parameters.vop]
         )
-        angle = parameters.angle * measure_update.coeff + measure_update.add_term
+        angle = angle * measure_update.coeff + measure_update.add_term
         return graphix.sim.base_backend.MeasurementDescription(measure_update.new_plane, angle)
 
     def set_measure_result(self, cmd, result: bool) -> None:
