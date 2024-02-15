@@ -175,8 +175,6 @@ def gflowaux(
             binary_combinations = product([0, 1], repeat=len(kernels))
             for binary_combination in binary_combinations:
                 sol_list = [x_col[i].subs(zip(kernels, binary_combination)) for i in range(len(x_col))]
-                kernel_list = [True if i == 1 else False for i in binary_combination]
-                sol_list.extend(kernel_list)
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
@@ -190,8 +188,6 @@ def gflowaux(
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
-            for i in range(len(kernels)):
-                g[non_out_node][node_order_col[col_permutation.index(len(x_col) + i)]] = kernels[i]
             if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
@@ -388,14 +384,16 @@ def flowaux(
         l_k,
         k + 1,
     )
-    
-    
+
+
 def find_pauliflow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
     meas_planes: dict[int, str],
-    meas_angles: dict[int, float]
+    meas_angles: dict[int, float],
+    mode: str = "single",
+    printout=False,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Maximally delayed Pauli flow finding algorithm
 
@@ -423,6 +421,12 @@ def find_pauliflow(
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     meas_angles: dict
         measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
+    mode: str(optional)
+        The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
+            - "single": Returrns a single solution
+            - "all": Returns all possible solutions
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+                requiring user substitution to get a concrete answer.
 
     Returns
     -------
@@ -452,11 +456,12 @@ def find_pauliflow(
                 Ly |= {node}
             elif meas_angles[node] == 1 / 2:
                 Lz |= {node}
-    # print("Lx is ", Lx)
-    # print("Ly is ", Ly)
-    # print("Lz is ", Lz)
-    # print("l_k is ", l_k)
-    return pauliflowaux(graph, input, output, meas_planes, 0, set(), output, l_k, p, Lx, Ly, Lz)
+    if printout:
+        print("Lx is ", Lx)
+        print("Ly is ", Ly)
+        print("Lz is ", Lz)
+        print("l_k is ", l_k, "\n")
+    return pauliflowaux(graph, input, output, meas_planes, 0, set(), output, l_k, p, Lx, Ly, Lz, mode, printout)
 
 
 def pauliflowaux(
@@ -472,6 +477,8 @@ def pauliflowaux(
     Lx: set[int],
     Ly: set[int],
     Lz: set[int],
+    mode: str = "single",
+    printout=False,
 ):
     """Function to find one layer of the Pauli flow.
 
@@ -493,7 +500,7 @@ def pauliflowaux(
         set of qubits to be corrected.
     solved_nodes: set
         set of qubits whose layers are already determined.
-    l_k: dict
+    l_k: dicß
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     p: dict
         Pauli flow function. p[i] is the set of qubits to be corrected for the measurement of qubit i.
@@ -503,6 +510,12 @@ def pauliflowaux(
         set of qubits whose measurement operator is "Y".
     Lz: set
         set of qubits whose measurement operator is "Z".
+    mode: str(optional)
+        The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
+            - "single": Returrns a single solution
+            - "all": Returns all possible solutions
+            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+              requiring user substitution to get a concrete answer.
 
     Returns
     -------
@@ -511,6 +524,10 @@ def pauliflowaux(
     l_k: dict
         layers obtained by Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
+    if printout:
+        print("k is ", k)
+        print("correction_candidate is ", correction_candidate)
+        print("solved_nodes is ", solved_nodes, "\n")
     solved_update = set()
     nodes = set(graph.nodes)
     if output == nodes:
@@ -522,21 +539,26 @@ def pauliflowaux(
     node_order_row = node_order_list.copy()
     node_order_row_lower = node_order_list.copy()
     node_order_col = node_order_list.copy()
-    # print("node_order_row is \n", node_order_row)
-    # print("node_order_col is \n", node_order_col)
-    # print("adj_mat is \n", adj_mat)
-    # print("node_order_row_lower is \n", node_order_row_lower)
-    # print("adj_mat_w_id is \n", adj_mat_w_id)
+    if printout:
+        print("node_order_row is \n", node_order_row)
+        print("node_order_col is \n", node_order_col)
+        print("adj_mat is \n", adj_mat)
+        print("node_order_row_lower is \n", node_order_row_lower)
+        print("adj_mat_w_id is \n", adj_mat_w_id)
 
     Pbar = correction_candidate | Ly | Lz
     P = nodes - Pbar
     K = (correction_candidate | Lx | Ly) & (nodes - input)
     Y = Ly - correction_candidate
-    # print("P is \n", P)
-    # print("K is \n", K)
-    # print("Y is \n", Y)
+    if printout:
+        print("P is \n", P)
+        print("K is \n", K)
+        print("Y is \n", Y)
 
     for node in unsolved_nodes:
+        if printout:
+            print("\n")
+            print("node is ", node)
         adj_mat_ = adj_mat.copy()
         adj_mat_w_id_ = adj_mat_w_id.copy()
         node_order_row_ = node_order_row.copy()
@@ -552,83 +574,173 @@ def pauliflowaux(
             adj_mat_.remove_col(node_order_col_.index(node_))
             adj_mat_w_id_.remove_col(node_order_col_.index(node_))
             node_order_col_.remove(node_)
-        # print("\n -Node is ", node)
-        # print("node_order_row_ is \n", node_order_row_)
-        # print("node_order_col_ is \n", node_order_col_)
-        # print("adj_mat_ is \n", adj_mat_)
-        # print("node_order_row_lower_ is \n", node_order_row_lower_)
-        # print("adj_mat_w_id_ is \n", adj_mat_w_id_)
+        if printout:
+            print("node_order_row_ is \n", node_order_row_)
+            print("node_order_col_ is \n", node_order_col_)
+            print("adj_mat_ is \n", adj_mat_)
+            print("node_order_row_lower_ is \n", node_order_row_lower_)
+            print("adj_mat_w_id_ is \n", adj_mat_w_id_)
         adj_mat_.concatenate(adj_mat_w_id_, axis=0)
 
+        if mode == "all":
+            p[node] = set()
+
+        if mode == "abstract":
+            p[node] = list()
+
         solved = False
-        if not solved and (meas_planes[node] == "XY" or node in Lx or node in Ly):
+        if meas_planes[node] == "XY" or node in Lx or node in Ly:
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             S.data[node_order_row_.index(node), :] = 1
-            # print("S_upper is \n", S)
             S_lower = MatGF2(np.zeros((len(node_order_row_lower_), 1), dtype=int))
-            # print("S_lower is \n", S_lower)
             S.concatenate(S_lower, axis=0)
-            # print("S is \n", S)
-            adj_mat_XY, S, _, col_pertumutation_XY = adj_mat_.forward_eliminate(S, copy=True)
-            x_XY, __package__ = adj_mat_XY.backward_substitute(S)
-            # print("x_XY is \n", x_XY)
-            # print("XY.shape is \n", x_XY.shape)
+            if printout:
+                print("S_upper is \n", S)
+                print("S_lower is \n", S_lower)
+                print("S is \n", S)
+            adj_mat_XY, S, _, col_permutation_XY = adj_mat_.forward_eliminate(S, copy=True)
+            x_XY, kernels = adj_mat_XY.backward_substitute(S)
+            if printout:
+                print("x_XY is \n", x_XY)
+                print("XY.shape is \n", x_XY.shape)
+                print("row_permutation_XY is \n", _)
+                print("col_permutation_XY is \n", col_permutation_XY)
+                print("kernel is \n", kernels)
+
             if 0 not in x_XY.shape and x_XY[0, 0] != sp.nan:
-                # print("x_XY is \n", x_XY)
-                solved = True
                 solved_update |= {node}
-                p[node] = set()
-                for i in range(x_XY.shape[0]):
-                    if x_XY[i, 0]:
-                        p[node] |= {node_order_col_[col_pertumutation_XY[i]]}
+                x_XY = x_XY[:, 0]
                 l_k[node] = k
+
+                if mode == "single":
+                    sol_list = [x_XY[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_XY))]
+                    sol = np.array(sol_list)
+                    sol_index = sol.nonzero()[0]
+                    p[node] = set(node_order_col_[col_permutation_XY.index(i)] for i in sol_index)
+                    solved = True
+
+                elif mode == "all":
+                    binary_combinations = product([0, 1], repeat=len(kernels))
+                    for binary_combination in binary_combinations:
+                        sol_list = [x_XY[i].subs(zip(kernels, binary_combination)) for i in range(len(x_XY))]
+                        sol = np.array(sol_list)
+                        sol_index = sol.nonzero()[0]
+                        p_i = set(node_order_col_[col_permutation_XY.index(i)] for i in sol_index)
+                        p[node].add(frozenset(p_i))
+
+                elif mode == "abstract":
+                    p_i = dict()
+                    for i in range(len(x_XY)):
+                        node_temp = node_order_col_[col_permutation_XY.index(i)]
+                        p_i[node_temp] = x_XY[i]
+                    p[node].append(p_i)
+
+                if printout:
+                    print("solved in XY")
+                    print("sol is \n", sol)
+                    print("p[node] is ", p[node], "\n")
 
         if not solved and (meas_planes[node] == "ZX" or node in Lz or node in Lx):
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             S.data[node_order_row_.index(node)] = 1
             for neighbor in search_neighbor(node, graph.edges):
-                if neighbor in P and neighbor in P | {node}:
+                if neighbor in P | {node}:
                     S.data[node_order_row_.index(neighbor), :] = 1
             S_lower = MatGF2(np.zeros((len(node_order_row_lower_), 1), dtype=int))
             for neighbor in search_neighbor(node, graph.edges):
-                if neighbor in Y and neighbor in Y - {node}:
+                if neighbor in Y - {node}:
                     S_lower.data[node_order_row_lower_.index(neighbor), :] = 1
             S.concatenate(S_lower, axis=0)
-            adj_mat_ZX, S, _, col_pertumutation_ZX = adj_mat_.forward_eliminate(S)
-            x_ZX, _ = adj_mat_ZX.backward_substitute(S)
-            # print("x_ZX is \n", x_ZX)
-            # print("ZX.shape is \n", x_ZX.shape)
+            if printout:
+                print("S_upper is \n", S)
+                print("S_lower is \n", S_lower)
+                print("S is \n", S)
+            adj_mat_ZX, S, _, col_permutation_ZX = adj_mat_.forward_eliminate(S, copy=True)
+            x_ZX, kernels = adj_mat_ZX.backward_substitute(S)
+            if printout:
+                print("x_ZX is \n", x_ZX)
+                print("ZX.shape is \n", x_ZX.shape)
+                print("row_permutation_ZX is \n", _)
+                print("col_permutation_ZX is \n", col_permutation_ZX)
+                print("kernel is \n", kernels)
             if 0 not in x_ZX.shape and x_ZX[0, 0] != sp.nan:
-                solved = True
                 solved_update |= {node}
-                p[node] = set()
-                for i in range(x_ZX.shape[0]):
-                    if x_ZX[i, 0]:
-                        p[node] |= {node_order_col_[col_pertumutation_ZX[i]]}
+                x_ZX = x_ZX[:, 0]
                 l_k[node] = k
+
+                if mode == "single":
+                    sol_list = [x_ZX[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_ZX))]
+                    sol = np.array(sol_list)
+                    sol_index = sol.nonzero()[0]
+                    p[node] = set(node_order_col_[col_permutation_ZX.index(i)] for i in sol_index) | {node}
+                    solved = True
+
+                elif mode == "all":
+                    binary_combinations = product([0, 1], repeat=len(kernels))
+                    for binary_combination in binary_combinations:
+                        sol_list = [x_ZX[i].subs(zip(kernels, binary_combination)) for i in range(len(x_ZX))]
+                        sol = np.array(sol_list)
+                        sol_index = sol.nonzero()[0]
+                        p_i = set(node_order_col_[col_permutation_ZX.index(i)] for i in sol_index) | {node}
+                        p[node].add(frozenset(p_i))
+
+                elif mode == "abstract":
+                    p_i = dict()
+                    for i in range(len(x_ZX)):
+                        node_temp = node_order_col_[col_permutation_ZX.index(i)]
+                        p_i[node_temp] = x_ZX[i]
+                    p_i[node] = sp.true
+                    p[node].append(p_i)
 
         if not solved and (meas_planes[node] == "YZ" or node in Ly or node in Lz):
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             for neighbor in search_neighbor(node, graph.edges):
-                if neighbor in P and neighbor in P | {node}:
+                if neighbor in P | {node}:
                     S.data[node_order_row_.index(neighbor), :] = 1
             S_lower = MatGF2(np.zeros((len(node_order_row_lower_), 1), dtype=int))
             for neighbor in search_neighbor(node, graph.edges):
-                if neighbor in Y and neighbor in Y - {node}:
+                if neighbor in Y - {node}:
                     S_lower.data[node_order_row_lower_.index(neighbor), :] = 1
             S.concatenate(S_lower, axis=0)
-            adj_mat_YZ, S, _, col_pertumutation_YZ = adj_mat_.forward_eliminate(S)
-            x_YZ, _ = adj_mat_YZ.backward_substitute(S)
-            # print("x_YZ is \n", x_YZ)
-            # print("YZ.shape is \n", x_YZ.shape)
+            if printout:
+                print("S_upper is \n", S)
+                print("S_lower is \n", S_lower)
+                print("S is \n", S)
+            adj_mat_YZ, S, _, col_permutation_YZ = adj_mat_.forward_eliminate(S, copy=True)
+            x_YZ, kernels = adj_mat_YZ.backward_substitute(S)
+            if printout:
+                print("x_YZ is \n", x_YZ)
+                print("YZ.shape is \n", x_YZ.shape)
+                print("row_permutation_YZ is \n", _)
+                print("col_permutation_YZ is \n", col_permutation_YZ)
             if 0 not in x_YZ.shape and x_YZ[0, 0] != sp.nan:
-                solved = True
                 solved_update |= {node}
-                p[node] = set()
-                for i in range(x_YZ.shape[0]):
-                    if x_YZ[i, 0]:
-                        p[node] |= {node_order_col_[col_pertumutation_YZ[i]]}
+                x_YZ = x_YZ[:, 0]
                 l_k[node] = k
+
+                if mode == "single":
+                    sol_list = [x_YZ[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_YZ))]
+                    sol = np.array(sol_list)
+                    sol_index = sol.nonzero()[0]
+                    p[node] = set(node_order_col_[col_permutation_YZ.index(i)] for i in sol_index) | {node}
+                    solved = True
+
+                elif mode == "all":
+                    binary_combinations = product([0, 1], repeat=len(kernels))
+                    for binary_combination in binary_combinations:
+                        sol_list = [x_YZ[i].subs(zip(kernels, binary_combination)) for i in range(len(x_YZ))]
+                        sol = np.array(sol_list)
+                        sol_index = sol.nonzero()[0]
+                        p_i = set(node_order_col_[col_permutation_YZ.index(i)] for i in sol_index) | {node}
+                        p[node].add(frozenset(p_i))
+
+                elif mode == "abstract":
+                    p_i = dict()
+                    for i in range(len(x_YZ)):
+                        node_temp = node_order_col_[col_permutation_YZ.index(i)]
+                        p_i[node_temp] = x_YZ[i]
+                    p_i[node] = sp.true
+                    p[node].append(p_i)
 
     if solved_update == set() and k > 0:
         if solved_nodes == nodes:
@@ -637,20 +749,7 @@ def pauliflowaux(
             return None, None
     else:
         B = solved_nodes | solved_update
-        return pauliflowaux(
-            graph,
-            input,
-            output,
-            meas_planes,
-            k + 1,
-            B,
-            B,
-            l_k,
-            p,
-            Lx,
-            Ly,
-            Lz,
-        )
+        return pauliflowaux(graph, input, output, meas_planes, k + 1, B, B, l_k, p, Lx, Ly, Lz, mode, printout)
 
 
 def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
