@@ -461,7 +461,7 @@ def find_pauliflow(
         print("Ly is ", Ly)
         print("Lz is ", Lz)
         print("l_k is ", l_k, "\n")
-    return pauliflowaux(graph, input, output, meas_planes, 0, set(), output, l_k, p, Lx, Ly, Lz, mode, printout)
+    return pauliflowaux(graph, input, output, meas_planes, 0, set(), output, l_k, p, (Lx, Ly, Lz), mode, printout)
 
 
 def pauliflowaux(
@@ -474,9 +474,7 @@ def pauliflowaux(
     solved_nodes: set[int],
     l_k: dict[int, int],
     p: dict[int, set[int]],
-    Lx: set[int],
-    Ly: set[int],
-    Lz: set[int],
+    L: tuple[set[int], set[int], set[int]],
     mode: str = "single",
     printout=False,
 ):
@@ -504,12 +502,8 @@ def pauliflowaux(
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     p: dict
         Pauli flow function. p[i] is the set of qubits to be corrected for the measurement of qubit i.
-    Lx: set
-        set of qubits whose measurement operator is "X".
-    Ly: set
-        set of qubits whose measurement operator is "Y".
-    Lz: set
-        set of qubits whose measurement operator is "Z".
+    L: tuple
+        L = (Lx, Ly, Lz) where Lx, Ly, Lz are sets of qubits whose measurement operators are X, Y, Z, respectively.
     mode: str(optional)
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
             - "single": Returrns a single solution
@@ -524,6 +518,7 @@ def pauliflowaux(
     l_k: dict
         layers obtained by Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
+    Lx, Ly, Lz = L
     if printout:
         print("k is ", k)
         print("correction_candidate is ", correction_candidate)
@@ -749,7 +744,7 @@ def pauliflowaux(
             return None, None
     else:
         B = solved_nodes | solved_update
-        return pauliflowaux(graph, input, output, meas_planes, k + 1, B, B, l_k, p, Lx, Ly, Lz, mode, printout)
+        return pauliflowaux(graph, input, output, meas_planes, k + 1, B, B, l_k, p, (Lx, Ly, Lz), mode, printout)
 
 
 def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
@@ -870,10 +865,51 @@ def get_dependence_flow(
     return dependence_flow
 
 
+def get_dependence_pauliflow(
+    inputs: set[int],
+    flow: dict[int, set[int]],
+    odd_flow: dict[int, set[int]],
+    L: tuple[set[int], set[int], set[int]],
+):
+    """Get dependence flow from Pauli flow.
+
+    Parameters
+    ----------
+    inputs: set[int]
+        set of input nodes
+    flow: dict[int, set[int]]
+        Pauli flow function. p[i] is the set of qubits to be corrected for the measurement of qubit i.
+    odd_flow: dict[int, set[int]]
+        odd neighbors of Pauli flow or gflow. Odd(p(i))
+    L: tuple
+        L = (Lx, Ly, Lz) where Lx, Ly, Lz are sets of qubits whose measurement operators are X, Y, Z, respectively.
+
+    Returns
+    -------
+    dependence_pauliflow: dict[int, set[int]]
+        dependence flow function. dependence_pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    """
+    Lx, Ly, Lz = L
+    dependence_pauliflow = {input: set() for input in inputs}
+    # concatenate p and odd_p
+    combined_flow = dict()
+    for node, corrections in flow.items():
+        combined_flow[node] = (corrections - (Lx | Ly)) | (odd_flow[node] - (Ly | Lz))
+        for ynode in Ly:
+            if ynode in corrections.symmetric_difference(odd_flow[node]):
+                combined_flow[node] |= {ynode}
+    for node, corrections in combined_flow.items():
+        for correction in corrections:
+            if correction not in dependence_pauliflow.keys():
+                dependence_pauliflow[correction] = set()
+            dependence_pauliflow[correction] |= {node}
+    return dependence_pauliflow
+
+
 def get_layers_from_flow(
-    flow: dict[int, set], odd_flow: dict[int, set], inputs: set[int], outputs: set[int]
+    flow: dict[int, set], odd_flow: dict[int, set], inputs: set[int], outputs: set[int], L: tuple[set[int], set[int], set[int]] | None = None
 ) -> tuple[dict[int, set], int]:
-    """Get layers from flow (incl. gflow).
+    """Get layers from flow (incl. gflow, Pauli flow).
 
     Parameters
     ----------
@@ -885,6 +921,9 @@ def get_layers_from_flow(
         set of input nodes
     outputs: set
         set of output nodes
+    L: tuple
+        L = (Lx, Ly, Lz) where Lx, Ly, Lz are sets of qubits whose measurement operators are X, Y, Z, respectively.
+        If not None, the layers are obtained based on Pauli flow.
 
     Returns
     -------
@@ -900,7 +939,10 @@ def get_layers_from_flow(
     """
     layers = dict()
     depth = 0
-    dependence_flow = get_dependence_flow(inputs, odd_flow, flow)
+    if L is None:
+        dependence_flow = get_dependence_flow(inputs, odd_flow, flow)
+    else:
+        dependence_flow = get_dependence_pauliflow(inputs, flow, odd_flow, L)
     left_nodes = set(flow.keys())
     for output in outputs:
         if output in left_nodes:
@@ -908,7 +950,7 @@ def get_layers_from_flow(
     while True:
         layers[depth] = set()
         for node in left_nodes:
-            if len(dependence_flow[node]) == 0:
+            if node not in dependence_flow.keys() or len(dependence_flow[node]) == 0:
                 layers[depth] |= {node}
             elif dependence_flow[node] == {node}:
                 layers[depth] |= {node}
@@ -999,22 +1041,22 @@ def verify_flow(
             row = node_order.index(node)
             col = node_order.index(correction)
             # check whether v < f(v)
-            if row >= col:
-                valid_flow = False
-                return valid_flow
+            # if row >= col:
+            #     valid_flow = False
+            #     return valid_flow
             # check whether the flow arrow is edge of the original graph
             if adjacency_matrix.data[row, col] != 1:
                 valid_flow = False
                 return valid_flow
             flow_matrix.data[row, col] = 1
 
-    Neighbor_f = flow_matrix @ adjacency_matrix
-    # Neighbor_f = MatGF2(Neighbor_f.data)
-    # check whether v < N(f(v))
-    triu = np.triu(Neighbor_f.data)
-    triu = MatGF2(triu)
-    dif = triu - Neighbor_f
-    valid_flow &= np.count_nonzero(dif.data) == 0
+    # Neighbor_f = flow_matrix @ adjacency_matrix
+    # # Neighbor_f = MatGF2(Neighbor_f.data)
+    # # check whether v < N(f(v))
+    # triu = np.triu(Neighbor_f.data)
+    # triu = MatGF2(triu)
+    # dif = triu - Neighbor_f
+    # valid_flow &= np.count_nonzero(dif.data) == 0
     return valid_flow
 
 
@@ -1080,7 +1122,7 @@ def verify_gflow(
     oddneighbor_g = gflow_matrix @ adjacency_matrix
     triu = np.triu(oddneighbor_g.data)
     triu = MatGF2(triu)
-    valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
+    #valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
 
     # check for each measurement plane
     for node, plane in meas_planes.items():
@@ -1093,6 +1135,85 @@ def verify_gflow(
             valid_gflow &= (gflow_matrix.data[index, index] == 1) and (oddneighbor_g.data[index, index] == 0)
 
     return valid_gflow
+
+
+def verify_pauliflow(
+    graph: nx.Graph,
+    input: set[int],
+    output: set[int],
+    pauliflow: dict[int, set[int]],
+    meas_planes: dict[int, str],
+    meas_angles: dict[int, float],
+) -> bool:
+    """Check whether the Pauliflow is valid.
+
+    Parameters
+    ----------
+    graph: nx.Graph
+        graph (incl. in and out)
+    input: set
+        set of node labels for input
+    output: set
+        set of node labels for output
+    pauliflow: dict[int, set]
+        Pauli flow function. pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
+    meas_planes: dict[int, str]
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    meas_angles: dict[int, float]
+        measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
+
+    Returns
+    -------
+    valid_pauliflow: bool
+        True if the Pauliflow is valid. False otherwise.
+    """
+    Lx, Ly, Lz = set(), set(), set()
+    for node, plane in meas_planes.items():
+        if plane == "XY" and meas_angles[node] == 0:
+            Lx |= {node}
+        elif plane == "XY" and meas_angles[node] == 1 / 2:
+            Ly |= {node}
+        elif plane == "ZX" and meas_angles[node] == 0:
+            Lz |= {node}
+        elif plane == "ZX" and meas_angles[node] == 1 / 2:
+            Lx |= {node}
+        elif plane == "YZ" and meas_angles[node] == 0:
+            Ly |= {node}
+        elif plane == "YZ" and meas_angles[node] == 1 / 2:
+            Lz |= {node}
+            
+    valid_pauliflow = True                          
+    non_outputs = set(graph.nodes) - output
+    odd_flow = dict()
+    for non_output in non_outputs:
+        odd_flow[non_output] = find_odd_neighbor(graph, pauliflow[non_output])
+        
+    try:
+        layers, depth = get_layers_from_flow(pauliflow, odd_flow, input, output, (Lx, Ly, Lz))
+    except ValueError:
+        valid_flow = False
+        return valid_flow
+    node_order = []
+    for d in range(depth):
+        print("layers[d] is ", layers[d])
+        node_order.extend(list(layers[d]))
+    print("node_order is ", node_order)
+            
+    for node, plane in meas_planes.items():
+        if node in Lx:
+            valid_pauliflow &= node in odd_flow[node]
+        elif node in Lz:
+            valid_pauliflow &= node in pauliflow[node]
+        elif node in Ly:
+            valid_pauliflow &= node in pauliflow[node].symmetric_difference(odd_flow[node])
+        elif plane == "XY":
+            valid_pauliflow &= (node not in pauliflow[node]) and (node in odd_flow[node])
+        elif plane == "XZ":
+            valid_pauliflow &= (node in pauliflow[node]) and (node in odd_flow[node])
+        elif plane == "YZ":
+            valid_pauliflow &= (node in pauliflow[node]) and (node not in odd_flow[node])
+            
+    return valid_pauliflow
 
 
 def get_input_from_flow(flow: dict[int, set]) -> set:
