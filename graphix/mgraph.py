@@ -5,7 +5,7 @@ from itertools import combinations
 import networkx as nx
 import numpy as np
 
-from graphix.gflow import flow, gflow
+from graphix.gflow import find_flow, find_gflow
 from graphix.pattern import Pattern
 
 COLOR_MAP = {
@@ -19,7 +19,7 @@ COLOR_MAP = {
 }
 
 
-class MGraph(nx.Graph):
+class MGraph(nx.MultiGraph):
     """Measurement graph
 
     Attributes
@@ -43,6 +43,8 @@ class MGraph(nx.Graph):
         self.set_input_nodes(inputs)
         self.output_nodes = outputs
 
+        self.node_num = 0
+
     def add_node(self, node: int, plane=None, angle=None, output=False):
         """add a node to the graph
 
@@ -57,7 +59,9 @@ class MGraph(nx.Graph):
         """
         super().add_node(node, plane=plane, angle=angle, output=output)
 
-    def add_edge(self, u: int, v: int, hadamrd: bool = False):
+        self.node_num += 1
+
+    def add_edge(self, u: int, v: int, hadamard: bool = False):
         """add an edge to the graph
 
         Parameters
@@ -66,10 +70,10 @@ class MGraph(nx.Graph):
             first node
         v: int
             second node
-        hadamrd: bool, optional
+        hadamard: bool, optional
             hadamard edge or not, by default False
         """
-        super().add_edge(u, v, hadamard=hadamrd)
+        super().add_edge(u, v, hadamard=hadamard)
 
     def assign_measurement_info(self, node: int, plane: str, angle: int):
         """asign measurement info to a node
@@ -213,17 +217,34 @@ class MGraph(nx.Graph):
         copy: bool, optional
             Copy the graph, by default False
         """
+        if self.nodes[u]["plane"] != self.nodes[v]["plane"]:
+            raise ValueError("Color mismatch")
+        else:
+            new_plane = self.nodes[u]["plane"]
+        num_edges = self.number_of_edges(u, v)
+
+        # check if there is a hadamard edge
+        for k in range(num_edges):
+            edge_info = self.edges[u, v, k]["hadamard"]
+            if edge_info:
+                raise ValueError("Hadamard edge")
+
         graph = self.copy() if copy else self
         u_neighbors = set(self.neighbors(u))
         v_neighbors = set(self.neighbors(v))
-        uv_all_neighbors = u_neighbors.union(v_neighbors)
-
-        graph.remove_nodes_from([u, v])
 
         new_angle = self.nodes[u]["angle"] + self.nodes[v]["angle"]
-        graph.add_node(new_index, "XY", new_angle)
-        for node in uv_all_neighbors:
-            graph.add_edge(new_index, node)
+        graph.add_node(new_index, new_plane, new_angle)
+        for node in u_neighbors:
+            num_edges = graph.number_of_edges(u, node)
+            for k in range(num_edges):
+                graph.add_edge(new_index, node, hadamard=self.edges[u, node, k]["hadamard"])
+        for node in v_neighbors:
+            num_edges = graph.number_of_edges(v, node)
+            for k in range(num_edges):
+                graph.add_edge(new_index, node, hadamard=self.edges[v, node, k]["hadamard"])
+
+        graph.remove_nodes_from([u, v])
 
         return graph
 
@@ -240,7 +261,9 @@ class MGraph(nx.Graph):
         graph = self.copy() if copy else self
         graph.nodes[u]["plane"] = self.convert_plane_by_h(self.nodes[u]["plane"])
         for node in self.neighbors(u):
-            graph[(u, node)]["hadamard"] = not graph[(u, node)]["hadamard"]
+            num_edges = graph.number_of_edges(u, node)
+            for k in range(num_edges):
+                graph.edges[u, node, k]["hadamard"] = not graph.edges[u, node, k]["hadamard"]
 
         return graph
 
