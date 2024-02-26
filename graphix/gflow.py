@@ -907,7 +907,11 @@ def get_dependence_pauliflow(
 
 
 def get_layers_from_flow(
-    flow: dict[int, set], odd_flow: dict[int, set], inputs: set[int], outputs: set[int], L: tuple[set[int], set[int], set[int]] | None = None
+    flow: dict[int, set],
+    odd_flow: dict[int, set],
+    inputs: set[int],
+    outputs: set[int],
+    L: tuple[set[int], set[int], set[int]] | None = None,
 ) -> tuple[dict[int, set], int]:
     """Get layers from flow (incl. gflow, Pauli flow).
 
@@ -1122,7 +1126,7 @@ def verify_gflow(
     oddneighbor_g = gflow_matrix @ adjacency_matrix
     triu = np.triu(oddneighbor_g.data)
     triu = MatGF2(triu)
-    #valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
+    # valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
 
     # check for each measurement plane
     for node, plane in meas_planes.items():
@@ -1181,13 +1185,13 @@ def verify_pauliflow(
             Ly |= {node}
         elif plane == "YZ" and meas_angles[node] == 1 / 2:
             Lz |= {node}
-            
-    valid_pauliflow = True                          
+
+    valid_pauliflow = True
     non_outputs = set(graph.nodes) - output
     odd_flow = dict()
     for non_output in non_outputs:
         odd_flow[non_output] = find_odd_neighbor(graph, pauliflow[non_output])
-        
+
     try:
         layers, depth = get_layers_from_flow(pauliflow, odd_flow, input, output, (Lx, Ly, Lz))
     except ValueError:
@@ -1198,7 +1202,7 @@ def verify_pauliflow(
         print("layers[d] is ", layers[d])
         node_order.extend(list(layers[d]))
     print("node_order is ", node_order)
-            
+
     for node, plane in meas_planes.items():
         if node in Lx:
             valid_pauliflow &= node in odd_flow[node]
@@ -1212,7 +1216,7 @@ def verify_pauliflow(
             valid_pauliflow &= (node in pauliflow[node]) and (node in odd_flow[node])
         elif plane == "YZ":
             valid_pauliflow &= (node in pauliflow[node]) and (node not in odd_flow[node])
-            
+
     return valid_pauliflow
 
 
