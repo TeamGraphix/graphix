@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
+
+### Fixed
+
+- Fixed bug in index permutation within `linalg.MatGF2` and `gflow.find_gflow`.
+
+### Changed
+
+- Renamed methods; `gflow.flow` and `gflow.gflow` are now `gflow.find_flow` and `gflow.find_gflow`, respectively.
 
 ## [0.2.10] - 2024-01-03
 
