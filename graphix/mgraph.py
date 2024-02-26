@@ -5,16 +5,17 @@ from itertools import combinations
 import networkx as nx
 import numpy as np
 
-from graphix.gflow import find_flow, find_gflow
+from graphix.gflow import flow, gflow
 from graphix.pattern import Pattern
 
 COLOR_MAP = {
     "XY": "chartreuse",
     "YZ": "red",
     "XZ": "gold",
+    "hadamard node": "yellow",
     None: "lightgray",
-    # "input": "slategrey",
-    "harmard": "deepskyblue",
+    "input": "slategrey",
+    "harmard edge": "deepskyblue",
     "non-hadamard": "k",
 }
 
@@ -58,6 +59,11 @@ class MGraph(nx.MultiGraph):
             measurement angle, by default 0
         """
         super().add_node(node, plane=plane, angle=angle, output=output)
+
+        self.node_num += 1
+
+    def add_hadamard(self, node):
+        super().add_node(node, plane="hadamard node", angle=None, output=False)
 
         self.node_num += 1
 
@@ -278,84 +284,224 @@ class MGraph(nx.MultiGraph):
             Copy the graph, by default False
         """
         graph = self.copy() if copy else self
-        if graph.nodes[u]["plane"] == "XY" and graph.nodes[u]["angle"] == 0 and len(graph.neighbors(u)) == 2:
-            neighbors = set(graph.neighbors(u))
+        neighbors = set(graph.neighbors(u))
+        if graph.nodes[u]["plane"] == "XY" and graph.nodes[u]["angle"] == 0 and len(neighbors) == 2:
+            # ensure edges are not Hadamard and multiple
+            single_non_Hadamard = True
+            for neighbor in neighbors:
+                single_non_Hadamard &= graph.edges[u, neighbor, 0]["hadamard"]
+                single_non_Hadamard &= graph.number_of_edges(u, neighbor) == 1
             graph.remove_node(u)
-            graph.add_edge(*neighbors)
+            graph.add_edge(*neighbors, hadamard=False)
         return graph
 
-    def pi_transport(self, u: int, v: int, copy: bool = False):
+    def hadamard_cancel(self, u: int, v: int, new_index: int, copy: bool = False):
+        """Convert two neighboring Hadamard nodes into a single XY-spilder with 0 angle
+
+        Parameters
+        ----------
+        u: int
+            first Hadamard node
+        v: int
+            second Hadamard node
+        new_index: int
+            new node index
+        copy: bool
+            Copy the graph, by default False
+        """
+        graph = self.copy() if copy else self
+        assert graph.nodes[u]["plane"] == "hadamard node"
+        assert graph.nodes[v]["plane"] == "hadamard node"
+        assert graph.number_of_edges(u, v) == 1
+        assert graph.edges[u, v, 0]["hadamard"] == False
+
+        u_neighbors = set(graph.neighbors(u))
+        v_neighbors = set(graph.neighbors(v))
+
+        graph.add_node(new_index, "XY", 0, output=False)
+
+        for u_neighbor in u_neighbors - {v}:
+            num_edges = graph.number_of_edges(u, u_neighbor)
+            for k in range(num_edges):
+                graph.add_edge(
+                    new_index,
+                    u_neighbor,
+                    hadamard=graph.edges[u, u_neighbor, k]["hadamard"],
+                )
+
+        for v_neighbor in v_neighbors - {u}:
+            num_edges = graph.number_of_edges(v, v_neighbor)
+            for k in range(num_edges):
+                graph.add_edge(
+                    new_index,
+                    v_neighbor,
+                    hadamard=graph.edges[v, v_neighbor, k]["hadamard"],
+                )
+
+        graph.remove_node(u)
+        graph.remove_node(v)
+
+        return graph
+
+    def pi_transport(self, u: int, pi: int, new_indices: dict[int, int], copy: bool = False):
         """Apply pi transport to two nodes
 
         Parameters
         ----------
         u: int
-            First node
-        v: int
+            Target node
+        pi: int
             pi node
+        new_indices: dict[int, int]
+            new index for new pi nodes
         copy: bool, optional
             Copy the graph, by default False
         """
-        assert graph.nodes[v]["angle"] == np.pi, "Node v is not a pi node"
-        assert graph.nodes[v]["plane"] == "YZ", "Node v is not X spider"
         graph = self.copy() if copy else self
+        assert graph.nodes[pi]["angle"] == np.pi, "Node v is not a pi node"
+        assert graph.nodes[pi]["plane"] == "YZ", "Node v is not X spider"
+        assert graph.nodes[u]["plane"] == "XY", "Node u should be XY spider"
+        assert graph.number_of_edges(u, pi) == 1, "The edge between u and v should be single"
+        assert graph.edges[u, pi, 0]["hadamard"] == False, "The edge between u and v should not be Hadamard"
 
-        neighbors = set(graph.neighbors(u))
-        v_neighbors = set(graph.neighbors(v)) - {u}
+        u_neighbors = set(graph.neighbors(u))
+        pi_neighbors = set(graph.neighbors(pi))
 
-        graph.remove_node(v)
-        for node in v_neighbors:
-            graph.add_edge(u, node)
+        for u_neighbor in u_neighbors - {pi}:
+            graph.add_node(new_indices[u_neighbor], plane="YZ", angle=np.pi, output=False)
+
+            graph.add_edge(u, new_indices[u_neighbor], hadamard=False)
+            num_edges = graph.number_of_edges(u, u_neighbor)
+            for k in range(num_edges):
+                graph.add_edge(
+                    u_neighbor,
+                    new_indices[u_neighbor],
+                    hadamard=graph.edges[u, u_neighbor, k]["hadamard"],
+                )
+
+            graph.remove_edge(u, u_neighbor)
+
+        for pi_neighbor in pi_neighbors - {u}:
+            num_edges = graph.number_of_edges(pi, pi_neighbor)
+
+            for k in range(num_edges):
+                graph.add_edge(u, pi_neighbor, hadamard=graph.edges[pi, pi_neighbor, k]["hadamard"])
 
         graph.nodes[u]["angle"] = -graph.nodes[u]["angle"]
 
-        for neighbor in neighbors:
-            graph.remove_edge(u, neighbor)
-            graph.add_node(None, "YZ", np.pi)  # TODO: how to make a new index, currently None
-            graph.add_edge(u, None)
-            graph.add_edge(None, neighbor)
+        graph.remove_node(pi)
 
         return graph
 
-    def anchor_divide(self, u: int, anchor: int, copy: bool = False):  # TODO: rename
-        """Apply anchor rule
+    def anchor_divide(self, u: int, anchor: int, new_indices: dict[int, int], copy: bool = False):
+        """Apply anchor division rule
 
         u: int
             Node to apply anchor rule
         anchor: int
             Anchor node
+        new_indices: dict[int, int]
+            new index for new anchor
         copy: bool, optional
             Copy the graph, by default False
         """
         assert self.nodes[anchor]["plane"] == "YZ", f"Node {anchor} is not a X spider"
         assert self.nodes[anchor]["angle"] == 0, f"Node {anchor} is not a anchor node"
+        assert self.nodes[u]["plane"] == "XY", f"Node {u} should be XY spider"
 
         graph = self.copy() if copy else self
 
-        neighbors = set(graph.neighbors(u))
-
         graph.remove_node(anchor)
-        graph.remove_node(u)
 
-        for node in neighbors:
-            graph.add_node(None, "YZ", 0)  # TODO: how to make a new index, currently None
-            graph.add_edge(node, None)
+        u_neighbors = set(graph.neighbors(u))
+
+        for u_neighbor in u_neighbors:
+            graph.add_node(new_indices[u_neighbor], "YZ", 0)
+            num_edges = graph.number_of_edges(u, u_neighbor)
+            for k in range(num_edges):
+                graph.add_edge(
+                    u_neighbor,
+                    new_indices[u_neighbor],
+                    hadamard=graph.edges[u, u_neighbor, k],
+                )
+
+        graph.remove_node(u)
 
         return graph
 
-    def bipartite(self, u: int, v: int, copy: bool = False):
+    def bipartite(self, u: int, v: int, new_indices: dict[int, int], copy: bool = False):
         """Apply bipartite rule
 
         Parameters
         ----------
         u: int
-            First node
+            YZ spider
         v: int
-            Second node
+            XY spider
+        new_indices: dict[int, int]
+            new node indicies.
+            It must include 4 nodes because in this implementation we remove u and v.
+            dict should be {"u1": ind1, "u2": ind2, "v1": ind3, "v2": ind4} in the current implementation.
+            TODO: improve index generation
         copy: bool, optional
             Copy the graph, by default False
         """
-        pass
+        graph = self.copy() if copy else self
+        assert graph.nodes[u]["plane"] == "YZ"
+        assert graph.nodes[u]["angle"] == 0
+        assert graph.nodes[v]["plane"] == "XY"
+        assert graph.nodes[v]["angle"] == 0
+        assert graph.number_of_edges(u, v) == 1
+        assert graph.edges[u, v, 0]["hadamard"] == False
+
+        assert len(set(graph.neighbors(u))) == 3
+        assert len(set(graph.neighbors(v))) == 3
+
+        u_neighbors = set(graph.neighbors(u)) - {v}
+        v_neighbors = set(graph.neighbors(v)) - {u}
+
+        graph.add_node(new_indices["u1"], "XY", 0)
+        graph.add_node(new_indices["u2"], "XY", 0)
+        graph.add_node(new_indices["v1"], "YZ", 0)
+        graph.add_node(new_indices["v2"], "YZ", 0)
+
+        graph.add_edge(new_indices["u1"], new_indices["v1"], hadamard=False)
+        graph.add_edge(new_indices["u1"], new_indices["v2"], hadamard=False)
+        graph.add_edge(new_indices["u2"], new_indices["v1"], hadamard=False)
+        graph.add_edge(new_indices["u2"], new_indices["v2"], hadamard=False)
+
+        u_neighbor1 = u_neighbors.pop()
+        graph.add_edge(
+            new_indices["u1"],
+            u_neighbor1,
+            hadamard=graph.edges[u, u_neighbor1, 0]["hadamard"],
+        )
+
+        u_neighbor2 = u_neighbors.pop()
+        graph.add_edge(
+            new_indices["u2"],
+            u_neighbor2,
+            hadamard=graph.edges[u, u_neighbor2, 0]["hadamard"],
+        )
+
+        v_neighbor1 = v_neighbors.pop()
+        graph.add_edge(
+            new_indices["v1"],
+            v_neighbor1,
+            hadamard=graph.edges[v, v_neighbor1, 0]["hadamard"],
+        )
+
+        v_neighbor2 = v_neighbors.pop()
+        graph.add_edge(
+            new_indices["v2"],
+            v_neighbor2,
+            hadamard=graph.edges[v, v_neighbor2, 0]["hadamard"],
+        )
+
+        graph.remove_node(u)
+        graph.remove_node(v)
+
+        return graph
 
     def convert_plane_by_h(self, plane: str) -> str:
         if plane == "XY":
