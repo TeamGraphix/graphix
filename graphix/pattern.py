@@ -1084,7 +1084,7 @@ class Pattern:
         Returns
         -------
         node_list : list
-            list of nodes that are entangled with speicifed node
+            list of nodes that are entangled with specified node
         """
         if not self.is_standard():
             self.standardize()
@@ -1636,8 +1636,8 @@ class LocalPattern:
         list of node indices in a measurement order.
 
     signal_destination : dict
-       stores the set of nodes where dependent feedforward operations are performed, from the result of measurement at each node.
-       stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
+    stores the set of nodes where dependent feedforward operations are performed, from the result of measurement at each node.
+    stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
     def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
