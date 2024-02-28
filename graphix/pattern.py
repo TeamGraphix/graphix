@@ -1235,13 +1235,13 @@ class Pattern:
 
     def draw_graph(
         self,
+        flow_from_pattern=True,
+        show_pauli_measurement=True,
+        show_local_clifford=False,
+        show_measurement_planes=False,
+        show_loop=True,
         node_distance=(1, 1),
         figsize=None,
-        gflow_from_pattern=True,
-        pauli_indicator=True,
-        show_loop=True,
-        local_clifford_indicator=False,
-        show_measurement_planes=False,
         save=False,
         filename=None,
     ):
@@ -1249,20 +1249,20 @@ class Pattern:
 
         Parameters
         ----------
+        flow_from_pattern : bool
+            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
+        show_pauli_measurement : bool
+            If True, the nodes with Pauli measurement angles are colored light blue.
+        show_local_clifford : bool
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, measurement planes are displayed adjacent to the nodes.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
-        gflow_from_pattern : bool
-            If True, the gflow is calculated based on the pattern.
-        pauli_indicator : bool
-            If True, the nodes are colored according to the measurement angles.
-        show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to True.
-        local_clifford_indicator : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, measurement planes are displayed adjacent to the nodes.
         save : bool
             If True, the plot is saved as a png file.
         filename : str
@@ -1276,30 +1276,34 @@ class Pattern:
         vin = self.input_nodes if self.input_nodes is not None else []
         vout = self.output_nodes
         meas_planes = self.get_meas_plane()
-        vis = GraphVisualizer(g, vin, vout, meas_planes)
-        if pauli_indicator:
-            angles = self.get_angles()
+        meas_angles = self.get_angles()
+        local_clifford = self.get_vops()
+        
+        vis = GraphVisualizer(g, vin, vout, meas_planes, meas_angles, local_clifford)
+    
+        if flow_from_pattern:
+            vis.visualize_from_pattern(
+                pattern=deepcopy(self),
+                show_pauli_measurement=show_pauli_measurement,
+                show_local_clifford=show_local_clifford,
+                show_measurement_planes=show_measurement_planes,
+                show_loop=show_loop,
+                node_distance=node_distance,
+                figsize=figsize,
+                save=save,
+                filename=filename,
+            )
         else:
-            angles = None
-        if gflow_from_pattern:
-            pattern = deepcopy(self)
-        else:
-            pattern = None
-        if local_clifford_indicator:
-            local_clifford = self.get_vops()
-        else:
-            local_clifford = None
-        vis.visualize(
-            node_distance=node_distance,
-            figsize=figsize,
-            angles=angles,
-            pattern_for_gflow=pattern,
-            local_clifford=local_clifford,
-            show_measurement_planes=show_measurement_planes,
-            show_loop=show_loop,
-            save=save,
-            filename=filename,
-        )
+            vis.visualize(
+                show_pauli_measurement=show_pauli_measurement,
+                show_local_clifford=show_local_clifford,
+                show_measurement_planes=show_measurement_planes,
+                show_loop=show_loop,
+                node_distance=node_distance,
+                figsize=figsize,
+                save=save,
+                filename=filename,
+            )
 
     def to_qasm3(self, filename):
         """Export measurement pattern to OpenQASM 3.0 file
