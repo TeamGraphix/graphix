@@ -694,6 +694,7 @@ class Pattern:
             if cmd[0] == "N":
                 if not cmd[1] in self.output_nodes:
                     not_measured = not_measured | {cmd[1]}
+        depth = 0
         l_k = dict()
         k = 0
         while not_measured:
@@ -1278,9 +1279,9 @@ class Pattern:
         meas_planes = self.get_meas_plane()
         meas_angles = self.get_angles()
         local_clifford = self.get_vops()
-        
+
         vis = GraphVisualizer(g, vin, vout, meas_planes, meas_angles, local_clifford)
-    
+
         if flow_from_pattern:
             vis.visualize_from_pattern(
                 pattern=deepcopy(self),
