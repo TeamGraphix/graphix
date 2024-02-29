@@ -385,13 +385,13 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     xflow, zflow = get_corrections_from_pattern(pattern)
 
-    if verify_flow(G, input_nodes, output_nodes, xflow):
+    if verify_flow(G, input_nodes, output_nodes, xflow): # if xflow is valid
         zflow_from_xflow = dict()
         for node, corrections in xflow.items():
             cand = find_odd_neighbor(G, corrections) - {node}
             if cand:
                 zflow_from_xflow[node] = cand
-        if zflow_from_xflow != zflow:
+        if zflow_from_xflow != zflow: # if zflow is consistent with xflow
             return None, None
         return xflow, l_k
     else:
@@ -440,13 +440,13 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
                 xflow[node] = {node}
             xflow[node] |= {node}
 
-    if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes):
+    if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes): # if xflow is valid
         zflow_from_xflow = dict()
         for node, corrections in xflow.items():
             cand = find_odd_neighbor(G, corrections) - {node}
             if cand:
                 zflow_from_xflow[node] = cand
-        if zflow_from_xflow != zflow:
+        if zflow_from_xflow != zflow: # if zflow is consistent with xflow
             return None, None
         return xflow, l_k
     else:

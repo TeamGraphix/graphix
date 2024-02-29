@@ -106,7 +106,7 @@ class GraphVisualizer:
             Filename of the saved plot.
         """
 
-        f, l_k = gflow.find_flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)
+        f, l_k = gflow.find_flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes) # try flow
         if f:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
@@ -121,7 +121,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.find_gflow(self.G, set(self.v_in), set(self.v_out), self.meas_planes)
+            g, l_k = gflow.find_gflow(self.G, set(self.v_in), set(self.v_out), self.meas_planes) # try gflow
             if g:
                 print("Gflow detected in the graph. (flow not detected)")
                 self.visualize_w_gflow(
@@ -187,7 +187,7 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        f, l_k = gflow.flow_from_pattern(pattern)
+        f, l_k = gflow.flow_from_pattern(pattern) # try flow
         if f:
             print("The pattern is consistent with flow structure.")
             self.visualize_w_flow(
@@ -202,7 +202,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.gflow_from_pattern(pattern)
+            g, l_k = gflow.gflow_from_pattern(pattern) # try gflow
             if g:
                 print("The pattern is consistent with gflow structure. (not with flow)")
                 self.visualize_w_gflow(
@@ -568,11 +568,11 @@ class GraphVisualizer:
 
         for edge in edge_path.keys():
             if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.G, pos, edgelist=[edge])
+                nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
-                plt.plot(curve[:, 0], curve[:, 1], "k-", linewidth=1)
+                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
         for node in self.G.nodes():
