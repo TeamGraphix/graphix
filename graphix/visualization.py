@@ -106,7 +106,7 @@ class GraphVisualizer:
             Filename of the saved plot.
         """
 
-        f, l_k = gflow.find_flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes) # try flow
+        f, l_k = gflow.find_flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
         if f:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
@@ -121,7 +121,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.find_gflow(self.G, set(self.v_in), set(self.v_out), self.meas_planes) # try gflow
+            g, l_k = gflow.find_gflow(self.G, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
             if g:
                 print("Gflow detected in the graph. (flow not detected)")
                 self.visualize_w_gflow(
@@ -187,7 +187,7 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        f, l_k = gflow.flow_from_pattern(pattern) # try flow
+        f, l_k = gflow.flow_from_pattern(pattern)  # try flow
         if f:
             print("The pattern is consistent with flow structure.")
             self.visualize_w_flow(
@@ -202,7 +202,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.gflow_from_pattern(pattern) # try gflow
+            g, l_k = gflow.gflow_from_pattern(pattern)  # try gflow
             if g:
                 print("The pattern is consistent with gflow structure. (not with flow)")
                 self.visualize_w_gflow(
