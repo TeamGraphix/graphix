@@ -12,3 +12,4 @@ docs/source/benchmarks/**
 .pre-commit-config.yaml
 graphix/sim/graphix.code-workspace
 
+.vscode/settings.json

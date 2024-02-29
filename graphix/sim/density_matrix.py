@@ -368,7 +368,7 @@ class DensityMatrixBackend:
         if self.pr_calc:
             result = 0
             m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-            prob_0 = np.real(self.state.expectation_single(m_op, loc))
+            prob_0 = np.real_if_close(self.state.expectation_single(m_op, loc))
 
             # choose the measurement result randomly according to the computed probability
             # just modify result and operator if the outcome turns out to be 1
