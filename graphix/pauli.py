@@ -126,9 +126,9 @@ class Plane(enum.Enum):
             case Plane.XY:
                 return Axis.X
             case Plane.YZ:
-                return Axis.Y
+                return Axis.Z  # former convention was Y
             case Plane.XZ:
-                return Axis.X
+                return Axis.Z  # former convention was X
 
     @property
     def sin(self) -> Axis:
@@ -136,9 +136,9 @@ class Plane(enum.Enum):
             case Plane.XY:
                 return Axis.Y
             case Plane.YZ:
-                return Axis.Z
+                return Axis.Y  # former convention was Z
             case Plane.XZ:
-                return Axis.Z
+                return Axis.X  # former convention was Z
 
     def polar(self, angle: float) -> tuple[float, float, float]:
         result = [0, 0, 0]
