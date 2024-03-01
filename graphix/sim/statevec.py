@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 import numpy as np
-import pydantic
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -95,7 +94,7 @@ class StatevectorBackend:
             vop = cmd[6]
         else:
             vop = 0
-        measure_update = MeasureUpdate.compute(
+        measure_update = graphix.pauli.MeasureUpdate.compute(
             graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
@@ -433,32 +432,3 @@ class Statevec:
 def _get_statevec_norm(psi):
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
-
-
-class MeasureUpdate(pydantic.BaseModel):
-    new_plane: graphix.pauli.Plane
-    coeff: int
-    add_term: float
-
-    @staticmethod
-    def compute(plane: graphix.pauli.Plane, s: bool, t: bool, clifford: "graphix.clifford.Clifford") -> "MeasureUpdate":
-        gates = list(map(graphix.pauli.Pauli.from_axis, plane.axes))
-        if s:
-            clifford = graphix.clifford.X @ clifford
-        if t:
-            clifford = graphix.clifford.Z @ clifford
-        gates = list(map(clifford.measure, gates))
-        new_plane = graphix.pauli.Plane.from_axes(*(gate.axis for gate in gates))
-        cos_pauli = clifford.measure(graphix.pauli.Pauli.from_axis(plane.cos))
-        sin_pauli = clifford.measure(graphix.pauli.Pauli.from_axis(plane.sin))
-        exchange = cos_pauli.axis != new_plane.cos
-        if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
-            coeff = -1
-        else:
-            coeff = 1
-        add_term = 0
-        if cos_pauli.unit.sign:
-            add_term += np.pi
-        if exchange:
-            add_term = np.pi / 2 - add_term
-        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)
