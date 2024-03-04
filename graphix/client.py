@@ -26,7 +26,6 @@ class MeasureParameters:
     t_domain: list[int]
     vop: int
 
-
 class Client:
     def __init__(self, pattern, blind=False, secrets={}):
         self.pattern = pattern
@@ -58,15 +57,18 @@ class Client:
                 self.r_secret = True
                 self.secrets['r'] = {}
                 r_size = len(secrets['r'].keys())
+                # If the client entered an empty secret (need to generate it)
                 if r_size == 0:
                     # Need to generate the bit for each measured qubit
                     for node in self.measurement_db:
                         self.secrets['r'][node] = np.random.randint(0, 2)
-                elif r_size == len(self.measurement_db):
+
+                # If the client entered a customized secret : need to check its validity
+                elif self.is_valid_secret('r', secrets['r']):
                     self.secrets['r'] = secrets['r']
                     # TODO : add more rigorous test of the r-secret format
                 else:
-                    raise ValueError("`r`secret has unappropriated length.")
+                    raise ValueError("`r` has wrong format.")
             # TODO : handle secrets `a`, `theta`
 
     def init_measurement_db(self):
@@ -144,6 +146,21 @@ class Client:
 
         return z_decoding, x_decoding
 
+    def get_secrets_locations(self):
+        locations = {}
+        for secret in self.secrets:
+            secret_dict = self.secrets[secret]
+            secrets_location = secret_dict.keys()
+            locations[secret] = secrets_location
+        return locations
+
+    def is_valid_secret(self, secret_type, custom_secret):
+        if any((i != 0 and i != 1) for i in custom_secret.values()) :
+            print(custom_secret)
+            return False
+        if secret_type == 'r':
+            return set(custom_secret.keys()) == set(self.measurement_db.keys())
+
 
 class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
     def __init__(self, client: Client):
@@ -169,3 +186,4 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
             r_value = self.__client.secrets['r'][node]
             result = (result + r_value) % 2
         self.__client.results[node] = result
+
