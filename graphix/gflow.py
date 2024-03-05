@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 from itertools import product
 
+from copy import deepcopy
 import networkx as nx
 import numpy as np
 import sympy as sp
@@ -387,7 +388,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     if verify_flow(G, input_nodes, output_nodes, xflow):  # if xflow is valid
         zflow_from_xflow = dict()
-        for node, corrections in xflow.items():
+        for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(G, corrections) - {node}
             if cand:
                 zflow_from_xflow[node] = cand
@@ -442,7 +443,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
         zflow_from_xflow = dict()
-        for node, corrections in xflow.items():
+        for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(G, corrections) - {node}
             if cand:
                 zflow_from_xflow[node] = cand

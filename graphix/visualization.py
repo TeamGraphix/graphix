@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
+from copy import deepcopy
 import numpy as np
 from matplotlib import pyplot as plt
 import math
@@ -672,12 +673,12 @@ class GraphVisualizer:
         plt.figure(figsize=figsize)
 
         xzflow = dict()
-        for key, value in xflow.items():
+        for key, value in deepcopy(xflow).items():
             if key in xzflow:
                 xzflow[key] |= value
             else:
                 xzflow[key] = value
-        for key, value in zflow.items():
+        for key, value in deepcopy(zflow).items():
             if key in xzflow:
                 xzflow[key] |= value
             else:
