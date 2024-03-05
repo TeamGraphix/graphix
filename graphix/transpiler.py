@@ -229,7 +229,7 @@ class Circuit:
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
         pattern = Pattern(input_nodes=input)
-        pattern.extend([["N", i] for i in range(self.width)])
+        # pattern.extend([["N", i] for i in range(self.width)])
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
@@ -342,8 +342,8 @@ class Circuit:
         pattern : :class:`graphix.pattern.Pattern` object
         """
         self._N = []
-        for i in range(self.width):
-            self._N.append(["N", i])
+        # for i in range(self.width):
+        #    self._N.append(["N", i])
         self._M = []
         self._E = []
         self._instr = []

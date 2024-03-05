@@ -63,7 +63,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
         # flow found
         depth, layers = get_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
-        pattern.extend([["N", i] for i in inputs])
+        # pattern.extend([["N", i] for i in inputs])
         for i in set(graph.nodes) - set(inputs):
             pattern.add(["N", i])
         for e in graph.edges:
@@ -87,7 +87,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
             # gflow found
             depth, layers = get_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
-            pattern.extend([["N", i] for i in inputs])
+            # pattern.extend([["N", i] for i in inputs])
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(["N", i])
             for e in graph.edges:

@@ -15,6 +15,19 @@ from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 
 
+class NodeAlreadyPrepared(Exception):
+    def __init__(self, node: int):
+        self.__node = node
+
+    @property
+    def node(self):
+        return self.__node
+
+    @property
+    def __str__(self) -> str:
+        return f"Node already prepared: {self.__node}"
+
+
 class Pattern:
     """
     MBQC pattern class
@@ -90,9 +103,10 @@ class Pattern:
         assert type(cmd) == list
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
-            if cmd[1] not in self.__output_nodes:
-                self.__Nnode += 1
-                self.__output_nodes.append(cmd[1])
+            if cmd[1] in self.__output_nodes:
+                raise NodeAlreadyPrepared(cmd[1])
+            self.__Nnode += 1
+            self.__output_nodes.append(cmd[1])
         elif cmd[0] == "M":
             self.__output_nodes.remove(cmd[1])
         self.__seq.append(cmd)
@@ -259,19 +273,23 @@ class Pattern:
             transpiled local pattern.
         """
         standardized = self.is_standard()
-        node_prop = dict()
+
+        def fresh_node():
+            return {
+                "seq": [],
+                "Mprop": [None, None, [], [], 0],
+                "Xsignal": [],
+                "Xsignals": [],
+                "Zsignal": [],
+                "input": False,
+                "output": False,
+            }
+
+        node_prop = {input: fresh_node() for input in self.__input_nodes}
         morder = []
         for cmd in self.__seq:
             if cmd[0] == "N":
-                node_prop[cmd[1]] = {
-                    "seq": [],
-                    "Mprop": [None, None, [], [], 0],
-                    "Xsignal": [],
-                    "Xsignals": [],
-                    "Zsignal": [],
-                    "input": False,
-                    "output": False,
-                }
+                node_prop[cmd[1]] = fresh_node()
             elif cmd[0] == "E":
                 node_prop[cmd[1][1]]["seq"].append(cmd[1][0])
                 node_prop[cmd[1][0]]["seq"].append(cmd[1][1])
@@ -750,7 +768,7 @@ class Pattern:
         dependency = self._get_dependency()
         measured = self.results.keys()
         dependency = self.update_dependency(measured, dependency)
-        not_measured = set()
+        not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd[0] == "N":
                 if not cmd[1] in self.output_nodes:
@@ -1000,9 +1018,12 @@ class Pattern:
         edge_list : list
             list of tuples (i,j) specifying edges
         """
-        node_list, edge_list = [], []
+        # We rely on the fact that self.input_nodes returns a copy:
+        # self.input_nodes is equivalent to list(self.__input_nodes)
+        node_list, edge_list = self.input_nodes, []
         for cmd in self.__seq:
             if cmd[0] == "N":
+                assert cmd[1] not in node_list
                 node_list.append(cmd[1])
             elif cmd[0] == "E":
                 edge_list.append(cmd[1])
@@ -1165,7 +1186,7 @@ class Pattern:
         meas_commands : list of command
             list of measurement ('M') commands
         """
-        prepared = []
+        prepared = self.input_nodes
         measured = []
         new = []
         for cmd in meas_commands:
@@ -1214,8 +1235,8 @@ class Pattern:
         n_nodes : int
             max number of nodes present in the graph during pattern execution.
         """
-        max_nodes = 0
-        nodes = 0
+        nodes = len(self.input_nodes)
+        max_nodes = nodes
         for cmd in self.__seq:
             if cmd[0] == "N":
                 nodes += 1
@@ -1750,7 +1771,7 @@ class LocalPattern:
         """
         assert self.is_standard()
         pattern = Pattern(input_nodes=self.input_nodes)
-        Nseq = [["N", i] for i in self.nodes.keys()]
+        Nseq = [["N", i] for i in self.nodes.keys() - self.input_nodes]
         Eseq = []
         Mseq = []
         Xseq = []
@@ -1886,13 +1907,15 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     # update command sequence
     vops = graph_state.get_vops()
     new_seq = []
-    for index in iter(graph_state.nodes):
-        new_seq.append(["N", index])
-    for edge in iter(graph_state.edges):
+    # TO CHECK: why the order is relevant?
+    for index in graph_state.nodes:
+        if index not in new_inputs:
+            new_seq.append(["N", index])
+    for edge in graph_state.edges:
         new_seq.append(["E", edge])
     for cmd in pattern:
         if cmd[0] == "M":
-            if cmd[1] in list(graph_state.nodes):
+            if cmd[1] in graph_state.nodes:
                 cmd_new = deepcopy(cmd)
                 new_clifford_ = vops[cmd[1]]
                 if len(cmd_new) == 7:
