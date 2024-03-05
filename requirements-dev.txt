@@ -7,6 +7,6 @@ parameterized
 tox
 
 # Optional dependencies
-qiskit
+qiskit>=1.0
 qiskit-aer
 rustworkx
