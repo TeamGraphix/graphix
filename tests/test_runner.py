@@ -43,7 +43,8 @@ class TestPatternRunner(unittest.TestCase):
         qc.cx(1, 2)
         qc.save_statevector()
         sim = Aer.get_backend("aer_simulator")
-        job = qiskit.execute(qc, sim)
+        new_qc = qiskit.transpile(qc, sim)
+        job = sim.run(new_qc)
         result = job.result()
 
         # Mock
