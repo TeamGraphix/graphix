@@ -112,33 +112,51 @@ class Plane(enum.Enum):
 
     @property
     def axes(self) -> list[Axis]:
-        match self:
-            case Plane.XY:
-                return [Axis.X, Axis.Y]
-            case Plane.YZ:
-                return [Axis.Y, Axis.Z]
-            case Plane.XZ:
-                return [Axis.X, Axis.Z]
+        # match self:
+        #     case Plane.XY:
+        #         return [Axis.X, Axis.Y]
+        #     case Plane.YZ:
+        #         return [Axis.Y, Axis.Z]
+        #     case Plane.XZ:
+        #         return [Axis.X, Axis.Z]
+        if self == Plane.XY:
+            return [Axis.X, Axis.Y]
+        elif self == Plane.YZ:
+            return [Axis.Y, Axis.Z]
+        elif self == Plane.XZ:
+            return [Axis.X, Axis.Z]
 
     @property
     def cos(self) -> Axis:
-        match self:
-            case Plane.XY:
-                return Axis.X
-            case Plane.YZ:
-                return Axis.Z  # former convention was Y
-            case Plane.XZ:
-                return Axis.Z  # former convention was X
+        # match self:
+        #     case Plane.XY:
+        #         return Axis.X
+        #     case Plane.YZ:
+        #         return Axis.Z  # former convention was Y
+        #     case Plane.XZ:
+        #         return Axis.Z  # former convention was X
+        if self == Plane.XY:
+            return Axis.X
+        elif self == Plane.YZ:
+            return Axis.Z  # former convention was Y
+        elif self == Plane.XZ:
+            return Axis.Z  # former convention was X
 
     @property
     def sin(self) -> Axis:
-        match self:
-            case Plane.XY:
-                return Axis.Y
-            case Plane.YZ:
-                return Axis.Y  # former convention was Z
-            case Plane.XZ:
-                return Axis.X  # former convention was Z
+        # match self:
+        #     case Plane.XY:
+        #         return Axis.Y
+        #     case Plane.YZ:
+        #         return Axis.Y  # former convention was Z
+        #     case Plane.XZ:
+        #         return Axis.X  # former convention was Z
+        if self == Plane.XY:
+            return Axis.Y
+        elif self == Plane.YZ:
+            return Axis.Y  # former convention was Z
+        elif self == Plane.XZ:
+            return Axis.X  # former convention was Z
 
     def polar(self, angle: float) -> tuple[float, float, float]:
         result = [0, 0, 0]
@@ -150,13 +168,19 @@ class Plane(enum.Enum):
     def from_axes(a: Axis, b: Axis) -> "Plane":
         if b.value < a.value:
             a, b = b, a
-        match a, b:
-            case Axis.X, Axis.Y:
-                return Plane.XY
-            case Axis.Y, Axis.Z:
-                return Plane.YZ
-            case Axis.X, Axis.Z:
-                return Plane.XZ
+        # match a, b:
+        #     case Axis.X, Axis.Y:
+        #         return Plane.XY
+        #     case Axis.Y, Axis.Z:
+        #         return Plane.YZ
+        #     case Axis.X, Axis.Z:
+        #         return Plane.XZ
+        if a == Axis.X and b == Axis.Y:
+            return Plane.XY
+        elif a == Axis.Y and b == Axis.Z:
+            return Plane.YZ
+        elif a == Axis.X and b == Axis.Z:
+            return Plane.XZ
         assert a == b
         raise ValueError(f"Cannot make a plane giving the same axis {a} twice.")
 
