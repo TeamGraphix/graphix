@@ -254,7 +254,7 @@ class Clifford:
         return get(CLIFFORD_CONJ[self.__index])
 
     @property
-    def hsz(self) -> list["Clifford"]:
+    def hsz(self) -> typing.List["Clifford"]:
         """
         Return a decomposition of the Clifford gate with the gates H, S, Z.
         """
