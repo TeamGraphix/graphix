@@ -12,6 +12,13 @@ with the pattern, graph or the (generalized-)flow.
 # -----------
 # First, let us inspect the flow and gflow associated with the resource graph of a pattern.
 # simply call :meth:`~graphix.pattern.Pattern.draw_graph` method.
+# Below we list the meaning of the node boundary and face colors.
+#
+# - Nodes with red boundaries are the *input nodes* where the computation starts.
+# - Nodes with gray color is the *output nodes* where the final state end up in.
+# - Nodes with blue color is the nodes that are measured in *Pauli basis*, one of *X*, *Y* or *Z* computational bases.
+# - Nodes in white are the ones measured in *non-Pauli basis*.
+#
 from graphix import Circuit
 import numpy as np
 
