@@ -54,7 +54,7 @@ pattern.print_pattern(lim=10)
 # - Nodes with blue color is the nodes that are measured in *Pauli basis*, one of *X*, *Y* or *Z* computational bases.
 # - Nodes in white are the ones measured in *non-Pauli basis*.
 #
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 # %%
 # we can directly simulate the measurement pattern, to obtain the output state.
@@ -91,5 +91,5 @@ circuit.cnot(1, 0)
 circuit.rz(0, theta[3])
 
 pattern = circuit.transpile()
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 # %%

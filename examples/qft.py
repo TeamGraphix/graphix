@@ -57,7 +57,7 @@ swap(circuit, 0, 2)
 
 # transpile and plot the graph
 pattern = circuit.transpile()
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 nodes, _ = pattern.get_graph()
 print(len(nodes))
 
