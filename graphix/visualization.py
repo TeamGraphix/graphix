@@ -759,6 +759,7 @@ class GraphVisualizer:
         plt.plot([], [], color="tab:brown", label="xflow and zflow")
         # outside of the plot
         plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
+        plt.subplots_adjust(right=0.75)
 
         x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
         x_max = max([pos[node][0] for node in self.G.nodes()])

@@ -473,7 +473,7 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     nodes = set(nodes)
     xflow = dict()
     zflow = dict()
-    for cmd in pattern.seq:
+    for cmd in pattern:
         if cmd[0] == "M":
             target = cmd[1]
             xflow_source = {x for x in cmd[4] if cmd[4].count(x) % 2 != 0} & nodes
