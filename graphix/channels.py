@@ -101,7 +101,6 @@ def depolarising_channel(prob: float) -> KrausChannel:
     """single-qubit depolarizing channel
     .. math::
         (1-p) \rho + \frac{p}{3} (X * \rho * X + Y * rho * Y + Z * rho * Z) = (1 - 4\frac{p}{3}) \rho + 4 \frac{p}{3} Id
-    but my format is better with X, Y Z
     """
     return KrausChannel(
         [
@@ -109,6 +108,25 @@ def depolarising_channel(prob: float) -> KrausChannel:
             {"coef": np.sqrt(prob / 3.0), "operator": Ops.x},
             {"coef": np.sqrt(prob / 3.0), "operator": Ops.y},
             {"coef": np.sqrt(prob / 3.0), "operator": Ops.z},
+        ]
+    )
+
+
+def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
+    """single-qubit pauli channel
+    .. math::
+        (1-p) \rho + p_X X * \rho * X + p_Y * Y * rho * Y + p_Z * Z * rho * Z) 
+    but my format is better with X, Y Z
+    """
+    if px + py + pz > 1:
+        raise ValueError('The sum of probabilities must not exceed 1.')
+    pI = 1 - px - py - pz
+    return KrausChannel(
+        [
+            {"coef": np.sqrt(1 - pI), "operator": np.eye(2)},
+            {"coef": np.sqrt(px / 3.0), "operator": Ops.x},
+            {"coef": np.sqrt(py / 3.0), "operator": Ops.y},
+            {"coef": np.sqrt(pz / 3.0), "operator": Ops.z},
         ]
     )
 

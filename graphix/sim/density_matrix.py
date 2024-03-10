@@ -236,7 +236,7 @@ class DensityMatrix:
             statevec : numpy array
                 statevector (flattened numpy array) to compare with
         """
-        return np.abs(statevec.conj() @ self.rho @ statevec)
+        return np.abs(statevec.transpose().conj() @ self.rho @ statevec)
 
     def apply_channel(self, channel: KrausChannel, qargs):
         """Applies a channel to a density matrix.
