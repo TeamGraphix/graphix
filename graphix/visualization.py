@@ -769,7 +769,7 @@ class GraphVisualizer:
             x_min - 0.5 * node_distance[0], x_max + 3.5 * node_distance[0]
         )  # Add some padding to the left and right
         plt.ylim(y_min - 0.5, y_max + 0.5)  # Add some padding to the top and bottom
-        
+
         plt.legend(loc="upper right", fontsize=10)
 
         if save:
