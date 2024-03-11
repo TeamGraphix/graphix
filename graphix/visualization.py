@@ -670,6 +670,8 @@ class GraphVisualizer:
 
         if figsize is None:
             figsize = self.get_figsize(layers, pos, node_distance=node_distance)
+        # add some padding to the right for the legend
+        figsize = (figsize[0] + 3.0, figsize[1])
         plt.figure(figsize=figsize)
 
         xzflow = dict()
@@ -757,9 +759,6 @@ class GraphVisualizer:
         plt.plot([], [], color="tab:red", label="xflow")
         plt.plot([], [], color="tab:green", label="zflow")
         plt.plot([], [], color="tab:brown", label="xflow and zflow")
-        # outside of the plot
-        plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
-        plt.subplots_adjust(right=0.75)
 
         x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
         x_max = max([pos[node][0] for node in self.G.nodes()])
@@ -767,9 +766,11 @@ class GraphVisualizer:
         y_max = max([pos[node][1] for node in self.G.nodes()])
 
         plt.xlim(
-            x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
+            x_min - 0.5 * node_distance[0], x_max + 3.5 * node_distance[0]
         )  # Add some padding to the left and right
         plt.ylim(y_min - 0.5, y_max + 0.5)  # Add some padding to the top and bottom
+        
+        plt.legend(loc="upper right", fontsize=10)
 
         if save:
             plt.savefig(filename)
