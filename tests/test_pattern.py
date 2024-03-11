@@ -7,6 +7,7 @@ from parameterized import parameterized
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.transpiler import Circuit
+from graphix.simulator import PatternSimulator
 
 SEED = 42
 rc.set_seed(SEED)
@@ -58,6 +59,19 @@ class TestPattern(unittest.TestCase):
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
+    def test_empty_output_nodes(self):
+        pattern = Pattern(input_nodes=[0])
+        pattern.add(["M", 0, "XY", np.pi / 2, [], []])
+        nb_shots = 100
+        nb_ones = 0
+        for _ in range(nb_shots):
+            sim = PatternSimulator(pattern)
+            sim.run()
+            assert sim.state.dims() == ()
+            if sim.results[0]:
+                nb_ones += 1
+        assert abs(nb_ones - nb_shots / 2) < nb_shots / 20
 
     def test_minimize_space_graph_maxspace_with_flow(self):
         max_qubits = 20

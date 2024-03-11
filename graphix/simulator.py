@@ -35,7 +35,7 @@ class PatternSimulator:
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
+        # assert len(pattern.output_nodes) > 0
 
         if backend == "statevector" and noise_model is None:
             self.noise_model = None
@@ -61,12 +61,18 @@ class PatternSimulator:
         else:
             raise ValueError("Unknown backend.")
         self.pattern = pattern
-        self.results = self.backend.results
-        self.state = self.backend.state
         self.node_index = []
 
     def set_noise_model(self, model):
         self.noise_model = model
+
+    @property
+    def results(self):
+        return self.backend.results
+
+    @property
+    def state(self):
+        return self.backend.state
 
     def run(self):
         """Perform the simulation.
