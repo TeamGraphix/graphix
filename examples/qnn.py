@@ -333,12 +333,12 @@ print(pattern.max_space())
 
 # %%
 # Plot the resource state. Node positions are determined by the flow-finding algorithm.
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 # %%
 # The resource state after Pauli measurement preprocessing:
 pattern.perform_pauli_measurements(leave_input=False)
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 # %%
 # Qubit Resource plot

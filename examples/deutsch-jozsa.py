@@ -62,7 +62,7 @@ circuit.h(2)
 
 pattern = circuit.transpile()
 pattern.print_pattern(lim=15)
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 #%%
 # this seems to require quite a large graph state.
@@ -78,7 +78,7 @@ pattern.print_pattern(lim=15)
 
 pattern.perform_pauli_measurements()
 pattern.print_pattern(lim=16, filter=["N", "M", "C"])
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=True)
 
 #%%
 # Since all operations of the original circuit are Clifford, all measurements in the measurement pattern are Pauli measurements:

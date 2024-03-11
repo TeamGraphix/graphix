@@ -11,9 +11,14 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 """
 
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 from itertools import product
 
+from copy import deepcopy
 import networkx as nx
 import numpy as np
 import sympy as sp
@@ -146,7 +151,7 @@ def gflowaux(
         vec = MatGF2(np.zeros(len(node_order_row), dtype=int))
         if meas_planes[node] == "XY":
             vec.data[i_row] = 1
-        elif meas_planes[node] == "XZ":
+        elif meas_planes[node] == "ZX":
             vec.data[i_row] = 1
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
@@ -160,14 +165,14 @@ def gflowaux(
     for i_row in range(len(node_order_row)):
         non_out_node = node_order_row[i_row]
         x_col = x[:, i_row]
-        if x_col[0] == sp.nan:  # no solution
+        if 0 in x_col.shape or x_col[0] == sp.nan:  # no solution
             continue
         if mode == "single":
             sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
             g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-            if meas_planes[non_out_node] in ["XZ", "YZ"]:
+            if meas_planes[non_out_node] in ["ZX", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
         elif mode == "all":
@@ -180,7 +185,7 @@ def gflowaux(
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-                if meas_planes[non_out_node] in ["XZ", "YZ"]:
+                if meas_planes[non_out_node] in ["ZX", "YZ"]:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
@@ -192,7 +197,7 @@ def gflowaux(
                 g[non_out_node][node] = x_col[i]
             for i in range(len(kernels)):
                 g[non_out_node][node_order_col[col_permutation.index(len(x_col) + i)]] = kernels[i]
-            if meas_planes[non_out_node] in ["XZ", "YZ"]:
+            if meas_planes[non_out_node] in ["ZX", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
         l_k[non_out_node] = k
@@ -214,55 +219,6 @@ def gflowaux(
             g,
             mode=mode,
         )
-
-
-def gflow_from_pattern(pattern):
-    """Get gflow from pattern
-
-    Parameters
-    ----------
-    pattern: graphix.Pattern object
-        pattern to be based on
-
-    Returns
-    -------
-    g: dict
-        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
-    l_k: dict
-        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
-    """
-    nodes, _ = pattern.get_graph()
-    nodes = set(nodes)
-    layers = pattern.get_layers()
-    l_k = dict()
-    for l in layers[1].keys():
-        for n in layers[1][l]:
-            l_k[n] = l
-    lmax = max(l_k.values())
-    for node in l_k.keys():
-        l_k[node] = lmax - l_k[node] + 1
-    for output_node in pattern.output_nodes:
-        l_k[output_node] = 0
-    g = dict()
-    for cmd in pattern.seq:
-        if cmd[0] == "M":
-            g_in = cmd[1]
-            g_outs = set(cmd[2]) & nodes
-            for g_out in g_outs:
-                if g_out in g.keys():
-                    g[g_out] = g[g_out].union({g_in})
-                else:
-                    g[g_out] = {g_in}
-        if cmd[0] == "X":
-            g_in = cmd[1]
-            g_outs = set(cmd[2]) & nodes
-            for g_out in g_outs:
-                if g_out in g.keys():
-                    g[g_out] = g[g_out].union({g_in})
-                else:
-                    g[g_out] = {g_in}
-
-    return g, l_k
 
 
 def find_flow(
@@ -390,6 +346,163 @@ def flowaux(
     )
 
 
+def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
+    """Check if the pattern has a valid flow. If so, return the flow and layers.
+
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+
+    Returns
+    -------
+    f: dict
+        flow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by flow algorithm. l_k[d] is a node set of depth d.
+    """
+    meas_planes = pattern.get_meas_plane()
+    for plane in meas_planes.values():
+        if plane not in ["X", "Y", "XY"]:
+            return None, None
+    G = nx.Graph()
+    nodes, edges = pattern.get_graph()
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
+    input_nodes = pattern.input_nodes if not pattern.input_nodes else set()
+    output_nodes = set(pattern.output_nodes)
+    nodes = set(nodes)
+
+    layers = pattern.get_layers()
+    l_k = dict()
+    for l in layers[1].keys():
+        for n in layers[1][l]:
+            l_k[n] = l
+    lmax = max(l_k.values()) if l_k else 0
+    for node in l_k.keys():
+        l_k[node] = lmax - l_k[node] + 1
+    for output_node in pattern.output_nodes:
+        l_k[output_node] = 0
+
+    xflow, zflow = get_corrections_from_pattern(pattern)
+
+    if verify_flow(G, input_nodes, output_nodes, xflow):  # if xflow is valid
+        zflow_from_xflow = dict()
+        for node, corrections in deepcopy(xflow).items():
+            cand = find_odd_neighbor(G, corrections) - {node}
+            if cand:
+                zflow_from_xflow[node] = cand
+        if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
+            return None, None
+        return xflow, l_k
+    else:
+        return None, None
+
+
+def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
+    """Check if the pattern has a valid gflow. If so, return the gflow and layers.
+
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+
+    Returns
+    -------
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
+    """
+    G = nx.Graph()
+    nodes, edges = pattern.get_graph()
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
+    input_nodes = set(pattern.input_nodes) if pattern.input_nodes else set()
+    output_nodes = set(pattern.output_nodes)
+    meas_planes = pattern.get_meas_plane()
+    nodes = set(nodes)
+
+    layers = pattern.get_layers()
+    l_k = dict()
+    for l in layers[1].keys():
+        for n in layers[1][l]:
+            l_k[n] = l
+    lmax = max(l_k.values()) if l_k else 0
+    for node in l_k.keys():
+        l_k[node] = lmax - l_k[node] + 1
+    for output_node in pattern.output_nodes:
+        l_k[output_node] = 0
+
+    xflow, zflow = get_corrections_from_pattern(pattern)
+    for node, plane in meas_planes.items():
+        if plane in ["ZX", "YZ"]:
+            if node not in xflow.keys():
+                xflow[node] = {node}
+            xflow[node] |= {node}
+
+    if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
+        zflow_from_xflow = dict()
+        for node, corrections in deepcopy(xflow).items():
+            cand = find_odd_neighbor(G, corrections) - {node}
+            if cand:
+                zflow_from_xflow[node] = cand
+        if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
+            return None, None
+        return xflow, l_k
+    else:
+        return None, None
+
+
+def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
+    """Get x and z corrections from pattern
+
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+
+    Returns
+    -------
+    xflow: dict
+        xflow function. xflow[i] is the set of qubits to be corrected in the X basis for the measurement of qubit i.
+    zflow: dict
+        zflow function. zflow[i] is the set of qubits to be corrected in the Z basis for the measurement of qubit i.
+    """
+    nodes, _ = pattern.get_graph()
+    nodes = set(nodes)
+    xflow = dict()
+    zflow = dict()
+    for cmd in pattern:
+        if cmd[0] == "M":
+            target = cmd[1]
+            xflow_source = {x for x in cmd[4] if cmd[4].count(x) % 2 != 0} & nodes
+            zflow_source = {x for x in cmd[5] if cmd[5].count(x) % 2 != 0} & nodes
+            for node in xflow_source:
+                if node not in xflow.keys():
+                    xflow[node] = set()
+                xflow[node] |= {target}
+            for node in zflow_source:
+                if node not in zflow.keys():
+                    zflow[node] = set()
+                zflow[node] |= {target}
+        if cmd[0] == "X":
+            target = cmd[1]
+            xflow_source = {x for x in cmd[2] if cmd[2].count(x) % 2 != 0} & nodes
+            for node in xflow_source:
+                if node not in xflow.keys():
+                    xflow[node] = set()
+                xflow[node] |= {target}
+        if cmd[0] == "Z":
+            target = cmd[1]
+            zflow_source = {x for x in cmd[2] if cmd[2].count(x) % 2 != 0} & nodes
+            for node in zflow_source:
+                if node not in zflow.keys():
+                    zflow[node] = set()
+                zflow[node] |= {target}
+    return xflow, zflow
+
+
 def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     """Function to find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
 
@@ -495,7 +608,10 @@ def get_dependence_flow(
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    dependence_flow = {input: set() for input in inputs}
+    try:  # if inputs is not empty
+        dependence_flow = {input: set() for input in inputs}
+    except:
+        dependence_flow = dict()
     # concatenate flow and odd_flow
     combined_flow = dict()
     for node, corrections in flow.items():
@@ -546,7 +662,7 @@ def get_layers_from_flow(
     while True:
         layers[depth] = set()
         for node in left_nodes:
-            if len(dependence_flow[node]) == 0:
+            if node not in dependence_flow.keys() or len(dependence_flow[node]) == 0:
                 layers[depth] |= {node}
             elif dependence_flow[node] == {node}:
                 layers[depth] |= {node}
@@ -619,40 +735,20 @@ def verify_flow(
     odd_flow = {node: find_odd_neighbor(graph, corrections) for node, corrections in flow.items()}
 
     try:
-        layers, depth = get_layers_from_flow(flow, odd_flow, input, output)
+        _, _ = get_layers_from_flow(flow, odd_flow, input, output)
     except ValueError:
         valid_flow = False
         return valid_flow
-    node_order = []
-    for d in range(depth):
-        node_order.extend(list(layers[d]))
-    adjacency_matrix, node_list = get_adjacency_matrix(graph)
-    permute = [node_list.index(i) for i in node_order]
-    adjacency_matrix.permute_col(permute)
-    adjacency_matrix.permute_row(permute)
-
-    flow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
-    for node, corrections in flow.items():
-        for correction in corrections:
-            row = node_order.index(node)
-            col = node_order.index(correction)
-            # check whether v < f(v)
-            if row >= col:
-                valid_flow = False
-                return valid_flow
-            # check whether the flow arrow is edge of the original graph
-            if adjacency_matrix.data[row, col] != 1:
-                valid_flow = False
-                return valid_flow
-            flow_matrix.data[row, col] = 1
-
-    Neighbor_f = flow_matrix @ adjacency_matrix
-    # Neighbor_f = MatGF2(Neighbor_f.data)
-    # check whether v < N(f(v))
-    triu = np.triu(Neighbor_f.data)
-    triu = MatGF2(triu)
-    dif = triu - Neighbor_f
-    valid_flow &= np.count_nonzero(dif.data) == 0
+    # check if v ~ f(v) for each node
+    edges = set(graph.edges)
+    for node, correction in flow.items():
+        if len(correction) > 1:
+            valid_flow = False
+            return valid_flow
+        correction = list(correction)[0]
+        if (node, correction) not in edges and (correction, node) not in edges:
+            valid_flow = False
+            return valid_flow
     return valid_flow
 
 
@@ -688,47 +784,27 @@ def verify_gflow(
     non_outputs = set(graph.nodes) - output
     odd_flow = dict()
     for non_output in non_outputs:
-        odd_flow[non_output] = find_odd_neighbor(graph, gflow[non_output])
+        if non_output not in gflow:
+            gflow[non_output] = set()
+            odd_flow[non_output] = set()
+        else:
+            odd_flow[non_output] = find_odd_neighbor(graph, gflow[non_output])
 
     try:
-        layers, depth = get_layers_from_flow(gflow, odd_flow, input, output)
+        _, _ = get_layers_from_flow(gflow, odd_flow, input, output)
     except ValueError:
         valid_flow = False
         return valid_flow
-    node_order = []
-    for d in range(depth):
-        node_order.extend(list(layers[d]))
-    adjacency_matrix, node_list = get_adjacency_matrix(graph)
-    permute = [node_list.index(i) for i in node_order]
-    adjacency_matrix.permute_col(permute)
-    adjacency_matrix.permute_row(permute)
-
-    gflow_matrix = MatGF2(np.zeros((len(node_order), len(node_order)), dtype=int))
-
-    for node, corrections in gflow.items():
-        for correction in corrections:
-            row = node_order.index(node)
-            col = node_order.index(correction)
-            # check whether v <= g(v)
-            if row > col:
-                valid_gflow = False
-                return valid_gflow
-            gflow_matrix.data[row, col] = 1
-
-    oddneighbor_g = gflow_matrix @ adjacency_matrix
-    triu = np.triu(oddneighbor_g.data)
-    triu = MatGF2(triu)
-    valid_gflow = np.array_equal(triu.data, oddneighbor_g.data)
 
     # check for each measurement plane
     for node, plane in meas_planes.items():
-        index = node_order.index(node)
+        # index = node_order.index(node)
         if plane == "XY":
-            valid_gflow &= (gflow_matrix.data[index, index] == 0) and (oddneighbor_g.data[index, index] == 1)
+            valid_gflow &= (node not in gflow[node]) and (node in odd_flow[node])
         elif plane == "XZ":
-            valid_gflow &= (gflow_matrix.data[index, index] == 1) and (oddneighbor_g.data[index, index] == 1)
+            valid_gflow &= (node in gflow[node]) and (node in odd_flow[node])
         elif plane == "YZ":
-            valid_gflow &= (gflow_matrix.data[index, index] == 1) and (oddneighbor_g.data[index, index] == 0)
+            valid_gflow &= (node in gflow[node]) and (node not in odd_flow[node])
 
     return valid_gflow
 
