@@ -100,7 +100,7 @@ def dephasing_channel(prob: float) -> KrausChannel:
 def depolarising_channel(prob: float) -> KrausChannel:
     """single-qubit depolarizing channel
     .. math::
-        (1-p) \rho + \frac{p}{3} (X * \rho * X + Y * rho * Y + Z * rho * Z) = (1 - 4\frac{p}{3}) \rho + 4 \frac{p}{3} Id
+        (1-p) \rho + \frac{p}{3} (X \rho X + Y \rho Y + Z \rho Z) = (1 - 4\frac{p}{3}) \rho + 4 \frac{p}{3} Id
     """
     return KrausChannel(
         [
@@ -115,7 +115,7 @@ def depolarising_channel(prob: float) -> KrausChannel:
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     """single-qubit pauli channel
     .. math::
-        (1-p) \rho + p_X X * \rho * X + p_Y * Y * rho * Y + p_Z * Z * rho * Z) 
+        (1-p_X-p_Y-p_Z) \rho + p_X X \rho X + p_Y Y \rho Y + p_Z Z \rho Z) 
     but my format is better with X, Y Z
     """
     if px + py + pz > 1:
