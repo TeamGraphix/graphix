@@ -27,7 +27,7 @@ class PatternSimulator:
             MBQC pattern to be simulated.
         backend: str, 'statevector', 'densitymatrix or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
-        noise_model: 
+        noise_model:
         kwargs: keyword args for specified backend.
 
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
@@ -78,8 +78,9 @@ class PatternSimulator:
             in the representation depending on the backend used.
         """
 
+        self.backend.add_nodes(self.pattern.input_nodes)
         if self.noise_model is None:
-            for cmd in self.pattern.seq:
+            for cmd in self.pattern:
                 if cmd[0] == "N":
                     self.backend.add_nodes([cmd[1]])
                 elif cmd[0] == "E":
@@ -94,11 +95,12 @@ class PatternSimulator:
                     self.backend.apply_clifford(cmd)
                 else:
                     raise ValueError("invalid commands")
-                if self.pattern.seq[-1] == cmd:
-                    self.backend.finalize()
+            self.backend.finalize()
         else:
             self.noise_model.assign_simulator(self)
-            for cmd in self.pattern.seq:
+            for node in self.pattern.input_nodes:
+                self.backend.apply_channel(self.noise_model.prepare_qubit(), [node])
+            for cmd in self.pattern:
                 if cmd[0] == "N":  # prepare clean qubit and apply channel
                     self.backend.add_nodes([cmd[1]])
                     self.backend.apply_channel(self.noise_model.prepare_qubit(), [cmd[1]])
@@ -126,7 +128,6 @@ class PatternSimulator:
                     self.noise_model.tick_clock()
                 else:
                     raise ValueError("Invalid commands.")
-                if self.pattern.seq[-1] == cmd:
-                    self.backend.finalize()
+            self.backend.finalize()
 
         return self.backend.state

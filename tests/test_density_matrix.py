@@ -132,7 +132,6 @@ class TestDensityMatrix(unittest.TestCase):
             dm.expectation_single(op, nqb + 3)
 
     def test_expectation_single_success(self):
-
         """compare to pure state case
         hence only pure states
         but by linearity ok"""
@@ -175,7 +174,6 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_tensor_with_data_success(self):
         for n in range(3):
-
             data_a = randobj.rand_dm(2**n, dm_dtype=False)
             dm_a = DensityMatrix(data=data_a)
 
@@ -315,7 +313,6 @@ class TestDensityMatrix(unittest.TestCase):
         np.testing.assert_allclose(rho, expected_matrix)
 
     def test_evolve_success(self):
-
         # single-qubit gate
         # check against evolve_single
 
@@ -391,7 +388,6 @@ class TestDensityMatrix(unittest.TestCase):
         np.testing.assert_allclose(rho, expected_matrix)
 
     def test_evolve_fail(self):
-
         # test on 3-qubit gate just in case.
         N_qubits = np.random.randint(3, 5)
         N_qubits_op = 3
@@ -481,7 +477,6 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(dm.rho, expected_matrix)
 
     def test_apply_dephasing_channel(self):
-
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** np.random.randint(2, 4))
@@ -566,7 +561,6 @@ class TestDensityMatrix(unittest.TestCase):
         np.testing.assert_allclose(dm.rho, expected_dm)
 
     def test_apply_depolarising_channel(self):
-
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** np.random.randint(2, 4))
@@ -826,14 +820,13 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern.seq[-4])
+        backend.measure(backend.pattern[-4])
 
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
 
     def test_measure_pr_calc(self):
-
         # circuit there just to provide a measurement command to try out. Weird.
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
@@ -843,7 +836,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern.seq[-4])
+        backend.measure(backend.pattern[-4])
 
         # 3-qubit linear graph state: |+0+> + |-1->
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
@@ -862,10 +855,10 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern.seq[-4])
-        backend.measure(backend.pattern.seq[-3])
-        backend.correct_byproduct(backend.pattern.seq[-2])
-        backend.correct_byproduct(backend.pattern.seq[-1])
+        backend.measure(backend.pattern[-4])
+        backend.measure(backend.pattern[-3])
+        backend.correct_byproduct(backend.pattern[-2])
+        backend.correct_byproduct(backend.pattern[-1])
         backend.finalize()
         rho = backend.state.rho
 
@@ -873,10 +866,10 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern.seq[-4])
-        backend.measure(backend.pattern.seq[-3])
-        backend.correct_byproduct(backend.pattern.seq[-2])
-        backend.correct_byproduct(backend.pattern.seq[-1])
+        backend.measure(backend.pattern[-4])
+        backend.measure(backend.pattern[-3])
+        backend.correct_byproduct(backend.pattern[-2])
+        backend.correct_byproduct(backend.pattern[-1])
         backend.finalize()
         psi = backend.state.psi
 
