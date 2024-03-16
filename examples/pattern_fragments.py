@@ -16,13 +16,13 @@ import numpy as np
 circuit = Circuit(3)
 circuit.ccx(0, 1, 2)
 pattern = circuit.transpile()
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 #%%
 # Using :code:`opt=True` option for :code:`transpile` method, we switch to patterns with non-XY plane measurements allowed, 
 # which has gflow (not flow). For CCX gate, the number of ancilla qubits required is nearly halved:
 pattern = circuit.transpile(opt=True)
-pattern.draw_graph(node_distance=(1,0.4))
+pattern.draw_graph(node_distance=(1.2,0.8))
 # sphinx_gallery_thumbnail_number = 2
 
 #%%
@@ -33,7 +33,7 @@ circuit.ccx(0, 1, 2)
 for i in range(3):
     circuit.rz(i, np.pi/4)
 pattern = circuit.transpile(opt=True)
-pattern.draw_graph(flow_from_pattern=False, node_distance=(1,0.5))
+pattern.draw_graph(flow_from_pattern=True, node_distance=(1,0.5))
 
 #%%
 # Swap gate is just a swap of node indices during compilation, requiring no ancillas.

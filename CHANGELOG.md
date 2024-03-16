@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+## [0.2.11] - 2024-03-16
+
+### Added
+
 - Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
 - Added `gflow.flow_from_pattern` method.
 
