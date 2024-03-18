@@ -340,8 +340,8 @@ def flowaux(
         l_k,
         k + 1,
     )
-    
-    
+
+
 def find_pauliflow(
     graph: nx.Graph,
     input: set[int],
@@ -745,8 +745,8 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         return xflow, l_k
     else:
         return None, None
-    
-    
+
+
 def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, set[int]], dict[int, int]]:
     """Check if the pattern has a valid Pauliflow. If so, return the Pauliflow and layers.
 
