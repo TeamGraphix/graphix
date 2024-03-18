@@ -883,6 +883,163 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     return xflow, zflow
 
 
+def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
+    """Check if the pattern has a valid flow. If so, return the flow and layers.
+
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+
+    Returns
+    -------
+    f: dict
+        flow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by flow algorithm. l_k[d] is a node set of depth d.
+    """
+    meas_planes = pattern.get_meas_plane()
+    for plane in meas_planes.values():
+        if plane not in ["X", "Y", "XY"]:
+            return None, None
+    G = nx.Graph()
+    nodes, edges = pattern.get_graph()
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
+    input_nodes = pattern.input_nodes if not pattern.input_nodes else set()
+    output_nodes = set(pattern.output_nodes)
+    nodes = set(nodes)
+
+    layers = pattern.get_layers()
+    l_k = dict()
+    for l in layers[1].keys():
+        for n in layers[1][l]:
+            l_k[n] = l
+    lmax = max(l_k.values()) if l_k else 0
+    for node in l_k.keys():
+        l_k[node] = lmax - l_k[node] + 1
+    for output_node in pattern.output_nodes:
+        l_k[output_node] = 0
+
+    xflow, zflow = get_corrections_from_pattern(pattern)
+
+    if verify_flow(G, input_nodes, output_nodes, xflow):  # if xflow is valid
+        zflow_from_xflow = dict()
+        for node, corrections in deepcopy(xflow).items():
+            cand = find_odd_neighbor(G, corrections) - {node}
+            if cand:
+                zflow_from_xflow[node] = cand
+        if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
+            return None, None
+        return xflow, l_k
+    else:
+        return None, None
+
+
+def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
+    """Check if the pattern has a valid gflow. If so, return the gflow and layers.
+
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+
+    Returns
+    -------
+    g: dict
+        gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
+    """
+    G = nx.Graph()
+    nodes, edges = pattern.get_graph()
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
+    input_nodes = set(pattern.input_nodes) if pattern.input_nodes else set()
+    output_nodes = set(pattern.output_nodes)
+    meas_planes = pattern.get_meas_plane()
+    nodes = set(nodes)
+
+    layers = pattern.get_layers()
+    l_k = dict()
+    for l in layers[1].keys():
+        for n in layers[1][l]:
+            l_k[n] = l
+    lmax = max(l_k.values()) if l_k else 0
+    for node in l_k.keys():
+        l_k[node] = lmax - l_k[node] + 1
+    for output_node in pattern.output_nodes:
+        l_k[output_node] = 0
+
+    xflow, zflow = get_corrections_from_pattern(pattern)
+    for node, plane in meas_planes.items():
+        if plane in ["ZX", "YZ"]:
+            if node not in xflow.keys():
+                xflow[node] = {node}
+            xflow[node] |= {node}
+
+    if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
+        zflow_from_xflow = dict()
+        for node, corrections in deepcopy(xflow).items():
+            cand = find_odd_neighbor(G, corrections) - {node}
+            if cand:
+                zflow_from_xflow[node] = cand
+        if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
+            return None, None
+        return xflow, l_k
+    else:
+        return None, None
+
+
+def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
+    """Get x and z corrections from pattern
+
+    Parameters
+    ----------
+    pattern: graphix.Pattern object
+        pattern to be based on
+
+    Returns
+    -------
+    xflow: dict
+        xflow function. xflow[i] is the set of qubits to be corrected in the X basis for the measurement of qubit i.
+    zflow: dict
+        zflow function. zflow[i] is the set of qubits to be corrected in the Z basis for the measurement of qubit i.
+    """
+    nodes, _ = pattern.get_graph()
+    nodes = set(nodes)
+    xflow = dict()
+    zflow = dict()
+    for cmd in pattern:
+        if cmd[0] == "M":
+            target = cmd[1]
+            xflow_source = {x for x in cmd[4] if cmd[4].count(x) % 2 != 0} & nodes
+            zflow_source = {x for x in cmd[5] if cmd[5].count(x) % 2 != 0} & nodes
+            for node in xflow_source:
+                if node not in xflow.keys():
+                    xflow[node] = set()
+                xflow[node] |= {target}
+            for node in zflow_source:
+                if node not in zflow.keys():
+                    zflow[node] = set()
+                zflow[node] |= {target}
+        if cmd[0] == "X":
+            target = cmd[1]
+            xflow_source = {x for x in cmd[2] if cmd[2].count(x) % 2 != 0} & nodes
+            for node in xflow_source:
+                if node not in xflow.keys():
+                    xflow[node] = set()
+                xflow[node] |= {target}
+        if cmd[0] == "Z":
+            target = cmd[1]
+            zflow_source = {x for x in cmd[2] if cmd[2].count(x) % 2 != 0} & nodes
+            for node in zflow_source:
+                if node not in zflow.keys():
+                    zflow[node] = set()
+                zflow[node] |= {target}
+    return xflow, zflow
+
+
 def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     """Function to find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
 

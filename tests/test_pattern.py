@@ -13,6 +13,13 @@ rc.set_seed(SEED)
 
 
 class TestPattern(unittest.TestCase):
+    # this fails without behaviour modification
+    def test_manual_generation(self):
+        pattern = Pattern()
+        pattern.add(["N", 0])
+        pattern.add(["N", 1])
+        pattern.add(["M", 0, "XY", 0, [], []])
+
     def test_standardize(self):
         nqubits = 2
         depth = 1
@@ -235,8 +242,7 @@ class TestPattern(unittest.TestCase):
     def test_get_meas_plane(self):
         preset_meas_plane = ["XY", "XY", "XY", "YZ", "YZ", "YZ", "XZ", "XZ", "XZ"]
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
-        pattern = Pattern(len(preset_meas_plane))
-        pattern.set_output_nodes([i for i in range(len(preset_meas_plane))])
+        pattern = Pattern(input_nodes=[i for i in range(len(preset_meas_plane))])
         for i in range(len(preset_meas_plane)):
             pattern.add(["M", i, preset_meas_plane[i], 0, [], [], vop_list[i % 3]])
         ref_meas_plane = {

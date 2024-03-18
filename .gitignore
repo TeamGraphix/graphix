@@ -9,3 +9,7 @@ docs/source/gallery/**
 docs/source/benchmarks/**
 .tox/
 .python-version
+.pre-commit-config.yaml
+graphix/sim/graphix.code-workspace
+graphix/graphix.code-workspace
+*~
