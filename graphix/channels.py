@@ -115,11 +115,11 @@ def depolarising_channel(prob: float) -> KrausChannel:
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     """single-qubit pauli channel
     .. math::
-        (1-p_X-p_Y-p_Z) \rho + p_X X \rho X + p_Y Y \rho Y + p_Z Z \rho Z) 
+        (1-p_X-p_Y-p_Z) \rho + p_X X \rho X + p_Y Y \rho Y + p_Z Z \rho Z)
     but my format is better with X, Y Z
     """
     if px + py + pz > 1:
-        raise ValueError('The sum of probabilities must not exceed 1.')
+        raise ValueError("The sum of probabilities must not exceed 1.")
     pI = 1 - px - py - pz
     return KrausChannel(
         [
