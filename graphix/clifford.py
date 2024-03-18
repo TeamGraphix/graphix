@@ -4,8 +4,9 @@ multiplications, conjugations and Pauli conjugations.
 
 """
 
-
+import typing
 import numpy as np
+import graphix.pauli
 
 # 24 Unique 1-qubit Clifford gates
 _C0 = np.array([[1, 0], [0, 1]])  # identity
@@ -125,6 +126,9 @@ CLIFFORD_MUL = np.array(
 # Conjugation of Clifford gates result in a Clifford gate.
 # CLIFFORD_CONJ provides the Clifford index of conjugated matrix.
 # Example (S and S dagger):  CLIFFORD_CONJ[4] = 5
+# WARNING: CLIFFORD[i].conj().T is not necessarily equal to
+# CLIFFORD[CLIFFORD_CONJ[i]] in general: the phase may differ.
+# For instance, CLIFFORD[7].conj().T = - CLIFFORD[CLIFFORD_CONJ[7]]
 CLIFFORD_CONJ = np.array(
     [0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 23, 21, 16, 19, 17, 18], dtype=np.int32
 )
@@ -219,3 +223,80 @@ CLIFFORD_TO_QASM3 = [
     ["h", "x", "sdg"],
     ["h", "x", "s"],
 ]
+
+
+class Clifford:
+    def __init__(self, index: int):
+        self.__index = index
+
+    @property
+    def index(self) -> int:
+        """
+        Return the index of the Clifford gate (inverse of clifford.get).
+        """
+        return self.__index
+
+    @property
+    def matrix(self) -> np.ndarray:
+        """
+        Return the matrix of the Clifford gate.
+        """
+        return CLIFFORD[self.__index]
+
+    def __repr__(self) -> str:
+        return CLIFFORD_LABEL[self.__index]
+
+    @property
+    def conj(self) -> "Clifford":
+        """
+        Return the conjugate of the Clifford gate.
+        """
+        return get(CLIFFORD_CONJ[self.__index])
+
+    @property
+    def hsz(self) -> typing.List["Clifford"]:
+        """
+        Return a decomposition of the Clifford gate with the gates H, S, Z.
+        """
+        return list(map(get, CLIFFORD_HSZ_DECOMPOSITION[self.__index]))
+
+    @property
+    def qasm3(self) -> typing.Tuple[str, ...]:
+        """
+        Return a decomposition of the Clifford gate as qasm3 gates.
+        """
+        return CLIFFORD_TO_QASM3[self.__index]
+
+    def __matmul__(self, other) -> "Clifford":
+        """
+        Multiplication within the Clifford group (modulo unit factor).
+        """
+        if isinstance(other, Clifford):
+            return get(CLIFFORD_MUL[self.__index, other.__index])
+        return NotImplemented
+
+    def measure(self, pauli: graphix.pauli.Pauli) -> graphix.pauli.Pauli:
+        """
+        Compute C† P C.
+        """
+        if pauli.symbol == graphix.pauli.IXYZ.I:
+            return pauli
+        table = CLIFFORD_MEASURE[self.__index]
+        symbol, sign = table[pauli.symbol.value]
+        return pauli.unit * graphix.pauli.TABLE[symbol + 1][sign][False]
+
+
+TABLE = tuple(map(Clifford, range(len(CLIFFORD))))
+
+
+def get(index: int) -> Clifford:
+    """Return the Clifford gate with given index"""
+    return TABLE[index]
+
+
+I = get(0)
+X = get(1)
+Y = get(2)
+Z = get(3)
+S = get(4)
+H = get(6)
