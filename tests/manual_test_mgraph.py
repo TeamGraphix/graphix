@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-NUMBA_NUM_THREADS = 1
 from graphix.mgraph import COLOR_MAP, MGraph
 from graphix.transpiler import Circuit
 

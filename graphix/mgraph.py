@@ -5,7 +5,7 @@ from itertools import combinations
 import networkx as nx
 import numpy as np
 
-from graphix.gflow import flow, gflow
+from graphix.gflow import find_flow, find_gflow
 from graphix.pattern import Pattern
 
 COLOR_MAP = {
@@ -562,14 +562,14 @@ class MGraph(nx.MultiGraph):
 
     def update_flow(self):
         """Update the flow of the graph"""
-        fg, l_k = flow(
+        fg, l_k = find_flow(
             self,
             input=set(self.input_nodes),
             output=set(self.output_nodes),
             meas_planes=self.get_meas_planes(),
         )
         if fg == None:
-            fg, l_k = gflow(
+            fg, l_k = find_gflow(
                 self,
                 input=set(self.input_nodes),
                 output=set(self.output_nodes),
