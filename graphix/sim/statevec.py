@@ -4,6 +4,8 @@ import numpy as np
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
+import graphix.clifford
+import graphix.pauli
 
 
 class StatevectorBackend:
@@ -92,13 +94,17 @@ class StatevectorBackend:
             vop = cmd[6]
         else:
             vop = 0
-        if int(s_signal % 2) == 1:
-            vop = CLIFFORD_MUL[1, vop]
-        if int(t_signal % 2) == 1:
-            vop = CLIFFORD_MUL[3, vop]
-        m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
+        measure_update = graphix.pauli.MeasureUpdate.compute(
+            graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+        )
+        angle = angle * measure_update.coeff + measure_update.add_term
+        vec = measure_update.new_plane.polar(angle)
+        op_mat = np.eye(2, dtype=np.complex128) / 2
+        for i in range(3):
+            op_mat += (-1) ** (result) * vec[i] * CLIFFORD[i + 1] / 2
+
         loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(m_op, loc)
+        self.state.evolve_single(op_mat, loc)
 
         self.state.remove_qubit(loc)
         self.node_index.remove(cmd[1])
@@ -141,6 +147,7 @@ class StatevectorBackend:
                 )
 
 
+# This function is no longer used
 def meas_op(angle, vop=0, plane="XY", choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 

@@ -1,6 +1,7 @@
 """MBQC pattern according to Measurement Calculus
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
+
 from copy import deepcopy
 
 import networkx as nx
@@ -8,10 +9,23 @@ import numpy as np
 
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
-from graphix.gflow import flow, get_layers, gflow
+from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
+
+
+class NodeAlreadyPrepared(Exception):
+    def __init__(self, node: int):
+        self.__node = node
+
+    @property
+    def node(self):
+        return self.__node
+
+    @property
+    def __str__(self) -> str:
+        return f"Node already prepared: {self.__node}"
 
 
 class Pattern:
@@ -26,10 +40,7 @@ class Pattern:
 
     Attributes
     ----------
-    width : int
-        number of output qubits
-
-    seq : list
+    list(self) :
         list of commands.
 
         .. line-block::
@@ -46,18 +57,18 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, width=0, input_nodes=None, output_nodes=[]):
+    def __init__(self, input_nodes=[]):
         """
-        :param width:  number of input/output qubits
+        :param input_nodes:  optional, list of input qubits
         """
-        # number of input qubits
-        self.width = width
-        self.seq = [["N", i] for i in range(width)]  # where command sequence is stored
         self.results = {}  # measurement results from the graph state simulator
-        self.input_nodes = input_nodes  # input nodes
-        self.output_nodes = output_nodes  # output nodes
-        self.Nnode = width  # total number of nodes in the graph state
+        self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
+        self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
+
+        self.__seq = []
+        # output nodes are initially input nodes, since none are measured yet
+        self.__output_nodes = list(input_nodes)
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -92,13 +103,67 @@ class Pattern:
         assert type(cmd) == list
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
-            self.Nnode += 1
-            self.output_nodes.append(cmd[1])
+            if cmd[1] in self.__output_nodes:
+                raise NodeAlreadyPrepared(cmd[1])
+            self.__Nnode += 1
+            self.__output_nodes.append(cmd[1])
         elif cmd[0] == "M":
-            self.output_nodes.remove(cmd[1])
-        self.seq.append(cmd)
+            self.__output_nodes.remove(cmd[1])
+        self.__seq.append(cmd)
 
-    def set_output_nodes(self, output_nodes):
+    def extend(self, cmds):
+        """Add a list of commands.
+
+        :param cmds: list of commands
+        """
+        for cmd in cmds:
+            self.add(cmd)
+
+    def clear(self):
+        """Clear the sequence of pattern commands."""
+        self.__Nnode = len(self.__input_nodes)
+        self.__seq = []
+        self.__output_nodes = list(self.__input_nodes)
+
+    def replace(self, cmds, input_nodes=None):
+        """Replace pattern with a given sequence of pattern commands.
+
+        :param cmds: list of commands
+
+        :param input_nodes:  optional, list of input qubits
+        (by default, keep the same input nodes as before)
+        """
+        if input_nodes is not None:
+            self.__input_nodes = list(input_nodes)
+        self.clear()
+        self.extend(cmds)
+
+    @property
+    def input_nodes(self):
+        """list of input nodes"""
+        return list(self.__input_nodes)  # copy for preventing modification
+
+    @property
+    def output_nodes(self):
+        """list of all nodes that are either `input_nodes` or prepared with
+        `N` commands and that have not been measured with an `M` command
+        """
+        return list(self.__output_nodes)  # copy for preventing modification
+
+    def __len__(self):
+        """length of command sequence"""
+        return len(self.__seq)
+
+    def __iter__(self):
+        """iterate over commands"""
+        return iter(self.__seq)
+
+    @property
+    def Nnode(self):
+        """count of nodes that are either `input_nodes` or prepared with `N` commands"""
+        return self.__Nnode
+
+    def reorder_output_nodes(self, output_nodes):
         """arrange the order of output_nodes.
 
         Parameters
@@ -106,9 +171,10 @@ class Pattern:
         output_nodes: list of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
-        self.output_nodes = output_nodes
+        assert_permutation(self.__output_nodes, output_nodes)
+        self.__output_nodes = list(output_nodes)
 
-    def set_input_nodes(self, input_nodes):
+    def reorder_input_nodes(self, input_nodes):
         """arrange the order of input_nodes.
 
         Parameters
@@ -116,10 +182,20 @@ class Pattern:
         input_nodes: list of int
             input nodes order determined by user. each index corresponds to that of logical qubits.
         """
-        self.input_nodes = input_nodes
+        assert_permutation(self.__input_nodes, input_nodes)
+        self.__input_nodes = list(input_nodes)
 
     def __repr__(self):
-        return f"graphix.pattern.Pattern object with {len(self.seq)} commands and {self.width} output qubits"
+        return (
+            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
+        )
+
+    def equal(self, other):
+        return (
+            self.__seq == other.__seq
+            and self.input_nodes == other.input_nodes
+            and self.output_nodes == other.output_nodes
+        )
 
     def print_pattern(self, lim=40, filter=None):
         """print the pattern sequence (Pattern.seq).
@@ -131,8 +207,8 @@ class Pattern:
         filter : list of str, optional
             show only specified commands, e.g. ['M', 'X', 'Z']
         """
-        if len(self.seq) < lim:
-            nmax = len(self.seq)
+        if len(self.__seq) < lim:
+            nmax = len(self.__seq)
         else:
             nmax = lim
         if filter is None:
@@ -141,52 +217,52 @@ class Pattern:
         i = -1
         while count < nmax:
             i = i + 1
-            if i == len(self.seq):
+            if i == len(self.__seq):
                 break
-            if self.seq[i][0] == "N" and ("N" in filter):
+            if self.__seq[i][0] == "N" and ("N" in filter):
                 count += 1
-                print(f"N, node = {self.seq[i][1]}")
-            elif self.seq[i][0] == "E" and ("E" in filter):
+                print(f"N, node = {self.__seq[i][1]}")
+            elif self.__seq[i][0] == "E" and ("E" in filter):
                 count += 1
-                print(f"E, nodes = {self.seq[i][1]}")
-            elif self.seq[i][0] == "M" and ("M" in filter):
+                print(f"E, nodes = {self.__seq[i][1]}")
+            elif self.__seq[i][0] == "M" and ("M" in filter):
                 count += 1
-                if len(self.seq[i]) == 6:
+                if len(self.__seq[i]) == 6:
                     print(
-                        f"M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, "
-                        + f"s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}"
+                        f"M, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle(pi) = {self.__seq[i][3]}, "
+                        + f"s-domain = {self.__seq[i][4]}, t_domain = {self.__seq[i][5]}"
                     )
-                elif len(self.seq[i]) == 7:
+                elif len(self.__seq[i]) == 7:
                     print(
-                        f"M, node = {self.seq[i][1]}, plane = {self.seq[i][2]}, angle(pi) = {self.seq[i][3]}, "
-                        + f"s-domain = {self.seq[i][4]}, t_domain = {self.seq[i][5]}, Clifford index = {self.seq[i][6]}"
+                        f"M, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle(pi) = {self.__seq[i][3]}, "
+                        + f"s-domain = {self.__seq[i][4]}, t_domain = {self.__seq[i][5]}, Clifford index = {self.__seq[i][6]}"
                     )
-            elif self.seq[i][0] == "X" and ("X" in filter):
+            elif self.__seq[i][0] == "X" and ("X" in filter):
                 count += 1
                 # remove duplicates
-                _domain = np.array(self.seq[i][2])
+                _domain = np.array(self.__seq[i][2])
                 uind = np.unique(_domain)
                 unique_domain = []
                 for ind in uind:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
-                print(f"X byproduct, node = {self.seq[i][1]}, domain = {unique_domain}")
-            elif self.seq[i][0] == "Z" and ("Z" in filter):
+                print(f"X byproduct, node = {self.__seq[i][1]}, domain = {unique_domain}")
+            elif self.__seq[i][0] == "Z" and ("Z" in filter):
                 count += 1
                 # remove duplicates
-                _domain = np.array(self.seq[i][2])
+                _domain = np.array(self.__seq[i][2])
                 uind = np.unique(_domain)
                 unique_domain = []
                 for ind in uind:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
-                print(f"Z byproduct, node = {self.seq[i][1]}, domain = {unique_domain}")
-            elif self.seq[i][0] == "C" and ("C" in filter):
+                print(f"Z byproduct, node = {self.__seq[i][1]}, domain = {unique_domain}")
+            elif self.__seq[i][0] == "C" and ("C" in filter):
                 count += 1
-                print(f"Clifford, node = {self.seq[i][1]}, Clifford index = {self.seq[i][2]}")
+                print(f"Clifford, node = {self.__seq[i][1]}, Clifford index = {self.__seq[i][2]}")
 
-        if len(self.seq) > i + 1:
-            print(f"{len(self.seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
+        if len(self.__seq) > i + 1:
+            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
 
     def get_local_pattern(self):
         """Get a local pattern transpiled from the pattern.
@@ -197,19 +273,23 @@ class Pattern:
             transpiled local pattern.
         """
         standardized = self.is_standard()
-        node_prop = dict()
+
+        def fresh_node():
+            return {
+                "seq": [],
+                "Mprop": [None, None, [], [], 0],
+                "Xsignal": [],
+                "Xsignals": [],
+                "Zsignal": [],
+                "input": False,
+                "output": False,
+            }
+
+        node_prop = {input: fresh_node() for input in self.__input_nodes}
         morder = []
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "N":
-                node_prop[cmd[1]] = {
-                    "seq": [],
-                    "Mprop": [None, None, [], [], 0],
-                    "Xsignal": [],
-                    "Xsignals": [],
-                    "Zsignal": [],
-                    "input": False,
-                    "output": False,
-                }
+                node_prop[cmd[1]] = fresh_node()
             elif cmd[0] == "E":
                 node_prop[cmd[1][1]]["seq"].append(cmd[1][0])
                 node_prop[cmd[1][0]]["seq"].append(cmd[1][1])
@@ -259,7 +339,7 @@ class Pattern:
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
-            self.seq = localpattern.get_pattern().seq
+            self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
             self._move_N_to_left()
             self._move_byproduct_to_right()
@@ -285,7 +365,7 @@ class Pattern:
         }
         result = True
         op_ref = "N"
-        for cmd in self.seq:
+        for cmd in self.__seq:
             op = cmd[0]
             result = result & (op in order_dict[op_ref])
             op_ref = op
@@ -312,22 +392,22 @@ class Pattern:
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.shift_signals()
-            self.seq = localpattern.get_pattern().seq
+            self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
             self.extract_signals()
             target = self._find_op_to_be_moved("S", rev=True)
             while target != "end":
-                if target == len(self.seq) - 1:
-                    self.seq.pop(target)
+                if target == len(self.__seq) - 1:
+                    self.__seq.pop(target)
                     target = self._find_op_to_be_moved("S", rev=True)
                     continue
-                if self.seq[target + 1][0] == "X":
+                if self.__seq[target + 1][0] == "X":
                     self._commute_XS(target)
-                elif self.seq[target + 1][0] == "Z":
+                elif self.__seq[target + 1][0] == "Z":
                     self._commute_ZS(target)
-                elif self.seq[target + 1][0] == "M":
+                elif self.__seq[target + 1][0] == "M":
                     self._commute_MS(target)
-                elif self.seq[target + 1][0] == "S":
+                elif self.__seq[target + 1][0] == "S":
                     self._commute_SS(target)
                 else:
                     self._commute_with_following(target)
@@ -351,12 +431,12 @@ class Pattern:
             target = 0
             step = 1
         else:  # search from the back
-            target = len(self.seq) - 1
+            target = len(self.__seq) - 1
             step = -1
         ite = 0
         num_ops = 0
-        while ite < len(self.seq):
-            if self.seq[target][0] == op:
+        while ite < len(self.__seq):
+            if self.__seq[target][0] == op:
                 num_ops += 1
             if num_ops == skipnum + 1:
                 return target
@@ -373,21 +453,21 @@ class Pattern:
             target command index. this must point to
             a X command followed by E command
         """
-        assert self.seq[target][0] == "X"
-        assert self.seq[target + 1][0] == "E"
-        X = self.seq[target]
-        E = self.seq[target + 1]
+        assert self.__seq[target][0] == "X"
+        assert self.__seq[target + 1][0] == "E"
+        X = self.__seq[target]
+        E = self.__seq[target + 1]
         if E[1][0] == X[1]:
             Z = ["Z", E[1][1], X[2]]
-            self.seq.pop(target + 1)  # del E
-            self.seq.insert(target, Z)  # add Z in front of X
-            self.seq.insert(target, E)  # add E in front of Z
+            self.__seq.pop(target + 1)  # del E
+            self.__seq.insert(target, Z)  # add Z in front of X
+            self.__seq.insert(target, E)  # add E in front of Z
             return True
         elif E[1][1] == X[1]:
             Z = ["Z", E[1][0], X[2]]
-            self.seq.pop(target + 1)  # del E
-            self.seq.insert(target, Z)  # add Z in front of X
-            self.seq.insert(target, E)  # add E in front of Z
+            self.__seq.pop(target + 1)  # del E
+            self.__seq.insert(target, Z)  # add Z in front of X
+            self.__seq.insert(target, E)  # add E in front of Z
             return True
         else:
             self._commute_with_following(target)
@@ -402,10 +482,10 @@ class Pattern:
             target command index. this must point to
             a X command followed by M command
         """
-        assert self.seq[target][0] == "X"
-        assert self.seq[target + 1][0] == "M"
-        X = self.seq[target]
-        M = self.seq[target + 1]
+        assert self.__seq[target][0] == "X"
+        assert self.__seq[target + 1][0] == "M"
+        X = self.__seq[target]
+        M = self.__seq[target + 1]
         if X[1] == M[1]:  # s to s+r
             if len(M) == 7:
                 vop = M[6]
@@ -415,7 +495,7 @@ class Pattern:
                 M[5].extend(X[2])
             elif M[2] == "XY":
                 M[4].extend(X[2])
-            self.seq.pop(target)  # del X
+            self.__seq.pop(target)  # del X
             return True
         else:
             self._commute_with_following(target)
@@ -430,10 +510,10 @@ class Pattern:
             target command index. this must point to
             a Z command followed by M command
         """
-        assert self.seq[target][0] == "Z"
-        assert self.seq[target + 1][0] == "M"
-        Z = self.seq[target]
-        M = self.seq[target + 1]
+        assert self.__seq[target][0] == "Z"
+        assert self.__seq[target + 1][0] == "M"
+        Z = self.__seq[target]
+        M = self.__seq[target + 1]
         if Z[1] == M[1]:
             if len(M) == 7:
                 vop = M[6]
@@ -443,7 +523,7 @@ class Pattern:
                 M[4].extend(Z[2])
             elif M[2] == "XY":
                 M[5].extend(Z[2])
-            self.seq.pop(target)  # del Z
+            self.__seq.pop(target)  # del Z
             return True
         else:
             self._commute_with_following(target)
@@ -458,10 +538,10 @@ class Pattern:
             target command index. this must point to
             a S command followed by X command
         """
-        assert self.seq[target][0] == "S"
-        assert self.seq[target + 1][0] == "X"
-        S = self.seq[target]
-        X = self.seq[target + 1]
+        assert self.__seq[target][0] == "S"
+        assert self.__seq[target + 1][0] == "X"
+        S = self.__seq[target]
+        X = self.__seq[target + 1]
         if np.mod(X[2].count(S[1]), 2):
             X[2].extend(S[2])
         self._commute_with_following(target)
@@ -475,10 +555,10 @@ class Pattern:
             target command index. this must point to
             a S command followed by Z command
         """
-        assert self.seq[target][0] == "S"
-        assert self.seq[target + 1][0] == "Z"
-        S = self.seq[target]
-        Z = self.seq[target + 1]
+        assert self.__seq[target][0] == "S"
+        assert self.__seq[target + 1][0] == "Z"
+        S = self.__seq[target]
+        Z = self.__seq[target + 1]
         if np.mod(Z[2].count(S[1]), 2):
             Z[2].extend(S[2])
         self._commute_with_following(target)
@@ -492,10 +572,10 @@ class Pattern:
             target command index. this must point to
             a S command followed by M command
         """
-        assert self.seq[target][0] == "S"
-        assert self.seq[target + 1][0] == "M"
-        S = self.seq[target]
-        M = self.seq[target + 1]
+        assert self.__seq[target][0] == "S"
+        assert self.__seq[target + 1][0] == "M"
+        S = self.__seq[target]
+        M = self.__seq[target + 1]
         if np.mod(M[4].count(S[1]), 2):
             M[4].extend(S[2])
         if np.mod(M[5].count(S[1]), 2):
@@ -510,10 +590,10 @@ class Pattern:
             target command index. this must point to
             a S command followed by S command
         """
-        assert self.seq[target][0] == "S"
-        assert self.seq[target + 1][0] == "S"
-        S1 = self.seq[target]
-        S2 = self.seq[target + 1]
+        assert self.__seq[target][0] == "S"
+        assert self.__seq[target + 1][0] == "S"
+        S1 = self.__seq[target]
+        S2 = self.__seq[target + 1]
         if np.mod(S2[2].count(S1[1]), 2):
             S2[2].extend(S1[2])
         self._commute_with_following(target)
@@ -528,9 +608,9 @@ class Pattern:
         target : int
             target command index
         """
-        A = self.seq[target + 1]
-        self.seq.pop(target + 1)
-        self.seq.insert(target, A)
+        A = self.__seq[target + 1]
+        self.__seq.pop(target + 1)
+        self.__seq.insert(target, A)
 
     def _commute_with_preceding(self, target):
         """Internal method to perform the commutation of
@@ -542,9 +622,9 @@ class Pattern:
         target : int
             target command index
         """
-        A = self.seq[target - 1]
-        self.seq.pop(target - 1)
-        self.seq.insert(target, A)
+        A = self.__seq[target - 1]
+        self.__seq.pop(target - 1)
+        self.__seq.insert(target, A)
 
     def _move_N_to_left(self):
         """Internal method to move all 'N' commands to the start of the sequence.
@@ -552,13 +632,13 @@ class Pattern:
         commutation relations.
         """
         Nlist = []
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "N":
                 Nlist.append(cmd)
         Nlist.sort()
         for N in Nlist:
-            self.seq.remove(N)
-        self.seq = Nlist + self.seq
+            self.__seq.remove(N)
+        self.__seq = Nlist + self.__seq
 
     def _move_byproduct_to_right(self):
         """Internal method to move the byproduct commands to the end of sequence,
@@ -568,15 +648,15 @@ class Pattern:
         moved_X = 0  # number of moved X
         target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
         while target != "end":
-            if (target == len(self.seq) - 1) or (self.seq[target + 1] == "X"):
+            if (target == len(self.__seq) - 1) or (self.__seq[target + 1] == "X"):
                 moved_X += 1
                 target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
                 continue
-            if self.seq[target + 1][0] == "E":
+            if self.__seq[target + 1][0] == "E":
                 move = self._commute_EX(target)
                 if move:
                     target += 1  # addition of extra Z means target must be increased
-            elif self.seq[target + 1][0] == "M":
+            elif self.__seq[target + 1][0] == "M":
                 search = self._commute_MX(target)
                 if search:
                     target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
@@ -589,11 +669,11 @@ class Pattern:
         moved_Z = 0  # number of moved Z
         target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
         while target != "end":
-            if (target == len(self.seq) - 1) or (self.seq[target + 1][0] == ("X" or "Z")):
+            if (target == len(self.__seq) - 1) or (self.__seq[target + 1][0] == ("X" or "Z")):
                 moved_Z += 1
                 target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
                 continue
-            if self.seq[target + 1][0] == "M":
+            if self.__seq[target + 1][0] == "M":
                 search = self._commute_MZ(target)
                 if search:
                     target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
@@ -609,7 +689,7 @@ class Pattern:
         moved_E = 0
         target = self._find_op_to_be_moved("E", skipnum=moved_E)
         while target != "end":
-            if (target == 0) or (self.seq[target - 1][0] == ("N" or "E")):
+            if (target == 0) or (self.__seq[target - 1][0] == ("N" or "E")):
                 moved_E += 1
                 target = self._find_op_to_be_moved("E", skipnum=moved_E)
                 continue
@@ -622,13 +702,13 @@ class Pattern:
         This is used for shift_signals() method.
         """
         pos = 0
-        while pos < len(self.seq):
-            cmd = self.seq[pos]
+        while pos < len(self.__seq):
+            cmd = self.__seq[pos]
             if cmd[0] == "M":
                 if cmd[2] == "XY":
                     node = cmd[1]
                     if cmd[5]:
-                        self.seq.insert(pos + 1, ["S", node, cmd[5]])
+                        self.__seq.insert(pos + 1, ["S", node, cmd[5]])
                         cmd[5] = []
                         pos += 1
             pos += 1
@@ -645,7 +725,7 @@ class Pattern:
         """
         nodes, _ = self.get_graph()
         dependency = {i: set() for i in nodes}
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "M":
                 dependency[cmd[1]] = dependency[cmd[1]] | set(cmd[4]) | set(cmd[5])
             elif cmd[0] == "X":
@@ -688,11 +768,12 @@ class Pattern:
         dependency = self._get_dependency()
         measured = self.results.keys()
         dependency = self.update_dependency(measured, dependency)
-        not_measured = set()
-        for cmd in self.seq:
+        not_measured = set(self.__input_nodes)
+        for cmd in self.__seq:
             if cmd[0] == "N":
                 if not cmd[1] in self.output_nodes:
                     not_measured = not_measured | {cmd[1]}
+        depth = 0
         l_k = dict()
         k = 0
         while not_measured:
@@ -726,7 +807,7 @@ class Pattern:
 
         Returns
         -------
-        connected: set of taple
+        connected: set of tuple
                 set of connected edges
         """
         connected = set()
@@ -745,6 +826,7 @@ class Pattern:
         meas_order: list of int
             sub-optimal measurement order for classical simulation
         """
+        # NOTE calling get_graph
         nodes, edges = self.get_graph()
         nodes = set(nodes)
         edges = set(edges)
@@ -763,6 +845,8 @@ class Pattern:
                         min_edges = len(connected_edges)
                         next_node = i
                         removable_edges = connected_edges
+            if not (next_node > -1):
+                print(next_node)
             assert next_node > -1
             meas_order.append(next_node)
             dependency = self.update_dependency({next_node}, dependency)
@@ -778,6 +862,7 @@ class Pattern:
         meas_order: list of int
             measurement order
         """
+        # NOTE calling get_graph
         nodes, edges = self.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -785,7 +870,7 @@ class Pattern:
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
-        f, l_k = flow(G, vin, vout, meas_planes=meas_planes)
+        f, l_k = find_flow(G, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
         depth, layer = get_layers(l_k)
@@ -793,7 +878,7 @@ class Pattern:
         for i in range(depth):
             k = depth - i
             nodes = layer[k]
-            meas_order += nodes
+            meas_order += nodes  # NOTE this is list concatenation
         return meas_order
 
     def get_measurement_order_from_gflow(self):
@@ -805,6 +890,7 @@ class Pattern:
         meas_order : list of int
             measurement order
         """
+        # NOTE calling get_graph
         nodes, edges = self.get_graph()
         G = nx.Graph()
         G.add_nodes_from(nodes)
@@ -815,7 +901,7 @@ class Pattern:
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = gflow(G, vin, vout, meas_plane=meas_plane)
+        g, l_k = find_gflow(G, vin, vout, meas_plane=meas_plane)
         if not g:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
@@ -843,8 +929,8 @@ class Pattern:
         for i in meas_order:
             target = 0
             while True:
-                if (self.seq[target][0] == "M") & (self.seq[target][1] == i):
-                    meas_cmds.append(self.seq[target])
+                if (self.__seq[target][0] == "M") & (self.__seq[target][1] == i):
+                    meas_cmds.append(self.__seq[target])
                     break
                 target += 1
         return meas_cmds
@@ -864,8 +950,8 @@ class Pattern:
         ind = self._find_op_to_be_moved("M")
         if ind == "end":
             return []
-        while self.seq[ind][0] == "M":
-            meas_cmds.append(self.seq[ind])
+        while self.__seq[ind][0] == "M":
+            meas_cmds.append(self.__seq[ind])
             ind += 1
         return meas_cmds
 
@@ -879,7 +965,7 @@ class Pattern:
         """
         meas_plane = dict()
         order = ["X", "Y", "Z"]
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "M":
                 mplane = cmd[2]
                 if len(cmd) == 7:
@@ -901,7 +987,7 @@ class Pattern:
             measurement angles of the each node.
         """
         angles = {}
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "M":
                 angles[cmd[1]] = cmd[3]
         return angles
@@ -933,9 +1019,12 @@ class Pattern:
         edge_list : list
             list of tuples (i,j) specifying edges
         """
-        node_list, edge_list = [], []
-        for cmd in self.seq:
+        # We rely on the fact that self.input_nodes returns a copy:
+        # self.input_nodes is equivalent to list(self.__input_nodes)
+        node_list, edge_list = self.input_nodes, []
+        for cmd in self.__seq:
             if cmd[0] == "N":
+                assert cmd[1] not in node_list
                 node_list.append(cmd[1])
             elif cmd[0] == "E":
                 edge_list.append(cmd[1])
@@ -971,7 +1060,7 @@ class Pattern:
             vops : dict
         """
         vops = dict()
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "M":
                 if len(cmd) == 7:
                     if cmd[6] == 0:
@@ -1017,20 +1106,20 @@ class Pattern:
         Returns
         -------
         node_list : list
-            list of nodes that are entangled with speicifed node
+            list of nodes that are entangled with specified node
         """
         if not self.is_standard():
             self.standardize()
         node_list = []
         ind = self._find_op_to_be_moved("E")
         if not ind == "end":  # end -> 'node' is isolated
-            while self.seq[ind][0] == "E":
-                if self.seq[ind][1][0] == node:
-                    if not self.seq[ind][1][1] in prepared:
-                        node_list.append(self.seq[ind][1][1])
-                elif self.seq[ind][1][1] == node:
-                    if not self.seq[ind][1][0] in prepared:
-                        node_list.append(self.seq[ind][1][0])
+            while self.__seq[ind][0] == "E":
+                if self.__seq[ind][1][0] == node:
+                    if not self.__seq[ind][1][1] in prepared:
+                        node_list.append(self.__seq[ind][1][1])
+                elif self.__seq[ind][1][1] == node:
+                    if not self.__seq[ind][1][0] in prepared:
+                        node_list.append(self.__seq[ind][1][0])
                 ind += 1
         return node_list
 
@@ -1048,7 +1137,7 @@ class Pattern:
             localpattern = self.get_local_pattern()
             localpattern.standardize()
             localpattern.shift_signals()
-            self.seq = localpattern.get_pattern().seq
+            self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
             self.standardize()
             self.shift_signals()
@@ -1059,9 +1148,9 @@ class Pattern:
         """Returns the list of byproduct correction commands"""
         assert self.is_standard()
         Clist = []
-        for i in range(len(self.seq)):
-            if self.seq[i][0] in ["X", "Z"]:
-                Clist.append(self.seq[i])
+        for i in range(len(self.__seq)):
+            if self.__seq[i][0] in ["X", "Z"]:
+                Clist.append(self.__seq[i])
         return Clist
 
     def parallelize_pattern(self):
@@ -1098,7 +1187,7 @@ class Pattern:
         meas_commands : list of command
             list of measurement ('M') commands
         """
-        prepared = []
+        prepared = self.input_nodes
         measured = []
         new = []
         for cmd in meas_commands:
@@ -1116,18 +1205,18 @@ class Pattern:
             measured.append(node)
 
         # add isolated nodes
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "N":
                 if not cmd[1] in prepared:
                     new.append(["N", cmd[1]])
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "E":
                 if cmd[1][0] in self.output_nodes:
                     if cmd[1][1] in self.output_nodes:
                         new.append(cmd)
 
         # add Clifford nodes
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "C":
                 new.append(cmd)
 
@@ -1135,7 +1224,7 @@ class Pattern:
         c_list = self.correction_commands()
         new.extend(c_list)
 
-        self.seq = new
+        self.__seq = new
 
     def max_space(self):
         """The maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
@@ -1147,9 +1236,9 @@ class Pattern:
         n_nodes : int
             max number of nodes present in the graph during pattern execution.
         """
-        max_nodes = 0
-        nodes = 0
-        for cmd in self.seq:
+        nodes = len(self.input_nodes)
+        max_nodes = nodes
+        for cmd in self.__seq:
             if cmd[0] == "N":
                 nodes += 1
             elif cmd[0] == "M":
@@ -1169,7 +1258,7 @@ class Pattern:
         """
         nodes = 0
         N_list = []
-        for cmd in self.seq:
+        for cmd in self.__seq:
             if cmd[0] == "N":
                 nodes += 1
                 N_list.append(nodes)
@@ -1232,11 +1321,13 @@ class Pattern:
 
     def draw_graph(
         self,
+        flow_from_pattern=True,
+        show_pauli_measurement=True,
+        show_local_clifford=False,
+        show_measurement_planes=False,
+        show_loop=True,
         node_distance=(1, 1),
         figsize=None,
-        pauli_indicator=True,
-        show_loop=True,
-        local_clifford_indicator=False,
         save=False,
         filename=None,
     ):
@@ -1244,16 +1335,20 @@ class Pattern:
 
         Parameters
         ----------
+        flow_from_pattern : bool
+            If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
+        show_pauli_measurement : bool
+            If True, the nodes with Pauli measurement angles are colored light blue.
+        show_local_clifford : bool
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, measurement planes are displayed adjacent to the nodes.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
-        pauli_indicator : bool
-            If True, the nodes are colored according to the measurement angles.
-        show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to True.
-        local_clifford_indicator : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         save : bool
             If True, the plot is saved as a png file.
         filename : str
@@ -1267,24 +1362,34 @@ class Pattern:
         vin = self.input_nodes if self.input_nodes is not None else []
         vout = self.output_nodes
         meas_planes = self.get_meas_plane()
-        vis = GraphVisualizer(g, vin, vout, meas_planes)
-        if pauli_indicator:
-            angles = self.get_angles()
+        meas_angles = self.get_angles()
+        local_clifford = self.get_vops()
+
+        vis = GraphVisualizer(g, vin, vout, meas_planes, meas_angles, local_clifford)
+
+        if flow_from_pattern:
+            vis.visualize_from_pattern(
+                pattern=deepcopy(self),
+                show_pauli_measurement=show_pauli_measurement,
+                show_local_clifford=show_local_clifford,
+                show_measurement_planes=show_measurement_planes,
+                show_loop=show_loop,
+                node_distance=node_distance,
+                figsize=figsize,
+                save=save,
+                filename=filename,
+            )
         else:
-            angles = None
-        if local_clifford_indicator:
-            local_clifford = self.get_vops()
-        else:
-            local_clifford = None
-        vis.visualize(
-            node_distance=node_distance,
-            figsize=figsize,
-            angles=angles,
-            local_clifford=local_clifford,
-            show_loop=show_loop,
-            save=save,
-            filename=filename,
-        )
+            vis.visualize(
+                show_pauli_measurement=show_pauli_measurement,
+                show_local_clifford=show_local_clifford,
+                show_measurement_planes=show_measurement_planes,
+                show_loop=show_loop,
+                node_distance=node_distance,
+                figsize=figsize,
+                save=save,
+                filename=filename,
+            )
 
     def to_qasm3(self, filename):
         """Export measurement pattern to OpenQASM 3.0 file
@@ -1305,7 +1410,7 @@ class Pattern:
                     file.write("// measurement result of qubit q" + str(id) + "\n")
                     file.write("bit c" + str(id) + " = " + str(res) + ";\n")
                     file.write("\n")
-            for command in self.seq:
+            for command in self.__seq:
                 for line in cmd_to_qasm3(command):
                     file.write(line)
 
@@ -1557,8 +1662,8 @@ class LocalPattern:
         list of node indices in a measurement order.
 
     signal_destination : dict
-       stores the set of nodes where dependent feedforward operations are performed, from the result of measurement at each node.
-       stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
+    stores the set of nodes where dependent feedforward operations are performed, from the result of measurement at each node.
+    stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
     def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
@@ -1670,8 +1775,8 @@ class LocalPattern:
             standardized global pattern
         """
         assert self.is_standard()
-        pattern = Pattern(input_nodes=self.input_nodes, output_nodes=self.output_nodes, width=len(self.output_nodes))
-        Nseq = [["N", i] for i in self.nodes.keys()]
+        pattern = Pattern(input_nodes=self.input_nodes)
+        Nseq = [["N", i] for i in self.nodes.keys() - self.input_nodes]
         Eseq = []
         Mseq = []
         Xseq = []
@@ -1695,8 +1800,7 @@ class LocalPattern:
                     raise ValueError(f"command {cmd} is invalid!")
             if node.result is not None:
                 pattern.results[node.index] = node.result
-        pattern.seq = Nseq + Eseq + Mseq + Xseq + Zseq + Cseq
-        self.Nnodes = len(Nseq)
+        pattern.replace(Nseq + Eseq + Mseq + Xseq + Zseq + Cseq)
         return pattern
 
 
@@ -1759,7 +1863,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
-        new_inputs = None
+        new_inputs = []
     else:
         new_inputs = pattern.input_nodes
     for cmd in to_measure:
@@ -1808,13 +1912,15 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     # update command sequence
     vops = graph_state.get_vops()
     new_seq = []
-    for index in iter(graph_state.nodes):
-        new_seq.append(["N", index])
-    for edge in iter(graph_state.edges):
+    # TO CHECK: why the order is relevant?
+    for index in graph_state.nodes:
+        if index not in new_inputs:
+            new_seq.append(["N", index])
+    for edge in graph_state.edges:
         new_seq.append(["E", edge])
-    for cmd in pattern.seq:
+    for cmd in pattern:
         if cmd[0] == "M":
-            if cmd[1] in list(graph_state.nodes):
+            if cmd[1] in graph_state.nodes:
                 cmd_new = deepcopy(cmd)
                 new_clifford_ = vops[cmd[1]]
                 if len(cmd_new) == 7:
@@ -1826,24 +1932,20 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         new_clifford_ = vops[index]
         if new_clifford_ != 0:
             new_seq.append(["C", index, new_clifford_])
-    for cmd in pattern.seq:
+    for cmd in pattern:
         if cmd[0] == "X" or cmd[0] == "Z":
             new_seq.append(cmd)
 
     if copy:
-        pat = deepcopy(pattern)
-        pat.seq = new_seq
-        pat.input_nodes = new_inputs
-        pat.Nnode = len(graph_state.nodes)
-        pat.results = results
-        pat._pauli_preprocessed = True
-        return pat
+        pat = Pattern()
     else:
-        pattern.seq = new_seq
-        pattern.input_nodes = new_inputs
-        pattern.Nnode = len(graph_state.nodes)
-        pattern.results = results
-        pattern._pauli_preprocessed = True
+        pat = pattern
+
+    pat.replace(new_seq, input_nodes=new_inputs)
+    assert pat.Nnode == len(graph_state.nodes)
+    pat.results = results
+    pat._pauli_preprocessed = True
+    return pat
 
 
 def pauli_nodes(pattern, leave_input):
@@ -2049,3 +2151,13 @@ def cmd_to_qasm3(cmd):
 
     else:
         raise ValueError("invalid command {}".format(name))
+
+
+def assert_permutation(original, user):
+    node_set = set(user)
+    assert node_set == set(original), f"{node_set} != {set(original)}"
+    for node in user:
+        if node in node_set:
+            node_set.remove(node)
+        else:
+            assert False, f"{node} appears twice"
