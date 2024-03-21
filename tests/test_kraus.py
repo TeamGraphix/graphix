@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-import tests.random_objects as randobj
+import graphix.random_objects as randobj
 from graphix.channels import (
     KrausChannel,
     two_qubit_depolarising_tensor_channel,

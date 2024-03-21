@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-import tests.random_objects as randobj
+import graphix.random_objects as randobj
 from graphix.channels import KrausChannel
 from graphix.linalg_validations import check_data_dims, check_hermitian, check_psd, check_square, check_unit_trace
 from graphix.sim.density_matrix import DensityMatrix

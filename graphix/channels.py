@@ -61,13 +61,14 @@ class KrausChannel:
         # check that the channel is properly normalized i.e
         # \sum_K_i^\dagger K_i = Identity
         assert check_data_normalization(kraus_data)
+        assert check_rank(kraus_data)
 
         self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
         self.kraus_ops = kraus_data
 
         # np.asarray(data, dtype=np.complex128)
         # number of Kraus operators in the Channel
-        assert check_rank(kraus_data)
+
         self.size = len(kraus_data)
 
     def __repr__(self):

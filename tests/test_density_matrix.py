@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 
-import tests.random_objects as randobj
+import graphix.random_objects as randobj
 from graphix import Circuit
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.ops import Ops
