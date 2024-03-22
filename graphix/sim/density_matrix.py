@@ -12,6 +12,7 @@ from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
+import graphix.sim.base_backend
 
 
 class DensityMatrix:
@@ -279,10 +280,10 @@ class DensityMatrix:
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
 
-class DensityMatrixBackend:
+class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=False):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True):
         """
         Parameters
         ----------
@@ -303,11 +304,9 @@ class DensityMatrixBackend:
         self.node_index = []
         self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
-
-        # whether to compute the probability
-        self.pr_calc = pr_calc
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
+        super().__init__(pr_calc)
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix
@@ -353,42 +352,10 @@ class DensityMatrixBackend:
             cmd : list
                 measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
-
-        angle = cmd[3] * np.pi * (-1) ** s_signal + np.pi * t_signal
-        loc = self.node_index.index(cmd[1])
-
-        if self.pr_calc:
-            result = 0
-            m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-            prob_0 = np.real_if_close(self.state.expectation_single(m_op, loc))
-
-            # choose the measurement result randomly according to the computed probability
-            # just modify result and operator if the outcome turns out to be 1
-            r = np.random.rand()
-            if r > prob_0:
-                result = 1
-                m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-
-        # choose the measurement result with 50%/50% probabilities
-        else:
-            result = np.random.choice([0, 1])
-            m_op = meas_op(angle, vop=vop, plane=cmd[2], choice=result)
-
-        self.results[cmd[1]] = result
-
-        self.state.evolve_single(m_op, loc)
+        loc = self._perform_measure(cmd)
         self.state.normalize()
         # perform ptrace right after the measurement (destructive measurement).
         self.state.ptrace(loc)
-        self.node_index.remove(cmd[1])
 
     def correct_byproduct(self, cmd):
         """Byproduct correction
