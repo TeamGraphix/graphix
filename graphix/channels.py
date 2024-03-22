@@ -6,14 +6,9 @@ from graphix.ops import Ops
 
 class KrausChannel:
     """quantum channel class in the Kraus representation.
-    Defined by Kraus operators $K_i$ with scalar prefactors ('coef') $c_i$,
-    where the channel act on density matrix as
-    .. math::
-        \rho' = \sum K_i^\dagger \rho K_i
-
-    the data should satisfy
-    .. math::
-        \sum K_i^\dagger K_i = I
+    Defined by Kraus operators :math:`K_i` with scalar prefactors :code:`coef`) :math:`c_i`,
+    where the channel act on density matrix as :math:`\\rho'  = \sum_i K_i^\dagger \\rho K_i`.
+    The data should satisfy :math:`\sum K_i^\dagger K_i = I`
 
     Attributes
     ----------
@@ -79,9 +74,7 @@ class KrausChannel:
 
 
 def dephasing_channel(prob: float) -> KrausChannel:
-    """single-qubit dephasing channel
-    .. math::
-        (1-p) \rho + p Z  \rho Z
+    """single-qubit dephasing channel, :math:`(1-p) \\rho + p Z  \\rho Z`
 
     Parameters
     ----------
@@ -100,8 +93,15 @@ def dephasing_channel(prob: float) -> KrausChannel:
 
 def depolarising_channel(prob: float) -> KrausChannel:
     """single-qubit depolarizing channel
+
     .. math::
-        (1-p) \rho + \frac{p}{3} (X \rho X + Y \rho Y + Z \rho Z) = (1 - 4\frac{p}{3}) \rho + 4 \frac{p}{3} Id
+        (1-p) \\rho + \\frac{p}{3} (X \\rho X + Y \\rho Y + Z \\rho Z) = (1 - 4 \\frac{p}{3}) \\rho + 4 \\frac{p}{3} id
+
+    Parameters
+    ----------
+    prob : float
+        The probability associated to the channel
+
     """
     return KrausChannel(
         [
@@ -114,10 +114,11 @@ def depolarising_channel(prob: float) -> KrausChannel:
 
 
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
-    """single-qubit pauli channel
+    """single-qubit pauli channel,
+    
     .. math::
-        (1-p_X-p_Y-p_Z) \rho + p_X X \rho X + p_Y Y \rho Y + p_Z Z \rho Z)
-    but my format is better with X, Y Z
+        (1-p_X-p_Y-p_Z) \\rho + p_X X \\rho X + p_Y Y \\rho Y + p_Z Z \\rho Z)
+
     """
     if px + py + pz > 1:
         raise ValueError("The sum of probabilities must not exceed 1.")
@@ -134,8 +135,9 @@ def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
 
 def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
     """two-qubit depolarising channel.
+    
     .. math::
-        \mathcal{E} (\rho) = (1-p) \rho + \frac{p}{15}  \sum_{P_i \in \{id, X, Y ,Z\}^{\otimes 2}/(id \otimes id)}P_i \rho P_i
+        \mathcal{E} (\\rho) = (1-p) \\rho + \\frac{p}{15}  \sum_{P_i \in \{id, X, Y ,Z\}^{\otimes 2}/(id \otimes id)}P_i \\rho P_i
 
     Parameters
     ----------
@@ -173,8 +175,9 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
 def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
     """two-qubit tensor channel of single-qubit depolarising channels with same probability.
     Kraus operators:
+
     .. math::
-        \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z} \otimes \sqrt{(1-p) id, \sqrt(p/3) X, \sqrt(p/3) Y , \sqrt(p/3) Z}
+        \Big\{ \sqrt{(1-p)} id, \sqrt{(p/3)} X, \sqrt{(p/3)} Y , \sqrt{(p/3)} Z \Big\} \otimes \Big\{ \sqrt{(1-p)} id, \sqrt{(p/3)} X, \sqrt{(p/3)} Y , \sqrt{(p/3)} Z \Big\}
 
     Parameters
     ----------
