@@ -326,7 +326,7 @@ class GraphVisualizer:
             elif (
                 show_pauli_measurement
                 and self.meas_angles is not None
-                and (self.meas_angles[node] == 0 or self.meas_angles[node] == 1 / 2)
+                and (2*self.meas_angles[node] == int(2*self.meas_angles[node])) # measurement angle is integer or half-integer
             ):
                 inner_color = "lightblue"
             plt.scatter(
@@ -477,7 +477,7 @@ class GraphVisualizer:
             elif (
                 show_pauli_measurement
                 and self.meas_angles is not None
-                and (self.meas_angles[node] == 0 or self.meas_angles[node] == 1 / 2)
+                and (2*self.meas_angles[node] == int(2*self.meas_angles[node])) # measurement angle is integer or half-integer
             ):
                 inner_color = "lightblue"
             plt.scatter(
@@ -586,7 +586,7 @@ class GraphVisualizer:
             elif (
                 show_pauli_measurement
                 and self.meas_angles is not None
-                and (self.meas_angles[node] == 0 or self.meas_angles[node] == 1 / 2)
+                and (2*self.meas_angles[node] == int(2*self.meas_angles[node])) # measurement angle is integer or half-integer
             ):
                 inner_color = "lightblue"
             plt.scatter(
@@ -733,7 +733,7 @@ class GraphVisualizer:
             elif (
                 show_pauli_measurement
                 and self.meas_angles is not None
-                and (self.meas_angles[node] == 0 or self.meas_angles[node] == 1 / 2)
+                and (2*self.meas_angles[node] == int(2*self.meas_angles[node])) # measurement angle is integer or half-integer
             ):
                 inner_color = "lightblue"
             plt.scatter(*pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2)

@@ -392,25 +392,11 @@ def find_pauliflow(
     """
     l_k = dict()
     p = dict()
-    Lx, Ly, Lz = set(), set(), set()
+    Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
     for node in graph.nodes:
         if node in output:
             l_k[node] = 0
-        elif meas_planes[node] == "XY":
-            if meas_angles[node] == 0:
-                Lx |= {node}
-            elif meas_angles[node] == 1 / 2:
-                Ly |= {node}
-        elif meas_planes[node] == "ZX":
-            if meas_angles[node] == 0:
-                Lz |= {node}
-            elif meas_angles[node] == 1 / 2:
-                Lx |= {node}
-        elif meas_planes[node] == "YZ":
-            if meas_angles[node] == 0:
-                Ly |= {node}
-            elif meas_angles[node] == 1 / 2:
-                Lz |= {node}
+            
     return pauliflowaux(graph, input, output, meas_planes, 0, set(), output, l_k, p, (Lx, Ly, Lz), mode)
 
 
@@ -777,23 +763,7 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
     meas_angles = pattern.get_angles()
     nodes = set(nodes)
 
-    Lx, Ly, Lz = set(), set(), set()
-    for node in meas_planes.keys():
-        if meas_planes[node] == "XY":
-            if meas_angles[node] == 0:
-                Lx |= {node}
-            elif meas_angles[node] == 1 / 2:
-                Ly |= {node}
-        elif meas_planes[node] == "ZX":
-            if meas_angles[node] == 0:
-                Lz |= {node}
-            elif meas_angles[node] == 1 / 2:
-                Lx |= {node}
-        elif meas_planes[node] == "YZ":
-            if meas_angles[node] == 0:
-                Ly |= {node}
-            elif meas_angles[node] == 1 / 2:
-                Lz |= {node}
+    Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
 
     p_all, l_k = find_pauliflow(G, input_nodes, output_nodes, meas_planes, meas_angles, mode="all")
     if p_all is None:
@@ -1427,20 +1397,7 @@ def verify_pauliflow(
     valid_pauliflow: bool
         True if the Pauliflow is valid. False otherwise.
     """
-    Lx, Ly, Lz = set(), set(), set()
-    for node, plane in meas_planes.items():
-        if plane == "XY" and meas_angles[node] == 0:
-            Lx |= {node}
-        elif plane == "XY" and meas_angles[node] == 1 / 2:
-            Ly |= {node}
-        elif plane == "ZX" and meas_angles[node] == 0:
-            Lz |= {node}
-        elif plane == "ZX" and meas_angles[node] == 1 / 2:
-            Lx |= {node}
-        elif plane == "YZ" and meas_angles[node] == 0:
-            Ly |= {node}
-        elif plane == "YZ" and meas_angles[node] == 1 / 2:
-            Lz |= {node}
+    Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
 
     valid_pauliflow = True
     non_outputs = set(graph.nodes) - output
@@ -1519,3 +1476,20 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
         non_inputs |= correction
     outputs = non_inputs - non_outputs
     return outputs
+
+def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) -> tuple[set[int], set[int], set[int]]:
+    Lx, Ly, Lz = set(), set(), set()
+    for node, plane in meas_planes.items():
+        if plane == "XY" and meas_angles[node] == int(meas_angles[node]): # measurement angle is integer
+            Lx |= {node}
+        elif plane == "XY" and 2*meas_angles[node] == int(2*meas_angles[node]): # measurement angle is half integer
+            Ly |= {node}
+        elif plane == "ZX" and meas_angles[node] == int(meas_angles[node]):
+            Lz |= {node}
+        elif plane == "ZX" and 2*meas_angles[node] == int(2*meas_angles[node]):
+            Lx |= {node}
+        elif plane == "YZ" and meas_angles[node] == int(meas_angles[node]):
+            Ly |= {node}
+        elif plane == "YZ" and 2*meas_angles[node] == int(2*meas_angles[node]):
+            Lz |= {node}
+    return Lx, Ly, Lz
