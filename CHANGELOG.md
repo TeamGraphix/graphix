@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
 - Added `gflow.flow_from_pattern` method.
+- Added noisy MBQC simulation backend.
+    - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
+    - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
+    - `channels` module, defining `KrausChannel` class.
+    - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
+
 
 ### Fixed
 
@@ -42,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Both search for gflow or flow, and if found, plot them. If not found,
   in the case of from the graph, only the graph is drawn, and in the case
   of from the pattern, both the graph and all correction sets are drawn.
+- Removed `paddle` from benchmarks following github dependabot alert.
+- `PatternSimulator` takes optional argument noise_model during init, to specify noise model for `densitymatrix` simualtion.
 
 ## [0.2.10] - 2024-01-03
 
