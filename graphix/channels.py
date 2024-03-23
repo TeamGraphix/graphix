@@ -115,7 +115,7 @@ def depolarising_channel(prob: float) -> KrausChannel:
 
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     """single-qubit pauli channel,
-    
+
     .. math::
         (1-p_X-p_Y-p_Z) \\rho + p_X X \\rho X + p_Y Y \\rho Y + p_Z Z \\rho Z)
 
@@ -135,7 +135,7 @@ def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
 
 def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
     """two-qubit depolarising channel.
-    
+
     .. math::
         \mathcal{E} (\\rho) = (1-p) \\rho + \\frac{p}{15}  \sum_{P_i \in \{id, X, Y ,Z\}^{\otimes 2}/(id \otimes id)}P_i \\rho P_i
 
