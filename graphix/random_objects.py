@@ -21,7 +21,7 @@ def rand_unit(l: int):
     generate haar random unitary matrix of size l*l
     """
     if l == 1:
-        return np.array([[np.exp(1j * np.random.rand(1) * 2 * np.pi)]])
+        return np.array([np.exp(1j * np.random.rand(1) * 2 * np.pi)])
     else:
         return unitary_group.rvs(l)
 
