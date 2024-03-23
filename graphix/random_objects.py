@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.linalg
+from scipy.stats import unitary_group
 
 from graphix.channels import KrausChannel
 from graphix.sim.density_matrix import DensityMatrix
@@ -17,9 +18,12 @@ def rand_herm(l: int):
 
 def rand_unit(l: int):
     """
-    generate random unitary matrix of size l*l from hermitian matrix
+    generate haar random unitary matrix of size l*l
     """
-    return scipy.linalg.expm(1j * rand_herm(l))
+    if l == 1:
+        return np.array([[np.exp(1j * np.random.rand(1) * 2 * np.pi)]])
+    else:
+        return unitary_group.rvs(l)
 
 
 UNITS = np.array([1, 1j])
@@ -65,7 +69,6 @@ def rand_dm(dim: int, rank: int = None, dm_dtype=True) -> DensityMatrix:
 
 
 def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
-
     """
     Returns a square array of standard normal complex random variates.
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
@@ -87,7 +90,6 @@ def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
 
 
 def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
-
     """
     Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
@@ -127,7 +129,6 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 # or merge with previous with a "pauli" kwarg?
 ### continue here
 def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
-
     if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
 
