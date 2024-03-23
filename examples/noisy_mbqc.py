@@ -47,11 +47,11 @@ class NoisyGraphState(NoiseModel):
         self.p_z = p_z
 
     def prepare_qubit(self):
-        """return the channel to apply after clean single-qubit preparation. Here just identity."""
+        """return the channel to apply after clean single-qubit preparation. Here just we prepare dephased qubits."""
         return dephasing_channel(self.p_z)
 
     def entangle(self):
-        """return noise model to qubits that happens after the CZ gate"""
+        """return noise model to qubits that happens after the CZ gate. just identity no noise for this noise model."""
         return KrausChannel([{"coef": 1.0, "operator": np.eye(4)}])
 
     def measure(self):
@@ -59,27 +59,28 @@ class NoisyGraphState(NoiseModel):
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def confuse_result(self, cmd):
-        """assign wrong measurement result
+        """imperfect measurement effect. here we do nothing (no error).
         cmd = "M"
         """
         pass
 
     def byproduct_x(self):
-        """apply noise to qubits after X gate correction"""
+        """apply noise to qubits after X gate correction. here no error (identity)."""
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def byproduct_z(self):
-        """apply noise to qubits after Z gate correction"""
+        """apply noise to qubits after Z gate correction. here no error (identity)."""
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def clifford(self):
-        """apply noise to qubits that happens in the Clifford gate process"""
-        # TODO list separate different Cliffords to allow customization
+        """apply noise to qubits that happens in the Clifford gate process. here no error (identity)."""
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def tick_clock(self):
         """notion of time in real devices - this is where we apply effect of T1 and T2.
         we assume commands that lie between 'T' commands run simultaneously on the device.
+        
+        here we assume no idle error.
         """
         pass
 
