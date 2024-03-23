@@ -103,7 +103,7 @@ for i in range(10):
     fidelity[i] = dm_result.fidelity(out_state.psi.flatten())
 
 plt.semilogx(err_arr, fidelity, "o:")
-plt.xlabel("p_z for state prep and entanglement operations")
+plt.xlabel("dephasing error of qubit preparation")
 plt.ylabel("Final fidelity")
 plt.show()
 # %%
