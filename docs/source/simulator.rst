@@ -42,3 +42,14 @@ Statevector
 
 .. autoclass:: Statevec
     :members:
+
+Density Matrix
+--------------
+
+.. currentmodule:: graphix.sim.density_matrix
+
+.. autoclass:: DensityMatrixBackend
+    :members:
+
+.. autoclass:: DensityMatrix
+    :members:

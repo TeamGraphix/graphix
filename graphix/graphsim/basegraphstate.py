@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 import networkx as nx
-from networkx import Graph
-from networkx.classes.reportviews import EdgeView, NodeView
+import networkx.classes.reportviews as nx_reportviews
 
 from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -23,9 +22,9 @@ except ModuleNotFoundError:
     rx = None
     PyGraph = None
 
-NodesObject = Union[NodeView, NodeList]
-EdgesObject = Union[EdgeView, EdgeList]
-GraphObject = Union[Graph, PyGraph]
+NodesObject = Union[nx_reportviews.NodeView, NodeList]
+EdgesObject = Union[nx_reportviews.EdgeView, EdgeList]
+GraphObject = Union[nx.Graph, PyGraph]
 
 
 class BaseGraphState(ABC):
