@@ -782,7 +782,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
     def test_init_success(self):
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
         assert backend.pattern == pattern
         assert backend.results == pattern.results
@@ -793,7 +793,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
 
     def test_add_nodes(self):
         circ = Circuit(1)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
         backend.add_nodes([0, 1])
         expected_matrix = np.array([0.25] * 16).reshape(4, 4)
@@ -801,7 +801,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
 
     def test_entangle_nodes(self):
         circ = Circuit(1)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
         backend.add_nodes([0, 1])
         backend.entangle_nodes((0, 1))
@@ -814,7 +814,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
     def test_measure(self):
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern)
         backend.add_nodes([0, 1, 2])
@@ -830,7 +830,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         # circuit there just to provide a measurement command to try out. Weird.
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern, pr_calc=True)
         backend.add_nodes([0, 1, 2])
@@ -849,7 +849,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
 
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern)
         backend.add_nodes([0, 1, 2])

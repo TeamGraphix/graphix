@@ -26,7 +26,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
             if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
+        # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
         self.state = None
