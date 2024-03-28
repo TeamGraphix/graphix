@@ -85,6 +85,18 @@ class MatGF2:
         array_to_add = array_to_add.reshape((1, self.data.shape[0]))
         self.data = np.insert(self.data, col, array_to_add, axis=1)
 
+    def concatenate(self, other, axis=1):
+        """concatinate two matrices
+
+        Parameters
+        ----------
+        other: MatGF2
+            matrix to concatinate
+        axis: int(optional)
+            axis to concatinate. Defaults to 1.
+        """
+        self.data = np.concatenate((self.data, other.data), axis=axis)
+
     def remove_row(self, row):
         """remove a row from the matrix
 
@@ -282,7 +294,7 @@ class MatGF2:
             x_col = list()
             b_col = b.data[:, col]
             if np.count_nonzero(b_col[rank:]) != 0:
-                x_col = [sp.nan for i in range(rank)]
+                x_col = [sp.nan for i in range(self.data.shape[1])]
                 x.append(x_col)
                 continue
             for row in range(rank - 1, -1, -1):
@@ -291,6 +303,8 @@ class MatGF2:
                 for k in kernel_index:
                     sol ^= kernels[k]
                 x_col.insert(0, sol)
+            for row in range(rank, self.data.shape[1]):
+                x_col.append(kernels[row - rank])
             x.append(x_col)
 
         x = np.array(x).T
