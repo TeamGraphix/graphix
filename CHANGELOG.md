@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+### Fixed
+
+### Changed
+
+## [0.2.11] - 2024-03-16
+
+### Added
+
+- Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
+- Added `gflow.flow_from_pattern` method.
+- Added noisy MBQC simulation backend.
+    - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
+    - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
+    - `channels` module, defining `KrausChannel` class.
+    - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
+
+
+### Fixed
+
+- Fixed bug in index permutation within `linalg.MatGF2` and `gflow.find_gflow`.
+- Fixed `gflow.gflow_from_pattern` method.
+
+### Changed
+
+- Renamed methods; `gflow.flow` and `gflow.gflow` are now `gflow.find_flow` and `gflow.find_gflow`, respectively.
+- `Pattern.seq` is renamed into a private field `Pattern.__seq` and
+  `Pattern.Nnode` is now a read-only property.  `Pattern` constructor
+  now only takes an optional list of `input_nodes`, and can only be
+  updated via `add` and `extend`. `Pattern` are now iterable and `len`
+  is now defined for patterns: we should write `for command in pattern:`
+  instead of `for command in pattern.seq:` and `len(pattern)` instead
+  of `len(pattern.seq)`.  `N` commands are no longer added by `Pattern`
+  constructor and should be added explicitly after the instantiation.
+- Changed the behavior of visualization in the `GraphVisualizer` class.
+  Prepared a `visualize` method that visualizes based on the graph only,
+  and a `visualize_from_pattern` that visualizes based on the pattern.
+  Both search for gflow or flow, and if found, plot them. If not found,
+  in the case of from the graph, only the graph is drawn, and in the case
+  of from the pattern, both the graph and all correction sets are drawn.
+- Removed `paddle` from benchmarks following github dependabot alert.
+- `PatternSimulator` takes optional argument noise_model during init, to specify noise model for `densitymatrix` simualtion.
 
 ## [0.2.10] - 2024-01-03
 

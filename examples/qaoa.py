@@ -35,14 +35,14 @@ for v in g.nodes:
 pattern = circuit.transpile()
 pattern.standardize()
 pattern.shift_signals()
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 
 #%%
 # perform Pauli measurements and plot the new (minimal) graph to perform the same quantum computation
 
 pattern.perform_pauli_measurements()
-pattern.draw_graph()
+pattern.draw_graph(flow_from_pattern=False)
 
 #%%
 # finally, simulate the QAOA circuit

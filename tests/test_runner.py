@@ -19,6 +19,9 @@ from graphix.device_interface import PatternRunner
 gx_ibmq_mock = MagicMock()
 sys.modules["graphix_ibmq.runner"] = gx_ibmq_mock
 
+import tests.random_circuit as rc
+from graphix.device_interface import PatternRunner
+
 
 def modify_statevector(statevector, output_qubit):
     statevector = np.asarray(statevector)
@@ -45,7 +48,8 @@ class TestPatternRunner(unittest.TestCase):
         qc.cx(1, 2)
         qc.save_statevector()
         sim = Aer.get_backend("aer_simulator")
-        job = qiskit.execute(qc, sim)
+        new_qc = qiskit.transpile(qc, sim)
+        job = sim.run(new_qc)
         result = job.result()
 
         # Mock
