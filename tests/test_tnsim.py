@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import unittest
 
@@ -9,6 +11,7 @@ from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
+
 
 SEED = 42
 rc.set_seed(SEED)

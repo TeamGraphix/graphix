@@ -100,7 +100,7 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        assert type(cmd) == list
+        assert isinstance(cmd, list)
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             if cmd[1] in self.__output_nodes:
@@ -336,7 +336,8 @@ class Pattern:
         ----------
         method : str, optional
             'global' corresponds to a conventional standardization executed on Pattern class.
-            'local' standardization is executed on LocalPattern class. In all cases, local pattern standardization is significantly faster than conventional one.
+            'local' standardization is executed on LocalPattern class. In all cases, local pattern standardization is
+            significantly faster than conventional one.
             defaults to 'local'
         """
         if method == "local":
@@ -858,7 +859,8 @@ class Pattern:
         return meas_order
 
     def get_measurement_order_from_flow(self):
-        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
+        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is
+        guaranteed to width+1.
 
         Returns
         -------
@@ -1230,7 +1232,8 @@ class Pattern:
         self.__seq = new
 
     def max_space(self):
-        """The maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
+        """The maximum number of nodes that must be present in the graph (graph space)
+        during the execution of the pattern.
         For statevector simulation, this is equivalent to the maximum memory
         needed for classical simulation.
 
@@ -1521,7 +1524,8 @@ class CommandNode:
         Returns
         -------
         EXcommutated_nodes : dict
-            when X commutes with E, Z correction is added on the pair node. This dict specifies target nodes where Zs will be added.
+            when X commutes with E, Z correction is added on the pair node.
+            This dict specifies target nodes where Zs will be added.
         """
         EXcommutated_nodes = dict()
         combined_Xsignal = []
@@ -1622,7 +1626,8 @@ class CommandNode:
         Returns
         -------
         signal_destination : set
-            Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
+            Counterpart of 'dependent nodes'. measurement results of each node
+            propagate to the nodes specified by 'signal_distination'.
         """
         signal_destination = set(self.Mprop[2]) | set(self.Mprop[3]) | set(self.Xsignal) | set(self.Zsignal)
         return signal_destination
@@ -1633,7 +1638,8 @@ class CommandNode:
         Returns
         -------
         signal_destination_dict : dict
-            Counterpart of 'dependent nodes'. Unlike 'get_signal_destination', types of domains are memorarized. measurement results of each node propagate to the nodes specified by 'signal_distination_dict'.
+            Counterpart of 'dependent nodes'. Unlike 'get_signal_destination', types of domains are memorarized.
+            measurement results of each node propagate to the nodes specified by 'signal_distination_dict'.
         """
         dependent_nodes_dict = dict()
         dependent_nodes_dict["Ms"] = self.Mprop[2]
@@ -1665,8 +1671,9 @@ class LocalPattern:
         list of node indices in a measurement order.
 
     signal_destination : dict
-    stores the set of nodes where dependent feedforward operations are performed, from the result of measurement at each node.
-    stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
+       stores the set of nodes where dependent feedforward operations are performed,
+       from the result of measurement at each node.
+       stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
     def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
@@ -1770,7 +1777,8 @@ class LocalPattern:
         return nodes, edges
 
     def get_pattern(self):
-        """Convert a local pattern into a corresponding global pattern. Currently, only standardized pattern is supported.
+        """Convert a local pattern into a corresponding global pattern.
+        Currently, only standardized pattern is supported.
 
         Returns
         -------
