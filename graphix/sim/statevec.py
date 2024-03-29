@@ -1,10 +1,23 @@
 from copy import deepcopy
+import typing
+from typing_extensions import Annotated
+from annotated_types import Ge
 
 import numpy as np
 
 import graphix.sim.base_backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
+import graphix.states
+import graphix.pauli
+import functools
+import warnings
+
+# Python >= 3.9
+# from collections.abc import Iterable # or use Protocols?
+# https://stackoverflow.com/questions/49427944/typehints-for-sized-iterable-in-python
+# Python >= 3.8
+# typing.Iterable[T]
 
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
@@ -177,26 +190,116 @@ SWAP_TENSOR = np.array(
     [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
     dtype=np.complex128,
 )
+PositiveInt = Annotated[int, Ge(0)]  # includes 0
 
 
 class Statevec:
-    """Simple statevector simulator"""
+    """Statevector object"""
 
-    def __init__(self, nqubit=1, plus_states=True):
+    # TODO at this stage no need for indices just be careful of the ordering in add_nodes
+    def __init__(
+        self,
+        nqubit: typing.Optional[PositiveInt] = None,
+        state: typing.Union[
+            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[complex]
+        ] = graphix.states.BasicStates.PLUS,
+    ):
+        # always infer nqubit from data
+        # nqubit = none et pas 1
+        # if nqubit is None: on exige iterable fini et on prend son nombre d'élément
+        # also allow external data.
         """Initialize statevector
 
         Parameters
         ----------
-        nqubit : int, optional:
+        state : is either
+            - a single state (:class:`graphix.states.State` object). THen prepares all nodes in that state (tensor product)
+            - a dictionary mapping the inputs to a :class:`graphix.states.State` object
+            - an arbitrary :class:`graphix.statevec.Statevec` object (arbitrary input) # TODO work on that since just copy?
+        nqubit : int, optional: ignored if iterable passed (State, direct data)
             number of qubits. Defaults to 1.
-        plus_states : bool, optional
+        # plus_states : bool, optional
             whether or not to start all qubits in + state or 0 state. Defaults to +
+
+        Defaults to |+> states and 1 qubit.
+        If nqubit > 1 and only one state : tensor all of them. Use the tensor method instead of hard code.
         """
-        if plus_states:
-            self.psi = np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
-        else:
-            self.psi = np.zeros((2,) * nqubit)
-            self.psi[(0,) * nqubit] = 1
+        # convert single qubit State object to Statevector
+        # NOTE make plane, angle attributes of Statevec?
+        # this will be called by the nqb > 1 case
+        # instantiate a one
+        if nqubit == 0:
+            warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
+            self.psi = np.array(1, dtype=np.complex128)
+
+        # works only for planar states. Deal with all kind of states?
+        elif isinstance(state, graphix.states.State):
+
+            if nqubit is None:
+                raise ValueError("Incorrect value for nqubit.")
+
+            vec = state.get_statevector()
+
+            if nqubit == 1:  # or None
+                self.psi = vec
+
+            # build tensor product |state>^{\otimes nqubit}
+            # can only be >1 int.
+            else:
+                # build tensor product
+                # comma in tuple is for disambiguation with paranthesed expression
+                tmp_psi = functools.reduce(np.kron, (vec,) * nqubit)
+                # reshape
+                self.psi = tmp_psi.reshape((2,) * nqubit)
+
+        # nqubit is None : on prend la longeur de l'iterable
+        elif isinstance(state, typing.Iterable):
+            # iterateur
+            it = iter(state)
+            head = next(it)
+            # type constraint in head doesn't progpagate to all elts
+            if isinstance(head, graphix.states.State):
+                # assert isinstance(head, typing.Iterator[graphix.states.State])
+                if nqubit is None:
+                    # liste persistante state pour eviter la transience
+                    states = [head] + list(it)
+                    nqubit = len(states)
+                # sinon on prend nqubit elts
+                else:  # ignore for now
+                    states = [head] + [next(it) for _ in range(nqubit - 1)]
+
+                list_of_sv = [s.get_statevector() for s in states]
+                tmp_psi = functools.reduce(np.kron, list_of_sv)
+                # reshape
+                self.psi = tmp_psi.reshape((2,) * nqubit)
+
+            else:
+                if nqubit is None:
+                    states = [head] + list(it)
+
+                    inferred_size = len(states)
+
+                    if inferred_size & (inferred_size - 1) != 0:
+                        raise ValueError(f"Statevector size must be a power of two but is {inferred_size}.")
+
+                    nqubit = inferred_size.bit_length() - 1
+
+                else:  # ignore for now
+                    states = [head] + [next(it) for _ in range(2**nqubit - 1)]
+
+                psi = np.array(states)
+
+                if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
+                    raise ValueError(f"Statevector must be normalized to one.")
+
+                # just reshape
+                # NOTE too many conversions to numpy arrays?
+                self.psi = psi.reshape((2,) * nqubit)
+
+        # if already a valid statevec just copy it.
+        if isinstance(state, Statevec):
+            assert nqubit is None or len(state.flatten()) == 2**nqubit
+            self.psi = state.psi.copy()
 
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
