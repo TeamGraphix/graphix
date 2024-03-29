@@ -1,6 +1,8 @@
 import unittest
+
 import numpy as np
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_MUL, CLIFFORD_HSZ_DECOMPOSITION
+
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE, CLIFFORD_MUL
 
 
 class TestClifford(unittest.TestCase):
