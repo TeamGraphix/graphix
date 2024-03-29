@@ -516,10 +516,7 @@ class Circuit:
                 num_nodes += 2
 
             elif instr[0] == "SWAP":
-                (
-                    mbqcgraph.output_nodes[instr[1][0]],
-                    mbqcgraph.output_nodes[instr[1][1]],
-                ) = (
+                (mbqcgraph.output_nodes[instr[1][0]], mbqcgraph.output_nodes[instr[1][1]],) = (
                     mbqcgraph.output_nodes[instr[1][1]],
                     mbqcgraph.output_nodes[instr[1][0]],
                 )
