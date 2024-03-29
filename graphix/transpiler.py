@@ -3,6 +3,7 @@
 accepts desired gate operations and transpile into MBQC measurement patterns.
 
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -229,15 +230,15 @@ class Circuit:
         Nnode = self.width
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
-        pattern = Pattern(input_nodes=input)
-        # pattern.extend([["N", i] for i in range(self.width)])
+        pattern = Pattern(input_nodes=input, width=self.width)
+        pattern.seq = [["N", i] for i in input]
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1][0]], out[instr[1][1]], seq = self._cnot_command(
                     out[instr[1][0]], out[instr[1][1]], ancilla
                 )
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 2
             elif instr[0] == "SWAP":
                 out[instr[1][0]], out[instr[1][1]] = out[instr[1][1]], out[instr[1][0]]
@@ -246,48 +247,48 @@ class Circuit:
             elif instr[0] == "H":
                 ancilla = Nnode
                 out[instr[1]], seq = self._h_command(out[instr[1]], ancilla)
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 1
             elif instr[0] == "S":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._s_command(out[instr[1]], ancilla)
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 2
             elif instr[0] == "X":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._x_command(out[instr[1]], ancilla)
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 2
             elif instr[0] == "Y":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
                 out[instr[1]], seq = self._y_command(out[instr[1]], ancilla)
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 4
             elif instr[0] == "Z":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._z_command(out[instr[1]], ancilla)
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 2
             elif instr[0] == "Rx":
                 ancilla = [Nnode, Nnode + 1]
                 out[instr[1]], seq = self._rx_command(out[instr[1]], ancilla, instr[2])
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 2
             elif instr[0] == "Ry":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
                 out[instr[1]], seq = self._ry_command(out[instr[1]], ancilla, instr[2])
-                pattern.extend(seq)
+                pattern.seq.extend(seq)
                 Nnode += 4
             elif instr[0] == "Rz":
                 if opt:
                     ancilla = Nnode
                     out[instr[1]], seq = self._rz_command_opt(out[instr[1]], ancilla, instr[2])
-                    pattern.extend(seq)
+                    pattern.seq.extend(seq)
                     Nnode += 1
                 else:
                     ancilla = [Nnode, Nnode + 1]
                     out[instr[1]], seq = self._rz_command(out[instr[1]], ancilla, instr[2])
-                    pattern.extend(seq)
+                    pattern.seq.extend(seq)
                     Nnode += 2
             elif instr[0] == "Rzz":
                 if opt:
@@ -295,7 +296,7 @@ class Circuit:
                     out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
                         out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
                     )
-                    pattern.extend(seq)
+                    pattern.seq.extend(seq)
                     Nnode += 1
                 else:
                     raise NotImplementedError(
@@ -311,7 +312,7 @@ class Circuit:
                         out[instr[1][2]],
                         seq,
                     ) = self._ccx_command_opt(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
-                    pattern.extend(seq)
+                    pattern.seq.extend(seq)
                     Nnode += 11
                 else:
                     ancilla = [Nnode + i for i in range(18)]
@@ -321,11 +322,12 @@ class Circuit:
                         out[instr[1][2]],
                         seq,
                     ) = self._ccx_command(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
-                    pattern.extend(seq)
+                    pattern.seq.extend(seq)
                     Nnode += 18
             else:
                 raise ValueError("Unknown instruction, commands not added")
-        pattern.reorder_output_nodes(out)
+        pattern.output_nodes = out
+        pattern.Nnode = Nnode
         return pattern
 
     def to_mgraph(self):
@@ -339,14 +341,15 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
-                mbqcgraph.add_edge(control, num_nodes)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
+                mbqcgraph.add_edge(control, num_nodes, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", 0)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
@@ -355,13 +358,14 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", 0)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
@@ -369,10 +373,11 @@ class Circuit:
             elif instr[0] == "H":
                 target = mbqcgraph.output_nodes[instr[1]]
                 mbqcgraph.add_node(num_nodes, output=True)
-                mbqcgraph.add_edge(target, num_nodes)
+                mbqcgraph.add_edge(target, num_nodes, True)
                 mbqcgraph.assign_measurement_info(target, "XY", 0)
 
                 mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes
                 num_nodes += 1
@@ -382,13 +387,14 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", -0.5)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
@@ -398,13 +404,14 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", -1)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", 0)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
@@ -416,15 +423,16 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes + 2, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 3, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
-                mbqcgraph.add_edge(num_nodes + 1, num_nodes + 2)
-                mbqcgraph.add_edge(num_nodes + 2, num_nodes + 3)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
+                mbqcgraph.add_edge(num_nodes + 1, num_nodes + 2, True)
+                mbqcgraph.add_edge(num_nodes + 2, num_nodes + 3, True)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
                 mbqcgraph.flow[num_nodes + 1] = {num_nodes + 2}
                 mbqcgraph.flow[num_nodes + 2] = {num_nodes + 3}
+                mbqcgraph.flow[num_nodes + 3] = {}
 
                 mbqcgraph.assign_measurement_info(target, "XY", 0.5)
 
@@ -436,13 +444,14 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", -1)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
@@ -453,13 +462,14 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", -1 * angle / np.pi)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", 0)
 
                 mbqcgraph.flow[target] = {num_nodes}
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
+                mbqcgraph.flow[num_nodes + 1] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
@@ -473,10 +483,10 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes + 2, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 3, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
-                mbqcgraph.add_edge(num_nodes + 1, num_nodes + 2)
-                mbqcgraph.add_edge(num_nodes + 2, num_nodes + 3)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
+                mbqcgraph.add_edge(num_nodes + 1, num_nodes + 2, True)
+                mbqcgraph.add_edge(num_nodes + 2, num_nodes + 3, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", 0.5)
 
@@ -484,6 +494,7 @@ class Circuit:
                 mbqcgraph.flow[num_nodes] = {num_nodes + 1}
                 mbqcgraph.flow[num_nodes + 1] = {num_nodes + 2}
                 mbqcgraph.flow[num_nodes + 2] = {num_nodes + 3}
+                mbqcgraph.flow[num_nodes + 3] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 3
                 num_nodes += 4
@@ -495,21 +506,33 @@ class Circuit:
                 mbqcgraph.add_node(num_nodes, "XY", 0)
                 mbqcgraph.add_node(num_nodes + 1, output=True)
 
-                mbqcgraph.add_edge(target, num_nodes)
-                mbqcgraph.add_edge(num_nodes, num_nodes + 1)
+                mbqcgraph.add_edge(target, num_nodes, True)
+                mbqcgraph.add_edge(num_nodes, num_nodes + 1, True)
 
                 mbqcgraph.assign_measurement_info(target, "XY", -1 * angle / np.pi)
 
                 mbqcgraph.flow[target] = {num_nodes}
+                mbqcgraph.flow[num_nodes] = {}
 
                 mbqcgraph.output_nodes[mbqcgraph.output_nodes.index(target)] = num_nodes + 1
                 num_nodes += 2
+
+            elif instr[0] == "SWAP":
+                (
+                    mbqcgraph.output_nodes[instr[1][0]],
+                    mbqcgraph.output_nodes[instr[1][1]],
+                ) = (
+                    mbqcgraph.output_nodes[instr[1][1]],
+                    mbqcgraph.output_nodes[instr[1][0]],
+                )
 
             elif instr[0] == "Rzz":
                 raise NotImplementedError
 
             else:
-                raise ValueError("Unknown instruction, nodes not added")
+                raise ValueError(f"Unknown instruction {instr}, nodes not added")
+
+        return mbqcgraph
 
     def standardize_and_transpile(self, opt: bool = True):
         """gate-to-MBQC transpile function.
@@ -526,8 +549,8 @@ class Circuit:
         pattern : :class:`graphix.pattern.Pattern` object
         """
         self._N = []
-        # for i in range(self.width):
-        #    self._N.append(["N", i])
+        for i in range(self.width):
+            self._N.append(["N", i])
         self._M = []
         self._E = []
         self._instr = []
@@ -702,9 +725,9 @@ class Circuit:
             command_seq.append(cmd)
         for cmd in x_cmds:
             command_seq.append(cmd)
-        pattern = Pattern(input_nodes=inputs)
-        pattern.extend(command_seq)
-        pattern.reorder_output_nodes(out)
+        pattern = Pattern(input_nodes=inputs, output_nodes=out, width=self.width)
+        pattern.Nnode = Nnode
+        pattern.seq = command_seq
         return pattern
 
     def _commute_with_swap(self, target: int):
@@ -757,7 +780,10 @@ class Circuit:
             if self._instr[target][0] == "XC":
                 self._commute_with_following(target)
                 # changes to Y = XZ
-                self._instr.insert(target + 1, ["ZC", self._instr[target + 1][1], self._instr[target + 1][2]])
+                self._instr.insert(
+                    target + 1,
+                    ["ZC", self._instr[target + 1][1], self._instr[target + 1][2]],
+                )
                 return target + 1
         self._commute_with_following(target)
         return target
@@ -1207,7 +1233,13 @@ class Circuit:
         return control_node, target_node, seq
 
     @classmethod
-    def _ccx_command(self, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
+    def _ccx_command(
+        self,
+        control_node1: int,
+        control_node2: int,
+        target_node: int,
+        ancilla: Sequence[int],
+    ):
         """MBQC commands for CCX gate
 
         Parameters
@@ -1265,21 +1297,64 @@ class Circuit:
         seq.append(["M", ancilla[2], "XY", -1.75, [ancilla[1], target_node], []])
         seq.append(["M", ancilla[14], "XY", -0.0, [control_node1], []])
         seq.append(["M", ancilla[3], "XY", -0.0, [ancilla[2], ancilla[0]], []])
-        seq.append(["M", ancilla[5], "XY", -0.25, [ancilla[3], ancilla[1], ancilla[14], target_node], []])
+        seq.append(
+            [
+                "M",
+                ancilla[5],
+                "XY",
+                -0.25,
+                [ancilla[3], ancilla[1], ancilla[14], target_node],
+                [],
+            ]
+        )
         seq.append(["M", control_node2, "XY", -0.25, [], []])
         seq.append(["M", ancilla[6], "XY", -0.0, [ancilla[5], ancilla[2], ancilla[0]], []])
-        seq.append(["M", ancilla[9], "XY", -0.0, [control_node2, ancilla[0], ancilla[5], ancilla[2], ancilla[0]], []])
-        seq.append(["M", ancilla[7], "XY", -1.75, [ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node], []])
+        seq.append(
+            [
+                "M",
+                ancilla[9],
+                "XY",
+                -0.0,
+                [control_node2, ancilla[0], ancilla[5], ancilla[2], ancilla[0]],
+                [],
+            ]
+        )
+        seq.append(
+            [
+                "M",
+                ancilla[7],
+                "XY",
+                -1.75,
+                [ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node],
+                [],
+            ]
+        )
         seq.append(["M", ancilla[10], "XY", -1.75, [ancilla[9], ancilla[14]], []])
         seq.append(["M", ancilla[4], "XY", -0.25, [ancilla[14]], []])
-        seq.append(["M", ancilla[8], "XY", -0.0, [ancilla[7], ancilla[5], ancilla[2], ancilla[0]], []])
+        seq.append(
+            [
+                "M",
+                ancilla[8],
+                "XY",
+                -0.0,
+                [ancilla[7], ancilla[5], ancilla[2], ancilla[0]],
+                [],
+            ]
+        )
         seq.append(
             [
                 "M",
                 ancilla[11],
                 "XY",
                 -0.0,
-                [ancilla[10], control_node2, ancilla[0], ancilla[5], ancilla[2], ancilla[0]],
+                [
+                    ancilla[10],
+                    control_node2,
+                    ancilla[0],
+                    ancilla[5],
+                    ancilla[2],
+                    ancilla[0],
+                ],
                 [],
             ]
         )
@@ -1289,7 +1364,15 @@ class Circuit:
                 ancilla[12],
                 "XY",
                 -0.25,
-                [ancilla[8], ancilla[14], ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node],
+                [
+                    ancilla[8],
+                    ancilla[14],
+                    ancilla[6],
+                    ancilla[3],
+                    ancilla[1],
+                    ancilla[14],
+                    target_node,
+                ],
                 [],
             ]
         )
@@ -1325,14 +1408,38 @@ class Circuit:
         )
         seq.append(["X", ancilla[17], [ancilla[14], ancilla[16]]])
         seq.append(["X", ancilla[15], [ancilla[9], ancilla[11]]])
-        seq.append(["X", ancilla[13], [ancilla[0], ancilla[2], ancilla[5], ancilla[7], ancilla[12]]])
-        seq.append(["Z", ancilla[17], [ancilla[4], ancilla[5], ancilla[7], ancilla[10], control_node1]])
+        seq.append(
+            [
+                "X",
+                ancilla[13],
+                [ancilla[0], ancilla[2], ancilla[5], ancilla[7], ancilla[12]],
+            ]
+        )
+        seq.append(
+            [
+                "Z",
+                ancilla[17],
+                [ancilla[4], ancilla[5], ancilla[7], ancilla[10], control_node1],
+            ]
+        )
         seq.append(["Z", ancilla[15], [control_node2, ancilla[2], ancilla[5], ancilla[10]]])
-        seq.append(["Z", ancilla[13], [ancilla[1], ancilla[3], ancilla[6], ancilla[8], target_node]])
+        seq.append(
+            [
+                "Z",
+                ancilla[13],
+                [ancilla[1], ancilla[3], ancilla[6], ancilla[8], target_node],
+            ]
+        )
         return ancilla[17], ancilla[15], ancilla[13], seq
 
     @classmethod
-    def _ccx_command_opt(self, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
+    def _ccx_command_opt(
+        self,
+        control_node1: int,
+        control_node2: int,
+        target_node: int,
+        ancilla: Sequence[int],
+    ):
         """Optimized MBQC commands for CCX gate
 
         Parameters
@@ -1384,12 +1491,27 @@ class Circuit:
         seq.append(["M", ancilla[3], "XY", -1.75, [ancilla[8], target_node], [], 6])
         seq.append(["M", ancilla[4], "XY", -1.75, [ancilla[8]], [], 6])
         seq.append(["M", ancilla[1], "XY", -0.25, [ancilla[8]], [], 6])
-        seq.append(["M", ancilla[5], "XY", -0.0, [control_node2, ancilla[0], ancilla[2], ancilla[4]], []])
+        seq.append(
+            [
+                "M",
+                ancilla[5],
+                "XY",
+                -0.0,
+                [control_node2, ancilla[0], ancilla[2], ancilla[4]],
+                [],
+            ]
+        )
         seq.append(["M", ancilla[6], "XY", -0.25, [target_node], []])
         seq.append(["X", ancilla[10], [ancilla[8]]])
         seq.append(["X", ancilla[9], [ancilla[5]]])
         seq.append(["X", ancilla[7], [ancilla[0], ancilla[2], ancilla[3], ancilla[6]]])
-        seq.append(["Z", ancilla[10], [control_node1, ancilla[1], ancilla[2], ancilla[3], ancilla[4]]])
+        seq.append(
+            [
+                "Z",
+                ancilla[10],
+                [control_node1, ancilla[1], ancilla[2], ancilla[3], ancilla[4]],
+            ]
+        )
         seq.append(["Z", ancilla[9], [control_node2, ancilla[0], ancilla[2], ancilla[4]]])
         seq.append(["Z", ancilla[7], [target_node]])
 
@@ -1416,16 +1538,16 @@ class Circuit:
         old_out = deepcopy(output_nodes)
         output_nodes.sort()
         # check all commands and swap node indices
-        for cmd in pattern:
-            if cmd[0] == "E":
-                j, k = cmd[1]
+        for i in range(len(pattern.seq)):
+            if pattern.seq[i][0] == "E":
+                j, k = pattern.seq[i][1]
                 if j in old_out:
                     j = output_nodes[old_out.index(j)]
                 if k in old_out:
                     k = output_nodes[old_out.index(k)]
-                cmd[1] = (j, k)
-            elif cmd[1] in old_out:
-                cmd[1] = output_nodes[old_out.index(cmd[1])]
+                pattern.seq[i][1] = (j, k)
+            elif pattern.seq[i][1] in old_out:
+                pattern.seq[i][1] = output_nodes[old_out.index(pattern.seq[i][1])]
 
     def simulate_statevector(self, input_state: Optional[Statevec] = None):
         """Run statevector simultion of the gate sequence, using graphix.Statevec
@@ -1469,9 +1591,19 @@ class Circuit:
             elif self.instruction[i][0] == "Rz":
                 state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rzz":
-                state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
+                state.evolve(
+                    Ops.Rzz(self.instruction[i][2]),
+                    [self.instruction[i][1][0], self.instruction[i][1][1]],
+                )
             elif self.instruction[i][0] == "CCX":
-                state.evolve(Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]])
+                state.evolve(
+                    Ops.ccx,
+                    [
+                        self.instruction[i][1][0],
+                        self.instruction[i][1][1],
+                        self.instruction[i][1][2],
+                    ],
+                )
             else:
                 raise ValueError(f"Unknown instruction: {self.instruction[i][0]}")
 

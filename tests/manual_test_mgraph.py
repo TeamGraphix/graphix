@@ -5,10 +5,15 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
+NUMBA_NUM_THREADS = 1
 from graphix.mgraph import COLOR_MAP, MGraph
 from graphix.transpiler import Circuit
 
 from tests.random_circuit import get_rand_circuit
+
+import random
+
+random.seed(42)
 
 # %%
 # ======================= #
@@ -240,3 +245,45 @@ mgraph.bipartite(3, 4, new_indices)
 
 node_color, edge_color = mgraph.get_colors()
 nx.draw(mgraph, node_color=node_color, edge_color=edge_color, with_labels=True)
+
+# %%
+# check for local complementation
+nodes = [
+    (1, "XY", 0),
+    (2, "XY", 0),
+    (3, "YZ", 0),
+    (4, "XY", 0),
+]
+
+edges = [
+    (1, 3, {"hadamard": True}),
+    (2, 3, {"hadamard": True}),
+    (3, 4, {"hadamard": True}),
+    (1, 2, {"hadamard": True}),
+]
+mgraph = MGraph()
+for node, plane, angle in nodes:
+    mgraph.add_node(node, plane, angle)
+for edge in edges:
+    mgraph.add_edge(edge[0], edge[1], **edge[2])
+node_color, edge_color = mgraph.get_colors()
+nx.draw(mgraph, node_color=node_color, edge_color=edge_color, with_labels=True)
+
+# %%
+mgraph.local_complementation(3)
+node_color, edge_color = mgraph.get_colors()
+nx.draw(mgraph, node_color=node_color, edge_color=edge_color, with_labels=True)
+# %%
+# local complementation test with circ structure
+circ = get_rand_circuit(3, 2, seed=42)
+mgraph = circ.to_mgraph()
+
+node_color, edge_color = mgraph.get_colors()
+nx.draw(mgraph, node_color=node_color, edge_color=edge_color, with_labels=True)
+print(mgraph.flow)
+# %%
+mgraph.local_complementation(15)
+
+node_color, edge_color = mgraph.get_colors()
+nx.draw(mgraph, node_color=node_color, edge_color=edge_color, with_labels=True)
+print(mgraph.flow)

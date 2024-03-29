@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from itertools import combinations
 
 import networkx as nx
@@ -41,12 +42,14 @@ class MGraph(nx.MultiGraph):
         """
         self.flow = dict()
         self.layers = dict()
+        self.node_num = 0
         self.set_input_nodes(inputs)
         self.output_nodes = outputs
 
-        self.node_num = 0
+        self.node2id = dict()
+        self.edge2id = dict()
 
-    def add_node(self, node: int, plane=None, angle=None, output=False):
+    def add_node(self, node: int, plane=None, angle=None, output=False, **kwargs):
         """add a node to the graph
 
         Parameters
@@ -58,7 +61,7 @@ class MGraph(nx.MultiGraph):
         angle: int, optional
             measurement angle, by default 0
         """
-        super().add_node(node, plane=plane, angle=angle, output=output)
+        super().add_node(node, plane=plane, angle=angle, output=output, **kwargs)
 
         self.node_num += 1
 
@@ -80,6 +83,12 @@ class MGraph(nx.MultiGraph):
             hadamard edge or not, by default False
         """
         super().add_edge(u, v, hadamard=hadamard)
+
+    def find_odd_neighbors(self, nodes: set[int]):
+        OddN = set()
+        for node in nodes:
+            OddN ^= set(self.neighbors(node))
+        return OddN
 
     def assign_measurement_info(self, node: int, plane: str, angle: int):
         """asign measurement info to a node
@@ -523,40 +532,43 @@ class MGraph(nx.MultiGraph):
         """
         assert self.has_node(target), "Node not in graph"
         neighbors_target = list(self.neighbors(target))
-        neighbors_complete_edges = combinations(neighbors_target, 2)
-        local_complemented_edges = set(self.edges).symmetric_difference(neighbors_complete_edges)
-        self.update(edges=local_complemented_edges)
+        neighbors_complete_edges = set((u, v, 0) for u, v in combinations(neighbors_target, 2))
+        remove_edges = set(self.edges) & neighbors_complete_edges
+        add_edges = neighbors_complete_edges - remove_edges
+        self.remove_edges_from(remove_edges)
+        for edge in add_edges:
+            self.add_edge(edge[0], edge[1], hadamard=True)
 
         # modify measurement planes
-        if self.meas_planes[target] == "XY":
-            self.meas_planes[target] = "XZ"
-        elif self.meas_planes[target] == "XZ":
-            self.meas_planes[target] = "XY"
-        elif self.meas_planes[target] == "YZ":
+        if self.nodes[target]["plane"] == "XY":
+            self.nodes[target]["plane"] = "XZ"
+        elif self.nodes[target]["plane"] == "XZ":
+            self.nodes[target]["plane"] = "XY"
+        elif self.nodes[target]["plane"] == "YZ":
             pass
 
-        non_output = set(self.nodes) - self.output_nodes - {target}
+        non_output = set(self.nodes) - set(self.output_nodes) - {target}
         for node in non_output:
-            if self.meas_planes[node] == "XZ":
-                self.meas_planes[node] = "YZ"
-            elif self.meas_planes[node] == "YZ":
-                self.meas_planes[node] = "XZ"
-            elif self.meas_planes[node] == "XY":
+            if self.nodes[target]["plane"] == "XZ":
+                self.nodes[target]["plane"] = "YZ"
+            elif self.nodes[target]["plane"] == "YZ":
+                self.nodes[target]["plane"] = "XZ"
+            elif self.nodes[target]["plane"] == "XY":
                 pass
 
         # modify flow
-        if self.flow != None:
-            if self.meas_planes[target] == "XY" or "XZ":
-                self.flow[target] = self.flow[target].symmetric_difference({target})
-            elif self.meas_planes[target] == "YZ":
+        if len(self.flow) != 0:
+            if self.nodes[target]["plane"] == "XY" or "XZ":
+                self.flow[target] = self.flow[target] ^ {target}
+            elif self.nodes[target]["plane"] == "YZ":
                 pass
 
             for node in non_output:
                 odd_neighbors_node = self.find_odd_neighbors(self.flow[node])
                 if target in odd_neighbors_node:
-                    self.flow[node] = self.flow[node].symmetric_difference({target})
-                    if self.meas_planes[node] != None:
-                        self.flow[node] = self.flow[node].symmetric_difference(self.flow[target])
+                    self.flow[node] = self.flow[node] ^ {target}
+                    if self.nodes[target]["plane"] != None:
+                        self.flow[node] = self.flow[node] ^ self.flow[target]
                 else:
                     pass
 
@@ -616,20 +628,20 @@ class MGraph(nx.MultiGraph):
         """
         u_neighbors = set(self.neighbors(u))
         v_neighbors = set(self.neighbors(v))
-        uv_all_neighbors = u_neighbors.union(v_neighbors)
+        uv_all_neighbors = u_neighbors | v_neighbors
 
-        uv_neighbors = u_neighbors.intersection(v_neighbors)
-        u_vnot_neighbors = uv_all_neighbors.difference(v_neighbors)
-        unot_v_neighbors = uv_all_neighbors.difference(u_neighbors)
+        uv_neighbors = u_neighbors & v_neighbors
+        u_vnot_neighbors = uv_all_neighbors - v_neighbors
+        unot_v_neighbors = uv_all_neighbors - u_neighbors
 
         complete_edges_uv_uvnot = {(i, j) for i in uv_neighbors for j in u_vnot_neighbors}
         complete_edges_uv_unotv = {(i, j) for i in uv_neighbors for j in unot_v_neighbors}
         complete_edges_uvnot_unotv = {(i, j) for i in u_vnot_neighbors for j in unot_v_neighbors}
 
         E = set(self.edges)
-        E = E.symmetric_difference(complete_edges_uv_uvnot)
-        E = E.symmetric_difference(complete_edges_uv_unotv)
-        E = E.symmetric_difference(complete_edges_uvnot_unotv)
+        E = E ^ complete_edges_uv_uvnot
+        E = E ^ complete_edges_uv_unotv
+        E = E ^ complete_edges_uvnot_unotv
 
         self.update(edges=E)
         self = nx.relabel_nodes(self, {u: v, v: u})
