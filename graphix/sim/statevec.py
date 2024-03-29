@@ -4,14 +4,13 @@ import numpy as np
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-import graphix.clifford
-import graphix.pauli
+import graphix.sim.base_backend
 
 
-class StatevectorBackend:
+class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20):
+    def __init__(self, pattern, max_qubit_num=20, pr_calc=True):
         """
         Parameters
         -----------
@@ -22,6 +21,9 @@ class StatevectorBackend:
         max_qubit_num : int
             optional argument specifying the maximum number of qubits
             to be stored in the statevector at a time.
+        pr_calc : bool
+            whether or not to compute the probability distribution before choosing the measurement result.
+            if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
@@ -35,6 +37,7 @@ class StatevectorBackend:
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
+        super().__init__(pr_calc)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -82,32 +85,8 @@ class StatevectorBackend:
         cmd : list
             measurement command : ['M', node, plane angle, s_domain, t_domain]
         """
-        # choose the measurement result randomly
-        result = np.random.choice([0, 1])
-        self.results[cmd[1]] = result
-
-        # extract signals for adaptive angle
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
-        measure_update = graphix.pauli.MeasureUpdate.compute(
-            graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
-        )
-        angle = angle * measure_update.coeff + measure_update.add_term
-        vec = measure_update.new_plane.polar(angle)
-        op_mat = np.eye(2, dtype=np.complex128) / 2
-        for i in range(3):
-            op_mat += (-1) ** (result) * vec[i] * CLIFFORD[i + 1] / 2
-
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(op_mat, loc)
-
+        loc = self._perform_measure(cmd)
         self.state.remove_qubit(loc)
-        self.node_index.remove(cmd[1])
         self.Nqubit -= 1
 
     def correct_byproduct(self, cmd):
@@ -246,6 +225,7 @@ class Statevec:
             target qubits' indices
         """
         op_dim = int(np.log2(len(op)))
+        # TODO shape = (2,)* 2 * op_dim
         shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
         self.psi = np.tensordot(
@@ -404,7 +384,7 @@ class Statevec:
         """
         st1 = deepcopy(self)
         st1.normalize()
-        st2 = st1.deepcopy(st1)
+        st2 = deepcopy(st1)
         st1.evolve_single(op, loc)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 

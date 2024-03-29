@@ -13,4 +13,5 @@ Module reference
     clifford
     device_interface
     visualization
+    channels
 

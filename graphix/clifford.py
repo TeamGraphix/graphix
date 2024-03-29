@@ -275,7 +275,7 @@ class Clifford:
             return get(CLIFFORD_MUL[self.__index, other.__index])
         return NotImplemented
 
-    def measure(self, pauli: graphix.pauli.Pauli) -> graphix.pauli.Pauli:
+    def measure(self, pauli: "graphix.pauli.Pauli") -> "graphix.pauli.Pauli":
         """
         Compute C† P C.
         """

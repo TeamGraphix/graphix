@@ -12,7 +12,7 @@
 - the measurement calculus framework with integrated graphical rewrite rules for Pauli measurement preprocessing
 - circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
 - flow- and gflow-based graph visualization tools
-- statevector and tensornetwork pattern simulation backends
+- statevector, density matrix and tensornetwork pattern simulation backends
 - QPU interface and fusion network extraction tool
 
 ## Installation
@@ -71,11 +71,11 @@ state_out = pattern.simulate_pattern(backend='statevector')
 ## Citing
 
 > Shinichi Sunami and Masato Fukushima, Graphix. (2023) https://doi.org/10.5281/zenodo.7861382
-
+<!-- 
 Update on the [arXiv paper](https://arxiv.org/pdf/2212.11975.pdf): [^1]
 
 [^1]: Following the release of this arXiv preprint, we were made aware of [Backens et al.](https://quantum-journal.org/papers/q-2021-03-25-421/) and related work, where graph-theoretic simplification (Pauli measurement elimination) of patterns were shown.
-Many thanks for letting us know about this work - at the time of the writing we were not aware of these important relevant works but will certainly properly mention in the new version; we are working on significant restructuring and rewriting of the paper and hope to update the paper soon.
+Many thanks for letting us know about this work - at the time of the writing we were not aware of these important relevant works but will certainly properly mention in the new version; we are working on significant restructuring and rewriting of the paper and hope to update the paper soon. -->
 
 ## Contributing
 
