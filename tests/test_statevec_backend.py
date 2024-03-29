@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from graphix.ops import States
+from graphix.states import BasicStates
 from graphix.sim.statevec import Statevec, meas_op
 
 
@@ -29,9 +29,12 @@ class TestStatevec(unittest.TestCase):
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
-        for state in [States.plus, States.zero, States.one, States.iplus, States.iminus]:
-            m_op = np.outer(state, state.T.conjugate())
+        # NOTE isn't that weird?
+        for state in [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]:
+            m_op = np.outer(state.get_statevector(), state.get_statevector().T.conjugate())
+            # print(m_op)
             sv = Statevec(nqubit=n)
+            # print(sv)
             sv.evolve(m_op, [k])
             sv.remove_qubit(k)
 
@@ -41,7 +44,7 @@ class TestStatevec(unittest.TestCase):
     def test_measurement_into_minus_state(self):
         n = 3
         k = 0
-        m_op = np.outer(States.minus, States.minus.T.conjugate())
+        m_op = np.outer(BasicStates.MINUS.get_statevector(), BasicStates.MINUS.get_statevector().T.conjugate())
         sv = Statevec(nqubit=n)
         sv.evolve(m_op, [k])
         with self.assertRaises(AssertionError):
