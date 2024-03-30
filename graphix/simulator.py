@@ -25,7 +25,7 @@ class PatternSimulator:
         -----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend: str, 'statevector', 'densitymatrix or 'tensornetwork'
+        backend: str, 'statevector', 'densitymatrix', 'tensornetwork' or 'eco-statevec'
             simulation backend (optional), default is 'statevector'.
         noise_model:
         kwargs: keyword args for specified backend.
@@ -52,11 +52,11 @@ class PatternSimulator:
                 self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities
                 self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
-        elif backend in {"tensornetwork", "mps"} and noise_model is None:
+        elif backend in {"tensornetwork", "mps", "eco-statevec"} and noise_model is None:
             self.noise_model = None
-            self.backend = TensorNetworkBackend(pattern, **kwargs)
+            self.backend = TensorNetworkBackend(pattern, backend, **kwargs)
         # TODO or just do the noiseless sim with a warning?
-        elif backend in {"statevector", "tensornetwork", "mps"} and noise_model is not None:
+        elif backend in {"statevector", "tensornetwork", "mps", "eco-statevec"} and noise_model is not None:
             raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         else:
             raise ValueError("Unknown backend.")
