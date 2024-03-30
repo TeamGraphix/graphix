@@ -700,31 +700,6 @@ class MBQCTensorNet(TensorNetwork):
         else:
             return self.__class__(ts=self)
 
-    def get_statevec(self, skip=False, path_info=False, **kwagrs) -> NDArray:
-        """Take outer product of the tensors in the network and return the statevector.
-
-        Parameters
-        ----------
-        skip (optional) : bool
-            Defaults to False.
-            If True, skip the simplification of the network.
-        path_info (optional) : bool
-            Defaults to False.
-            If True, return the path information of the contraction.
-        """
-        if skip:
-            tn = self.copy()
-            output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
-            statevec = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
-            return statevec
-        tn = self.copy()
-        tn_simplified = tn.full_simplify("ADCR")
-        output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
-        statevec = tn_simplified.contract(output_inds=output_inds, **kwagrs)
-        if not path_info:
-            statevec = statevec.data.reshape(-1)
-        return statevec
-
 
 def _get_decomposed_cz() -> list[Tensor]:
     """Returns the decomposed cz tensors. This is an internal method.
