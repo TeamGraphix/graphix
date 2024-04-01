@@ -6,3 +6,4 @@ opt_einsum>=3.2
 galois>=0.3.0
 sympy>=1.9
 matplotlib
+pydantic

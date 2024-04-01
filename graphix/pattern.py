@@ -158,6 +158,9 @@ class Pattern:
         """iterate over commands"""
         return iter(self.__seq)
 
+    def __getitem__(self, index):
+        return self.__seq[index]
+
     @property
     def Nnode(self):
         """count of nodes that are either `input_nodes` or prepared with `N` commands"""

@@ -3,6 +3,7 @@
 accepts desired gate operations and transpile into MBQC measurement patterns.
 
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
