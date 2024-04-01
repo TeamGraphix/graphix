@@ -59,14 +59,15 @@ def find_gflow(
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     mode: str(optional)
         The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
-            - "single": Returrns a single solution
-            - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
-              requiring user substitution to get a concrete answer.
+
+        - "single": Returrns a single solution
+
+        - "all": Returns all possible solutions
+
+        - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+          requiring user substitution to get a concrete answer.
 
         Default is "single".
-    pattern: graphix.Pattern object(optional)
-        pattern to be based on. This is used only when mode is "pattern".
 
     Returns
     -------
@@ -378,10 +379,15 @@ def find_pauliflow(
         measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
     mode: str(optional)
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
-            - "single": Returrns a single solution
-            - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
-                requiring user substitution to get a concrete answer.
+
+        - "single": Returrns a single solution
+
+        - "all": Returns all possible solutions
+
+        - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+          requiring user substitution to get a concrete answer.
+
+        Default is "single".
 
     Returns
     -------
@@ -441,10 +447,10 @@ def pauliflowaux(
         L = (Lx, Ly, Lz) where Lx, Ly, Lz are sets of qubits whose measurement operators are X, Y, Z, respectively.
     mode: str(optional)
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
-            - "single": Returrns a single solution
-            - "all": Returns all possible solutions
-            - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
-              requiring user substitution to get a concrete answer.
+          - "single": Returrns a single solution
+          - "all": Returns all possible solutions
+          - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
+            requiring user substitution to get a concrete answer.
 
     Returns
     -------
