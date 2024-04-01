@@ -207,26 +207,7 @@ class TensorNetworkBackend:
         self.state.evolve_single(cmd[1], node_op, "C")
 
     def finalize(self):
-        if self.backend in {"tensornet", "mps"}:
-            pass
-        elif self.backend == "eco-statevec":
-            psi = self.state.get_statevec()
-            self.state = Statevec(psi=psi)
-
-    def get_statevec(self, skip=False, path_info=False, **kwagrs):
-        """take outer product of the tensors in the network and return the statevector."""
-        if skip:
-            tn = self.copy()
-            output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
-            statevec = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
-            return Statevec(psi=statevec)
-
-        tn = self.copy()
-        tn_simplified = tn.full_simplify("ADCR")
-        output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
-        statevec = tn_simplified.contract(output_inds=output_inds, **kwagrs)
-        statevec = statevec if path_info else statevec.data.reshape(-1)
-        return Statevec(psi=statevec)
+        pass
 
 
 class MBQCTensorNet(TensorNetwork):
@@ -541,28 +522,32 @@ class MBQCTensorNet(TensorNetwork):
         coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, indices=None, **kwagrs):
-        """Retrieve the statevector from the tensornetwork.
-        This method tends to be slow however we plan to parallelize this.
+    def to_statevector(self, skip=False, path_info=False, **kwagrs):
+        """Take outer product of the tensors in the network and return the statevector.
 
         Parameters
         ----------
-        indices (optional): list of int
-            target qubit indices. Default is the MBQC output nodes (self.default_output_nodes).
+        skip : bool
+            if True, skip the simplification process.
+        path_info : bool
+            if True, return the path information of the contraction.
 
         Returns
         -------
         numpy.ndarray :
             statevector
         """
-        if indices is None:
-            n_qubit = len(self.default_output_nodes)
-        else:
-            n_qubit = len(indices)
-        statevec = np.zeros(2**n_qubit, np.complex128)
-        for i in range(len(statevec)):
-            statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices, **kwagrs)
-        return statevec / np.linalg.norm(statevec)
+        if skip:
+            tn = self.copy()
+            output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
+            psi = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
+            return Statevec(psi=psi)
+
+        tn = self.copy()
+        tn_simplified = tn.full_simplify("ADCR")
+        output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
+        psi = tn_simplified.contract(output_inds=output_inds, **kwagrs)
+        return psi if path_info else psi.data.reshape(-1)
 
     def get_norm(self, **kwagrs):
         """Calculate the norm of the state.
