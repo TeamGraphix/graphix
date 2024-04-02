@@ -7,5 +7,10 @@
         "activityBarBadge.background": "#e599d0",
         "activityBarBadge.foreground": "#15202b"
     },
-    "peacock.color": "#1e5d75"
+    "peacock.color": "#1e5d75",
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

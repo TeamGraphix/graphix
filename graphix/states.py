@@ -9,6 +9,12 @@ import abc
 
 # generic class State for all States
 class State(abc.ABC):
+    """Abstract base class for states objects.
+    Only requirement for concrete classes is to have
+    a get_statevector() method that returns the statevector
+    representation of the state
+    """
+
     @abc.abstractmethod
     def get_statevector(self) -> np.ndarray:
         pass
@@ -36,7 +42,7 @@ class PlanarState(pydantic.BaseModel, State):
     angle: float
 
     def __repr__(self):
-        return f"State objects defined in plane {self.plane} with angle {self.angle}."
+        return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
     def get_statevector(self) -> np.ndarray:
         if self.plane == graphix.pauli.Plane.XY:
@@ -59,6 +65,9 @@ class BasicStates:
     MINUS = PlanarState(plane=graphix.pauli.Plane.XY, angle=np.pi)
     PLUS_I = PlanarState(plane=graphix.pauli.Plane.XY, angle=np.pi / 2)
     MINUS_I = PlanarState(plane=graphix.pauli.Plane.XY, angle=-np.pi / 2)
+    # remove that in the end
+    # need in TN backend
+    VEC = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
 
 
 # Plane.cos.value Plane.cos is an Axis, Axis.value = 0,1,2 (enum)
