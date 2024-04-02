@@ -204,10 +204,7 @@ class Statevec:
             graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[complex]
         ] = graphix.states.BasicStates.PLUS,
     ):
-        # always infer nqubit from data
-        # nqubit = none et pas 1
-        # if nqubit is None: on exige iterable fini et on prend son nombre d'élément
-        # also allow external data.
+
         """Initialize statevector
 
         Parameters
@@ -264,9 +261,11 @@ class Statevec:
                     # liste persistante state pour eviter la transience
                     states = [head] + list(it)
                     nqubit = len(states)
+                    self.Nqubit = nqubit
                 # sinon on prend nqubit elts
                 else:  # ignore for now
                     states = [head] + [next(it) for _ in range(nqubit - 1)]
+                    self.Nqubit = nqubit
 
                 list_of_sv = [s.get_statevector() for s in states]
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
@@ -295,11 +294,14 @@ class Statevec:
                 # just reshape
                 # NOTE too many conversions to numpy arrays?
                 self.psi = psi.reshape((2,) * nqubit)
+        # for in all cases
+        self.Nqubit = nqubit
 
         # if already a valid statevec just copy it.
         if isinstance(state, Statevec):
             assert nqubit is None or len(state.flatten()) == 2**nqubit
             self.psi = state.psi.copy()
+            self.Nqubit = state.Nqubit
 
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"

@@ -44,7 +44,6 @@ class PatternSimulator:
         elif backend == "densitymatrix":
             if noise_model is None:
                 self.noise_model = None
-                # no noise: no need to compute probabilities
                 self.backend = DensityMatrixBackend(pattern, **kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
@@ -52,6 +51,7 @@ class PatternSimulator:
             if noise_model is not None:
                 self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities
+                # NOTE : could remove, pr_calc defaults to True now.
                 self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
@@ -84,7 +84,8 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
-
+        # use add_nodes or write a new method?
+        # self.backend.initialize_inputs(self.pattern.input_nodes, option, ...)
         self.backend.add_nodes(self.pattern.input_nodes)
         if self.noise_model is None:
             for cmd in self.pattern:
