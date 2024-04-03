@@ -239,6 +239,7 @@ class Statevec:
         if nqubit == 0:
             warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
             self.psi = np.array(1, dtype=np.complex128)
+            self.Nqubit = 0
 
         # works only for planar states. Deal with all kind of states?
         elif isinstance(state, graphix.states.State):
@@ -451,10 +452,11 @@ class Statevec:
 
         # NOTE on tensor form not vector
         # deprecated
-        # total_num = len(self.dims()) + len(other.dims())
-
-        self.Nqubit += other.Nqubit
-        self.psi = np.kron(psi_self, psi_other).reshape((2,) * self.Nqubit)
+        total_num = len(self.dims()) + len(other.dims())
+        print(total_num)
+        # self.Nqubit += other.Nqubit
+        self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
+        self.Nqubit = len(self.dims())
 
     def CNOT(self, qubits):
         """apply CNOT
