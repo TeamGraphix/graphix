@@ -21,29 +21,39 @@ class TestStatevec(unittest.TestCase):
     def test_default_success(self):
         vec = Statevec(nqubit=1)
         np.testing.assert_allclose(vec.psi, np.array([1, 1] / np.sqrt(2)))
-        assert vec.Nqubit == 1
+        # assert vec.Nqubit == 1
+        assert len(vec.dims()) == 1
 
     def test_basicstates_success(self):
         # minus
         vec = Statevec(nqubit=1, state=BasicStates.MINUS)
         np.testing.assert_allclose(vec.psi, np.array([1, -1] / np.sqrt(2)))
-        assert vec.Nqubit == 1
+        # assert vec.Nqubit == 1
+        assert len(vec.dims()) == 1
+
         # zero
         vec = Statevec(nqubit=1, state=BasicStates.ZERO)
         np.testing.assert_allclose(vec.psi, np.array([1, 0]), rtol=0, atol=1e-15)
-        assert vec.Nqubit == 1
+        # assert vec.Nqubit == 1
+        assert len(vec.dims()) == 1
+
         # one
         vec = Statevec(nqubit=1, state=BasicStates.ONE)
         np.testing.assert_allclose(vec.psi, np.array([0, 1]), rtol=0, atol=1e-15)
-        assert vec.Nqubit == 1
+        # assert vec.Nqubit == 1
+        assert len(vec.dims()) == 1
+
         # plus_i
         vec = Statevec(nqubit=1, state=BasicStates.PLUS_I)
         np.testing.assert_allclose(vec.psi, np.array([1, 1j] / np.sqrt(2)))
-        assert vec.Nqubit == 1
+        # assert vec.Nqubit == 1
+        assert len(vec.dims()) == 1
+
         # minus_i
         vec = Statevec(nqubit=1, state=BasicStates.MINUS_I)
         np.testing.assert_allclose(vec.psi, np.array([1, -1j] / np.sqrt(2)))
-        assert vec.Nqubit == 1
+        #assert vec.Nqubit == 1
+        assert len(vec.dims()) == 1
 
     # even more tests?
     def test_default_tensor_success(self):
@@ -51,13 +61,15 @@ class TestStatevec(unittest.TestCase):
         # print(f"nqb is {nqb}")
         vec = Statevec(nqubit=nqb)
         np.testing.assert_allclose(vec.psi, np.ones(((2,) * nqb)) / (np.sqrt(2)) ** nqb)
-        assert vec.Nqubit == nqb
+        # assert vec.Nqubit == nqb
+        assert len(vec.dims()) == nqb
 
         vec = Statevec(nqubit=nqb, state=BasicStates.MINUS_I)
         sv_list = [BasicStates.MINUS_I.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         np.testing.assert_allclose(vec.psi, sv.reshape((2,) * nqb))
-        assert vec.Nqubit == nqb
+        # assert vec.Nqubit == nqb
+        assert len(vec.dims()) == nqb
 
         # tensor of same state
         rand_angle = self.rng.random() * 2 * np.pi
@@ -67,7 +79,8 @@ class TestStatevec(unittest.TestCase):
         sv_list = [state.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         np.testing.assert_allclose(vec.psi, sv.reshape((2,) * nqb))
-        assert vec.Nqubit == nqb
+        # assert vec.Nqubit == nqb
+        assert len(vec.dims()) == nqb
 
         # tensor of different states
         rand_angles = self.rng.random(nqb) * 2 * np.pi
@@ -77,7 +90,8 @@ class TestStatevec(unittest.TestCase):
         sv_list = [state.get_statevector() for state in states]
         sv = functools.reduce(np.kron, sv_list)
         np.testing.assert_allclose(vec.psi, sv.reshape((2,) * nqb))
-        assert vec.Nqubit == nqb
+        # assert vec.Nqubit == nqb
+        assert len(vec.dims()) == nqb
 
     def test_data_success(self):
         nqb = self.rng.integers(2, 5)
@@ -86,7 +100,9 @@ class TestStatevec(unittest.TestCase):
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         vec = Statevec(state = rand_vec)
         np.testing.assert_allclose(vec.psi, rand_vec.reshape((2,) * nqb))
-        assert vec.Nqubit == nqb
+        # assert vec.Nqubit == nqb
+        assert len(vec.dims()) == nqb
+        
 
     # fail: incorrect len
     def test_data_dim_fail(self):
@@ -118,4 +134,5 @@ class TestStatevec(unittest.TestCase):
         vec = Statevec(state = test_vec)
 
         np.testing.assert_allclose(vec.psi, test_vec.psi)
-        assert vec.Nqubit == test_vec.Nqubit
+        # assert vec.Nqubit == test_vec.Nqubit
+        assert len(vec.dims()) == len(test_vec.dims()) 

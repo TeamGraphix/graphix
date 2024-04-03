@@ -87,7 +87,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         sv_to_add = Statevec(nqubit=n, state=input_state)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
-        self.Nqubit += self.state.Nqubit  # n
+        self.Nqubit += n
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
@@ -239,7 +239,7 @@ class Statevec:
         if nqubit == 0:
             warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
             self.psi = np.array(1, dtype=np.complex128)
-            self.Nqubit = 0
+            # self.Nqubit = 0
 
         # works only for planar states. Deal with all kind of states?
         elif isinstance(state, graphix.states.State):
@@ -273,11 +273,11 @@ class Statevec:
                     # liste persistante state pour eviter la transience
                     states = [head] + list(it)
                     nqubit = len(states)
-                    self.Nqubit = nqubit
+                    # self.Nqubit = nqubit
                 # else take nqubit elts
                 else:  # ignore for now
                     states = [head] + [next(it) for _ in range(nqubit - 1)]
-                    self.Nqubit = nqubit
+                    # self.Nqubit = nqubit
 
                 list_of_sv = [s.get_statevector() for s in states]
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
@@ -307,13 +307,13 @@ class Statevec:
                 # NOTE too many conversions to numpy arrays?
                 self.psi = psi.reshape((2,) * nqubit)
         # for in all cases
-        self.Nqubit = nqubit
+        # self.Nqubit = nqubit
 
         # if already a valid statevec just copy it.
         if isinstance(state, Statevec):
             assert nqubit is None or len(state.flatten()) == 2**nqubit
             self.psi = state.psi.copy()
-            self.Nqubit = state.Nqubit
+            # self.Nqubit = state.Nqubit
 
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
@@ -456,7 +456,7 @@ class Statevec:
         print(total_num)
         # self.Nqubit += other.Nqubit
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
-        self.Nqubit = len(self.dims())
+        # self.Nqubit = len(self.dims())
 
     def CNOT(self, qubits):
         """apply CNOT
