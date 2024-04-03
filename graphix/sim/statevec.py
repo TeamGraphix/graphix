@@ -87,7 +87,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         sv_to_add = Statevec(nqubit=n, state=input_state)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
-        self.Nqubit += n
+        self.Nqubit += self.state.Nqubit  # n
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to two connected nodes
