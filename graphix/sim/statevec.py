@@ -72,7 +72,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes, input_state):
+    def add_nodes(self, nodes, input_state=graphix.states.BasicStates.PLUS):
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.

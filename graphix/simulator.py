@@ -86,7 +86,7 @@ class PatternSimulator:
         """
         # use add_nodes or write a new method?
         # self.backend.initialize_inputs(self.pattern.input_nodes, option, ...)
-        self.backend.add_nodes(self.pattern.input_nodes, state=state)
+        # self.backend.add_nodes(self.pattern.input_nodes, input_state=state)
         if self.noise_model is None:
             for cmd in self.pattern:
                 if cmd[0] == "N":
