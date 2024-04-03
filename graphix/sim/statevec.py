@@ -23,7 +23,15 @@ import warnings
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20, pr_calc=True):
+    def __init__(
+        self,
+        pattern,
+        input_state: typing.Union[
+            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[complex]
+        ] = graphix.states.BasicStates.PLUS,
+        max_qubit_num=20,
+        pr_calc=True,
+    ):
         """
         Parameters
         -----------
@@ -49,8 +57,11 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
+            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc)
+
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes, input_state)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -61,7 +72,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes):
+    def add_nodes(self, nodes, input_state):
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
@@ -73,7 +84,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         if not self.state:
             self.state = Statevec(nqubit=0)
         n = len(nodes)
-        sv_to_add = Statevec(nqubit=n)
+        sv_to_add = Statevec(nqubit=n, state=input_state)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
@@ -262,7 +273,7 @@ class Statevec:
                     states = [head] + list(it)
                     nqubit = len(states)
                     self.Nqubit = nqubit
-                # sinon on prend nqubit elts
+                # else take nqubit elts
                 else:  # ignore for now
                     states = [head] + [next(it) for _ in range(nqubit - 1)]
                     self.Nqubit = nqubit
@@ -437,8 +448,13 @@ class Statevec:
         """
         psi_self = self.psi.flatten()
         psi_other = other.psi.flatten()
-        total_num = len(self.dims()) + len(other.dims())
-        self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
+
+        # NOTE on tensor form not vector
+        # deprecated
+        # total_num = len(self.dims()) + len(other.dims())
+
+        self.Nqubit += other.Nqubit
+        self.psi = np.kron(psi_self, psi_other).reshape((2,) * self.Nqubit)
 
     def CNOT(self, qubits):
         """apply CNOT
