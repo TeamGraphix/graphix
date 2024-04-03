@@ -67,13 +67,15 @@ class TestStatevecNew(unittest.TestCase):
         backend = StatevectorBackend(self.hadamardpattern)
         vec = Statevec(nqubit=1)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
-        assert backend.state.Nqubit == 1
+        # assert backend.state.Nqubit == 1
+        assert len(backend.state.dims()) == 1
 
         # minus state 
         backend = StatevectorBackend(self.hadamardpattern, input_state = BasicStates.MINUS)
         vec = Statevec(nqubit=1, state = BasicStates.MINUS)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
-        assert backend.state.Nqubit == 1
+        # assert backend.state.Nqubit == 1
+        assert len(backend.state.dims()) == 1
 
         # random planar state
         rand_angle = self.rng.random() * 2 * np.pi
@@ -82,7 +84,8 @@ class TestStatevecNew(unittest.TestCase):
         backend = StatevectorBackend(self.hadamardpattern, input_state = state)
         vec = Statevec(nqubit=1, state = state)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
-        assert backend.state.Nqubit == 1
+        # assert backend.state.Nqubit == 1
+        assert len(backend.state.dims()) == 1
 
         # incorrect number of dimensions
         # only one input node,, two states provided
@@ -98,7 +101,8 @@ class TestStatevecNew(unittest.TestCase):
         backend = StatevectorBackend(self.hadamardpattern, input_state = [state, state2])
         vec = Statevec(nqubit=1, state = state)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
-        assert backend.state.Nqubit == 1
+        # assert backend.state.Nqubit == 1
+        assert len(backend.state.dims()) == 1
 
 
 
