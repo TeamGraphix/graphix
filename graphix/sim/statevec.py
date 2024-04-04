@@ -236,87 +236,59 @@ class Statevec:
         # NOTE make plane, angle attributes of Statevec?
         # this will be called by the nqb > 1 case
         # instantiate a one
-        if nqubit == 0:
-            warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
-            self.psi = np.array(1, dtype=np.complex128)
-            # self.Nqubit = 0
+        if isinstance(state, Statevec):
+            # assert nqubit is None or len(state.flatten()) == 2**nqubit
+            if nqubit is not None and len(state.flatten()) != 2**nqubit:
+                raise ValueError(
+                    f"Inconsistent parameters between nqubit = {nqubit} and the inferred number of qubit = {len(state.flatten())}."
+                )
+            self.psi = state.psi.copy()
+            return
 
-        # works only for planar states. Deal with all kind of states?
-        elif isinstance(state, graphix.states.State):
-
+        if isinstance(state, graphix.states.State):
             if nqubit is None:
                 raise ValueError("Incorrect value for nqubit.")
-
-            vec = state.get_statevector()
-
-            if nqubit == 1:  # or None
-                self.psi = vec
-
-            # build tensor product |state>^{\otimes nqubit}
-            # can only be >1 int.
-            else:
-                # build tensor product
-                # comma in tuple is for disambiguation with paranthesed expression
-                tmp_psi = functools.reduce(np.kron, (vec,) * nqubit)
-                # reshape
-                self.psi = tmp_psi.reshape((2,) * nqubit)
-
-        # nqubit is None : on prend la longeur de l'iterable
+            input_list = [state] * nqubit
         elif isinstance(state, typing.Iterable):
-            # iterateur
-            it = iter(state)
-            head = next(it)
-            # type constraint in head doesn't progpagate to all elts
-            if isinstance(head, graphix.states.State):
-                # assert isinstance(head, typing.Iterator[graphix.states.State])
-                if nqubit is None:
-                    # liste persistante state pour eviter la transience
-                    states = [head] + list(it)
-                    nqubit = len(states)
-                    # self.Nqubit = nqubit
-                # else take nqubit elts
-                else:  # ignore for now
-                    states = [head] + [next(it) for _ in range(nqubit - 1)]
-                    # self.Nqubit = nqubit
+            input_list = list(state)
+        else:
+            raise TypeError("Incorrect type for input state")
 
-                list_of_sv = [s.get_statevector() for s in states]
+        if len(input_list) == 0:
+            if nqubit is not None and nqubit != 0:
+                raise ValueError("nqubit is not null but input state is empty.")
+
+            # warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
+            self.psi = np.array(1, dtype=np.complex128)
+            # self.Nqubit = 0
+        else:
+            if isinstance(input_list[0], graphix.states.State):
+                if nqubit is None:
+                    nqubit = len(input_list)
+                elif nqubit != len(input_list):
+                    raise ValueError("Mismatch between nqubit and length of input state")
+                list_of_sv = [s.get_statevector() for s in input_list]
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
-
             else:
                 if nqubit is None:
-                    states = [head] + list(it)
-
-                    inferred_size = len(states)
-
-                    if inferred_size & (inferred_size - 1) != 0:
-                        raise ValueError(f"Statevector size must be a power of two but is {inferred_size}.")
-
-                    nqubit = inferred_size.bit_length() - 1
-
-                else:  # ignore for now
-                    states = [head] + [next(it) for _ in range(2**nqubit - 1)]
-
-                psi = np.array(states)
-
+                    length = len(input_list)
+                    if length & (length - 1):
+                        raise ValueError("Length is not a power of two")
+                    nqubit = length.bit_length() - 1
+                elif nqubit != len(input_list).bit_length() - 1:
+                    raise ValueError("Mismatch between nqubit and length of input state")
+                psi = np.array(input_list)
                 if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
-                    raise ValueError(f"Statevector must be normalized to one.")
-
+                    raise ValueError("Input state is not normalized")
                 # just reshape
                 # NOTE too many conversions to numpy arrays?
                 self.psi = psi.reshape((2,) * nqubit)
-        # for in all cases
-        # self.Nqubit = nqubit
-
-        # if already a valid statevec just copy it.
-        if isinstance(state, Statevec):
-            assert nqubit is None or len(state.flatten()) == 2**nqubit
-            self.psi = state.psi.copy()
             # self.Nqubit = state.Nqubit
 
     def __repr__(self):
-        return f"Statevec, data={self.psi}, shape={self.dims()}"
+        return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
     def evolve_single(self, op, i):
         """Single-qubit operation

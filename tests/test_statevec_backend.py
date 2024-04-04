@@ -87,8 +87,12 @@ class TestStatevecNew(unittest.TestCase):
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
-        # incorrect number of dimensions
-        # only one input node,, two states provided
+
+
+    
+    def test_init_fail(self):
+        # incorrect number of dimensions for State input
+        # only one input node, two states provided
         # doesn't fail! just takes the first qubit!
         # Discard second qubit so can be whatever
 
@@ -97,12 +101,12 @@ class TestStatevecNew(unittest.TestCase):
 
         state = PlanarState(plane = rand_plane[0], angle = rand_angle[0])
         state2 = PlanarState(plane = rand_plane[1], angle = rand_angle[1])
-        #with self.assertRaises(ValueError):
-        backend = StatevectorBackend(self.hadamardpattern, input_state = [state, state2])
-        vec = Statevec(nqubit=1, state = state)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
-        # assert backend.state.Nqubit == 1
-        assert len(backend.state.dims()) == 1
+        with self.assertRaises(ValueError):
+            StatevectorBackend(self.hadamardpattern, input_state = [state, state2])
+        # vec = Statevec(nqubit=1, state = state)
+        # np.testing.assert_allclose(vec.psi, backend.state.psi)
+        # # assert backend.state.Nqubit == 1
+        # assert len(backend.state.dims()) == 1
 
 
 

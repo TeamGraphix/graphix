@@ -863,7 +863,8 @@ class DensityMatrixBackendTest(unittest.TestCase):
         rho = backend.state.rho
 
         backend = StatevectorBackend(pattern)
-        backend.add_nodes([0, 1, 2])
+        # node 0 initialized in Backend
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])
