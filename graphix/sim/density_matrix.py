@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace
+from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace, check_psd
 from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
@@ -30,12 +30,13 @@ class DensityMatrix:
     def __init__(
         self,
         nqubit: typing.Optional[PositiveInt] = None,
-        state: typing.Union[
+        data: typing.Union[
             graphix.states.State,
             "DensityMatrix",
             Statevec,
             typing.Iterable[graphix.states.State],
             typing.Iterable[complex],
+            typing.Iterable[typing.Iterable[complex]],
         ] = graphix.states.BasicStates.PLUS,
     ):
 
@@ -48,104 +49,31 @@ class DensityMatrix:
             nqubit : int
                 Number of qubits. Default is 1. If both `data` and `nqubit` are specified, `nqubit` is ignored.
         """
-        if nqubit == 0:
-            self.rho = np.array(1, dtype=np.complex128)
 
-        elif isinstance(state, graphix.states.State):
-
-            if nqubit is None:
-                raise ValueError("Incorrect value for nqubit.")
-
-            # or directly get_dm from get_statevec? Can make it inherit from abc?
-            vec = state.get_statevector()
-            dm = np.outer(vec, vec.conj())
-            # these vecs are normalized
-            if nqubit == 1:  # or None
-                self.rho = dm
-
-            # build tensor product |state>^{\otimes nqubit}
-            # can only be >1 int.
-            else:
-                # build tensor product
-                # comma in tuple is for disambiguation with paranthesed expression
-                self.rho = functools.reduce(np.kron, (dm,) * nqubit)
-                # no reshape
-
-        # nqubit is None : on prend la longeur de l'iterable
-        elif isinstance(state, typing.Iterable):
-            # iterateur
-            it = iter(state)
-            head = next(it)
-            # type constraint in head doesn't progpagate to all elts
-            if isinstance(head, graphix.states.State):
-                # assert isinstance(head, typing.Iterator[graphix.states.State])
-                if nqubit is None:
-                    # liste persistante state pour eviter la transience
-                    states = [head] + list(it)
-                    nqubit = len(states)
-                    # self.Nqubit = nqubit
-                # else take nqubit elts
-                else:  # ignore for now
-                    states = [head] + [next(it) for _ in range(nqubit - 1)]
-
-                    # self.Nqubit = nqubit
-
-                list_of_sv = [s.get_statevector() for s in states]
-                list_of_dm = [np.outer(sv, sv.conj()) for sv in list_of_sv]
-                self.rho = functools.reduce(np.kron, list_of_dm)
-                # no reshape
-                # self.psi = tmp_psi.reshape((2,) * nqubit)
-
-            else:  # now 2**n by 2**n matrices also iterable?
-                if nqubit is None:
-                    # BUG what to do with that?
-                    states = [head] + list(it)
-                    # need a shape so just np.ndarray?
-                    inferred_shape = state.shape
-
-                    # this is done in check_square for matrix do it on shape
-                    if len(inferred_shape) != 2:
-                        raise ValueError(f"The object has {len(inferred_shape)} axes but must have 2 to be a matrix.")
-                    if inferred_shape[0] != inferred_shape[1]:
-                        raise ValueError(f"Matrix must be square but has different dimensions {inferred_shape}.")
-                    inferred_size = inferred_shape[0]
-                    if inferred_size & (inferred_size - 1) != 0:
-                        raise ValueError(f"Matrix size must be a power of two but is {inferred_size}.")
-
-                    nqubit = inferred_size.bit_length() - 1
-
-                else:  # ignore for now
-                    # BUG what to do with that?
-                    states = state[: 2**nqubit, : 2**nqubit].copy()
-                    # [head] + [next(it) for _ in range(2**nqubit - 1)]
-
-                # psi = np.array(states)
-
-                dm = np.array([np.outer(s, s.conj()) for s in states])
-
-                # hermicity and trace checked later. Or do it from statevec?
-                # from pure states, should be ok by default so just when input data?
-                assert check_hermitian(self.rho)
-                assert check_unit_trace(self.rho)
-
-            # TODO now: statevec and densitymatrix
-        # if already a valid statevec transform it to DensityMatrix.
-        if isinstance(state, Statevec):
-            if nqubit is not None or len(state.flatten()) != 2**nqubit:
+        def check_size_consistency(mat):
+            if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):
                 raise ValueError(
-                    f"Inconsistent parameters between nqubit = {nqubit} and the size of the provided statevector = {len(state.flatten())}."
-                )
-            vect = state.psi.copy()
-            self.rho = np.outer(vect, vect.conj())
-
-        # if DensityMatrix, just copy it
-        elif isinstance(state, DensityMatrix):
-            if nqubit is not None or state.dims() != (2**nqubit, 2**nqubit):
-                raise ValueError(
-                    f"Inconsistent parameters between nqubit = {nqubit} and the shape of the provided density matrix = {state.dims()}."
+                    f"Inconsistent parameters between nqubit = {nqubit} and the shape of the provided density matrix = {mat.shape}."
                 )
 
-            self.rho = state.rho.copy()
+        if isinstance(data, DensityMatrix):
+            check_size_consistency(data)
+            self.rho = data.rho.copy()
+            self.Nqubit = data.Nqubit
+            return
+        if isinstance(data, typing.Iterable):
+            input_list = list(data)
+            if len(input_list) != 0:
+                if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], complex):
+                    self.rho = np.array(input_list)
+                    check_size_consistency(self.rho)
+                    assert check_unit_trace(self.rho)
+                    assert check_psd(self.rho)
+                    self.Nqubit = self.rho.shape[0].bit_length() - 1
+                    return
+        statevec = Statevec(nqubit, data)
+        self.rho = np.outer(statevec.psi, statevec.psi.conj())
+        self.Nqubit = len(statevec.dims())
 
     def __repr__(self):
         return f"DensityMatrix object , with density matrix {self.rho} and shape{self.dims()}."
