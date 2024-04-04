@@ -4,8 +4,10 @@ import numpy as np
 from graphix.states import BasicStates, PlanarState
 import graphix.pauli
 import graphix.random_objects as randobj
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevec, NotNormalizedError
 import functools
+
+
 
 
 class TestStatevec(unittest.TestCase):
@@ -58,7 +60,7 @@ class TestStatevec(unittest.TestCase):
     # even more tests?
     def test_default_tensor_success(self):
         nqb = self.rng.integers(2, 5)
-        # print(f"nqb is {nqb}")
+        print(f"nqb is {nqb}")
         vec = Statevec(nqubit=nqb)
         np.testing.assert_allclose(vec.psi, np.ones(((2,) * nqb)) / (np.sqrt(2)) ** nqb)
         # assert vec.Nqubit == nqb
@@ -112,6 +114,16 @@ class TestStatevec(unittest.TestCase):
         with self.assertRaises(ValueError):
             vec = Statevec(state = rand_vec)
 
+    # with less qubit than number of qubits inferred from a correct state vect
+    # returns a truncated statevec that is hence not normalized
+    # NOTE weird behaviour??
+    def test_data_dim_fail_mismatch(self):
+        nqb = 3
+        rand_vec = self.rng.random(2 ** nqb) + 1j * self.rng.random(2 ** nqb)
+        rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
+        with self.assertRaises(ValueError):
+            vec = Statevec(nqubit = 2, state = rand_vec)
+
     # fail: not normalized
     def test_data_norm_fail(self):
         nqb = self.rng.integers(2, 5)
@@ -120,19 +132,32 @@ class TestStatevec(unittest.TestCase):
         with self.assertRaises(ValueError):
             vec = Statevec(state = rand_vec)
 
-    # fail: no nqubit provided
+    # fail: no nqubit provided. State defaults to PLUS
     def test_default_fail(self):
         with self.assertRaises(ValueError):
             vec = Statevec()
 
-    def test_copy(self):
+    # try copying Statevec input
+    def test_copy_success(self):
         nqb = self.rng.integers(2, 5)
         l = 2 ** nqb
         rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         test_vec = Statevec(state = rand_vec)
+        # try to copy it
         vec = Statevec(state = test_vec)
 
         np.testing.assert_allclose(vec.psi, test_vec.psi)
         # assert vec.Nqubit == test_vec.Nqubit
         assert len(vec.dims()) == len(test_vec.dims()) 
+
+    # try calling with incorrect number of qubits compared to inferred one
+    def test_copy_fail(self):
+        nqb = self.rng.integers(2, 5)
+        l = 2 ** nqb
+        rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
+        rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
+        test_vec = Statevec(state = rand_vec)
+
+        with self.assertRaises(ValueError):
+            vec = Statevec(nqubit = l - 1, state = test_vec)
