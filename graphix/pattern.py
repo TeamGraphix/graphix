@@ -232,6 +232,10 @@ class Pattern:
                 print(f"E, nodes = {self.__seq[i][1]}")
             elif self.__seq[i][0] == "M" and ("M" in filter):
                 count += 1
+                if len(self.__seq[i]) == 2:
+                    print(
+                        f"M, node = {self.__seq[i][1]}, ask server for the rest."
+                    )
                 if len(self.__seq[i]) == 6:
                     print(
                         f"M, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle(pi) = {self.__seq[i][3]}, "

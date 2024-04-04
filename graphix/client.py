@@ -1,12 +1,12 @@
 import dataclasses
 import numpy as np
-
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
 import graphix.ops
+import graphix.pattern
 import graphix.sim.base_backend
 import graphix.sim.statevec
 import graphix.simulator
-
+from copy import deepcopy
 """
 Usage:
 
@@ -29,6 +29,7 @@ class MeasureParameters:
 class Client:
     def __init__(self, pattern, blind=False, secrets={}):
         self.pattern = pattern
+        self.clean_pattern = self.remove_pattern_flow()
 
         """
         Database containing the "measurement configuration"
@@ -89,12 +90,24 @@ class Client:
                 else:
                     vop = 0
                 self.measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
-                # Erase the unnecessary items from the command to make sure they don't appear on the server's side
-                del cmd[2:]
 
+    def remove_pattern_flow(self) :
+        clean_pattern = graphix.pattern.Pattern(self.pattern.input_nodes)
+        for cmd in self.pattern :
+            # by default, copy the command
+            new_cmd = deepcopy(cmd) 
+
+            # If measure, remove the s-domain and t-domain, vop
+            if cmd[0] == 'M' :
+                del new_cmd[2:]
+            # If byproduct, remove it so it's not done by the server
+            if cmd[0] != 'X' and cmd[0] != 'Z' :
+                clean_pattern.add(new_cmd)
+        return clean_pattern
+        
     def simulate_pattern(self):
-        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.pattern, measure_method=self.measure_method)
-        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.pattern)
+        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.clean_pattern, measure_method=self.measure_method)
+        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
         state = sim.run()
         self.backend_results = backend.results
         self.decode_output_state(backend, state)
@@ -138,12 +151,11 @@ class Client:
         x_decoding = 0
         if self.r_secret:
             for z_dep_node in self.byproduct_db[node]['z-domain']:
-                z_decoding += self.secrets['r'][z_dep_node]
+                z_decoding += self.results[z_dep_node]
             z_decoding = z_decoding % 2
             for x_dep_node in self.byproduct_db[node]['x-domain']:
-                x_decoding += self.secrets['r'][x_dep_node]
+                x_decoding += self.results[x_dep_node]
             x_decoding = x_decoding % 2
-
         return z_decoding, x_decoding
 
     def get_secrets_locations(self):
@@ -156,7 +168,6 @@ class Client:
 
     def is_valid_secret(self, secret_type, custom_secret):
         if any((i != 0 and i != 1) for i in custom_secret.values()) :
-            print(custom_secret)
             return False
         if secret_type == 'r':
             return set(custom_secret.keys()) == set(self.measurement_db.keys())
