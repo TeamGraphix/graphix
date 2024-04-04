@@ -4,7 +4,7 @@ import numpy as np
 from graphix.states import BasicStates, PlanarState
 import graphix.pauli
 import graphix.random_objects as randobj
-from graphix.sim.statevec import Statevec, NotNormalizedError
+from graphix.sim.statevec import Statevec
 import functools
 
 

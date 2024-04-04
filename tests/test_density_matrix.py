@@ -34,7 +34,7 @@ class TestDensityMatrix(unittest.TestCase):
 
         # check with hermitian dm but not unit trace
         with self.assertRaises(ValueError):
-            DensityMatrix(data=randobj.rand_herm(2 ** np.random.randint(2, 5)))
+            DensityMatrix(randobj.rand_herm(2 ** np.random.randint(2, 5)))
 
         # check with non hermitian dm but unit trace
         with self.assertRaises(ValueError):
@@ -80,13 +80,9 @@ class TestDensityMatrix(unittest.TestCase):
     def test_init_with_data_success(self):
         # don't use rand_dm here since want to check
         for n in range(3):
-            data = randobj.rand_herm(2**n)
-
-            data /= np.trace(data)
-            dm = DensityMatrix(data=data)
+            dm = randobj.rand_dm(2**n)
             assert dm.Nqubit == n
             assert dm.rho.shape == (2**n, 2**n)
-            assert np.allclose(dm.rho, data)
 
     def test_evolve_single_fail(self):
         dm = DensityMatrix(nqubit=2)
@@ -425,7 +421,7 @@ class TestDensityMatrix(unittest.TestCase):
     def test_normalize(self):
         #  tmp = np.random.rand(4, 4) + 1j * np.random.rand(4, 4)
 
-        data = randobj.rand_herm(2 ** np.random.randint(2, 4))
+        data = randobj.rand_dm(2 ** np.random.randint(2, 4), dm_dtype=False)
 
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
@@ -479,10 +475,8 @@ class TestDensityMatrix(unittest.TestCase):
     def test_apply_dephasing_channel(self):
         # check on single qubit first
         # # create random density matrix
-        # data = randobj.rand_herm(2 ** np.random.randint(2, 4))
-        data = randobj.rand_herm(2)
-        data /= np.trace(data)
-        dm = DensityMatrix(data=data)
+        # data = randobj.rand_dm(2 ** np.random.randint(2, 4))
+        dm = randobj.rand_dm(2)
 
         # copy of initial dm
         rho_test = deepcopy(dm.rho)
@@ -563,10 +557,8 @@ class TestDensityMatrix(unittest.TestCase):
     def test_apply_depolarising_channel(self):
         # check on single qubit first
         # # create random density matrix
-        # data = randobj.rand_herm(2 ** np.random.randint(2, 4))
-        data = randobj.rand_herm(2)
-        data /= np.trace(data)
-        dm = DensityMatrix(data=data)
+        # data = randobj.rand_dm(2 ** np.random.randint(2, 4))
+        dm = randobj.rand_dm(2)
 
         # copy of initial dm
         rho_test = deepcopy(dm.rho)
