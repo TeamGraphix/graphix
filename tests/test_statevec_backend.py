@@ -72,7 +72,7 @@ class TestStatevecNew(unittest.TestCase):
 
         # minus state 
         backend = StatevectorBackend(self.hadamardpattern, input_state = BasicStates.MINUS)
-        vec = Statevec(nqubit=1, state = BasicStates.MINUS)
+        vec = Statevec(nqubit=1, data=BasicStates.MINUS)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
@@ -82,7 +82,7 @@ class TestStatevecNew(unittest.TestCase):
         rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]))
         state = PlanarState(plane = rand_plane, angle = rand_angle)
         backend = StatevectorBackend(self.hadamardpattern, input_state = state)
-        vec = Statevec(nqubit=1, state = state)
+        vec = Statevec(nqubit=1, data=state)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1

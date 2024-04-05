@@ -28,31 +28,31 @@ class TestStatevec(unittest.TestCase):
 
     def test_basicstates_success(self):
         # minus
-        vec = Statevec(nqubit=1, state=BasicStates.MINUS)
+        vec = Statevec(nqubit=1, data=BasicStates.MINUS)
         np.testing.assert_allclose(vec.psi, np.array([1, -1] / np.sqrt(2)))
         # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # zero
-        vec = Statevec(nqubit=1, state=BasicStates.ZERO)
+        vec = Statevec(nqubit=1, data=BasicStates.ZERO)
         np.testing.assert_allclose(vec.psi, np.array([1, 0]), rtol=0, atol=1e-15)
         # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # one
-        vec = Statevec(nqubit=1, state=BasicStates.ONE)
+        vec = Statevec(nqubit=1, data=BasicStates.ONE)
         np.testing.assert_allclose(vec.psi, np.array([0, 1]), rtol=0, atol=1e-15)
         # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # plus_i
-        vec = Statevec(nqubit=1, state=BasicStates.PLUS_I)
+        vec = Statevec(nqubit=1, data=BasicStates.PLUS_I)
         np.testing.assert_allclose(vec.psi, np.array([1, 1j] / np.sqrt(2)))
         # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # minus_i
-        vec = Statevec(nqubit=1, state=BasicStates.MINUS_I)
+        vec = Statevec(nqubit=1, data=BasicStates.MINUS_I)
         np.testing.assert_allclose(vec.psi, np.array([1, -1j] / np.sqrt(2)))
         #assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
@@ -66,7 +66,7 @@ class TestStatevec(unittest.TestCase):
         # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
 
-        vec = Statevec(nqubit=nqb, state=BasicStates.MINUS_I)
+        vec = Statevec(nqubit=nqb, data=BasicStates.MINUS_I)
         sv_list = [BasicStates.MINUS_I.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         np.testing.assert_allclose(vec.psi, sv.reshape((2,) * nqb))
@@ -77,7 +77,7 @@ class TestStatevec(unittest.TestCase):
         rand_angle = self.rng.random() * 2 * np.pi
         rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]))
         state = PlanarState(plane=rand_plane, angle=rand_angle)
-        vec = Statevec(nqubit=nqb, state=state)
+        vec = Statevec(nqubit=nqb, data=state)
         sv_list = [state.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         np.testing.assert_allclose(vec.psi, sv.reshape((2,) * nqb))
@@ -88,7 +88,7 @@ class TestStatevec(unittest.TestCase):
         rand_angles = self.rng.random(nqb) * 2 * np.pi
         rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         states = [PlanarState(plane = i, angle = j) for i, j in zip(rand_planes, rand_angles)]
-        vec = Statevec(nqubit=nqb, state=states)
+        vec = Statevec(nqubit=nqb, data=states)
         sv_list = [state.get_statevector() for state in states]
         sv = functools.reduce(np.kron, sv_list)
         np.testing.assert_allclose(vec.psi, sv.reshape((2,) * nqb))
@@ -100,7 +100,7 @@ class TestStatevec(unittest.TestCase):
         l = 2 ** nqb
         rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
-        vec = Statevec(state = rand_vec)
+        vec = Statevec(data=rand_vec)
         np.testing.assert_allclose(vec.psi, rand_vec.reshape((2,) * nqb))
         # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
@@ -112,7 +112,7 @@ class TestStatevec(unittest.TestCase):
         rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         with self.assertRaises(ValueError):
-            vec = Statevec(state = rand_vec)
+            vec = Statevec(data=rand_vec)
 
     # with less qubit than number of qubits inferred from a correct state vect
     # returns a truncated statevec that is hence not normalized
@@ -122,7 +122,7 @@ class TestStatevec(unittest.TestCase):
         rand_vec = self.rng.random(2 ** nqb) + 1j * self.rng.random(2 ** nqb)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         with self.assertRaises(ValueError):
-            vec = Statevec(nqubit = 2, state = rand_vec)
+            vec = Statevec(nqubit = 2, data=rand_vec)
 
     # fail: not normalized
     def test_data_norm_fail(self):
@@ -130,12 +130,11 @@ class TestStatevec(unittest.TestCase):
         l = 2 ** nqb
         rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
         with self.assertRaises(ValueError):
-            vec = Statevec(state = rand_vec)
+            vec = Statevec(data=rand_vec)
 
-    # fail: no nqubit provided. State defaults to PLUS
-    def test_default_fail(self):
-        with self.assertRaises(ValueError):
-            vec = Statevec()
+    def test_defaults_to_one(self):
+        vec = Statevec()
+        assert len(vec.dims()) == 1
 
     # try copying Statevec input
     def test_copy_success(self):
@@ -143,9 +142,9 @@ class TestStatevec(unittest.TestCase):
         l = 2 ** nqb
         rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
-        test_vec = Statevec(state = rand_vec)
+        test_vec = Statevec(data=rand_vec)
         # try to copy it
-        vec = Statevec(state = test_vec)
+        vec = Statevec(data=test_vec)
 
         np.testing.assert_allclose(vec.psi, test_vec.psi)
         # assert vec.Nqubit == test_vec.Nqubit
@@ -157,7 +156,7 @@ class TestStatevec(unittest.TestCase):
         l = 2 ** nqb
         rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
-        test_vec = Statevec(state = rand_vec)
+        test_vec = Statevec(data=rand_vec)
 
         with self.assertRaises(ValueError):
-            vec = Statevec(nqubit = l - 1, state = test_vec)
+            vec = Statevec(nqubit=l - 1, data=test_vec)
