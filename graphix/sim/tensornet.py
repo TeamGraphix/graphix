@@ -70,6 +70,9 @@ class TensorNetworkBackend:
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes)
+
     def add_nodes(self, nodes):
         """Add nodes to the network
 

@@ -1,17 +1,18 @@
 from copy import deepcopy
+import numbers
 import typing
-from typing_extensions import Annotated
-from annotated_types import Ge
 
 import numpy as np
+import functools
+import pydantic
+import warnings
 
 import graphix.sim.base_backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 import graphix.states
 import graphix.pauli
-import functools
-import warnings
+import graphix.types
 
 # Python >= 3.9
 # from collections.abc import Iterable # or use Protocols?
@@ -27,7 +28,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self,
         pattern,
         input_state: typing.Union[
-            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[complex]
+            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
         ] = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
@@ -84,7 +85,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         if not self.state:
             self.state = Statevec(nqubit=0)
         n = len(nodes)
-        sv_to_add = Statevec(nqubit=n, state=input_state)
+        sv_to_add = Statevec(nqubit=n, data=input_state)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
@@ -201,7 +202,6 @@ SWAP_TENSOR = np.array(
     [[[[1, 0], [0, 0]], [[0, 0], [1, 0]]], [[[0, 1], [0, 0]], [[0, 0], [0, 1]]]],
     dtype=np.complex128,
 )
-PositiveInt = Annotated[int, Ge(0)]  # includes 0
 
 
 class Statevec:
@@ -210,17 +210,17 @@ class Statevec:
     # TODO at this stage no need for indices just be careful of the ordering in add_nodes
     def __init__(
         self,
-        nqubit: typing.Optional[PositiveInt] = None,
-        state: typing.Union[
-            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[complex]
+        data: typing.Union[
+            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
         ] = graphix.states.BasicStates.PLUS,
+        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
     ):
 
         """Initialize statevector
 
         Parameters
         ----------
-        state : is either
+        data : is either
             - a single state (:class:`graphix.states.State` object). THen prepares all nodes in that state (tensor product)
             - a dictionary mapping the inputs to a :class:`graphix.states.State` object
             - an arbitrary :class:`graphix.statevec.Statevec` object (arbitrary input) # TODO work on that since just copy?
@@ -232,27 +232,25 @@ class Statevec:
         Defaults to |+> states and 1 qubit.
         If nqubit > 1 and only one state : tensor all of them. Use the tensor method instead of hard code.
         """
-        # convert single qubit State object to Statevector
-        # NOTE make plane, angle attributes of Statevec?
-        # this will be called by the nqb > 1 case
-        # instantiate a one
-        if isinstance(state, Statevec):
+        pydantic.TypeAdapter(typing.Optional[graphix.types.PositiveInt]).validate_python(nqubit)
+
+        if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
-            if nqubit is not None and len(state.flatten()) != 2**nqubit:
+            if nqubit is not None and len(data.flatten()) != 2**nqubit:
                 raise ValueError(
-                    f"Inconsistent parameters between nqubit = {nqubit} and the inferred number of qubit = {len(state.flatten())}."
+                    f"Inconsistent parameters between nqubit = {nqubit} and the inferred number of qubit = {len(data.flatten())}."
                 )
-            self.psi = state.psi.copy()
+            self.psi = data.psi.copy()
             return
 
-        if isinstance(state, graphix.states.State):
+        if isinstance(data, graphix.states.State):
             if nqubit is None:
-                raise ValueError("Incorrect value for nqubit.")
-            input_list = [state] * nqubit
-        elif isinstance(state, typing.Iterable):
-            input_list = list(state)
+                nqubit = 1
+            input_list = [data] * nqubit
+        elif isinstance(data, typing.Iterable):
+            input_list = list(data)
         else:
-            raise TypeError("Incorrect type for input state")
+            raise TypeError(f"Incorrect type for data: {type(data)}")
 
         if len(input_list) == 0:
             if nqubit is not None and nqubit != 0:
@@ -263,6 +261,7 @@ class Statevec:
             # self.Nqubit = 0
         else:
             if isinstance(input_list[0], graphix.states.State):
+                graphix.types.check_list_elements(input_list, graphix.states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -271,7 +270,8 @@ class Statevec:
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
-            else:
+            elif isinstance(input_list[0], numbers.Number):
+                graphix.types.check_list_elements(input_list, numbers.Number)
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
@@ -285,6 +285,10 @@ class Statevec:
                 # just reshape
                 # NOTE too many conversions to numpy arrays?
                 self.psi = psi.reshape((2,) * nqubit)
+            else:
+                raise TypeError(
+                    f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
+                )
             # self.Nqubit = state.Nqubit
 
     def __repr__(self):
@@ -425,7 +429,6 @@ class Statevec:
         # NOTE on tensor form not vector
         # deprecated
         total_num = len(self.dims()) + len(other.dims())
-        print(total_num)
         # self.Nqubit += other.Nqubit
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
         # self.Nqubit = len(self.dims())

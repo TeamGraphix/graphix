@@ -3,6 +3,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
+import pydantic
 
 import graphix.random_objects as randobj
 from graphix import Circuit
@@ -10,17 +11,17 @@ from graphix.channels import KrausChannel, dephasing_channel, depolarising_chann
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
-
+import graphix.states
 
 class TestDensityMatrix(unittest.TestCase):
     """Test for DensityMatrix class."""
 
     def test_init_without_data_fail(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(pydantic.ValidationError):
             DensityMatrix(nqubit=-2)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(pydantic.ValidationError):
             DensityMatrix(nqubit="hello")
-        with self.assertRaises(TypeError):
+        with self.assertRaises(pydantic.ValidationError):
             DensityMatrix(nqubit=[])
 
     def test_init_with_invalid_data_fail(self):
@@ -29,7 +30,7 @@ class TestDensityMatrix(unittest.TestCase):
         with self.assertRaises(TypeError):
             DensityMatrix(1)
         # deprecated data shape (these test might be unnecessary)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             DensityMatrix([1, 2, [3]])
 
         # check with hermitian dm but not unit trace
@@ -52,7 +53,7 @@ class TestDensityMatrix(unittest.TestCase):
             DensityMatrix(data=np.random.rand(3, 2))
 
         # check higher dimensional matrix
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             DensityMatrix(data=np.random.rand(2, 2, 3))
 
         # check square and hermitian but with incorrect dimension (non-qubit type)
@@ -70,7 +71,7 @@ class TestDensityMatrix(unittest.TestCase):
             assert dm.rho.shape == (2**n, 2**n)
             assert np.allclose(dm.rho, expected_density_matrix)
 
-            dm = DensityMatrix(plus_state=False, nqubit=n)
+            dm = DensityMatrix(data=graphix.states.BasicStates.ZERO, nqubit=n)
             expected_density_matrix = np.zeros((2**n, 2**n))
             expected_density_matrix[0, 0] = 1
             assert dm.Nqubit == n
@@ -778,16 +779,15 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend = DensityMatrixBackend(pattern)
         assert backend.pattern == pattern
         assert backend.results == pattern.results
-        assert backend.state is None
-        assert backend.node_index == []
-        assert backend.Nqubit == 0
+        assert backend.node_index == [0]
+        assert backend.Nqubit == 1
         assert backend.max_qubit_num == 12
 
     def test_add_nodes(self):
         circ = Circuit(1)
         pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1])
+        backend.add_nodes([1])
         expected_matrix = np.array([0.25] * 16).reshape(4, 4)
         np.testing.assert_allclose(backend.state.rho, expected_matrix)
 
@@ -795,7 +795,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         circ = Circuit(1)
         pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1])
+        backend.add_nodes([1])
         backend.entangle_nodes((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
         np.testing.assert_allclose(backend.state.rho, expected_matrix)
@@ -809,7 +809,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1, 2])
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])
@@ -825,7 +825,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern, pr_calc=True)
-        backend.add_nodes([0, 1, 2])
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])
@@ -844,7 +844,8 @@ class DensityMatrixBackendTest(unittest.TestCase):
         pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1, 2])
+        # node 0 initialized in Backend
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])

@@ -4,8 +4,12 @@ Simulate MBQC with density matrix representation.
 """
 
 from copy import deepcopy
+import typing
+import functools
+import numbers
 
 import numpy as np
+import pydantic
 
 from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace, check_psd
 from graphix.channels import KrausChannel
@@ -14,14 +18,16 @@ from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op, Statevec
 import graphix.sim.base_backend
 import graphix.states
+import graphix.types
 
-import typing
-from typing_extensions import Annotated
-from annotated_types import Ge
-import functools
-
-
-PositiveInt = Annotated[int, Ge(0)]  # includes 0
+Data = typing.Union[
+    graphix.states.State,
+    "DensityMatrix",
+    Statevec,
+    typing.Iterable[graphix.states.State],
+    typing.Iterable[numbers.Number],
+    typing.Iterable[typing.Iterable[numbers.Number]],
+]
 
 
 class DensityMatrix:
@@ -29,15 +35,8 @@ class DensityMatrix:
 
     def __init__(
         self,
-        nqubit: typing.Optional[PositiveInt] = None,
-        data: typing.Union[
-            graphix.states.State,
-            "DensityMatrix",
-            Statevec,
-            typing.Iterable[graphix.states.State],
-            typing.Iterable[complex],
-            typing.Iterable[typing.Iterable[complex]],
-        ] = graphix.states.BasicStates.PLUS,
+        data: Data = graphix.states.BasicStates.PLUS,
+        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
     ):
 
         """
@@ -47,8 +46,9 @@ class DensityMatrix:
             data : DensityMatrix, list, tuple, np.ndarray or None
                 Density matrix of shape (2**nqubits, 2**nqubits).
             nqubit : int
-                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, `nqubit` is ignored.
+                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, consistency is checked.
         """
+        pydantic.TypeAdapter(typing.Optional[graphix.types.PositiveInt]).validate_python(nqubit)
 
         def check_size_consistency(mat):
             if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):
@@ -64,14 +64,15 @@ class DensityMatrix:
         if isinstance(data, typing.Iterable):
             input_list = list(data)
             if len(input_list) != 0:
-                if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], complex):
+                if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], numbers.Number):
                     self.rho = np.array(input_list)
+                    assert check_square(self.rho)
                     check_size_consistency(self.rho)
                     assert check_unit_trace(self.rho)
                     assert check_psd(self.rho)
                     self.Nqubit = self.rho.shape[0].bit_length() - 1
                     return
-        statevec = Statevec(nqubit, data)
+        statevec = Statevec(data, nqubit)
         self.rho = np.outer(statevec.psi, statevec.psi.conj())
         self.Nqubit = len(statevec.dims())
 
@@ -306,7 +307,7 @@ class DensityMatrix:
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
         """
         Parameters
         ----------
@@ -331,7 +332,10 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc)
 
-    def add_nodes(self, nodes, qubit_to_add=None):
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes, input_state)
+
+    def add_nodes(self, nodes, input_state: Data = graphix.states.BasicStates.PLUS):
         """add new qubit to the internal density matrix
         and asign the corresponding node number to list self.node_index.
 
@@ -345,12 +349,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         if not self.state:
             self.state = DensityMatrix(nqubit=0)
         n = len(nodes)
-        if qubit_to_add is None:
-            dm_to_add = DensityMatrix(nqubit=n)
-        else:
-            assert isinstance(qubit_to_add, DensityMatrix)
-            assert qubit_to_add.nqubit == 1
-            dm_to_add = qubit_to_add
+        dm_to_add = DensityMatrix(nqubit=n, data=input_state)
         self.state.tensor(dm_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
