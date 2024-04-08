@@ -164,6 +164,34 @@ class TestClient(unittest.TestCase):
         # Clear simulation = no secret, just simulate the circuit defined above
         clear_simulation = circuit.simulate_statevector()
         np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+    
+    def test_a_secret_simulation(self) :
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+
+        secrets = {'a': {}}
+
+        # Create a |+> state for each input node
+        states = [PlanarState(plane = 0, angle = 0) for node in pattern.input_nodes]
+        
+        # Create a mapping to keep track of the index associated to each of the qubits
+        input_state = dict(zip(pattern.input_nodes, states))
+
+        # Create the client with the input state
+        print(input_state)
+        client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
+        
+        print(client.input_state)
+        # Blinded simulation, between the client and the server
+        blinded_simulation = client.simulate_pattern()
+
+        # Clear simulation = no secret, just simulate the circuit defined above
+        clear_simulation = circuit.simulate_statevector()
+        np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
 
 
 

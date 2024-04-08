@@ -50,6 +50,7 @@ class Client:
         # By default, no secrets
         self.r_secret = False
         self.theta_secret = False
+        self.a_secret = False
         self.secrets = {}
         # Initialize the secrets
         self.init_secrets(secrets)
@@ -67,7 +68,9 @@ class Client:
         for input_node in input_state :
             initial_state = input_state[input_node]
             theta_value = 0 if not self.theta_secret else self.secrets['theta'][input_node]
-            blinded_state = PlanarState(plane=initial_state.plane, angle=initial_state.angle + theta_value*np.pi/4)
+            a_value = 0 if not self.a_secret else self.secrets['a'][input_node]
+            new_angle = (-1)**a_value *initial_state.angle + theta_value*np.pi/4
+            blinded_state = PlanarState(plane=initial_state.plane, angle=new_angle)
             sent_input[input_node] = blinded_state
 
         # gros probleme : on doit espérer que les index matchent. (ça a l'air de marcher pour le moment)
@@ -93,19 +96,45 @@ class Client:
                 else:
                     raise ValueError("`r` has wrong format.")
                 
+
             if 'theta' in secrets :
                 self.theta_secret = True
                 self.secrets['theta'] = {}
+                # Create theta secret for all non-output nodes
                 for node in self.clean_pattern.non_output_nodes :
                     k = np.random.randint(0,8)
                     angle = k  # *pi/4
                     self.secrets['theta'][node] = angle
                 new_pattern = self.add_secret_angles()
                 self.clean_pattern = new_pattern
-                
-            # TODO : handle secrets `a`
 
+            if 'a' in secrets :
+                self.a_secret = True
+                self.secrets['a'] = {}
+                node_list, edge_list = self.clean_pattern.get_graph()
+                for node in node_list :
+                    if node in self.clean_pattern.input_nodes :
+                        a = np.random.randint(0,2)
+                        self.secrets['a'][node] = a
+                    else :
+                        self.secrets['a'][node] = 0
+                
+                # After all the `a` secrets have been generated, the `a_N` value can be
+                # computed from the graph topology
+                self.secrets['a_N'] = {}
+                for i in node_list :
+                    for j in node_list :
+                        self.secrets['a_N'][i] = 0
+                        if (i,j) in edge_list :
+                            self.secrets['a_N'][i] += 1
+                        self.secrets['a_N'][i] %= 2 
+                        
+                
     def add_secret_angles(self) :
+        """
+        This function adds a secret angle to all auxiliary qubits (measured qubits that are not part of the input),
+        i.e the qubits created through "N" commands originally in the |+> state
+        """
         new_pattern = graphix.Pattern(self.clean_pattern.input_nodes)
         for cmd in self.clean_pattern :
             if cmd[0] == 'N' :
@@ -232,6 +261,9 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
         parameters = self.__client.measurement_db[node]
         r_value = 0 if not self.__client.r_secret else self.__client.secrets['r'][node]
         theta_value = 0 if not self.__client.theta_secret else self.__client.secrets['theta'][node]
+        a_value = 0 if not self.__client.a_secret else self.__client.secrets['a'][node]
+        a_N_value = 0 if not self.__client.a_secret else self.__client.secrets['a_N'][node]
+
         # extract signals for adaptive angle
         s_signal = np.sum(self.__client.results[j] for j in parameters.s_domain)
         t_signal = np.sum(self.__client.results[j] for j in parameters.t_domain)
@@ -240,7 +272,7 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
         )
         angle=parameters.angle
         angle = angle * measure_update.coeff + measure_update.add_term
-        angle += np.pi * r_value + theta_value*np.pi/4
+        angle = (-1)**a_value * angle + theta_value*np.pi/4 + np.pi * (r_value + a_N_value)
         # angle = angle * measure_update.coeff + measure_update.add_term
         return graphix.sim.base_backend.MeasurementDescription(measure_update.new_plane, angle)
 
