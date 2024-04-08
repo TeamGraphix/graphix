@@ -2,6 +2,7 @@ import dataclasses
 import numpy as np
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
 import graphix.ops
+from graphix.states import State, PlanarState
 import graphix.pattern
 import graphix.sim.base_backend
 import graphix.sim.statevec
@@ -28,7 +29,7 @@ class MeasureParameters:
     vop: int
 
 class Client:
-    def __init__(self, pattern, blind=False, secrets={}):
+    def __init__(self, pattern, input_state=None, blind=False, secrets={}):
         self.pattern = pattern
         self.clean_pattern = self.remove_pattern_flow()
 
@@ -52,9 +53,18 @@ class Client:
         self.secrets = {}
         # Initialize the secrets
         self.init_secrets(secrets)
+        self.input_state = self.init_inputs(state=input_state)
 
 
-
+    def init_inputs(self, state) :
+        blinded_input = {}
+        for input_node in state :
+            initial_state = state[input_node]
+            theta_value = 0 if not self.theta_secret else self.secrets['theta'][input_node]
+            blinded_state = PlanarState(plane=initial_state.plane, angle=initial_state.angle + theta_value*np.pi/4)
+            blinded_input[input_node] = blinded_state
+        
+        return blinded_input
 
     def init_secrets(self, secrets):
         if self.blind:
@@ -91,8 +101,6 @@ class Client:
                 
             # TODO : handle secrets `a`
 
-
-    
     def add_secret_angles(self) :
         new_pattern = graphix.Pattern(self.clean_pattern.input_nodes)
         for cmd in self.clean_pattern :

@@ -1,14 +1,21 @@
 import unittest
 from random import random, randint
 
+import graphix
 import tests.random_circuit as rc
 import numpy as np
 from graphix.client import Client
-from graphix.sim.statevec import StatevectorBackend
+from graphix.sim.statevec import StatevectorBackend, Statevec
 from graphix.simulator import PatternSimulator
+from graphix.states import PlanarState
 
 
 class TestClient(unittest.TestCase):
+
+    def setUp(self):
+        # set up the random numbers
+        self.rng = np.random.default_rng()  # seed=422
+
     def test_custom_secret(self):
         # Generate and standardize pattern
         nqubits = 2
@@ -100,7 +107,33 @@ class TestClient(unittest.TestCase):
 
         state_mbqc = client.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-    
+
+    def test_client_input(self) :
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+        clear_simulation = circuit.simulate_statevector()
+
+        secrets = {'theta': {}}
+
+        rand_angles = self.rng.random(nqubits) * 2 * np.pi
+        rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqubits)
+        states = [PlanarState(plane = i, angle = j) for i, j in zip(rand_planes, rand_angles)]
+        
+        input_state = {}
+        j = 0
+        for i in pattern.input_nodes :
+            input_state[i] = states[j]
+            j += 1
+        
+        client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
+        
+        print(client.input_state)
+
+
     def test_theta_secret_simulation(self):
         # Generate and standardize pattern
         nqubits = 2
