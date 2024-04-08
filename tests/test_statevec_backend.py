@@ -4,9 +4,9 @@ import unittest
 import numpy as np
 from graphix import Circuit
 from graphix.states import BasicStates, PlanarState
-from graphix.sim.statevec import Statevec, meas_op, StatevectorBackend
+from graphix.sim.statevec import Statevec, StatevectorBackend
 import graphix.pauli
-
+from tests.test_graphsim import meas_op
 class TestStatevec(unittest.TestCase):
     def test_remove_one_qubit(self):
         n = 10
@@ -15,7 +15,7 @@ class TestStatevec(unittest.TestCase):
         sv = Statevec(nqubit=n)
         for i in range(n):
             sv.entangle([i, (i + 1) % n])
-        m_op = tests.test_graphsim.meas_op(np.pi / 5)
+        m_op = meas_op(np.pi / 5)
         sv.evolve(m_op, [k])
         sv2 = deepcopy(sv)
 

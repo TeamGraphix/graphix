@@ -3,7 +3,6 @@ from random import random, randint
 
 import tests.random_circuit as rc
 import numpy as np
-
 from graphix.client import Client
 from graphix.sim.statevec import StatevectorBackend
 from graphix.simulator import PatternSimulator

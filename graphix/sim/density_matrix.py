@@ -15,7 +15,7 @@ from graphix.linalg_validations import check_square, check_hermitian, check_unit
 from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op, Statevec
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types
@@ -307,7 +307,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS, measure_method=None):
         """
         Parameters
         ----------
