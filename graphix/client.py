@@ -63,8 +63,8 @@ class Client:
             theta_value = 0 if not self.theta_secret else self.secrets['theta'][input_node]
             blinded_state = PlanarState(plane=initial_state.plane, angle=initial_state.angle + theta_value*np.pi/4)
             blinded_input[input_node] = blinded_state
-        
-        return blinded_input
+        # gros probleme : on doit espérer que les index matchent.
+        return blinded_input.values()
 
     def init_secrets(self, secrets):
         if self.blind:
@@ -92,9 +92,6 @@ class Client:
                 for node in self.clean_pattern.non_output_nodes :
                     k = np.random.randint(0,8)
                     angle = k  # *pi/4
-                    if node in self.clean_pattern.input_nodes :
-                        # preparation not ready for input nodes yet (need to modify the input state)
-                        angle = 0
                     self.secrets['theta'][node] = angle
                 new_pattern = self.add_secret_angles()
                 self.clean_pattern = new_pattern
@@ -153,7 +150,7 @@ class Client:
         return clean_pattern
         
     def simulate_pattern(self):
-        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.clean_pattern, measure_method=self.measure_method)
+        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.clean_pattern, measure_method=self.measure_method, input_state=self.input_state)
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
         state = sim.run()
         self.backend_results = backend.results

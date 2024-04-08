@@ -115,13 +115,13 @@ class TestClient(unittest.TestCase):
         circuit = rc.get_rand_circuit(nqubits, depth)
         pattern = circuit.transpile()
         pattern.standardize(method="global")
-        clear_simulation = circuit.simulate_statevector()
 
         secrets = {'theta': {}}
 
         rand_angles = self.rng.random(nqubits) * 2 * np.pi
         rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqubits)
-        states = [PlanarState(plane = i, angle = j) for i, j in zip(rand_planes, rand_angles)]
+        # set default angles to zero in order to have a comparison with the "clear simulation"
+        states = [PlanarState(plane = 0, angle = 0) for i, j in zip(rand_planes, rand_angles)]
         
         input_state = {}
         j = 0
@@ -132,6 +132,12 @@ class TestClient(unittest.TestCase):
         client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
         
         print(client.input_state)
+        # Clear simulation = no secret, just simulate the circuit
+        clear_simulation = circuit.simulate_statevector()
+        # Blinded simulation, between the client and the server
+        blinded_simulation = client.simulate_pattern()
+        np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+
 
 
     def test_theta_secret_simulation(self):
