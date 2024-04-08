@@ -6,15 +6,17 @@ import numpy as np
 from itertools import product
 from functools import reduce
 
+# TODO modify that
 
-class States:
-    plus = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])  # plus
-    minus = np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)])  # minus
-    zero = np.array([1.0, 0.0])  # zero
-    one = np.array([0.0, 1.0])  # one
-    iplus = np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)])  # +1 eigenstate of Pauli Y
-    iminus = np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)])  # -1 eigenstate of Pauli Y
-    vec = [plus, minus, zero, one, iplus, iminus]
+# Everywhere this is called. use StateVec(State))
+# class States:
+#     plus = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])  # plus
+#     minus = np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)])  # minus
+#     zero = np.array([1.0, 0.0])  # zero
+#     one = np.array([0.0, 1.0])  # one
+#     iplus = np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)])  # +1 eigenstate of Pauli Y
+#     iminus = np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)])  # -1 eigenstate of Pauli Y
+#     vec = [plus, minus, zero, one, iplus, iminus]
 
 
 class Ops:

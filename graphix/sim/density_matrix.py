@@ -4,56 +4,80 @@ Simulate MBQC with density matrix representation.
 """
 
 from copy import deepcopy
+import typing
+import functools
+import numbers
 
 import numpy as np
+import pydantic
 
-from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace
+from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace, check_psd
 from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op, Statevec
 import graphix.sim.base_backend
+import graphix.states
+import graphix.types
+
+Data = typing.Union[
+    graphix.states.State,
+    "DensityMatrix",
+    Statevec,
+    typing.Iterable[graphix.states.State],
+    typing.Iterable[numbers.Number],
+    typing.Iterable[typing.Iterable[numbers.Number]],
+]
 
 
 class DensityMatrix(graphix.sim.base_backend.Backend):
     """DensityMatrix object."""
 
-    def __init__(self, data=None, plus_state=True, nqubit=1):
+    def __init__(
+        self,
+        data: Data = graphix.states.BasicStates.PLUS,
+        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
+    ):
+
         """
+        rewrite!
         Parameters
         ----------
             data : DensityMatrix, list, tuple, np.ndarray or None
                 Density matrix of shape (2**nqubits, 2**nqubits).
             nqubit : int
-                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, `nqubit` is ignored.
+                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, consistency is checked.
         """
-        if data is None:
-            assert nqubit >= 0
-            self.Nqubit = nqubit
-            if plus_state:
-                self.rho = np.ones((2**nqubit, 2**nqubit)) / 2**nqubit
-            else:
-                self.rho = np.zeros((2**nqubit, 2**nqubit))
-                self.rho[0, 0] = 1.0
-        else:
-            if isinstance(data, DensityMatrix):
-                data = data.rho
-            elif isinstance(data, (list, tuple)):
-                data = np.asarray(data, dtype=complex)
-            elif isinstance(data, np.ndarray):
-                pass
-            else:
-                raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
+        pydantic.TypeAdapter(typing.Optional[graphix.types.PositiveInt]).validate_python(nqubit)
 
-            assert check_square(data)
-            self.Nqubit = len(data).bit_length() - 1
+        def check_size_consistency(mat):
+            if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):
+                raise ValueError(
+                    f"Inconsistent parameters between nqubit = {nqubit} and the shape of the provided density matrix = {mat.shape}."
+                )
 
-            self.rho = data
-        assert check_hermitian(self.rho)
-        assert check_unit_trace(self.rho)
+        if isinstance(data, DensityMatrix):
+            check_size_consistency(data)
+            self.rho = data.rho.copy()
+            self.Nqubit = data.Nqubit
+            return
+        if isinstance(data, typing.Iterable):
+            input_list = list(data)
+            if len(input_list) != 0:
+                if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], numbers.Number):
+                    self.rho = np.array(input_list)
+                    assert check_square(self.rho)
+                    check_size_consistency(self.rho)
+                    assert check_unit_trace(self.rho)
+                    assert check_psd(self.rho)
+                    self.Nqubit = self.rho.shape[0].bit_length() - 1
+                    return
+        statevec = Statevec(data, nqubit)
+        self.rho = np.outer(statevec.psi, statevec.psi.conj())
+        self.Nqubit = len(statevec.dims())
 
     def __repr__(self):
-        return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
+        return f"DensityMatrix object , with density matrix {self.rho} and shape{self.dims()}."
 
     def evolve_single(self, op, i):
         """Single-qubit operation.
@@ -283,7 +307,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, measure_method=None):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
         """
         Parameters
         ----------
@@ -308,7 +332,10 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc, measure_method)
 
-    def add_nodes(self, nodes, qubit_to_add=None):
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes, input_state)
+
+    def add_nodes(self, nodes, input_state: Data = graphix.states.BasicStates.PLUS):
         """add new qubit to the internal density matrix
         and asign the corresponding node number to list self.node_index.
 
@@ -322,12 +349,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         if not self.state:
             self.state = DensityMatrix(nqubit=0)
         n = len(nodes)
-        if qubit_to_add is None:
-            dm_to_add = DensityMatrix(nqubit=n)
-        else:
-            assert isinstance(qubit_to_add, DensityMatrix)
-            assert qubit_to_add.nqubit == 1
-            dm_to_add = qubit_to_add
+        dm_to_add = DensityMatrix(nqubit=n, data=input_state)
         self.state.tensor(dm_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
