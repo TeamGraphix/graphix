@@ -151,7 +151,19 @@ class Pattern:
         `N` commands and that have not been measured with an `M` command
         """
         return list(self.__output_nodes)  # copy for preventing modification
-
+    
+    @property
+    def auxiliary_nodes(self):
+        aux = []
+        for cmd in self :
+            if cmd[0] == 'N' :
+                aux.append(cmd[1])
+        return aux.copy()
+    
+    @property
+    def non_output_nodes(self):
+        return list(set(range(self.Nnode))-set(self.output_nodes))
+        
     def __len__(self):
         """length of command sequence"""
         return len(self.__seq)
@@ -226,6 +238,14 @@ class Pattern:
                 break
             if self.__seq[i][0] == "N" and ("N" in filter):
                 count += 1
+                if len(self.__seq[i]) == 2:
+                    print(
+                        f"N, node = {self.__seq[i][1]}"
+                    )
+                elif len(self.__seq[i]) == 4:
+                    print(
+                        f"N, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle = {self.__seq[i][3]}pi/4"
+                    )
                 print(f"N, node = {self.__seq[i][1]}")
             elif self.__seq[i][0] == "E" and ("E" in filter):
                 count += 1

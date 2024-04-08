@@ -100,6 +100,24 @@ class TestClient(unittest.TestCase):
 
         state_mbqc = client.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+    
+    def test_theta_secret_simulation(self):
+        # Generate and standardize pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+
+        state = circuit.simulate_statevector()
+
+        # Initialize the client
+        secrets = {'theta': {}}
+        # Giving it empty will create a random secret
+        client = Client(pattern=pattern, blind=True, secrets=secrets)
+
+        state_mbqc = client.simulate_pattern()
+        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_r_secret_results(self):
         # Generate and standardize pattern

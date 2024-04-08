@@ -11,6 +11,7 @@ from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.noise_models import NoiseModel
+from graphix.states import PlanarState
 import warnings
 
 class PatternSimulator:
@@ -88,7 +89,10 @@ class PatternSimulator:
         if self.noise_model is None:
             for cmd in self.pattern:
                 if cmd[0] == "N":
-                    self.backend.add_nodes([cmd[1]])
+                    if len(cmd) == 2 :
+                        self.backend.add_nodes(nodes=[cmd[1]])
+                    elif len(cmd) == 4 :
+                        self.backend.add_nodes(nodes=[cmd[1]], input_state=PlanarState(plane=cmd[2], angle=cmd[3]*np.pi/4))
                 elif cmd[0] == "E":
                     self.backend.entangle_nodes(cmd[1])
                 elif cmd[0] == "M":

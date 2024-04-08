@@ -6,6 +6,7 @@ import graphix.pattern
 import graphix.sim.base_backend
 import graphix.sim.statevec
 import graphix.simulator
+from graphix.pauli import Plane
 from copy import deepcopy
 """
 Usage:
@@ -47,9 +48,13 @@ class Client:
         self.blind = blind
         # By default, no secrets
         self.r_secret = False
+        self.theta_secret = False
         self.secrets = {}
         # Initialize the secrets
         self.init_secrets(secrets)
+
+
+
 
     def init_secrets(self, secrets):
         if self.blind:
@@ -70,7 +75,41 @@ class Client:
                     # TODO : add more rigorous test of the r-secret format
                 else:
                     raise ValueError("`r` has wrong format.")
-            # TODO : handle secrets `a`, `theta`
+                
+            if 'theta' in secrets :
+                self.theta_secret = True
+                self.secrets['theta'] = {}
+                for node in self.clean_pattern.non_output_nodes :
+                    k = np.random.randint(0,8)
+                    angle = k  # *pi/4
+                    if node in self.clean_pattern.input_nodes :
+                        # preparation not ready for input nodes yet (need to modify the input state)
+                        angle = 0
+                    self.secrets['theta'][node] = angle
+                new_pattern = self.add_secret_angles()
+                self.clean_pattern = new_pattern
+                
+            # TODO : handle secrets `a`
+
+
+    
+    def add_secret_angles(self) :
+        new_pattern = graphix.Pattern(self.clean_pattern.input_nodes)
+        for cmd in self.clean_pattern :
+            if cmd[0] == 'N' :
+                node = cmd[1]
+                if node not in self.clean_pattern.output_nodes :
+                    angle = self.secrets['theta'][node]
+                    plane = Plane(0)                    # Default : XY plane
+                    new_cmd = ['N', node, plane, angle]
+                else :
+                    new_cmd = cmd
+                new_pattern.add(new_cmd)
+            else :
+                new_pattern.add(cmd)
+
+        return new_pattern
+
 
     def init_measurement_db(self):
         """
@@ -149,13 +188,12 @@ class Client:
     def decode_output(self, node):
         z_decoding = 0
         x_decoding = 0
-        if self.r_secret:
-            for z_dep_node in self.byproduct_db[node]['z-domain']:
-                z_decoding += self.results[z_dep_node]
-            z_decoding = z_decoding % 2
-            for x_dep_node in self.byproduct_db[node]['x-domain']:
-                x_decoding += self.results[x_dep_node]
-            x_decoding = x_decoding % 2
+        for z_dep_node in self.byproduct_db[node]['z-domain']:
+            z_decoding += self.results[z_dep_node]
+        z_decoding = z_decoding % 2
+        for x_dep_node in self.byproduct_db[node]['x-domain']:
+            x_decoding += self.results[x_dep_node]
+        x_decoding = x_decoding % 2
         return z_decoding, x_decoding
 
     def get_secrets_locations(self):
@@ -181,14 +219,17 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
         node = cmd[1]
         parameters = self.__client.measurement_db[node]
         r_value = 0 if not self.__client.r_secret else self.__client.secrets['r'][node]
-        angle = parameters.angle + np.pi * r_value
+        theta_value = 0 if not self.__client.theta_secret else self.__client.secrets['theta'][node]
         # extract signals for adaptive angle
         s_signal = np.sum(self.__client.results[j] for j in parameters.s_domain)
         t_signal = np.sum(self.__client.results[j] for j in parameters.t_domain)
         measure_update = graphix.pauli.MeasureUpdate.compute(
             parameters.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[parameters.vop]
         )
+        angle=parameters.angle
         angle = angle * measure_update.coeff + measure_update.add_term
+        angle += np.pi * r_value + theta_value*np.pi/4
+        # angle = angle * measure_update.coeff + measure_update.add_term
         return graphix.sim.base_backend.MeasurementDescription(measure_update.new_plane, angle)
 
     def set_measure_result(self, cmd, result: bool) -> None:
