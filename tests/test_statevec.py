@@ -60,8 +60,6 @@ class TestStatevec(unittest.TestCase):
     # even more tests?
     def test_default_tensor_success(self):
         nqb = self.rng.integers(2, 5)
-
-        test = PlanarState(plane=0, angle=0)
         vec = Statevec(nqubit=nqb)
         np.testing.assert_allclose(vec.psi, np.ones(((2,) * nqb)) / (np.sqrt(2)) ** nqb)
         # assert vec.Nqubit == nqb

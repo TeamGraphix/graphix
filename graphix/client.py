@@ -53,18 +53,25 @@ class Client:
         self.secrets = {}
         # Initialize the secrets
         self.init_secrets(secrets)
-        self.input_state = self.init_inputs(state=input_state)
+        self.init_inputs(input_state)
 
 
-    def init_inputs(self, state) :
-        blinded_input = {}
-        for input_node in state :
-            initial_state = state[input_node]
+    def init_inputs(self, input_state) :
+        # Initialization to all |+> states if nothing specified
+        if input_state == None :
+            states = [PlanarState(plane=0, angle=0) for node in self.pattern.input_nodes]
+            input_state = dict(zip(self.clean_pattern.input_nodes, states))
+        
+        # The input state is modified (with secrets) before being sent to server
+        sent_input = {}
+        for input_node in input_state :
+            initial_state = input_state[input_node]
             theta_value = 0 if not self.theta_secret else self.secrets['theta'][input_node]
             blinded_state = PlanarState(plane=initial_state.plane, angle=initial_state.angle + theta_value*np.pi/4)
-            blinded_input[input_node] = blinded_state
-        # gros probleme : on doit espérer que les index matchent.
-        return blinded_input.values()
+            sent_input[input_node] = blinded_state
+
+        # gros probleme : on doit espérer que les index matchent. (ça a l'air de marcher pour le moment)
+        self.input_state = list(sent_input.values())
 
     def init_secrets(self, secrets):
         if self.blind:

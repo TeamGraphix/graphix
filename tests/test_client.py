@@ -32,7 +32,7 @@ class TestClient(unittest.TestCase):
         for qubit in measured_qubits:
             r[qubit] = 666
         secrets = {'r': r}
-        self.assertRaises(ValueError, Client, pattern, True, secrets)
+        self.assertRaises(ValueError, Client, pattern, None, True, secrets)
 
         # TODO : do the same for `a` and `theta` secrets
 
@@ -118,24 +118,51 @@ class TestClient(unittest.TestCase):
 
         secrets = {'theta': {}}
 
-        rand_angles = self.rng.random(nqubits) * 2 * np.pi
-        rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqubits)
-        # set default angles to zero in order to have a comparison with the "clear simulation"
-        states = [PlanarState(plane = 0, angle = 0) for i, j in zip(rand_planes, rand_angles)]
+        # Create a |+> state for each input node
+        states = [PlanarState(plane = 0, angle = 0) for node in pattern.input_nodes]
         
+        # Create a mapping to keep track of the index associated to each of the qubits
         input_state = {}
         j = 0
         for i in pattern.input_nodes :
             input_state[i] = states[j]
             j += 1
         
+        # Create the client with the input state
+        client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
+        
+        print(Statevec(list(input_state.values())))
+        print(Statevec(client.input_state))
+
+        # Assert something...
+    
+    
+    def test_theta_secret_simulation(self) :
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+
+        secrets = {'theta': {}}
+
+        # Create a |+> state for each input node
+        states = [PlanarState(plane = 0, angle = 0) for node in pattern.input_nodes]
+        
+        # Create a mapping to keep track of the index associated to each of the qubits
+        input_state = dict(zip(pattern.input_nodes, states))
+
+        # Create the client with the input state
+        print(input_state)
         client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
         
         print(client.input_state)
-        # Clear simulation = no secret, just simulate the circuit
-        clear_simulation = circuit.simulate_statevector()
         # Blinded simulation, between the client and the server
         blinded_simulation = client.simulate_pattern()
+
+        # Clear simulation = no secret, just simulate the circuit defined above
+        clear_simulation = circuit.simulate_statevector()
         np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
 
 
