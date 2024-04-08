@@ -21,7 +21,7 @@ class TestNoiseModel(NoiseModel):
     :param NoiseModel: Parent abstract class class:`graphix.noise_model.NoiseModel`
     :type NoiseModel: class
     """
-
+    __test__ = False
     def __init__(
         self,
         prepare_error_prob=0.0,
@@ -57,7 +57,7 @@ class TestNoiseModel(NoiseModel):
         """
 
         if np.random.rand() < self.measure_error_prob:
-            self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
+            self.simulator.results[cmd.node] = 1 - self.simulator.results[cmd.node]
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction"""
@@ -450,8 +450,3 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
             or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
             or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
         )
-
-
-if __name__ == "__main__":
-    np.random.seed(32)
-    unittest.main()

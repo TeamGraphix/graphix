@@ -7,6 +7,7 @@ from parameterized import parameterized
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.transpiler import Circuit
+from graphix.command import N, M
 
 SEED = 42
 rc.set_seed(SEED)
@@ -16,9 +17,9 @@ class TestPattern(unittest.TestCase):
     # this fails without behaviour modification
     def test_manual_generation(self):
         pattern = Pattern()
-        pattern.add(["N", 0])
-        pattern.add(["N", 1])
-        pattern.add(["M", 0, "XY", 0, [], []])
+        pattern.add(N(node=0))
+        pattern.add(N(node=1))
+        pattern.add(M(node=0))
 
     def test_standardize(self):
         nqubits = 2
@@ -244,7 +245,7 @@ class TestPattern(unittest.TestCase):
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=[i for i in range(len(preset_meas_plane))])
         for i in range(len(preset_meas_plane)):
-            pattern.add(["M", i, preset_meas_plane[i], 0, [], [], vop_list[i % 3]])
+            pattern.add(M(node=i, plane=preset_meas_plane[i], vop=vop_list[i % 3]))
         ref_meas_plane = {
             0: "XY",
             1: "XY",
@@ -276,7 +277,7 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
-class TestLocalPattern(unittest.TestCase):
+class TestLocalPattern():
     def test_assert_equal_edge(self):
         test_case = [
             [(0, 1), (0, 1), True],

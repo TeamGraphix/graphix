@@ -5,7 +5,7 @@ import numpy as np
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 import graphix.sim.base_backend
-
+from graphix import command
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
@@ -48,7 +48,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes):
+    def add_nodes(self, nodes: list[int]):
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
@@ -65,7 +65,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.node_index.extend(nodes)
         self.Nqubit += n
 
-    def entangle_nodes(self, edge):
+    def entangle_nodes(self, edge: tuple[int]):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -77,7 +77,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, cmd):
+    def measure(self, cmd: command.M):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -89,25 +89,22 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.state.remove_qubit(loc)
         self.Nqubit -= 1
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, cmd: command.X | command.Z):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            loc = self.node_index.index(cmd[1])
-            if cmd[0] == "X":
-                op = Ops.x
-            elif cmd[0] == "Z":
-                op = Ops.z
+        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+            loc = self.node_index.index(cmd.node)
+            op = Ops.x if isinstance(cmd, command.X) else Ops.z
             self.state.evolve_single(op, loc)
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, cmd: command.C):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        loc = self.node_index.index(cmd.node)
+        self.state.evolve_single(CLIFFORD[cmd.cliff_index], loc)
 
     def finalize(self):
         """to be run at the end of pattern simulation."""
@@ -124,7 +121,6 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
                     self.node_index[move_from],
                     self.node_index[i],
                 )
-
 
 # This function is no longer used
 def meas_op(angle, vop=0, plane="XY", choice=0):
@@ -201,7 +197,7 @@ class Statevec:
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
 
-    def evolve_single(self, op, i):
+    def evolve_single(self, op: np.ndarray, i: int):
         """Single-qubit operation
 
         Parameters
@@ -214,7 +210,7 @@ class Statevec:
         self.psi = np.tensordot(op, self.psi, (1, i))
         self.psi = np.moveaxis(self.psi, 0, i)
 
-    def evolve(self, op, qargs):
+    def evolve(self, op: np.ndarray, qargs: list[int]):
         """Multi-qubit operation
 
         Parameters
@@ -237,7 +233,6 @@ class Statevec:
 
     def dims(self):
         return self.psi.shape
-
     def ptrace(self, qargs):
         """Perform partial trace of the selected qubits.
 
@@ -259,8 +254,7 @@ class Statevec:
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
-
-    def remove_qubit(self, qarg):
+    def remove_qubit(self, qarg: int):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
@@ -306,7 +300,7 @@ class Statevec:
         self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
-    def entangle(self, edge):
+    def entangle(self, edge: tuple[int, int]):
         """connect graph nodes
 
         Parameters

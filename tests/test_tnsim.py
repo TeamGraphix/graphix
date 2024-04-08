@@ -9,6 +9,7 @@ from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
+from graphix.command import X, Z, C, E
 
 SEED = 42
 rc.set_seed(SEED)
@@ -53,7 +54,7 @@ class TestTN(unittest.TestCase):
         random_vec = np.array([1.0, 1.0, 1.0, 1.0]).reshape(2, 2)
         circuit = Circuit(2)
         pattern = circuit.transpile()
-        pattern.add(["E", (0, 1)])
+        pattern.add(E(nodes=(0, 1)))
         tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         dummy_index = [gen_str() for _ in range(2)]
         qubit_index = 0
@@ -73,9 +74,9 @@ class TestTN(unittest.TestCase):
 
     def test_apply_one_site_operator(self):
         cmds = [
-            ["X", 0, [15]],
-            ["Z", 0, [15]],
-            ["C", 0, np.random.randint(0, 23)],
+            X(node=0, domain=[15]),
+            Z(node=0, domain=[15]),
+            C(node=0, cliff_index=np.random.randint(23))
         ]
         random_vec = np.random.randn(2)
 
@@ -97,7 +98,7 @@ class TestTN(unittest.TestCase):
         ops = [
             np.array([[0.0, 1.0], [1.0, 0.0]]),
             np.array([[1.0, 0.0], [0.0, -1.0]]),
-            CLIFFORD[cmds[2][2]],
+            CLIFFORD[cmds[2].cliff_index],
         ]
         contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
         np.testing.assert_almost_equal(contracted, contracted_ref)

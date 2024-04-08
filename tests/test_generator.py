@@ -66,7 +66,7 @@ class TestGenerator(unittest.TestCase):
         input = [0, 1, 2]
         angles = dict()
         for cmd in pattern.get_measurement_commands():
-            angles[cmd[1]] = cmd[3]
+            angles[cmd.node] = cmd.angle
         meas_planes = pattern.get_meas_plane()
         pattern2 = generate_from_graph(g, angles, input, pattern.output_nodes, meas_planes)
         # check that the new one runs and returns correct result

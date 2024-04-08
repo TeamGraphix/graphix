@@ -13,6 +13,7 @@ from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
 import graphix.sim.base_backend
+from graphix import command
 
 
 class DensityMatrix:
@@ -362,11 +363,11 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            loc = self.node_index.index(cmd[1])
-            if cmd[0] == "X":
+        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+            loc = self.node_index.index(cmd.node)
+            if isinstance(cmd, command.X):
                 op = Ops.x
-            elif cmd[0] == "Z":
+            elif isinstance(cmd, command.Z):
                 op = Ops.z
             self.state.evolve_single(op, loc)
 

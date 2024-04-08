@@ -1,6 +1,7 @@
 import numpy as np
 import graphix.clifford
 import graphix.pauli
+from graphix.command import M
 
 
 class Backend:
@@ -15,20 +16,16 @@ class Backend:
         # whether to compute the probability
         self.pr_calc = pr_calc
 
-    def _perform_measure(self, cmd):
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
+    def _perform_measure(self, cmd: M):
+        s_signal = np.sum([self.results[j] for j in cmd.s_domain])
+        t_signal = np.sum([self.results[j] for j in cmd.t_domain])
+        angle = cmd.angle * np.pi
         measure_update = graphix.pauli.MeasureUpdate.compute(
-            graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+            graphix.pauli.Plane[cmd.plane], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[cmd.vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         vec = measure_update.new_plane.polar(angle)
-        loc = self.node_index.index(cmd[1])
+        loc = self.node_index.index(cmd.node)
 
         def op_mat_from_result(result: bool) -> np.ndarray:
             op_mat = np.eye(2, dtype=np.complex128) / 2
@@ -47,7 +44,7 @@ class Backend:
             # choose the measurement result randomly
             result = np.random.choice([0, 1])
             op_mat = op_mat_from_result(result)
-        self.results[cmd[1]] = result
+        self.results[cmd.node] = result
         self.state.evolve_single(op_mat, loc)
-        self.node_index.remove(cmd[1])
+        self.node_index.remove(cmd.node)
         return loc

@@ -103,31 +103,23 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
         for j, k in genpair(nqubits, 4, rng):
             circuit.swap(j, k)
         for j in range(nqubits):
-            k = rng.choice(gate_choice)
-            if k == 0:
-                circuit.ry(j, np.pi / 4)
-                pass
-            elif k == 1:
-                circuit.rz(j, -np.pi / 4)
-                pass
-            elif k == 2:
-                circuit.rx(j, -np.pi / 4)
-                pass
-            elif k == 3:  # H
-                circuit.h(j)
-                pass
-            elif k == 4:  # S
-                circuit.s(j)
-                pass
-            elif k == 5:  # X
-                circuit.x(j)
-                pass
-            elif k == 6:  # Z
-                circuit.z(j)
-                pass
-            elif k == 7:  # Y
-                circuit.y(j)
-                pass
-            else:
-                pass
+            match rng.choice(gate_choice):
+                case 0:
+                    circuit.ry(j, np.pi / 4)
+                case 1:
+                    circuit.rz(j, -np.pi / 4)
+                case 2:
+                    circuit.rx(j, -np.pi / 4)
+                case 3:
+                    circuit.h(j)
+                case 4:
+                    circuit.s(j)
+                case 5:  
+                    circuit.x(j)
+                case 6:
+                    circuit.z(j)
+                case 7:
+                    circuit.y(j)
+                case _:
+                    pass
     return circuit
