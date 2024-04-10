@@ -32,7 +32,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         max_qubit_num=20,
         pr_calc=True,
         measure_method=None,
-        prepared_nodes=[]
+        prepared_nodes=None
     ):
         """
         Parameters
@@ -63,7 +63,10 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc, measure_method)
 
-        # initialize input qubits to desired init_state
+        # Initialize input qubits to desired init_state
+        # If no particular input is prepared by the client, we set the default input to be the input nodes of the pattern
+        if prepared_nodes is None :
+            prepared_nodes = pattern.input_nodes
         self.add_nodes(prepared_nodes, input_state)
 
     def qubit_dim(self):
