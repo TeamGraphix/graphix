@@ -63,7 +63,6 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
 
         # initialize input qubits to desired init_state
         self.add_nodes(pattern.input_nodes, input_state)
-        print(self.state)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector

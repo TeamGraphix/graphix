@@ -184,7 +184,7 @@ class TestClient(unittest.TestCase):
 
             # Create the client with the input state
             client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
-            
+
             # Blinded simulation, between the client and the server
             blinded_simulation = client.simulate_pattern()
 
@@ -232,6 +232,39 @@ class TestClient(unittest.TestCase):
             client_r_secret = client.secrets['r'][measured_node]
             server_result = client.backend_results[measured_node]
             assert result == (server_result + client_r_secret) % 2
+
+
+    def test_UBQC(self) :
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        for i in range(10) :
+            circuit = rc.get_rand_circuit(nqubits, depth)
+            pattern = circuit.transpile()
+            pattern.standardize(method="global")
+
+            secrets = {
+                'a': {},
+                'r': {},
+                'theta': {},
+                }
+
+            # Create a |+> state for each input node
+            states = [PlanarState(plane = 0, angle = 0) for node in pattern.input_nodes]
+            
+            # Create a mapping to keep track of the index associated to each of the qubits
+            input_state = dict(zip(pattern.input_nodes, states))
+
+            # Create the client with the input state
+            client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)
+
+            # Blinded simulation, between the client and the server
+            blinded_simulation = client.simulate_pattern()
+
+            # Clear simulation = no secret, just simulate the circuit defined above
+            clear_simulation = circuit.simulate_statevector()
+            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+
 
 
 if __name__ == '__main__':
