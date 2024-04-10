@@ -250,7 +250,6 @@ class Pattern:
                     print(
                         f"N, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle = {self.__seq[i][3]}pi/4"
                     )
-                print(f"N, node = {self.__seq[i][1]}")
             elif self.__seq[i][0] == "E" and ("E" in filter):
                 count += 1
                 print(f"E, nodes = {self.__seq[i][1]}")

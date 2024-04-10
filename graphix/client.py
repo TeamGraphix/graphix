@@ -141,12 +141,13 @@ class Client:
         This function adds a secret angle to all auxiliary qubits (measured qubits that are not part of the input),
         i.e the qubits created through "N" commands originally in the |+> state
         """
+        self.pattern.print_pattern()
         new_pattern = graphix.Pattern(self.clean_pattern.input_nodes)
         for cmd in self.clean_pattern :
             if cmd[0] == 'N' :
                 node = cmd[1]
-                theta_value = 0 if not self.theta_secret else self.__client.secrets['theta'][node]
-                auxiliary_state = PlanarState(plane=Plane(0), angle=theta_value)
+                theta_value = 0 if not self.theta_secret else self.secrets['theta'][node]
+                auxiliary_state = PlanarState(plane=Plane(0), angle=theta_value*np.pi/4)
                 new_pattern.add_auxiliary_node(node)
                 self.input_state.append(auxiliary_state)
                 self.auxiliary_nodes.append(node)
