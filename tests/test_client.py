@@ -260,7 +260,9 @@ class TestClient(unittest.TestCase):
 
             # Blinded simulation, between the client and the server
             blinded_simulation = client.simulate_pattern()
-
+            print(client.input_nodes)
+            print(client.auxiliary_nodes)
+            print(client.clean_pattern.output_nodes)
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
             np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)

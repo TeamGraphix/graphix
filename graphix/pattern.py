@@ -145,6 +145,10 @@ class Pattern:
         """list of input nodes"""
         return list(self.__input_nodes)  # copy for preventing modification
 
+    def add_auxiliary_node(self, node):
+        self.__output_nodes.append(node)
+        self.__Nnode += 1
+
     @property
     def output_nodes(self):
         """list of all nodes that are either `input_nodes` or prepared with

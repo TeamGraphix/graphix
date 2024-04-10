@@ -31,6 +31,8 @@ class MeasureParameters:
 class Client:
     def __init__(self, pattern, input_state=None, blind=False, secrets={}):
         self.pattern = pattern
+        self.input_nodes = self.pattern.input_nodes.copy()
+        self.auxiliary_nodes = []
         self.clean_pattern = self.remove_pattern_flow()
 
         """
@@ -76,6 +78,9 @@ class Client:
         # gros probleme : on doit espérer que les index matchent. (ça a l'air de marcher pour le moment)
         self.input_state = list(sent_input.values())
 
+        new_pattern = self.add_secret_angles()
+        self.clean_pattern = new_pattern
+
     def init_secrets(self, secrets):
         if self.blind:
             if 'r' in secrets:
@@ -101,12 +106,13 @@ class Client:
                 self.theta_secret = True
                 self.secrets['theta'] = {}
                 # Create theta secret for all non-output nodes
+                    
                 for node in self.clean_pattern.non_output_nodes :
                     k = np.random.randint(0,8)
                     angle = k  # *pi/4
                     self.secrets['theta'][node] = angle
-                new_pattern = self.add_secret_angles()
-                self.clean_pattern = new_pattern
+                for node in self.clean_pattern.output_nodes :
+                    self.secrets['theta'][node] = 0
 
             if 'a' in secrets :
                 self.a_secret = True
@@ -139,13 +145,11 @@ class Client:
         for cmd in self.clean_pattern :
             if cmd[0] == 'N' :
                 node = cmd[1]
-                if node not in self.clean_pattern.output_nodes :
-                    angle = self.secrets['theta'][node]
-                    plane = Plane(0)                    # Default : XY plane
-                    new_cmd = ['N', node, plane, angle]
-                else :
-                    new_cmd = cmd
-                new_pattern.add(new_cmd)
+                theta_value = 0 if not self.theta_secret else self.__client.secrets['theta'][node]
+                auxiliary_state = PlanarState(plane=Plane(0), angle=theta_value)
+                new_pattern.add_auxiliary_node(node)
+                self.input_state.append(auxiliary_state)
+                self.auxiliary_nodes.append(node)
             else :
                 new_pattern.add(cmd)
 
@@ -186,7 +190,7 @@ class Client:
         return clean_pattern
         
     def simulate_pattern(self):
-        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.clean_pattern, measure_method=self.measure_method, input_state=self.input_state)
+        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.clean_pattern, measure_method=self.measure_method, input_state=self.input_state, prepared_nodes=self.input_nodes + self.auxiliary_nodes)
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
         state = sim.run()
         self.backend_results = backend.results

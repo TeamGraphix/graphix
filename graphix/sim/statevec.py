@@ -31,7 +31,8 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         ] = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
-        measure_method=None
+        measure_method=None,
+        prepared_nodes=[]
     ):
         """
         Parameters
@@ -50,6 +51,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         # check that pattern has output nodes configured
         assert len(pattern.output_nodes) > 0
         self.pattern = pattern
+        self.prepared_nodes = prepared_nodes
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
@@ -62,7 +64,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         super().__init__(pr_calc, measure_method)
 
         # initialize input qubits to desired init_state
-        self.add_nodes(pattern.input_nodes, input_state)
+        self.add_nodes(prepared_nodes, input_state)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
