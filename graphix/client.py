@@ -123,10 +123,10 @@ class Client:
                 # computed from the graph topology
                 self.secrets['a_N'] = {}
                 for i in node_list :
+                    self.secrets['a_N'][i] = 0
                     for j in node_list :
-                        self.secrets['a_N'][i] = 0
-                        if (i,j) in edge_list :
-                            self.secrets['a_N'][i] += 1
+                        if (i,j) in edge_list or (j,i) in edge_list :
+                            self.secrets['a_N'][i] += self.secrets['a'][j]
                         self.secrets['a_N'][i] %= 2 
                         
                 
