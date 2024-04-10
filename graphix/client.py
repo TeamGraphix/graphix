@@ -83,6 +83,7 @@ class Client:
 
     def init_secrets(self, secrets):
         if self.blind:
+            node_list, edge_list = self.clean_pattern.get_graph()
             if 'r' in secrets:
                 # User wants to add an r-secret, either customized or generated on the fly
                 self.r_secret = True
@@ -91,8 +92,9 @@ class Client:
                 # If the client entered an empty secret (need to generate it)
                 if r_size == 0:
                     # Need to generate the bit for each measured qubit
-                    for node in self.measurement_db:
-                        self.secrets['r'][node] = np.random.randint(0, 2)
+                    for node in node_list :
+                        r = np.random.randint(0, 2)
+                        self.secrets['r'][node] = r
 
                 # If the client entered a customized secret : need to check its validity
                 elif self.is_valid_secret('r', secrets['r']):
@@ -100,30 +102,22 @@ class Client:
                     # TODO : add more rigorous test of the r-secret format
                 else:
                     raise ValueError("`r` has wrong format.")
-                
 
             if 'theta' in secrets :
                 self.theta_secret = True
                 self.secrets['theta'] = {}
-                # Create theta secret for all non-output nodes
-                    
-                for node in self.clean_pattern.non_output_nodes :
-                    k = np.random.randint(0,8)
-                    angle = k  # *pi/4
-                    self.secrets['theta'][node] = angle
-                for node in self.clean_pattern.output_nodes :
-                    self.secrets['theta'][node] = 0
+                # Create theta secret for all non-output nodes (measured qubits)
+                for node in node_list :
+                    theta = np.random.randint(0,8) if node not in self.clean_pattern.output_nodes else 0    # Expressed in pi/4 units
+                    self.secrets['theta'][node] = theta
 
             if 'a' in secrets :
                 self.a_secret = True
                 self.secrets['a'] = {}
-                node_list, edge_list = self.clean_pattern.get_graph()
+                # Create `a` secret for all
                 for node in node_list :
-                    if node in self.clean_pattern.input_nodes :
-                        a = np.random.randint(0,2)
-                        self.secrets['a'][node] = a
-                    else :
-                        self.secrets['a'][node] = 0
+                    a = np.random.randint(0,2) if node in self.clean_pattern.input_nodes else 0
+                    self.secrets['a'][node] = a
                 
                 # After all the `a` secrets have been generated, the `a_N` value can be
                 # computed from the graph topology
@@ -141,7 +135,6 @@ class Client:
         This function adds a secret angle to all auxiliary qubits (measured qubits that are not part of the input),
         i.e the qubits created through "N" commands originally in the |+> state
         """
-        self.pattern.print_pattern()
         new_pattern = graphix.Pattern(self.clean_pattern.input_nodes)
         for cmd in self.clean_pattern :
             if cmd[0] == 'N' :
