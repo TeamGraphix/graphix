@@ -114,7 +114,7 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
                     circuit.h(j)
                 case 4:
                     circuit.s(j)
-                case 5:  
+                case 5:
                     circuit.x(j)
                 case 6:
                     circuit.z(j)

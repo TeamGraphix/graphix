@@ -13,7 +13,9 @@ class States:
     zero = np.array([1.0, 0.0])  # zero
     one = np.array([0.0, 1.0])  # one
     iplus = np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)])  # +1 eigenstate of Pauli Y
-    iminus = np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)])  # -1 eigenstate of Pauli Y
+    iminus = np.array(
+        [1.0 / np.sqrt(2), -1.0j / np.sqrt(2)]
+    )  # -1 eigenstate of Pauli Y
     vec = [plus, minus, zero, one, iplus, iminus]
 
 
@@ -56,7 +58,12 @@ class Ops:
         operator : 2*2 np.array
         """
 
-        return np.array([[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]])
+        return np.array(
+            [
+                [np.cos(theta / 2), -1j * np.sin(theta / 2)],
+                [-1j * np.sin(theta / 2), np.cos(theta / 2)],
+            ]
+        )
 
     @staticmethod
     def Ry(theta):
@@ -71,7 +78,12 @@ class Ops:
         ----------
         operator : 2*2 np.array
         """
-        return np.array([[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]])
+        return np.array(
+            [
+                [np.cos(theta / 2), -np.sin(theta / 2)],
+                [np.sin(theta / 2), np.cos(theta / 2)],
+            ]
+        )
 
     @staticmethod
     def Rz(theta):
@@ -119,10 +131,17 @@ class Ops:
 
         if isinstance(n_qubits, int):
             if not 1 <= n_qubits:
-                raise ValueError(f"The number of qubits must be an integer <= 1 and not {n_qubits}.")
+                raise ValueError(
+                    f"The number of qubits must be an integer <= 1 and not {n_qubits}."
+                )
         else:
-            raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
+            raise TypeError(
+                f"The number of qubits must be an integer and not {n_qubits}."
+            )
 
-        tensor_Pauli_ops = [reduce(lambda x, y: np.kron(x, y), i) for i in product(Ops.Pauli_ops, repeat=n_qubits)]
+        tensor_Pauli_ops = [
+            reduce(lambda x, y: np.kron(x, y), i)
+            for i in product(Ops.Pauli_ops, repeat=n_qubits)
+        ]
 
         return np.array(tensor_Pauli_ops)

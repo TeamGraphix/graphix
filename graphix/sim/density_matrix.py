@@ -44,7 +44,9 @@ class DensityMatrix:
             elif isinstance(data, np.ndarray):
                 pass
             else:
-                raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
+                raise TypeError(
+                    "data must be DensityMatrix, list, tuple, or np.ndarray."
+                )
 
             assert check_square(data)
             self.Nqubit = len(data).bit_length() - 1
@@ -71,7 +73,11 @@ class DensityMatrix:
             raise ValueError("op must be 2*2 matrix.")
 
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
+        rho_tensor = np.tensordot(
+            np.tensordot(op, rho_tensor, axes=[1, i]),
+            op.conj().T,
+            axes=[i + self.Nqubit, 0],
+        )
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
@@ -90,17 +96,23 @@ class DensityMatrix:
             if d[0] == d[1]:
                 pass
             else:
-                raise ValueError(f"The provided operator has shape {op.shape} and is not a square matrix.")
+                raise ValueError(
+                    f"The provided operator has shape {op.shape} and is not a square matrix."
+                )
         else:
             raise ValueError(f"The provided data has incorrect shape {op.shape}.")
 
         nqb_op = np.log2(len(op))
         if not np.isclose(nqb_op, int(nqb_op)):
-            raise ValueError("Incorrect operator dimension: not consistent with qubits.")
+            raise ValueError(
+                "Incorrect operator dimension: not consistent with qubits."
+            )
         nqb_op = int(nqb_op)
 
         if nqb_op != len(qargs):
-            raise ValueError("The dimension of the operator doesn't match the number of targets.")
+            raise ValueError(
+                "The dimension of the operator doesn't match the number of targets."
+            )
 
         if not all(0 <= i < self.Nqubit for i in qargs):
             raise ValueError("Incorrect target indices.")
@@ -112,9 +124,16 @@ class DensityMatrix:
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
 
         rho_tensor = np.tensordot(
-            np.tensordot(op_tensor, rho_tensor, axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)]),
+            np.tensordot(
+                op_tensor,
+                rho_tensor,
+                axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)],
+            ),
             op.conj().T.reshape((2,) * 2 * nqb_op),
-            axes=[tuple(i + self.Nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
+            axes=[
+                tuple(i + self.Nqubit for i in qargs),
+                tuple(i for i in range(len(qargs))),
+            ],
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
@@ -134,7 +153,9 @@ class DensityMatrix:
         """
 
         if not (0 <= i < self.Nqubit):
-            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.Nqubit-1}.")
+            raise ValueError(
+                f"Wrong target qubit {i}. Must between 0 and {self.Nqubit-1}."
+            )
 
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
@@ -224,7 +245,9 @@ class DensityMatrix:
         # ket, bra indices to trace out
         trace_axes = list(qargs) + [n + qarg for qarg in qargs]
         rho_res = np.tensordot(
-            np.eye(2**qargs_num).reshape((2,) * qargs_num * 2), rho_res, axes=(list(range(2 * qargs_num)), trace_axes)
+            np.eye(2**qargs_num).reshape((2,) * qargs_num * 2),
+            rho_res,
+            axes=(list(range(2 * qargs_num)), trace_axes),
         )
 
         self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
@@ -262,7 +285,9 @@ class DensityMatrix:
         ....
         """
 
-        result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
+        result_array = np.zeros(
+            (2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128
+        )
         tmp_dm = deepcopy(self)
 
         if not isinstance(channel, KrausChannel):
@@ -278,7 +303,9 @@ class DensityMatrix:
         self.rho = deepcopy(result_array)
 
         if not np.allclose(self.rho.trace(), 1.0):
-            raise ValueError("The output density matrix is not normalized, check the channel definition.")
+            raise ValueError(
+                "The output density matrix is not normalized, check the channel definition."
+            )
 
 
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
@@ -306,7 +333,9 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
+            raise ValueError(
+                "Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again."
+            )
         super().__init__(pr_calc)
 
     def add_nodes(self, nodes, qubit_to_add=None):

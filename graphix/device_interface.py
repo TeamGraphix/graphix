@@ -71,7 +71,9 @@ class PatternRunner:
             noise_model = kwargs.get("noise_model", None)
             format_result = kwargs.get("format_result", True)
 
-            result = self.backend.simulate(shots=shots, noise_model=noise_model, format_result=format_result)
+            result = self.backend.simulate(
+                shots=shots, noise_model=noise_model, format_result=format_result
+            )
 
         return result
 
@@ -94,7 +96,11 @@ class PatternRunner:
             format_result = kwargs.get("format_result", True)
             optimization_level = kwargs.get("optimizer_level", 1)
 
-            result = self.backend.run(shots=shots, format_result=format_result, optimization_level=optimization_level)
+            result = self.backend.run(
+                shots=shots,
+                format_result=format_result,
+                optimization_level=optimization_level,
+            )
 
         return result
 

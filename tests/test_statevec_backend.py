@@ -23,20 +23,30 @@ class TestStatevec(unittest.TestCase):
         sv2.ptrace([k])
         sv2.normalize()
 
-        np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+        np.testing.assert_almost_equal(
+            np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1
+        )
 
     def test_measurement_into_each_XYZ_basis(self):
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
-        for state in [States.plus, States.zero, States.one, States.iplus, States.iminus]:
+        for state in [
+            States.plus,
+            States.zero,
+            States.one,
+            States.iplus,
+            States.iminus,
+        ]:
             m_op = np.outer(state, state.T.conjugate())
             sv = Statevec(nqubit=n)
             sv.evolve(m_op, [k])
             sv.remove_qubit(k)
 
             sv2 = Statevec(nqubit=n - 1)
-            np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1
+            )
 
     def test_measurement_into_minus_state(self):
         n = 3

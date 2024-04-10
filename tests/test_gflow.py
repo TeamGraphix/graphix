@@ -5,7 +5,13 @@ import unittest
 
 import networkx as nx
 import numpy as np
-from graphix.gflow import find_flow, find_gflow, get_input_from_flow, verify_flow, verify_gflow
+from graphix.gflow import (
+    find_flow,
+    find_gflow,
+    get_input_from_flow,
+    verify_flow,
+    verify_gflow,
+)
 
 from tests.random_circuit import get_rand_circuit
 
@@ -47,7 +53,9 @@ def generate_test_graphs() -> list[GraphForTest]:
     inputs = {1, 2}
     outputs = {1, 2}
     meas_planes = {}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, True, True, "no measurement")
+    test_graph = GraphForTest(
+        graph, inputs, outputs, meas_planes, True, True, "no measurement"
+    )
     graphs.append(test_graph)
 
     # line graph with flow and gflow
@@ -83,7 +91,9 @@ def generate_test_graphs() -> list[GraphForTest]:
     inputs = {1, 2}
     outputs = {5, 6}
     meas_planes = {1: "XY", 2: "XY", 3: "XY", 4: "XY"}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, True, True, "graph with flow and gflow")
+    test_graph = GraphForTest(
+        graph, inputs, outputs, meas_planes, True, True, "graph with flow and gflow"
+    )
     graphs.append(test_graph)
 
     # graph with gflow but flow
@@ -106,7 +116,9 @@ def generate_test_graphs() -> list[GraphForTest]:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {1: "XY", 2: "XY", 3: "XY"}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, False, True, "graph with gflow but no flow")
+    test_graph = GraphForTest(
+        graph, inputs, outputs, meas_planes, False, True, "graph with gflow but no flow"
+    )
     graphs.append(test_graph)
 
     # graph with extended gflow but flow
@@ -209,7 +221,9 @@ class TestGflow(unittest.TestCase):
             if test_graph.label not in flow_test_cases:
                 continue
             with self.subTest(test_graph.label):
-                for test_case, (expected, flow) in flow_test_cases[test_graph.label].items():
+                for test_case, (expected, flow) in flow_test_cases[
+                    test_graph.label
+                ].items():
                     with self.subTest([test_graph.label, test_case]):
                         valid = verify_flow(
                             test_graph.graph,
@@ -257,7 +271,9 @@ class TestGflow(unittest.TestCase):
             if test_graph.label not in gflow_test_cases:
                 continue
             with self.subTest(test_graph.label):
-                for test_case, (expected, gflow) in gflow_test_cases[test_graph.label].items():
+                for test_case, (expected, gflow) in gflow_test_cases[
+                    test_graph.label
+                ].items():
                     with self.subTest([test_graph.label, test_case]):
                         valid = verify_gflow(
                             test_graph.graph,

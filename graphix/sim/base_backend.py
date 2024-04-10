@@ -21,7 +21,10 @@ class Backend:
         t_signal = np.sum([self.results[j] for j in cmd.t_domain])
         angle = cmd.angle * np.pi
         measure_update = graphix.pauli.MeasureUpdate.compute(
-            graphix.pauli.Plane[cmd.plane], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[cmd.vop]
+            graphix.pauli.Plane[cmd.plane],
+            s_signal % 2 == 1,
+            t_signal % 2 == 1,
+            graphix.clifford.TABLE[cmd.vop],
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         vec = measure_update.new_plane.polar(angle)

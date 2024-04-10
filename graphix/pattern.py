@@ -15,6 +15,7 @@ from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 from graphix import command
 
+
 class NodeAlreadyPrepared(Exception):
     def __init__(self, node: int):
         self.__node = node
@@ -62,9 +63,13 @@ class Pattern:
         :param input_nodes:  optional, list of input qubits
         """
         self.results = {}  # measurement results from the graph state simulator
-        self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
+        self.__input_nodes = list(
+            input_nodes
+        )  # input nodes (list() makes our own copy of the list)
         self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
-        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
+        self._pauli_preprocessed = (
+            False  # flag for `measure_pauli` preprocessing completion
+        )
 
         self.__seq: list[command.Command] = []
         # output nodes are initially input nodes, since none are measured yet
@@ -100,8 +105,6 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        # assert type(cmd) == list
-        # assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if isinstance(cmd, command.N):
             if cmd.node in self.__output_nodes:
                 raise NodeAlreadyPrepared(cmd.node)
@@ -109,7 +112,6 @@ class Pattern:
             self.__output_nodes.append(cmd.node)
         elif isinstance(cmd, command.M):
             self.__output_nodes.remove(cmd.node)
-            pass
         self.__seq.append(cmd)
 
     def extend(self, cmds: list[command.Command]):
@@ -126,7 +128,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds, input_nodes=None):
+    def replace(self, cmds: list[command.Command], input_nodes=None):
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -167,7 +169,7 @@ class Pattern:
         """count of nodes that are either `input_nodes` or prepared with `N` commands"""
         return self.__Nnode
 
-    def reorder_output_nodes(self, output_nodes):
+    def reorder_output_nodes(self, output_nodes: list[int]):
         """arrange the order of output_nodes.
 
         Parameters
@@ -178,7 +180,7 @@ class Pattern:
         assert_permutation(self.__output_nodes, output_nodes)
         self.__output_nodes = list(output_nodes)
 
-    def reorder_input_nodes(self, input_nodes):
+    def reorder_input_nodes(self, input_nodes: list[int]):
         """arrange the order of input_nodes.
 
         Parameters
@@ -190,18 +192,16 @@ class Pattern:
         self.__input_nodes = list(input_nodes)
 
     def __repr__(self):
-        return (
-            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
-        )
+        return f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
 
-    def equal(self, other):
+    def equal(self, other: "Pattern"):
         return (
             self.__seq == other.__seq
             and self.input_nodes == other.input_nodes
             and self.output_nodes == other.output_nodes
         )
 
-    def print_pattern(self, lim=40, filter=None):
+    def print_pattern(self, lim=40, filter: list[str] = None):
         """print the pattern sequence (Pattern.seq).
 
         Parameters
@@ -232,7 +232,10 @@ class Pattern:
                 print(f"E, nodes = {cmd.nodes}")
             elif isinstance(cmd, command.M) and ("M" in filter):
                 count += 1
-                print(f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, " + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}, Clifford index = {cmd.vop}")
+                print(
+                    f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
+                    + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}, Clifford index = {cmd.vop}"
+                )
             elif isinstance(cmd, command.X) and ("X" in filter):
                 count += 1
                 # remove duplicates
@@ -255,10 +258,14 @@ class Pattern:
                 print(f"Z byproduct, node = {cmd.node}, domain = {unique_domain}")
             elif isinstance(cmd, command.C) == "C" and ("C" in filter):
                 count += 1
-                print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
+                print(
+                    f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}"
+                )
 
         if len(self.__seq) > i + 1:
-            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
+            print(
+                f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more"
+            )
 
     def get_local_pattern(self):
         """Get a local pattern transpiled from the pattern.
@@ -290,7 +297,14 @@ class Pattern:
                 case command.E(nodes=nodes):
                     node_prop[nodes[1]]["seq"].append(nodes[0])
                     node_prop[nodes[0]]["seq"].append(nodes[1])
-                case command.M(node=node, plane=plane, angle=angle, s_domain=s_domain, t_domain=t_domain, vop=vop):
+                case command.M(
+                    node=node,
+                    plane=plane,
+                    angle=angle,
+                    s_domain=s_domain,
+                    t_domain=t_domain,
+                    vop=vop,
+                ):
                     node_prop[node]["Mprop"] = [plane, angle, s_domain, t_domain, vop]
                     node_prop[node]["seq"].append(-1)
                     morder.append(node)
@@ -310,7 +324,7 @@ class Pattern:
                 case command.S():
                     raise NotImplementedError()
                 case _:
-                    raise ValueError(f"command {cmd} is invalid!")                
+                    raise ValueError(f"command {cmd} is invalid!")
         nodes = dict()
         for index in node_prop.keys():
             if index in self.output_nodes:
@@ -404,7 +418,9 @@ class Pattern:
                         self._commute_XS(target)
                     case command.Z(node=i, domain=d):
                         self._commute_ZS(target)
-                    case command.M(node=i, plane=p, angle=a, s_domain=s, t_domain=t, vop=v):
+                    case command.M(
+                        node=i, plane=p, angle=a, s_domain=s, t_domain=t, vop=v
+                    ):
                         self._commute_MS(target)
                     case command.S(node=i, domain=d):
                         self._commute_SS(target)
@@ -641,7 +657,9 @@ class Pattern:
         moved_X = 0  # number of moved X
         target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
         while target != "end":
-            if (target == len(self.__seq) - 1) or (isinstance(self.__seq[target + 1], command.X)):
+            if (target == len(self.__seq) - 1) or (
+                isinstance(self.__seq[target + 1], command.X)
+            ):
                 moved_X += 1
                 target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
                 continue
@@ -663,7 +681,9 @@ class Pattern:
         moved_Z = 0  # number of moved Z
         target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
         while target != "end":
-            if (target == len(self.__seq) - 1) or (isinstance(self.__seq[target + 1], (command.X, command.Z))):
+            if (target == len(self.__seq) - 1) or (
+                isinstance(self.__seq[target + 1], (command.X, command.Z))
+            ):
                 moved_Z += 1
                 target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
                 continue
@@ -684,7 +704,9 @@ class Pattern:
         moved_E = 0
         target = self._find_op_to_be_moved("E", skipnum=moved_E)
         while target != "end":
-            if (target == 0) or (isinstance(self.__seq[target - 1], (command.N, command.E))):
+            if (target == 0) or (
+                isinstance(self.__seq[target - 1], (command.N, command.E))
+            ):
                 moved_E += 1
                 target = self._find_op_to_be_moved("E", skipnum=moved_E)
                 continue
@@ -703,7 +725,9 @@ class Pattern:
                 if cmd.plane == "XY":
                     node = cmd.node
                     if cmd.t_domain:
-                        self.__seq.insert(pos + 1, command.S(node=node, domain=cmd.t_domain))
+                        self.__seq.insert(
+                            pos + 1, command.S(node=node, domain=cmd.t_domain)
+                        )
                         cmd.t_domain = []
                         pos += 1
             pos += 1
@@ -722,7 +746,9 @@ class Pattern:
         dependency = {i: set() for i in nodes}
         for cmd in self.__seq:
             if isinstance(cmd, command.M):
-                dependency[cmd.node] = dependency[cmd.node] | set(cmd.s_domain) | set(cmd.t_domain)
+                dependency[cmd.node] = (
+                    dependency[cmd.node] | set(cmd.s_domain) | set(cmd.t_domain)
+                )
             elif isinstance(cmd, command.X):
                 dependency[cmd.node] = dependency[cmd.node] | set(cmd.domain)
             elif isinstance(cmd, command.Z):
@@ -924,9 +950,11 @@ class Pattern:
         for i in meas_order:
             target = 0
             while True:
-                if isinstance(self.__seq[target], command.M) and (self.__seq[target].node == i):
-                        meas_cmds.append(self.__seq[target])
-                        break
+                if isinstance(self.__seq[target], command.M) and (
+                    self.__seq[target].node == i
+                ):
+                    meas_cmds.append(self.__seq[target])
+                    break
                 target += 1
         return meas_cmds
 
@@ -963,13 +991,12 @@ class Pattern:
         for cmd in self.__seq:
             if isinstance(cmd, command.M):
                 mplane = cmd.plane
-                if cmd.vop != 0:
-                    converted_mplane = ""
-                    clifford_measure = CLIFFORD_MEASURE[cmd.vop]
-                    for axis in mplane:
-                        converted = order[clifford_measure[order.index(axis)][0]]
-                        converted_mplane += converted
-                    mplane = "".join(sorted(converted_mplane))
+                converted_mplane = ""
+                clifford_measure = CLIFFORD_MEASURE[cmd.vop]
+                for axis in mplane:
+                    converted = order[clifford_measure[order.index(axis)][0]]
+                    converted_mplane += converted
+                mplane = "".join(sorted(converted_mplane))
                 meas_plane[cmd.node] = mplane
         return meas_plane
 
@@ -1142,9 +1169,8 @@ class Pattern:
         assert self.is_standard()
         Clist = []
         for i in range(len(self.__seq)):
-            correction_cmd = self.__seq[i]
-            if isinstance(correction_cmd, (command.X, command.Z)):
-                Clist.append(correction_cmd)
+            if isinstance(self.__seq[i], (command.X, command.Z)):
+                Clist.append(self.__seq[i])
         return Clist
 
     def parallelize_pattern(self):
@@ -1442,7 +1468,9 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]):
+    def __init__(
+        self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]
+    ):
         """
         Parameters
         ----------
@@ -1595,14 +1623,25 @@ class CommandNode:
         if cmd >= 0:
             return command.E(nodes=(self.index, cmd))
         elif cmd == -1:
-            return command.M(node=self.index, plane=self.Mprop[0], angle=self.Mprop[1], s_domain=self.Mprop[2], t_domain=self.Mprop[3], vop=self.Mprop[4])
+            return command.M(
+                node=self.index,
+                plane=self.Mprop[0],
+                angle=self.Mprop[1],
+                s_domain=self.Mprop[2],
+                t_domain=self.Mprop[3],
+                vop=self.Mprop[4],
+            )
         elif cmd == -2:
             if self.seq.count(-2) > 1:
-                raise NotImplementedError("Patterns with more than one X corrections are not supported")
+                raise NotImplementedError(
+                    "Patterns with more than one X corrections are not supported"
+                )
             return command.X(node=self.index, domain=self.Xsignal)
         elif cmd == -3:
             if self.seq.count(-3) > 1:
-                raise NotImplementedError("Patterns with more than one Z corrections are not supported")
+                raise NotImplementedError(
+                    "Patterns with more than one Z corrections are not supported"
+                )
             return command.Z(node=self.index, domain=self.Zsignal)
         elif cmd == -4:
             return command.C(node=self.index, cliff_index=self.vop)
@@ -1615,7 +1654,12 @@ class CommandNode:
         signal_destination : set
             Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
         """
-        signal_destination = set(self.Mprop[2]) | set(self.Mprop[3]) | set(self.Xsignal) | set(self.Zsignal)
+        signal_destination = (
+            set(self.Mprop[2])
+            | set(self.Mprop[3])
+            | set(self.Xsignal)
+            | set(self.Zsignal)
+        )
         return signal_destination
 
     def get_signal_destination_dict(self):
@@ -1675,7 +1719,10 @@ class LocalPattern:
         self.input_nodes = input_nodes
         self.output_nodes = output_nodes
         self.morder = morder
-        self.signal_destination = {i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()} for i in self.nodes.keys()}
+        self.signal_destination = {
+            i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()}
+            for i in self.nodes.keys()
+        }
 
     def is_standard(self):
         """Check whether the local pattern is standardized or not
@@ -1726,7 +1773,9 @@ class LocalPattern:
         for node_index in self.morder + self.output_nodes:
             signal = self.nodes[node_index].Mprop[3]
             self.nodes[node_index].Mprop[3] = []
-            for signal_label, destinated_nodes in self.signal_destination[node_index].items():
+            for signal_label, destinated_nodes in self.signal_destination[
+                node_index
+            ].items():
                 for destinated_node in destinated_nodes:
                     node = self.nodes[destinated_node]
                     if signal_label == "Ms":
@@ -1853,10 +1902,16 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
+    graph_state = GraphState(
+        nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx
+    )
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
-    if not leave_input and len(list(set(pattern.input_nodes) & set([cmd[0].node for cmd in to_measure]))) > 0:
+    if (
+        not leave_input
+        and len(list(set(pattern.input_nodes) & set([i[0].node for i in to_measure])))
+        > 0
+    ):
         new_inputs = []
     else:
         new_inputs = pattern.input_nodes
@@ -1866,12 +1921,18 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         # extract signals for adaptive angle.
         s_signal = 0
         t_signal = 0
-        if measurement_basis in ["+X", "-X"]:   # X meaurement is not affected by s_signal
+        if measurement_basis in [
+            "+X",
+            "-X",
+        ]:  # X meaurement is not affected by s_signal
             t_signal = np.sum([results[j] for j in pattern_cmd.t_domain])
         elif measurement_basis in ["+Y", "-Y"]:
             s_signal = np.sum([results[j] for j in pattern_cmd.s_domain])
             t_signal = np.sum([results[j] for j in pattern_cmd.t_domain])
-        elif measurement_basis in ["+Z", "-Z"]: # Z meaurement is not affected by t_signal
+        elif measurement_basis in [
+            "+Z",
+            "-Z",
+        ]:  # Z meaurement is not affected by t_signal
             s_signal = np.sum([results[j] for j in pattern_cmd.s_domain])
         else:
             raise ValueError("unknown Pauli measurement basis", measurement_basis)
@@ -1882,20 +1943,31 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
             graph_state.h(pattern_cmd.node)
         if int(t_signal % 2) == 1:  # equivalent to Z byproduct
             graph_state.z(pattern_cmd.node)
-        
         match measurement_basis:
-            case '+X':
-                results[pattern_cmd.node] = graph_state.measure_x(pattern_cmd.node, choice=0)
-            case '-X':
-                results[pattern_cmd.node] = 1 - graph_state.measure_x(pattern_cmd.node, choice=1)
-            case '+Y':
-                results[pattern_cmd.node] = graph_state.measure_y(pattern_cmd.node, choice=0)
-            case '-Y':
-                results[pattern_cmd.node] = 1 - graph_state.measure_y(pattern_cmd.node, choice=1)
-            case '+Z':
-                results[pattern_cmd.node] = graph_state.measure_z(pattern_cmd.node, choice=0)
-            case '-Z':
-                results[pattern_cmd.node] = 1 - graph_state.measure_z(pattern_cmd.node, choice=1)
+            case "+X":
+                results[pattern_cmd.node] = graph_state.measure_x(
+                    pattern_cmd.node, choice=0
+                )
+            case "-X":
+                results[pattern_cmd.node] = 1 - graph_state.measure_x(
+                    pattern_cmd.node, choice=1
+                )
+            case "+Y":
+                results[pattern_cmd.node] = graph_state.measure_y(
+                    pattern_cmd.node, choice=0
+                )
+            case "-Y":
+                results[pattern_cmd.node] = 1 - graph_state.measure_y(
+                    pattern_cmd.node, choice=1
+                )
+            case "+Z":
+                results[pattern_cmd.node] = graph_state.measure_z(
+                    pattern_cmd.node, choice=0
+                )
+            case "-Z":
+                results[pattern_cmd.node] = 1 - graph_state.measure_z(
+                    pattern_cmd.node, choice=1
+                )
             case _:
                 raise ValueError("unknown Pauli measurement basis", measurement_basis)
 
@@ -1961,12 +2033,14 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     if not pattern.is_standard():
         pattern.standardize()
     m_commands = pattern.get_measurement_commands()
-    pauli_node = []
+    pauli_node: list[tuple[command.M, str]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
-    non_pauli_node = []
+    non_pauli_node: list[int] = []
     for cmd in m_commands:
         pm = is_pauli_measurement(cmd, ignore_vop=True)
-        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):  # Pauli measurement to be removed
+        if pm is not None and (
+            cmd.node not in pattern.input_nodes or not leave_input
+        ):  # Pauli measurement to be removed
             if pm in ["+X", "-X"]:
                 t_cond = np.any(np.isin(cmd.t_domain, np.array(non_pauli_node)))
                 if t_cond:  # cmd depend on non-Pauli measurement
@@ -2106,7 +2180,9 @@ def cmd_to_qasm3(cmd):
                 yield "int s" + str(qubit) + " = 0;\n"
                 for sid in sdomain:
                     yield "s" + str(qubit) + " += c" + str(sid) + ";\n"
-                yield "theta" + str(qubit) + " += (-1)**(s" + str(qubit) + " % 2) * (" + str(alpha) + " * pi);\n"
+                yield "theta" + str(qubit) + " += (-1)**(s" + str(
+                    qubit
+                ) + " % 2) * (" + str(alpha) + " * pi);\n"
             if tdomain != []:
                 yield "int t" + str(qubit) + " = 0;\n"
                 for tid in tdomain:

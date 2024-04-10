@@ -86,10 +86,14 @@ def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
     if sig == "ginibre":
         sig = 1.0 / np.sqrt(2 * dim)
 
-    return np.sum(np.random.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
+    return np.sum(
+        np.random.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1
+    )
 
 
-def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
+def rand_channel_kraus(
+    dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)
+) -> KrausChannel:
     """
     Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
@@ -117,13 +121,17 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
         raise TypeError("The rank of a Kraus expansion must be an integer.")
 
     if not 1 <= rank:
-        raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
+        raise ValueError(
+            "The rank of a Kraus expansion must be greater or equal than 1."
+        )
 
     pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
     Hmat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
     kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(Hmat))
 
-    return KrausChannel([{"coef": 1.0 + 0.0 * 1j, "operator": kraus_list[i]} for i in range(rank)])
+    return KrausChannel(
+        [{"coef": 1.0 + 0.0 * 1j, "operator": kraus_list[i]} for i in range(rank)]
+    )
 
 
 # or merge with previous with a "pauli" kwarg?
@@ -145,7 +153,9 @@ def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
         if not isinstance(rank, int):
             raise TypeError("The rank of a Kraus expansion must be an integer.")
         if not 1 <= rank:
-            raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
+            raise ValueError(
+                "The rank of a Kraus expansion must be an integer greater or equal than 1."
+            )
 
     # full probability has to have dim**2 operators.
     prob_list = np.zeros(dim**2)

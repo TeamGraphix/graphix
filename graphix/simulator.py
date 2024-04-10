@@ -57,8 +57,13 @@ class PatternSimulator:
             self.noise_model = None
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         # TODO or just do the noiseless sim with a warning?
-        elif backend in {"statevector", "tensornetwork", "mps"} and noise_model is not None:
-            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
+        elif (
+            backend in {"statevector", "tensornetwork", "mps"}
+            and noise_model is not None
+        ):
+            raise ValueError(
+                f"The backend {backend} doesn't support noise but noisemodel was provided."
+            )
         else:
             raise ValueError("Unknown backend.")
         self.pattern = pattern
@@ -106,9 +111,13 @@ class PatternSimulator:
                 match cmd:
                     case N(node=i):
                         self.backend.add_nodes([i])
-                        self.backend.apply_channel(self.noise_model.prepare_qubit(), [i])
+                        self.backend.apply_channel(
+                            self.noise_model.prepare_qubit(), [i]
+                        )
                     case E(nodes=e):
-                        self.backend.entangle_nodes(e)  # for some reaon entangle doesn't get the whole command
+                        self.backend.entangle_nodes(
+                            e
+                        )  # for some reaon entangle doesn't get the whole command
                         self.backend.apply_channel(self.noise_model.entangle(), e)
                     case M(node=i, plane=p, angle=a, s_domain=s, t_domain=t, vop=v):
                         self.backend.apply_channel(self.noise_model.measure(), [i])
@@ -116,15 +125,27 @@ class PatternSimulator:
                         self.noise_model.confuse_result(cmd)
                     case X(node=i, domain=d):
                         self.backend.correct_byproduct(cmd)
-                        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
-                            self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
+                        if (
+                            np.mod(np.sum([self.results[j] for j in cmd.domain]), 2)
+                            == 1
+                        ):
+                            self.backend.apply_channel(
+                                self.noise_model.byproduct_x(), [cmd.node]
+                            )
                     case Z(node=i, domain=d):
                         self.backend.correct_byproduct(cmd)
-                        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
-                            self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
+                        if (
+                            np.mod(np.sum([self.results[j] for j in cmd.domain]), 2)
+                            == 1
+                        ):
+                            self.backend.apply_channel(
+                                self.noise_model.byproduct_z(), [cmd.node]
+                            )
                     case C(node=i, cliff_index=c):
                         self.backend.apply_clifford(cmd)
-                        self.backend.apply_channel(self.noise_model.clifford(), [cmd.node])
+                        self.backend.apply_channel(
+                            self.noise_model.clifford(), [cmd.node]
+                        )
                     case T():
                         self.noise_model.tick_clock()
                     case _:

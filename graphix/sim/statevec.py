@@ -7,6 +7,7 @@ from graphix.ops import Ops
 import graphix.sim.base_backend
 from graphix import command
 
+
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
@@ -36,7 +37,9 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
+            raise ValueError(
+                "Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again"
+            )
         super().__init__(pr_calc)
 
     def qubit_dim(self):
@@ -121,6 +124,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
                     self.node_index[move_from],
                     self.node_index[i],
                 )
+
 
 # This function is no longer used
 def meas_op(angle, vop=0, plane="XY", choice=0):
@@ -233,6 +237,7 @@ class Statevec:
 
     def dims(self):
         return self.psi.shape
+
     def ptrace(self, qargs):
         """Perform partial trace of the selected qubits.
 
@@ -254,6 +259,7 @@ class Statevec:
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
+
     def remove_qubit(self, qarg: int):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
@@ -297,7 +303,11 @@ class Statevec:
         """
         assert not np.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        self.psi = (
+            psi
+            if not np.isclose(_get_statevec_norm(psi), 0)
+            else self.psi.take(indices=1, axis=qarg)
+        )
         self.normalize()
 
     def entangle(self, edge: tuple[int, int]):

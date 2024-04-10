@@ -30,7 +30,9 @@ class TestPattern(unittest.TestCase):
         np.testing.assert_equal(pattern.is_standard(), True)
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        np.testing.assert_almost_equal(
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+        )
 
     def test_minimize_space(self):
         nqubits = 5
@@ -41,7 +43,9 @@ class TestPattern(unittest.TestCase):
         pattern.minimize_space()
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        np.testing.assert_almost_equal(
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+        )
 
     @parameterized.expand([(False), (True)])
     def test_minimize_space_with_gflow(self, use_rustworkx):
@@ -58,7 +62,9 @@ class TestPattern(unittest.TestCase):
         pattern.minimize_space()
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        np.testing.assert_almost_equal(
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+        )
 
     def test_minimize_space_graph_maxspace_with_flow(self):
         max_qubits = 20
@@ -80,7 +86,9 @@ class TestPattern(unittest.TestCase):
         pattern.parallelize_pattern()
         state = circuit.simulate_statevector()
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        np.testing.assert_almost_equal(
+            np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+        )
 
     def test_shift_signals(self):
         nqubits = 2
@@ -93,7 +101,9 @@ class TestPattern(unittest.TestCase):
             np.testing.assert_equal(pattern.is_standard(), True)
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+            )
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment(self, use_rustworkx):
@@ -110,7 +120,9 @@ class TestPattern(unittest.TestCase):
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+            )
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_leave_input(self, use_rustworkx):
@@ -123,11 +135,15 @@ class TestPattern(unittest.TestCase):
             pattern = circuit.transpile()
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
+            pattern.perform_pauli_measurements(
+                use_rustworkx=use_rustworkx, leave_input=True
+            )
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+            )
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_opt_gate(self, use_rustworkx):
@@ -144,7 +160,9 @@ class TestPattern(unittest.TestCase):
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+            )
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurment_opt_gate_transpiler(self, use_rustworkx):
@@ -161,10 +179,14 @@ class TestPattern(unittest.TestCase):
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+            )
 
     @parameterized.expand([(False), (True)])
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self, use_rustworkx):
+    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
+        self, use_rustworkx
+    ):
         if sys.modules.get("rustworkx") is None and use_rustworkx is True:
             self.skipTest("rustworkx not installed")
         nqubits = 3
@@ -176,7 +198,9 @@ class TestPattern(unittest.TestCase):
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1
+            )
 
     @parameterized.expand([(False), (True)])
     def test_pauli_measurement(self, use_rustworkx):
@@ -232,7 +256,9 @@ class TestPattern(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
+        pattern.perform_pauli_measurements(
+            use_rustworkx=use_rustworkx, leave_input=True
+        )
 
         isolated_nodes = pattern.get_isolated_nodes()
         # There is no isolated node.
@@ -277,7 +303,7 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
-class TestLocalPattern():
+class TestLocalPattern:
     def test_assert_equal_edge(self):
         test_case = [
             [(0, 1), (0, 1), True],
@@ -351,7 +377,9 @@ class TestLocalPattern():
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1
+            )
 
     def test_shift_signals(self):
         nqubits = 5
@@ -367,7 +395,9 @@ class TestLocalPattern():
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1
+            )
 
     def test_standardize_and_shift_signals(self):
         nqubits = 5
@@ -380,7 +410,9 @@ class TestLocalPattern():
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1
+            )
 
     def test_mixed_pattern_operations(self):
         processes = [
@@ -408,7 +440,10 @@ class TestLocalPattern():
                 np.testing.assert_equal(pattern.is_standard(), True)
                 pattern.minimize_space()
                 state_p = pattern.simulate_pattern()
-                np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+                np.testing.assert_almost_equal(
+                    np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())),
+                    1,
+                )
 
     def test_opt_transpile_standardize(self):
         nqubits = 5
@@ -421,7 +456,9 @@ class TestLocalPattern():
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1
+            )
 
     def test_opt_transpile_shift_signals(self):
         nqubits = 5
@@ -435,7 +472,9 @@ class TestLocalPattern():
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            np.testing.assert_almost_equal(
+                np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1
+            )
 
     def test_node_is_standardized(self):
         ref_sequence = [

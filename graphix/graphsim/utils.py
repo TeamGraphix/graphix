@@ -24,7 +24,10 @@ def convert_rustworkx_to_networkx(graph: PyGraph) -> Graph:
         raise TypeError("graph must be a rustworkx PyGraph")
     node_list = graph.nodes()
     if not all(
-        isinstance(node, tuple) and len(node) == 2 and (int(node[0]) == node[0]) and isinstance(node[1], dict)
+        isinstance(node, tuple)
+        and len(node) == 2
+        and (int(node[0]) == node[0])
+        and isinstance(node[1], dict)
         for node in node_list
     ):
         raise TypeError("All the nodes in the graph must be tuple[int, dict]")

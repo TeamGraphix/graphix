@@ -91,7 +91,9 @@ class ComplexUnit:
         return COMPLEX_UNITS[not self.__sign][self.__im]
 
 
-COMPLEX_UNITS = [[ComplexUnit(sign, im) for im in (False, True)] for sign in (False, True)]
+COMPLEX_UNITS = [
+    [ComplexUnit(sign, im) for im in (False, True)] for sign in (False, True)
+]
 
 
 UNIT = COMPLEX_UNITS[False][False]
@@ -255,12 +257,17 @@ class Pauli:
 
 
 TABLE = [
-    [[Pauli(symbol, COMPLEX_UNITS[sign][im]) for im in (False, True)] for sign in (False, True)]
+    [
+        [Pauli(symbol, COMPLEX_UNITS[sign][im]) for im in (False, True)]
+        for sign in (False, True)
+    ]
     for symbol in (IXYZ.I, IXYZ.X, IXYZ.Y, IXYZ.Z)
 ]
 
 
-LIST = [pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in im_list]
+LIST = [
+    pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in im_list
+]
 
 
 def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
@@ -287,7 +294,9 @@ class MeasureUpdate(pydantic.BaseModel):
     add_term: float
 
     @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford: "graphix.clifford.Clifford") -> "MeasureUpdate":
+    def compute(
+        plane: Plane, s: bool, t: bool, clifford: "graphix.clifford.Clifford"
+    ) -> "MeasureUpdate":
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford = graphix.clifford.X @ clifford

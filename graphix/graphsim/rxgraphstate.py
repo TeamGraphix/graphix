@@ -14,7 +14,12 @@ class RXGraphState(BaseGraphState):
     See :class:`~graphix.graphsim.basegraphstate.BaseGraphState` for more details.
     """
 
-    def __init__(self, nodes: list[int] = None, edges: list[tuple[int, int]] = None, vops: dict[int, int] = None):
+    def __init__(
+        self,
+        nodes: list[int] = None,
+        edges: list[tuple[int, int]] = None,
+        vops: dict[int, int] = None,
+    ):
         """
         Parameters
         ----------
@@ -81,7 +86,9 @@ class RXGraphState(BaseGraphState):
             adjacency_dict = self._graph.adj(nidx)
             new_adjacency_dict = {}
             for nidx, _ in adjacency_dict.items():
-                new_adjacency_dict[self.nodes.get_node_index(nidx)] = {}  # replace None with {}
+                new_adjacency_dict[
+                    self.nodes.get_node_index(nidx)
+                ] = {}  # replace None with {}
             ret.append((n, new_adjacency_dict))
         return iter(ret)
 
@@ -106,7 +113,9 @@ class RXGraphState(BaseGraphState):
             self.remove_edge(e[0], e[1])
 
     def add_nodes_from(self, nodes: list[int]):
-        node_indices = self._graph.add_nodes_from([(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes])
+        node_indices = self._graph.add_nodes_from(
+            [(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes]
+        )
         for nidx in node_indices:
             self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
 
@@ -114,15 +123,21 @@ class RXGraphState(BaseGraphState):
         for u, v in edges:
             # adding edges may add new nodes
             if u not in self.nodes:
-                nidx = self._graph.add_node((u, {"loop": False, "sign": False, "hollow": False}))
+                nidx = self._graph.add_node(
+                    (u, {"loop": False, "sign": False, "hollow": False})
+                )
                 self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
             if v not in self.nodes:
-                nidx = self._graph.add_node((v, {"loop": False, "sign": False, "hollow": False}))
+                nidx = self._graph.add_node(
+                    (v, {"loop": False, "sign": False, "hollow": False})
+                )
                 self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
             uidx = self.nodes.get_node_index(u)
             vidx = self.nodes.get_node_index(v)
             eidx = self._graph.add_edge(uidx, vidx, None)
-            self.edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
+            self.edges.add_edge(
+                (self._graph[uidx][0], self._graph[vidx][0]), None, eidx
+            )
 
     def local_complement(self, node):
         g = self.subgraph(list(self.neighbors(node)))

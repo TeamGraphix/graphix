@@ -1,6 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel
 
+
 class InstructionName(Enum):
     CNOT = "CNOT"
     SWAP = "SWAP"
@@ -18,15 +19,16 @@ class InstructionName(Enum):
     XC = "XC"
     ZC = "ZC"
 
+
 class Instruction(BaseModel):
     """
     Base circuit instruction class. Used to represent any kind of instruction.
     If an instruction doesn't need some attributes like control, domain or angle, they are juste setted to None.
     """
+
     name: InstructionName
     target: int | tuple[int, int]
-    control: int | list[int] | None
-    angle: float | None
+    control: int | list[int] | None = None
+    angle: float | None = None
     domain: list[int] = []
-    meas_index: int | None
-
+    meas_index: int | None = None

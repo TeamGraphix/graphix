@@ -4,7 +4,13 @@ import numpy as np
 
 import graphix.random_objects as randobj
 from graphix.channels import KrausChannel
-from graphix.linalg_validations import check_data_dims, check_hermitian, check_psd, check_square, check_unit_trace
+from graphix.linalg_validations import (
+    check_data_dims,
+    check_hermitian,
+    check_psd,
+    check_square,
+    check_unit_trace,
+)
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.ops import Ops
 
@@ -167,7 +173,9 @@ class TestUtilities(unittest.TestCase):
 
         nqb = np.random.randint(2, 6)
         rk = np.random.randint(1, 2**nqb + 1)
-        Pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
+        Pauli_channel = randobj.rand_Pauli_channel_kraus(
+            dim=2**nqb, rank=rk
+        )  # default is full rank
 
         assert isinstance(Pauli_channel, KrausChannel)
         assert Pauli_channel.nqubit == nqb
