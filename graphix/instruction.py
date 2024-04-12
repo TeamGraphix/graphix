@@ -22,13 +22,171 @@ class InstructionName(Enum):
 
 class Instruction(BaseModel):
     """
-    Base circuit instruction class. Used to represent any kind of instruction.
-    If an instruction doesn't need some attributes like control, domain or angle, they are juste setted to None.
+    Circuit instruction base class model.
     """
 
     name: InstructionName
-    target: int | tuple[int, int]
-    control: int | list[int] | None = None
-    angle: float | None = None
-    domain: list[int] = []
-    meas_index: int | None = None
+    meas_index: int = None
+
+
+class OneQubitInstruction(Instruction):
+    """
+    One qubit circuit instruction base class model.
+    """
+
+    target: int
+
+
+class CorrectionInstruction(OneQubitInstruction):
+    """
+    Correction instruction base class model.
+    """
+
+    domain: list[int]
+
+
+class RotationInstruction(OneQubitInstruction):
+    """
+    Rotation instruction base class model.
+    """
+
+    angle: float
+
+
+class OneControlInstruction(Instruction):
+    """
+    One control instruction base class model.
+    """
+
+    control: int
+    target: int
+
+
+class TwoControlsInstruction(Instruction):
+    """
+    Two controls instruction base class model.
+    """
+
+    controls: tuple[int, int]
+    target: int
+
+
+class XC(CorrectionInstruction):
+    """
+    X correction circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.XC
+
+
+class ZC(CorrectionInstruction):
+    """
+    Z correction circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.ZC
+
+
+class CCX(TwoControlsInstruction):
+    """
+    Toffoli circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.CCX
+
+
+class RZZ(OneControlInstruction, RotationInstruction):
+    """
+    RZZ circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.RZZ
+
+
+class CNOT(OneControlInstruction):
+    """
+    CNOT circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.CNOT
+
+
+class SWAP(Instruction):
+    """
+    SWAP circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.SWAP
+    targets: tuple[int, int]
+
+
+class H(OneQubitInstruction):
+    """
+    H circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.H
+
+
+class S(OneQubitInstruction):
+    """
+    S circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.S
+
+
+class X(OneQubitInstruction):
+    """
+    X circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.X
+
+
+class Y(OneQubitInstruction):
+    """
+    Y circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.Y
+
+
+class Z(OneQubitInstruction):
+    """
+    Z circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.Z
+
+
+class I(OneQubitInstruction):
+    """
+    I circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.I
+
+
+class RX(RotationInstruction):
+    """
+    X rotation circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.RX
+
+
+class RY(RotationInstruction):
+    """
+    Y rotation circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.RY
+
+
+class RZ(RotationInstruction):
+    """
+    Z rotation circuit instruction.
+    """
+
+    name: InstructionName = InstructionName.RZ

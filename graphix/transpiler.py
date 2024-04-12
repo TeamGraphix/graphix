@@ -15,6 +15,7 @@ from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
 from graphix import command
 from graphix.command import N, M, E, X, Z
+from graphix import instruction
 from graphix.instruction import Instruction, InstructionName
 
 
@@ -54,9 +55,7 @@ class Circuit:
         assert control in np.arange(self.width)
         assert target in np.arange(self.width)
         assert control != target
-        self.instruction.append(
-            Instruction(name=InstructionName.CNOT, control=control, target=target)
-        )
+        self.instruction.append(instruction.CNOT(control=control, target=target))
 
     def swap(self, qubit1: int, qubit2: int):
         """SWAP gate
@@ -71,9 +70,7 @@ class Circuit:
         assert qubit1 in np.arange(self.width)
         assert qubit2 in np.arange(self.width)
         assert qubit1 != qubit2
-        self.instruction.append(
-            Instruction(name=InstructionName.SWAP, target=(qubit1, qubit2))
-        )
+        self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)))
 
     def h(self, qubit: int):
         """Hadamard gate
@@ -84,7 +81,7 @@ class Circuit:
             target qubit
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(Instruction(name=InstructionName.H, target=qubit))
+        self.instruction.append(instruction.H(target=qubit))
 
     def s(self, qubit: int):
         """S gate
@@ -95,7 +92,7 @@ class Circuit:
             target qubit
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(Instruction(name=InstructionName.S, target=qubit))
+        self.instruction.append(instruction.S(target=qubit))
 
     def x(self, qubit):
         """Pauli X gate
@@ -106,7 +103,7 @@ class Circuit:
             target qubit
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(Instruction(name=InstructionName.X, target=qubit))
+        self.instruction.append(instruction.X(target=qubit))
 
     def y(self, qubit: int):
         """Pauli Y gate
@@ -117,7 +114,7 @@ class Circuit:
             target qubit
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(Instruction(name=InstructionName.Y, target=qubit))
+        self.instruction.append(instruction.Y(target=qubit))
 
     def z(self, qubit: int):
         """Pauli Z gate
@@ -128,7 +125,7 @@ class Circuit:
             target qubit
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(Instruction(name=InstructionName.Z, target=qubit))
+        self.instruction.append(instruction.Z(target=qubit))
 
     def rx(self, qubit: int, angle: float):
         """X rotation gate
@@ -141,9 +138,7 @@ class Circuit:
             rotation angle in radian
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(
-            Instruction(name=InstructionName.RX, target=qubit, angle=angle)
-        )
+        self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
     def ry(self, qubit: int, angle: float):
         """Y rotation gate
@@ -156,9 +151,7 @@ class Circuit:
             angle in radian
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(
-            Instruction(name=InstructionName.RY, target=qubit, angle=angle)
-        )
+        self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
     def rz(self, qubit: int, angle: float):
         """Z rotation gate
@@ -171,9 +164,7 @@ class Circuit:
             rotation angle in radian
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(
-            Instruction(name=InstructionName.RZ, target=qubit, angle=angle)
-        )
+        self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
     def rzz(self, control: int, target: int, angle: float):
         r"""ZZ-rotation gate.
@@ -197,9 +188,7 @@ class Circuit:
         assert control in np.arange(self.width)
         assert target in np.arange(self.width)
         self.instruction.append(
-            Instruction(
-                name=InstructionName.RZZ, control=control, target=target, angle=angle
-            )
+            instruction.RZZ(control=control, target=target, angle=angle)
         )
 
     def ccx(self, control1: int, control2: int, target: int):
@@ -217,10 +206,9 @@ class Circuit:
         assert control1 in np.arange(self.width)
         assert control2 in np.arange(self.width)
         assert target in np.arange(self.width)
+        assert control1 != control2 and control1 != target and control2 != target
         self.instruction.append(
-            Instruction(
-                name=InstructionName.CCX, control=[control1, control2], target=target
-            )
+            instruction.CCX(controls=(control1, control2), target=target)
         )
 
     def i(self, qubit: int):
@@ -232,7 +220,7 @@ class Circuit:
             target qubit
         """
         assert qubit in np.arange(self.width)
-        self.instruction.append(Instruction(name=InstructionName.I, target=qubit))
+        self.instruction.append(instruction.I(target=qubit))
 
     def transpile(self, opt: bool = False):
         """gate-to-MBQC transpile function.
@@ -261,9 +249,9 @@ class Circuit:
                     pattern.extend(seq)
                     Nnode += 2
                 case InstructionName.SWAP:
-                    out[instr.target[0]], out[instr.target[1]] = (
-                        out[instr.target[1]],
-                        out[instr.target[0]],
+                    out[instr.targets[0]], out[instr.targets[1]] = (
+                        out[instr.targets[1]],
+                        out[instr.targets[0]],
                     )
                 case InstructionName.I:
                     pass
@@ -342,13 +330,13 @@ class Circuit:
                     if opt:
                         ancilla = [Nnode + i for i in range(11)]
                         (
-                            out[instr.control[0]],
-                            out[instr.control[1]],
+                            out[instr.controls[0]],
+                            out[instr.controls[1]],
                             out[instr.target],
                             seq,
                         ) = self._ccx_command_opt(
-                            out[instr.control[0]],
-                            out[instr.control[1]],
+                            out[instr.controls[0]],
+                            out[instr.controls[1]],
                             out[instr.target],
                             ancilla,
                         )
@@ -357,13 +345,13 @@ class Circuit:
                     else:
                         ancilla = [Nnode + i for i in range(18)]
                         (
-                            out[instr.control[0]],
-                            out[instr.control[1]],
+                            out[instr.controls[0]],
+                            out[instr.controls[1]],
                             out[instr.target],
                             seq,
                         ) = self._ccx_command(
-                            out[instr.control[0]],
-                            out[instr.control[1]],
+                            out[instr.controls[0]],
+                            out[instr.controls[1]],
                             out[instr.target],
                             ancilla,
                         )
@@ -393,7 +381,7 @@ class Circuit:
         #    self._N.append(["N", i])
         self._M: list[M] = []
         self._E: list[E] = []
-        self._instr: list[Instruction] = []
+        self._instr: list[Instr] = []
         Nnode = self.width
         inputs = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
@@ -410,30 +398,27 @@ class Circuit:
                     Nnode += 2
                     self._instr.append(instr)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[7].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[8].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.control,
                             domain=seq[9].domain,
                         )
                     )
                 case InstructionName.SWAP:
-                    out[instr.target[0]], out[instr.target[1]] = (
-                        out[instr.target[1]],
-                        out[instr.target[0]],
+                    out[instr.targets[0]], out[instr.targets[1]] = (
+                        out[instr.targets[1]],
+                        out[instr.targets[0]],
                     )
                     self._instr.append(instr)
                 case InstructionName.I:
@@ -446,8 +431,7 @@ class Circuit:
                     self._M.append(seq[2])
                     self._instr.append(instr)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[3].domain,
                         )
@@ -461,15 +445,13 @@ class Circuit:
                     self._M.extend(seq[4:6])
                     self._instr.append(instr)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[6].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[7].domain,
                         )
@@ -483,15 +465,13 @@ class Circuit:
                     self._M.extend(seq[4:6])
                     self._instr.append(instr)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[6].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[7].domain,
                         )
@@ -505,15 +485,13 @@ class Circuit:
                     self._M.extend(seq[8:12])
                     self._instr.append(instr)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[12].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[13].domain,
                         )
@@ -527,15 +505,13 @@ class Circuit:
                     self._M.extend(seq[4:6])
                     self._instr.append(instr)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[6].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[7].domain,
                         )
@@ -555,15 +531,13 @@ class Circuit:
                     )  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[6].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[7].domain,
                         )
@@ -583,15 +557,13 @@ class Circuit:
                     )  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.XC,
+                        instruction.XC(
                             target=instr.target,
                             domain=seq[12].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[13].domain,
                         )
@@ -612,8 +584,7 @@ class Circuit:
                         )  # index of arb angle measurement command
                         self._instr.append(instr_)
                         self._instr.append(
-                            Instruction(
-                                name=InstructionName.ZC,
+                            instruction.ZC(
                                 target=instr.target,
                                 domain=seq[3].domain,
                             )
@@ -633,15 +604,13 @@ class Circuit:
                         )  # index of arb angle measurement command
                         self._instr.append(instr_)
                         self._instr.append(
-                            Instruction(
-                                name=InstructionName.XC,
+                            instruction.XC(
                                 target=instr.target,
                                 domain=seq[6].domain,
                             )
                         )
                         self._instr.append(
-                            Instruction(
-                                name=InstructionName.ZC,
+                            instruction.ZC(
                                 target=instr.target,
                                 domain=seq[7].domain,
                             )
@@ -662,15 +631,13 @@ class Circuit:
                     )  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.target,
                             domain=seq[4].domain,
                         )
                     )
                     self._instr.append(
-                        Instruction(
-                            name=InstructionName.ZC,
+                        instruction.ZC(
                             target=instr.control,
                             domain=seq[5].domain,
                         )
@@ -727,11 +694,11 @@ class Circuit:
         swap_instr = self._instr[target + 1]
         assert correction_instr.name in [InstructionName.XC, InstructionName.ZC]
         assert swap_instr.name == InstructionName.SWAP
-        if correction_instr.target == swap_instr.target[0]:
-            correction_instr.target = swap_instr.target[1]
+        if correction_instr.target == swap_instr.targets[0]:
+            correction_instr.target = swap_instr.targets[1]
             self._commute_with_following(target)
-        elif correction_instr.target == swap_instr.target[1]:
-            correction_instr.target = swap_instr.target[0]
+        elif correction_instr.target == swap_instr.targets[1]:
+            correction_instr.target = swap_instr.targets[0]
             self._commute_with_following(target)
         else:
             self._commute_with_following(target)
@@ -746,8 +713,7 @@ class Circuit:
             correction_instr.name == InstructionName.XC
             and correction_instr.target == cnot_instr.control
         ):  # control
-            new_cmd = Instruction(
-                name=InstructionName.XC,
+            new_cmd = instruction.XC(
                 target=cnot_instr.target,
                 domain=correction_instr.domain,
             )
@@ -758,8 +724,7 @@ class Circuit:
             correction_instr.name == InstructionName.ZC
             and correction_instr.target == cnot_instr.target
         ):  # target
-            new_cmd = Instruction(
-                name=InstructionName.ZC,
+            new_cmd = instruction.ZC(
                 target=cnot_instr.control,
                 domain=correction_instr.domain,
             )
@@ -796,8 +761,7 @@ class Circuit:
                 # changes to Y = XZ
                 self._instr.insert(
                     target + 1,
-                    Instruction(
-                        name=InstructionName.ZC,
+                    instruction.ZC(
                         target=correction_instr.target,
                         domain=correction_instr.domain,
                     ),
@@ -1613,7 +1577,7 @@ class Circuit:
                 case InstructionName.CNOT:
                     state.CNOT((instr.control, instr.target))
                 case InstructionName.SWAP:
-                    state.swap(instr.target)
+                    state.swap(instr.targets)
                 case InstructionName.I:
                     pass
                 case InstructionName.S:
@@ -1636,7 +1600,7 @@ class Circuit:
                     state.evolve(Ops.Rzz(instr.angle), [instr.control, instr.target])
                 case InstructionName.CCX:
                     state.evolve(
-                        Ops.ccx, [instr.control[0], instr.control[1], instr.target]
+                        Ops.ccx, [instr.controls[0], instr.controls[1], instr.target]
                     )
                 case _:
                     raise ValueError(f"Unknown instruction: {instr.name}")
