@@ -53,22 +53,20 @@ class RotationInstruction(OneQubitInstruction):
     angle: float
 
 
-class OneControlInstruction(Instruction):
+class OneControlInstruction(OneQubitInstruction):
     """
     One control instruction base class model.
     """
 
     control: int
-    target: int
 
 
-class TwoControlsInstruction(Instruction):
+class TwoControlsInstruction(OneQubitInstruction):
     """
     Two controls instruction base class model.
     """
 
     controls: tuple[int, int]
-    target: int
 
 
 class XC(CorrectionInstruction):
