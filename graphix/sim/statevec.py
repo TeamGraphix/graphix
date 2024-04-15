@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 import graphix.sim.base_backend
 from numpy.typing import NDArray
