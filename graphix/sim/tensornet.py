@@ -17,7 +17,7 @@ class TensorNetworkBackend:
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, backend="tensornetwork", graph_prep="auto", **kwargs):
+    def __init__(self, pattern, graph_prep="auto", **kwargs):
         """
 
         Parameters
@@ -52,7 +52,6 @@ class TensorNetworkBackend:
             isolated node indices
         """
         self.pattern = pattern
-        self.backend = backend
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
         if graph_prep in ["parallel", "sequential"]:

@@ -54,7 +54,7 @@ class PatternSimulator:
                 self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
         elif backend in {"tensornetwork", "mps", "eco-statevec"} and noise_model is None:
             self.noise_model = None
-            self.backend = TensorNetworkBackend(pattern, backend, **kwargs)
+            self.backend = TensorNetworkBackend(pattern, **kwargs)
         # TODO or just do the noiseless sim with a warning?
         elif backend in {"statevector", "tensornetwork", "mps", "eco-statevec"} and noise_model is not None:
             raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
