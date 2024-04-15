@@ -7,7 +7,6 @@ import numpy as np
 import quimb.tensor as qtn
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops, States
-from graphix.sim.statevec import Statevec
 from numpy.typing import NDArray
 from quimb.tensor import Tensor, TensorNetwork
 
@@ -541,13 +540,13 @@ class MBQCTensorNet(TensorNetwork):
             tn = self.copy()
             output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
             psi = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
-            return Statevec(psi=psi)
+            return psi
 
         tn = self.copy()
         tn_simplified = tn.full_simplify("ADCR")
         output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
         psi = tn_simplified.contract(output_inds=output_inds, **kwagrs)
-        return psi if path_info else psi.data.reshape(-1)
+        return psi.data.reshape(-1)
 
     def get_norm(self, **kwagrs):
         """Calculate the norm of the state.
