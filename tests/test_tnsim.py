@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import unittest
 
-import graphix.graphix.random_circuit as rc
+import graphix.random_circuit as rc
 import numpy as np
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
