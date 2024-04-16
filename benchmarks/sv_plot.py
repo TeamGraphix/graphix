@@ -7,7 +7,8 @@ data = np.loadtxt("sqrqcresults.txt", delimiter=",", skiprows=1)
 n_qubits = data[:, 0].astype(int)
 sv_sim = data[:, 1].astype(float)
 eco_sim = data[:, 2].astype(float)
-max_sp = data[:, 3].astype(int)
+eco_sim_wo_ctg = data[:, 3].astype(float)
+max_sp = data[:, 4].astype(int)
 
 # %%
 
@@ -18,11 +19,13 @@ ax1.set_xlabel("Original Circuit Size [qubit]")
 ax1.set_ylabel("Simulation time [sec]")
 ax1.set_yscale("log")
 ax1.scatter(n_qubits, sv_sim, marker="x", label="MBQC Statevector(minimizing sp)")
-ax1.scatter(n_qubits, eco_sim, marker="x", label="MBQC TN base")
+ax1.scatter(n_qubits, eco_sim, marker="x", label="MBQC TN base(with cotengra)")
+ax1.scatter(n_qubits, eco_sim_wo_ctg, marker="x", label="MBQC TN base(w/o cotengra)")
 ax1.tick_params(axis="y")
 ax1.legend(loc="upper left")
 ax1.set_title("Simulation time(Square RQC)")
 plt.grid(True, which="Major")
+
 ax2 = ax1.twinx()  # Instantiate a second axes that shares the same x-axis
 color = "tab:blue"
 ax2.set_ylabel("Max Space [qubit]")  # We already handled the x-label with ax1

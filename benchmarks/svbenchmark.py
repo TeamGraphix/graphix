@@ -17,6 +17,7 @@ n_qubit_list = list(range(2, 10))
 
 sv_sim = []
 eco_sim = []
+eco_sim_wo_ctg = []
 max_space_ls = []
 
 for n_qubit in n_qubit_list:
@@ -49,4 +50,24 @@ for n_qubit in n_qubit_list:
     )
     end = perf_counter()
     eco_sim.append(end - start)
+    del tn_sv
+
+    # tn without cotengra optimizer
+    start = perf_counter()
+    tn_sv = tn.to_statevector(
+        backend="numpy",
+        skip=False,
+        optimize=None,
+    )
+    end = perf_counter()
+    eco_sim_wo_ctg.append(end - start)
     del tn_sv, tn
+
+# %%
+# write results into a file
+# with open("sqrqcresults.txt", "w") as f:
+#     f.write("n_qubit, sv_sim, eco_sim, eco_sim_wo_ctg, max_space_ls\n")
+#     for i in range(len(n_qubit_list)):
+#         f.write(
+#             f"{n_qubit_list[i]}, {sv_sim[i]}, {eco_sim[i]}, {eco_sim_wo_ctg[i]}, {max_space_ls[i]}\n"
+#         )
