@@ -169,7 +169,7 @@ class TensorNetworkBackend:
         """
         if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
             op = Ops.x if isinstance(cmd, command.X) else Ops.z
-            self.state.evolve_single(cmd.node, op, cmd.name)
+            self.state.evolve_single(cmd.node, op, cmd.kind)
 
     def apply_clifford(self, cmd: command.C):
         """Apply single-qubit Clifford gate
@@ -181,7 +181,7 @@ class TensorNetworkBackend:
             See https://arxiv.org/pdf/2212.11975.pdf for the detail.
         """
         node_op = CLIFFORD[cmd.cliff_index]
-        self.state.evolve_single(cmd.node, node_op, cmd.name)
+        self.state.evolve_single(cmd.node, node_op, cmd.kind)
 
     def finalize(self):
         pass

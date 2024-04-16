@@ -1,11 +1,30 @@
 from pydantic import BaseModel
+import enum
+
+class InstructionKind(str, enum.Enum):
+    XC = 'XC'
+    ZC = 'ZC'
+    CCX = 'CCX'
+    RZZ = 'RZZ'
+    CNOT = 'CNOT'
+    SWAP = 'SWAP'
+    H = 'H'
+    S = 'S'
+    X = 'X'
+    Y = 'Y'
+    Z = 'Z'
+    I = 'I'
+    RX = 'RX'
+    RY = 'RY'
+    RZ = 'RZ'
 
 
 class Instruction(BaseModel):
     """
     Circuit instruction base class model.
     """
-
+    
+    kind: InstructionKind = None
     meas_index: int = None
 
 
@@ -54,7 +73,7 @@ class XC(CorrectionInstruction):
     X correction circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.XC
 
 
 class ZC(CorrectionInstruction):
@@ -62,7 +81,7 @@ class ZC(CorrectionInstruction):
     Z correction circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.ZC
 
 
 class CCX(TwoControlsInstruction):
@@ -70,7 +89,7 @@ class CCX(TwoControlsInstruction):
     Toffoli circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.CCX
 
 
 class RZZ(OneControlInstruction, RotationInstruction):
@@ -78,7 +97,7 @@ class RZZ(OneControlInstruction, RotationInstruction):
     RZZ circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.RZZ
 
 
 class CNOT(OneControlInstruction):
@@ -86,7 +105,7 @@ class CNOT(OneControlInstruction):
     CNOT circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.CNOT
 
 
 class SWAP(Instruction):
@@ -94,6 +113,7 @@ class SWAP(Instruction):
     SWAP circuit instruction.
     """
 
+    kind: InstructionKind = InstructionKind.SWAP
     targets: tuple[int, int]
 
 
@@ -102,7 +122,7 @@ class H(OneQubitInstruction):
     H circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.H
 
 
 class S(OneQubitInstruction):
@@ -110,7 +130,7 @@ class S(OneQubitInstruction):
     S circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.S
 
 
 class X(OneQubitInstruction):
@@ -118,7 +138,7 @@ class X(OneQubitInstruction):
     X circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.X
 
 
 class Y(OneQubitInstruction):
@@ -126,7 +146,7 @@ class Y(OneQubitInstruction):
     Y circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.Y
 
 
 class Z(OneQubitInstruction):
@@ -134,7 +154,7 @@ class Z(OneQubitInstruction):
     Z circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.Z
 
 
 class I(OneQubitInstruction):
@@ -142,7 +162,7 @@ class I(OneQubitInstruction):
     I circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.I
 
 
 class RX(RotationInstruction):
@@ -150,7 +170,7 @@ class RX(RotationInstruction):
     X rotation circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.RX
 
 
 class RY(RotationInstruction):
@@ -158,7 +178,7 @@ class RY(RotationInstruction):
     Y rotation circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.RY
 
 
 class RZ(RotationInstruction):
@@ -166,4 +186,4 @@ class RZ(RotationInstruction):
     Z rotation circuit instruction.
     """
 
-    pass
+    kind: InstructionKind = InstructionKind.RZ

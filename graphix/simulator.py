@@ -9,8 +9,7 @@ import numpy as np
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
-from graphix.noise_models import NoiseModel
-from graphix.command import N, M, E, C, X, Z, T
+from graphix.command import CommandKind
 import warnings
 
 
@@ -87,18 +86,18 @@ class PatternSimulator:
         self.backend.add_nodes(self.pattern.input_nodes)
         if self.noise_model is None:
             for cmd in self.pattern:
-                match cmd:
-                    case N(node=i):
-                        self.backend.add_nodes([i])
-                    case E(nodes=n):
-                        self.backend.entangle_nodes(n)
-                    case M(node=i, plane=p, angle=a, s_domain=s, t_domain=t, vop=v):
+                match cmd.kind:
+                    case CommandKind.N:
+                        self.backend.add_nodes([cmd.node])
+                    case CommandKind.E:
+                        self.backend.entangle_nodes(cmd.nodes)
+                    case CommandKind.M:
                         self.backend.measure(cmd)
-                    case X(node=i, domain=d):
+                    case CommandKind.X:
                         self.backend.correct_byproduct(cmd)
-                    case Z(node=i, domain=d):
+                    case CommandKind.Z:
                         self.backend.correct_byproduct(cmd)
-                    case C(node=i, cliff_index=c):
+                    case CommandKind.C:
                         self.backend.apply_clifford(cmd)
                     case _:
                         raise ValueError("invalid commands")
@@ -108,22 +107,22 @@ class PatternSimulator:
             for node in self.pattern.input_nodes:
                 self.backend.apply_channel(self.noise_model.prepare_qubit(), [node])
             for cmd in self.pattern:
-                match cmd:
-                    case N(node=i):
-                        self.backend.add_nodes([i])
+                match cmd.kind:
+                    case CommandKind.N:
+                        self.backend.add_nodes([cmd.node])
                         self.backend.apply_channel(
-                            self.noise_model.prepare_qubit(), [i]
+                            self.noise_model.prepare_qubit(), [cmd.node]
                         )
-                    case E(nodes=e):
+                    case CommandKind.E:
                         self.backend.entangle_nodes(
-                            e
+                            cmd.nodes
                         )  # for some reaon entangle doesn't get the whole command
-                        self.backend.apply_channel(self.noise_model.entangle(), e)
-                    case M(node=i, plane=p, angle=a, s_domain=s, t_domain=t, vop=v):
-                        self.backend.apply_channel(self.noise_model.measure(), [i])
+                        self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
+                    case CommandKind.M:
+                        self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
                         self.backend.measure(cmd)
                         self.noise_model.confuse_result(cmd)
-                    case X(node=i, domain=d):
+                    case CommandKind.X:
                         self.backend.correct_byproduct(cmd)
                         if (
                             np.mod(np.sum([self.results[j] for j in cmd.domain]), 2)
@@ -132,7 +131,7 @@ class PatternSimulator:
                             self.backend.apply_channel(
                                 self.noise_model.byproduct_x(), [cmd.node]
                             )
-                    case Z(node=i, domain=d):
+                    case CommandKind.Z:
                         self.backend.correct_byproduct(cmd)
                         if (
                             np.mod(np.sum([self.results[j] for j in cmd.domain]), 2)
@@ -141,12 +140,12 @@ class PatternSimulator:
                             self.backend.apply_channel(
                                 self.noise_model.byproduct_z(), [cmd.node]
                             )
-                    case C(node=i, cliff_index=c):
-                        self.backend.apply_clifford(cmd)
+                    case CommandKind.C:
+                        self.backend.apply_clifford(cmd.node)
                         self.backend.apply_channel(
                             self.noise_model.clifford(), [cmd.node]
                         )
-                    case T():
+                    case CommandKind.T:
                         self.noise_model.tick_clock()
                     case _:
                         raise ValueError("Invalid commands.")

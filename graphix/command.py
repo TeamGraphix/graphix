@@ -2,12 +2,20 @@
 
 from pydantic import BaseModel
 from typing import Union, Literal
+import enum
 
 Node = int
 Plane = Union[Literal["XY"], Literal["YZ"], Literal["XZ"]]
-Name = Union[
-    Literal["N"], Literal["M"], Literal["E"], Literal["X"], Literal["Z"], Literal["C"]
-]
+
+class CommandKind(str, enum.Enum):
+    N = 'N'
+    M = 'M'
+    E = 'E'
+    C = 'C'
+    X = 'X'
+    Z = 'Z'
+    T = 'T'
+    S = 'S'
 
 
 class Command(BaseModel):
@@ -15,29 +23,22 @@ class Command(BaseModel):
     Base command class.
     """
 
-    pass
-
+    kind: CommandKind = None
 
 class N(Command):
     """
     Preparation command.
     """
 
+    kind: CommandKind = CommandKind.N
     node: Node
-
-    @property
-    def name(self):
-        return "N"
-
-    def __lt__(self, other):
-        return self.node < other.node
-
 
 class M(Command):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
 
+    kind: CommandKind = CommandKind.M
     node: Node
     plane: Plane = "XY"
     angle: float = 0.0
@@ -45,21 +46,14 @@ class M(Command):
     t_domain: list[Node] = []
     vop: int = 0
 
-    @property
-    def name(self):
-        return "M"
-
 
 class E(Command):
     """
     Entanglement command.
     """
 
+    kind: CommandKind = CommandKind.E
     nodes: tuple[Node, Node]
-
-    @property
-    def name(self):
-        return "E"
 
 
 class C(Command):
@@ -67,12 +61,9 @@ class C(Command):
     Clifford command.
     """
 
+    kind: CommandKind = CommandKind.C
     node: Node
     cliff_index: int
-
-    @property
-    def name(self):
-        return "C"
 
 
 class Correction(Command):
@@ -90,9 +81,7 @@ class X(Correction):
     X correction command.
     """
 
-    @property
-    def name(self):
-        return "X"
+    kind: CommandKind = CommandKind.X
 
 
 class Z(Correction):
@@ -100,23 +89,22 @@ class Z(Correction):
     Z correction command.
     """
 
-    @property
-    def name(self):
-        return "Z"
+    kind: CommandKind = CommandKind.Z
 
 
 class S(Command):
     """
-    S command.s
+    S command
     """
 
+    kind: CommandKind = CommandKind.S
     node: Node
     domain: list[Node] = []
 
-    @property
-    def name(self):
-        return "S"
-
 
 class T(Command):
-    pass
+    """
+    T command
+    """
+
+    kind: CommandKind = CommandKind.T
