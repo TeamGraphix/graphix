@@ -3,13 +3,11 @@ from __future__ import annotations
 import sys
 import unittest
 
+import graphix.random_circuit as rc
 import numpy as np
-from parameterized import parameterized
-
-import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.transpiler import Circuit
-
+from parameterized import parameterized
 
 SEED = 42
 rc.set_seed(SEED)

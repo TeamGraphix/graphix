@@ -3,15 +3,13 @@ from __future__ import annotations
 import itertools
 import unittest
 
+import graphix.graphix.random_circuit as rc
 import numpy as np
-from quimb.tensor import Tensor
-
-import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
-
+from quimb.tensor import Tensor
 
 SEED = 42
 rc.set_seed(SEED)

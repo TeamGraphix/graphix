@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import unittest
 
+import graphix.random_circuit as rc
 import numpy as np
-
-import tests.random_circuit as rc
 from graphix.transpiler import Circuit
-
 
 SEED = 42
 rc.set_seed(SEED)

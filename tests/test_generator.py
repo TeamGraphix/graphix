@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import unittest
 
+import graphix.random_circuit as rc
 import networkx as nx
 import numpy as np
-
-import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
 
 SEED = 42
