@@ -93,10 +93,7 @@ circ_sim = []
 sv_sim = []
 eco_sim = []
 max_space_ls = []
-sv_sim_pauli = []
-eco_sim_pauli = []
 
-max_space_ls_pauli = []
 for n_qubit in n_qubit_list:
     circuit = get_rand_circuit(n_qubit, n_qubit)
     pattern = circuit.transpile()
@@ -105,7 +102,6 @@ for n_qubit in n_qubit_list:
     circ_sv = circuit.simulate_statevector()
     end = perf_counter()
     circ_sim.append(end - start)
-    print(f"Simulating {n_qubit} qubits took {end - start} seconds")
     del circ_sv
 
     pattern.standardize()
@@ -114,14 +110,12 @@ for n_qubit in n_qubit_list:
     max_sp = pat_original.max_space()
     max_space_ls.append(max_sp)
     if max_sp >= 20:
-        print(f"Skipping {n_qubit} qubits due to large space")
         sv_sim.append(None)
     else:
         start = perf_counter()
         sv = pat_original.simulate_pattern()
         end = perf_counter()
         sv_sim.append(end - start)
-        print(f"Simulating {n_qubit} qubits took {end - start} seconds")
         del sv
 
     # tn
@@ -137,47 +131,3 @@ for n_qubit in n_qubit_list:
     end = perf_counter()
     eco_sim.append(end - start)
     del tn_sv, tn
-    print(f"ECO Simulating {n_qubit} qubits took {end - start} seconds")
-
-    pattern.shift_signals()
-    pattern.perform_pauli_measurements()
-    pat_pauli = deepcopy(pattern)
-    pat_pauli.minimize_space()
-    max_sp_pauli = pat_pauli.max_space()
-    max_space_ls_pauli.append(max_sp_pauli)
-    if max_sp_pauli > 25:
-        print(f"Skipping {n_qubit} qubits due to large space")
-        sv_sim_pauli.append(None)
-    else:
-        start = perf_counter()
-        sv_pauli = pat_pauli.simulate_pattern()
-        end = perf_counter()
-        sv_sim_pauli.append(end - start)
-        print(f"Simulating {n_qubit} qubits took {end - start} seconds")
-        del sv_pauli, pat_pauli
-
-    # tn
-    tn = pattern.simulate_pattern("tensornetwork")
-    output_inds = [tn._dangling[str(index)] for index in tn.default_output_nodes]
-    start = perf_counter()
-    tn_sv = tn.to_statevector(
-        backend="numpy",
-        skip=False,
-        optimize=ctg.HyperOptimizer(minimize="combo", max_time=600, progbar=True),
-    )
-    end = perf_counter()
-    eco_sim_pauli.append(end - start)
-    print(f"ECO Simulating {n_qubit} qubits took {end - start} seconds")
-    del tn_sv, tn
-    del pat_original, pattern
-
-# %%
-# write results into a file
-with open("sqrqcresults.txt", "w") as f:
-    f.write("n_qubit, circ_sim, sv_sim, eco_sim, max_space_ls, sv_sim_pauli, eco_sim_pauli, max_space_ls_pauli\n")
-    for i in range(len(n_qubit_list)):
-        f.write(
-            f"{n_qubit_list[i]}, {circ_sim[i]}, {sv_sim[i]}, {eco_sim[i]}, {max_space_ls[i]}, "
-            + f"{sv_sim_pauli[i]}, {eco_sim_pauli[i]}, {max_space_ls_pauli[i]}\n"
-            ""
-        )
