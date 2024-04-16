@@ -18,7 +18,6 @@ from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from graphix import Circuit
 
 # %%
