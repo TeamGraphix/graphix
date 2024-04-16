@@ -4,7 +4,6 @@ import unittest
 
 import galois
 import numpy as np
-
 from graphix.linalg import MatGF2
 
 

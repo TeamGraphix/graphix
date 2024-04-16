@@ -3,8 +3,9 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
-
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE, CLIFFORD_MUL
+from graphix.clifford import (CLIFFORD, CLIFFORD_CONJ,
+                              CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE,
+                              CLIFFORD_MUL)
 
 
 class TestClifford(unittest.TestCase):

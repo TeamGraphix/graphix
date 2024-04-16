@@ -1,7 +1,8 @@
 import unittest
-import numpy as np
+
 import graphix.clifford
 import graphix.pauli
+import numpy as np
 
 
 class TestPauli(unittest.TestCase):

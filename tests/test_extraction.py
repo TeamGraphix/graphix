@@ -3,10 +3,9 @@ from __future__ import annotations
 import sys
 import unittest
 
-from parameterized import parameterized_class
-
 import graphix
 from graphix import extraction
+from parameterized import parameterized_class
 
 
 @parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])

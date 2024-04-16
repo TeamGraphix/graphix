@@ -4,7 +4,6 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-
 from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
 

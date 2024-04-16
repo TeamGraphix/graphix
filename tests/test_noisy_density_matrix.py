@@ -1,15 +1,11 @@
 import unittest
 
 import numpy as np
-
 from graphix import Circuit
+from graphix.channels import (KrausChannel, depolarising_channel,
+                              two_qubit_depolarising_channel,
+                              two_qubit_depolarising_tensor_channel)
 from graphix.noise_models.noise_model import NoiseModel
-from graphix.channels import (
-    KrausChannel,
-    depolarising_channel,
-    two_qubit_depolarising_tensor_channel,
-    two_qubit_depolarising_channel,
-)
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 
