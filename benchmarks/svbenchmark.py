@@ -4,6 +4,7 @@ from time import perf_counter
 
 import cotengra as ctg
 import quimb as qu
+
 from graphix.random_circuit import get_rand_circuit
 
 # %%

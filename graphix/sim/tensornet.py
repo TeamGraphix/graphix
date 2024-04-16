@@ -5,10 +5,11 @@ from copy import deepcopy
 
 import numpy as np
 import quimb.tensor as qtn
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
-from graphix.ops import Ops, States
 from numpy.typing import NDArray
 from quimb.tensor import Tensor, TensorNetwork
+
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.ops import Ops, States
 
 
 class TensorNetworkBackend:

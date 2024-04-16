@@ -7,12 +7,13 @@ from copy import deepcopy
 
 import numpy as np
 
-from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace
-from graphix.channels import KrausChannel
-from graphix.ops import Ops
-from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
 import graphix.sim.base_backend
+from graphix.channels import KrausChannel
+from graphix.clifford import CLIFFORD
+from graphix.linalg_validations import (check_hermitian, check_square,
+                                        check_unit_trace)
+from graphix.ops import Ops
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
 
 
 class DensityMatrix:
