@@ -98,7 +98,7 @@ def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
         raise TypeError("All operators don't have the same type and must be np.ndarray.")
 
     for i in data:
-        if not i["operator"].dtype in (int, float, complex, np.float64, np.complex128):
+        if i["operator"].dtype not in (int, float, complex, np.float64, np.complex128):
             raise TypeError(f"All operators dtype must be scalar and not {i['operator'].dtype}.")
 
     if not all(isinstance(i["coef"], (int, float, complex, np.float64, np.complex128)) for i in data):
