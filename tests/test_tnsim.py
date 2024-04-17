@@ -45,7 +45,7 @@ class TestTN(unittest.TestCase):
         tn.graph_prep = "sequential"
         tn.add_qubits(node_index)
 
-        np.testing.assert_equal(set(tn.tag_map.keys()), set([str(ind) for ind in node_index]) | {"Open"})
+        np.testing.assert_equal(set(tn.tag_map.keys()), {str(ind) for ind in node_index} | {"Open"})
         for tensor in tn.tensor_map.values():
             np.testing.assert_equal(tensor.data, plus)
 
@@ -371,7 +371,7 @@ class TestTN(unittest.TestCase):
                 np.testing.assert_almost_equal(abs(coef_tn), abs(coef_sv))
 
     def test_to_statevector(self):
-        nqubits_set = [i for i in range(2, 6)]
+        nqubits_set = list(range(2, 6))
         depth = 3
         for nqubits in nqubits_set:
             self.subTest(nqubit=nqubits)

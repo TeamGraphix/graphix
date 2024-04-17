@@ -10,7 +10,7 @@ def prepare_test_matrix():
     test_cases = []
 
     # empty matrix
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[]], dtype=int))
     test_case["forward_eliminated"] = np.array([[]], dtype=int)
     test_case["rank"] = 0
@@ -21,7 +21,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # column vector
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[1], [1], [1]], dtype=int))
     test_case["forward_eliminated"] = np.array([[1], [0], [0]], dtype=int)
     test_case["rank"] = 1
@@ -32,7 +32,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # row vector
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[1, 1, 1]], dtype=int))
     test_case["forward_eliminated"] = np.array([[1, 1, 1]], dtype=int)
     test_case["rank"] = 1
@@ -43,7 +43,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # diagonal matrix
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.diag(np.ones(10)).astype(int))
     test_case["forward_eliminated"] = np.diag(np.ones(10)).astype(int)
     test_case["rank"] = 10
@@ -54,7 +54,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # full rank dense matrix
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[1, 0, 1], [0, 1, 0], [1, 0, 0]], dtype=int))
     test_case["forward_eliminated"] = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=int)
     test_case["rank"] = 3
@@ -65,7 +65,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # not full-rank matrix
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[1, 0, 1], [0, 1, 0], [1, 1, 1]], dtype=int))
     test_case["forward_eliminated"] = np.array([[1, 0, 1], [0, 1, 0], [0, 0, 0]], dtype=int)
     test_case["rank"] = 2
@@ -76,7 +76,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # non-square matrix
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[1, 0, 1], [0, 1, 0]], dtype=int))
     test_case["forward_eliminated"] = np.array([[1, 0, 1], [0, 1, 0]], dtype=int)
     test_case["rank"] = 2
@@ -87,7 +87,7 @@ def prepare_test_matrix():
     test_cases.append(test_case)
 
     # non-square matrix
-    test_case = dict()
+    test_case = {}
     test_case["matrix"] = MatGF2(np.array([[1, 0], [0, 1], [1, 0]], dtype=int))
     test_case["forward_eliminated"] = np.array([[1, 0], [0, 1], [0, 0]], dtype=int)
     test_case["rank"] = 2

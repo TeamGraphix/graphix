@@ -65,7 +65,7 @@ def generate_gate(nqubits, depth, pairs, use_rzz=False, seed=None):
 def genpair(n_qubits, count, rng):
     pairs = []
     for _ in range(count):
-        choice = [j for j in range(n_qubits)]
+        choice = list(range(n_qubits))
         x = rng.choice(choice)
         choice.pop(x)
         y = rng.choice(choice)
@@ -76,7 +76,7 @@ def genpair(n_qubits, count, rng):
 def gentriplet(n_qubits, count, rng):
     triplets = []
     for _ in range(count):
-        choice = [j for j in range(n_qubits)]
+        choice = list(range(n_qubits))
         x = rng.choice(choice)
         choice.pop(x)
         y = rng.choice(choice)

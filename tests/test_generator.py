@@ -64,7 +64,7 @@ class TestGenerator(unittest.TestCase):
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         input_ = [0, 1, 2]
-        angles = dict()
+        angles = {}
         for cmd in pattern.get_measurement_commands():
             angles[cmd[1]] = cmd[3]
         meas_planes = pattern.get_meas_plane()

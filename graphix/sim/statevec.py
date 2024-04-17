@@ -233,7 +233,7 @@ class Statevec:
             self.psi,
             (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)),
         )
-        self.psi = np.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
+        self.psi = np.moveaxis(self.psi, list(range(len(qargs))), qargs)
 
     def dims(self):
         return self.psi.shape

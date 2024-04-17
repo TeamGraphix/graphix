@@ -72,7 +72,7 @@ def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
 def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
 
     # convert to set to remove duplicates
-    dims = set([i["operator"].shape for i in data])
+    dims = {i["operator"].shape for i in data}
 
     # check all the same dimensions and that they are square matrices
     # TODO replace by using array.ndim

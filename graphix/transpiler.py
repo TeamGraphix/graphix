@@ -227,8 +227,8 @@ class Circuit:
         pattern : :class:`graphix.pattern.Pattern` object
         """
         Nnode = self.width
-        input_ = [j for j in range(self.width)]
-        out = [j for j in range(self.width)]
+        input_ = list(range(self.width))
+        out = list(range(self.width))
         pattern = Pattern(input_nodes=input_)
         # pattern.extend([["N", i] for i in range(self.width)])
         for instr in self.instruction:
@@ -349,8 +349,8 @@ class Circuit:
         self._E = []
         self._instr = []
         Nnode = self.width
-        inputs = [j for j in range(self.width)]
-        out = [j for j in range(self.width)]
+        inputs = list(range(self.width))
+        out = list(range(self.width))
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
@@ -495,8 +495,8 @@ class Circuit:
             command_seq.append(cmd)
         for cmd in self._M:
             command_seq.append(cmd)
-        bpx_added = dict()
-        bpz_added = dict()
+        bpx_added = {}
+        bpz_added = {}
         # byproduct command buffer
         z_cmds = []
         x_cmds = []

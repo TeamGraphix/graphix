@@ -163,10 +163,10 @@ class TestGraphSimUtils(unittest.TestCase):
         data = {"dummy": 1}
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g_nx = Graph()
-        g_nx.add_nodes_from([(n, d) for n, d in zip(range(nnode), [data] * nnode)])
+        g_nx.add_nodes_from(list(zip(range(nnode), [data] * nnode)))
         g_nx.add_edges_from(edges)
         g_rx = PyGraph()
-        g_rx.add_nodes_from([(n, d) for n, d in zip(range(nnode), [data] * nnode)])
+        g_rx.add_nodes_from(list(zip(range(nnode), [data] * nnode)))
         g_rx.add_edges_from_no_data(edges)
         g_rx = convert_rustworkx_to_networkx(g_rx)
         self.assertTrue(graphs_equal(g_nx, g_rx))

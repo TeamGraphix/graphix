@@ -315,7 +315,7 @@ class GraphVisualizer:
                     "",
                     xy=curve[-1],
                     xytext=curve[-2],
-                    arrowprops=dict(arrowstyle="->", color="k", lw=1),
+                    arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -447,7 +447,7 @@ class GraphVisualizer:
                         "",
                         xy=curve[-1],
                         xytext=curve[-2],
-                        arrowprops=dict(arrowstyle="->", color="k", lw=1),
+                        arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                     )
             elif len(arrow_path[arrow]) == 2:  # straight line
                 nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True)
@@ -466,7 +466,7 @@ class GraphVisualizer:
                     "",
                     xy=curve[-1],
                     xytext=curve[-2],
-                    arrowprops=dict(arrowstyle="->", color="k", lw=1),
+                    arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -677,7 +677,7 @@ class GraphVisualizer:
         figsize = (figsize[0] + 3.0, figsize[1])
         plt.figure(figsize=figsize)
 
-        xzflow = dict()
+        xzflow = {}
         for key, value in deepcopy(xflow).items():
             if key in xzflow:
                 xzflow[key] |= value
@@ -722,7 +722,7 @@ class GraphVisualizer:
                     "",
                     xy=curve[-1],
                     xytext=curve[-2],
-                    arrowprops=dict(arrowstyle="->", color=color, lw=1),
+                    arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -803,11 +803,11 @@ class GraphVisualizer:
             figure size of the graph.
         """
         if l_k is None:
-            width = len(set([pos[node][0] for node in self.G.nodes()])) * 0.8
+            width = len({pos[node][0] for node in self.G.nodes()}) * 0.8
         else:
             width = (max(l_k.values()) + 1) * 0.8
         if pos is not None:
-            height = len(set([pos[node][1] for node in self.G.nodes()]))
+            height = len({pos[node][1] for node in self.G.nodes()})
         else:
             height = len(self.v_out)
         figsize = (width * node_distance[0], height * node_distance[1])
@@ -1053,7 +1053,7 @@ class GraphVisualizer:
         for node, layer in l_k.items():
             pos[node][0] = l_max - layer
 
-        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert = list({pos[node][1] for node in self.G.nodes()})
         vert.sort()
         for node in self.G.nodes():
             pos[node][1] = vert.index(pos[node][1])
@@ -1075,7 +1075,7 @@ class GraphVisualizer:
             dictionary of node positions.
         """
 
-        layers = dict()
+        layers = {}
         connected_components = list(nx.connected_components(self.G))
 
         for component in connected_components:
@@ -1115,7 +1115,7 @@ class GraphVisualizer:
                 for i, node in enumerate(order[::-1]):
                     k = i // Nv
                     layers[node] = k
-                if layers == dict():
+                if layers == {}:
                     layer_input = 0
                 else:
                     layer_input = max(layers.values()) + 1
@@ -1150,7 +1150,7 @@ class GraphVisualizer:
         pos = nx.multipartite_layout(G_prime)
         for node, layer in layers.items():
             pos[node][0] = l_max - layer
-        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert = list({pos[node][1] for node in self.G.nodes()})
         vert.sort()
         for node in self.G.nodes():
             pos[node][1] = vert.index(pos[node][1])
@@ -1178,7 +1178,7 @@ class GraphVisualizer:
         pos = nx.multipartite_layout(G_prime)
         for node, layer in layers.items():
             pos[node][0] = layer
-        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert = list({pos[node][1] for node in self.G.nodes()})
         vert.sort()
         for node in self.G.nodes():
             pos[node][1] = vert.index(pos[node][1])

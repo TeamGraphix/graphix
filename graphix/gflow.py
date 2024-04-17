@@ -76,8 +76,8 @@ def find_gflow(
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-    l_k = dict()
-    g = dict()
+    l_k = {}
+    g = {}
     for node in graph.nodes:
         l_k[node] = 0
     return gflowaux(graph, input, output, meas_planes, 1, l_k, g, mode=mode)
@@ -172,7 +172,7 @@ def gflowaux(
             sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
-            g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
+            g[non_out_node] = {node_order_col[col_permutation.index(i)] for i in sol_index}
             if meas_planes[non_out_node] in ["ZX", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
@@ -185,14 +185,14 @@ def gflowaux(
                 sol_list.extend(kernel_list)
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
-                g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
+                g_i = {node_order_col[col_permutation.index(i)] for i in sol_index}
                 if meas_planes[non_out_node] in ["ZX", "YZ"]:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
 
         elif mode == "abstract":
-            g[non_out_node] = dict()
+            g[non_out_node] = {}
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
@@ -268,7 +268,7 @@ def find_flow(
             return None, None
 
     l_k = {i: 0 for i in nodes}
-    f = dict()
+    f = {}
     k = 1
     v_c = output - input
     return flowaux(nodes, edges, input, output, v_c, f, l_k, k)
@@ -375,7 +375,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     nodes = set(nodes)
 
     layers = pattern.get_layers()
-    l_k = dict()
+    l_k = {}
     for l in layers[1].keys():
         for n in layers[1][l]:
             l_k[n] = l
@@ -388,7 +388,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     xflow, zflow = get_corrections_from_pattern(pattern)
 
     if verify_flow(G, input_nodes, output_nodes, xflow):  # if xflow is valid
-        zflow_from_xflow = dict()
+        zflow_from_xflow = {}
         for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(G, corrections) - {node}
             if cand:
@@ -425,7 +425,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     nodes = set(nodes)
 
     layers = pattern.get_layers()
-    l_k = dict()
+    l_k = {}
     for l in layers[1].keys():
         for n in layers[1][l]:
             l_k[n] = l
@@ -443,7 +443,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
             xflow[node] |= {node}
 
     if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
-        zflow_from_xflow = dict()
+        zflow_from_xflow = {}
         for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(G, corrections) - {node}
             if cand:
@@ -472,8 +472,8 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     """
     nodes, _ = pattern.get_graph()
     nodes = set(nodes)
-    xflow = dict()
-    zflow = dict()
+    xflow = {}
+    zflow = {}
     for cmd in pattern:
         if cmd[0] == "M":
             target = cmd[1]
@@ -611,7 +611,7 @@ def get_dependence_flow(
     """
     dependence_flow = {input_: set() for input_ in inputs}
     # concatenate flow and odd_flow
-    combined_flow = dict()
+    combined_flow = {}
     for node, corrections in flow.items():
         combined_flow[node] = corrections | odd_flow[node]
     for node, corrections in combined_flow.items():
@@ -650,7 +650,7 @@ def get_layers_from_flow(
     ValueError
         If the flow is not valid(e.g. there is no partial order).
     """
-    layers = dict()
+    layers = {}
     depth = 0
     dependence_flow = get_dependence_flow(inputs, odd_flow, flow)
     left_nodes = set(flow.keys())
@@ -780,7 +780,7 @@ def verify_gflow(
     """
     valid_gflow = True
     non_outputs = set(graph.nodes) - output
-    odd_flow = dict()
+    odd_flow = {}
     for non_output in non_outputs:
         if non_output not in gflow:
             gflow[non_output] = set()

@@ -187,9 +187,9 @@ class TestGflow(unittest.TestCase):
                 self.assertEqual(test_graph.gflow_exist, g is not None)
 
     def test_verify_flow(self):
-        flow_test_cases = dict()
+        flow_test_cases = {}
         flow_test_cases["no measurement"] = {
-            "empty flow": (True, dict()),
+            "empty flow": (True, {}),
             "measure output": (False, {1: {2}}),
         }
         flow_test_cases["line graph with flow and gflow"] = {
@@ -220,9 +220,9 @@ class TestGflow(unittest.TestCase):
                         self.assertEqual(expected, valid)
 
     def test_verify_gflow(self):
-        gflow_test_cases = dict()
+        gflow_test_cases = {}
         gflow_test_cases["no measurement"] = {
-            "empty flow": (True, dict()),
+            "empty flow": (True, {}),
             "measure output": (False, {1: {2}}),
         }
         gflow_test_cases["line graph with flow and gflow"] = {

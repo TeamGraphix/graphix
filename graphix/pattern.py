@@ -317,7 +317,7 @@ class Pattern:
                 raise NotImplementedError()
             else:
                 raise ValueError(f"command {cmd} is invalid!")
-        nodes = dict()
+        nodes = {}
         for index in node_prop.keys():
             if index in self.output_nodes:
                 node_prop[index]["output"] = True
@@ -777,7 +777,7 @@ class Pattern:
                 if cmd[1] not in self.output_nodes:
                     not_measured = not_measured | {cmd[1]}
         depth = 0
-        l_k = dict()
+        l_k = {}
         k = 0
         while not_measured:
             l_k[k] = set()
@@ -966,7 +966,7 @@ class Pattern:
         meas_plane: dict of str
             list of str representing measurement plane for each node.
         """
-        meas_plane = dict()
+        meas_plane = {}
         order = ["X", "Y", "Z"]
         for cmd in self.__seq:
             if cmd[0] == "M":
@@ -1008,7 +1008,7 @@ class Pattern:
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         degree = g.degree()
-        max_degree = max([i for i in dict(degree).values()])
+        max_degree = max(list(dict(degree).values()))
         return max_degree
 
     def get_graph(self):
@@ -1062,7 +1062,7 @@ class Pattern:
         Returns:
             vops : dict
         """
-        vops = dict()
+        vops = {}
         for cmd in self.__seq:
             if cmd[0] == "M":
                 if len(cmd) == 7:
@@ -1523,7 +1523,7 @@ class CommandNode:
         EXcommutated_nodes : dict
             when X commutes with E, Z correction is added on the pair node. This dict specifies target nodes where Zs will be added.
         """
-        EXcommutated_nodes = dict()
+        EXcommutated_nodes = {}
         combined_Xsignal = []
         for Xsignal in self.Xsignals:
             Xpos = self.seq.index(-2)
@@ -1635,7 +1635,7 @@ class CommandNode:
         signal_destination_dict : dict
             Counterpart of 'dependent nodes'. Unlike 'get_signal_destination', types of domains are memorarized. measurement results of each node propagate to the nodes specified by 'signal_distination_dict'.
         """
-        dependent_nodes_dict = dict()
+        dependent_nodes_dict = {}
         dependent_nodes_dict["Ms"] = self.Mprop[2]
         dependent_nodes_dict["Mt"] = self.Mprop[3]
         dependent_nodes_dict["X"] = self.Xsignal
@@ -1669,7 +1669,7 @@ class LocalPattern:
     stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
-    def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
+    def __init__(self, nodes={}, input_nodes=[], output_nodes=[], morder=[]):
         """
         Parameters
         ----------
@@ -1865,7 +1865,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
-    if not leave_input and len(list(set(pattern.input_nodes) & set([i[0][1] for i in to_measure]))) > 0:
+    if not leave_input and len(list(set(pattern.input_nodes) & {i[0][1] for i in to_measure})) > 0:
         new_inputs = []
     else:
         new_inputs = pattern.input_nodes

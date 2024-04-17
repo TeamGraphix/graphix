@@ -225,8 +225,8 @@ class MatGF2:
             b = np.zeros((A.data.shape[0], 1), dtype=int)
         b = MatGF2(b)
         # Remember the row and column order
-        row_permutation = [i for i in range(A.data.shape[0])]
-        col_permutation = [i for i in range(A.data.shape[1])]
+        row_permutation = list(range(A.data.shape[0]))
+        col_permutation = list(range(A.data.shape[1]))
 
         # Gauss-Jordan Elimination
         max_rank = min(A.data.shape)
@@ -276,10 +276,10 @@ class MatGF2:
         """
         rank = self.get_rank()
         b = MatGF2(b)
-        x = list()
+        x = []
         kernels = sp.symbols("x0:%d" % (self.data.shape[1] - rank))
         for col in range(b.data.shape[1]):
-            x_col = list()
+            x_col = []
             b_col = b.data[:, col]
             if np.count_nonzero(b_col[rank:]) != 0:
                 x_col = [sp.nan for i in range(rank)]

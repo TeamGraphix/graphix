@@ -76,7 +76,7 @@ def get_fusion_network_from_graph(
     """
     use_rustworkx = isinstance(graph, RXGraphState)
 
-    adjdict = deepcopy({n: adj for n, adj in graph.adjacency()})
+    adjdict = deepcopy(dict(graph.adjacency()))
 
     number_of_edges = graph.number_of_edges()
     resource_list = []
