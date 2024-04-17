@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Optional, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -1244,7 +1244,7 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: Optional[Statevec] = None):
+    def simulate_statevector(self, input_state: Statevec | None = None):
         """Run statevector simultion of the gate sequence, using graphix.Statevec
 
         Parameters
