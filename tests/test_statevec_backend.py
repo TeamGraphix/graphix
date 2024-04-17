@@ -5,6 +5,7 @@ import numpy as np
 
 from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
+import pytest
 
 
 class TestStatevec(unittest.TestCase):
@@ -44,7 +45,7 @@ class TestStatevec(unittest.TestCase):
         m_op = np.outer(States.minus, States.minus.T.conjugate())
         sv = Statevec(nqubit=n)
         sv.evolve(m_op, [k])
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             sv.remove_qubit(k)
 
 

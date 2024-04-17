@@ -10,53 +10,54 @@ from graphix.channels import KrausChannel, dephasing_channel, depolarising_chann
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
+import pytest
 
 
 class TestDensityMatrix(unittest.TestCase):
     """Test for DensityMatrix class."""
 
     def test_init_without_data_fail(self):
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             DensityMatrix(nqubit=-2)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             DensityMatrix(nqubit="hello")
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             DensityMatrix(nqubit=[])
 
     def test_init_with_invalid_data_fail(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             DensityMatrix("hello")
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             DensityMatrix(1)
         # deprecated data shape (these test might be unnecessary)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DensityMatrix([1, 2, [3]])
 
         # check with hermitian dm but not unit trace
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DensityMatrix(data=randobj.rand_herm(2 ** np.random.randint(2, 5)))
 
         # check with non hermitian dm but unit trace
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             l = 2 ** np.random.randint(2, 5)
             tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
             DensityMatrix(data=tmp / np.trace(tmp))
         # check with non hermitian dm and not unit trace
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             l = 2 ** np.random.randint(2, 5)  # np.random.randint(2, 20)
             DensityMatrix(data=np.random.rand(l, l) + 1j * np.random.rand(l, l))
 
         # check not square matrix
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # l = 2 ** np.random.randint(2, 5) # np.random.randint(2, 20)
             DensityMatrix(data=np.random.rand(3, 2))
 
         # check higher dimensional matrix
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DensityMatrix(data=np.random.rand(2, 2, 3))
 
         # check square and hermitian but with incorrect dimension (non-qubit type)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # not really a dm since not PSD but ok.
             data = randobj.rand_herm(5)
             data /= np.trace(data)
@@ -93,9 +94,9 @@ class TestDensityMatrix(unittest.TestCase):
         # generate random 4 x 4 unitary matrix
         op = randobj.rand_unit(4)
 
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             dm.evolve_single(op, 2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve_single(op, 1)
 
     def test_evolve_single_success(self):
@@ -119,16 +120,16 @@ class TestDensityMatrix(unittest.TestCase):
         # generate random 4 x 4 unitary matrix
         op = randobj.rand_unit(4)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.expectation_single(op, 2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.expectation_single(op, 1)
 
         # wrong qubit indices
         op = randobj.rand_unit(2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.expectation_single(op, -3)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.expectation_single(op, nqb + 3)
 
     def test_expectation_single_success(self):
@@ -159,9 +160,9 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_tensor_fail(self):
         dm = DensityMatrix(nqubit=1)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             dm.tensor("hello")
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             dm.tensor(1)
 
     def test_tensor_without_data_success(self):
@@ -186,15 +187,15 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_cnot_fail(self):
         dm = DensityMatrix(nqubit=2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.cnot((1, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.cnot((-1, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.cnot((1, -1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.cnot((1, 2))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.cnot((2, 1))
 
     def test_cnot_success(self):
@@ -239,15 +240,15 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_swap_fail(self):
         dm = DensityMatrix(nqubit=2)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.swap((1, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.swap((-1, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.swap((1, -1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.swap((1, 2))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.swap((2, 1))
 
     def test_swap_success(self):
@@ -273,11 +274,11 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_entangle_fail(self):
         dm = DensityMatrix(nqubit=3)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.entangle((1, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.entangle((1, 3))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.entangle((0, 1, 2))
 
     def test_entangle_success(self):
@@ -398,27 +399,27 @@ class TestDensityMatrix(unittest.TestCase):
         dm = DensityMatrix(nqubit=N_qubits)
 
         # dimension mismatch
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(op, (1, 1))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(op, (0, 1, 2, 3))
         # incorrect range
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(op, (-1, 0, 1))
         # repeated index
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(op, (0, 1, 1))
 
         # check not square matrix
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(np.random.rand(2, 3), (0, 1))
 
         # check higher dimensional matrix
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(np.random.rand(2, 2, 3), (0, 1))
 
         # check square but with incorrect dimension (non-qubit type)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm.evolve(np.random.rand(5, 5), (0, 1))
 
     # TODO the test for normalization is done at initialization with data. Now check that all operations conserve the norm.
@@ -433,10 +434,10 @@ class TestDensityMatrix(unittest.TestCase):
 
     def test_ptrace_fail(self):
         dm = DensityMatrix(nqubit=0)
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             dm.ptrace((0,))
         dm = DensityMatrix(nqubit=2)
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             dm.ptrace((2,))
 
     def test_ptrace(self):
@@ -768,7 +769,7 @@ class TestDensityMatrix(unittest.TestCase):
         # build DensityMatrix
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
 
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             dm.apply_channel("a", [i])
 
 
@@ -776,7 +777,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
     """Test for DensityMatrixBackend class."""
 
     def test_init_fail(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             DensityMatrixBackend()
 
     def test_init_success(self):

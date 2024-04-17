@@ -11,6 +11,7 @@ from graphix.channels import (
     two_qubit_depolarising_tensor_channel,
 )
 from graphix.ops import Ops
+import pytest
 
 
 class TestChannel(unittest.TestCase):
@@ -38,15 +39,15 @@ class TestChannel(unittest.TestCase):
         prob = np.random.rand()
 
         # empty data
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _mychannel = KrausChannel([])
 
         # incorrect parameter type
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             _mychannel = KrausChannel("a")
 
         # incorrect "parameter" key
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             _mychannel = KrausChannel(
                 [
                     {"coefficients": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
@@ -55,7 +56,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # incorrect "operator" key
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
@@ -64,7 +65,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # incorrect parameter type
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             _mychannel = KrausChannel(
                 [
                     {"coef": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
@@ -73,7 +74,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # incorrect operator type
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": "a"},
@@ -82,7 +83,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # incorrect operator dimension
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
@@ -91,7 +92,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # incorrect operator dimension: square but not qubits
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.random.rand(3, 3)},
@@ -100,7 +101,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # doesn't square to 1. Not normalized. Parameter.
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _mychannel = KrausChannel(
                 [
                     {"coef": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
@@ -109,7 +110,7 @@ class TestChannel(unittest.TestCase):
             )
 
         # doesn't square to 1. Not normalized. Operator.
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
@@ -119,7 +120,7 @@ class TestChannel(unittest.TestCase):
 
         # incorrect rank (number of kraus_operators)
         # use a random channel to do that.
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             randobj.rand_channel_kraus(dim=2**2, rank=20)
 
     def test_dephasing_channel(self):

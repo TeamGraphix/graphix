@@ -21,8 +21,8 @@ class TestExtraction(unittest.TestCase):
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
-        self.assertEqual(len(clusters), 1)
-        self.assertEqual(clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.GHZ, graph=gs), True)
+        assert len(clusters) == 1
+        assert (clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.GHZ, graph=gs)) == True
 
     # we consider everything smaller than 4, a GHZ
     def test_cluster_extraction_small_ghz_cluster_1(self):
@@ -33,8 +33,8 @@ class TestExtraction(unittest.TestCase):
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
-        self.assertEqual(len(clusters), 1)
-        self.assertEqual(clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.GHZ, graph=gs), True)
+        assert len(clusters) == 1
+        assert (clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.GHZ, graph=gs)) == True
 
     # we consider everything smaller than 4, a GHZ
     def test_cluster_extraction_small_ghz_cluster_2(self):
@@ -45,8 +45,8 @@ class TestExtraction(unittest.TestCase):
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
-        self.assertEqual(len(clusters), 1)
-        self.assertEqual(clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.GHZ, graph=gs), True)
+        assert len(clusters) == 1
+        assert (clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.GHZ, graph=gs)) == True
 
     def test_cluster_extraction_one_linear_cluster(self):
         gs = graphix.GraphState(use_rustworkx=self.use_rustworkx)
@@ -56,8 +56,8 @@ class TestExtraction(unittest.TestCase):
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
-        self.assertEqual(len(clusters), 1)
-        self.assertEqual(clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.LINEAR, graph=gs), True)
+        assert len(clusters) == 1
+        assert (clusters[0] == extraction.ResourceGraph(type=extraction.ResourceType.LINEAR, graph=gs)) == True
 
     def test_cluster_extraction_one_ghz_one_linear(self):
         gs = graphix.GraphState(use_rustworkx=self.use_rustworkx)
@@ -66,7 +66,7 @@ class TestExtraction(unittest.TestCase):
         gs.add_nodes_from(nodes)
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
-        self.assertEqual(len(clusters), 2)
+        assert len(clusters) == 2
 
         clusters_expected = []
         lin_cluster = graphix.GraphState(use_rustworkx=self.use_rustworkx)
@@ -78,11 +78,7 @@ class TestExtraction(unittest.TestCase):
         ghz_cluster.add_edges_from([(0, 1), (0, 2), (0, 3), (0, 4)])
         clusters_expected.append(extraction.ResourceGraph(extraction.ResourceType.GHZ, ghz_cluster))
 
-        self.assertEqual(
-            (clusters[0] == clusters_expected[0] and clusters[1] == clusters_expected[1])
-            or (clusters[0] == clusters_expected[1] and clusters[1] == clusters_expected[0]),
-            True,
-        )
+        assert (clusters[0] == clusters_expected[0] and clusters[1] == clusters_expected[1] or clusters[0] == clusters_expected[1] and clusters[1] == clusters_expected[0]) == True
 
     def test_cluster_extraction_pentagonal_cluster(self):
         gs = graphix.GraphState(use_rustworkx=self.use_rustworkx)
@@ -91,17 +87,9 @@ class TestExtraction(unittest.TestCase):
         gs.add_nodes_from(nodes)
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
-        self.assertEqual(len(clusters), 2)
-        self.assertEqual(
-            (clusters[0].type == extraction.ResourceType.GHZ and clusters[1].type == extraction.ResourceType.LINEAR)
-            or (clusters[0].type == extraction.ResourceType.LINEAR and clusters[1].type == extraction.ResourceType.GHZ),
-            True,
-        )
-        self.assertEqual(
-            (len(clusters[0].graph.nodes) == 3 and len(clusters[1].graph.nodes) == 4)
-            or (len(clusters[0].graph.nodes) == 4 and len(clusters[1].graph.nodes) == 3),
-            True,
-        )
+        assert len(clusters) == 2
+        assert (clusters[0].type == extraction.ResourceType.GHZ and clusters[1].type == extraction.ResourceType.LINEAR or clusters[0].type == extraction.ResourceType.LINEAR and clusters[1].type == extraction.ResourceType.GHZ) == True
+        assert (len(clusters[0].graph.nodes) == 3 and len(clusters[1].graph.nodes) == 4 or len(clusters[0].graph.nodes) == 4 and len(clusters[1].graph.nodes) == 3) == True
 
     def test_cluster_extraction_one_plus_two(self):
         gs = graphix.GraphState(use_rustworkx=self.use_rustworkx)
@@ -110,13 +98,6 @@ class TestExtraction(unittest.TestCase):
         gs.add_nodes_from(nodes)
         gs.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
-        self.assertEqual(len(clusters), 2)
-        self.assertEqual(
-            (clusters[0].type == extraction.ResourceType.GHZ and clusters[1].type == extraction.ResourceType.GHZ),
-            True,
-        )
-        self.assertEqual(
-            (len(clusters[0].graph.nodes) == 2 and len(clusters[1].graph.nodes) == 1)
-            or (len(clusters[0].graph.nodes) == 1 and len(clusters[1].graph.nodes) == 2),
-            True,
-        )
+        assert len(clusters) == 2
+        assert (clusters[0].type == extraction.ResourceType.GHZ and clusters[1].type == extraction.ResourceType.GHZ) == True
+        assert (len(clusters[0].graph.nodes) == 2 and len(clusters[1].graph.nodes) == 1 or len(clusters[0].graph.nodes) == 1 and len(clusters[1].graph.nodes) == 2) == True

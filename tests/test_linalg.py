@@ -104,47 +104,47 @@ class TestLinAlg(unittest.TestCase):
     def test_add_row(self):
         test_mat = MatGF2(np.diag(np.ones(2, dtype=int)))
         test_mat.add_row()
-        self.assertEqual(test_mat.data.shape, (3, 2))
-        self.assertTrue(np.all(test_mat.data == np.array([[1, 0], [0, 1], [0, 0]])))
+        assert test_mat.data.shape == (3, 2)
+        assert np.all(test_mat.data == np.array([[1, 0], [0, 1], [0, 0]]))
 
     def test_add_col(self):
         test_mat = MatGF2(np.diag(np.ones(2, dtype=int)))
         test_mat.add_col()
-        self.assertEqual(test_mat.data.shape, (2, 3))
-        self.assertTrue(np.all(test_mat.data == galois.GF2(np.array([[1, 0, 0], [0, 1, 0]]))))
+        assert test_mat.data.shape == (2, 3)
+        assert np.all(test_mat.data == galois.GF2(np.array([[1, 0, 0], [0, 1, 0]])))
 
     def test_remove_row(self):
         test_mat = MatGF2(np.array([[1, 0], [0, 1], [0, 0]], dtype=int))
         test_mat.remove_row(2)
-        self.assertTrue(np.all(test_mat.data == np.array([[1, 0], [0, 1]])))
+        assert np.all(test_mat.data == np.array([[1, 0], [0, 1]]))
 
     def test_remove_col(self):
         test_mat = MatGF2(np.array([[1, 0, 0], [0, 1, 0]], dtype=int))
         test_mat.remove_col(2)
-        self.assertTrue(np.all(test_mat.data == np.array([[1, 0], [0, 1]])))
+        assert np.all(test_mat.data == np.array([[1, 0], [0, 1]]))
 
     def test_swap_row(self):
         test_mat = MatGF2(np.array([[1, 0], [0, 1], [0, 0]], dtype=int))
         test_mat.swap_row(1, 2)
-        self.assertTrue(np.all(test_mat.data == np.array([[1, 0], [0, 0], [0, 1]])))
+        assert np.all(test_mat.data == np.array([[1, 0], [0, 0], [0, 1]]))
 
     def test_swap_col(self):
         test_mat = MatGF2(np.array([[1, 0, 0], [0, 1, 0]], dtype=int))
         test_mat.swap_col(1, 2)
-        self.assertTrue(np.all(test_mat.data == np.array([[1, 0, 0], [0, 0, 1]])))
+        assert np.all(test_mat.data == np.array([[1, 0, 0], [0, 0, 1]]))
 
     def test_is_canonical_form(self):
         test_mat = MatGF2(np.array([[1, 0], [0, 1]], dtype=int))
-        self.assertTrue(test_mat.is_canonical_form())
+        assert test_mat.is_canonical_form()
 
         test_mat = MatGF2(np.array([[1, 0], [0, 1], [0, 0]], dtype=int))
-        self.assertTrue(test_mat.is_canonical_form())
+        assert test_mat.is_canonical_form()
 
         test_mat = MatGF2(np.array([[1, 0, 1], [0, 1, 0], [0, 0, 0]], dtype=int))
-        self.assertTrue(test_mat.is_canonical_form())
+        assert test_mat.is_canonical_form()
 
         test_mat = MatGF2(np.array([[1, 1, 0], [0, 0, 1], [0, 1, 0]], dtype=int))
-        self.assertFalse(test_mat.is_canonical_form())
+        assert not test_mat.is_canonical_form()
 
     def test_forward_eliminate(self):
         test_cases = prepare_test_matrix()
@@ -155,8 +155,8 @@ class TestLinAlg(unittest.TestCase):
             RHS_forward_elimnated = test_case["RHS_forward_elimnated"]
             with self.subTest(mat=mat, answer=answer, RHS_input=RHS_input):
                 mat_elimnated, RHS, _, _ = mat.forward_eliminate(RHS_input)
-                self.assertTrue(np.all(mat_elimnated.data == answer))
-                self.assertTrue(np.all(RHS.data == RHS_forward_elimnated))
+                assert np.all(mat_elimnated.data == answer)
+                assert np.all(RHS.data == RHS_forward_elimnated)
 
     def test_get_rank(self):
         test_cases = prepare_test_matrix()
@@ -164,7 +164,7 @@ class TestLinAlg(unittest.TestCase):
             mat = test_case["matrix"]
             rank = test_case["rank"]
             with self.subTest(mat=mat):
-                self.assertEqual(mat.get_rank(), rank)
+                assert mat.get_rank() == rank
 
     def test_backward_substitute(self):
         test_cases = prepare_test_matrix()
@@ -177,8 +177,8 @@ class TestLinAlg(unittest.TestCase):
                 mat_eliminated, RHS_eliminated, _, _ = mat.forward_eliminate(RHS_input)
                 x, kernel = mat_eliminated.backward_substitute(RHS_eliminated)
                 if x is not None:
-                    self.assertTrue(np.all(x == x))
-                self.assertEqual(len(kernel), kernel_dim)
+                    assert np.all(x == x)
+                assert len(kernel) == kernel_dim
 
 
 if __name__ == "__main__":
