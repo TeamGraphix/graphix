@@ -12,6 +12,7 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 We will simulate the generation of 100-qubit GHZ state.
 Firstly, let us import relevant modules:
 """
+
 # %%
 
 import numpy as np

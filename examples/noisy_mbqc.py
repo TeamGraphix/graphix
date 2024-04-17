@@ -8,6 +8,7 @@ allows the simulation of MBQC with customizable noise model.
 In this example, we simulate a simple MBQC pattern with various noise models to see their effects.
 First, let us import relevant modules and define a pattern
 """
+
 # %%
 import numpy as np
 from graphix import Circuit
@@ -16,7 +17,7 @@ circuit = Circuit(2)
 theta = np.random.rand(2)
 circuit.rz(0, theta[0])
 circuit.rz(1, theta[1])
-circuit.cnot(0,1)
+circuit.cnot(0, 1)
 
 # %%
 # Now we transpile into measurement pattern using :meth:`~graphix.transpiler.Circuit.transpile` method.
@@ -40,6 +41,7 @@ from graphix.channels import (
     KrausChannel,
     dephasing_channel,
 )
+
 
 class NoisyGraphState(NoiseModel):
 
@@ -79,12 +81,13 @@ class NoisyGraphState(NoiseModel):
     def tick_clock(self):
         """notion of time in real devices - this is where we apply effect of T1 and T2.
         we assume commands that lie between 'T' commands run simultaneously on the device.
-        
+
         here we assume no idle error.
         """
         pass
 
-#%%
+
+# %%
 # simulate with the noise model
 from graphix.simulator import PatternSimulator
 

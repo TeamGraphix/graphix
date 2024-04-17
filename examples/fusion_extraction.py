@@ -12,6 +12,7 @@ The decomposition algorithm is based on [1].
 2022 `arXiv:2210.09251 <https://arxiv.org/abs/2210.09251>`_
 
 """
+
 # %%
 import itertools
 import graphix

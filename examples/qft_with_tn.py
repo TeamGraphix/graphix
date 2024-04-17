@@ -11,6 +11,7 @@ You can also run this code on your browser with `mybinder.org <https://mybinder.
 
 Firstly, let us import relevant modules and define the circuit:
 """
+
 # %%
 import numpy as np
 from graphix import Circuit

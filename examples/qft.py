@@ -13,6 +13,7 @@ for any quantum algorithms running on MBQC.
 We will demonstrate this by simulating QFT on three qubits.
 First, import relevant modules and define additional gates we'll use:
 """
+
 # %%
 import numpy as np
 from graphix import Circuit
