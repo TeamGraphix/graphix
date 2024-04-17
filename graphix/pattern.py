@@ -415,7 +415,7 @@ class Pattern:
         elif method == "global":
             self.extract_signals()
             target = self._find_op_to_be_moved("S", rev=True)
-            while target != "end":
+            while target is not None:
                 if target == len(self.__seq) - 1:
                     self.__seq.pop(target)
                     target = self._find_op_to_be_moved("S", rev=True)
@@ -448,23 +448,21 @@ class Pattern:
         skipnum : int
             skip the detected command by specified times
         """
-        if not rev:  # search from the start
-            target = 0
-            step = 1
-        else:  # search from the back
-            target = len(self.__seq) - 1
-            step = -1
-        ite = 0
+        if not rev:  # Search from the start
+            start_index, end_index, step = 0, len(self.__seq), 1
+        else:  # Search from the end
+            start_index, end_index, step = len(self.__seq) - 1, -1, -1
+
         num_ops = 0
-        while ite < len(self.__seq):
-            if self.__seq[target].kind == op:
+        for index in range(start_index, end_index, step):
+            if self.__seq[index].kind == op:
                 num_ops += 1
-            if num_ops == skipnum + 1:
-                return target
-            ite += 1
-            target += step
-        target = "end"
-        return target
+                if num_ops == skipnum + 1:
+                    return index
+
+        # If no target found
+        return None
+
 
     def _commute_EX(self, target):
         """Internal method to perform the commutation of E and X.
@@ -646,60 +644,62 @@ class Pattern:
         N can be moved to the start of sequence without the need of considering
         commutation relations.
         """
-        Nlist = [ cmd for cmd in self.__seq if cmd.kind == command.CommandKind.N ]
+        new_seq = []
+        Nlist = []
+        for cmd in self.__seq:
+            if cmd.kind == command.CommandKind.N:
+                Nlist.append(cmd)
+            else:
+                new_seq.append(cmd)
         Nlist.sort(key=lambda N_cmd: N_cmd.node)
-        for N in Nlist:
-            self.__seq.remove(N)
-        self.__seq = Nlist + self.__seq
+        self.__seq = Nlist + new_seq
 
     def _move_byproduct_to_right(self):
         """Internal method to move the byproduct commands to the end of sequence,
         using the commutation relations implemented in graphix.Pattern class
         """
         # First, we move all X commands to the end of sequence
-        moved_X = 0  # number of moved X
-        target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
-        while target != "end":
-            if (target == len(self.__seq) - 1) or (
-                self.__seq[target + 1].kind == command.CommandKind.X
-            ):
-                moved_X += 1
-                target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
-                continue
-            cmd = self.__seq[target + 1]
-            if cmd.kind == command.CommandKind.E:
-                move = self._commute_EX(target)
-                if move:
-                    target += 1  # addition of extra Z means target must be increased
-            elif cmd.kind == command.CommandKind.M:
-                search = self._commute_MX(target)
-                if search:
-                    target = self._find_op_to_be_moved("X", rev=True, skipnum=moved_X)
-                    continue  # XM commutation rule removes X command
-            else:
-                self._commute_with_following(target)
-            target += 1
-
+        index = len(self.__seq) - 1
+        X_limit = len(self.__seq) - 1
+        while index > 0:
+            if self.__seq[index].kind == "X":
+                index_X = index
+                while index_X < X_limit:
+                    cmd = self.__seq[index_X + 1]
+                    kind = cmd.kind
+                    if kind == command.CommandKind.E:
+                        move = self._commute_EX(index_X)
+                        if move:
+                            X_limit += 1 # addition of extra Z means target must be increased
+                            index_X += 1
+                    elif kind == command.CommandKind.M:
+                        search = self._commute_MX(index_X)
+                        if search:
+                            X_limit -= 1 # XM commutation rule removes X command
+                            break
+                    else:
+                        self._commute_with_following(index_X)
+                    index_X += 1
+                else:
+                    X_limit -= 1
+            index -= 1
         # then, move Z to the end of sequence in front of X
-        moved_Z = 0  # number of moved Z
-        target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
-        while target != "end":
-            if (target == len(self.__seq) - 1) or (
-                self.__seq[target + 1].kind == command.CommandKind.X or
-                self.__seq[target + 1].kind == command.CommandKind.Z
-            ):
-                moved_Z += 1
-                target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
-                continue
-            cmd = self.__seq[target + 1]
-            if cmd.kind == command.CommandKind.M:
-                search = self._commute_MZ(target)
-                if search:
-                    target = self._find_op_to_be_moved("Z", rev=True, skipnum=moved_Z)
-                    continue  # ZM commutation rule removes Z command
-            else:
-                self._commute_with_following(target)
-            target += 1
+        index = X_limit
+        Z_limit = X_limit
+        while index > 0:
+            if self.__seq[index].kind == "Z":
+                index_Z = index
+                while index_Z < Z_limit:
+                    cmd = self.__seq[index_Z + 1]
+                    if cmd.kind == command.CommandKind.M:
+                        search = self._commute_MZ(index_Z)
+                        if search:
+                            Z_limit -= 1 # ZM commutation rule removes Z command
+                            break
+                    else:
+                        self._commute_with_following(index_Z)
+                    index_Z += 1
+            index -= 1
 
     def _move_E_after_N(self):
         """Internal method to move all E commands to the start of sequence,
@@ -707,7 +707,7 @@ class Pattern:
         """
         moved_E = 0
         target = self._find_op_to_be_moved("E", skipnum=moved_E)
-        while target != "end":
+        while target is not None:
             if (target == 0) or (
                 self.__seq[target - 1].kind == command.CommandKind.N or
                 self.__seq[target - 1].kind == command.CommandKind.E
@@ -976,7 +976,7 @@ class Pattern:
             self.standardize()
         meas_cmds = []
         ind = self._find_op_to_be_moved("M")
-        if ind == "end":
+        if ind is None:
             return []
         while self.__seq[ind].kind == command.CommandKind.M:
             meas_cmds.append(self.__seq[ind])
@@ -1135,7 +1135,7 @@ class Pattern:
             self.standardize()
         node_list = []
         ind = self._find_op_to_be_moved("E")
-        if not ind == "end":  # end -> 'node' is isolated
+        if ind is not None:  # end -> 'node' is isolated
             cmd = self.__seq[ind]
             while cmd.kind == command.CommandKind.E:
                 if cmd.nodes[0] == node:
@@ -1204,7 +1204,9 @@ class Pattern:
             meas_order = self.get_measurement_order_from_flow()
         if meas_order is None:
             meas_order = self._measurement_order_space()
-        self._reorder_pattern(self.sort_measurement_commands(meas_order))
+        (_, time_reorder) = get_time_exec(self._reorder_pattern, [self.sort_measurement_commands(meas_order)])
+        warnings.warn(f'time reorder pattern = {time_reorder}')
+        # self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
     def _reorder_pattern(self, meas_commands: list[command.M]):
         """internal method to reorder the command sequence
@@ -1236,15 +1238,11 @@ class Pattern:
             if cmd.kind == command.CommandKind.N:
                 if not cmd.node in prepared:
                     new.append(command.N(node=cmd.node))
-        for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.E:
+            elif cmd.kind == command.CommandKind.E:
                 if cmd.nodes[0] in self.output_nodes:
                     if cmd.nodes[1] in self.output_nodes:
                         new.append(cmd)
-
-        # add Clifford nodes
-        for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.C:
+            elif cmd.kind == command.CommandKind.C: # add Clifford nodes
                 new.append(cmd)
 
         # add corrections
