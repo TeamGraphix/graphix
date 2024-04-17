@@ -212,7 +212,7 @@ class QNN:
         self.cost_values.append(cost_val)
         return cost_val
 
-    def callback(self, xk):
+    def callback(self, _xk):
         """
         Plots the cost values against the number of iterations and displays the plot
         with the latest cost value as a label.

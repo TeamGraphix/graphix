@@ -32,7 +32,7 @@ autosectionlabel_prefix_document = True
 sys.path.insert(0, os.path.abspath("../.."))
 
 
-def skip(app, what, name, obj, would_skip, options):
+def skip(_app, _what, name, _obj, would_skip, _options):
     if name == "__init__":
         return False
     return would_skip
