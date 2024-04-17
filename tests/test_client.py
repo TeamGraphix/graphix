@@ -7,7 +7,7 @@ import numpy as np
 from graphix.client import Client
 from graphix.sim.statevec import StatevectorBackend, Statevec
 from graphix.simulator import PatternSimulator
-from graphix.states import PlanarState
+from graphix.states import PlanarState, BasicStates
 
 
 class TestClient(unittest.TestCase):
@@ -16,25 +16,25 @@ class TestClient(unittest.TestCase):
         # set up the random numbers
         self.rng = np.random.default_rng()  # seed=422
 
-    def test_custom_secret(self):
-        # Generate and standardize pattern
-        nqubits = 2
-        depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
+    # def test_custom_secret(self):
+    #     # Generate and standardize pattern
+    #     nqubits = 2
+    #     depth = 1
+    #     circuit = rc.get_rand_circuit(nqubits, depth)
+    #     pattern = circuit.transpile()
+    #     pattern.standardize(method="global")
 
-        measured_qubits = [i[1] for i in pattern.get_measurement_commands()]
+    #     measured_qubits = [i[1] for i in pattern.get_measurement_commands()]
 
-        # Initialize the client
-        # A client that inputs a secret values other than bits should throw an error
-        r = {}
-        for qubit in measured_qubits:
-            r[qubit] = 666
-        secrets = {'r': r}
-        self.assertRaises(ValueError, Client, pattern, None, True, secrets)
+    #     # Initialize the client
+    #     # A client that inputs a secret values other than bits should throw an error
+    #     r = {}
+    #     for qubit in measured_qubits:
+    #         r[qubit] = 666
+    #     secrets = {'r': r}
+    #     self.assertRaises(ValueError, Client, pattern, None, True, secrets)
 
-        # TODO : do the same for `a` and `theta` secrets
+    #     # TODO : do the same for `a` and `theta` secrets
 
  
 
@@ -156,7 +156,7 @@ class TestClient(unittest.TestCase):
         for measured_node in client.measurement_db:
             # Compare results on the client side and on the server side : should differ by r[node]
             result = client.results[measured_node]
-            client_r_secret = client.secrets['r'][measured_node]
+            client_r_secret = client.secrets.r[measured_node]
             server_result = client.backend_results[measured_node]
             assert result == (server_result + client_r_secret) % 2
 
@@ -176,11 +176,9 @@ class TestClient(unittest.TestCase):
                 'theta': {},
                 }
 
-            # Create a |+> state for each input node
-            states = [PlanarState(plane = 0, angle = 0) for node in pattern.input_nodes]
+            # Create a |+> state for each input node, and associate index
+            input_state = {node : BasicStates.PLUS for node in pattern.input_nodes}
             
-            # Create a mapping to keep track of the index associated to each of the qubits
-            input_state = dict(zip(pattern.input_nodes, states))
 
             # Create the client with the input state
             client = Client(pattern=pattern, input_state=input_state, blind=True, secrets=secrets)

@@ -9,6 +9,8 @@ import graphix.sim.statevec
 import graphix.simulator
 from graphix.pauli import Plane
 from copy import deepcopy
+import typing
+
 """
 Usage:
 
@@ -19,6 +21,20 @@ simulator = PatternSimulator(client.pattern, backend=sv_backend)
 simulator.run()
 
 """
+
+
+
+@dataclasses.dataclass
+class Secret_a:
+    a : dict[int, int]
+    a_N : dict[int, int]
+
+@dataclasses.dataclass
+class Secrets:
+    r : typing.Optional[dict[int, int]]
+    a : typing.Optional[Secret_a]
+    theta : typing.Optional[dict[int, int]]
+
 
 @dataclasses.dataclass
 class MeasureParameters:
@@ -50,10 +66,7 @@ class Client:
         self.backend_results = {}
         self.blind = blind
         # By default, no secrets
-        self.r_secret = False
-        self.theta_secret = False
-        self.a_secret = False
-        self.secrets = {}
+        self.secrets = Secrets(None, None, None)
         # Initialize the secrets
         self.init_secrets(secrets)
         self.init_inputs(input_state)
@@ -69,8 +82,8 @@ class Client:
         sent_input = {}
         for input_node in input_state :
             initial_state = input_state[input_node]
-            theta_value = 0 if not self.theta_secret else self.secrets['theta'][input_node]
-            a_value = 0 if not self.a_secret else self.secrets['a'][input_node]
+            theta_value = 0 if not self.secrets.theta else self.secrets.theta[input_node]
+            a_value = 0 if not self.secrets.a else self.secrets.a.a[input_node]
             new_angle = (-1)**a_value *initial_state.angle + theta_value*np.pi/4
             blinded_state = PlanarState(plane=initial_state.plane, angle=new_angle)
             sent_input[input_node] = blinded_state
@@ -85,50 +98,37 @@ class Client:
         if self.blind:
             node_list, edge_list = self.clean_pattern.get_graph()
             if 'r' in secrets:
-                # User wants to add an r-secret, either customized or generated on the fly
-                self.r_secret = True
-                self.secrets['r'] = {}
-                r_size = len(secrets['r'].keys())
-                # If the client entered an empty secret (need to generate it)
-                if r_size == 0:
-                    # Need to generate the bit for each measured qubit
-                    for node in node_list :
-                        r = np.random.randint(0, 2)
-                        self.secrets['r'][node] = r
-
-                # If the client entered a customized secret : need to check its validity
-                elif self.is_valid_secret('r', secrets['r']):
-                    self.secrets['r'] = secrets['r']
-                    # TODO : add more rigorous test of the r-secret format
-                else:
-                    raise ValueError("`r` has wrong format.")
+                r = {}
+                # Need to generate the random bit for each measured qubit, 0 for the rest (output qubits)
+                for node in node_list :
+                    r[node] = np.random.randint(0, 2) if node not in self.clean_pattern.output_nodes else 0
+                self.secrets.r = r
+                
 
             if 'theta' in secrets :
-                self.theta_secret = True
-                self.secrets['theta'] = {}
+                theta = {}
                 # Create theta secret for all non-output nodes (measured qubits)
                 for node in node_list :
-                    theta = np.random.randint(0,8) if node not in self.clean_pattern.output_nodes else 0    # Expressed in pi/4 units
-                    self.secrets['theta'][node] = theta
+                    theta[node] = np.random.randint(0,8) if node not in self.clean_pattern.output_nodes else 0    # Expressed in pi/4 units
+                self.secrets.theta = theta
 
             if 'a' in secrets :
-                self.a_secret = True
-                self.secrets['a'] = {}
+                a = {}
+                a_N = {}
                 # Create `a` secret for all
                 for node in node_list :
-                    a = np.random.randint(0,2) if node in self.clean_pattern.input_nodes else 0
-                    self.secrets['a'][node] = a
+                    a[node] = np.random.randint(0,2) if node in self.clean_pattern.input_nodes else 0
                 
                 # After all the `a` secrets have been generated, the `a_N` value can be
                 # computed from the graph topology
-                self.secrets['a_N'] = {}
                 for i in node_list :
-                    self.secrets['a_N'][i] = 0
+                    a_N_value = 0
                     for j in node_list :
                         if (i,j) in edge_list or (j,i) in edge_list :
-                            self.secrets['a_N'][i] += self.secrets['a'][j]
-                        self.secrets['a_N'][i] %= 2 
+                            a_N_value ^= a[j]
+                    a_N[i] = a_N_value 
                         
+                self.secrets.a = Secret_a(a, a_N)
                 
     def add_secret_angles(self) :
         """
@@ -139,7 +139,7 @@ class Client:
         for cmd in self.clean_pattern :
             if cmd[0] == 'N' :
                 node = cmd[1]
-                theta_value = 0 if not self.theta_secret else self.secrets['theta'][node]
+                theta_value = 0 if not self.secrets.theta else self.secrets.theta[node]
                 auxiliary_state = PlanarState(plane=Plane(0), angle=theta_value*np.pi/4)
                 new_pattern.add_auxiliary_node(node)
                 self.input_state.append(auxiliary_state)
@@ -257,10 +257,13 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
     def get_measurement_description(self, cmd, results) -> graphix.sim.base_backend.MeasurementDescription:
         node = cmd[1]
         parameters = self.__client.measurement_db[node]
-        r_value = 0 if not self.__client.r_secret else self.__client.secrets['r'][node]
-        theta_value = 0 if not self.__client.theta_secret else self.__client.secrets['theta'][node]
-        a_value = 0 if not self.__client.a_secret else self.__client.secrets['a'][node]
-        a_N_value = 0 if not self.__client.a_secret else self.__client.secrets['a_N'][node]
+        r_value = 0 if not self.__client.secrets.r else self.__client.secrets.r[node]
+        theta_value = 0 if not self.__client.secrets.theta else self.__client.secrets.theta[node]
+        if self.__client.secrets.a :
+            a_value = self.__client.secrets.a.a[node]
+            a_N_value = self.__client.secrets.a.a_N[node]
+        else : 
+            a_value, a_N_value = 0, 0
 
         # extract signals for adaptive angle
         s_signal = np.sum(self.__client.results[j] for j in parameters.s_domain)
@@ -276,8 +279,7 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
 
     def set_measure_result(self, cmd, result: bool) -> None:
         node = cmd[1]
-        if self.__client.r_secret:
-            r_value = self.__client.secrets['r'][node]
-            result = (result + r_value) % 2
+        if self.__client.secrets.r:
+            result ^= self.__client.secrets.r[node]
         self.__client.results[node] = result
 
