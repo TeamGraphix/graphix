@@ -698,7 +698,7 @@ class Circuit:
             target += 1
 
     @classmethod
-    def _cnot_command(self, control_node: int, target_node: int, ancilla: Sequence[int]):
+    def _cnot_command(cls, control_node: int, target_node: int, ancilla: Sequence[int]):
         """MBQC commands for CNOT gate
 
         Parameters
@@ -732,7 +732,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _h_command(self, input_node: int, ancilla: int):
+    def _h_command(cls, input_node: int, ancilla: int):
         """MBQC commands for Hadamard gate
 
         Parameters
@@ -756,7 +756,7 @@ class Circuit:
         return ancilla, seq
 
     @classmethod
-    def _s_command(self, input_node: int, ancilla: Sequence[int]):
+    def _s_command(cls, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for S gate
 
         Parameters
@@ -784,7 +784,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _x_command(self, input_node: int, ancilla: Sequence[int]):
+    def _x_command(cls, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for Pauli X gate
 
         Parameters
@@ -812,7 +812,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _y_command(self, input_node: int, ancilla: Sequence[int]):
+    def _y_command(cls, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for Pauli Y gate
 
         Parameters
@@ -845,7 +845,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _z_command(self, input_node: int, ancilla: Sequence[int]):
+    def _z_command(cls, input_node: int, ancilla: Sequence[int]):
         """MBQC commands for Pauli Z gate
 
         Parameters
@@ -873,7 +873,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float):
+    def _rx_command(cls, input_node: int, ancilla: Sequence[int], angle: float):
         """MBQC commands for X rotation gate
 
         Parameters
@@ -903,7 +903,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float):
+    def _ry_command(cls, input_node: int, ancilla: Sequence[int], angle: float):
         """MBQC commands for Y rotation gate
 
         Parameters
@@ -938,7 +938,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float):
+    def _rz_command(cls, input_node: int, ancilla: Sequence[int], angle: float):
         """MBQC commands for Z rotation gate
 
         Parameters
@@ -968,7 +968,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float):
+    def _rz_command_opt(cls, input_node: int, ancilla: int, angle: float):
         """optimized MBQC commands for Z rotation gate
 
         Parameters
@@ -994,7 +994,7 @@ class Circuit:
         return input_node, seq
 
     @classmethod
-    def _rzz_command_opt(self, control_node: int, target_node: int, ancilla: int, angle: float):
+    def _rzz_command_opt(cls, control_node: int, target_node: int, ancilla: int, angle: float):
         """Optimized MBQC commands for ZZ-rotation gate
 
         Parameters
@@ -1024,7 +1024,7 @@ class Circuit:
         return control_node, target_node, seq
 
     @classmethod
-    def _ccx_command(self, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
+    def _ccx_command(cls, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
         """MBQC commands for CCX gate
 
         Parameters
@@ -1149,7 +1149,7 @@ class Circuit:
         return ancilla[17], ancilla[15], ancilla[13], seq
 
     @classmethod
-    def _ccx_command_opt(self, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
+    def _ccx_command_opt(cls, control_node1: int, control_node2: int, target_node: int, ancilla: Sequence[int]):
         """Optimized MBQC commands for CCX gate
 
         Parameters
@@ -1213,7 +1213,7 @@ class Circuit:
         return ancilla[10], ancilla[9], ancilla[7], seq
 
     @classmethod
-    def _sort_outputs(self, pattern: Pattern, output_nodes: Sequence[int]):
+    def _sort_outputs(cls, pattern: Pattern, output_nodes: Sequence[int]):
         """Sort the node indices of ouput qubits.
 
         Parameters
