@@ -2,8 +2,9 @@
 Pauli gates ± {1,j} × {I, X, Y, Z}
 """
 
+from __future__ import annotations
+
 import enum
-import typing
 
 import numpy as np
 import pydantic
@@ -114,7 +115,7 @@ class Plane(enum.Enum):
     XZ = 2
 
     @property
-    def axes(self) -> typing.List[Axis]:
+    def axes(self) -> list[Axis]:
         # match self:
         #     case Plane.XY:
         #         return [Axis.X, Axis.Y]
@@ -161,7 +162,7 @@ class Plane(enum.Enum):
         elif self == Plane.XZ:
             return Axis.X  # former convention was Z
 
-    def polar(self, angle: float) -> typing.Tuple[float, float, float]:
+    def polar(self, angle: float) -> tuple[float, float, float]:
         result = [0, 0, 0]
         result[self.cos.value] = np.cos(angle)
         result[self.sin.value] = np.sin(angle)

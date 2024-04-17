@@ -4,7 +4,7 @@ multiplications, conjugations and Pauli conjugations.
 
 """
 
-import typing
+from __future__ import annotations
 
 import numpy as np
 
@@ -256,14 +256,14 @@ class Clifford:
         return get(CLIFFORD_CONJ[self.__index])
 
     @property
-    def hsz(self) -> typing.List["Clifford"]:
+    def hsz(self) -> list["Clifford"]:
         """
         Return a decomposition of the Clifford gate with the gates H, S, Z.
         """
         return list(map(get, CLIFFORD_HSZ_DECOMPOSITION[self.__index]))
 
     @property
-    def qasm3(self) -> typing.Tuple[str, ...]:
+    def qasm3(self) -> tuple[str, ...]:
         """
         Return a decomposition of the Clifford gate as qasm3 gates.
         """
