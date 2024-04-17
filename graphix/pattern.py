@@ -2163,4 +2163,4 @@ def assert_permutation(original, user):
         if node in node_set:
             node_set.remove(node)
         else:
-            assert False, f"{node} appears twice"
+            raise AssertionError(f"{node} appears twice")
