@@ -60,14 +60,20 @@ class TestPattern(unittest.TestCase):
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_empty_output_nodes(self):
+    @parameterized.expand(["statevector", "densitymatrix", "tensornetwork"])
+    def test_empty_output_nodes(self, backend):
         pattern = Pattern(input_nodes=[0])
         pattern.add(["M", 0, "XY", 0.5, [], []])
 
         def simulate_and_measure():
-            sim = PatternSimulator(pattern)
+            sim = PatternSimulator(pattern, backend)
             sim.run()
-            assert sim.state.dims() == ()
+            if backend == "statevector":
+                assert sim.state.dims() == ()
+            elif backend == "densitymatrix":
+                assert sim.state.dims() == (1, 1)
+            elif backend == "tensornetwork":
+                assert sim.state.to_statevector().shape == (1,)
             return sim.results[0]
 
         nb_shots = 1000
