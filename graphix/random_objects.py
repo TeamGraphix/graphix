@@ -29,7 +29,7 @@ def rand_unit(l: int):
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rank: int = None, dm_dtype=True) -> DensityMatrix:
+def rand_dm(dim: int, rank: int | None = None, dm_dtype=True) -> DensityMatrix:
     """Returns a "density matrix" as a DensityMatrix object ie a positive-semidefinite (hence Hermitian) matrix with unit trace
     Note, not a proper DM since its dim can be something else than a power of 2.
     The rank is random between 1 (pure) and dim if not specified
@@ -89,7 +89,7 @@ def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
     return np.sum(np.random.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
 
 
-def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
+def rand_channel_kraus(dim: int, rank: int | None = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
     """
     Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
@@ -128,7 +128,7 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 
 # or merge with previous with a "pauli" kwarg?
 ### continue here
-def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
+def rand_Pauli_channel_kraus(dim: int, rank: int | None = None) -> KrausChannel:
     if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
 
