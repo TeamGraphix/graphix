@@ -11,17 +11,19 @@ Firstly, let us import relevant modules:
 
 # %%
 
-from graphix.transpiler import Circuit
+from functools import reduce
+from time import time
+
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_circles
-from scipy.optimize import minimize
-from functools import reduce
 import seaborn as sns
-from matplotlib import cm
 from IPython.display import clear_output
-from time import time
+from matplotlib import cm
+from scipy.optimize import minimize
+from sklearn.datasets import make_circles
+
+from graphix.transpiler import Circuit
 
 np.random.seed(0)
 

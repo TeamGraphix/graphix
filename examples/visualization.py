@@ -7,6 +7,8 @@ visualization methods for inspecting the causal structure of the graph associate
 with the pattern, graph or the (generalized-)flow.
 """
 
+import numpy as np
+
 # %%
 # Causal flow
 # -----------
@@ -20,7 +22,6 @@ with the pattern, graph or the (generalized-)flow.
 # - Nodes in white are the ones measured in *non-Pauli basis*.
 #
 from graphix import Circuit
-import numpy as np
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
@@ -61,6 +62,7 @@ pattern.draw_graph(flow_from_pattern=True, show_local_clifford=True, node_distan
 # The visualizer also works without the pattern. Simply supply the
 
 import networkx as nx
+
 from graphix.visualization import GraphVisualizer
 
 # graph with gflow but no flow

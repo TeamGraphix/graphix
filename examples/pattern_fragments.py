@@ -7,11 +7,12 @@ with fewer resource requirement than the standard pattern.
 
 """
 
+import numpy as np
+
 # %%
 # First, for Toffoli gate, here is the pattern based on the decomposition of CCX gate with CNOT and single-qubit rotations,
 # turned into a measurement pattern:
 from graphix import Circuit
-import numpy as np
 
 circuit = Circuit(3)
 circuit.ccx(0, 1, 2)

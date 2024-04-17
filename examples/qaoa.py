@@ -11,11 +11,12 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 """
 
-# %%
-from graphix import Circuit
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
+
+# %%
+from graphix import Circuit
 
 n = 4
 xi = np.random.rand(6)

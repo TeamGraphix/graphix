@@ -11,6 +11,7 @@ First, let us import relevant modules and define a pattern
 
 # %%
 import numpy as np
+
 from graphix import Circuit
 
 circuit = Circuit(2)
@@ -32,15 +33,13 @@ pattern.print_pattern(lim=30)
 out_state = pattern.simulate_pattern(backend="statevector")
 print(out_state.flatten())
 
+from graphix.channels import KrausChannel, dephasing_channel
+from graphix.noise_models.noise_model import NoiseModel
+
 # %%
 # Now let us define a noise model. We specify Kraus channels for each of the command executions.
 # Here, we apply dephasing noise to the qubit preparation.
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
-from graphix.noise_models.noise_model import NoiseModel
-from graphix.channels import (
-    KrausChannel,
-    dephasing_channel,
-)
 
 
 class NoisyGraphState(NoiseModel):

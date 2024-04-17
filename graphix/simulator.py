@@ -4,13 +4,14 @@ Simulates MBQC by executing the pattern.
 
 """
 
+import warnings
+
 import numpy as np
 
+from graphix.noise_models import NoiseModel
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
-from graphix.noise_models import NoiseModel
-import warnings
 
 
 class PatternSimulator:

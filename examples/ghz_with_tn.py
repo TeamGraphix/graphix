@@ -15,10 +15,11 @@ Firstly, let us import relevant modules:
 
 # %%
 
-import numpy as np
-from graphix import Circuit
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+
+from graphix import Circuit
 
 n = 100
 print(f"{n}-qubit GHZ state generation")

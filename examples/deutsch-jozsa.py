@@ -17,11 +17,13 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 First, let us import relevant modules:
 """
 
+import matplotlib.pyplot as plt
+import networkx as nx
+
 # %%
 import numpy as np
+
 from graphix import Circuit
-import networkx as nx
-import matplotlib.pyplot as plt
 
 # %%
 # Now we implement the algorithm with quantum circuit, which we can transpile into MBQC.
