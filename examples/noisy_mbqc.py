@@ -33,8 +33,8 @@ pattern.print_pattern(lim=30)
 out_state = pattern.simulate_pattern(backend="statevector")
 print(out_state.flatten())
 
-from graphix.channels import KrausChannel, dephasing_channel
-from graphix.noise_models.noise_model import NoiseModel
+from graphix.channels import KrausChannel, dephasing_channel  # noqa: E402
+from graphix.noise_models.noise_model import NoiseModel  # noqa: E402
 
 # %%
 # Now let us define a noise model. We specify Kraus channels for each of the command executions.
@@ -85,14 +85,14 @@ class NoisyGraphState(NoiseModel):
 
 # %%
 # simulate with the noise model
-from graphix.simulator import PatternSimulator
+from graphix.simulator import PatternSimulator  # noqa: E402
 
 simulator = PatternSimulator(pattern, backend="densitymatrix", noise_model=NoisyGraphState(p_z=0.01))
 dm_result = simulator.run()
 print(dm_result.fidelity(out_state.psi.flatten()))
 
 # %%
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402
 
 err_arr = np.logspace(-4, -1, 10)
 fidelity = np.zeros(10)

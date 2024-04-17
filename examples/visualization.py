@@ -61,9 +61,9 @@ pattern.draw_graph(flow_from_pattern=True, show_local_clifford=True, node_distan
 # ----------------------------
 # The visualizer also works without the pattern. Simply supply the
 
-import networkx as nx
+import networkx as nx  # noqa: E402
 
-from graphix.visualization import GraphVisualizer
+from graphix.visualization import GraphVisualizer  # noqa: E402
 
 # graph with gflow but no flow
 nodes = [1, 2, 3, 4, 5, 6]
