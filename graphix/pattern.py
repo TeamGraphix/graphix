@@ -1201,9 +1201,13 @@ class Pattern:
             self.standardize()
         meas_order = None
         if not self._pauli_preprocessed:
-            meas_order = self.get_measurement_order_from_flow()
+            (meas_order, time_meas_order) = get_time_exec(self.get_measurement_order_from_flow)
+            warnings.warn(f'time meas order = {time_meas_order}')
+            # meas_order = self.get_measurement_order_from_flow()
         if meas_order is None:
-            meas_order = self._measurement_order_space()
+            (meas_order, time_meas_order) = get_time_exec(self._measurement_order_space)
+            warnings.warn(f'time meas order = {time_meas_order}')
+            # meas_order = self._measurement_order_space()
         (_, time_reorder) = get_time_exec(self._reorder_pattern, [self.sort_measurement_commands(meas_order)])
         warnings.warn(f'time reorder pattern = {time_reorder}')
         # self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1216,39 +1220,38 @@ class Pattern:
         meas_commands : list of command
             list of measurement ('M') commands
         """
-        prepared = self.input_nodes
-        measured = []
+        prepared = set(self.input_nodes)
+        measured = set()
         new = []
+        c_list = []
+    
         for cmd in meas_commands:
             node = cmd.node
             if node not in prepared:
                 new.append(command.N(node=node))
-                prepared.append(node)
+                prepared.add(node)
             node_list = self.connected_nodes(node, measured)
             for add_node in node_list:
                 if add_node not in prepared:
                     new.append(command.N(node=add_node))
-                    prepared.append(add_node)
+                    prepared.add(add_node)
                 new.append(command.E(nodes=(node, add_node)))
             new.append(cmd)
-            measured.append(node)
+            measured.add(node)
 
         # add isolated nodes
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N:
-                if not cmd.node in prepared:
-                    new.append(command.N(node=cmd.node))
-            elif cmd.kind == command.CommandKind.E:
-                if cmd.nodes[0] in self.output_nodes:
-                    if cmd.nodes[1] in self.output_nodes:
-                        new.append(cmd)
-            elif cmd.kind == command.CommandKind.C: # add Clifford nodes
+            if cmd.kind == command.CommandKind.N and cmd.node not in prepared:
+                new.append(command.N(node=cmd.node))
+            elif cmd.kind == command.CommandKind.E and all(node in self.output_nodes for node in cmd.nodes):
                 new.append(cmd)
+            elif cmd.kind == command.CommandKind.C:  # Add Clifford nodes
+                new.append(cmd)
+            elif cmd.kind in {command.CommandKind.Z, command.CommandKind.X}:  # Add corrections
+                c_list.append(cmd)
 
-        # add corrections
-        c_list = self.correction_commands()
+        # c_list = self.correction_commands()
         new.extend(c_list)
-
         self.__seq = new
 
     def max_space(self):
