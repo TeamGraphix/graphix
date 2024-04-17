@@ -62,7 +62,6 @@ class NoisyGraphState(NoiseModel):
         """imperfect measurement effect. here we do nothing (no error).
         cmd = "M"
         """
-        pass
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction. here no error (identity)."""
@@ -82,7 +81,6 @@ class NoisyGraphState(NoiseModel):
 
         here we assume no idle error.
         """
-        pass
 
 
 # %%
