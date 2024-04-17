@@ -4,9 +4,8 @@ from __future__ import annotations
 import unittest
 
 import networkx as nx
-import numpy as np
 
-from graphix.gflow import find_flow, find_gflow, get_input_from_flow, verify_flow, verify_gflow
+from graphix.gflow import find_flow, find_gflow, verify_flow, verify_gflow
 from tests.random_circuit import get_rand_circuit
 
 seed = 30

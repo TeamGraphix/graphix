@@ -39,15 +39,15 @@ class TestChannel(unittest.TestCase):
 
         # empty data
         with self.assertRaises(ValueError):
-            mychannel = KrausChannel([])
+            _mychannel = KrausChannel([])
 
         # incorrect parameter type
         with self.assertRaises(TypeError):
-            mychannel = KrausChannel("a")
+            _mychannel = KrausChannel("a")
 
         # incorrect "parameter" key
         with self.assertRaises(KeyError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coefficients": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
@@ -56,7 +56,7 @@ class TestChannel(unittest.TestCase):
 
         # incorrect "operator" key
         with self.assertRaises(KeyError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
@@ -65,7 +65,7 @@ class TestChannel(unittest.TestCase):
 
         # incorrect parameter type
         with self.assertRaises(TypeError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
@@ -74,7 +74,7 @@ class TestChannel(unittest.TestCase):
 
         # incorrect operator type
         with self.assertRaises(TypeError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": "a"},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
@@ -83,7 +83,7 @@ class TestChannel(unittest.TestCase):
 
         # incorrect operator dimension
         with self.assertRaises(ValueError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
@@ -92,7 +92,7 @@ class TestChannel(unittest.TestCase):
 
         # incorrect operator dimension: square but not qubits
         with self.assertRaises(ValueError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.random.rand(3, 3)},
                     {"coef": np.sqrt(prob), "operator": np.random.rand(3, 3)},
@@ -101,7 +101,7 @@ class TestChannel(unittest.TestCase):
 
         # doesn't square to 1. Not normalized. Parameter.
         with self.assertRaises(ValueError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
@@ -110,7 +110,7 @@ class TestChannel(unittest.TestCase):
 
         # doesn't square to 1. Not normalized. Operator.
         with self.assertRaises(ValueError):
-            mychannel = KrausChannel(
+            _mychannel = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},

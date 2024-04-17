@@ -17,8 +17,6 @@ from graphix.device_interface import PatternRunner
 gx_ibmq_mock = MagicMock()
 sys.modules["graphix_ibmq.runner"] = gx_ibmq_mock
 
-import tests.random_circuit as rc
-from graphix.device_interface import PatternRunner
 
 
 def modify_statevector(statevector, output_qubit):

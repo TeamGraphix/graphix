@@ -111,7 +111,7 @@ def check_rank(data: Union[list, tuple, np.ndarray]) -> bool:
     # already checked that the data is list of square matrices
     if len(data) > data[0]["operator"].shape[0] ** 2:
         raise ValueError(
-            f"Incorrect number of Kraus operators in the expansion. This number must be an integer between 1 and the dimension squared."
+            "Incorrect number of Kraus operators in the expansion. This number must be an integer between 1 and the dimension squared."
         )
 
     return True
