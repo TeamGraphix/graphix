@@ -100,7 +100,7 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        assert type(cmd) == list
+        assert isinstance(cmd, list)
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             if cmd[1] in self.__output_nodes:
