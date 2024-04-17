@@ -276,7 +276,7 @@ class TestDensityMatrix(unittest.TestCase):
         with self.assertRaises(ValueError):
             dm.entangle((1, 1))
         with self.assertRaises(ValueError):
-            dm.entangle(((1, 3)))
+            dm.entangle((1, 3))
         with self.assertRaises(ValueError):
             dm.entangle((0, 1, 2))
 
