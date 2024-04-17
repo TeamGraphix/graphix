@@ -320,7 +320,7 @@ class TestTN(unittest.TestCase):
     def test_with_graphtrans(self):
         nqubits = 4
         depth = 6
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize()
@@ -338,7 +338,7 @@ class TestTN(unittest.TestCase):
     def test_with_graphtrans_sequential(self):
         nqubits = 4
         depth = 6
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize()
@@ -356,7 +356,7 @@ class TestTN(unittest.TestCase):
     def test_coef_state(self):
         nqubits = 4
         depth = 2
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.standardize_and_transpile()
 
@@ -375,7 +375,7 @@ class TestTN(unittest.TestCase):
         depth = 3
         for nqubits in nqubits_set:
             self.subTest(nqubit=nqubits)
-            for i in range(5):
+            for _ in range(5):
                 circuit = rc.get_rand_circuit(nqubits, depth)
                 pattern = circuit.standardize_and_transpile()
                 statevec_ref = circuit.simulate_statevector()
@@ -389,7 +389,7 @@ class TestTN(unittest.TestCase):
     def test_evolve(self):
         nqubits = 4
         depth = 6
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize()

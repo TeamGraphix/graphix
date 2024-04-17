@@ -27,7 +27,7 @@ from graphix import Circuit
 
 def genpair(n_qubits, count, rng):
     pairs = []
-    for i in range(count):
+    for _ in range(count):
         choice = [j for j in range(n_qubits)]
         x = rng.choice(choice)
         choice.pop(x)
@@ -82,7 +82,7 @@ for i in test_cases:
 networkx_time = []
 networkx_node = []
 
-for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
+for width, (_, pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements()
@@ -97,7 +97,7 @@ for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
 rustworkx_time = []
 rustworkx_node = []
 
-for width, (circuit, pattern, num_nodes) in graphix_patterns.items():
+for width, (_, pattern, num_nodes) in graphix_patterns.items():
     pattern_copy = copy(pattern)
     start = perf_counter()
     pattern_copy.perform_pauli_measurements(use_rustworkx=True)

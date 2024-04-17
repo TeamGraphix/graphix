@@ -84,7 +84,7 @@ class TestPattern(unittest.TestCase):
     def test_shift_signals(self):
         nqubits = 2
         depth = 1
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize(method="global")
@@ -100,7 +100,7 @@ class TestPattern(unittest.TestCase):
             self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize(method="global")
@@ -117,7 +117,7 @@ class TestPattern(unittest.TestCase):
             self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize(method="global")
@@ -134,7 +134,7 @@ class TestPattern(unittest.TestCase):
             self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
             pattern = circuit.transpile(opt=True)
             pattern.standardize(method="global")
@@ -151,7 +151,7 @@ class TestPattern(unittest.TestCase):
             self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
             pattern = circuit.standardize_and_transpile(opt=True)
             pattern.standardize(method="global")
@@ -168,7 +168,7 @@ class TestPattern(unittest.TestCase):
             self.skipTest("rustworkx not installed")
         nqubits = 3
         depth = 3
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
             pattern = circuit.standardize_and_transpile(opt=True)
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
@@ -340,7 +340,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_standardize(self):
         nqubits = 5
         depth = 4
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             localpattern = pattern.get_local_pattern()
@@ -355,7 +355,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_shift_signals(self):
         nqubits = 5
         depth = 4
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             localpattern = pattern.get_local_pattern()
@@ -371,7 +371,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_standardize_and_shift_signals(self):
         nqubits = 5
         depth = 4
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize_and_shift_signals()
@@ -394,7 +394,7 @@ class TestLocalPattern(unittest.TestCase):
         ]
         nqubits = 3
         depth = 2
-        for i in range(3):
+        for _ in range(3):
             circuit = rc.get_rand_circuit(nqubits, depth)
             state_ref = circuit.simulate_statevector()
             for process in processes:
@@ -412,7 +412,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_opt_transpile_standardize(self):
         nqubits = 5
         depth = 4
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile(opt=True)
             pattern.standardize(method="local")
@@ -425,7 +425,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_opt_transpile_shift_signals(self):
         nqubits = 5
         depth = 4
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile(opt=True)
             pattern.standardize(method="local")
@@ -451,7 +451,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_localpattern_is_standard(self):
         nqubits = 5
         depth = 4
-        for i in range(10):
+        for _ in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
             localpattern = circuit.transpile().get_local_pattern()
             result1 = localpattern.is_standard()

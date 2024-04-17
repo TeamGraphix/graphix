@@ -52,7 +52,7 @@ def generate_gate(nqubits, depth, pairs, use_rzz=False, seed=None):
     circuit = Circuit(nqubits)
     first_rotation(circuit, nqubits, rng)
     entangler(circuit, pairs)
-    for k in range(depth - 1):
+    for _ in range(depth - 1):
         mid_rotation(circuit, nqubits, rng)
         if use_rzz:
             entangler_rzz(circuit, pairs, rng)
@@ -64,7 +64,7 @@ def generate_gate(nqubits, depth, pairs, use_rzz=False, seed=None):
 
 def genpair(n_qubits, count, rng):
     pairs = []
-    for i in range(count):
+    for _ in range(count):
         choice = [j for j in range(n_qubits)]
         x = rng.choice(choice)
         choice.pop(x)
@@ -75,7 +75,7 @@ def genpair(n_qubits, count, rng):
 
 def gentriplet(n_qubits, count, rng):
     triplets = []
-    for i in range(count):
+    for _ in range(count):
         choice = [j for j in range(n_qubits)]
         x = rng.choice(choice)
         choice.pop(x)
@@ -91,7 +91,7 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
     rng = get_rng(seed)
     circuit = Circuit(nqubits)
     gate_choice = [0, 1, 2, 3, 4, 5, 6, 7]
-    for i in range(depth):
+    for _ in range(depth):
         for j, k in genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
         if use_rzz:
