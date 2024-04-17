@@ -166,7 +166,7 @@ def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
     # TODO see how to use zip and dict to convert from tuple to dict
     # https://www.tutorialspoint.com/How-I-can-convert-a-Python-Tuple-into-Dictionary
 
-    data = [{"coef": np.sqrt(params[i]), "operator": ops[i]} for i in range(0, rank)]
+    data = [{"coef": np.sqrt(params[i]), "operator": ops[i]} for i in range(rank)]
 
     # NOTE retain a strong probability on the identity or not?
     # think we don't really care
