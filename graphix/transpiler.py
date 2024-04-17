@@ -247,6 +247,8 @@ class Circuit:
     def m(self, qubit: int, plane: graphix.pauli.Plane, angle: float):
         """measure a quantum qubit
 
+        The measured qubit cannot be used afterwards.
+
         Parameters
         ---------
         qubit : int
@@ -268,7 +270,7 @@ class Circuit:
 
         Returns
         --------
-        pattern : :class:`graphix.pattern.Pattern` object
+        result : :class:`TranspileResult` object
         """
         Nnode = self.width
         input = [j for j in range(self.width)]
@@ -1357,17 +1359,17 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: Optional[Statevec] = None):
+    def simulate_statevector(self, input_state: Optional[Statevec] = None) -> SimulateResult:
         """Run statevector simultion of the gate sequence, using graphix.Statevec
 
         Parameters
         ----------
-        input_state : :meth:`~graphix.Statevec`
+        input_state : :class:`graphix.Statevec`
 
         Returns
         -------
-        state : :meth:`~graphix.Statevec`
-            output state of the statevector simulation.
+        result : :class:`SimulateResult`
+            output state of the statevector simulation and results of classical measures.
         """
 
         if input_state is None:
