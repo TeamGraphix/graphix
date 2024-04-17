@@ -5,10 +5,13 @@ from enum import Enum
 
 import numpy as np
 
-from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.rxgraphstate import RXGraphState
 from graphix.graphsim.utils import is_graphs_equal
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from graphix.graphsim.basegraphstate import BaseGraphState
 
 
 class ResourceType(Enum):
