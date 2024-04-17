@@ -50,8 +50,8 @@ class ResourceGraph:
 
 def get_fusion_network_from_graph(
     graph: BaseGraphState,
-    max_ghz: int | float = np.inf,
-    max_lin: int | float = np.inf,
+    max_ghz: float = np.inf,
+    max_lin: float = np.inf,
 ) -> list[ResourceGraph]:
     """Extract GHZ and linear cluster graph state decomposition of desired resource state :class:`~graphix.graphsim.GraphState`.
     Extraction algorithm is based on [1].
