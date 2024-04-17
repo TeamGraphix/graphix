@@ -227,9 +227,9 @@ class Circuit:
         pattern : :class:`graphix.pattern.Pattern` object
         """
         Nnode = self.width
-        input = [j for j in range(self.width)]
+        input_ = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
-        pattern = Pattern(input_nodes=input)
+        pattern = Pattern(input_nodes=input_)
         # pattern.extend([["N", i] for i in range(self.width)])
         for instr in self.instruction:
             if instr[0] == "CNOT":

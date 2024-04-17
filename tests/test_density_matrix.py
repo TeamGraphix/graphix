@@ -499,11 +499,11 @@ class TestDensityMatrix(unittest.TestCase):
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
         dm.apply_channel(dephase_channel, [0])
-        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+        id_ = np.array([[1.0, 0.0], [0.0, 1.0]])
 
         # compare
         expected_dm = (
-            np.sqrt(1 - prob) ** 2 * id @ rho_test @ id.conj().T
+            np.sqrt(1 - prob) ** 2 * id_ @ rho_test @ id_.conj().T
             + np.sqrt(prob) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
         )
 
@@ -540,10 +540,10 @@ class TestDensityMatrix(unittest.TestCase):
         # psi.reshape((2,) * N_qubits)
         # tmp = np.zeros(psi.shape)
 
-        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+        id_ = np.array([[1.0, 0.0], [0.0, 1.0]])
 
         # by hand: operator list and gate application
-        psi_evolved = np.tensordot(id, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolved = np.tensordot(id_, psi.reshape((2,) * N_qubits), (1, i))
         psi_evolved = np.moveaxis(psi_evolved, 0, i)
 
         psi_evolvedb = np.tensordot(Ops.z, psi.reshape((2,) * N_qubits), (1, i))
@@ -583,11 +583,11 @@ class TestDensityMatrix(unittest.TestCase):
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
         dm.apply_channel(depol_channel, [0])
-        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+        id_ = np.array([[1.0, 0.0], [0.0, 1.0]])
 
         # compare
         expected_dm = (
-            np.sqrt(1 - prob) ** 2 * id @ rho_test @ id.conj().T
+            np.sqrt(1 - prob) ** 2 * id_ @ rho_test @ id_.conj().T
             + np.sqrt(prob / 3.0) ** 2 * Ops.x @ rho_test @ Ops.x.conj().T
             + np.sqrt(prob / 3.0) ** 2 * Ops.y @ rho_test @ Ops.y.conj().T
             + np.sqrt(prob / 3.0) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
@@ -630,10 +630,10 @@ class TestDensityMatrix(unittest.TestCase):
         # psi.reshape((2,) * N_qubits)
         # tmp = np.zeros(psi.shape)
 
-        id = np.array([[1.0, 0.0], [0.0, 1.0]])
+        id_ = np.array([[1.0, 0.0], [0.0, 1.0]])
 
         # by hand: operator list and gate application
-        psi_evolved = np.tensordot(id, psi.reshape((2,) * N_qubits), (1, i))
+        psi_evolved = np.tensordot(id_, psi.reshape((2,) * N_qubits), (1, i))
         psi_evolved = np.moveaxis(psi_evolved, 0, i)
 
         psi_evolvedb = np.tensordot(Ops.x, psi.reshape((2,) * N_qubits), (1, i))
@@ -672,7 +672,7 @@ class TestDensityMatrix(unittest.TestCase):
         # create random density matrix
 
         N_qubits = np.random.randint(2, 5)
-        # id = np.array([[1.0, 0.0], [0.0, 1.0]])
+        # id_ = np.array([[1.0, 0.0], [0.0, 1.0]])
 
         # target qubit index
         i = np.random.randint(0, N_qubits)

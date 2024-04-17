@@ -288,7 +288,7 @@ class Pattern:
                 "output": False,
             }
 
-        node_prop = {input: fresh_node() for input in self.__input_nodes}
+        node_prop = {input_: fresh_node() for input_ in self.__input_nodes}
         morder = []
         for cmd in self.__seq:
             if cmd[0] == "N":
@@ -1408,10 +1408,10 @@ class Pattern:
             file.write('include "stdgates.inc";\n')
             file.write("\n")
             if self.results != {}:
-                for id in self.results:
-                    res = self.results[id]
-                    file.write("// measurement result of qubit q" + str(id) + "\n")
-                    file.write("bit c" + str(id) + " = " + str(res) + ";\n")
+                for id_ in self.results:
+                    res = self.results[id_]
+                    file.write("// measurement result of qubit q" + str(id_) + "\n")
+                    file.write("bit c" + str(id_) + " = " + str(res) + ";\n")
                     file.write("\n")
             for command in self.__seq:
                 for line in cmd_to_qasm3(command):

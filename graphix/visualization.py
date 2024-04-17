@@ -1242,9 +1242,9 @@ class GraphVisualizer:
         path = np.array(path)
         acute = True
         max_iter = 100
-        iter = 0
+        iter_ = 0
         while acute:
-            if iter > max_iter:
+            if iter_ > max_iter:
                 break
             for i in range(len(path) - 2):
                 v1 = path[i + 1] - path[i]
@@ -1262,7 +1262,7 @@ class GraphVisualizer:
                         path = np.delete(path, i + 1, 0)
                         path = np.insert(path, i + 1, mean, 0)
                         break
-                iter += 1
+                iter_ += 1
             else:
                 acute = False
         new_path = path.tolist()

@@ -118,8 +118,8 @@ class TestTN(unittest.TestCase):
         pattern = circuit.transpile()
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
         random_op2 = random_op(2)
-        input = [0, 1]
-        for qargs in itertools.permutations(input):
+        input_ = [0, 1]
+        for qargs in itertools.permutations(input_):
             value1 = state.expectation_value(random_op2, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
@@ -130,8 +130,8 @@ class TestTN(unittest.TestCase):
         pattern = circuit.transpile()
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
         random_op3 = random_op(3)
-        input = [0, 1, 2]
-        for qargs in itertools.permutations(input):
+        input_ = [0, 1, 2]
+        for qargs in itertools.permutations(input_):
             value1 = state.expectation_value(random_op3, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
@@ -142,8 +142,8 @@ class TestTN(unittest.TestCase):
         pattern = circuit.transpile()
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         random_op3 = random_op(3)
-        input = [0, 1, 2]
-        for qargs in itertools.permutations(input):
+        input_ = [0, 1, 2]
+        for qargs in itertools.permutations(input_):
             value1 = state.expectation_value(random_op3, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
@@ -154,8 +154,8 @@ class TestTN(unittest.TestCase):
         pattern = circuit.transpile()
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
         random_op1 = random_op(1)
-        input = [0, 1, 2]
-        for qargs in itertools.permutations(input, 1):
+        input_ = [0, 1, 2]
+        for qargs in itertools.permutations(input_, 1):
             value1 = state.expectation_value(random_op1, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op1, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
@@ -166,8 +166,8 @@ class TestTN(unittest.TestCase):
         pattern = circuit.transpile()
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
         random_op2 = random_op(2)
-        input = [0, 1, 2]
-        for qargs in itertools.permutations(input, 2):
+        input_ = [0, 1, 2]
+        for qargs in itertools.permutations(input_, 2):
             value1 = state.expectation_value(random_op2, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
@@ -178,8 +178,8 @@ class TestTN(unittest.TestCase):
         pattern = circuit.transpile()
         tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         random_op2 = random_op(2)
-        input = [0, 1, 2]
-        for qargs in itertools.permutations(input, 2):
+        input_ = [0, 1, 2]
+        for qargs in itertools.permutations(input_, 2):
             value1 = state.expectation_value(random_op2, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
@@ -329,8 +329,8 @@ class TestTN(unittest.TestCase):
             state = circuit.simulate_statevector()
             tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
             random_op3 = random_op(3)
-            input = [0, 1, 2]
-            for qargs in itertools.permutations(input):
+            input_ = [0, 1, 2]
+            for qargs in itertools.permutations(input_):
                 value1 = state.expectation_value(random_op3, list(qargs))
                 value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
                 np.testing.assert_almost_equal(value1, value2)
@@ -347,8 +347,8 @@ class TestTN(unittest.TestCase):
             state = circuit.simulate_statevector()
             tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
             random_op3 = random_op(3)
-            input = [0, 1, 2]
-            for qargs in itertools.permutations(input):
+            input_ = [0, 1, 2]
+            for qargs in itertools.permutations(input_):
                 value1 = state.expectation_value(random_op3, list(qargs))
                 value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
                 np.testing.assert_almost_equal(value1, value2)

@@ -63,12 +63,12 @@ class TestGenerator(unittest.TestCase):
         g = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
-        input = [0, 1, 2]
+        input_ = [0, 1, 2]
         angles = dict()
         for cmd in pattern.get_measurement_commands():
             angles[cmd[1]] = cmd[3]
         meas_planes = pattern.get_meas_plane()
-        pattern2 = generate_from_graph(g, angles, input, pattern.output_nodes, meas_planes)
+        pattern2 = generate_from_graph(g, angles, input_, pattern.output_nodes, meas_planes)
         # check that the new one runs and returns correct result
         pattern2.standardize()
         pattern2.shift_signals()

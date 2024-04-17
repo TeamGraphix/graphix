@@ -276,11 +276,11 @@ class TestGflow(unittest.TestCase):
         graph = nx.Graph()
         graph.add_nodes_from(nodes)
         graph.add_edges_from(edges)
-        input = set(pattern.input_nodes)
+        input_ = set(pattern.input_nodes)
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        f, l_k = find_flow(graph, input, output, meas_planes)
-        valid = verify_flow(graph, input, output, f, meas_planes)
+        f, l_k = find_flow(graph, input_, output, meas_planes)
+        valid = verify_flow(graph, input_, output, f, meas_planes)
 
         self.assertEqual(True, valid)
 
@@ -296,12 +296,12 @@ class TestGflow(unittest.TestCase):
         graph = nx.Graph()
         graph.add_nodes_from(nodes)
         graph.add_edges_from(edges)
-        input = set()
+        input_ = set()
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        g, l_k = find_gflow(graph, input, output, meas_planes)
+        g, l_k = find_gflow(graph, input_, output, meas_planes)
 
-        valid = verify_gflow(graph, input, output, g, meas_planes)
+        valid = verify_gflow(graph, input_, output, g, meas_planes)
 
         self.assertEqual(True, valid)
 
