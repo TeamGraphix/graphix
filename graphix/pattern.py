@@ -2153,7 +2153,7 @@ def cmd_to_qasm3(cmd):
         yield "\n"
 
     else:
-        raise ValueError("invalid command {}".format(name))
+        raise ValueError(f"invalid command {name}")
 
 
 def assert_permutation(original, user):
