@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import pytest
 
 import graphix.random_objects as randobj
 from graphix.channels import (
@@ -11,7 +12,6 @@ from graphix.channels import (
     two_qubit_depolarising_tensor_channel,
 )
 from graphix.ops import Ops
-import pytest
 
 
 class TestChannel(unittest.TestCase):

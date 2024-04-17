@@ -18,7 +18,6 @@ gx_ibmq_mock = MagicMock()
 sys.modules["graphix_ibmq.runner"] = gx_ibmq_mock
 
 
-
 def modify_statevector(statevector, output_qubit):
     statevector = np.asarray(statevector)
     N = round(np.log2(len(statevector)))

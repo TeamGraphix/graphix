@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.rxgraphstate import RXGraphState
 from graphix.graphsim.utils import is_graphs_equal
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from graphix.graphsim.basegraphstate import BaseGraphState

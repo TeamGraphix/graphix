@@ -2,10 +2,10 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
+import pytest
 
 from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
-import pytest
 
 
 class TestStatevec(unittest.TestCase):

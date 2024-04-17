@@ -3,6 +3,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
+import pytest
 
 import graphix.random_objects as randobj
 from graphix import Circuit
@@ -10,7 +11,6 @@ from graphix.channels import KrausChannel, dephasing_channel, depolarising_chann
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
-import pytest
 
 
 class TestDensityMatrix(unittest.TestCase):
