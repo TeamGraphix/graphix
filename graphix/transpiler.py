@@ -5,6 +5,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 """
 
 from __future__ import annotations
+import dataclasses
 
 from copy import deepcopy
 from typing import Optional, Sequence
@@ -14,6 +15,34 @@ import numpy as np
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
+import graphix.pauli
+import graphix.sim.base_backend
+
+
+@dataclasses.dataclass
+class TranspileResult:
+    """
+    The result of a transpilation.
+
+    pattern : :class:`graphix.pattern.Pattern` object
+    classical_outputs : tuple[int,...], index of nodes measured with `M` gates
+    """
+
+    pattern: Pattern
+    classical_outputs: tuple[int, ...]
+
+
+@dataclasses.dataclass
+class SimulateResult:
+    """
+    The result of a simulation.
+
+    statevec : :class:`graphix.sim.statevec.Statevec` object
+    classical_measures : tuple[int,...], classical measures
+    """
+
+    statevec: Statevec
+    classical_measures: tuple[int, ...]
 
 
 class Circuit:
@@ -38,6 +67,7 @@ class Circuit:
         """
         self.width = width
         self.instruction = []
+        self.active_qubits = set(range(width))
 
     def cnot(self, control: int, target: int):
         """CNOT gate
@@ -49,8 +79,8 @@ class Circuit:
         target : int
             target qubit
         """
-        assert control in np.arange(self.width)
-        assert target in np.arange(self.width)
+        assert control in self.active_qubits
+        assert target in self.active_qubits
         assert control != target
         self.instruction.append(["CNOT", [control, target]])
 
@@ -64,8 +94,8 @@ class Circuit:
         qubit2 : int
             second qubit to be swapped
         """
-        assert qubit1 in np.arange(self.width)
-        assert qubit2 in np.arange(self.width)
+        assert qubit1 in self.active_qubits
+        assert qubit2 in self.active_qubits
         assert qubit1 != qubit2
         self.instruction.append(["SWAP", [qubit1, qubit2]])
 
@@ -77,7 +107,7 @@ class Circuit:
         qubit : int
             target qubit
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["H", qubit])
 
     def s(self, qubit: int):
@@ -88,7 +118,7 @@ class Circuit:
         qubit : int
             target qubit
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["S", qubit])
 
     def x(self, qubit):
@@ -99,7 +129,7 @@ class Circuit:
         qubit : int
             target qubit
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["X", qubit])
 
     def y(self, qubit: int):
@@ -110,7 +140,7 @@ class Circuit:
         qubit : int
             target qubit
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["Y", qubit])
 
     def z(self, qubit: int):
@@ -121,7 +151,7 @@ class Circuit:
         qubit : int
             target qubit
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["Z", qubit])
 
     def rx(self, qubit: int, angle: float):
@@ -134,7 +164,7 @@ class Circuit:
         angle : float
             rotation angle in radian
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["Rx", qubit, angle])
 
     def ry(self, qubit: int, angle: float):
@@ -147,7 +177,7 @@ class Circuit:
         angle : float
             angle in radian
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["Ry", qubit, angle])
 
     def rz(self, qubit: int, angle: float):
@@ -160,7 +190,7 @@ class Circuit:
         angle : float
             rotation angle in radian
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["Rz", qubit, angle])
 
     def rzz(self, control: int, target: int, angle: float):
@@ -182,8 +212,8 @@ class Circuit:
         angle : float
             rotation angle in radian
         """
-        assert control in np.arange(self.width)
-        assert target in np.arange(self.width)
+        assert control in self.active_qubits
+        assert target in self.active_qubits
         self.instruction.append(["Rzz", [control, target], angle])
 
     def ccx(self, control1: int, control2: int, target: int):
@@ -198,9 +228,9 @@ class Circuit:
         target : int
             target qubit
         """
-        assert control1 in np.arange(self.width)
-        assert control2 in np.arange(self.width)
-        assert target in np.arange(self.width)
+        assert control1 in self.active_qubits
+        assert control2 in self.active_qubits
+        assert target in self.active_qubits
         self.instruction.append(["CCX", [control1, control2, target]])
 
     def i(self, qubit: int):
@@ -211,10 +241,26 @@ class Circuit:
         qubit : int
             target qubit
         """
-        assert qubit in np.arange(self.width)
+        assert qubit in self.active_qubits
         self.instruction.append(["I", qubit])
 
-    def transpile(self, opt: bool = False):
+    def m(self, qubit: int, plane: graphix.pauli.Plane, angle: float):
+        """measure a quantum qubit
+
+        The measured qubit cannot be used afterwards.
+
+        Parameters
+        ---------
+        qubit : int
+            target qubit
+        plane : graphix.pauli.Plane
+        angle : float
+        """
+        assert qubit in self.active_qubits
+        self.instruction.append(["M", qubit, plane, angle])
+        self.active_qubits.remove(qubit)
+
+    def transpile(self, opt: bool = False) -> TranspileResult:
         """gate-to-MBQC transpile function.
 
         Parameters
@@ -224,61 +270,74 @@ class Circuit:
 
         Returns
         --------
-        pattern : :class:`graphix.pattern.Pattern` object
+        result : :class:`TranspileResult` object
         """
         Nnode = self.width
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
         pattern = Pattern(input_nodes=input)
         # pattern.extend([["N", i] for i in range(self.width)])
+        classical_outputs = []
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1][0]] is not None
+                assert out[instr[1][1]] is not None
                 out[instr[1][0]], out[instr[1][1]], seq = self._cnot_command(
                     out[instr[1][0]], out[instr[1][1]], ancilla
                 )
                 pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "SWAP":
+                assert out[instr[1][0]] is not None
+                assert out[instr[1][1]] is not None
                 out[instr[1][0]], out[instr[1][1]] = out[instr[1][1]], out[instr[1][0]]
             elif instr[0] == "I":
                 pass
             elif instr[0] == "H":
                 ancilla = Nnode
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._h_command(out[instr[1]], ancilla)
                 pattern.extend(seq)
                 Nnode += 1
             elif instr[0] == "S":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._s_command(out[instr[1]], ancilla)
                 pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "X":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._x_command(out[instr[1]], ancilla)
                 pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "Y":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._y_command(out[instr[1]], ancilla)
                 pattern.extend(seq)
                 Nnode += 4
             elif instr[0] == "Z":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._z_command(out[instr[1]], ancilla)
                 pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "Rx":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._rx_command(out[instr[1]], ancilla, instr[2])
                 pattern.extend(seq)
                 Nnode += 2
             elif instr[0] == "Ry":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._ry_command(out[instr[1]], ancilla, instr[2])
                 pattern.extend(seq)
                 Nnode += 4
             elif instr[0] == "Rz":
+                assert out[instr[1]] is not None
                 if opt:
                     ancilla = Nnode
                     out[instr[1]], seq = self._rz_command_opt(out[instr[1]], ancilla, instr[2])
@@ -290,6 +349,8 @@ class Circuit:
                     pattern.extend(seq)
                     Nnode += 2
             elif instr[0] == "Rzz":
+                assert out[instr[1][0]] is not None
+                assert out[instr[1][1]] is not None
                 if opt:
                     ancilla = Nnode
                     out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
@@ -323,12 +384,21 @@ class Circuit:
                     ) = self._ccx_command(out[instr[1][0]], out[instr[1][1]], out[instr[1][2]], ancilla)
                     pattern.extend(seq)
                     Nnode += 18
+            elif instr[0] == "M":
+                _, circuit_index, plane, angle = instr
+                node_index = out[circuit_index]
+                assert node_index is not None
+                seq = self._m_command(node_index, plane, angle)
+                pattern.extend(seq)
+                classical_outputs.append(node_index)
+                out[instr[1]] = None
             else:
                 raise ValueError("Unknown instruction, commands not added")
+        out = filter(lambda node: node is not None, out)
         pattern.reorder_output_nodes(out)
-        return pattern
+        return TranspileResult(pattern, tuple(classical_outputs))
 
-    def standardize_and_transpile(self, opt: bool = True):
+    def standardize_and_transpile(self, opt: bool = True) -> TranspileResult:
         """gate-to-MBQC transpile function.
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
@@ -351,9 +421,12 @@ class Circuit:
         Nnode = self.width
         inputs = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
+        classical_outputs = []
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1][0]] is not None
+                assert out[instr[1][1]] is not None
                 out[instr[1][0]], out[instr[1][1]], seq = self._cnot_command(
                     out[instr[1][0]], out[instr[1][1]], ancilla
                 )
@@ -366,12 +439,15 @@ class Circuit:
                 self._instr.append(["ZC", instr[1][1], seq[8][2]])
                 self._instr.append(["ZC", instr[1][0], seq[9][2]])
             elif instr[0] == "SWAP":
+                assert out[instr[1][0]] is not None
+                assert out[instr[1][1]] is not None
                 out[instr[1][0]], out[instr[1][1]] = out[instr[1][1]], out[instr[1][0]]
                 self._instr.append(instr)
             elif instr[0] == "I":
                 pass
             elif instr[0] == "H":
                 ancilla = Nnode
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._h_command(out[instr[1]], ancilla)
                 self._N.append(seq[0])
                 self._E.append(seq[1])
@@ -381,6 +457,7 @@ class Circuit:
                 Nnode += 1
             elif instr[0] == "S":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._s_command(out[instr[1]], ancilla)
                 self._N.extend(seq[0:2])
                 self._E.extend(seq[2:4])
@@ -391,6 +468,7 @@ class Circuit:
                 Nnode += 2
             elif instr[0] == "X":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._x_command(out[instr[1]], ancilla)
                 self._N.extend(seq[0:2])
                 self._E.extend(seq[2:4])
@@ -401,6 +479,7 @@ class Circuit:
                 Nnode += 2
             elif instr[0] == "Y":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._y_command(out[instr[1]], ancilla)
                 self._N.extend(seq[0:4])
                 self._E.extend(seq[4:8])
@@ -411,6 +490,7 @@ class Circuit:
                 Nnode += 4
             elif instr[0] == "Z":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._z_command(out[instr[1]], ancilla)
                 self._N.extend(seq[0:2])
                 self._E.extend(seq[2:4])
@@ -421,6 +501,7 @@ class Circuit:
                 Nnode += 2
             elif instr[0] == "Rx":
                 ancilla = [Nnode, Nnode + 1]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._rx_command(out[instr[1]], ancilla, instr[2])
                 self._N.extend(seq[0:2])
                 self._E.extend(seq[2:4])
@@ -433,6 +514,7 @@ class Circuit:
                 Nnode += 2
             elif instr[0] == "Ry":
                 ancilla = [Nnode, Nnode + 1, Nnode + 2, Nnode + 3]
+                assert out[instr[1]] is not None
                 out[instr[1]], seq = self._ry_command(out[instr[1]], ancilla, instr[2])
                 self._N.extend(seq[0:4])
                 self._E.extend(seq[4:8])
@@ -444,6 +526,7 @@ class Circuit:
                 self._instr.append(["ZC", instr[1], seq[13][2]])
                 Nnode += 4
             elif instr[0] == "Rz":
+                assert out[instr[1]] is not None
                 if opt:
                     ancilla = Nnode
                     out[instr[1]], seq = self._rz_command_opt(out[instr[1]], ancilla, instr[2])
@@ -468,6 +551,8 @@ class Circuit:
                     self._instr.append(["ZC", instr[1], seq[7][2]])
                     Nnode += 2
             elif instr[0] == "Rzz":
+                assert out[instr[1][0]] is not None
+                assert out[instr[1][1]] is not None
                 ancilla = Nnode
                 out[instr[1][0]], out[instr[1][1]], seq = self._rzz_command_opt(
                     out[instr[1][0]], out[instr[1][1]], ancilla, instr[2]
@@ -481,6 +566,12 @@ class Circuit:
                 self._instr.append(instr_)
                 self._instr.append(["ZC", instr[1][1], seq[4][2]])
                 self._instr.append(["ZC", instr[1][0], seq[5][2]])
+            elif instr[0] == "M":
+                node_index = out[instr[1]]
+                assert node_index is not None
+                seq = self._m_command(node_index)
+                classical_outputs.append(node_index)
+                out[instr[1]] = None
             else:
                 raise ValueError("Unknown instruction, commands not added")
 
@@ -521,8 +612,9 @@ class Circuit:
             command_seq.append(cmd)
         pattern = Pattern(input_nodes=inputs)
         pattern.extend(command_seq)
+        out = filter(lambda node: node is not None, out)
         pattern.reorder_output_nodes(out)
-        return pattern
+        return TranspileResult(pattern, classical_outputs)
 
     def _commute_with_swap(self, target: int):
         assert self._instr[target][0] in ["XC", "ZC"]
@@ -730,6 +822,29 @@ class Circuit:
         seq.append(["Z", ancilla[1], [target_node]])
         seq.append(["Z", control_node, [target_node]])
         return control_node, ancilla[1], seq
+
+    @classmethod
+    def _m_command(self, input_node: int, plane: graphix.pauli.Plane, angle: float):
+        """MBQC commands for measuring qubit
+
+        Parameters
+        ---------
+        input_node : int
+            target node on graph
+        plane : graphix.pauli.Plane
+            plane of the measure
+        angle : float
+            angle of the measure (unit: pi radian)
+
+        Returns
+        ---------
+        commands : list
+            list of MBQC commands
+        """
+        seq = [
+            ["M", input_node, plane.name, angle, [], []],
+        ]
+        return seq
 
     @classmethod
     def _h_command(self, input_node: int, ancilla: int):
@@ -1244,23 +1359,25 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: Optional[Statevec] = None):
+    def simulate_statevector(self, input_state: Optional[Statevec] = None) -> SimulateResult:
         """Run statevector simultion of the gate sequence, using graphix.Statevec
 
         Parameters
         ----------
-        input_state : :meth:`~graphix.Statevec`
+        input_state : :class:`graphix.Statevec`
 
         Returns
         -------
-        stete : :meth:`~graphix.Statevec`
-            output state of the statevector simulation.
+        result : :class:`SimulateResult`
+            output state of the statevector simulation and results of classical measures.
         """
 
         if input_state is None:
             state = Statevec(nqubit=self.width)
         else:
             state = input_state
+
+        classical_measures = []
 
         for i in range(len(self.instruction)):
             if self.instruction[i][0] == "CNOT":
@@ -1289,7 +1406,11 @@ class Circuit:
                 state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
             elif self.instruction[i][0] == "CCX":
                 state.evolve(Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]])
+            elif self.instruction[i][0] == "M":
+                _, qubit, plane, angle = self.instruction[i]
+                result = graphix.sim.base_backend.perform_measure(qubit, plane, angle * np.pi, state, np.random)
+                classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {self.instruction[i][0]}")
 
-        return state
+        return SimulateResult(state, classical_measures)
