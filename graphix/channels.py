@@ -52,9 +52,7 @@ class KrausChannel:
             raise ValueError("Cannot instantiate the channel with empty data.")
 
         if not isinstance(kraus_data, (list, np.ndarray, tuple)):
-            raise TypeError(
-                f"The data must be a list, a numpy.ndarray or a tuple not a {type(kraus_data)}."
-            )
+            raise TypeError(f"The data must be a list, a numpy.ndarray or a tuple not a {type(kraus_data)}.")
 
         # check that data is correctly formatted before assigning it to the object.
         assert check_data_values_type(kraus_data)

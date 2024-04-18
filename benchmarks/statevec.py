@@ -117,9 +117,7 @@ def translate_graphix_rc_into_paddle_quantum_circuit(
         if instr.name == "CNOT":
             paddle_quantum_circuit.cnot(which_qubits=instr[1])
         elif instr.name == "RZ":
-            paddle_quantum_circuit.rz(
-                which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64")
-            )
+            paddle_quantum_circuit.rz(which_qubit=instr[1], theta=to_tensor(instr[2], dtype="float64"))
     return paddle_quantum_circuit
 
 
@@ -128,9 +126,7 @@ paddle_quantum_time = []
 
 for width in test_cases_for_paddle_quantum:
     graphix_circuit = graphix_circuits[width]
-    paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(
-        graphix_circuit
-    )
+    paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit)
     pat = PaddleTranspile(paddle_quantum_circuit)
     mbqc = PaddleMBQC()
     mbqc.set_pattern(pat)

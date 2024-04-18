@@ -19,13 +19,9 @@ def random_op(sites, dtype=np.complex128, seed=0):
     np.random.seed(seed)
     size = 2**sites
     if dtype is np.complex64:
-        return np.random.randn(size, size).astype(np.float32) + 1j * np.random.randn(
-            size, size
-        ).astype(np.float32)
+        return np.random.randn(size, size).astype(np.float32) + 1j * np.random.randn(size, size).astype(np.float32)
     if dtype is np.complex128:
-        return np.random.randn(size, size).astype(np.float64) + 1j * np.random.randn(
-            size, size
-        ).astype(np.float64)
+        return np.random.randn(size, size).astype(np.float64) + 1j * np.random.randn(size, size).astype(np.float64)
     return np.random.randn(size, size).astype(dtype)
 
 
@@ -50,9 +46,7 @@ class TestTN(unittest.TestCase):
         tn.graph_prep = "sequential"
         tn.add_qubits(node_index)
 
-        np.testing.assert_equal(
-            set(tn.tag_map.keys()), set([str(ind) for ind in node_index]) | {"Open"}
-        )
+        np.testing.assert_equal(set(tn.tag_map.keys()), set([str(ind) for ind in node_index]) | {"Open"})
         for tensor in tn.tensor_map.values():
             np.testing.assert_equal(tensor.data, plus)
 
@@ -75,9 +69,7 @@ class TestTN(unittest.TestCase):
         tn.add_tensor(random_vec_ts)
         contracted = tn.contract()
         # reference
-        contracted_ref = np.einsum(
-            "abcd, c, d, ab->", CZ.reshape(2, 2, 2, 2), plus, plus, random_vec
-        )
+        contracted_ref = np.einsum("abcd, c, d, ab->", CZ.reshape(2, 2, 2, 2), plus, plus, random_vec)
         np.testing.assert_almost_equal(contracted, contracted_ref)
 
     def test_apply_one_site_operator(self):
@@ -108,9 +100,7 @@ class TestTN(unittest.TestCase):
             np.array([[1.0, 0.0], [0.0, -1.0]]),
             CLIFFORD[cmds[2].cliff_index],
         ]
-        contracted_ref = np.einsum(
-            "i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus
-        )
+        contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
         np.testing.assert_almost_equal(contracted, contracted_ref)
 
     def test_expectation_value1(self):
@@ -151,9 +141,7 @@ class TestTN(unittest.TestCase):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
         pattern = circuit.transpile()
-        tn_mbqc = pattern.simulate_pattern(
-            backend="tensornetwork", graph_prep="sequential"
-        )
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         random_op3 = random_op(3)
         input = [0, 1, 2]
         for qargs in itertools.permutations(input):
@@ -189,9 +177,7 @@ class TestTN(unittest.TestCase):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
         pattern = circuit.transpile()
-        tn_mbqc = pattern.simulate_pattern(
-            backend="tensornetwork", graph_prep="sequential"
-        )
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         random_op2 = random_op(2)
         input = [0, 1, 2]
         for qargs in itertools.permutations(input, 2):
@@ -360,9 +346,7 @@ class TestTN(unittest.TestCase):
             pattern.shift_signals()
             pattern.perform_pauli_measurements()
             state = circuit.simulate_statevector()
-            tn_mbqc = pattern.simulate_pattern(
-                backend="tensornetwork", graph_prep="sequential"
-            )
+            tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
             random_op3 = random_op(3)
             input = [0, 1, 2]
             for qargs in itertools.permutations(input):
@@ -400,9 +384,7 @@ class TestTN(unittest.TestCase):
                 tn = pattern.simulate_pattern("tensornetwork")
                 statevec_tn = tn.to_statevector()
 
-                inner_product = np.inner(
-                    statevec_tn, statevec_ref.flatten().conjugate()
-                )
+                inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
                 np.testing.assert_almost_equal(abs(inner_product), 1)
 
     def test_evolve(self):

@@ -7,15 +7,16 @@ import enum
 Node = int
 Plane = Union[Literal["XY"], Literal["YZ"], Literal["XZ"]]
 
+
 class CommandKind(str, enum.Enum):
-    N = 'N'
-    M = 'M'
-    E = 'E'
-    C = 'C'
-    X = 'X'
-    Z = 'Z'
-    T = 'T'
-    S = 'S'
+    N = "N"
+    M = "M"
+    E = "E"
+    C = "C"
+    X = "X"
+    Z = "Z"
+    T = "T"
+    S = "S"
 
 
 class Command(BaseModel):
@@ -25,6 +26,7 @@ class Command(BaseModel):
 
     kind: CommandKind = None
 
+
 class N(Command):
     """
     Preparation command.
@@ -32,6 +34,7 @@ class N(Command):
 
     kind: CommandKind = CommandKind.N
     node: Node
+
 
 class M(Command):
     """

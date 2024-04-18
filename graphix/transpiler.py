@@ -186,9 +186,7 @@ class Circuit:
         """
         assert control in np.arange(self.width)
         assert target in np.arange(self.width)
-        self.instruction.append(
-            instruction.RZZ(control=control, target=target, angle=angle)
-        )
+        self.instruction.append(instruction.RZZ(control=control, target=target, angle=angle))
 
     def ccx(self, control1: int, control2: int, target: int):
         r"""CCX (Toffoli) gate.
@@ -206,9 +204,7 @@ class Circuit:
         assert control2 in np.arange(self.width)
         assert target in np.arange(self.width)
         assert control1 != control2 and control1 != target and control2 != target
-        self.instruction.append(
-            instruction.CCX(controls=(control1, control2), target=target)
-        )
+        self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
 
     def i(self, qubit: int):
         """identity (teleportation) gate
@@ -292,9 +288,7 @@ class Circuit:
                 case instruction.InstructionKind.RZ:
                     if opt:
                         ancilla = Nnode
-                        out[instr.target], seq = self._rz_command_opt(
-                            out[instr.target], ancilla, instr.angle
-                        )
+                        out[instr.target], seq = self._rz_command_opt(out[instr.target], ancilla, instr.angle)
                         pattern.extend(seq)
                         Nnode += 1
                     else:
@@ -305,9 +299,11 @@ class Circuit:
                 case instruction.InstructionKind.RZZ:
                     if opt:
                         ancilla = Nnode
-                        (out[instr.control], out[instr.target], seq,) = self._rzz_command_opt(
-                            out[instr.control], out[instr.target], ancilla, instr.angle
-                        )
+                        (
+                            out[instr.control],
+                            out[instr.target],
+                            seq,
+                        ) = self._rzz_command_opt(out[instr.control], out[instr.target], ancilla, instr.angle)
                         pattern.extend(seq)
                         Nnode += 1
                     else:
@@ -333,12 +329,7 @@ class Circuit:
                         Nnode += 11
                     else:
                         ancilla = [Nnode + i for i in range(18)]
-                        (
-                            out[instr.controls[0]],
-                            out[instr.controls[1]],
-                            out[instr.target],
-                            seq,
-                        ) = self._ccx_command(
+                        (out[instr.controls[0]], out[instr.controls[1]], out[instr.target], seq,) = self._ccx_command(
                             out[instr.controls[0]],
                             out[instr.controls[1]],
                             out[instr.target],
@@ -513,9 +504,7 @@ class Circuit:
                     self._E.extend(seq[2:4])
                     self._M.extend(seq[4:6])
                     instr_ = deepcopy(instr)
-                    instr_.meas_index = (
-                        len(self._M) - 1
-                    )  # index of arb angle measurement command
+                    instr_.meas_index = len(self._M) - 1  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
                         instruction.XC(
@@ -537,9 +526,7 @@ class Circuit:
                     self._E.extend(seq[4:8])
                     self._M.extend(seq[8:12])
                     instr_ = deepcopy(instr)
-                    instr_.meas_index = (
-                        len(self._M) - 3
-                    )  # index of arb angle measurement command
+                    instr_.meas_index = len(self._M) - 3  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
                         instruction.XC(
@@ -557,16 +544,12 @@ class Circuit:
                 case instruction.InstructionKind.RZ:
                     if opt:
                         ancilla = Nnode
-                        out[instr.target], seq = self._rz_command_opt(
-                            out[instr.target], ancilla, instr.angle
-                        )
+                        out[instr.target], seq = self._rz_command_opt(out[instr.target], ancilla, instr.angle)
                         self._N.append(seq[0])
                         self._E.append(seq[1])
                         self._M.append(seq[2])
                         instr_ = deepcopy(instr)
-                        instr_.meas_index = (
-                            len(self._M) - 1
-                        )  # index of arb angle measurement command
+                        instr_.meas_index = len(self._M) - 1  # index of arb angle measurement command
                         self._instr.append(instr_)
                         self._instr.append(
                             instruction.ZC(
@@ -582,9 +565,7 @@ class Circuit:
                         self._E.extend(seq[2:4])
                         self._M.extend(seq[4:6])
                         instr_ = deepcopy(instr)
-                        instr_.meas_index = (
-                            len(self._M) - 2
-                        )  # index of arb angle measurement command
+                        instr_.meas_index = len(self._M) - 2  # index of arb angle measurement command
                         self._instr.append(instr_)
                         self._instr.append(
                             instruction.XC(
@@ -609,9 +590,7 @@ class Circuit:
                     self._M.append(seq[3])
                     Nnode += 1
                     instr_ = deepcopy(instr)
-                    instr_.meas_index = (
-                        len(self._M) - 1
-                    )  # index of arb angle measurement command
+                    instr_.meas_index = len(self._M) - 1  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
                         instruction.ZC(
@@ -651,17 +630,13 @@ class Circuit:
                     x_cmds[bpx_added[instr.target]].domain.extend(instr.domain)
                 else:
                     bpx_added[instr.target] = len(x_cmds)
-                    x_cmds.append(
-                        X(node=out[instr.target], domain=deepcopy(instr.domain))
-                    )
+                    x_cmds.append(X(node=out[instr.target], domain=deepcopy(instr.domain)))
             elif instr.kind == instruction.InstructionKind.ZC:
                 if instr.target in bpz_added.keys():
                     z_cmds[bpz_added[instr.target]].domain.extend(instr.domain)
                 else:
                     bpz_added[instr.target] = len(z_cmds)
-                    z_cmds.append(
-                        Z(node=out[instr.target], domain=deepcopy(instr.domain))
-                    )
+                    z_cmds.append(Z(node=out[instr.target], domain=deepcopy(instr.domain)))
         # append z commands first (X and Z commute up to global phase)
         for cmd in z_cmds:
             command_seq.append(cmd)
@@ -675,7 +650,10 @@ class Circuit:
     def _commute_with_swap(self, target: int):
         correction_instr = self._instr[target]
         swap_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert swap_instr.kind == instruction.InstructionKind.SWAP
         if correction_instr.target == swap_instr.targets[0]:
             correction_instr.target = swap_instr.targets[1]
@@ -690,11 +668,13 @@ class Circuit:
     def _commute_with_cnot(self, target: int):
         correction_instr = self._instr[target]
         cnot_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert cnot_instr.kind == instruction.InstructionKind.CNOT
         if (
-            correction_instr.kind == instruction.InstructionKind.XC
-            and correction_instr.target == cnot_instr.control
+            correction_instr.kind == instruction.InstructionKind.XC and correction_instr.target == cnot_instr.control
         ):  # control
             new_cmd = instruction.XC(
                 target=cnot_instr.target,
@@ -704,8 +684,7 @@ class Circuit:
             self._instr.insert(target + 1, new_cmd)
             return target + 1
         elif (
-            correction_instr.kind == instruction.InstructionKind.ZC
-            and correction_instr.target == cnot_instr.target
+            correction_instr.kind == instruction.InstructionKind.ZC and correction_instr.target == cnot_instr.target
         ):  # target
             new_cmd = instruction.ZC(
                 target=cnot_instr.control,
@@ -721,7 +700,10 @@ class Circuit:
     def _commute_with_H(self, target: int):
         correction_instr = self._instr[target]
         h_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert h_instr.kind == instruction.InstructionKind.H
         if correction_instr.target == h_instr.target:
             if correction_instr.kind == instruction.InstructionKind.XC:
@@ -740,7 +722,10 @@ class Circuit:
     def _commute_with_S(self, target: int):
         correction_instr = self._instr[target]
         s_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert s_instr.kind == instruction.InstructionKind.S
         if correction_instr.target == s_instr.target:
             if correction_instr.kind == instruction.InstructionKind.XC:
@@ -760,7 +745,10 @@ class Circuit:
     def _commute_with_Rx(self, target: int):
         correction_instr = self._instr[target]
         rx_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert rx_instr.kind == instruction.InstructionKind.RX
         if correction_instr.target == rx_instr.target:
             if correction_instr.kind == instruction.InstructionKind.ZC:
@@ -775,7 +763,10 @@ class Circuit:
     def _commute_with_Ry(self, target: int):
         correction_instr = self._instr[target]
         ry_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert ry_instr.kind == instruction.InstructionKind.RY
         if correction_instr.target == ry_instr.target:
             # add to the s-domain
@@ -787,7 +778,10 @@ class Circuit:
     def _commute_with_Rz(self, target: int):
         correction_instr = self._instr[target]
         rz_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert rz_instr.kind == instruction.InstructionKind.RZ
         if correction_instr.target == rz_instr.target:
             if correction_instr.kind == instruction.InstructionKind.XC:
@@ -802,7 +796,10 @@ class Circuit:
     def _commute_with_Rzz(self, target: int):
         correction_instr = self._instr[target]
         rzz_instr = self._instr[target + 1]
-        assert correction_instr.kind == instruction.InstructionKind.XC or correction_instr.kind == instruction.InstructionKind.ZC
+        assert (
+            correction_instr.kind == instruction.InstructionKind.XC
+            or correction_instr.kind == instruction.InstructionKind.ZC
+        )
         assert rzz_instr.kind == instruction.InstructionKind.RZZ
         if correction_instr.kind == instruction.InstructionKind.XC:
             cond = correction_instr.target == rzz_instr.control
@@ -844,7 +841,10 @@ class Circuit:
         ite = 0
         num_ops = 0
         while ite < len(self._instr):
-            if self._instr[target].kind == instruction.InstructionKind.ZC or self._instr[target].kind == instruction.InstructionKind.XC: 
+            if (
+                self._instr[target].kind == instruction.InstructionKind.ZC
+                or self._instr[target].kind == instruction.InstructionKind.XC
+            ):
                 num_ops += 1
             if num_ops == skipnum + 1:
                 return target
@@ -859,8 +859,8 @@ class Circuit:
         target = self._find_byproduct_to_move(rev=True, skipnum=moved)
         while target != "end":
             if (target == len(self._instr) - 1) or (
-                self._instr[target + 1].kind == instruction.InstructionKind.XC or
-                self._instr[target + 1].kind == instruction.InstructionKind.ZC
+                self._instr[target + 1].kind == instruction.InstructionKind.XC
+                or self._instr[target + 1].kind == instruction.InstructionKind.ZC
             ):
                 moved += 1
                 target = self._find_byproduct_to_move(rev=True, skipnum=moved)
@@ -925,9 +925,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _h_command(
-        self, input_node: int, ancilla: int
-    ) -> tuple[int, list[command.Command]]:
+    def _h_command(self, input_node: int, ancilla: int) -> tuple[int, list[command.Command]]:
         """MBQC commands for Hadamard gate
 
         Parameters
@@ -951,9 +949,7 @@ class Circuit:
         return ancilla, seq
 
     @classmethod
-    def _s_command(
-        self, input_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, list[command.Command]]:
+    def _s_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
         """MBQC commands for S gate
 
         Parameters
@@ -981,9 +977,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _x_command(
-        self, input_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, list[command.Command]]:
+    def _x_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
         """MBQC commands for Pauli X gate
 
         Parameters
@@ -1011,9 +1005,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _y_command(
-        self, input_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, list[command.Command]]:
+    def _y_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
         """MBQC commands for Pauli Y gate
 
         Parameters
@@ -1046,9 +1038,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _z_command(
-        self, input_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, list[command.Command]]:
+    def _z_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
         """MBQC commands for Pauli Z gate
 
         Parameters
@@ -1076,9 +1066,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(
-        self, input_node: int, ancilla: Sequence[int], angle: float
-    ) -> tuple[int, list[command.Command]]:
+    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
         """MBQC commands for X rotation gate
 
         Parameters
@@ -1108,9 +1096,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(
-        self, input_node: int, ancilla: Sequence[int], angle: float
-    ) -> tuple[int, list[command.Command]]:
+    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
         """MBQC commands for Y rotation gate
 
         Parameters
@@ -1145,9 +1131,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(
-        self, input_node: int, ancilla: Sequence[int], angle: float
-    ) -> tuple[int, list[command.Command]]:
+    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
         """MBQC commands for Z rotation gate
 
         Parameters
@@ -1177,9 +1161,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(
-        self, input_node: int, ancilla: int, angle: float
-    ) -> tuple[int, list[command.Command]]:
+    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float) -> tuple[int, list[command.Command]]:
         """optimized MBQC commands for Z rotation gate
 
         Parameters
@@ -1473,13 +1455,9 @@ class Circuit:
         seq.append(M(node=control_node1))
         seq.append(M(node=ancilla[0], angle=-1.75, s_domain=[target_node], vop=6))
         seq.append(M(node=ancilla[8], s_domain=[control_node1]))
-        seq.append(
-            M(node=ancilla[2], angle=-0.25, s_domain=[target_node, ancilla[8]], vop=6)
-        )
+        seq.append(M(node=ancilla[2], angle=-0.25, s_domain=[target_node, ancilla[8]], vop=6))
         seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(
-            M(node=ancilla[3], angle=-1.75, s_domain=[ancilla[8], target_node], vop=6)
-        )
+        seq.append(M(node=ancilla[3], angle=-1.75, s_domain=[ancilla[8], target_node], vop=6))
         seq.append(M(node=ancilla[4], angle=-1.75, s_domain=[ancilla[8]], vop=6))
         seq.append(M(node=ancilla[1], angle=-0.25, s_domain=[ancilla[8]], vop=6))
         seq.append(
@@ -1491,9 +1469,7 @@ class Circuit:
         seq.append(M(node=ancilla[6], angle=-0.25, s_domain=[target_node]))
         seq.append(X(node=ancilla[10], domain=[ancilla[8]]))
         seq.append(X(node=ancilla[9], domain=[ancilla[5]]))
-        seq.append(
-            X(node=ancilla[7], domain=[ancilla[0], ancilla[2], ancilla[3], ancilla[6]])
-        )
+        seq.append(X(node=ancilla[7], domain=[ancilla[0], ancilla[2], ancilla[3], ancilla[6]]))
         seq.append(
             Z(
                 node=ancilla[10],
@@ -1587,9 +1563,7 @@ class Circuit:
                 case instruction.InstructionKind.RZZ:
                     state.evolve(Ops.Rzz(instr.angle), [instr.control, instr.target])
                 case instruction.InstructionKind.CCX:
-                    state.evolve(
-                        Ops.ccx, [instr.controls[0], instr.controls[1], instr.target]
-                    )
+                    state.evolve(Ops.ccx, [instr.controls[0], instr.controls[1], instr.target])
                 case _:
                     raise ValueError(f"Unknown instruction: {instr.name}")
         return state

@@ -8,13 +8,9 @@ def check_square(matrix: np.ndarray) -> bool:
     """
 
     if len(matrix.shape) != 2:
-        raise ValueError(
-            f"The object has {len(matrix.shape)} axes but must have 2 to be a matrix."
-        )
+        raise ValueError(f"The object has {len(matrix.shape)} axes but must have 2 to be a matrix.")
     if matrix.shape[0] != matrix.shape[1]:
-        raise ValueError(
-            f"Matrix must be square but has different dimensions {matrix.shape}."
-        )
+        raise ValueError(f"Matrix must be square but has different dimensions {matrix.shape}.")
     size = matrix.shape[0]
     if size & (size - 1) != 0:
         raise ValueError(f"Matrix size must be a power of two but is {size}.")
@@ -65,19 +61,10 @@ def check_unit_trace(matrix: np.ndarray) -> bool:
 
 def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
     # NOTE use np.conjugate() instead of object.conj() to certify behaviour when using non-numpy float/complex types
-    opsu = np.array(
-        [
-            i["coef"] * np.conj(i["coef"]) * i["operator"].conj().T @ i["operator"]
-            for i in data
-        ]
-    )
+    opsu = np.array([i["coef"] * np.conj(i["coef"]) * i["operator"].conj().T @ i["operator"] for i in data])
 
-    if not np.allclose(
-        np.sum(opsu, axis=0), np.eye(2 ** int(np.log2(len(data[0]["operator"]))))
-    ):
-        raise ValueError(
-            f"The specified channel is not normalized {np.sum(opsu, axis=0)}."
-        )
+    if not np.allclose(np.sum(opsu, axis=0), np.eye(2 ** int(np.log2(len(data[0]["operator"]))))):
+        raise ValueError(f"The specified channel is not normalized {np.sum(opsu, axis=0)}.")
     return True
 
 
@@ -89,9 +76,7 @@ def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
     # check all the same dimensions and that they are square matrices
     # TODO replace by using array.ndim
     if len(dims) != 1:
-        raise ValueError(
-            f"All provided Kraus operators do not have the same dimension {dims}!"
-        )
+        raise ValueError(f"All provided Kraus operators do not have the same dimension {dims}!")
 
     assert check_square(data[0]["operator"])
 
@@ -106,25 +91,16 @@ def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
         raise TypeError("All values are not dictionaries.")
 
     if not all(set(i.keys()) == {"coef", "operator"} for i in data):
-        raise KeyError(
-            "The keys of the indivudal Kraus operators must be coef and operator."
-        )
+        raise KeyError("The keys of the indivudal Kraus operators must be coef and operator.")
 
     if not all(isinstance(i["operator"], np.ndarray) for i in data):
-        raise TypeError(
-            "All operators don't have the same type and must be np.ndarray."
-        )
+        raise TypeError("All operators don't have the same type and must be np.ndarray.")
 
     for i in data:
         if not i["operator"].dtype in (int, float, complex, np.float64, np.complex128):
-            raise TypeError(
-                f"All operators dtype must be scalar and not {i['operator'].dtype}."
-            )
+            raise TypeError(f"All operators dtype must be scalar and not {i['operator'].dtype}.")
 
-    if not all(
-        isinstance(i["coef"], (int, float, complex, np.float64, np.complex128))
-        for i in data
-    ):
+    if not all(isinstance(i["coef"], (int, float, complex, np.float64, np.complex128)) for i in data):
         raise TypeError("All coefs dtype must be scalar.")
 
     return True

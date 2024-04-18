@@ -18,6 +18,7 @@ from graphix import command
 import time
 import warnings
 
+
 def get_time_exec(fun, args=[]):
     t1 = time.time()
     ret = fun(*args)
@@ -72,13 +73,9 @@ class Pattern:
         :param input_nodes:  optional, list of input qubits
         """
         self.results = {}  # measurement results from the graph state simulator
-        self.__input_nodes = list(
-            input_nodes
-        )  # input nodes (list() makes our own copy of the list)
+        self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
         self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
-        self._pauli_preprocessed = (
-            False  # flag for `measure_pauli` preprocessing completion
-        )
+        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq: list[command.Command] = []
         # output nodes are initially input nodes, since none are measured yet
@@ -201,7 +198,9 @@ class Pattern:
         self.__input_nodes = list(input_nodes)
 
     def __repr__(self):
-        return f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
+        return (
+            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
+        )
 
     def equal(self, other: "Pattern"):
         return (
@@ -267,14 +266,10 @@ class Pattern:
                 print(f"Z byproduct, node = {cmd.node}, domain = {unique_domain}")
             elif cmd.kind == command.CommandKind.C and ("C" in filter):
                 count += 1
-                print(
-                    f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}"
-                )
+                print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
 
         if len(self.__seq) > i + 1:
-            print(
-                f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more"
-            )
+            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
 
     def get_local_pattern(self):
         """Get a local pattern transpiled from the pattern.
@@ -355,13 +350,13 @@ class Pattern:
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
             (_, time_move_N) = get_time_exec(self._move_N_to_left)
-            warnings.warn(f'time_move_N = {time_move_N}')
+            warnings.warn(f"time_move_N = {time_move_N}")
             # self._move_N_to_left()
             (_, time_move_byproduct) = get_time_exec(self._move_byproduct_to_right)
-            warnings.warn(f'time move byproduct = {time_move_byproduct}')
+            warnings.warn(f"time move byproduct = {time_move_byproduct}")
             # self._move_byproduct_to_right()
             (_, time_move_E) = get_time_exec(self._move_E_after_N)
-            warnings.warn(f'time move E = {time_move_E}')
+            warnings.warn(f"time move E = {time_move_E}")
             # self._move_E_after_N()
         else:
             raise ValueError("Invalid method")
@@ -462,7 +457,6 @@ class Pattern:
 
         # If no target found
         return None
-
 
     def _commute_EX(self, target):
         """Internal method to perform the commutation of E and X.
@@ -670,12 +664,12 @@ class Pattern:
                     if kind == command.CommandKind.E:
                         move = self._commute_EX(index_X)
                         if move:
-                            X_limit += 1 # addition of extra Z means target must be increased
+                            X_limit += 1  # addition of extra Z means target must be increased
                             index_X += 1
                     elif kind == command.CommandKind.M:
                         search = self._commute_MX(index_X)
                         if search:
-                            X_limit -= 1 # XM commutation rule removes X command
+                            X_limit -= 1  # XM commutation rule removes X command
                             break
                     else:
                         self._commute_with_following(index_X)
@@ -694,7 +688,7 @@ class Pattern:
                     if cmd.kind == command.CommandKind.M:
                         search = self._commute_MZ(index_Z)
                         if search:
-                            Z_limit -= 1 # ZM commutation rule removes Z command
+                            Z_limit -= 1  # ZM commutation rule removes Z command
                             break
                     else:
                         self._commute_with_following(index_Z)
@@ -709,8 +703,8 @@ class Pattern:
         target = self._find_op_to_be_moved("E", skipnum=moved_E)
         while target is not None:
             if (target == 0) or (
-                self.__seq[target - 1].kind == command.CommandKind.N or
-                self.__seq[target - 1].kind == command.CommandKind.E
+                self.__seq[target - 1].kind == command.CommandKind.N
+                or self.__seq[target - 1].kind == command.CommandKind.E
             ):
                 moved_E += 1
                 target = self._find_op_to_be_moved("E", skipnum=moved_E)
@@ -726,13 +720,11 @@ class Pattern:
         pos = 0
         while pos < len(self.__seq):
             if self.__seq[pos].kind == command.CommandKind.M:
-                cmd : command.M = self.__seq[pos]
+                cmd: command.M = self.__seq[pos]
                 if cmd.plane == "XY":
                     node = cmd.node
                     if cmd.t_domain:
-                        self.__seq.insert(
-                            pos + 1, command.S(node=node, domain=cmd.t_domain)
-                        )
+                        self.__seq.insert(pos + 1, command.S(node=node, domain=cmd.t_domain))
                         cmd.t_domain = []
                         pos += 1
             pos += 1
@@ -751,9 +743,7 @@ class Pattern:
         dependency = {i: set() for i in nodes}
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
-                dependency[cmd.node] = (
-                    dependency[cmd.node] | set(cmd.s_domain) | set(cmd.t_domain)
-                )
+                dependency[cmd.node] = dependency[cmd.node] | set(cmd.s_domain) | set(cmd.t_domain)
             elif cmd.kind == command.CommandKind.X:
                 dependency[cmd.node] = dependency[cmd.node] | set(cmd.domain)
             elif cmd.kind == command.CommandKind.Z:
@@ -955,9 +945,7 @@ class Pattern:
         for i in meas_order:
             target = 0
             while True:
-                if self.__seq[target].kind == command.CommandKind.M and (
-                    self.__seq[target].node == i
-                ):
+                if self.__seq[target].kind == command.CommandKind.M and (self.__seq[target].node == i):
                     meas_cmds.append(self.__seq[target])
                     break
                 target += 1
@@ -1174,9 +1162,7 @@ class Pattern:
         assert self.is_standard()
         Clist = []
         for i in range(len(self.__seq)):
-            if self.__seq[i].kind == command.CommandKind.X or (
-                self.__seq[i].kind == command.CommandKind.Z
-            ):
+            if self.__seq[i].kind == command.CommandKind.X or (self.__seq[i].kind == command.CommandKind.Z):
                 Clist.append(self.__seq[i])
         return Clist
 
@@ -1202,14 +1188,14 @@ class Pattern:
         meas_order = None
         if not self._pauli_preprocessed:
             (meas_order, time_meas_order) = get_time_exec(self.get_measurement_order_from_flow)
-            warnings.warn(f'time meas order = {time_meas_order}')
+            warnings.warn(f"time meas order = {time_meas_order}")
             # meas_order = self.get_measurement_order_from_flow()
         if meas_order is None:
             (meas_order, time_meas_order) = get_time_exec(self._measurement_order_space)
-            warnings.warn(f'time meas order = {time_meas_order}')
+            warnings.warn(f"time meas order = {time_meas_order}")
             # meas_order = self._measurement_order_space()
         (_, time_reorder) = get_time_exec(self._reorder_pattern, [self.sort_measurement_commands(meas_order)])
-        warnings.warn(f'time reorder pattern = {time_reorder}')
+        warnings.warn(f"time reorder pattern = {time_reorder}")
         # self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
     def _reorder_pattern(self, meas_commands: list[command.M]):
@@ -1224,7 +1210,7 @@ class Pattern:
         measured = set()
         new = []
         c_list = []
-    
+
         for cmd in meas_commands:
             node = cmd.node
             if node not in prepared:
@@ -1476,9 +1462,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(
-        self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]
-    ):
+    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]):
         """
         Parameters
         ----------
@@ -1641,15 +1625,11 @@ class CommandNode:
             )
         elif cmd == -2:
             if self.seq.count(-2) > 1:
-                raise NotImplementedError(
-                    "Patterns with more than one X corrections are not supported"
-                )
+                raise NotImplementedError("Patterns with more than one X corrections are not supported")
             return command.X(node=self.index, domain=self.Xsignal)
         elif cmd == -3:
             if self.seq.count(-3) > 1:
-                raise NotImplementedError(
-                    "Patterns with more than one Z corrections are not supported"
-                )
+                raise NotImplementedError("Patterns with more than one Z corrections are not supported")
             return command.Z(node=self.index, domain=self.Zsignal)
         elif cmd == -4:
             return command.C(node=self.index, cliff_index=self.vop)
@@ -1662,12 +1642,7 @@ class CommandNode:
         signal_destination : set
             Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
         """
-        signal_destination = (
-            set(self.Mprop[2])
-            | set(self.Mprop[3])
-            | set(self.Xsignal)
-            | set(self.Zsignal)
-        )
+        signal_destination = set(self.Mprop[2]) | set(self.Mprop[3]) | set(self.Xsignal) | set(self.Zsignal)
         return signal_destination
 
     def get_signal_destination_dict(self):
@@ -1727,10 +1702,7 @@ class LocalPattern:
         self.input_nodes = input_nodes
         self.output_nodes = output_nodes
         self.morder = morder
-        self.signal_destination = {
-            i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()}
-            for i in self.nodes.keys()
-        }
+        self.signal_destination = {i: {"Ms": set(), "Mt": set(), "X": set(), "Z": set()} for i in self.nodes.keys()}
 
     def is_standard(self):
         """Check whether the local pattern is standardized or not
@@ -1781,9 +1753,7 @@ class LocalPattern:
         for node_index in self.morder + self.output_nodes:
             signal = self.nodes[node_index].Mprop[3]
             self.nodes[node_index].Mprop[3] = []
-            for signal_label, destinated_nodes in self.signal_destination[
-                node_index
-            ].items():
+            for signal_label, destinated_nodes in self.signal_destination[node_index].items():
                 for destinated_node in destinated_nodes:
                     node = self.nodes[destinated_node]
                     if signal_label == "Ms":
@@ -1910,16 +1880,10 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(
-        nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx
-    )
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
-    if (
-        not leave_input
-        and len(list(set(pattern.input_nodes) & set([i[0].node for i in to_measure])))
-        > 0
-    ):
+    if not leave_input and len(list(set(pattern.input_nodes) & set([i[0].node for i in to_measure]))) > 0:
         new_inputs = []
     else:
         new_inputs = pattern.input_nodes
@@ -1953,29 +1917,17 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
             graph_state.z(pattern_cmd.node)
         match measurement_basis:
             case "+X":
-                results[pattern_cmd.node] = graph_state.measure_x(
-                    pattern_cmd.node, choice=0
-                )
+                results[pattern_cmd.node] = graph_state.measure_x(pattern_cmd.node, choice=0)
             case "-X":
-                results[pattern_cmd.node] = 1 - graph_state.measure_x(
-                    pattern_cmd.node, choice=1
-                )
+                results[pattern_cmd.node] = 1 - graph_state.measure_x(pattern_cmd.node, choice=1)
             case "+Y":
-                results[pattern_cmd.node] = graph_state.measure_y(
-                    pattern_cmd.node, choice=0
-                )
+                results[pattern_cmd.node] = graph_state.measure_y(pattern_cmd.node, choice=0)
             case "-Y":
-                results[pattern_cmd.node] = 1 - graph_state.measure_y(
-                    pattern_cmd.node, choice=1
-                )
+                results[pattern_cmd.node] = 1 - graph_state.measure_y(pattern_cmd.node, choice=1)
             case "+Z":
-                results[pattern_cmd.node] = graph_state.measure_z(
-                    pattern_cmd.node, choice=0
-                )
+                results[pattern_cmd.node] = graph_state.measure_z(pattern_cmd.node, choice=0)
             case "-Z":
-                results[pattern_cmd.node] = 1 - graph_state.measure_z(
-                    pattern_cmd.node, choice=1
-                )
+                results[pattern_cmd.node] = 1 - graph_state.measure_z(pattern_cmd.node, choice=1)
             case _:
                 raise ValueError("unknown Pauli measurement basis", measurement_basis)
 
@@ -2009,9 +1961,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         if new_clifford_ != 0:
             new_seq.append(command.C(node=index, cliff_index=new_clifford_))
     for cmd in pattern:
-        if cmd.kind == command.CommandKind.X or (
-            cmd.kind == command.CommandKind.Z
-        ):
+        if cmd.kind == command.CommandKind.X or (cmd.kind == command.CommandKind.Z):
             new_seq.append(cmd)
 
     if copy:
@@ -2190,9 +2140,7 @@ def cmd_to_qasm3(cmd):
                 yield "int s" + str(qubit) + " = 0;\n"
                 for sid in sdomain:
                     yield "s" + str(qubit) + " += c" + str(sid) + ";\n"
-                yield "theta" + str(qubit) + " += (-1)**(s" + str(
-                    qubit
-                ) + " % 2) * (" + str(alpha) + " * pi);\n"
+                yield "theta" + str(qubit) + " += (-1)**(s" + str(qubit) + " % 2) * (" + str(alpha) + " * pi);\n"
             if tdomain != []:
                 yield "int t" + str(qubit) + " = 0;\n"
                 for tid in tdomain:

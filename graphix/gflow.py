@@ -156,9 +156,7 @@ def gflowaux(
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
         elif meas_planes[node] == "YZ":
-            vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(
-                vec.data.shape
-            )
+            vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
     adj_mat, b, _, col_permutation = adj_mat.forward_eliminate(b)
     x, kernels = adj_mat.backward_substitute(b)
@@ -170,15 +168,10 @@ def gflowaux(
         if 0 in x_col.shape or x_col[0] == sp.nan:  # no solution
             continue
         if mode == "single":
-            sol_list = [
-                x_col[i].subs(zip(kernels, [sp.false] * len(kernels)))
-                for i in range(len(x_col))
-            ]
+            sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
-            g[non_out_node] = set(
-                node_order_col[col_permutation.index(i)] for i in sol_index
-            )
+            g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
             if meas_planes[non_out_node] in ["ZX", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
@@ -186,10 +179,7 @@ def gflowaux(
             g[non_out_node] = set()
             binary_combinations = product([0, 1], repeat=len(kernels))
             for binary_combination in binary_combinations:
-                sol_list = [
-                    x_col[i].subs(zip(kernels, binary_combination))
-                    for i in range(len(x_col))
-                ]
+                sol_list = [x_col[i].subs(zip(kernels, binary_combination)) for i in range(len(x_col))]
                 kernel_list = [True if i == 1 else False for i in binary_combination]
                 sol_list.extend(kernel_list)
                 sol = np.array(sol_list)
@@ -206,9 +196,7 @@ def gflowaux(
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
             for i in range(len(kernels)):
-                g[non_out_node][
-                    node_order_col[col_permutation.index(len(x_col) + i)]
-                ] = kernels[i]
+                g[non_out_node][node_order_col[col_permutation.index(len(x_col) + i)]] = kernels[i]
             if meas_planes[non_out_node] in ["ZX", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
@@ -453,9 +441,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
                 xflow[node] = {node}
             xflow[node] |= {node}
 
-    if verify_gflow(
-        G, input_nodes, output_nodes, xflow, meas_planes
-    ):  # if xflow is valid
+    if verify_gflow(G, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
         zflow_from_xflow = dict()
         for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(G, corrections) - {node}
@@ -748,10 +734,7 @@ def verify_flow(
             valid_flow = False
             return valid_flow
 
-    odd_flow = {
-        node: find_odd_neighbor(graph, corrections)
-        for node, corrections in flow.items()
-    }
+    odd_flow = {node: find_odd_neighbor(graph, corrections) for node, corrections in flow.items()}
 
     try:
         _, _ = get_layers_from_flow(flow, odd_flow, input, output)

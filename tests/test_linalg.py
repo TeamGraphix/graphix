@@ -56,9 +56,7 @@ def prepare_test_matrix():
     # full rank dense matrix
     test_case = dict()
     test_case["matrix"] = MatGF2(np.array([[1, 0, 1], [0, 1, 0], [1, 0, 0]], dtype=int))
-    test_case["forward_eliminated"] = np.array(
-        [[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=int
-    )
+    test_case["forward_eliminated"] = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=int)
     test_case["rank"] = 3
     test_case["RHS_input"] = np.array([[1], [1], [1]], dtype=int)
     test_case["RHS_forward_elimnated"] = np.array([[1], [1], [0]], dtype=int)
@@ -69,9 +67,7 @@ def prepare_test_matrix():
     # not full-rank matrix
     test_case = dict()
     test_case["matrix"] = MatGF2(np.array([[1, 0, 1], [0, 1, 0], [1, 1, 1]], dtype=int))
-    test_case["forward_eliminated"] = np.array(
-        [[1, 0, 1], [0, 1, 0], [0, 0, 0]], dtype=int
-    )
+    test_case["forward_eliminated"] = np.array([[1, 0, 1], [0, 1, 0], [0, 0, 0]], dtype=int)
     test_case["rank"] = 2
     test_case["RHS_input"] = np.array([[1, 1], [1, 1], [0, 1]], dtype=int)
     test_case["RHS_forward_elimnated"] = np.array([[1, 1], [1, 1], [0, 1]], dtype=int)
@@ -115,9 +111,7 @@ class TestLinAlg(unittest.TestCase):
         test_mat = MatGF2(np.diag(np.ones(2, dtype=int)))
         test_mat.add_col()
         self.assertEqual(test_mat.data.shape, (2, 3))
-        self.assertTrue(
-            np.all(test_mat.data == galois.GF2(np.array([[1, 0, 0], [0, 1, 0]])))
-        )
+        self.assertTrue(np.all(test_mat.data == galois.GF2(np.array([[1, 0, 0], [0, 1, 0]]))))
 
     def test_remove_row(self):
         test_mat = MatGF2(np.array([[1, 0], [0, 1], [0, 0]], dtype=int))

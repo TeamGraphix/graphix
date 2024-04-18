@@ -173,9 +173,7 @@ class TestUtilities(unittest.TestCase):
 
         nqb = np.random.randint(2, 6)
         rk = np.random.randint(1, 2**nqb + 1)
-        Pauli_channel = randobj.rand_Pauli_channel_kraus(
-            dim=2**nqb, rank=rk
-        )  # default is full rank
+        Pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
 
         assert isinstance(Pauli_channel, KrausChannel)
         assert Pauli_channel.nqubit == nqb

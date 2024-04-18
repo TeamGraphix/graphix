@@ -14,16 +14,10 @@ class NodeList:
         node_datas: list[dict] = [],
         node_indices: list[int] = [],
     ):
-        if not (
-            len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)
-        ):
-            raise ValueError(
-                "node_nums, node_datas and node_indices must have the same length"
-            )
+        if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
+            raise ValueError("node_nums, node_datas and node_indices must have the same length")
         self.nodes = set(node_nums)
-        self.num_to_data = {
-            nnum: node_datas[nidx] for nidx, nnum in zip(node_indices, node_nums)
-        }
+        self.num_to_data = {nnum: node_datas[nidx] for nidx, nnum in zip(node_indices, node_nums)}
         self.num_to_idx = {nnum: nidx for nidx, nnum in zip(node_indices, node_nums)}
 
     def __contains__(self, nnum: int):
@@ -51,15 +45,9 @@ class NodeList:
         self.num_to_data[nnum] = ndata
         self.num_to_idx[nnum] = nidx
 
-    def add_nodes_from(
-        self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]
-    ):
-        if not (
-            len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)
-        ):
-            raise ValueError(
-                "node_nums, node_datas and node_indices must have the same length"
-            )
+    def add_nodes_from(self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]):
+        if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
+            raise ValueError("node_nums, node_datas and node_indices must have the same length")
         for nnum, ndata, nidx in zip(node_nums, node_datas, node_indices):
             if nnum in self.nodes:
                 continue
@@ -92,16 +80,10 @@ class EdgeList:
         edge_datas: list[dict] = [],
         edge_indices: list[int] = [],
     ):
-        if not (
-            len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)
-        ):
-            raise ValueError(
-                "edge_nums, edge_datas and edge_indices must have the same length"
-            )
+        if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
+            raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
         self.edges = set(edge_nums)
-        self.num_to_data = {
-            enum: edge_datas[eidx] for eidx, enum in zip(edge_indices, edge_nums)
-        }
+        self.num_to_data = {enum: edge_datas[eidx] for eidx, enum in zip(edge_indices, edge_nums)}
         self.num_to_idx = {enum: eidx for eidx, enum in zip(edge_indices, edge_nums)}
         self.nnum_to_edges = {}
         for enum in edge_nums:
@@ -149,12 +131,8 @@ class EdgeList:
         edge_datas: list[dict],
         edge_indices: list[int],
     ):
-        if not (
-            len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)
-        ):
-            raise ValueError(
-                "edge_nums, edge_datas and edge_indices must have the same length"
-            )
+        if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
+            raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
         for enum, edata, eidx in zip(edge_nums, edge_datas, edge_indices):
             if enum in self.edges:
                 continue

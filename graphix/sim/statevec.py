@@ -37,9 +37,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError(
-                "Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again"
-            )
+            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
         super().__init__(pr_calc)
 
     def qubit_dim(self):
@@ -303,11 +301,7 @@ class Statevec:
         """
         assert not np.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = (
-            psi
-            if not np.isclose(_get_statevec_norm(psi), 0)
-            else self.psi.take(indices=1, axis=qarg)
-        )
+        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
     def entangle(self, edge: tuple[int, int]):

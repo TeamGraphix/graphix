@@ -72,9 +72,7 @@ class TestPatternRunner(unittest.TestCase):
         state_qiskit = sim_result.get_statevector(runner.backend.circ)
         state_qiskit_mod = modify_statevector(state_qiskit, runner.backend.circ_output)
 
-        np.testing.assert_almost_equal(
-            np.abs(np.dot(state_qiskit_mod.conjugate(), state.flatten())), 1
-        )
+        np.testing.assert_almost_equal(np.abs(np.dot(state_qiskit_mod.conjugate(), state.flatten())), 1)
 
 
 if __name__ == "__main__":

@@ -1,29 +1,30 @@
 from pydantic import BaseModel
 import enum
 
+
 class InstructionKind(str, enum.Enum):
-    XC = 'XC'
-    ZC = 'ZC'
-    CCX = 'CCX'
-    RZZ = 'RZZ'
-    CNOT = 'CNOT'
-    SWAP = 'SWAP'
-    H = 'H'
-    S = 'S'
-    X = 'X'
-    Y = 'Y'
-    Z = 'Z'
-    I = 'I'
-    RX = 'RX'
-    RY = 'RY'
-    RZ = 'RZ'
+    XC = "XC"
+    ZC = "ZC"
+    CCX = "CCX"
+    RZZ = "RZZ"
+    CNOT = "CNOT"
+    SWAP = "SWAP"
+    H = "H"
+    S = "S"
+    X = "X"
+    Y = "Y"
+    Z = "Z"
+    I = "I"
+    RX = "RX"
+    RY = "RY"
+    RZ = "RZ"
 
 
 class Instruction(BaseModel):
     """
     Circuit instruction base class model.
     """
-    
+
     kind: InstructionKind = None
     meas_index: int = None
 

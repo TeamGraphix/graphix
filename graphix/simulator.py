@@ -56,13 +56,8 @@ class PatternSimulator:
             self.noise_model = None
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         # TODO or just do the noiseless sim with a warning?
-        elif (
-            backend in {"statevector", "tensornetwork", "mps"}
-            and noise_model is not None
-        ):
-            raise ValueError(
-                f"The backend {backend} doesn't support noise but noisemodel was provided."
-            )
+        elif backend in {"statevector", "tensornetwork", "mps"} and noise_model is not None:
+            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         else:
             raise ValueError("Unknown backend.")
         self.pattern = pattern
@@ -110,13 +105,9 @@ class PatternSimulator:
                 match cmd.kind:
                     case CommandKind.N:
                         self.backend.add_nodes([cmd.node])
-                        self.backend.apply_channel(
-                            self.noise_model.prepare_qubit(), [cmd.node]
-                        )
+                        self.backend.apply_channel(self.noise_model.prepare_qubit(), [cmd.node])
                     case CommandKind.E:
-                        self.backend.entangle_nodes(
-                            cmd.nodes
-                        )  # for some reaon entangle doesn't get the whole command
+                        self.backend.entangle_nodes(cmd.nodes)  # for some reaon entangle doesn't get the whole command
                         self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
                     case CommandKind.M:
                         self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
@@ -124,27 +115,15 @@ class PatternSimulator:
                         self.noise_model.confuse_result(cmd)
                     case CommandKind.X:
                         self.backend.correct_byproduct(cmd)
-                        if (
-                            np.mod(np.sum([self.results[j] for j in cmd.domain]), 2)
-                            == 1
-                        ):
-                            self.backend.apply_channel(
-                                self.noise_model.byproduct_x(), [cmd.node]
-                            )
+                        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+                            self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
                     case CommandKind.Z:
                         self.backend.correct_byproduct(cmd)
-                        if (
-                            np.mod(np.sum([self.results[j] for j in cmd.domain]), 2)
-                            == 1
-                        ):
-                            self.backend.apply_channel(
-                                self.noise_model.byproduct_z(), [cmd.node]
-                            )
+                        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+                            self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
                     case CommandKind.C:
                         self.backend.apply_clifford(cmd.node)
-                        self.backend.apply_channel(
-                            self.noise_model.clifford(), [cmd.node]
-                        )
+                        self.backend.apply_channel(self.noise_model.clifford(), [cmd.node])
                     case CommandKind.T:
                         self.noise_model.tick_clock()
                     case _:
