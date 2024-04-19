@@ -1,7 +1,8 @@
 Before submitting, please check the following:
 - Make sure you have tests for the new code and that test passes (run `tox`)
-- format added code by `black -l 120 <filename>`
 - If applicable, add a line to the [unreleased] part of CHANGELOG.md, following [keep-a-changelog](https://keepachangelog.com/en/1.0.0/).
+- Format added code by `black` and `isort`
+  - See `pyproject.toml` for configurations
 
 Then, please fill in below:
 
