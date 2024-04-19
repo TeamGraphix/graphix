@@ -8,6 +8,7 @@ to perform binary classification of circles dataset from sklearn.
 
 Firstly, let us import relevant modules:
 """
+
 # %%
 
 from functools import reduce

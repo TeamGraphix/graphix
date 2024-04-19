@@ -12,6 +12,7 @@ and how to understand the plot.
 
 First, let us import relevant modules:
 """
+
 # %%
 import numpy as np
 
