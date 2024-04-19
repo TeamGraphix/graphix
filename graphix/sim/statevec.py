@@ -2,9 +2,9 @@ from copy import deepcopy
 
 import numpy as np
 
+import graphix.sim.base_backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-import graphix.sim.base_backend
 
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):

@@ -13,6 +13,7 @@ Firstly, let us import relevant modules and define the circuit:
 """
 # %%
 import numpy as np
+
 from graphix import Circuit
 
 

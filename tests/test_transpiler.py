@@ -2,10 +2,10 @@ import unittest
 
 import numpy as np
 
-import tests.random_circuit as rc
-from graphix.transpiler import Circuit
 import graphix.pauli
 import graphix.simulator
+import tests.random_circuit as rc
+from graphix.transpiler import Circuit
 
 SEED = 42
 rc.set_seed(SEED)

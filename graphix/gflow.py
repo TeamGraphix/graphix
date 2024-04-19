@@ -11,14 +11,15 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
+from copy import deepcopy
 from itertools import product
 
-from copy import deepcopy
 import networkx as nx
 import numpy as np
 import sympy as sp

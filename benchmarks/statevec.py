@@ -15,13 +15,15 @@ The methods and modules we use are the followings:
 # Firstly, let us import relevant modules:
 
 from time import perf_counter
+
 import matplotlib.pyplot as plt
 import numpy as np
-from graphix import Circuit
 from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
-from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
 from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
+from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
+
+from graphix import Circuit
 
 # %%
 # Next, define a circuit to be transpiled into measurement pattern:

@@ -15,6 +15,7 @@ First, import relevant modules and define additional gates we'll use:
 """
 # %%
 import numpy as np
+
 from graphix import Circuit
 
 

@@ -4,8 +4,8 @@ import scipy.linalg
 from scipy.stats import unitary_group
 
 from graphix.channels import KrausChannel
-from graphix.sim.density_matrix import DensityMatrix
 from graphix.ops import Ops
+from graphix.sim.density_matrix import DensityMatrix
 
 
 def rand_herm(l: int):

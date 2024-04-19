@@ -14,6 +14,7 @@ The decomposition algorithm is based on [1].
 """
 # %%
 import itertools
+
 import graphix
 from graphix.extraction import get_fusion_network_from_graph
 

@@ -4,8 +4,10 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 
 import enum
 import typing
+
 import numpy as np
 import pydantic
+
 import graphix.clifford
 
 
