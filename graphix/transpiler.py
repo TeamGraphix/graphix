@@ -5,18 +5,18 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 """
 
 from __future__ import annotations
-import dataclasses
 
+import dataclasses
 from copy import deepcopy
 from typing import Optional, Sequence
 
 import numpy as np
 
+import graphix.pauli
+import graphix.sim.base_backend
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
-import graphix.pauli
-import graphix.sim.base_backend
 
 
 @dataclasses.dataclass

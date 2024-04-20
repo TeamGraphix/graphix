@@ -12,8 +12,10 @@ and how to understand the plot.
 
 First, let us import relevant modules:
 """
+
 # %%
 import numpy as np
+
 from graphix import Circuit, Statevec
 from graphix.ops import Ops
 
