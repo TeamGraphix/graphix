@@ -44,6 +44,7 @@ def generate_gate(
     depth: int,
     pairs: Iterable[tuple[int, int]],
     rng: Generator,
+    *,
     use_rzz: bool = False,
 ) -> Circuit:
     circuit = Circuit(nqubits)
@@ -60,29 +61,29 @@ def generate_gate(
 
 
 def genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int]]:
-    choice = set(range(n_qubits))
+    choice = list(range(n_qubits))
     for _ in range(count):
-        x = rng.choice(choice)
-        choice.pop(x)
-        y = rng.choice(choice)
+        rng.shuffle(choice)
+        x, y = choice[:2]
         yield (x, y)
-        choice.add(x)
 
 
 def gentriplet(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int, int]]:
-    choice = set(range(n_qubits))
+    choice = list(range(n_qubits))
     for _ in range(count):
-        x = rng.choice(choice)
-        choice.pop(x)
-        y = rng.choice(choice)
-        choice.pop(y)
-        z = rng.choice(choice)
+        rng.shuffle(choice)
+        x, y, z = choice[:3]
         yield (x, y, z)
-        choice.add(x)
-        choice.add(y)
 
 
-def get_rand_circuit(nqubits: int, depth: int, rng: Generator, use_rzz: bool = False, use_ccx: bool = False) -> Circuit:
+def get_rand_circuit(
+    nqubits: int,
+    depth: int,
+    rng: Generator,
+    *,
+    use_rzz: bool = False,
+    use_ccx: bool = False,
+) -> Circuit:
     circuit = Circuit(nqubits)
     gate_choice = (
         functools.partial(circuit.ry, angle=np.pi / 4),
