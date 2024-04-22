@@ -1,8 +1,8 @@
 import sys
-import unittest
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
 try:
     import qiskit
@@ -34,8 +34,8 @@ def modify_statevector(statevector, output_qubit):
     return new_statevector
 
 
-class TestPatternRunner(unittest.TestCase):
-    @unittest.skipIf(sys.modules.get("qiskit") is None, "qiskit not installed")
+class TestPatternRunner:
+    @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
     def test_ibmq_backend(self):
         # circuit in qiskit
         qc = qiskit.QuantumCircuit(3)
@@ -73,7 +73,3 @@ class TestPatternRunner(unittest.TestCase):
         state_qiskit_mod = modify_statevector(state_qiskit, runner.backend.circ_output)
 
         np.testing.assert_almost_equal(np.abs(np.dot(state_qiskit_mod.conjugate(), state.flatten())), 1)
-
-
-if __name__ == "__main__":
-    unittest.main()

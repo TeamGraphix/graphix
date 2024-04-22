@@ -1,5 +1,4 @@
 import random
-import unittest
 from copy import deepcopy
 
 import numpy as np
@@ -13,7 +12,7 @@ from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
 
 
-class TestDensityMatrix(unittest.TestCase):
+class TestDensityMatrix:
     """Test for DensityMatrix class."""
 
     def test_init_without_data_fail(self):
@@ -773,7 +772,7 @@ class TestDensityMatrix(unittest.TestCase):
             dm.apply_channel("a", [i])
 
 
-class TestDensityMatrixBackend(unittest.TestCase):
+class TestDensityMatrixBackend:
     """Test for DensityMatrixBackend class."""
 
     def test_init_fail(self):
@@ -879,4 +878,3 @@ class TestDensityMatrixBackend(unittest.TestCase):
 
 if __name__ == "__main__":
     np.random.seed(32)
-    unittest.main()

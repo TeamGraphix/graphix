@@ -1,5 +1,3 @@
-import unittest
-
 import numpy as np
 import pytest
 
@@ -14,7 +12,7 @@ from graphix.channels import (
 from graphix.ops import Ops
 
 
-class TestChannel(unittest.TestCase):
+class TestChannel:
     """Tests for Channel class"""
 
     def test_init_with_data_success(self):
@@ -230,4 +228,3 @@ class TestChannel(unittest.TestCase):
 
 if __name__ == "__main__":
     np.random.seed(2)
-    unittest.main()

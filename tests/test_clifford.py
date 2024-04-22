@@ -1,11 +1,9 @@
-import unittest
-
 import numpy as np
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE, CLIFFORD_MUL
 
 
-class TestClifford(unittest.TestCase):
+class TestClifford:
     @staticmethod
     def classify_pauli(arr):
         """returns the index of Pauli gate with sign for a given 2x2 matrix.
@@ -91,7 +89,3 @@ class TestClifford(unittest.TestCase):
             for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
                 op = op @ CLIFFORD[j]
             assert i == self.clifford_index(op)
-
-
-if __name__ == "__main__":
-    unittest.main()

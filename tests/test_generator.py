@@ -1,5 +1,3 @@
-import unittest
-
 import networkx as nx
 import numpy as np
 
@@ -10,7 +8,7 @@ SEED = 42
 rc.set_seed(SEED)
 
 
-class TestGenerator(unittest.TestCase):
+class TestGenerator:
     def test_pattern_generation_determinism_flow(self):
         graph = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
         inputs = {0, 1, 2}
@@ -76,7 +74,3 @@ class TestGenerator(unittest.TestCase):
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern2.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
-
-
-if __name__ == "__main__":
-    unittest.main()

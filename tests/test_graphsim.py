@@ -1,7 +1,7 @@
 import sys
-import unittest
 
 import numpy as np
+import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
 from parameterized import parameterized_class
@@ -40,7 +40,7 @@ def get_state(g):
 
 
 @parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])
-class TestGraphSim(unittest.TestCase):
+class TestGraphSim:
     def setUp(self):
         if sys.modules.get("rustworkx") is None and self.use_rustworkx is True:
             self.skipTest("rustworkx not installed")
@@ -130,8 +130,8 @@ class TestGraphSim(unittest.TestCase):
         assert is_graphs_equal(g, exp_g)
 
 
-@unittest.skipIf(sys.modules.get("rustworkx") is None, "rustworkx not installed")
-class TestGraphSimUtils(unittest.TestCase):
+@pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed")
+class TestGraphSimUtils:
     def test_is_graphs_equal_nx_nx(self):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
@@ -181,7 +181,3 @@ class TestGraphSimUtils(unittest.TestCase):
         g_rx.add_edges_from_no_data(edges)
         with pytest.raises(TypeError):
             g_rx = convert_rustworkx_to_networkx(g_rx)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,12 +1,10 @@
-import unittest
-
 import numpy as np
 
 import graphix.clifford
 import graphix.pauli
 
 
-class TestPauli(unittest.TestCase):
+class TestPauli:
     def test_unit_mul(self):
         for u in graphix.pauli.UNITS:
             for p in graphix.pauli.LIST:

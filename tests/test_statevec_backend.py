@@ -1,4 +1,3 @@
-import unittest
 from copy import deepcopy
 
 import numpy as np
@@ -8,7 +7,7 @@ from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
 
 
-class TestStatevec(unittest.TestCase):
+class TestStatevec:
     def test_remove_one_qubit(self):
         n = 10
         k = 3
@@ -47,7 +46,3 @@ class TestStatevec(unittest.TestCase):
         sv.evolve(m_op, [k])
         with pytest.raises(AssertionError):
             sv.remove_qubit(k)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,5 +1,4 @@
 import sys
-import unittest
 
 from parameterized import parameterized_class
 
@@ -8,7 +7,7 @@ from graphix import extraction
 
 
 @parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])
-class TestExtraction(unittest.TestCase):
+class TestExtraction:
     def setUp(self):
         if sys.modules.get("rustworkx") is None and self.use_rustworkx is True:
             self.skipTest("rustworkx not installed")

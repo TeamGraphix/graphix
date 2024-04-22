@@ -1,5 +1,3 @@
-import unittest
-
 import numpy as np
 
 import graphix.pauli
@@ -11,7 +9,7 @@ SEED = 42
 rc.set_seed(SEED)
 
 
-class TestTranspiler_UnitGates(unittest.TestCase):
+class TestTranspiler_UnitGates:
     def test_cnot(self):
         circuit = Circuit(2)
         circuit.cnot(0, 1)
@@ -107,7 +105,7 @@ class TestTranspiler_UnitGates(unittest.TestCase):
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
 
-class TestTranspiler_Opt(unittest.TestCase):
+class TestTranspiler_Opt:
     def test_ccx_opt(self):
         nqubits = 4
         depth = 6
@@ -167,7 +165,3 @@ class TestTranspiler_Opt(unittest.TestCase):
         nb_shots = 1000
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20
-
-
-if __name__ == "__main__":
-    unittest.main()

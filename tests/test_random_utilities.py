@@ -1,5 +1,3 @@
-import unittest
-
 import numpy as np
 import pytest
 
@@ -10,7 +8,7 @@ from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 
 
-class TestUtilities(unittest.TestCase):
+class TestUtilities:
     def test_rand_herm(self):
         tmp = randobj.rand_herm(np.random.randint(2, 20))
         np.testing.assert_allclose(tmp, tmp.conj().T)
@@ -193,4 +191,3 @@ class TestUtilities(unittest.TestCase):
 
 if __name__ == "__main__":
     np.random.seed(2)
-    unittest.main()

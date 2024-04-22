@@ -1,5 +1,4 @@
 import sys
-import unittest
 
 import numpy as np
 from parameterized import parameterized
@@ -13,7 +12,7 @@ SEED = 42
 rc.set_seed(SEED)
 
 
-class TestPattern(unittest.TestCase):
+class TestPattern:
     # this fails without behaviour modification
     def test_manual_generation(self):
         pattern = Pattern()
@@ -297,7 +296,7 @@ def swap(circuit, a, b):
     circuit.cnot(a, b)
 
 
-class TestLocalPattern(unittest.TestCase):
+class TestLocalPattern:
     def test_assert_equal_edge(self):
         test_case = [
             [(0, 1), (0, 1), True],
@@ -489,7 +488,3 @@ def assert_equal_edge(edge, ref):
         return True
     else:
         return False
-
-
-if __name__ == "__main__":
-    unittest.main()
