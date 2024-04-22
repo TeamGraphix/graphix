@@ -1,10 +1,9 @@
 # %%
 from __future__ import annotations
 
-import unittest
-
 import networkx as nx
 import numpy as np
+import pytest
 
 from graphix.gflow import find_flow, find_gflow, get_input_from_flow, verify_flow, verify_gflow
 from tests.random_circuit import get_rand_circuit
@@ -162,111 +161,113 @@ def generate_test_graphs() -> list[GraphForTest]:
     return graphs
 
 
-class TestGflow(unittest.TestCase):
-    def test_flow(self):
-        test_graphs = generate_test_graphs()
-        for test_graph in test_graphs:
-            with self.subTest(test_graph.label):
-                f, l_k = find_flow(
-                    test_graph.graph,
-                    test_graph.inputs,
-                    test_graph.outputs,
-                    test_graph.meas_planes,
-                )
-                assert test_graph.flow_exist == (f is not None)
+FLOW_TEST_CASES = {
+    "no measurement": {
+        "empty flow": (True, {}),
+        "measure output": (False, {1: {2}}),
+    },
+    "line graph with flow and gflow": {
+        "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
+        "acausal flow": (False, {1: {3}, 3: {2, 4}, 2: {1}, 4: {5}}),
+        "gflow": (False, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
+    },
+    "graph with flow and gflow": {
+        "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
+        "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
+        "gflow": (False, {1: {3, 5}, 2: {4, 5}, 3: {5, 6}, 4: {6}}),
+    },
+}
 
-    def test_gflow(self):
-        test_graphs = generate_test_graphs()
-        for test_graph in test_graphs:
-            with self.subTest(test_graph.label):
-                g, l_k = find_gflow(
-                    test_graph.graph,
-                    test_graph.inputs,
-                    test_graph.outputs,
-                    test_graph.meas_planes,
-                )
-                assert test_graph.gflow_exist == (g is not None)
 
-    def test_verify_flow(self):
-        flow_test_cases = dict()
-        flow_test_cases["no measurement"] = {
-            "empty flow": (True, dict()),
-            "measure output": (False, {1: {2}}),
-        }
-        flow_test_cases["line graph with flow and gflow"] = {
-            "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
-            "acausal flow": (False, {1: {3}, 3: {2, 4}, 2: {1}, 4: {5}}),
-            "gflow": (False, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
-        }
-        flow_test_cases["graph with flow and gflow"] = {
-            "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
-            "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
-            "gflow": (False, {1: {3, 5}, 2: {4, 5}, 3: {5, 6}, 4: {6}}),
-        }
+GFLOW_TEST_CASES = {
+    "no measurement": {
+        "empty flow": (True, {}),
+        "measure output": (False, {1: {2}}),
+    },
+    "line graph with flow and gflow": {
+        "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
+        "acausal flow": (False, {1: {3}, 3: {2, 4}, 2: {1}, 4: {5}}),
+        "gflow": (True, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
+    },
+    "graph with flow and gflow": {
+        "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
+        "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
+        "gflow": (True, {1: {3, 5}, 2: {4, 5}, 3: {5, 6}, 4: {6}}),
+    },
+    "graph with extended gflow but no flow": {
+        "correct gflow": (
+            True,
+            {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
+        ),
+        "correct glow 2": (True, {0: {1, 2, 4}, 1: {3, 5}, 2: {2, 4}, 3: {3}}),
+        "incorrect gflow": (
+            False,
+            {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3, 4}},
+        ),
+        "incorrect gflow 2": (
+            False,
+            {0: {1, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
+        ),
+    },
+}
 
-        test_graphs = generate_test_graphs()
-        for test_graph in test_graphs:
-            if test_graph.label not in flow_test_cases:
+
+def iterate_compatible(graphs, cases):
+    for g in graphs:
+        for k, v in cases.items():
+            if g.label != k:
                 continue
-            with self.subTest(test_graph.label):
-                for test_case, (expected, flow) in flow_test_cases[test_graph.label].items():
-                    with self.subTest([test_graph.label, test_case]):
-                        valid = verify_flow(
-                            test_graph.graph,
-                            test_graph.inputs,
-                            test_graph.outputs,
-                            flow,
-                            test_graph.meas_planes,
-                        )
-                        assert expected == valid
+            for vv in v.values():
+                yield (g, vv)
 
-    def test_verify_gflow(self):
-        gflow_test_cases = dict()
-        gflow_test_cases["no measurement"] = {
-            "empty flow": (True, dict()),
-            "measure output": (False, {1: {2}}),
-        }
-        gflow_test_cases["line graph with flow and gflow"] = {
-            "correct flow": (True, {1: {2}, 2: {3}, 3: {4}, 4: {5}}),
-            "acausal flow": (False, {1: {3}, 3: {2, 4}, 2: {1}, 4: {5}}),
-            "gflow": (True, {1: {2, 5}, 2: {3, 5}, 3: {4, 5}, 4: {5}}),
-        }
-        gflow_test_cases["graph with flow and gflow"] = {
-            "correct flow": (True, {1: {3}, 2: {4}, 3: {5}, 4: {6}}),
-            "acausal flow": (False, {1: {4}, 2: {3}, 3: {4}, 4: {1}}),
-            "gflow": (True, {1: {3, 5}, 2: {4, 5}, 3: {5, 6}, 4: {6}}),
-        }
-        gflow_test_cases["graph with extended gflow but no flow"] = {
-            "correct gflow": (
-                True,
-                {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
-            ),
-            "correct glow 2": (True, {0: {1, 2, 4}, 1: {3, 5}, 2: {2, 4}, 3: {3}}),
-            "incorrect gflow": (
-                False,
-                {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3, 4}},
-            ),
-            "incorrect gflow 2": (
-                False,
-                {0: {1, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
-            ),
-        }
 
-        test_graphs = generate_test_graphs()
-        for test_graph in test_graphs:
-            if test_graph.label not in gflow_test_cases:
-                continue
-            with self.subTest(test_graph.label):
-                for test_case, (expected, gflow) in gflow_test_cases[test_graph.label].items():
-                    with self.subTest([test_graph.label, test_case]):
-                        valid = verify_gflow(
-                            test_graph.graph,
-                            test_graph.inputs,
-                            test_graph.outputs,
-                            gflow,
-                            test_graph.meas_planes,
-                        )
-                        assert expected == valid
+class TestGflow:
+    @pytest.mark.parametrize("test_graph", generate_test_graphs())
+    def test_flow(self, test_graph):
+        f, l_k = find_flow(
+            test_graph.graph,
+            test_graph.inputs,
+            test_graph.outputs,
+            test_graph.meas_planes,
+        )
+        assert test_graph.flow_exist == (f is not None)
+
+    @pytest.mark.parametrize("test_graph", generate_test_graphs())
+    def test_gflow(self, test_graph):
+        g, l_k = find_gflow(
+            test_graph.graph,
+            test_graph.inputs,
+            test_graph.outputs,
+            test_graph.meas_planes,
+        )
+        assert test_graph.gflow_exist == (g is not None)
+
+    @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), FLOW_TEST_CASES))
+    def test_verify_flow(self, data):
+        test_graph, test_case = data
+        expected, flow = test_case
+        valid = verify_flow(
+            test_graph.graph,
+            test_graph.inputs,
+            test_graph.outputs,
+            flow,
+            test_graph.meas_planes,
+        )
+        assert expected == valid
+
+    @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), GFLOW_TEST_CASES))
+    def test_verify_gflow(self, data):
+        test_graph, test_case = data
+        expected, gflow = test_case
+
+        valid = verify_gflow(
+            test_graph.graph,
+            test_graph.inputs,
+            test_graph.outputs,
+            gflow,
+            test_graph.meas_planes,
+        )
+        assert expected == valid
 
     def test_with_rand_circ(self):
         # test for large graph
@@ -305,7 +306,3 @@ class TestGflow(unittest.TestCase):
         valid = verify_gflow(graph, input, output, g, meas_planes)
 
         assert valid
-
-
-if __name__ == "__main__":
-    unittest.main()
