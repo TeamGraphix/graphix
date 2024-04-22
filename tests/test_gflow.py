@@ -283,7 +283,7 @@ class TestGflow(unittest.TestCase):
         f, l_k = find_flow(graph, input, output, meas_planes)
         valid = verify_flow(graph, input, output, f, meas_planes)
 
-        self.assertEqual(True, valid)
+        assert valid
 
     def test_rand_circ_gflow(self):
         # test for large graph
@@ -304,7 +304,7 @@ class TestGflow(unittest.TestCase):
 
         valid = verify_gflow(graph, input, output, g, meas_planes)
 
-        self.assertEqual(True, valid)
+        assert valid
 
 
 if __name__ == "__main__":
