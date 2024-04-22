@@ -127,7 +127,7 @@ class TestGraphSim(unittest.TestCase):
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
         g.local_complement(1)
         exp_g = GraphState(nodes=np.arange(nqubit), edges=exp_edges)
-        self.assertTrue(is_graphs_equal(g, exp_g))
+        assert is_graphs_equal(g, exp_g)
 
 
 @unittest.skipIf(sys.modules.get("rustworkx") is None, "rustworkx not installed")
@@ -137,28 +137,28 @@ class TestGraphSimUtils(unittest.TestCase):
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
-        self.assertTrue(is_graphs_equal(g1, g2))
+        assert is_graphs_equal(g1, g2)
 
     def test_is_graphs_equal_nx_rx(self):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
-        self.assertTrue(is_graphs_equal(g1, g2))
+        assert is_graphs_equal(g1, g2)
 
     def test_is_graphs_equal_rx_nx(self):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
-        self.assertTrue(is_graphs_equal(g1, g2))
+        assert is_graphs_equal(g1, g2)
 
     def test_is_graphs_equal_rx_rx(self):
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
-        self.assertTrue(is_graphs_equal(g1, g2))
+        assert is_graphs_equal(g1, g2)
 
     def test_convert_rustworkx_to_networkx(self):
         nnode = 6
@@ -171,7 +171,7 @@ class TestGraphSimUtils(unittest.TestCase):
         g_rx.add_nodes_from([(n, d) for n, d in zip(range(nnode), [data] * nnode)])
         g_rx.add_edges_from_no_data(edges)
         g_rx = convert_rustworkx_to_networkx(g_rx)
-        self.assertTrue(graphs_equal(g_nx, g_rx))
+        assert graphs_equal(g_nx, g_rx)
 
     def test_convert_rustworkx_to_networkx_throw_error(self):
         nnode = 6
