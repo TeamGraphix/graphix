@@ -1,12 +1,10 @@
 import numpy as np
+from numpy.random import Generator
 
 import graphix.pauli
 import graphix.simulator
 import tests.random_circuit as rc
 from graphix.transpiler import Circuit
-
-SEED = 42
-rc.set_seed(SEED)
 
 
 class TestTranspiler_UnitGates:
@@ -58,8 +56,8 @@ class TestTranspiler_UnitGates:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_rx(self):
-        theta = np.random.random() * 2 * np.pi
+    def test_rx(self, fx_rng: Generator):
+        theta = fx_rng.uniform() * 2 * np.pi
         circuit = Circuit(1)
         circuit.rx(0, theta)
         pattern = circuit.transpile().pattern
@@ -67,8 +65,8 @@ class TestTranspiler_UnitGates:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_ry(self):
-        theta = np.random.random() * 2 * np.pi
+    def test_ry(self, fx_rng: Generator):
+        theta = fx_rng.uniform() * 2 * np.pi
         circuit = Circuit(1)
         circuit.ry(0, theta)
         pattern = circuit.transpile().pattern
@@ -76,8 +74,8 @@ class TestTranspiler_UnitGates:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_rz(self):
-        theta = np.random.random() * 2 * np.pi
+    def test_rz(self, fx_rng: Generator):
+        theta = fx_rng.uniform() * 2 * np.pi
         circuit = Circuit(1)
         circuit.rz(0, theta)
         pattern = circuit.transpile().pattern
@@ -93,11 +91,11 @@ class TestTranspiler_UnitGates:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_ccx(self):
+    def test_ccx(self, fx_rng: Generator):
         nqubits = 4
         depth = 6
         for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_ccx=True)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_ccx=True)
             pattern = circuit.transpile().pattern
             pattern.minimize_space()
             state = circuit.simulate_statevector().statevec
@@ -106,11 +104,11 @@ class TestTranspiler_UnitGates:
 
 
 class TestTranspiler_Opt:
-    def test_ccx_opt(self):
+    def test_ccx_opt(self, fx_rng: Generator):
         nqubits = 4
         depth = 6
         for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_ccx=True)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_ccx=True)
             circuit.ccx(0, 1, 2)
             pattern = circuit.transpile(opt=True).pattern
             pattern.minimize_space()
@@ -118,32 +116,32 @@ class TestTranspiler_Opt:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_transpile_opt(self):
+    def test_transpile_opt(self, fx_rng: Generator):
         nqubits = 2
         depth = 1
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, use_rzz=True)
+        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.transpile(opt=True).pattern
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_standardize_and_transpile(self):
+    def test_standardize_and_transpile(self, fx_rng: Generator):
         nqubits = 3
         depth = 2
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, use_rzz=True)
+        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.standardize_and_transpile().pattern
         state = circuit.simulate_statevector().statevec
         pattern.minimize_space()
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_standardize_and_transpile_opt(self):
+    def test_standardize_and_transpile_opt(self, fx_rng: Generator):
         nqubits = 3
         depth = 2
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, use_rzz=True)
+        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.standardize_and_transpile(opt=True).pattern
         state = circuit.simulate_statevector().statevec
         pattern.minimize_space()
