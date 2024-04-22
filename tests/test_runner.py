@@ -1,8 +1,8 @@
 import sys
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+from pytest_mock import MockerFixture
 
 try:
     import qiskit
@@ -11,12 +11,6 @@ except ModuleNotFoundError:
     pass
 
 import graphix
-from graphix.device_interface import PatternRunner
-
-# Bypass the import error of graphix_ibmq
-gx_ibmq_mock = MagicMock()
-sys.modules["graphix_ibmq.runner"] = gx_ibmq_mock
-
 import tests.random_circuit as rc
 from graphix.device_interface import PatternRunner
 
@@ -36,7 +30,7 @@ def modify_statevector(statevector, output_qubit):
 
 class TestPatternRunner:
     @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
-    def test_ibmq_backend(self):
+    def test_ibmq_backend(self, mocker: MockerFixture):
         # circuit in qiskit
         qc = qiskit.QuantumCircuit(3)
         qc.h(0)
@@ -50,10 +44,13 @@ class TestPatternRunner:
         job = sim.run(new_qc)
         result = job.result()
 
-        # Mock
-        gx_ibmq_mock.IBMQBackend().circ = qc
-        gx_ibmq_mock.IBMQBackend().simulate.return_value = result
-        gx_ibmq_mock.IBMQBackend().circ_output = [0, 1, 2]
+        runner = mocker.Mock()
+
+        runner.IBMQBackend().circ = qc
+        runner.IBMQBackend().simulate.return_value = result
+        runner.IBMQBackend().circ_output = [0, 1, 2]
+
+        sys.modules["graphix_ibmq.runner"] = runner
 
         # circuit in graphix
         circuit = graphix.Circuit(3)
