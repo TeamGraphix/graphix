@@ -1,7 +1,6 @@
-import unittest
-
 import galois
 import numpy as np
+import pytest
 
 from graphix.linalg import MatGF2
 
@@ -100,7 +99,7 @@ def prepare_test_matrix():
     return test_cases
 
 
-class TestLinAlg(unittest.TestCase):
+class TestLinAlg:
     def test_add_row(self):
         test_mat = MatGF2(np.diag(np.ones(2, dtype=int)))
         test_mat.add_row()
@@ -146,40 +145,30 @@ class TestLinAlg(unittest.TestCase):
         test_mat = MatGF2(np.array([[1, 1, 0], [0, 0, 1], [0, 1, 0]], dtype=int))
         assert not test_mat.is_canonical_form()
 
-    def test_forward_eliminate(self):
-        test_cases = prepare_test_matrix()
-        for test_case in test_cases:
-            mat = test_case["matrix"]
-            answer = test_case["forward_eliminated"]
-            RHS_input = test_case["RHS_input"]
-            RHS_forward_elimnated = test_case["RHS_forward_elimnated"]
-            with self.subTest(mat=mat, answer=answer, RHS_input=RHS_input):
-                mat_elimnated, RHS, _, _ = mat.forward_eliminate(RHS_input)
-                assert np.all(mat_elimnated.data == answer)
-                assert np.all(RHS.data == RHS_forward_elimnated)
+    @pytest.mark.parametrize("test_case", prepare_test_matrix())
+    def test_forward_eliminate(self, test_case):
+        mat = test_case["matrix"]
+        answer = test_case["forward_eliminated"]
+        RHS_input = test_case["RHS_input"]
+        RHS_forward_elimnated = test_case["RHS_forward_elimnated"]
+        mat_elimnated, RHS, _, _ = mat.forward_eliminate(RHS_input)
+        assert np.all(mat_elimnated.data == answer)
+        assert np.all(RHS.data == RHS_forward_elimnated)
 
-    def test_get_rank(self):
-        test_cases = prepare_test_matrix()
-        for test_case in test_cases:
-            mat = test_case["matrix"]
-            rank = test_case["rank"]
-            with self.subTest(mat=mat):
-                assert mat.get_rank() == rank
+    @pytest.mark.parametrize("test_case", prepare_test_matrix())
+    def test_get_rank(self, test_case):
+        mat = test_case["matrix"]
+        rank = test_case["rank"]
+        assert mat.get_rank() == rank
 
-    def test_backward_substitute(self):
-        test_cases = prepare_test_matrix()
-        for test_case in test_cases:
-            mat = test_case["matrix"]
-            RHS_input = test_case["RHS_input"]
-            x = test_case["x"]
-            kernel_dim = test_case["kernel_dim"]
-            with self.subTest(mat=mat, RHS_input=RHS_input, x=x, kernel_dim=kernel_dim):
-                mat_eliminated, RHS_eliminated, _, _ = mat.forward_eliminate(RHS_input)
-                x, kernel = mat_eliminated.backward_substitute(RHS_eliminated)
-                if x is not None:
-                    assert np.all(x == x)
-                assert len(kernel) == kernel_dim
-
-
-if __name__ == "__main__":
-    unittest.main()
+    @pytest.mark.parametrize("test_case", prepare_test_matrix())
+    def test_backward_substitute(self, test_case):
+        mat = test_case["matrix"]
+        RHS_input = test_case["RHS_input"]
+        x = test_case["x"]
+        kernel_dim = test_case["kernel_dim"]
+        mat_eliminated, RHS_eliminated, _, _ = mat.forward_eliminate(RHS_input)
+        x, kernel = mat_eliminated.backward_substitute(RHS_eliminated)
+        if x is not None:
+            assert np.all(x == x)
+        assert len(kernel) == kernel_dim
