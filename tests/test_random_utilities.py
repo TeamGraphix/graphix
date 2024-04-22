@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import pytest
 
 import graphix.random_objects as randobj
 from graphix.channels import KrausChannel
@@ -53,11 +54,11 @@ class TestUtilities(unittest.TestCase):
     def test_random_channel_fail(self):
 
         # incorrect rank type
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             mychannel = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
 
         # null rank
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             mychannel = randobj.rand_channel_kraus(dim=2**2, rank=0)
 
     def test_rand_gauss_cpx(self):
@@ -103,13 +104,13 @@ class TestUtilities(unittest.TestCase):
 
         # eigvalsh doesn't raise a LinAlgError since just use upper or lower part of the matrix.
         # instead Value error
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             check_psd(mat)
 
         # hermitian but not positive eigenvalues
         mat = randobj.rand_herm(l)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             check_psd(mat)
 
     def test_rand_dm(self):
@@ -124,7 +125,7 @@ class TestUtilities(unittest.TestCase):
 
     # try with incorrect dimension
     def test_rand_dm_fail(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm = randobj.rand_dm(2 ** np.random.randint(2, 5) + 1)
 
     def test_rand_dm_rank(self):
@@ -157,10 +158,10 @@ class TestUtilities(unittest.TestCase):
 
     def test_pauli_tensor_ops_fail(self):
 
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(np.random.randint(2, 6) + 0.5)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(0)
 
     def test_random_pauli_channel_success(self):
@@ -177,16 +178,16 @@ class TestUtilities(unittest.TestCase):
     def test_random_pauli_channel_fail(self):
         nqb = 3
         rk = 2
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk)
 
 

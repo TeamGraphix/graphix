@@ -11,6 +11,8 @@ try:
 except ModuleNotFoundError:
     pass
 
+import pytest
+
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
@@ -177,7 +179,7 @@ class TestGraphSimUtils(unittest.TestCase):
         g_rx = PyGraph()
         g_rx.add_nodes_from(range(nnode))
         g_rx.add_edges_from_no_data(edges)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             g_rx = convert_rustworkx_to_networkx(g_rx)
 
 
