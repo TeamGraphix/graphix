@@ -1,7 +1,7 @@
 import itertools
-import unittest
 
 import numpy as np
+import pytest
 from quimb.tensor import Tensor
 
 import tests.random_circuit as rc
@@ -24,11 +24,16 @@ def random_op(sites, dtype=np.complex128, seed=0):
     return np.random.randn(size, size).astype(dtype)
 
 
+def rc_iterator(tgt_nqubits, tgt_depth, repeat):
+    for nqubits, depth, _ in itertools.product(tgt_nqubits, tgt_depth, range(repeat)):
+        yield rc.get_rand_circuit(nqubits, depth)
+
+
 CZ = Ops.cz
 plus = States.plus
 
 
-class TestTN(unittest.TestCase):
+class TestTN:
     def test_add_node(self):
         node_index = np.random.randint(0, 1000)
         tn = MBQCTensorNet()
@@ -302,112 +307,87 @@ class TestTN(unittest.TestCase):
         value2 = tn_mbqc.expectation_value(random_op2, [0, 1])
         np.testing.assert_almost_equal(value1, value2)
 
-    def test_ccx(self):
-        nqubits = 4
-        depth = 6
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            circuit.ccx(0, 1, 2)
-            pattern = circuit.transpile().pattern
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
-            random_op3 = random_op(3)
-            value1 = state.expectation_value(random_op3, [0, 1, 2])
-            value2 = tn_mbqc.expectation_value(random_op3, [0, 1, 2])
+    @pytest.mark.parametrize("circuit", rc_iterator([4], [6], 10))
+    def test_ccx(self, circuit):
+        circuit.ccx(0, 1, 2)
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        random_op3 = random_op(3)
+        value1 = state.expectation_value(random_op3, [0, 1, 2])
+        value2 = tn_mbqc.expectation_value(random_op3, [0, 1, 2])
+        np.testing.assert_almost_equal(value1, value2)
+
+    @pytest.mark.parametrize("circuit", rc_iterator([4], [6], 10))
+    def test_with_graphtrans(self, circuit):
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        state = circuit.simulate_statevector().statevec
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        random_op3 = random_op(3)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input):
+            value1 = state.expectation_value(random_op3, list(qargs))
+            value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
             np.testing.assert_almost_equal(value1, value2)
 
-    def test_with_graphtrans(self):
-        nqubits = 4
-        depth = 6
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile().pattern
-            pattern.standardize()
-            pattern.shift_signals()
-            pattern.perform_pauli_measurements()
-            state = circuit.simulate_statevector().statevec
-            tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
-            random_op3 = random_op(3)
-            input = [0, 1, 2]
-            for qargs in itertools.permutations(input):
-                value1 = state.expectation_value(random_op3, list(qargs))
-                value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-                np.testing.assert_almost_equal(value1, value2)
+    @pytest.mark.parametrize("circuit", rc_iterator([4], [6], 10))
+    def test_with_graphtrans_sequential(self, circuit):
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        state = circuit.simulate_statevector().statevec
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        random_op3 = random_op(3)
+        input = [0, 1, 2]
+        for qargs in itertools.permutations(input):
+            value1 = state.expectation_value(random_op3, list(qargs))
+            value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
+            np.testing.assert_almost_equal(value1, value2)
 
-    def test_with_graphtrans_sequential(self):
-        nqubits = 4
-        depth = 6
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile().pattern
-            pattern.standardize()
-            pattern.shift_signals()
-            pattern.perform_pauli_measurements()
-            state = circuit.simulate_statevector().statevec
-            tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
-            random_op3 = random_op(3)
-            input = [0, 1, 2]
-            for qargs in itertools.permutations(input):
-                value1 = state.expectation_value(random_op3, list(qargs))
-                value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-                np.testing.assert_almost_equal(value1, value2)
+    @pytest.mark.parametrize("circuit", rc_iterator([4], [2], 10))
+    def test_coef_state(self, circuit):
+        pattern = circuit.standardize_and_transpile().pattern
 
-    def test_coef_state(self):
-        nqubits = 4
-        depth = 2
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.standardize_and_transpile().pattern
+        statevec_ref = circuit.simulate_statevector().statevec
 
-            statevec_ref = circuit.simulate_statevector().statevec
+        tn = pattern.simulate_pattern("tensornetwork")
+        for number in range(len(statevec_ref.flatten())):
+            coef_tn = tn.get_basis_coefficient(number)
+            coef_sv = statevec_ref.flatten()[number]
 
-            tn = pattern.simulate_pattern("tensornetwork")
-            for number in range(len(statevec_ref.flatten())):
-                self.subTest(number=number)
-                coef_tn = tn.get_basis_coefficient(number)
-                coef_sv = statevec_ref.flatten()[number]
+            np.testing.assert_almost_equal(abs(coef_tn), abs(coef_sv))
 
-                np.testing.assert_almost_equal(abs(coef_tn), abs(coef_sv))
+    @pytest.mark.parametrize("circuit", rc_iterator(range(2, 6), [3], 5))
+    def test_to_statevector(self, circuit):
+        pattern = circuit.standardize_and_transpile().pattern
+        statevec_ref = circuit.simulate_statevector().statevec
 
-    def test_to_statevector(self):
-        nqubits_set = [i for i in range(2, 6)]
-        depth = 3
-        for nqubits in nqubits_set:
-            self.subTest(nqubit=nqubits)
-            for i in range(5):
-                circuit = rc.get_rand_circuit(nqubits, depth)
-                pattern = circuit.standardize_and_transpile().pattern
-                statevec_ref = circuit.simulate_statevector().statevec
+        tn = pattern.simulate_pattern("tensornetwork")
+        statevec_tn = tn.to_statevector()
 
-                tn = pattern.simulate_pattern("tensornetwork")
-                statevec_tn = tn.to_statevector()
+        inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
+        np.testing.assert_almost_equal(abs(inner_product), 1)
 
-                inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
-                np.testing.assert_almost_equal(abs(inner_product), 1)
+    @pytest.mark.parametrize("circuit", rc_iterator([4], [6], 10))
+    def test_evolve(self, circuit):
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        state = circuit.simulate_statevector().statevec
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        random_op3 = random_op(3)
+        random_op3_exp = random_op(3)
 
-    def test_evolve(self):
-        nqubits = 4
-        depth = 6
-        for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile().pattern
-            pattern.standardize()
-            pattern.shift_signals()
-            pattern.perform_pauli_measurements()
-            state = circuit.simulate_statevector().statevec
-            tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
-            random_op3 = random_op(3)
-            random_op3_exp = random_op(3)
+        state.evolve(random_op3, [0, 1, 2])
+        tn_mbqc.evolve(random_op3, [0, 1, 2], decompose=False)
 
-            state.evolve(random_op3, [0, 1, 2])
-            tn_mbqc.evolve(random_op3, [0, 1, 2], decompose=False)
+        expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])
+        expval_ref = state.expectation_value(random_op3_exp, [0, 1, 2])
 
-            expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])
-            expval_ref = state.expectation_value(random_op3_exp, [0, 1, 2])
-
-            np.testing.assert_almost_equal(expval_tn, expval_ref)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        np.testing.assert_almost_equal(expval_tn, expval_ref)
