@@ -79,7 +79,7 @@ class TestNoiseModel(NoiseModel):
         pass
 
 
-class NoisyDensityMatrixBackendTest(unittest.TestCase):
+class TestNoisyDensityMatrixBackend(unittest.TestCase):
     """Test for Noisy DensityMatrixBackend simultation."""
 
     def setUp(self):

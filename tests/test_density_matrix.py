@@ -773,7 +773,7 @@ class TestDensityMatrix(unittest.TestCase):
             dm.apply_channel("a", [i])
 
 
-class DensityMatrixBackendTest(unittest.TestCase):
+class TestDensityMatrixBackend(unittest.TestCase):
     """Test for DensityMatrixBackend class."""
 
     def test_init_fail(self):
