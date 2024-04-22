@@ -104,13 +104,13 @@ class TestLinAlg(unittest.TestCase):
     def test_add_row(self):
         test_mat = MatGF2(np.diag(np.ones(2, dtype=int)))
         test_mat.add_row()
-        self.assertEqual(test_mat.data.shape, (3, 2))
+        assert test_mat.data.shape == (3, 2)
         assert np.all(test_mat.data == np.array([[1, 0], [0, 1], [0, 0]]))
 
     def test_add_col(self):
         test_mat = MatGF2(np.diag(np.ones(2, dtype=int)))
         test_mat.add_col()
-        self.assertEqual(test_mat.data.shape, (2, 3))
+        assert test_mat.data.shape == (2, 3)
         assert np.all(test_mat.data == galois.GF2(np.array([[1, 0, 0], [0, 1, 0]])))
 
     def test_remove_row(self):
@@ -144,7 +144,7 @@ class TestLinAlg(unittest.TestCase):
         assert test_mat.is_canonical_form()
 
         test_mat = MatGF2(np.array([[1, 1, 0], [0, 0, 1], [0, 1, 0]], dtype=int))
-        self.assertFalse(test_mat.is_canonical_form())
+        assert not test_mat.is_canonical_form()
 
     def test_forward_eliminate(self):
         test_cases = prepare_test_matrix()
@@ -164,7 +164,7 @@ class TestLinAlg(unittest.TestCase):
             mat = test_case["matrix"]
             rank = test_case["rank"]
             with self.subTest(mat=mat):
-                self.assertEqual(mat.get_rank(), rank)
+                assert mat.get_rank() == rank
 
     def test_backward_substitute(self):
         test_cases = prepare_test_matrix()
@@ -178,7 +178,7 @@ class TestLinAlg(unittest.TestCase):
                 x, kernel = mat_eliminated.backward_substitute(RHS_eliminated)
                 if x is not None:
                     assert np.all(x == x)
-                self.assertEqual(len(kernel), kernel_dim)
+                assert len(kernel) == kernel_dim
 
 
 if __name__ == "__main__":

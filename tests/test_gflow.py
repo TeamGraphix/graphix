@@ -173,7 +173,7 @@ class TestGflow(unittest.TestCase):
                     test_graph.outputs,
                     test_graph.meas_planes,
                 )
-                self.assertEqual(test_graph.flow_exist, f is not None)
+                assert test_graph.flow_exist == (f is not None)
 
     def test_gflow(self):
         test_graphs = generate_test_graphs()
@@ -185,7 +185,7 @@ class TestGflow(unittest.TestCase):
                     test_graph.outputs,
                     test_graph.meas_planes,
                 )
-                self.assertEqual(test_graph.gflow_exist, g is not None)
+                assert test_graph.gflow_exist == (g is not None)
 
     def test_verify_flow(self):
         flow_test_cases = dict()
@@ -218,7 +218,7 @@ class TestGflow(unittest.TestCase):
                             flow,
                             test_graph.meas_planes,
                         )
-                        self.assertEqual(expected, valid)
+                        assert expected == valid
 
     def test_verify_gflow(self):
         gflow_test_cases = dict()
@@ -266,7 +266,7 @@ class TestGflow(unittest.TestCase):
                             gflow,
                             test_graph.meas_planes,
                         )
-                        self.assertEqual(expected, valid)
+                        assert expected == valid
 
     def test_with_rand_circ(self):
         # test for large graph
