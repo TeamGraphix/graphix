@@ -1,17 +1,13 @@
+import contextlib
 import sys
 
 import numpy as np
 import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
-from parameterized import parameterized_class
 
-try:
+with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
-except ModuleNotFoundError:
-    pass
-
-import pytest
 
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
@@ -19,7 +15,7 @@ from graphix.ops import Ops
 from graphix.sim.statevec import Statevec, meas_op
 
 
-def get_state(g):
+def get_state(g) -> Statevec:
     node_list = list(g.nodes)
     nqubit = len(g.nodes)
     gstate = Statevec(nqubit=nqubit)
@@ -39,19 +35,24 @@ def get_state(g):
     return gstate
 
 
-@parameterized_class([{"use_rustworkx": False}, {"use_rustworkx": True}])
+@pytest.mark.parametrize(
+    "use_rustworkx",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+        ),
+    ],
+)
 class TestGraphSim:
-    def setUp(self):
-        if sys.modules.get("rustworkx") is None and self.use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
-
-    def test_fig2(self):
+    def test_fig2(self, use_rustworkx: bool) -> None:
         """Example of three single-qubit measurements
         presented in Fig.2 of M. Elliot et al (2010)
         """
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
         gstate = get_state(g)
         g.measure_x(0)
         gstate.evolve_single(meas_op(0), [0])  # x meas
@@ -74,10 +75,10 @@ class TestGraphSim:
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
-    def test_E2(self):
+    def test_e2(self, use_rustworkx: bool) -> None:
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
         g.h(3)
         gstate = get_state(g)
 
@@ -101,10 +102,10 @@ class TestGraphSim:
         gstate6 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate6.flatten())), 1)
 
-    def test_E1(self):
+    def test_e1(self, use_rustworkx: bool) -> None:
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
         g.nodes[3]["loop"] = True
         gstate = get_state(g)
         g.equivalent_graph_E1(3)
@@ -120,11 +121,11 @@ class TestGraphSim:
         gstate3 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())), 1)
 
-    def test_local_complement(self):
+    def test_local_complement(self, use_rustworkx: bool) -> None:
         nqubit = 6
         edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]
         exp_edges = [(0, 1), (1, 2), (0, 2), (2, 3), (3, 4), (4, 0)]
-        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
+        g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
         g.local_complement(1)
         exp_g = GraphState(nodes=np.arange(nqubit), edges=exp_edges)
         assert is_graphs_equal(g, exp_g)
@@ -132,48 +133,48 @@ class TestGraphSim:
 
 @pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed")
 class TestGraphSimUtils:
-    def test_is_graphs_equal_nx_nx(self):
+    def test_is_graphs_equal_nx_nx(self) -> None:
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         assert is_graphs_equal(g1, g2)
 
-    def test_is_graphs_equal_nx_rx(self):
+    def test_is_graphs_equal_nx_rx(self) -> None:
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         assert is_graphs_equal(g1, g2)
 
-    def test_is_graphs_equal_rx_nx(self):
+    def test_is_graphs_equal_rx_nx(self) -> None:
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         assert is_graphs_equal(g1, g2)
 
-    def test_is_graphs_equal_rx_rx(self):
+    def test_is_graphs_equal_rx_rx(self) -> None:
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g1 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         g2 = GraphState(nodes=range(nnode), edges=edges, use_rustworkx=True)
         assert is_graphs_equal(g1, g2)
 
-    def test_convert_rustworkx_to_networkx(self):
+    def test_convert_rustworkx_to_networkx(self) -> None:
         nnode = 6
         data = {"dummy": 1}
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g_nx = Graph()
-        g_nx.add_nodes_from([(n, d) for n, d in zip(range(nnode), [data] * nnode)])
+        g_nx.add_nodes_from(list(zip(range(nnode), [data] * nnode)))
         g_nx.add_edges_from(edges)
         g_rx = PyGraph()
-        g_rx.add_nodes_from([(n, d) for n, d in zip(range(nnode), [data] * nnode)])
+        g_rx.add_nodes_from(list(zip(range(nnode), [data] * nnode)))
         g_rx.add_edges_from_no_data(edges)
         g_rx = convert_rustworkx_to_networkx(g_rx)
         assert graphs_equal(g_nx, g_rx)
 
-    def test_convert_rustworkx_to_networkx_throw_error(self):
+    def test_convert_rustworkx_to_networkx_throw_error(self) -> None:
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g_rx = PyGraph()
