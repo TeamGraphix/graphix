@@ -6,11 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from graphix import Circuit
-from graphix.channels import (
-    KrausChannel,
-    depolarising_channel,
-    two_qubit_depolarising_channel,
-)
+from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
 from graphix.noise_models.noise_model import NoiseModel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
