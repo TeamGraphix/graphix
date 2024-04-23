@@ -31,7 +31,7 @@ class TestPattern:
         circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
-        np.testing.assert_equal(pattern.is_standard(), True)
+        assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
@@ -100,7 +100,7 @@ class TestPattern:
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.minimize_space()
-            np.testing.assert_equal(pattern.max_space(), nqubits + 1)
+            assert pattern.max_space() == nqubits + 1
 
     def test_parallelize_pattern(self, fx_rng: Generator) -> None:
         nqubits = 2
@@ -121,7 +121,7 @@ class TestPattern:
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
-            np.testing.assert_equal(pattern.is_standard(), True)
+            assert pattern.is_standard()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
@@ -233,7 +233,9 @@ class TestPattern:
         ],
     )
     def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
-        self, use_rustworkx: bool, fx_rng: Generator,
+        self,
+        use_rustworkx: bool,
+        fx_rng: Generator,
     ) -> None:
         nqubits = 3
         depth = 3
@@ -282,7 +284,7 @@ class TestPattern:
         # 48-node is the isolated and output node.
         isolated_nodes_ref = {48}
 
-        np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
+        assert isolated_nodes == isolated_nodes_ref
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -320,7 +322,7 @@ class TestPattern:
         # There is no isolated node.
         isolated_nodes_ref = set()
 
-        np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
+        assert isolated_nodes == isolated_nodes_ref
 
     def test_get_meas_plane(self) -> None:
         preset_meas_plane = ["XY", "XY", "XY", "YZ", "YZ", "YZ", "XZ", "XZ", "XZ"]
@@ -340,7 +342,7 @@ class TestPattern:
             8: "XZ",
         }
         meas_plane = pattern.get_meas_plane()
-        np.testing.assert_equal(meas_plane, ref_meas_plane)
+        assert meas_plane == ref_meas_plane
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
@@ -369,7 +371,7 @@ class TestLocalPattern:
             [(1, 3), (4, 1), False],
         ]
         for test in test_case:
-            np.testing.assert_equal(assert_equal_edge(test[0], test[1]), test[2])
+            assert assert_equal_edge(test[0], test[1]) == test[2]
 
     def test_no_gate(self) -> None:
         n = 3
@@ -377,7 +379,7 @@ class TestLocalPattern:
         pattern = circuit.transpile().pattern
         localpattern = pattern.get_local_pattern()
         for node in localpattern.nodes.values():
-            np.testing.assert_equal(node.seq, [])
+            assert node.seq == []
 
     def test_get_graph(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -399,8 +401,8 @@ class TestLocalPattern:
         for node in nodes_ref:
             if node not in nodes:
                 nodes_check2 = False
-        np.testing.assert_equal(nodes_check1, True)
-        np.testing.assert_equal(nodes_check2, True)
+        assert nodes_check1
+        assert nodes_check2
 
         # edges check
         edges_check1 = True
@@ -417,8 +419,8 @@ class TestLocalPattern:
                 edge_match |= assert_equal_edge(edge, edge_ref)
             if not edge_match:
                 edges_check2 = False
-        np.testing.assert_equal(edges_check1, True)
-        np.testing.assert_equal(edges_check2, True)
+        assert edges_check1
+        assert edges_check2
 
     def test_standardize(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -429,7 +431,7 @@ class TestLocalPattern:
             localpattern = pattern.get_local_pattern()
             localpattern.standardize()
             pattern = localpattern.get_pattern()
-            np.testing.assert_equal(pattern.is_standard(), True)
+            assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
@@ -445,7 +447,7 @@ class TestLocalPattern:
             localpattern.standardize()
             localpattern.shift_signals()
             pattern = localpattern.get_pattern()
-            np.testing.assert_equal(pattern.is_standard(), True)
+            assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
@@ -458,7 +460,7 @@ class TestLocalPattern:
             circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize_and_shift_signals()
-            np.testing.assert_equal(pattern.is_standard(), True)
+            assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
@@ -487,7 +489,7 @@ class TestLocalPattern:
                         pattern.standardize(method=operation[1])
                     elif operation[0] == "signal":
                         pattern.shift_signals(method=operation[1])
-                np.testing.assert_equal(pattern.is_standard(), True)
+                assert pattern.is_standard()
                 pattern.minimize_space()
                 state_p = pattern.simulate_pattern()
                 np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
@@ -499,7 +501,7 @@ class TestLocalPattern:
             circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="local")
-            np.testing.assert_equal(pattern.is_standard(), True)
+            assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
@@ -513,7 +515,7 @@ class TestLocalPattern:
             pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="local")
             pattern.shift_signals(method="local")
-            np.testing.assert_equal(pattern.is_standard(), True)
+            assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
@@ -529,7 +531,7 @@ class TestLocalPattern:
         for [seq, ref] in ref_sequence:
             node = CommandNode(0, seq, [], [], False, [], [])
             result = node.is_standard()
-            np.testing.assert_equal(result, ref)
+            assert result == ref
 
     def test_localpattern_is_standard(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -540,8 +542,8 @@ class TestLocalPattern:
             result1 = localpattern.is_standard()
             localpattern.standardize()
             result2 = localpattern.is_standard()
-            np.testing.assert_equal(result1, False)
-            np.testing.assert_equal(result2, True)
+            assert not result1
+            assert result2
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:

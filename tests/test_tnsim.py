@@ -38,8 +38,8 @@ class TestTN:
 
         tn.add_qubit(node_index)
 
-        np.testing.assert_equal(set(tn.tag_map.keys()), {str(node_index), "Open"})
-        np.testing.assert_equal(tn.tensors[0].data, plus)
+        assert set(tn.tag_map.keys()) == {str(node_index), "Open"}
+        assert (tn.tensors[0].data == plus).all()
 
     def test_add_nodes(self, fx_rng: Generator) -> None:
         node_index = set(fx_rng.integers(0, 1000, 20))
@@ -48,9 +48,9 @@ class TestTN:
         tn.graph_prep = "sequential"
         tn.add_qubits(node_index)
 
-        np.testing.assert_equal(set(tn.tag_map.keys()), {str(ind) for ind in node_index} | {"Open"})
+        assert set(tn.tag_map.keys()) == {str(ind) for ind in node_index} | {"Open"}
         for tensor in tn.tensor_map.values():
-            np.testing.assert_equal(tensor.data, plus)
+            assert (tensor.data == plus).all()
 
     def test_entangle_nodes(self) -> None:
         random_vec = np.array([1.0, 1.0, 1.0, 1.0]).reshape(2, 2)
