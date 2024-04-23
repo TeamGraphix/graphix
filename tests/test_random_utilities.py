@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
-from numpy.random import Generator
 
 import graphix.random_objects as randobj
 from graphix.channels import KrausChannel
@@ -8,15 +11,18 @@ from graphix.linalg_validations import check_data_dims, check_hermitian, check_p
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 
+if TYPE_CHECKING:
+    from numpy.random import Generator
+
 
 class TestUtilities:
-    def test_rand_herm(self, fx_rng: Generator):
+    def test_rand_herm(self, fx_rng: Generator) -> None:
         tmp = randobj.rand_herm(fx_rng.integers(2, 20))
         np.testing.assert_allclose(tmp, tmp.conj().T)
 
     # TODO : work on that. Verify an a random vector and not at the operator level...
 
-    def test_rand_unit(self, fx_rng: Generator):
+    def test_rand_unit(self, fx_rng: Generator) -> None:
         d = fx_rng.integers(2, 20)
         tmp = randobj.rand_unit(d)
         print(type(tmp), tmp.dtype)
@@ -25,7 +31,7 @@ class TestUtilities:
         np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d), atol=1e-15)
         np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d), atol=1e-15)
 
-    def test_random_channel_success(self, fx_rng: Generator):
+    def test_random_channel_success(self, fx_rng: Generator) -> None:
 
         nqb = int(fx_rng.integers(1, 5))
         dim = 2**nqb  # fx_rng.integers(2, 8)
@@ -50,17 +56,17 @@ class TestUtilities:
         assert channel.size == rk
         assert channel.is_normalized
 
-    def test_random_channel_fail(self):
+    def test_random_channel_fail(self) -> None:
 
         # incorrect rank type
         with pytest.raises(TypeError):
-            mychannel = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
+            _ = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
 
         # null rank
         with pytest.raises(ValueError):
-            mychannel = randobj.rand_channel_kraus(dim=2**2, rank=0)
+            _ = randobj.rand_channel_kraus(dim=2**2, rank=0)
 
-    def test_rand_gauss_cpx(self, fx_rng: Generator):
+    def test_rand_gauss_cpx(self, fx_rng: Generator) -> None:
 
         nsample = int(1e4)
 
@@ -69,9 +75,9 @@ class TestUtilities:
 
         dimset = {i.shape for i in tmp}
         assert len(dimset) == 1
-        assert list(dimset)[0] == (dim, dim)
+        assert next(iter(dimset)) == (dim, dim)
 
-    def test_check_psd_success(self, fx_rng: Generator):
+    def test_check_psd_success(self, fx_rng: Generator) -> None:
 
         # Generate a random mixed state from state vectors with same probability
         # We know this is PSD
@@ -91,7 +97,7 @@ class TestUtilities:
 
         assert check_psd(dm)
 
-    def test_check_psd_fail(self, fx_rng: Generator):
+    def test_check_psd_fail(self, fx_rng: Generator) -> None:
 
         # not hermitian
         # don't use dim = 2, too easy to have a PSD matrix.
@@ -112,7 +118,7 @@ class TestUtilities:
         with pytest.raises(ValueError):
             check_psd(mat)
 
-    def test_rand_dm(self, fx_rng: Generator):
+    def test_rand_dm(self, fx_rng: Generator) -> None:
         # needs to be power of 2 dimension since builds a DM object
         dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5))
 
@@ -123,11 +129,11 @@ class TestUtilities:
         assert check_unit_trace(dm.rho)
 
     # try with incorrect dimension
-    def test_rand_dm_fail(self, fx_rng: Generator):
+    def test_rand_dm_fail(self, fx_rng: Generator) -> None:
         with pytest.raises(ValueError):
-            dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1)
+            _ = randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1)
 
-    def test_rand_dm_rank(self, fx_rng: Generator):
+    def test_rand_dm_rank(self, fx_rng: Generator) -> None:
 
         rk = 3
         dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk)
@@ -145,46 +151,46 @@ class TestUtilities:
         assert rk == np.count_nonzero(evals)
 
     # TODO move that somewhere else?
-    def test_pauli_tensor_ops(self, fx_rng: Generator):
+    def test_pauli_tensor_ops(self, fx_rng: Generator) -> None:
         nqb = int(fx_rng.integers(2, 6))
-        Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(nqb)
+        pauli_tensor_ops = Ops.build_tensor_Pauli_ops(nqb)
 
-        assert len(Pauli_tensor_ops) == 4**nqb
+        assert len(pauli_tensor_ops) == 4**nqb
 
-        dims = np.array([i.shape for i in Pauli_tensor_ops])
+        dims = np.array([i.shape for i in pauli_tensor_ops])
         # or np.apply_along_axis ?
         assert np.all(dims == (2**nqb, 2**nqb))
 
-    def test_pauli_tensor_ops_fail(self, fx_rng: Generator):
+    def test_pauli_tensor_ops_fail(self, fx_rng: Generator) -> None:
 
         with pytest.raises(TypeError):
-            Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(fx_rng.integers(2, 6) + 0.5)
+            _ = Ops.build_tensor_Pauli_ops(fx_rng.integers(2, 6) + 0.5)
 
         with pytest.raises(ValueError):
-            Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(0)
+            _ = Ops.build_tensor_Pauli_ops(0)
 
-    def test_random_pauli_channel_success(self, fx_rng: Generator):
+    def test_random_pauli_channel_success(self, fx_rng: Generator) -> None:
 
         nqb = int(fx_rng.integers(2, 6))
         rk = int(fx_rng.integers(1, 2**nqb + 1))
-        Pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
+        pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
 
-        assert isinstance(Pauli_channel, KrausChannel)
-        assert Pauli_channel.nqubit == nqb
-        assert Pauli_channel.size == rk
-        assert Pauli_channel.is_normalized
+        assert isinstance(pauli_channel, KrausChannel)
+        assert pauli_channel.nqubit == nqb
+        assert pauli_channel.size == rk
+        assert pauli_channel.is_normalized
 
-    def test_random_pauli_channel_fail(self):
+    def test_random_pauli_channel_fail(self) -> None:
         nqb = 3
         rk = 2
         with pytest.raises(TypeError):
-            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
 
         with pytest.raises(ValueError):
-            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
 
         with pytest.raises(ValueError):
-            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3)
 
         with pytest.raises(ValueError):
-            dm = randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk)
