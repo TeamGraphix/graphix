@@ -16,7 +16,7 @@ from graphix.ops import Ops
 class TestChannel:
     """Tests for Channel class"""
 
-    def test_init_with_data_success(self, fx_rng: Generator):
+    def test_init_with_data_success(self, fx_rng: Generator) -> None:
         "test for successful intialization"
 
         prob = fx_rng.uniform()
@@ -24,7 +24,7 @@ class TestChannel:
             [
                 {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                 {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-            ]
+            ],
         )
         assert isinstance(mychannel.nqubit, int)
         assert mychannel.nqubit == 1
@@ -32,89 +32,89 @@ class TestChannel:
         assert isinstance(mychannel.kraus_ops, (list, np.ndarray, tuple))
         assert mychannel.is_normalized
 
-    def test_init_with_data_fail(self, fx_rng: Generator):
+    def test_init_with_data_fail(self, fx_rng: Generator) -> None:
         "test for unsuccessful intialization"
 
         prob = fx_rng.uniform()
 
         # empty data
         with pytest.raises(ValueError):
-            mychannel = KrausChannel([])
+            _ = KrausChannel([])
 
         # incorrect parameter type
         with pytest.raises(TypeError):
-            mychannel = KrausChannel("a")
+            _ = KrausChannel("a")
 
         # incorrect "parameter" key
         with pytest.raises(KeyError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coefficients": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # incorrect "operator" key
         with pytest.raises(KeyError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # incorrect parameter type
         with pytest.raises(TypeError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # incorrect operator type
         with pytest.raises(TypeError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": "a"},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # incorrect operator dimension
         with pytest.raises(ValueError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # incorrect operator dimension: square but not qubits
         with pytest.raises(ValueError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": fx_rng.uniform(size=(3, 3))},
                     {"coef": np.sqrt(prob), "operator": fx_rng.uniform(size=(3, 3))},
-                ]
+                ],
             )
 
         # doesn't square to 1. Not normalized. Parameter.
         with pytest.raises(ValueError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # doesn't square to 1. Not normalized. Operator.
         with pytest.raises(ValueError):
-            mychannel = KrausChannel(
+            _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
                     {"coef": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
-                ]
+                ],
             )
 
         # incorrect rank (number of kraus_operators)
@@ -122,7 +122,7 @@ class TestChannel:
         with pytest.raises(ValueError):
             randobj.rand_channel_kraus(dim=2**2, rank=20)
 
-    def test_dephasing_channel(self, fx_rng: Generator):
+    def test_dephasing_channel(self, fx_rng: Generator) -> None:
 
         prob = fx_rng.uniform()
         data = [
@@ -139,7 +139,7 @@ class TestChannel:
             np.testing.assert_allclose(dephase_channel.kraus_ops[i]["coef"], data[i]["coef"])
             np.testing.assert_allclose(dephase_channel.kraus_ops[i]["operator"], data[i]["operator"])
 
-    def test_depolarising_channel(self, fx_rng: Generator):
+    def test_depolarising_channel(self, fx_rng: Generator) -> None:
 
         prob = fx_rng.uniform()
         data = [
@@ -160,7 +160,7 @@ class TestChannel:
             np.testing.assert_allclose(depol_channel.kraus_ops[i]["coef"], data[i]["coef"])
             np.testing.assert_allclose(depol_channel.kraus_ops[i]["operator"], data[i]["operator"])
 
-    def test_2_qubit_depolarising_channel(self, fx_rng: Generator):
+    def test_2_qubit_depolarising_channel(self, fx_rng: Generator) -> None:
 
         prob = fx_rng.uniform()
         data = [
@@ -193,7 +193,7 @@ class TestChannel:
             np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
             np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
 
-    def test_2_qubit_depolarising_tensor_channel(self, fx_rng: Generator):
+    def test_2_qubit_depolarising_tensor_channel(self, fx_rng: Generator) -> None:
 
         prob = fx_rng.uniform()
         data = [
