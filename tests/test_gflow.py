@@ -1,40 +1,32 @@
-# %%
 from __future__ import annotations
 
-import networkx as nx
-import numpy as np
-import pytest
-from numpy.random import Generator
+from typing import TYPE_CHECKING, NamedTuple
 
-from graphix.gflow import find_flow, find_gflow, get_input_from_flow, verify_flow, verify_gflow
+import networkx as nx
+import pytest
+
+from graphix.gflow import find_flow, find_gflow, verify_flow, verify_gflow
 from tests.random_circuit import get_rand_circuit
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+
+    from numpy.random import Generator
 
 seed = 30
 
 
-class GraphForTest:
-    def __init__(
-        self,
-        graph: nx.Graph,
-        inputs: set,
-        outputs: set,
-        meas_planes: dict[int, set],
-        flow_exist: bool,
-        gflow_exist: bool,
-        label: str,
-    ):
-        self.graph = graph
-        self.inputs = inputs
-        self.outputs = outputs
-        self.meas_planes = meas_planes
-        self.flow_exist = flow_exist
-        self.gflow_exist = gflow_exist
-        self.label = label
+class GraphForTest(NamedTuple):
+    graph: nx.Graph
+    inputs: set[int]
+    outputs: set[int]
+    meas_planes: dict[int, str]
+    label: str
+    flow_exist: bool
+    gflow_exist: bool
 
 
-def generate_test_graphs() -> list[GraphForTest]:
-    graphs = []
-
+def _graph1() -> GraphForTest:
     # no measurement
     # 1
     # |
@@ -47,9 +39,18 @@ def generate_test_graphs() -> list[GraphForTest]:
     inputs = {1, 2}
     outputs = {1, 2}
     meas_planes = {}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, True, True, "no measurement")
-    graphs.append(test_graph)
+    return GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        "no measurement",
+        flow_exist=True,
+        gflow_exist=True,
+    )
 
+
+def _graph2() -> GraphForTest:
     # line graph with flow and gflow
     # 1 - 2 - 3 - 4 - 5
     nodes = [1, 2, 3, 4, 5]
@@ -60,17 +61,18 @@ def generate_test_graphs() -> list[GraphForTest]:
     inputs = {1}
     outputs = {5}
     meas_planes = {1: "XY", 2: "XY", 3: "XY", 4: "XY"}
-    test_graph = GraphForTest(
+    return GraphForTest(
         graph,
         inputs,
         outputs,
         meas_planes,
-        True,
-        True,
         "line graph with flow and gflow",
+        flow_exist=True,
+        gflow_exist=True,
     )
-    graphs.append(test_graph)
 
+
+def _graph3() -> GraphForTest:
     # graph with flow and gflow
     # 1 - 3 - 5
     #     |
@@ -83,9 +85,18 @@ def generate_test_graphs() -> list[GraphForTest]:
     inputs = {1, 2}
     outputs = {5, 6}
     meas_planes = {1: "XY", 2: "XY", 3: "XY", 4: "XY"}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, True, True, "graph with flow and gflow")
-    graphs.append(test_graph)
+    return GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        "graph with flow and gflow",
+        flow_exist=True,
+        gflow_exist=True,
+    )
 
+
+def _graph4() -> GraphForTest:
     # graph with gflow but flow
     #   ______
     #  /      |
@@ -106,9 +117,18 @@ def generate_test_graphs() -> list[GraphForTest]:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {1: "XY", 2: "XY", 3: "XY"}
-    test_graph = GraphForTest(graph, inputs, outputs, meas_planes, False, True, "graph with gflow but no flow")
-    graphs.append(test_graph)
+    return GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        "graph with gflow but no flow",
+        flow_exist=False,
+        gflow_exist=True,
+    )
 
+
+def _graph5() -> GraphForTest:
     # graph with extended gflow but flow
     #   0 - 1
     #  /|   |
@@ -123,17 +143,18 @@ def generate_test_graphs() -> list[GraphForTest]:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {0: "XY", 1: "XY", 2: "ZX", 3: "YZ"}
-    test_graph = GraphForTest(
+    return GraphForTest(
         graph,
         inputs,
         outputs,
         meas_planes,
-        False,
-        True,
         "graph with extended gflow but no flow",
+        flow_exist=False,
+        gflow_exist=True,
     )
-    graphs.append(test_graph)
 
+
+def _graph6() -> GraphForTest:
     # graph with no flow and no gflow
     # 1 - 3
     #  \ /
@@ -148,21 +169,31 @@ def generate_test_graphs() -> list[GraphForTest]:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {1: "XY", 2: "XY"}
-    test_graph = GraphForTest(
+    return GraphForTest(
         graph,
         inputs,
         outputs,
         meas_planes,
-        False,
-        False,
         "graph with no flow and no gflow",
+        flow_exist=False,
+        gflow_exist=False,
     )
-    graphs.append(test_graph)
-
-    return graphs
 
 
-FLOW_TEST_CASES = {
+def generate_test_graphs() -> list[GraphForTest]:
+    return [
+        _graph1(),
+        _graph2(),
+        _graph3(),
+        _graph4(),
+        _graph5(),
+        _graph6(),
+    ]
+
+
+TestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
+
+FLOW_TEST_CASES: TestCaseType = {
     "no measurement": {
         "empty flow": (True, {}),
         "measure output": (False, {1: {2}}),
@@ -180,7 +211,7 @@ FLOW_TEST_CASES = {
 }
 
 
-GFLOW_TEST_CASES = {
+GFLOW_TEST_CASES: TestCaseType = {
     "no measurement": {
         "empty flow": (True, {}),
         "measure output": (False, {1: {2}}),
@@ -200,7 +231,7 @@ GFLOW_TEST_CASES = {
             True,
             {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3}},
         ),
-        "correct glow 2": (True, {0: {1, 2, 4}, 1: {3, 5}, 2: {2, 4}, 3: {3}}),
+        "correct gflow 2": (True, {0: {1, 2, 4}, 1: {3, 5}, 2: {2, 4}, 3: {3}}),
         "incorrect gflow": (
             False,
             {0: {1, 2, 3, 4}, 1: {2, 3, 4, 5}, 2: {2, 4}, 3: {3, 4}},
@@ -212,8 +243,13 @@ GFLOW_TEST_CASES = {
     },
 }
 
+TestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
 
-def iterate_compatible(graphs, cases):
+
+def iterate_compatible(
+    graphs: Iterable[GraphForTest],
+    cases: TestCaseType,
+) -> Iterator[TestDataType]:
     for g in graphs:
         for k, v in cases.items():
             if g.label != k:
@@ -224,7 +260,7 @@ def iterate_compatible(graphs, cases):
 
 class TestGflow:
     @pytest.mark.parametrize("test_graph", generate_test_graphs())
-    def test_flow(self, test_graph):
+    def test_flow(self, test_graph: GraphForTest) -> None:
         f, l_k = find_flow(
             test_graph.graph,
             test_graph.inputs,
@@ -234,7 +270,7 @@ class TestGflow:
         assert test_graph.flow_exist == (f is not None)
 
     @pytest.mark.parametrize("test_graph", generate_test_graphs())
-    def test_gflow(self, test_graph):
+    def test_gflow(self, test_graph: GraphForTest) -> None:
         g, l_k = find_gflow(
             test_graph.graph,
             test_graph.inputs,
@@ -244,7 +280,7 @@ class TestGflow:
         assert test_graph.gflow_exist == (g is not None)
 
     @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), FLOW_TEST_CASES))
-    def test_verify_flow(self, data):
+    def test_verify_flow(self, data: TestDataType) -> None:
         test_graph, test_case = data
         expected, flow = test_case
         valid = verify_flow(
@@ -257,7 +293,7 @@ class TestGflow:
         assert expected == valid
 
     @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), GFLOW_TEST_CASES))
-    def test_verify_gflow(self, data):
+    def test_verify_gflow(self, data: TestDataType) -> None:
         test_graph, test_case = data
         expected, gflow = test_case
 
@@ -270,7 +306,7 @@ class TestGflow:
         )
         assert expected == valid
 
-    def test_with_rand_circ(self, fx_rng: Generator):
+    def test_with_rand_circ(self, fx_rng: Generator) -> None:
         # test for large graph
         # graph transpiled from circuit always has a flow
         circ = get_rand_circuit(10, 10, fx_rng)
@@ -279,15 +315,15 @@ class TestGflow:
         graph = nx.Graph()
         graph.add_nodes_from(nodes)
         graph.add_edges_from(edges)
-        input = set(pattern.input_nodes)
+        input_ = set(pattern.input_nodes)
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        f, l_k = find_flow(graph, input, output, meas_planes)
-        valid = verify_flow(graph, input, output, f, meas_planes)
+        f, l_k = find_flow(graph, input_, output, meas_planes)
+        valid = verify_flow(graph, input_, output, f, meas_planes)
 
         assert valid
 
-    def test_rand_circ_gflow(self, fx_rng: Generator):
+    def test_rand_circ_gflow(self, fx_rng: Generator) -> None:
         # test for large graph
         # pauli-node measured graph always has gflow
         circ = get_rand_circuit(5, 5, fx_rng)
@@ -299,11 +335,11 @@ class TestGflow:
         graph = nx.Graph()
         graph.add_nodes_from(nodes)
         graph.add_edges_from(edges)
-        input = set()
+        input_ = set()
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        g, l_k = find_gflow(graph, input, output, meas_planes)
+        g, l_k = find_gflow(graph, input_, output, meas_planes)
 
-        valid = verify_gflow(graph, input, output, g, meas_planes)
+        valid = verify_gflow(graph, input_, output, g, meas_planes)
 
         assert valid
