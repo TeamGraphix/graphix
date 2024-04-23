@@ -7,7 +7,7 @@ from graphix.generator import generate_from_graph
 
 
 class TestGenerator:
-    def test_pattern_generation_determinism_flow(self, fx_rng: Generator):
+    def test_pattern_generation_determinism_flow(self, fx_rng: Generator) -> None:
         graph = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
         inputs = {0, 1, 2}
         outputs = {6, 7, 8}
@@ -26,7 +26,7 @@ class TestGenerator:
             inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
             np.testing.assert_almost_equal(abs(inner_product), 1)
 
-    def test_pattern_generation_determinism_gflow(self, fx_rng: Generator):
+    def test_pattern_generation_determinism_gflow(self, fx_rng: Generator) -> None:
         graph = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
@@ -45,7 +45,7 @@ class TestGenerator:
             inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
             np.testing.assert_almost_equal(abs(inner_product), 1)
 
-    def test_pattern_generation_flow(self, fx_rng: Generator):
+    def test_pattern_generation_flow(self, fx_rng: Generator) -> None:
         nqubits = 3
         depth = 2
         pairs = [(0, 1), (1, 2)]
@@ -59,12 +59,12 @@ class TestGenerator:
         g = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
-        input = [0, 1, 2]
-        angles = dict()
+        input_list = [0, 1, 2]
+        angles = {}
         for cmd in pattern.get_measurement_commands():
             angles[cmd[1]] = cmd[3]
         meas_planes = pattern.get_meas_plane()
-        pattern2 = generate_from_graph(g, angles, input, pattern.output_nodes, meas_planes)
+        pattern2 = generate_from_graph(g, angles, input_list, pattern.output_nodes, meas_planes)
         # check that the new one runs and returns correct result
         pattern2.standardize()
         pattern2.shift_signals()
