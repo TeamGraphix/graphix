@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import sys
 
 import numpy as np
+import numpy.typing as npt
 import pytest
-from pytest_mock import MockerFixture
 
 try:
     import qiskit
@@ -10,27 +12,33 @@ try:
 except ModuleNotFoundError:
     pass
 
+from typing import TYPE_CHECKING
+
 import graphix
-import tests.random_circuit as rc
 from graphix.device_interface import PatternRunner
 
+if TYPE_CHECKING:
+    from collections.abc import Collection
 
-def modify_statevector(statevector, output_qubit):
+    from pytest_mock import MockerFixture
+
+
+def modify_statevector(statevector: npt.ArrayLike, output_qubit: Collection[int]) -> npt.NDArray:
     statevector = np.asarray(statevector)
-    N = round(np.log2(len(statevector)))
+    n = round(np.log2(len(statevector)))
     new_statevector = np.zeros(2 ** len(output_qubit), dtype=complex)
     for i in range(len(statevector)):
-        i_str = format(i, f"0{N}b")
+        i_str = format(i, f"0{n}b")
         new_idx = ""
         for idx in output_qubit:
-            new_idx += i_str[N - idx - 1]
+            new_idx += i_str[n - idx - 1]
         new_statevector[int(new_idx, 2)] += statevector[i]
     return new_statevector
 
 
 class TestPatternRunner:
     @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
-    def test_ibmq_backend(self, mocker: MockerFixture):
+    def test_ibmq_backend(self, mocker: MockerFixture) -> None:
         # circuit in qiskit
         qc = qiskit.QuantumCircuit(3)
         qc.h(0)
