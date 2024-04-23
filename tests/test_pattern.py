@@ -34,7 +34,7 @@ class TestPattern:
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_minimize_space(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -45,7 +45,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -69,7 +69,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
     def test_empty_output_nodes(self, backend: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
@@ -111,7 +111,7 @@ class TestPattern:
         pattern.parallelize_pattern()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_shift_signals(self, fx_rng: Generator) -> None:
         nqubits = 2
@@ -124,7 +124,7 @@ class TestPattern:
             assert pattern.is_standard()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -148,7 +148,7 @@ class TestPattern:
             pattern.minimize_space()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -172,7 +172,7 @@ class TestPattern:
             pattern.minimize_space()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -196,7 +196,7 @@ class TestPattern:
             pattern.minimize_space()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -220,7 +220,7 @@ class TestPattern:
             pattern.minimize_space()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -246,7 +246,7 @@ class TestPattern:
             pattern.minimize_space()
             state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -435,7 +435,7 @@ class TestLocalPattern:
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     def test_shift_signals(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -451,7 +451,7 @@ class TestLocalPattern:
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     def test_standardize_and_shift_signals(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -464,7 +464,7 @@ class TestLocalPattern:
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     def test_mixed_pattern_operations(self, fx_rng: Generator) -> None:
         processes = [
@@ -492,7 +492,7 @@ class TestLocalPattern:
                 assert pattern.is_standard()
                 pattern.minimize_space()
                 state_p = pattern.simulate_pattern()
-                np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+                assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     def test_opt_transpile_standardize(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -505,7 +505,7 @@ class TestLocalPattern:
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     def test_opt_transpile_shift_signals(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -519,7 +519,7 @@ class TestLocalPattern:
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
             state_ref = circuit.simulate_statevector().statevec
-            np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
+            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     def test_node_is_standardized(self) -> None:
         ref_sequence = [

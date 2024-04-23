@@ -70,7 +70,7 @@ class TestTN:
         contracted = tn.contract()
         # reference
         contracted_ref = np.einsum("abcd, c, d, ab->", CZ.reshape(2, 2, 2, 2), plus, plus, random_vec)
-        np.testing.assert_almost_equal(contracted, contracted_ref)
+        assert contracted == pytest.approx(contracted_ref)
 
     def test_apply_one_site_operator(self, fx_rng: Generator) -> None:
         cmds = [
@@ -101,7 +101,7 @@ class TestTN:
             CLIFFORD[cmds[2][2]],
         ]
         contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
-        np.testing.assert_almost_equal(contracted, contracted_ref)
+        assert contracted == pytest.approx(contracted_ref)
 
     def test_expectation_value1(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -111,7 +111,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_expectation_value2(self, fx_rng: Generator) -> None:
         circuit = Circuit(2)
@@ -123,7 +123,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list):
             value1 = state.expectation_value(random_op2, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_expectation_value3(self, fx_rng: Generator) -> None:
         circuit = Circuit(3)
@@ -135,7 +135,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list):
             value1 = state.expectation_value(random_op3, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_expectation_value3_sequential(self, fx_rng: Generator) -> None:
         circuit = Circuit(3)
@@ -147,7 +147,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list):
             value1 = state.expectation_value(random_op3, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_expectation_value3_subspace1(self, fx_rng: Generator) -> None:
         circuit = Circuit(3)
@@ -159,7 +159,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list, 1):
             value1 = state.expectation_value(random_op1, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op1, list(qargs))
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_expectation_value3_subspace2(self, fx_rng: Generator) -> None:
         circuit = Circuit(3)
@@ -171,7 +171,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list, 2):
             value1 = state.expectation_value(random_op2, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_expectation_value3_subspace2_sequential(self, fx_rng: Generator) -> None:
         circuit = Circuit(3)
@@ -183,7 +183,7 @@ class TestTN:
         for qargs in itertools.permutations(input_list, 2):
             value1 = state.expectation_value(random_op2, list(qargs))
             value2 = tn_mbqc.expectation_value(random_op2, list(qargs))
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_hadamard(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -195,10 +195,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(
-            value1,
-            value2,
-        )
+        assert value1 == pytest.approx(value2)
 
     def test_s(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -209,7 +206,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_x(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -220,7 +217,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_y(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -231,7 +228,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_z(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -242,7 +239,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_rx(self, fx_rng: Generator) -> None:
         theta = fx_rng.uniform() * 2 * np.pi
@@ -254,7 +251,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_ry(self, fx_rng: Generator) -> None:
         theta = fx_rng.uniform() * 2 * np.pi
@@ -266,7 +263,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_rz(self, fx_rng: Generator) -> None:
         theta = fx_rng.uniform() * 2 * np.pi
@@ -278,7 +275,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_i(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -289,7 +286,7 @@ class TestTN:
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_cnot(self, fx_rng: Generator) -> None:
         circuit = Circuit(2)
@@ -301,7 +298,7 @@ class TestTN:
         random_op2 = random_op(2, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op2, [0, 1])
         value2 = tn_mbqc.expectation_value(random_op2, [0, 1])
-        np.testing.assert_almost_equal(value1, value2)
+        assert value1 == pytest.approx(value2)
 
     def test_ccx(self, fx_rng: Generator) -> None:
         for _ in range(10):
@@ -314,7 +311,7 @@ class TestTN:
             random_op3 = random_op(3, np.complex128, fx_rng)
             value1 = state.expectation_value(random_op3, [0, 1, 2])
             value2 = tn_mbqc.expectation_value(random_op3, [0, 1, 2])
-            np.testing.assert_almost_equal(value1, value2)
+            assert value1 == pytest.approx(value2)
 
     def test_with_graphtrans(self, fx_rng: Generator) -> None:
         for _ in range(10):
@@ -330,7 +327,7 @@ class TestTN:
             for qargs in itertools.permutations(input_list):
                 value1 = state.expectation_value(random_op3, list(qargs))
                 value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-                np.testing.assert_almost_equal(value1, value2)
+                assert value1 == pytest.approx(value2)
 
     def test_with_graphtrans_sequential(self, fx_rng: Generator) -> None:
         for _ in range(10):
@@ -347,7 +344,7 @@ class TestTN:
             for qargs in itertools.permutations(input_list):
                 value1 = state.expectation_value(random_op3, list(qargs))
                 value2 = tn_mbqc.expectation_value(random_op3, list(qargs))
-                np.testing.assert_almost_equal(value1, value2)
+                assert value1 == pytest.approx(value2)
 
     def test_coef_state(self, fx_rng: Generator) -> None:
         for _ in range(10):
@@ -362,7 +359,7 @@ class TestTN:
                 coef_tn = tn.get_basis_coefficient(number)
                 coef_sv = statevec_ref.flatten()[number]
 
-                np.testing.assert_almost_equal(abs(coef_tn), abs(coef_sv))
+                assert abs(coef_tn) == pytest.approx(abs(coef_sv))
 
     @pytest.mark.parametrize("nqubits", range(2, 6))
     def test_to_statevector(self, nqubits: int, fx_rng: Generator) -> None:
@@ -375,7 +372,7 @@ class TestTN:
             statevec_tn = tn.to_statevector()
 
             inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
-            np.testing.assert_almost_equal(abs(inner_product), 1)
+            assert abs(inner_product) == pytest.approx(1)
 
     def test_evolve(self, fx_rng: Generator) -> None:
         for _ in range(10):
@@ -395,4 +392,4 @@ class TestTN:
             expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])
             expval_ref = state.expectation_value(random_op3_exp, [0, 1, 2])
 
-            np.testing.assert_almost_equal(expval_tn, expval_ref)
+            assert expval_tn == pytest.approx(expval_ref)

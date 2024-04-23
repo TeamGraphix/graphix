@@ -25,7 +25,7 @@ class TestStatevec:
         sv2.ptrace([k])
         sv2.normalize()
 
-        np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+        assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
 
     def test_measurement_into_each_xyz_basis(self) -> None:
         n = 3
@@ -38,7 +38,7 @@ class TestStatevec:
             sv.remove_qubit(k)
 
             sv2 = Statevec(nqubit=n - 1)
-            np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+            assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
 
     def test_measurement_into_minus_state(self) -> None:
         n = 3

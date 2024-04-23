@@ -77,4 +77,4 @@ class TestPatternRunner:
         state_qiskit = sim_result.get_statevector(runner.backend.circ)
         state_qiskit_mod = modify_statevector(state_qiskit, runner.backend.circ_output)
 
-        np.testing.assert_almost_equal(np.abs(np.dot(state_qiskit_mod.conjugate(), state.flatten())), 1)
+        assert np.abs(np.dot(state_qiskit_mod.conjugate(), state.flatten())) == pytest.approx(1)

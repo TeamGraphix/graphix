@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
+import pytest
 
 import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
@@ -30,7 +31,7 @@ class TestGenerator:
         combinations = [(0, 1), (0, 2), (1, 2)]
         for i, j in combinations:
             inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
-            np.testing.assert_almost_equal(abs(inner_product), 1)
+            assert abs(inner_product) == pytest.approx(1)
 
     def test_pattern_generation_determinism_gflow(self, fx_rng: Generator) -> None:
         graph = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
@@ -49,7 +50,7 @@ class TestGenerator:
         combinations = [(0, 1), (0, 2), (1, 2)]
         for i, j in combinations:
             inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
-            np.testing.assert_almost_equal(abs(inner_product), 1)
+            assert abs(inner_product) == pytest.approx(1)
 
     def test_pattern_generation_flow(self, fx_rng: Generator) -> None:
         nqubits = 3
@@ -77,4 +78,4 @@ class TestGenerator:
         pattern2.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern2.simulate_pattern()
-        np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
