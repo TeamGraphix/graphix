@@ -170,7 +170,7 @@ class TestDensityMatrix:
         psi1 = psi1.reshape(2**nqb)
 
         # watch out ordering. Expval unitary is cpx so psi1 on the right to match DM.
-        np.testing.assert_allclose(np.dot(psi.conjugate(), psi1), dm.expectation_single(op, target_qubit))
+        assert np.allclose(np.dot(psi.conjugate(), psi1), dm.expectation_single(op, target_qubit))
 
     def test_tensor_fail(self) -> None:
         dm = DensityMatrix(nqubit=1)
@@ -250,7 +250,7 @@ class TestDensityMatrix:
         psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
-        np.testing.assert_allclose(rho, expected_matrix)
+        assert np.allclose(rho, expected_matrix)
 
     def test_swap_fail(self) -> None:
         dm = DensityMatrix(nqubit=2)
@@ -325,7 +325,7 @@ class TestDensityMatrix:
         psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
-        np.testing.assert_allclose(rho, expected_matrix)
+        assert np.allclose(rho, expected_matrix)
 
     def test_evolve_success(self, fx_rng: Generator) -> None:
         # single-qubit gate
@@ -349,7 +349,7 @@ class TestDensityMatrix:
         dm.evolve(op, [i])
         dm_single.evolve_single(op, i)
 
-        np.testing.assert_allclose(dm.rho, dm_single.rho)
+        assert np.allclose(dm.rho, dm_single.rho)
 
         # 2-qubit gate
 
@@ -375,7 +375,7 @@ class TestDensityMatrix:
         psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
-        np.testing.assert_allclose(rho, expected_matrix)
+        assert np.allclose(rho, expected_matrix)
 
         # 3-qubit gate
         nqubits = fx_rng.integers(3, 5)
@@ -400,7 +400,7 @@ class TestDensityMatrix:
         psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((3, 4, 5), targets))
         psi = np.moveaxis(psi, (0, 1, 2), targets)
         expected_matrix = np.outer(psi, psi.conj())
-        np.testing.assert_allclose(rho, expected_matrix)
+        assert np.allclose(rho, expected_matrix)
 
     def test_evolve_fail(self, fx_rng: Generator) -> None:
         # test on 3-qubit gate just in case.
@@ -521,8 +521,8 @@ class TestDensityMatrix:
             + np.sqrt(prob) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
         )
 
-        np.testing.assert_allclose(expected_dm.trace(), 1.0)
-        np.testing.assert_allclose(dm.rho, expected_dm)
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
 
         nqubits = fx_rng.integers(2, 5)
 
@@ -571,8 +571,8 @@ class TestDensityMatrix:
         ) ** 2 * np.outer(psi_evolvedb, psi_evolvedb.conj())
 
         # compare
-        np.testing.assert_allclose(expected_dm.trace(), 1.0)
-        np.testing.assert_allclose(dm.rho, expected_dm)
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_depolarising_channel(self, fx_rng: Generator) -> None:
         # check on single qubit first
@@ -607,8 +607,8 @@ class TestDensityMatrix:
             + np.sqrt(prob / 3.0) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
         )
 
-        np.testing.assert_allclose(expected_dm.trace(), 1.0)
-        np.testing.assert_allclose(dm.rho, expected_dm)
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
 
         # chek against statevector backend by hand for now.
         # create random density matrix
@@ -673,8 +673,8 @@ class TestDensityMatrix:
         )
 
         # compare
-        np.testing.assert_allclose(expected_dm.trace(), 1.0)
-        np.testing.assert_allclose(dm.rho, expected_dm)
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_random_channel_one_qubit(self, fx_rng: Generator) -> None:
         """
@@ -725,8 +725,8 @@ class TestDensityMatrix:
             expected_dm += elem["coef"] * np.conj(elem["coef"]) * np.outer(psi_evolved, np.conj(psi_evolved))
 
         # compare
-        np.testing.assert_allclose(expected_dm.trace(), 1.0)
-        np.testing.assert_allclose(dm.rho, expected_dm)
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_random_channel_two_qubits(self, fx_rng: Generator) -> None:
         """
@@ -768,8 +768,8 @@ class TestDensityMatrix:
             psi_evolved = np.moveaxis(psi_evolved, (0, 1), qubits)
             expected_dm += elem["coef"] * np.conj(elem["coef"]) * np.outer(psi_evolved, np.conj(psi_evolved))
 
-        np.testing.assert_allclose(expected_dm.trace(), 1.0)
-        np.testing.assert_allclose(dm.rho, expected_dm)
+        assert np.allclose(expected_dm.trace(), 1.0)
+        assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_channel_fail(self, fx_rng: Generator) -> None:
         """
@@ -813,7 +813,7 @@ class TestDensityMatrixBackend:
         backend = DensityMatrixBackend(pattern)
         backend.add_nodes([0, 1])
         expected_matrix = np.array([0.25] * 16).reshape(4, 4)
-        np.testing.assert_allclose(backend.state.rho, expected_matrix)
+        assert np.allclose(backend.state.rho, expected_matrix)
 
     def test_entangle_nodes(self) -> None:
         circ = Circuit(1)
@@ -822,10 +822,10 @@ class TestDensityMatrixBackend:
         backend.add_nodes([0, 1])
         backend.entangle_nodes((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
-        np.testing.assert_allclose(backend.state.rho, expected_matrix)
+        assert np.allclose(backend.state.rho, expected_matrix)
 
         backend.entangle_nodes((0, 1))
-        np.testing.assert_allclose(backend.state.rho, np.array([0.25] * 16).reshape(4, 4))
+        assert np.allclose(backend.state.rho, np.array([0.25] * 16).reshape(4, 4))
 
     def test_measure(self) -> None:
         circ = Circuit(1)
@@ -887,4 +887,4 @@ class TestDensityMatrixBackend:
         backend.finalize()
         psi = backend.state.psi
 
-        np.testing.assert_allclose(rho, np.outer(psi, psi.conj()))
+        assert np.allclose(rho, np.outer(psi, psi.conj()))

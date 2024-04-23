@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class TestUtilities:
     def test_rand_herm(self, fx_rng: Generator) -> None:
         tmp = randobj.rand_herm(fx_rng.integers(2, 20))
-        np.testing.assert_allclose(tmp, tmp.conj().T)
+        assert np.allclose(tmp, tmp.conj().T)
 
     # TODO : work on that. Verify an a random vector and not at the operator level...
 
@@ -28,8 +28,8 @@ class TestUtilities:
         print(type(tmp), tmp.dtype)
 
         # different default values for testing.assert_allclose and all_close!
-        np.testing.assert_allclose(tmp @ tmp.conj().T, np.eye(d), atol=1e-15)
-        np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d), atol=1e-15)
+        assert np.allclose(tmp @ tmp.conj().T, np.eye(d), atol=1e-15)
+        assert np.allclose(tmp.conj().T @ tmp, np.eye(d), atol=1e-15)
 
     def test_random_channel_success(self, fx_rng: Generator) -> None:
 

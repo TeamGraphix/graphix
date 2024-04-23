@@ -142,8 +142,8 @@ class TestChannel:
         assert dephase_channel.is_normalized
 
         for i in range(len(dephase_channel.kraus_ops)):
-            np.testing.assert_allclose(dephase_channel.kraus_ops[i]["coef"], data[i]["coef"])
-            np.testing.assert_allclose(dephase_channel.kraus_ops[i]["operator"], data[i]["operator"])
+            assert np.allclose(dephase_channel.kraus_ops[i]["coef"], data[i]["coef"])
+            assert np.allclose(dephase_channel.kraus_ops[i]["operator"], data[i]["operator"])
 
     def test_depolarising_channel(self, fx_rng: Generator) -> None:
 
@@ -163,8 +163,8 @@ class TestChannel:
         assert depol_channel.is_normalized
 
         for i in range(len(depol_channel.kraus_ops)):
-            np.testing.assert_allclose(depol_channel.kraus_ops[i]["coef"], data[i]["coef"])
-            np.testing.assert_allclose(depol_channel.kraus_ops[i]["operator"], data[i]["operator"])
+            assert np.allclose(depol_channel.kraus_ops[i]["coef"], data[i]["coef"])
+            assert np.allclose(depol_channel.kraus_ops[i]["operator"], data[i]["operator"])
 
     def test_2_qubit_depolarising_channel(self, fx_rng: Generator) -> None:
 
@@ -196,8 +196,8 @@ class TestChannel:
         assert depol_channel_2_qubit.is_normalized
 
         for i in range(len(depol_channel_2_qubit.kraus_ops)):
-            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
-            np.testing.assert_allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+            assert np.allclose(depol_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
+            assert np.allclose(depol_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
 
     def test_2_qubit_depolarising_tensor_channel(self, fx_rng: Generator) -> None:
 
@@ -229,5 +229,5 @@ class TestChannel:
         assert depol_tensor_channel_2_qubit.is_normalized
 
         for i in range(len(depol_tensor_channel_2_qubit.kraus_ops)):
-            np.testing.assert_allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
-            np.testing.assert_allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])
+            assert np.allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
+            assert np.allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])

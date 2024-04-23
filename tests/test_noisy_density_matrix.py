@@ -114,9 +114,9 @@ class TestNoisyDensityMatrixBackend:
             backend="densitymatrix",
             noise_model=NoiselessNoiseModel(),
         )
-        np.testing.assert_allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        assert np.allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
         # result should be |0>
-        np.testing.assert_allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        assert np.allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
 
     # test measurement confuse outcome
     def test_noisy_measure_confuse_hadamard(self, fx_rng: Generator) -> None:
@@ -126,7 +126,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(measure_error_prob=1.0),
         )
         # result should be |1>
-        np.testing.assert_allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
+        assert np.allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 
         # arbitrary probability
         measure_error_pr = fx_rng.random()
@@ -151,7 +151,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(measure_channel_prob=measure_channel_pr),
         )
         # just TP the depolarizing channel
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             np.array([[1 - 2 * measure_channel_pr / 3.0, 0.0], [0.0, 2 * measure_channel_pr / 3.0]]),
         )
@@ -183,7 +183,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(entanglement_error_prob=entanglement_error_pr),
         )
         # analytical result for tensor depolarizing channel
-        # np.testing.assert_allclose(
+        # assert np.allclose(
         #     res.rho,
         #     np.array(
         #         [
@@ -194,7 +194,7 @@ class TestNoisyDensityMatrixBackend:
         # )
 
         # analytical result for true 2-qubit depolarizing channel
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             np.array(
                 [
@@ -214,7 +214,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(prepare_error_prob=prepare_error_pr),
         )
         # analytical result
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]]),
         )
@@ -231,12 +231,12 @@ class TestNoisyDensityMatrixBackend:
             backend="densitymatrix",
             noise_model=NoiseModelTester(),
         )  # NoiselessNoiseModel()
-        np.testing.assert_allclose(
+        assert np.allclose(
             noiselessres.rho,
             0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         )
         # result should be |0>
-        np.testing.assert_allclose(
+        assert np.allclose(
             noisynoiselessres.rho,
             0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         )
@@ -252,7 +252,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(prepare_error_prob=prepare_error_pr),
         )
         # analytical result
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             0.5
             * np.array(
@@ -283,7 +283,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(entanglement_error_prob=entanglement_error_pr),
         )
         # analytical result for tensor depolarizing channel
-        # np.testing.assert_allclose(
+        # assert np.allclose(
         #     res.rho,
         #     0.5
         #     * np.array(
@@ -305,7 +305,7 @@ class TestNoisyDensityMatrixBackend:
         # )
 
         # analytical result for true 2-qubit depolarizing channel
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             0.5
             * np.array(
@@ -333,7 +333,7 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiseModelTester(measure_channel_prob=measure_channel_pr),
         )
 
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             0.5
             * np.array(
