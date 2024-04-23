@@ -1,15 +1,14 @@
 import sys
+from typing import Literal
 
 import numpy as np
-from parameterized import parameterized
+import pytest
+from numpy.random import Generator
 
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
-
-SEED = 42
-rc.set_seed(SEED)
 
 
 class TestPattern:
@@ -20,10 +19,10 @@ class TestPattern:
         pattern.add(["N", 1])
         pattern.add(["M", 0, "XY", 0, [], []])
 
-    def test_standardize(self):
+    def test_standardize(self, fx_rng: Generator):
         nqubits = 2
         depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
+        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         np.testing.assert_equal(pattern.is_standard(), True)
@@ -31,10 +30,10 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_minimize_space(self):
+    def test_minimize_space(self, fx_rng: Generator):
         nqubits = 5
         depth = 5
-        circuit = rc.get_rand_circuit(nqubits, depth)
+        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.minimize_space()
@@ -42,14 +41,21 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_minimize_space_with_gflow(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_minimize_space_with_gflow(self, use_rustworkx: bool, fx_rng: Generator):
         nqubits = 3
         depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs)
+        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -59,8 +65,8 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand(["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(self, backend):
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
+    def test_empty_output_nodes(self, backend: Literal["statevector", "densitymatrix", "tensornetwork"]):
         pattern = Pattern(input_nodes=[0])
         pattern.add(["M", 0, "XY", 0.5, [], []])
 
@@ -79,21 +85,21 @@ class TestPattern:
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(nb_ones - nb_shots / 2) < nb_shots / 20
 
-    def test_minimize_space_graph_maxspace_with_flow(self):
+    def test_minimize_space_graph_maxspace_with_flow(self, fx_rng: Generator):
         max_qubits = 20
         for nqubits in range(2, max_qubits):
             depth = 5
             pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-            circuit = rc.generate_gate(nqubits, depth, pairs)
+            circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.minimize_space()
             np.testing.assert_equal(pattern.max_space(), nqubits + 1)
 
-    def test_parallelize_pattern(self):
+    def test_parallelize_pattern(self, fx_rng: Generator):
         nqubits = 2
         depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
+        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.parallelize_pattern()
@@ -101,11 +107,11 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    def test_shift_signals(self):
+    def test_shift_signals(self, fx_rng: Generator):
         nqubits = 2
         depth = 1
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
@@ -114,14 +120,21 @@ class TestPattern:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurment(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurment(self, use_rustworkx: bool, fx_rng: Generator):
         nqubits = 3
         depth = 3
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
@@ -131,14 +144,21 @@ class TestPattern:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurment_leave_input(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurment_leave_input(self, use_rustworkx: bool, fx_rng: Generator):
         nqubits = 3
         depth = 3
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
@@ -148,14 +168,21 @@ class TestPattern:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurment_opt_gate(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurment_opt_gate(self, use_rustworkx: bool, fx_rng: Generator):
         nqubits = 3
         depth = 3
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_rzz=True)
             pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
@@ -165,14 +192,21 @@ class TestPattern:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurment_opt_gate_transpiler(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurment_opt_gate_transpiler(self, use_rustworkx: bool, fx_rng: Generator):
         nqubits = 3
         depth = 3
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_rzz=True)
             pattern = circuit.standardize_and_transpile(opt=True).pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
@@ -182,14 +216,21 @@ class TestPattern:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(self, use_rustworkx: bool, fx_rng: Generator):
         nqubits = 3
         depth = 3
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_rzz=True)
             pattern = circuit.standardize_and_transpile(opt=True).pattern
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
@@ -197,10 +238,17 @@ class TestPattern:
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurement(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurement(self, use_rustworkx: bool):
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -228,10 +276,17 @@ class TestPattern:
 
         np.testing.assert_equal(isolated_nodes, isolated_nodes_ref)
 
-    @parameterized.expand([(False), (True)])
-    def test_pauli_measurement_leave_input(self, use_rustworkx):
-        if sys.modules.get("rustworkx") is None and use_rustworkx is True:
-            self.skipTest("rustworkx not installed")
+    @pytest.mark.parametrize(
+        "use_rustworkx",
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    )
+    def test_pauli_measurement_leave_input(self, use_rustworkx: bool):
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -316,11 +371,11 @@ class TestLocalPattern:
         for node in localpattern.nodes.values():
             np.testing.assert_equal(node.seq, [])
 
-    def test_get_graph(self):
+    def test_get_graph(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs)
+        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
         pattern = circuit.transpile().pattern
         nodes_ref, edges_ref = pattern.get_graph()
 
@@ -357,11 +412,11 @@ class TestLocalPattern:
         np.testing.assert_equal(edges_check1, True)
         np.testing.assert_equal(edges_check2, True)
 
-    def test_standardize(self):
+    def test_standardize(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             localpattern = pattern.get_local_pattern()
             localpattern.standardize()
@@ -372,11 +427,11 @@ class TestLocalPattern:
             state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
-    def test_shift_signals(self):
+    def test_shift_signals(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             localpattern = pattern.get_local_pattern()
             localpattern.standardize()
@@ -388,11 +443,11 @@ class TestLocalPattern:
             state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
-    def test_standardize_and_shift_signals(self):
+    def test_standardize_and_shift_signals(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize_and_shift_signals()
             np.testing.assert_equal(pattern.is_standard(), True)
@@ -401,7 +456,7 @@ class TestLocalPattern:
             state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
-    def test_mixed_pattern_operations(self):
+    def test_mixed_pattern_operations(self, fx_rng: Generator):
         processes = [
             [["standardize", "global"], ["standardize", "local"]],
             [["standardize", "local"], ["signal", "global"], ["signal", "local"]],
@@ -415,7 +470,7 @@ class TestLocalPattern:
         nqubits = 3
         depth = 2
         for i in range(3):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             state_ref = circuit.simulate_statevector().statevec
             for process in processes:
                 pattern = circuit.transpile().pattern
@@ -429,11 +484,11 @@ class TestLocalPattern:
                 state_p = pattern.simulate_pattern()
                 np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
-    def test_opt_transpile_standardize(self):
+    def test_opt_transpile_standardize(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="local")
             np.testing.assert_equal(pattern.is_standard(), True)
@@ -442,11 +497,11 @@ class TestLocalPattern:
             state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
-    def test_opt_transpile_shift_signals(self):
+    def test_opt_transpile_shift_signals(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="local")
             pattern.shift_signals(method="local")
@@ -468,11 +523,11 @@ class TestLocalPattern:
             result = node.is_standard()
             np.testing.assert_equal(result, ref)
 
-    def test_localpattern_is_standard(self):
+    def test_localpattern_is_standard(self, fx_rng: Generator):
         nqubits = 5
         depth = 4
         for i in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth)
+            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
             localpattern = circuit.transpile().pattern.get_local_pattern()
             result1 = localpattern.is_standard()
             localpattern.standardize()
