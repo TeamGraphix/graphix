@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
-from numpy.random import Generator
 
 import graphix.random_objects as randobj
 from graphix.channels import (
@@ -13,6 +14,9 @@ from graphix.channels import (
     two_qubit_depolarising_tensor_channel,
 )
 from graphix.ops import Ops
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 class TestChannel:
