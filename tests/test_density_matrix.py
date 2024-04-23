@@ -436,7 +436,8 @@ class TestDensityMatrix:
         with pytest.raises(ValueError):
             dm.evolve(fx_rng.uniform(size=(5, 5)), (0, 1))
 
-    # TODO: the test for normalization is done at initialization with data. Now check that all operations conserve the norm.
+    # TODO: the test for normalization is done at initialization with data.
+    # Now check that all operations conserve the norm.
     def test_normalize(self, fx_rng: Generator) -> None:
         data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
 
