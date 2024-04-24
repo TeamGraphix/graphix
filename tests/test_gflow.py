@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+import sys
+from typing import TYPE_CHECKING, Dict, NamedTuple, Set, Tuple
 
 import networkx as nx
 import pytest
@@ -191,7 +192,10 @@ def generate_test_graphs() -> list[GraphForTest]:
     ]
 
 
-TestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
+if sys.version_info >= (3, 9):
+    TestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
+else:
+    TestCaseType = Dict[str, Dict[str, Tuple[bool, Dict[int, Set[int]]]]]
 
 FLOW_TEST_CASES: TestCaseType = {
     "no measurement": {
@@ -243,7 +247,10 @@ GFLOW_TEST_CASES: TestCaseType = {
     },
 }
 
-TestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
+if sys.version_info >= (3, 9):
+    TestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
+else:
+    TestDataType = Tuple[GraphForTest, Tuple[bool, Dict[int, Set[int]]]]
 
 
 def iterate_compatible(
