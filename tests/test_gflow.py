@@ -139,7 +139,7 @@ def generate_test_graphs() -> list[GraphForTest]:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: "XY", 1: "XY", 2: "ZX", 3: "YZ"}
+    meas_planes = {0: "XY", 1: "XY", 2: "XZ", 3: "YZ"}
     test_graph = GraphForTest(
         graph,
         inputs,
@@ -180,7 +180,7 @@ def generate_test_graphs() -> list[GraphForTest]:
     )
     graphs.append(test_graph)
 
-    # graph with no flow or gflow but pauliflow
+    # graph with no flow or gflow but pauliflow, No.1
     #     3
     #     |
     #     2
@@ -204,7 +204,63 @@ def generate_test_graphs() -> list[GraphForTest]:
         False,
         False,
         True,
-        "graph with no flow and no gflow but pauliflow",
+        "graph with no flow and no gflow but pauliflow, No.1",
+    )
+    graphs.append(test_graph)
+
+    # graph with no flow or gflow but pauliflow, No.2
+    # 1   2   3
+    # | /     |
+    # 0 - - - 4
+    nodes = [0, 1, 2, 3, 4]
+    edges = [(0, 1), (0, 2), (0, 4), (3, 4)]
+    inputs = {0}
+    outputs = {4}
+    graph = nx.Graph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    meas_planes = {0: "YZ", 1: "XZ", 2: "XY", 3: "YZ"}
+    meas_angles = {0: 0.5, 1: 0, 2: 0.5, 3: 0}
+    test_graph = GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        meas_angles,
+        False,
+        False,
+        True,
+        "graph with no flow and no gflow but pauliflow, No.2",
+    )
+    graphs.append(test_graph)
+
+    graphs.append(test_graph)
+
+    # graph with no flow or gflow but pauliflow, No.3
+    # 0 - 1 -- 3
+    #    \|   /|
+    #     |\ / |
+    #     | /\ |
+    #     2 -- 4
+    nodes = [0, 1, 2, 3, 4]
+    edges = [(0, 1), (0, 4), (1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]
+    inputs = {0}
+    outputs = {3, 4}
+    graph = nx.Graph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    meas_planes = {0: "YZ", 1: "XZ", 2: "XY"}
+    meas_angles = {0: 0.5, 1: 0.1, 2: 0.5}
+    test_graph = GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        meas_angles,
+        False,
+        False,
+        True,
+        "graph with no flow and no gflow but pauliflow, No.3",
     )
     graphs.append(test_graph)
 
@@ -227,7 +283,7 @@ def get_rand_graph(n_nodes, edge_prob=0.3, seed=None):
     vout = set(np.random.choice(list(set(nodes) - vin), output_nodes_number, replace=False))
 
     meas_planes = dict()
-    meas_plane_candidates = ["XY", "ZX", "YZ"]
+    meas_plane_candidates = ["XY", "XZ", "YZ"]
     meas_angles = dict()
     meas_angle_candidates = [0, 0.25, 0.5, 0.75]
     for node in set(graph.nodes()) - vout:
@@ -360,9 +416,23 @@ class TestGflow(unittest.TestCase):
 
     def test_verify_pauliflow(self):
         pauliflow_test_cases = dict()
-        pauliflow_test_cases["graph with no flow and no gflow but pauliflow"] = {
+        pauliflow_test_cases["graph with no flow and no gflow but pauliflow, No.1"] = {
             "correct pauliflow": (True, {0: {1}, 1: {4}, 2: {3}, 3: {2, 4}}),
+            "correct pauliflow 2": (True, {0: {1, 3}, 1: {3, 4}, 2: {3}, 3: {2, 3, 4}}),
             "incorrect pauliflow": (False, {0: {1}, 1: {2}, 2: {3}, 3: {4}}),
+            "incorrect pauliflow 2": (False, {0: {1, 3}, 1: {3, 4}, 2: {3, 4}, 3: {2, 3, 4}}),
+        }
+        pauliflow_test_cases["graph with no flow and no gflow but pauliflow, No.2"] = {
+            "correct pauliflow": (True, {0: {0, 1}, 1: {1}, 2: {2}, 3: {4}}),
+            "correct pauliflow 2": (True, {0: {0, 1, 2}, 1: {1}, 2: {2}, 3: {1, 2, 4}}),
+            "incorrect pauliflow": (False, {0: {1}, 1: {1, 2}, 2: {2, 3}, 3: {4}}),
+            "incorrect pauliflow 2": (False, {0: {0}, 1: {1}, 2: {3}, 3: {3}}),
+        }
+        pauliflow_test_cases["graph with no flow and no gflow but pauliflow, No.3"] = {
+            "correct pauliflow": (True, {0: {0, 3, 4}, 1: {1, 2}, 2: {4}}),
+            "correct pauliflow 2": (True, {0: {0, 2, 4}, 1: {1, 3}, 2: {2, 3, 4}}),
+            "incorrect pauliflow": (False, {0: {0, 3, 4}, 1: {1}, 2: {3, 4}}),
+            "incorrect pauliflow 2": (False, {0: {0, 3}, 1: {1, 2, 3}, 2: {2, 3, 4}}),
         }
 
         test_graphs = generate_test_graphs()

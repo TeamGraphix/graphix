@@ -152,7 +152,7 @@ def gflowaux(
         vec = MatGF2(np.zeros(len(node_order_row), dtype=int))
         if meas_planes[node] == "XY":
             vec.data[i_row] = 1
-        elif meas_planes[node] == "ZX":
+        elif meas_planes[node] == "XZ":
             vec.data[i_row] = 1
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
@@ -173,7 +173,7 @@ def gflowaux(
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
             g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-            if meas_planes[non_out_node] in ["ZX", "YZ"]:
+            if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node] |= {non_out_node}
 
         elif mode == "all":
@@ -184,7 +184,7 @@ def gflowaux(
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-                if meas_planes[non_out_node] in ["ZX", "YZ"]:
+                if meas_planes[non_out_node] in ["XZ", "YZ"]:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
@@ -194,7 +194,7 @@ def gflowaux(
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
-            if meas_planes[non_out_node] in ["ZX", "YZ"]:
+            if meas_planes[non_out_node] in ["XZ", "YZ"]:
                 g[non_out_node][non_out_node] = sp.true
 
         l_k[non_out_node] = k
@@ -260,7 +260,7 @@ def find_flow(
         meas_planes = {i: "XY" for i in (nodes - output)}
 
     for plane in meas_planes.values():
-        if plane not in ["X", "Y", "XY"]:
+        if plane != "XY":
             return None, None
 
     l_k = {i: 0 for i in nodes}
@@ -538,7 +538,7 @@ def pauliflowaux(
                         p_i[node_temp] = x_XY[i]
                     p[node].append(p_i)
 
-        if not solved and (meas_planes[node] == "ZX" or node in Lz or node in Lx):
+        if not solved and (meas_planes[node] == "XZ" or node in Lz or node in Lx):
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             S.data[node_order_row_.index(node)] = 1
             for neighbor in search_neighbor(node, graph.edges):
@@ -549,34 +549,34 @@ def pauliflowaux(
                 if neighbor in Y - {node}:
                     S_lower.data[node_order_row_lower_.index(neighbor), :] = 1
             S.concatenate(S_lower, axis=0)
-            adj_mat_ZX, S, _, col_permutation_ZX = adj_mat_.forward_eliminate(S, copy=True)
-            x_ZX, kernels = adj_mat_ZX.backward_substitute(S)
-            if 0 not in x_ZX.shape and x_ZX[0, 0] != sp.nan:
+            adj_mat_XZ, S, _, col_permutation_XZ = adj_mat_.forward_eliminate(S, copy=True)
+            x_XZ, kernels = adj_mat_XZ.backward_substitute(S)
+            if 0 not in x_XZ.shape and x_XZ[0, 0] != sp.nan:
                 solved_update |= {node}
-                x_ZX = x_ZX[:, 0]
+                x_XZ = x_XZ[:, 0]
                 l_k[node] = k
 
                 if mode == "single":
-                    sol_list = [x_ZX[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_ZX))]
+                    sol_list = [x_XZ[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_XZ))]
                     sol = np.array(sol_list)
                     sol_index = sol.nonzero()[0]
-                    p[node] = set(node_order_col_[col_permutation_ZX.index(i)] for i in sol_index) | {node}
+                    p[node] = set(node_order_col_[col_permutation_XZ.index(i)] for i in sol_index) | {node}
                     solved = True
 
                 elif mode == "all":
                     binary_combinations = product([0, 1], repeat=len(kernels))
                     for binary_combination in binary_combinations:
-                        sol_list = [x_ZX[i].subs(zip(kernels, binary_combination)) for i in range(len(x_ZX))]
+                        sol_list = [x_XZ[i].subs(zip(kernels, binary_combination)) for i in range(len(x_XZ))]
                         sol = np.array(sol_list)
                         sol_index = sol.nonzero()[0]
-                        p_i = set(node_order_col_[col_permutation_ZX.index(i)] for i in sol_index) | {node}
+                        p_i = set(node_order_col_[col_permutation_XZ.index(i)] for i in sol_index) | {node}
                         p[node].add(frozenset(p_i))
 
                 elif mode == "abstract":
                     p_i = dict()
-                    for i in range(len(x_ZX)):
-                        node_temp = node_order_col_[col_permutation_ZX.index(i)]
-                        p_i[node_temp] = x_ZX[i]
+                    for i in range(len(x_XZ)):
+                        node_temp = node_order_col_[col_permutation_XZ.index(i)]
+                        p_i[node_temp] = x_XZ[i]
                     p_i[node] = sp.true
                     p[node].append(p_i)
 
@@ -648,7 +648,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     """
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
-        if plane not in ["X", "Y", "XY"]:
+        if plane != "XY":
             return None, None
     G = nx.Graph()
     nodes, edges = pattern.get_graph()
@@ -721,7 +721,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in ["ZX", "YZ"]:
+        if plane in ["XZ", "YZ"]:
             if node not in xflow.keys():
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -876,7 +876,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     """
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
-        if plane not in ["X", "Y", "XY"]:
+        if plane != "XY":
             return None, None
     G = nx.Graph()
     nodes, edges = pattern.get_graph()
@@ -949,7 +949,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in ["ZX", "YZ"]:
+        if plane in ["XZ", "YZ"]:
             if node not in xflow.keys():
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -1422,9 +1422,7 @@ def verify_pauliflow(
         return valid_flow
     node_order = []
     for d in range(depth):
-        print("layers[d] is ", layers[d])
         node_order.extend(list(layers[d]))
-    print("node_order is ", node_order)
 
     for node, plane in meas_planes.items():
         if node in Lx:
@@ -1485,15 +1483,33 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
 
 
 def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) -> tuple[set[int], set[int], set[int]]:
+    """Get sets of nodes measured in X, Y, Z basis.
+
+    Parameters
+    ----------
+    meas_planes: dict[int, str]
+        measurement planes for each node.
+    meas_angles: dict[int, float]
+        measurement angles for each node.
+
+    Returns
+    -------
+    Lx: set
+        set of nodes measured in X basis.
+    Ly: set
+        set of nodes measured in Y basis.
+    Lz: set
+        set of nodes measured in Z basis.
+    """
     Lx, Ly, Lz = set(), set(), set()
     for node, plane in meas_planes.items():
         if plane == "XY" and meas_angles[node] == int(meas_angles[node]):  # measurement angle is integer
             Lx |= {node}
         elif plane == "XY" and 2 * meas_angles[node] == int(2 * meas_angles[node]):  # measurement angle is half integer
             Ly |= {node}
-        elif plane == "ZX" and meas_angles[node] == int(meas_angles[node]):
+        elif plane == "XZ" and meas_angles[node] == int(meas_angles[node]):
             Lz |= {node}
-        elif plane == "ZX" and 2 * meas_angles[node] == int(2 * meas_angles[node]):
+        elif plane == "XZ" and 2 * meas_angles[node] == int(2 * meas_angles[node]):
             Lx |= {node}
         elif plane == "YZ" and meas_angles[node] == int(meas_angles[node]):
             Ly |= {node}
