@@ -12,6 +12,7 @@ from graphix.simulator import PatternSimulator
 from graphix.sim.statevec import Statevec
 from graphix.sim.density_matrix import DensityMatrix
 import graphix.ops
+import tests.random_circuit
 
 
 SEED = 42
@@ -507,30 +508,28 @@ class TestPatternSim(unittest.TestCase):
         self.circ.h(0)
         self.hadamardpattern = self.circ.transpile()
 
-        # self.nqb = self.rng.integers(2, 5)
-        # # just want to test the initialization
-        # self.depth = 1
-        # rand_circ = tests.random_circuit.get_rand_circuit(self.nqb, self.depth)
-        # self.randpattern = rand_circ.transpile()
+        self.nqb = self.rng.integers(2, 5)
+        # just want to test the initialization
+        self.depth = 2
+        self.rand_circ = tests.random_circuit.get_rand_circuit(self.nqb, self.depth)
+        self.randpattern = self.rand_circ.transpile()
 
-    def test_SV_sim(self):
-        nqb = 1
-        rand_angles = self.rng.random(nqb) * 2 * np.pi
-        rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+    def test_sv_sim(self):
+        rand_angles = self.rng.random(self.nqb) * 2 * np.pi
+        rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), self.nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
 
-        out = self.hadamardpattern.simulate_pattern(backend="statevector", input_state=states)
+        out = self.randpattern.simulate_pattern(backend = "statevector", input_state = states)
 
-        ref = Statevec(states)
-        ref.evolve_single(graphix.ops.Ops.h, 0)
+        out_circ = self.rand_circ.simulate_statevector(input_state = states)
 
-        assert np.allclose(out.psi, ref.psi)
+        # MBQC is up to a global phase!
+        np.testing.assert_almost_equal(np.abs(np.dot(out.psi.flatten().conjugate(), out_circ.psi.flatten())), 1)
+        # assert np.allclose(out.psi, out_circ.psi)
 
-        out_circ = self.circ.simulate_statevector(input_state = states)
-
-        assert np.allclose(out_circ.psi, ref.psi)
-        assert np.allclose(out.psi, out_circ.psi)
-
+    
+    def test_dm_sim(self):
+        pass
 
 if __name__ == "__main__":
     unittest.main()
