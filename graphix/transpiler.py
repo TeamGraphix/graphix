@@ -16,7 +16,10 @@ import graphix.pauli
 import graphix.sim.base_backend
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.statevec import Statevec
+import graphix.sim.base_backend
+from graphix.sim.statevec import Statevec, SV_Data
+from graphix.sim.density_matrix import DensityMatrix, Data
+import graphix.pauli
 
 
 @dataclasses.dataclass
@@ -1359,8 +1362,8 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: Optional[Statevec] = None) -> SimulateResult:
-        """Run statevector simultion of the gate sequence, using graphix.Statevec
+    def simulate_statevector(self, input_state: Optional[SV_Data] = None):
+        """Run statevector simulation of the gate sequence, using graphix.Statevec
 
         Parameters
         ----------
@@ -1375,7 +1378,7 @@ class Circuit:
         if input_state is None:
             state = Statevec(nqubit=self.width)
         else:
-            state = input_state
+            state = Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
 

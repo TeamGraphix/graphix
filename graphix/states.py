@@ -9,7 +9,7 @@ import abc
 
 # generic class State for all States
 class State(abc.ABC):
-    """Abstract base class for states objects.
+    """Abstract base class for single qubit states objects.
     Only requirement for concrete classes is to have
     a get_statevector() method that returns the statevector
     representation of the state
@@ -18,6 +18,10 @@ class State(abc.ABC):
     @abc.abstractmethod
     def get_statevector(self) -> np.ndarray:
         pass
+
+    def get_densitymatrix(self) -> np.ndarray:
+        # return DM in 2**n x 2**n dim (2x2 here)
+        return np.outer(self.get_statevector(), self.get_statevector().conj())
 
 
 # don't turn it into Statevec here

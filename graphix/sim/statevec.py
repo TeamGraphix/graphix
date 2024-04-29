@@ -203,6 +203,10 @@ SWAP_TENSOR = np.array(
     dtype=np.complex128,
 )
 
+SV_Data = typing.Union[
+    graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
+]
+
 
 class Statevec:
     """Statevector object"""
@@ -210,9 +214,7 @@ class Statevec:
     # TODO at this stage no need for indices just be careful of the ordering in add_nodes
     def __init__(
         self,
-        data: typing.Union[
-            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
-        ] = graphix.states.BasicStates.PLUS,
+        data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveInt] = None,
     ):
 
@@ -265,7 +267,7 @@ class Statevec:
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
-                    raise ValueError("Mismatch between nqubit and length of input state")
+                    raise ValueError("Mismatch between nqubit and length of input state.")
                 list_of_sv = [s.get_statevector() for s in input_list]
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape

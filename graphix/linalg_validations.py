@@ -35,7 +35,7 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     evals = np.linalg.eigvalsh(matrix)
 
     if not all(evals >= -tol):
-        raise ValueError("The matrix is not positive semi-definite.")
+        raise ValueError("The matrix {matrix} is not positive semi-definite.")
 
     return True
 

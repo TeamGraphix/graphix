@@ -6,8 +6,13 @@ from parameterized import parameterized
 
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
-from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
+import graphix.states
+from graphix.simulator import PatternSimulator
+from graphix.sim.statevec import Statevec
+from graphix.sim.density_matrix import DensityMatrix
+import graphix.ops
+
 
 SEED = 42
 rc.set_seed(SEED)
@@ -489,6 +494,42 @@ def assert_equal_edge(edge, ref):
         return True
     else:
         return False
+
+
+# for testing with arbitrary inputs
+# SV and DM backend
+class TestPatternSim(unittest.TestCase):
+    def setUp(self):
+        # set up the random numbers
+        self.rng = np.random.default_rng()  # seed=422
+
+        self.circ = Circuit(1)
+        self.circ.h(0)
+        self.hadamardpattern = self.circ.transpile()
+
+        # self.nqb = self.rng.integers(2, 5)
+        # # just want to test the initialization
+        # self.depth = 1
+        # rand_circ = tests.random_circuit.get_rand_circuit(self.nqb, self.depth)
+        # self.randpattern = rand_circ.transpile()
+
+    def test_SV_sim(self):
+        nqb = 1
+        rand_angles = self.rng.random(nqb) * 2 * np.pi
+        rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+
+        out = self.hadamardpattern.simulate_pattern(backend="statevector", input_state=states)
+
+        ref = Statevec(states)
+        ref.evolve_single(graphix.ops.Ops.h, 0)
+
+        assert np.allclose(out.psi, ref.psi)
+
+        out_circ = self.circ.simulate_statevector(input_state = states)
+
+        assert np.allclose(out_circ.psi, ref.psi)
+        assert np.allclose(out.psi, out_circ.psi)
 
 
 if __name__ == "__main__":

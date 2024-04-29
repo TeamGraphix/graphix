@@ -1,5 +1,5 @@
 import numpy as np
-import numpy.typing as npt
+from typing import Optional
 import scipy.linalg
 from scipy.stats import unitary_group
 
@@ -29,27 +29,28 @@ def rand_unit(l: int):
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rank: int = None, dm_dtype=True) -> DensityMatrix:
-    """Returns a "density matrix" as a DensityMatrix object ie a positive-semidefinite (hence Hermitian) matrix with unit trace
-    Note, not a proper DM since its dim can be something else than a power of 2.
-    The rank is random between 1 (pure) and dim if not specified
-    Thanks to Ulysse Chabaud.
+def rand_dm(dim: int, rank: Optional[int] = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
+    """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
+    Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 
     :param dim: Linear dimension of the (square) matrix
     :type dim: int
-    :param rank: If rank not specified then random between 1 and matrix dimension
-        If rank is one : then pure state else mixed state. Defaults to None
+    :param rank: Rank of the density matrix (1 = pure state). If not specified then sent to dim (maximal rank).
+        Defaults to None
     :type rank: int, optional
-    :param dm_dtype: If True returns a :class:`graphix.sim.density_matrix.DensityMatrix` or a numpy.ndarray if False. Defaults to True.
+    :param dm_dtype: If `True` returns a :class:`graphix.sim.density_matrix.DensityMatrix` object. If `False`returns a :class:`np.ndarray`
     :type dm_dtype: bool, optional
-    :return: Random density matrix as a :class:`graphix.sim.density_matrix.DensityMatrix` object or a numpy.ndarray.
-    :rtype: :class:`graphix.sim.density_matrix.DensityMatrix` or numpy.ndarray.
-
+    :return: the density matrix in the specified format.
+    :rtype: DensityMatrix | np.ndarray
+    .. note::
+        Thanks to Ulysse Chabaud.
+    .. warning::
+        Note that setting `dm_dtype=False` allows to generate "density matrices" inconsistent with qubits i.e. with dimensions not being powers of 2.
     """
 
     # if not provided, use a random value.
     if rank is None:
-        rank = np.random.randint(1, dim + 1)
+        rank = dim  # np.random.randint(1, dim + 1)
 
     evals = np.random.rand(rank)
 
@@ -68,7 +69,7 @@ def rand_dm(dim: int, rank: int = None, dm_dtype=True) -> DensityMatrix:
         return dm
 
 
-def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
+def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
     """
     Returns a square array of standard normal complex random variates.
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html

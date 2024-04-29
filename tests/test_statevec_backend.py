@@ -1,4 +1,6 @@
 import unittest
+import pytest
+
 from copy import deepcopy
 
 import numpy as np
@@ -7,7 +9,8 @@ from graphix.states import BasicStates, PlanarState
 from graphix.sim.statevec import Statevec, meas_op, StatevectorBackend
 import graphix.pauli
 
-class TestStatevec(unittest.TestCase):
+
+class TestStatevecBackend(unittest.TestCase):
     def test_remove_one_qubit(self):
         n = 10
         k = 3
@@ -25,7 +28,7 @@ class TestStatevec(unittest.TestCase):
 
         np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
 
-    #TODO This is a weird test!
+    # TODO This is a weird test!
     def test_measurement_into_each_XYZ_basis(self):
         n = 3
         k = 0
@@ -48,10 +51,14 @@ class TestStatevec(unittest.TestCase):
         m_op = np.outer(BasicStates.MINUS.get_statevector(), BasicStates.MINUS.get_statevector().T.conjugate())
         sv = Statevec(nqubit=n)
         sv.evolve(m_op, [k])
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             sv.remove_qubit(k)
 
+
 class TestStatevecNew(unittest.TestCase):
+
+    # more tests not really needed since redundant with Statevec constructor tests
+
     def setUp(self):
         # set up the random numbers
         self.rng = np.random.default_rng()  # seed=422
@@ -66,30 +73,29 @@ class TestStatevecNew(unittest.TestCase):
         # plus state (default)
         backend = StatevectorBackend(self.hadamardpattern)
         vec = Statevec(nqubit=1)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
+        assert np.allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
-        # minus state 
-        backend = StatevectorBackend(self.hadamardpattern, input_state = BasicStates.MINUS)
+        # minus state
+        backend = StatevectorBackend(self.hadamardpattern, input_state=BasicStates.MINUS)
         vec = Statevec(nqubit=1, data=BasicStates.MINUS)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
+        assert np.allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
         # random planar state
         rand_angle = self.rng.random() * 2 * np.pi
         rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]))
-        state = PlanarState(plane = rand_plane, angle = rand_angle)
-        backend = StatevectorBackend(self.hadamardpattern, input_state = state)
+        state = PlanarState(plane=rand_plane, angle=rand_angle)
+        backend = StatevectorBackend(self.hadamardpattern, input_state=state)
         vec = Statevec(nqubit=1, data=state)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
+        assert np.allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
+        # data input and Statevec input
 
-
-    
     def test_init_fail(self):
         # incorrect number of dimensions for State input
         # only one input node, two states provided
@@ -99,18 +105,10 @@ class TestStatevecNew(unittest.TestCase):
         rand_angle = self.rng.random(2) * 2 * np.pi
         rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), 2)
 
-        state = PlanarState(plane = rand_plane[0], angle = rand_angle[0])
-        state2 = PlanarState(plane = rand_plane[1], angle = rand_angle[1])
-        with self.assertRaises(ValueError):
-            StatevectorBackend(self.hadamardpattern, input_state = [state, state2])
-        # vec = Statevec(nqubit=1, state = state)
-        # np.testing.assert_allclose(vec.psi, backend.state.psi)
-        # # assert backend.state.Nqubit == 1
-        # assert len(backend.state.dims()) == 1
-
-
-
-
+        state = PlanarState(plane=rand_plane[0], angle=rand_angle[0])
+        state2 = PlanarState(plane=rand_plane[1], angle=rand_angle[1])
+        with pytest.raises(ValueError):
+            StatevectorBackend(self.hadamardpattern, input_state=[state, state2])
 
 
 if __name__ == "__main__":

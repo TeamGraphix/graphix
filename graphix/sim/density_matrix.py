@@ -10,6 +10,7 @@ import numbers
 
 import numpy as np
 import pydantic
+import typing
 
 from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace, check_psd
 from graphix.channels import KrausChannel
@@ -35,7 +36,7 @@ class DensityMatrix:
 
     def __init__(
         self,
-        data: Data = graphix.states.BasicStates.PLUS,
+        data: typing.Optional[Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveInt] = None,
     ):
 
@@ -58,26 +59,33 @@ class DensityMatrix:
 
         if isinstance(data, DensityMatrix):
             check_size_consistency(data)
+            # safe: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.copy.html
             self.rho = data.rho.copy()
             self.Nqubit = data.Nqubit
             return
         if isinstance(data, typing.Iterable):
             input_list = list(data)
             if len(input_list) != 0:
-                if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], numbers.Number):
-                    self.rho = np.array(input_list)
-                    assert check_square(self.rho)
-                    check_size_consistency(self.rho)
-                    assert check_unit_trace(self.rho)
-                    assert check_psd(self.rho)
-                    self.Nqubit = self.rho.shape[0].bit_length() - 1
-                    return
+                # do try except else?
+                # needed since Object are iterable but not subscribable!
+                try:
+                    if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], numbers.Number):
+                        self.rho = np.array(input_list)
+                        assert check_square(self.rho)
+                        check_size_consistency(self.rho)
+                        assert check_unit_trace(self.rho)
+                        assert check_psd(self.rho)
+                        self.Nqubit = self.rho.shape[0].bit_length() - 1
+                        return
+                except TypeError:
+                    pass
         statevec = Statevec(data, nqubit)
+        # NOTE sthis works since np.outer flattens the inputs!
         self.rho = np.outer(statevec.psi, statevec.psi.conj())
         self.Nqubit = len(statevec.dims())
 
     def __repr__(self):
-        return f"DensityMatrix object , with density matrix {self.rho} and shape{self.dims()}."
+        return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
     def evolve_single(self, op, i):
         """Single-qubit operation.
@@ -172,6 +180,8 @@ class DensityMatrix:
 
         return np.trace(st1.rho)
 
+    # TODO
+    # @property
     def dims(self):
         return self.rho.shape
 
