@@ -987,9 +987,10 @@ class Pattern:
         ind = self._find_op_to_be_moved("M")
         if ind == "end":
             return []
-        while self.__seq[ind][0] == "M":
-            meas_cmds.append(self.__seq[ind])
-            ind += 1
+        
+        for cmd in self.__seq[ind:] :
+            if cmd[0] == "M" :
+                meas_cmds.append(cmd)
         return meas_cmds
 
     def get_meas_plane(self):
