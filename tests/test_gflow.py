@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import unittest
+from itertools import product
 
 import networkx as nx
 import numpy as np
-from itertools import product
+
 from graphix.gflow import (
     find_flow,
     find_gflow,
