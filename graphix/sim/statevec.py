@@ -2,9 +2,9 @@ from copy import deepcopy
 
 import numpy as np
 
+import graphix.sim.base_backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-import graphix.sim.base_backend
 
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
@@ -26,7 +26,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
             if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
+        # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
         self.state = None

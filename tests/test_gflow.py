@@ -15,7 +15,6 @@ from graphix.gflow import (
     verify_gflow,
     verify_pauliflow,
 )
-
 from tests.random_circuit import get_rand_circuit
 
 seed = 30
@@ -456,7 +455,7 @@ class TestGflow(unittest.TestCase):
         # test for large graph
         # graph transpiled from circuit always has a flow
         circ = get_rand_circuit(10, 10, seed=seed)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
         nodes, edges = pattern.get_graph()
         graph = nx.Graph()
         graph.add_nodes_from(nodes)
@@ -473,7 +472,7 @@ class TestGflow(unittest.TestCase):
         # test for large graph
         # pauli-node measured graph always has gflow
         circ = get_rand_circuit(5, 5, seed=seed)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         pattern.perform_pauli_measurements()

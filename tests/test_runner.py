@@ -64,7 +64,7 @@ class TestPatternRunner(unittest.TestCase):
         circuit.cnot(0, 1)
         circuit.cnot(1, 2)
 
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         state = pattern.simulate_pattern()
 
         runner = PatternRunner(pattern, backend="ibmq", save_statevector=True)

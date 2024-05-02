@@ -1,14 +1,17 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
+import math
 from copy import deepcopy
+
+import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
-import math
-import networkx as nx
+
 from graphix import gflow
 
 

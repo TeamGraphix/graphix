@@ -2,9 +2,10 @@
 quantum states and operators
 """
 
-import numpy as np
-from itertools import product
 from functools import reduce
+from itertools import product
+
+import numpy as np
 
 
 class States:
