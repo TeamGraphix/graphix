@@ -46,17 +46,17 @@ class MeasureParameters:
 
 class Client:
     def __init__(self, pattern, input_state=None, blind=False, secrets={}):
-        self.pattern = pattern
-        self.input_nodes = self.pattern.input_nodes.copy()
+        self.initial_pattern = pattern
+
+        self.input_nodes = self.initial_pattern.input_nodes.copy()
+        self.output_nodes = self.initial_pattern.output_nodes.copy()
+        # to be completed later
         self.auxiliary_nodes = []
+
         self.clean_pattern = self.remove_pattern_flow()
 
-        """
-        Database containing the "measurement configuration"
-        - Node
-        - Measurement parameters : plane, angle, X and Z dependencies
-        - Measurement outcome
-        """
+
+        # Copy the pauli-preprocessed nodes' measurement outcomes
         self.results = pattern.results.copy()
         self.measure_method = ClientMeasureMethod(self)
         self.measurement_db = {}
@@ -75,8 +75,8 @@ class Client:
     def init_inputs(self, input_state) :
         # Initialization to all |+> states if nothing specified
         if input_state == None :
-            states = [PlanarState(plane=0, angle=0) for node in self.pattern.input_nodes]
-            input_state = dict(zip(self.clean_pattern.input_nodes, states))
+            states = [PlanarState(plane=0, angle=0) for _ in self.input_nodes]
+            input_state = dict(zip(self.input_nodes, states))
         
         # The input state is modified (with secrets) before being sent to server
         sent_input = {}
@@ -156,7 +156,7 @@ class Client:
         according to the pattern desired
         Initial measurement outcomes are set to 0
         """
-        for cmd in self.pattern:
+        for cmd in self.initial_pattern:
             if cmd[0] == 'M':
                 node = cmd[1]
                 plane = graphix.pauli.Plane[cmd[2]]
@@ -170,8 +170,8 @@ class Client:
                 self.measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
 
     def remove_pattern_flow(self) :
-        clean_pattern = graphix.pattern.Pattern(self.pattern.input_nodes)
-        for cmd in self.pattern :
+        clean_pattern = graphix.pattern.Pattern(self.input_nodes)
+        for cmd in self.initial_pattern :
             # by default, copy the command
             new_cmd = deepcopy(cmd) 
 
@@ -194,7 +194,7 @@ class Client:
 
     def decode_output_state(self, backend, state):
         if self.blind:
-            for node in self.pattern.output_nodes:
+            for node in self.output_nodes:
                 if node in self.byproduct_db:
                     z_decoding, x_decoding = self.decode_output(node)
                     if z_decoding:
@@ -209,13 +209,13 @@ class Client:
         return secrets_size
 
     def init_byproduct_db(self):
-        for node in self.pattern.output_nodes:
+        for node in self.output_nodes:
             self.byproduct_db[node] = {
                 'z-domain': [],
                 'x-domain': []
             }
 
-        for cmd in self.pattern:
+        for cmd in self.initial_pattern:
             if cmd[0] == 'Z' or cmd[0] == 'X':
                 node = cmd[1]
 
@@ -235,19 +235,6 @@ class Client:
         x_decoding = x_decoding % 2
         return z_decoding, x_decoding
 
-    def get_secrets_locations(self):
-        locations = {}
-        for secret in self.secrets:
-            secret_dict = self.secrets[secret]
-            secrets_location = secret_dict.keys()
-            locations[secret] = secrets_location
-        return locations
-
-    def is_valid_secret(self, secret_type, custom_secret):
-        if any((i != 0 and i != 1) for i in custom_secret.values()) :
-            return False
-        if secret_type == 'r':
-            return set(custom_secret.keys()) == set(self.measurement_db.keys())
 
 
 class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):

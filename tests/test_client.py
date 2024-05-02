@@ -16,46 +16,6 @@ class TestClient(unittest.TestCase):
         # set up the random numbers
         self.rng = np.random.default_rng()  # seed=422
 
-    # def test_custom_secret(self):
-    #     # Generate and standardize pattern
-    #     nqubits = 2
-    #     depth = 1
-    #     circuit = rc.get_rand_circuit(nqubits, depth)
-    #     pattern = circuit.transpile()
-    #     pattern.standardize(method="global")
-
-    #     measured_qubits = [i[1] for i in pattern.get_measurement_commands()]
-
-    #     # Initialize the client
-    #     # A client that inputs a secret values other than bits should throw an error
-    #     r = {}
-    #     for qubit in measured_qubits:
-    #         r[qubit] = 666
-    #     secrets = {'r': r}
-    #     self.assertRaises(ValueError, Client, pattern, None, True, secrets)
-
-    #     # TODO : do the same for `a` and `theta` secrets
-
- 
-
-    def test_r_secret_simulation(self):
-        # Generate and standardize pattern
-        nqubits = 2
-        depth = 1
-        for i in range(10) :
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
-            pattern.standardize(method="global")
-
-            state = circuit.simulate_statevector()
-
-            # Initialize the client
-            secrets = {'r': {}}
-            # Giving it empty will create a random secret
-            client = Client(pattern=pattern, blind=True, secrets=secrets)
-
-            state_mbqc = client.simulate_pattern()
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_client_input(self) :
         # Generate random pattern
@@ -82,8 +42,27 @@ class TestClient(unittest.TestCase):
         
 
         # Assert something...
-    
-    
+        # Todo ?
+
+    def test_r_secret_simulation(self):
+        # Generate and standardize pattern
+        nqubits = 2
+        depth = 1
+        for i in range(10) :
+            circuit = rc.get_rand_circuit(nqubits, depth)
+            pattern = circuit.transpile()
+            pattern.standardize(method="global")
+
+            state = circuit.simulate_statevector()
+
+            # Initialize the client
+            secrets = {'r': {}}
+            # Giving it empty will create a random secret
+            client = Client(pattern=pattern, blind=True, secrets=secrets)
+
+            state_mbqc = client.simulate_pattern()
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
     def test_theta_secret_simulation(self) :
         # Generate random pattern
         nqubits = 2
