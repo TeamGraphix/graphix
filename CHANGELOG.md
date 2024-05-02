@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Transpiled circuits can now have "measure" gates, introduced with
   the `circ.m(qubit, plane, angle)` method.  The measured qubit cannot
   be used in any subsequent gate.
+- Added `gflow.find_pauliflow`, `gflow.verify_pauliflow` and `pauliflow_from_pattern` methods (#117)
 
 ### Fixed
 
