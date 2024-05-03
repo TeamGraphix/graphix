@@ -68,7 +68,6 @@ def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
 
 
 def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
-
     # convert to set to remove duplicates
     dims = set([i["operator"].shape for i in data])
 
@@ -83,7 +82,6 @@ def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
 
 
 def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
-
     if not all(
         isinstance(i, dict) for i in data
     ):  # ni liste ni ensemble mais iterable (lazy) pas stocké, executé au besoin

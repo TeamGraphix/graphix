@@ -3,22 +3,21 @@
 Simulate MBQC with density matrix representation.
 """
 
-from copy import deepcopy
-import typing
 import functools
 import numbers
+import typing
+from copy import deepcopy
 
 import numpy as np
-import typing
 
-from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace, check_psd
-from graphix.channels import KrausChannel
-from graphix.ops import Ops
-from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op, Statevec
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types
+from graphix.channels import KrausChannel
+from graphix.clifford import CLIFFORD
+from graphix.linalg_validations import check_hermitian, check_psd, check_square, check_unit_trace
+from graphix.ops import Ops
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, meas_op
 
 Data = typing.Union[
     graphix.states.State,
@@ -38,7 +37,6 @@ class DensityMatrix:
         data: typing.Optional[Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
-
         """
         rewrite!
         Parameters

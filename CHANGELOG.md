@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   be used in any subsequent gate.
 - Added `gflow.find_pauliflow`, `gflow.verify_pauliflow` and `pauliflow_from_pattern` methods (#117)
 
+- Allow arbitrary states for initializing input nodes in state vector
+  and density matrix backends.
+
 ### Fixed
 
 ### Changed
@@ -29,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Patterns are now allowed to measure all their nodes, and have an
   empty output set.
+
+- Basic states are now defined in `states.BasicStates` and no longer
+  in `ops.States`.
 
 ## [0.2.11] - 2024-03-16
 

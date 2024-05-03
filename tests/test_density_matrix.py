@@ -1,21 +1,21 @@
+import functools
 import random
 import unittest
-import pydantic
 from copy import deepcopy
 
 import numpy as np
+import pydantic
 import pytest
 
+import graphix.pauli
 import graphix.random_objects as randobj
+import graphix.states
+import tests.random_circuit
 from graphix import Circuit
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
-import graphix.states
-import graphix.pauli
-import tests.random_circuit
-import functools
 
 
 class TestDensityMatrix(unittest.TestCase):
@@ -116,7 +116,6 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(dm.rho, expected_dm)
 
     def test_init_with_state_fail(self):
-
         nqb = 2
         rand_angles = self.rng.random(nqb) * 2 * np.pi
         rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
@@ -885,7 +884,6 @@ class TestDensityMatrixBackend(unittest.TestCase):
 
     # test initialization only
     def test_init_success(self):
-
         # plus state (default)
         backend = DensityMatrixBackend(self.hadamardpattern)
         dm = DensityMatrix(nqubit=1)
@@ -914,7 +912,6 @@ class TestDensityMatrixBackend(unittest.TestCase):
         assert backend.Nqubit == self.nqb
 
     def test_init_fail(self):
-
         rand_angles = self.rng.random(self.nqb + 1) * 2 * np.pi
         rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), self.nqb + 1)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
@@ -927,7 +924,6 @@ class TestDensityMatrixBackend(unittest.TestCase):
         with pytest.raises(TypeError):
             DensityMatrixBackend()
 
-
     def test_init_success(self):
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
@@ -938,7 +934,6 @@ class TestDensityMatrixBackend(unittest.TestCase):
         assert backend.node_index == [0]
         assert backend.Nqubit == 1
         assert backend.max_qubit_num == 12
-
 
     def test_add_nodes(self):
         circ = Circuit(1)

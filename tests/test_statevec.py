@@ -1,12 +1,13 @@
+import functools
 import unittest
-import pytest
-import numpy as np
 
-from graphix.states import BasicStates, PlanarState
+import numpy as np
+import pytest
+
 import graphix.pauli
 import graphix.random_objects as randobj
 from graphix.sim.statevec import Statevec
-import functools
+from graphix.states import BasicStates, PlanarState
 
 
 class TestStatevec(unittest.TestCase):

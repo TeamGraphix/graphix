@@ -26,7 +26,6 @@ class TestUtilities(unittest.TestCase):
         np.testing.assert_allclose(tmp.conj().T @ tmp, np.eye(d), atol=1e-15)
 
     def test_random_channel_success(self):
-
         nqb = np.random.randint(1, 5)
         dim = 2**nqb  # np.random.randint(2, 8)
 
@@ -51,7 +50,6 @@ class TestUtilities(unittest.TestCase):
         assert channel.is_normalized
 
     def test_random_channel_fail(self):
-
         # incorrect rank type
         with self.assertRaises(TypeError):
             mychannel = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
@@ -61,7 +59,6 @@ class TestUtilities(unittest.TestCase):
             mychannel = randobj.rand_channel_kraus(dim=2**2, rank=0)
 
     def test_rand_gauss_cpx(self):
-
         nsample = int(1e4)
 
         dim = np.random.randint(2, 20)
@@ -72,7 +69,6 @@ class TestUtilities(unittest.TestCase):
         assert list(dimset)[0] == (dim, dim)
 
     def test_check_psd_success(self):
-
         # Generate a random mixed state from state vectors with same probability
         # We know this is PSD
 
@@ -92,7 +88,6 @@ class TestUtilities(unittest.TestCase):
         assert check_psd(dm)
 
     def test_check_psd_fail(self):
-
         # not hermitian
         # don't use dim = 2, too easy to have a PSD matrix.
         # NOTE useless test since eigvalsh treats the matrix as hermitian and takes only the L or U part
@@ -128,7 +123,6 @@ class TestUtilities(unittest.TestCase):
             dm = randobj.rand_dm(2 ** np.random.randint(2, 5) + 1)
 
     def test_rand_dm_rank(self):
-
         rk = 3
         dm = randobj.rand_dm(2 ** np.random.randint(2, 5), rank=rk)
 
@@ -156,7 +150,6 @@ class TestUtilities(unittest.TestCase):
         assert np.all(dims == (2**nqb, 2**nqb))
 
     def test_pauli_tensor_ops_fail(self):
-
         with self.assertRaises(TypeError):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(np.random.randint(2, 6) + 0.5)
 
@@ -164,7 +157,6 @@ class TestUtilities(unittest.TestCase):
             Pauli_tensor_ops = Ops.build_tensor_Pauli_ops(0)
 
     def test_random_pauli_channel_success(self):
-
         nqb = np.random.randint(2, 6)
         rk = np.random.randint(1, 2**nqb + 1)
         Pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank

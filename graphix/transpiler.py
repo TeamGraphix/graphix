@@ -16,10 +16,8 @@ import graphix.pauli
 import graphix.sim.base_backend
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-import graphix.sim.base_backend
+from graphix.sim.density_matrix import Data, DensityMatrix
 from graphix.sim.statevec import Statevec, SV_Data
-from graphix.sim.density_matrix import DensityMatrix, Data
-import graphix.pauli
 
 
 @dataclasses.dataclass

@@ -2,10 +2,13 @@
 quantum states and operators
 """
 
+import abc
+
 import numpy as np
 import pydantic
+
 import graphix.pauli
-import abc
+
 
 # generic class State for all States
 class State(abc.ABC):

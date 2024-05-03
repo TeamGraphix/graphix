@@ -1,13 +1,13 @@
 import unittest
-import pytest
-
 from copy import deepcopy
 
 import numpy as np
-from graphix import Circuit
-from graphix.states import BasicStates, PlanarState
-from graphix.sim.statevec import Statevec, meas_op, StatevectorBackend
+import pytest
+
 import graphix.pauli
+from graphix import Circuit
+from graphix.sim.statevec import Statevec, StatevectorBackend, meas_op
+from graphix.states import BasicStates, PlanarState
 
 
 class TestStatevecBackend(unittest.TestCase):
@@ -56,7 +56,6 @@ class TestStatevecBackend(unittest.TestCase):
 
 
 class TestStatevecNew(unittest.TestCase):
-
     # more tests not really needed since redundant with Statevec constructor tests
 
     def setUp(self):
@@ -69,7 +68,6 @@ class TestStatevecNew(unittest.TestCase):
 
     # test initialization only
     def test_init_success(self):
-
         # plus state (default)
         backend = StatevectorBackend(self.hadamardpattern)
         vec = Statevec(nqubit=1)

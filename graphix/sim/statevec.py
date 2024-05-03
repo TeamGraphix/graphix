@@ -1,18 +1,18 @@
-from copy import deepcopy
+import functools
 import numbers
 import typing
+import warnings
+from copy import deepcopy
 
 import numpy as np
-import functools
 import pydantic
-import warnings
 
+import graphix.pauli
 import graphix.sim.base_backend
+import graphix.states
+import graphix.types
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-import graphix.states
-import graphix.pauli
-import graphix.types
 
 # Python >= 3.9
 # from collections.abc import Iterable # or use Protocols?
@@ -217,7 +217,6 @@ class Statevec:
         data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
-
         """Initialize statevector
 
         Parameters

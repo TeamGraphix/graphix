@@ -4,16 +4,15 @@ import unittest
 import numpy as np
 from parameterized import parameterized
 
+import graphix.ops
+import graphix.states
+import tests.random_circuit
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
-from graphix.transpiler import Circuit
-import graphix.states
-from graphix.simulator import PatternSimulator
-from graphix.sim.statevec import Statevec
 from graphix.sim.density_matrix import DensityMatrix
-import graphix.ops
-import tests.random_circuit
-
+from graphix.sim.statevec import Statevec
+from graphix.simulator import PatternSimulator
+from graphix.transpiler import Circuit
 
 SEED = 42
 rc.set_seed(SEED)
@@ -519,17 +518,17 @@ class TestPatternSim(unittest.TestCase):
         rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), self.nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
 
-        out = self.randpattern.simulate_pattern(backend = "statevector", input_state = states)
+        out = self.randpattern.simulate_pattern(backend="statevector", input_state=states)
 
-        out_circ = self.rand_circ.simulate_statevector(input_state = states).statevec
+        out_circ = self.rand_circ.simulate_statevector(input_state=states).statevec
 
         # MBQC is up to a global phase!
         np.testing.assert_almost_equal(np.abs(np.dot(out.psi.flatten().conjugate(), out_circ.psi.flatten())), 1)
         # assert np.allclose(out.psi, out_circ.psi)
 
-    
     def test_dm_sim(self):
         pass
+
 
 if __name__ == "__main__":
     unittest.main()
