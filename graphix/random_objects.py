@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import scipy.linalg
@@ -30,7 +30,7 @@ def rand_unit(l: int):
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rank: Optional[int] = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
+def rand_dm(dim: int, rank: Optional[int] = None, dm_dtype=True) -> Union[DensityMatrix, np.ndarray]:
     """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 
