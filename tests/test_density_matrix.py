@@ -26,11 +26,11 @@ class TestDensityMatrix(unittest.TestCase):
         self.rng = np.random.default_rng()
 
     def test_init_without_data_fail(self):
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(AssertionError):
             DensityMatrix(nqubit=-2)
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(AssertionError):
             DensityMatrix(nqubit="hello")
-        with pytest.raises(pydantic.ValidationError):
+        with pytest.raises(AssertionError):
             DensityMatrix(nqubit=[])
 
     def test_init_with_invalid_data_fail(self):

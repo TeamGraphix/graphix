@@ -21,13 +21,11 @@ def check_square(matrix: np.ndarray) -> bool:
 def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     """
     check if a density matrix is positive semidefinite by diagonalizing.
-    After check_square and check_hermitian (osef) so that it already is square with power of 2 dimension.
-
 
     Parameters
     ----------
     matrix : np.ndarray
-        matrix to check. Normally already square and 2**n x 2**n
+        matrix to check
     tol : float
         tolerance on the small negatives. Default 1e-15.
     """

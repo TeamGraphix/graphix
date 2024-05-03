@@ -9,7 +9,6 @@ import functools
 import numbers
 
 import numpy as np
-import pydantic
 import typing
 
 from graphix.linalg_validations import check_square, check_hermitian, check_unit_trace, check_psd
@@ -37,7 +36,7 @@ class DensityMatrix:
     def __init__(
         self,
         data: typing.Optional[Data] = graphix.states.BasicStates.PLUS,
-        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
+        nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
 
         """
@@ -49,7 +48,7 @@ class DensityMatrix:
             nqubit : int
                 Number of qubits. Default is 1. If both `data` and `nqubit` are specified, consistency is checked.
         """
-        pydantic.TypeAdapter(typing.Optional[graphix.types.PositiveInt]).validate_python(nqubit)
+        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
 
         def check_size_consistency(mat):
             if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):

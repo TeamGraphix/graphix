@@ -215,7 +215,7 @@ class Statevec:
     def __init__(
         self,
         data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
-        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
+        nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
 
         """Initialize statevector
@@ -234,7 +234,7 @@ class Statevec:
         Defaults to |+> states and 1 qubit.
         If nqubit > 1 and only one state : tensor all of them. Use the tensor method instead of hard code.
         """
-        pydantic.TypeAdapter(typing.Optional[graphix.types.PositiveInt]).validate_python(nqubit)
+        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
@@ -428,12 +428,8 @@ class Statevec:
         psi_self = self.psi.flatten()
         psi_other = other.psi.flatten()
 
-        # NOTE on tensor form not vector
-        # deprecated
         total_num = len(self.dims()) + len(other.dims())
-        # self.Nqubit += other.Nqubit
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
-        # self.Nqubit = len(self.dims())
 
     def CNOT(self, qubits):
         """apply CNOT

@@ -1,7 +1,7 @@
 import annotated_types
 import typing_extensions
 
-PositiveInt = typing_extensions.Annotated[int, annotated_types.Ge(0)]  # includes 0
+PositiveOrNullInt = typing_extensions.Annotated[int, annotated_types.Ge(0)]  # includes 0
 
 
 def check_list_elements(l, ty):

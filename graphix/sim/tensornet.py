@@ -6,11 +6,10 @@ import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
-from graphix.ops import Ops, States
+from graphix.ops import Ops
 from graphix.states import BasicStates
 import string
 from copy import deepcopy
-
 
 
 class TensorNetworkBackend:

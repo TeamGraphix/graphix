@@ -22,38 +22,32 @@ class TestStatevec(unittest.TestCase):
     def test_default_success(self):
         vec = Statevec(nqubit=1)
         assert np.allclose(vec.psi, np.array([1, 1] / np.sqrt(2)))
-        # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
     def test_basicstates_success(self):
         # minus
         vec = Statevec(nqubit=1, data=BasicStates.MINUS)
         assert np.allclose(vec.psi, np.array([1, -1] / np.sqrt(2)))
-        # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # zero
         vec = Statevec(nqubit=1, data=BasicStates.ZERO)
         assert np.allclose(vec.psi, np.array([1, 0]), rtol=0, atol=1e-15)
-        # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # one
         vec = Statevec(nqubit=1, data=BasicStates.ONE)
         assert np.allclose(vec.psi, np.array([0, 1]), rtol=0, atol=1e-15)
-        # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # plus_i
         vec = Statevec(nqubit=1, data=BasicStates.PLUS_I)
         assert np.allclose(vec.psi, np.array([1, 1j] / np.sqrt(2)))
-        # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
         # minus_i
         vec = Statevec(nqubit=1, data=BasicStates.MINUS_I)
         assert np.allclose(vec.psi, np.array([1, -1j] / np.sqrt(2)))
-        # assert vec.Nqubit == 1
         assert len(vec.dims()) == 1
 
     # even more tests?
@@ -62,14 +56,12 @@ class TestStatevec(unittest.TestCase):
         print(f"nqb is {nqb}")
         vec = Statevec(nqubit=nqb)
         assert np.allclose(vec.psi, np.ones(((2,) * nqb)) / (np.sqrt(2)) ** nqb)
-        # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
 
         vec = Statevec(nqubit=nqb, data=BasicStates.MINUS_I)
         sv_list = [BasicStates.MINUS_I.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
-        # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
 
         # tensor of same state
@@ -80,7 +72,6 @@ class TestStatevec(unittest.TestCase):
         sv_list = [state.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
-        # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
 
         # tensor of different states
@@ -91,7 +82,6 @@ class TestStatevec(unittest.TestCase):
         sv_list = [state.get_statevector() for state in states]
         sv = functools.reduce(np.kron, sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
-        # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
 
     def test_data_success(self):
@@ -101,7 +91,6 @@ class TestStatevec(unittest.TestCase):
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         vec = Statevec(data=rand_vec)
         assert np.allclose(vec.psi, rand_vec.reshape((2,) * nqb))
-        # assert vec.Nqubit == nqb
         assert len(vec.dims()) == nqb
 
     # fail: incorrect len
@@ -112,9 +101,7 @@ class TestStatevec(unittest.TestCase):
         with pytest.raises(ValueError):
             vec = Statevec(data=rand_vec)
 
-    # with less qubit than number of qubits inferred from a correct state vect
-    # returns a truncated statevec that is hence not normalized
-    # NOTE weird behaviour??
+    # fail: with less qubit than number of qubits inferred from a correct state vect
     def test_data_dim_fail_mismatch(self):
         nqb = 3
         rand_vec = self.rng.random(2**nqb) + 1j * self.rng.random(2**nqb)
@@ -145,7 +132,6 @@ class TestStatevec(unittest.TestCase):
         vec = Statevec(data=test_vec)
 
         assert np.allclose(vec.psi, test_vec.psi)
-        # assert vec.Nqubit == test_vec.Nqubit
         assert len(vec.dims()) == len(test_vec.dims())
 
     # try calling with incorrect number of qubits compared to inferred one

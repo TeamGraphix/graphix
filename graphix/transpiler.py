@@ -1362,7 +1362,7 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: Optional[SV_Data] = None):
+    def simulate_statevector(self, input_state: Optional[SV_Data] = None) -> SimulateResult:
         """Run statevector simulation of the gate sequence, using graphix.Statevec
 
         Parameters
