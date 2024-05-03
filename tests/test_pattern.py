@@ -512,7 +512,7 @@ class TestPatternSim(unittest.TestCase):
         # just want to test the initialization
         self.depth = 2
         self.rand_circ = tests.random_circuit.get_rand_circuit(self.nqb, self.depth)
-        self.randpattern = self.rand_circ.transpile()
+        self.randpattern = self.rand_circ.transpile().pattern
 
     def test_sv_sim(self):
         rand_angles = self.rng.random(self.nqb) * 2 * np.pi
@@ -521,7 +521,7 @@ class TestPatternSim(unittest.TestCase):
 
         out = self.randpattern.simulate_pattern(backend = "statevector", input_state = states)
 
-        out_circ = self.rand_circ.simulate_statevector(input_state = states)
+        out_circ = self.rand_circ.simulate_statevector(input_state = states).statevec
 
         # MBQC is up to a global phase!
         np.testing.assert_almost_equal(np.abs(np.dot(out.psi.flatten().conjugate(), out_circ.psi.flatten())), 1)

@@ -880,7 +880,7 @@ class TestDensityMatrixBackend(unittest.TestCase):
         # just want to test the initialization
         self.depth = 1
         rand_circ = tests.random_circuit.get_rand_circuit(self.nqb, self.depth)
-        self.randpattern = rand_circ.transpile()
+        self.randpattern = rand_circ.transpile().pattern
         # print(self.randpattern, self.nqb, self.depth)
 
     # test initialization only
@@ -931,7 +931,7 @@ class TestDensityMatrixBackend(unittest.TestCase):
     def test_init_success(self):
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
+        pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
         assert backend.pattern == pattern
         assert backend.results == pattern.results

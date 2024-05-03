@@ -65,7 +65,7 @@ class TestStatevecNew(unittest.TestCase):
 
         circ = Circuit(1)
         circ.h(0)
-        self.hadamardpattern = circ.transpile()
+        self.hadamardpattern = circ.transpile().pattern
 
     # test initialization only
     def test_init_success(self):
