@@ -101,15 +101,13 @@ class Client:
         # self.measurement_db = pattern.get_measurement_db()
         # self.byproduct_db = pattern.byproduct_db()
 
-        self.measurement_db = {}
-        self.init_measurement_db()
-        self.byproduct_db = {}
-        self.init_byproduct_db()
+        self.measurement_db = pattern.get_measurement_db()
+        self.byproduct_db = pattern.get_byproduct_db()
 
         self.secrets = SecretDatas.from_secrets(secrets, pattern.get_graph(), self.input_nodes, self.output_nodes)
 
         self.input_state = self.init_inputs(input_state)
-        pattern_without_flow = self.remove_pattern_flow(pattern)
+        pattern_without_flow = pattern.remove_flow()
         self.clean_pattern = self.add_secret_angles(pattern_without_flow)
 
 
@@ -150,41 +148,6 @@ class Client:
         return new_pattern
 
 
-    def init_measurement_db(self):
-        """
-        Initializes the "database of measurement configurations and results" held by the customer
-        according to the pattern desired
-        Initial measurement outcomes are set to 0
-        """
-        for cmd in self.initial_pattern:
-            if cmd[0] == 'M':
-                node = cmd[1]
-                plane = graphix.pauli.Plane[cmd[2]]
-                angle = cmd[3] * np.pi
-                s_domain = cmd[4]
-                t_domain = cmd[5]
-                if len(cmd) == 7:
-                    vop = cmd[6]
-                else:
-                    vop = 0
-                self.measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
-    
-    # TODO : faire ça aussi au niveau de pattern
-    def remove_pattern_flow(self, pattern) :
-        clean_pattern = graphix.pattern.Pattern(pattern.input_nodes)
-        for cmd in pattern :
-            # by default, copy the command
-            new_cmd = deepcopy(cmd) 
-
-            # If measure, remove the s-domain and t-domain, vop
-            if cmd[0] == 'M' :
-                del new_cmd[2:]
-            # If byproduct, remove it so it's not done by the server
-            if cmd[0] != 'X' and cmd[0] != 'Z' :
-                clean_pattern.add(new_cmd)
-        return clean_pattern
-    
-
     # Modifier classe backend, ne pas donner pattern en parametre. Juste la liste output nodes et les résultats des Pauli pre-processing
     # Modifier simulate_pattern pour mettre le backend en parametre (qu'il soit construit en dehors du client, par exemple dans le test)
     def simulate_pattern(self):
@@ -209,22 +172,6 @@ class Client:
         for secret in self.secrets:
             secrets_size[secret] = len(self.secrets[secret])
         return secrets_size
-
-    def init_byproduct_db(self):
-        for node in self.output_nodes:
-            self.byproduct_db[node] = {
-                'z-domain': [],
-                'x-domain': []
-            }
-
-        for cmd in self.initial_pattern:
-            if cmd[0] == 'Z' or cmd[0] == 'X':
-                node = cmd[1]
-
-                if cmd[0] == 'Z':
-                    self.byproduct_db[node]['z-domain'] = cmd[2]
-                if cmd[0] == 'X':
-                    self.byproduct_db[node]['x-domain'] = cmd[2]
 
     def decode_output(self, node):
         z_decoding = 0

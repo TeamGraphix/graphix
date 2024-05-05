@@ -2,11 +2,12 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 
+import dataclasses
 from copy import deepcopy
 
 import networkx as nx
 import numpy as np
-
+import graphix
 from graphix.client import Client
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
@@ -16,6 +17,14 @@ from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 from graphix.sim.statevec import StatevectorBackend
 
+
+@dataclasses.dataclass
+class MeasureParameters:
+    plane: graphix.pauli.Plane
+    angle: float
+    s_domain: list[int]
+    t_domain: list[int]
+    vop: int
 
 class NodeAlreadyPrepared(Exception):
     def __init__(self, node: int):
@@ -71,6 +80,8 @@ class Pattern:
         self.__seq = []
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
+        self.measurement_db = None
+        self.byproduct_db = None
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -1163,6 +1174,59 @@ class Pattern:
                         node_list.append(self.__seq[ind][1][0])
                 ind += 1
         return node_list
+
+    def get_measurement_db(self) :
+        """
+        Builds and returns a dictionary containing the information about the measurement of any node to be measured 
+        """
+        if self.measurement_db == None :
+            self.measurement_db = dict()
+            for cmd in self:
+                if cmd[0] == 'M':
+                    node = cmd[1]
+                    plane = graphix.pauli.Plane[cmd[2]]
+                    angle = cmd[3] * np.pi
+                    s_domain = cmd[4]
+                    t_domain = cmd[5]
+                    if len(cmd) == 7:
+                        vop = cmd[6]
+                    else:
+                        vop = 0
+                    self.measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
+        return self.measurement_db
+
+    def get_byproduct_db(self) :
+        if self.byproduct_db == None :
+            self.byproduct_db = dict()
+            for node in self.output_nodes:
+                self.byproduct_db[node] = {
+                    'z-domain': [],
+                    'x-domain': []
+                }
+
+            for cmd in self:
+                if cmd[0] == 'Z' or cmd[0] == 'X':
+                    node = cmd[1]
+
+                    if cmd[0] == 'Z':
+                        self.byproduct_db[node]['z-domain'] = cmd[2]
+                    if cmd[0] == 'X':
+                        self.byproduct_db[node]['x-domain'] = cmd[2]
+        return self.byproduct_db
+    
+    def remove_flow(self):
+        clean_pattern = graphix.pattern.Pattern(self.input_nodes)
+        for cmd in self :
+            # by default, copy the command
+            new_cmd = deepcopy(cmd) 
+
+            # If measure, remove the s-domain and t-domain, vop
+            if cmd[0] == 'M' :
+                del new_cmd[2:]
+            # If byproduct, remove it so it's not done by the server
+            if cmd[0] != 'X' and cmd[0] != 'Z' :
+                clean_pattern.add(new_cmd)
+        return clean_pattern
 
     def standardize_and_shift_signals(self, method="local"):
         """Executes standardization and signal shifting.
