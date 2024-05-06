@@ -105,7 +105,7 @@ class PatternSimulator:
                     self.backend.apply_clifford(cmd)
                 else:
                     raise ValueError("invalid commands")
-            self.backend.finalize()
+            self.backend.finalize(self.pattern.output_nodes)
         else:
             self.noise_model.assign_simulator(self)
             for node in self.pattern.input_nodes:
@@ -138,6 +138,6 @@ class PatternSimulator:
                     self.noise_model.tick_clock()
                 else:
                     raise ValueError("Invalid commands.")
-            self.backend.finalize()
+            self.backend.finalize(self.pattern.output_nodes)
 
         return self.backend.state

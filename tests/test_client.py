@@ -6,9 +6,9 @@ import tests.random_circuit as rc
 import numpy as np
 from graphix.client import Client, Secrets
 from graphix.sim.statevec import StatevectorBackend, Statevec
+from graphix.sim.statevec_oracle import StatevectorOracle
 from graphix.simulator import PatternSimulator
 from graphix.states import PlanarState, BasicStates
-
 
 class TestClient(unittest.TestCase):
 
@@ -131,6 +131,7 @@ class TestClient(unittest.TestCase):
     def test_UBQC(self) :
         # Generate random pattern
         nqubits = 2
+        # TODO : work on optimization of the quantum communication
         depth = 1
         for i in range(10) :
             circuit = rc.get_rand_circuit(nqubits, depth)
@@ -151,6 +152,39 @@ class TestClient(unittest.TestCase):
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
             np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+
+
+    def test_client_oracle(self) :
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+
+        backend = StatevectorOracle()
+
+        input_state = [PlanarState(angle=0, plane=0) for _ in pattern.input_nodes]
+        client = Client(pattern=pattern, backend=backend, secrets=Secrets(theta=True), input_state=input_state)
+        
+        client.backend.state.evolve
+        print(input_state)
+        print(client.secrets.theta)
+        print(client.backend.state)
+
+        ## TODO : how can we write a clean test to verify that the difference between the input state and the backend state is a Z(theta) rotation ?
+
+
+        ## TODO
+        # Client should not have input state! 
+        client.input_state
+
+        ## TODO
+        # Backend can currently live without input state, dangerous behavior. Input state should be created 1) when Client uses backend, or 2) when Simulator uses backend (in stand-alone mode)
+        """
+        Simulateur = pilote, donne les instructions à exécuter
+        décorréler client, serveur (simulateur) et monde physique (backend)
+        """
 
 
 

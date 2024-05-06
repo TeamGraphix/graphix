@@ -83,8 +83,9 @@ class MeasureParameters:
     vop: int
 
 class Client:
-    def __init__(self, pattern, input_state=None, secrets=Secrets()):
+    def __init__(self, pattern, input_state=None, secrets=Secrets(), backend=None):
         self.initial_pattern = pattern
+        self.backend = backend
 
         self.input_nodes = self.initial_pattern.input_nodes.copy()
         self.output_nodes = self.initial_pattern.output_nodes.copy()
@@ -97,19 +98,33 @@ class Client:
         self.measure_method = ClientMeasureMethod(self)
 
 
-        # TODO : voir comment implémenter ça depuis la classe Pattern
-        # self.measurement_db = pattern.get_measurement_db()
-        # self.byproduct_db = pattern.byproduct_db()
-
         self.measurement_db = pattern.get_measurement_db()
         self.byproduct_db = pattern.get_byproduct_db()
 
         self.secrets = SecretDatas.from_secrets(secrets, pattern.get_graph(), self.input_nodes, self.output_nodes)
 
+        # Client should not have input state!
         self.input_state = self.init_inputs(input_state)
+        ## TODO : replace by the following
+
+        if backend is not None :
+            self.backend.prepare_state(nodes=self.input_nodes,
+                                    data=input_state)
+            self.blind_input_state()
+
         pattern_without_flow = pattern.remove_flow()
         self.clean_pattern = self.add_secret_angles(pattern_without_flow)
 
+
+    def blind_input_state(self) :
+        def z_rotation(theta) :
+            return np.array([[1, 0], [0, np.exp(1j*theta)]])
+        for node in self.input_nodes :
+            theta = self.secrets.theta[node]
+            index = self.backend.node_index.index(node)
+            self.backend.state.evolve_single(op=z_rotation(theta), i=index)
+
+        pass 
 
     def init_inputs(self, input_state) :
         # Initialization to all |+> states if nothing specified
@@ -117,15 +132,14 @@ class Client:
             input_state = [PlanarState(plane=0, angle=0) for _ in self.input_nodes]
        
         # The input state is modified (with secrets) before being sent to server
-        def get_sent_input(input):
-            input_node, initial_state = input
+        def get_sent_input(input_qubit):
+            input_node, initial_state = input_qubit
             theta_value = self.secrets.theta.get(input_node, 0)
             a_value = self.secrets.a.a.get(input_node, 0)
             new_angle = (-1)**a_value *initial_state.angle + theta_value*np.pi/4
             blinded_state = PlanarState(plane=initial_state.plane, angle=new_angle)
             return blinded_state
 
-        # gros probleme : on doit espérer que les index matchent. (ça a l'air de marcher pour le moment)
         return [get_sent_input(input) for input in zip(self.input_nodes, input_state)]
 
     def add_secret_angles(self, pattern) :
@@ -135,7 +149,7 @@ class Client:
         """
         new_pattern = graphix.Pattern(pattern.input_nodes)
         for cmd in pattern :
-            if cmd[0] == 'N' :
+            if cmd[0] == 'N' and cmd[1] in self.secrets.theta :
                 node = cmd[1]
                 theta_value = self.secrets.theta.get(node, 0)
                 auxiliary_state = PlanarState(plane=Plane(0), angle=theta_value*np.pi/4)
