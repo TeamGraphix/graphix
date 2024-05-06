@@ -21,7 +21,7 @@ import graphix.types
 # Python >= 3.8
 # typing.Iterable[T]
 
-class StatevectorOracle(graphix.sim.base_backend.Backend):
+class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
     def __init__(self, max_qubit_num=20, pr_calc=True, measure_method=None):

@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from graphix import Circuit
 from graphix.states import BasicStates, PlanarState
-from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.statevec_oracle import Statevec, StatevectorBackend
 import graphix.pauli
 from tests.test_graphsim import meas_op
 class TestStatevec(unittest.TestCase):
@@ -60,19 +60,26 @@ class TestStatevecNew(unittest.TestCase):
         circ.h(0)
         self.hadamardpattern = circ.transpile()
 
+
+
     # test initialization only
     def test_init_success(self):
 
+        from graphix.sim.statevec_oracle import StatevectorBackend
         # plus state (default)
-        backend = StatevectorBackend(self.hadamardpattern)
-        vec = Statevec(nqubit=1)
+        state = BasicStates.PLUS
+        vec = Statevec(nqubit=1, data=state)
+        backend = StatevectorBackend()
+        backend.prepare_state(nodes=[0], data=state)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
         # minus state 
-        backend = StatevectorBackend(self.hadamardpattern, input_state = BasicStates.MINUS)
-        vec = Statevec(nqubit=1, data=BasicStates.MINUS)
+        state = BasicStates.MINUS
+        vec = Statevec(nqubit=1, data=state)
+        backend = StatevectorBackend()
+        backend.prepare_state(nodes=[0], data=state)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
@@ -81,8 +88,9 @@ class TestStatevecNew(unittest.TestCase):
         rand_angle = self.rng.random() * 2 * np.pi
         rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]))
         state = PlanarState(plane = rand_plane, angle = rand_angle)
-        backend = StatevectorBackend(self.hadamardpattern, input_state = state)
         vec = Statevec(nqubit=1, data=state)
+        backend = StatevectorBackend()
+        backend.prepare_state(nodes=[0], data=state)
         np.testing.assert_allclose(vec.psi, backend.state.psi)
         # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
@@ -91,22 +99,19 @@ class TestStatevecNew(unittest.TestCase):
 
     
     def test_init_fail(self):
-        # incorrect number of dimensions for State input
-        # only one input node, two states provided
-        # doesn't fail! just takes the first qubit!
-        # Discard second qubit so can be whatever
+        from graphix.sim.statevec_oracle import StatevectorBackend
+        # Fails if number of qubits doesn't match the dimension of the state asked to prepare
+        # number of qubits is in len(nodes) or backend.prepare_states(nodes, data)
+        # dimension is in len(data)
 
         rand_angle = self.rng.random(2) * 2 * np.pi
         rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), 2)
 
         state = PlanarState(plane = rand_plane[0], angle = rand_angle[0])
         state2 = PlanarState(plane = rand_plane[1], angle = rand_angle[1])
+        backend = StatevectorBackend()
         with self.assertRaises(ValueError):
-            StatevectorBackend(self.hadamardpattern, input_state = [state, state2])
-        # vec = Statevec(nqubit=1, state = state)
-        # np.testing.assert_allclose(vec.psi, backend.state.psi)
-        # # assert backend.state.Nqubit == 1
-        # assert len(backend.state.dims()) == 1
+            backend.prepare_state(nodes=[0], data=[state, state2])
 
 
 

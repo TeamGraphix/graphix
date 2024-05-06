@@ -6,7 +6,7 @@ import tests.random_circuit as rc
 import numpy as np
 from graphix.client import Client, Secrets
 from graphix.sim.statevec import StatevectorBackend, Statevec
-from graphix.sim.statevec_oracle import StatevectorOracle
+from graphix.sim.statevec_oracle import StatevectorBackend
 from graphix.simulator import PatternSimulator
 from graphix.states import PlanarState, BasicStates
 
@@ -162,7 +162,7 @@ class TestClient(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize(method="global")
 
-        backend = StatevectorOracle()
+        backend = StatevectorBackend()
 
         input_state = [PlanarState(angle=0, plane=0) for _ in pattern.input_nodes]
         client = Client(pattern=pattern, backend=backend, secrets=Secrets(theta=True), input_state=input_state)
