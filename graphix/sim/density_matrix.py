@@ -37,14 +37,32 @@ class DensityMatrix:
         data: typing.Optional[Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
-        """
-        rewrite!
-        Parameters
-        ----------
-            data : DensityMatrix, list, tuple, np.ndarray or None
-                Density matrix of shape (2**nqubits, 2**nqubits).
-            nqubit : int
-                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, consistency is checked.
+        """Initialize density matrix objects. The behaviour builds on theo ne of `graphix.statevec.Statevec`.
+        `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of iterable of scalars (A 2**n x 2**n numerical density matrix)
+        - a `graphix.statevec.DensityMatrix` object
+        - a `graphix.statevec.Statevector` object
+
+        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
+        in the tensor product state.
+        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
+        If a `graphix.statevec.Statevec` or `graphix.statevec.DensityMatrix` is passed, returns a copy.
+
+
+        :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
+        :type data: typing.Union[
+        graphix.states.State,
+        "DensityMatrix",
+        Statevec,
+        typing.Iterable[graphix.states.State],
+        typing.Iterable[numbers.Number],
+        typing.Iterable[typing.Iterable[numbers.Number]],
+        ], optional
+        :param nqubit: number of qubits to prepare, defaults to None
+        :type nqubit: int, optional
         """
         assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
 
@@ -63,8 +81,7 @@ class DensityMatrix:
         if isinstance(data, typing.Iterable):
             input_list = list(data)
             if len(input_list) != 0:
-                # do try except else?
-                # needed since Object are iterable but not subscribable!
+                # needed since Object is iterable but not subscribable!
                 try:
                     if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], numbers.Number):
                         self.rho = np.array(input_list)
@@ -77,7 +94,7 @@ class DensityMatrix:
                 except TypeError:
                     pass
         statevec = Statevec(data, nqubit)
-        # NOTE sthis works since np.outer flattens the inputs!
+        # NOTE this works since np.outer flattens the inputs!
         self.rho = np.outer(statevec.psi, statevec.psi.conj())
         self.Nqubit = len(statevec.dims())
 
@@ -326,6 +343,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             pr_calc : bool
                 whether or not to compute the probability distribution before choosing the measurement result.
                 if False, measurements yield results 0/1 with 50% probabilities each.
+            input_state: same syntax as `graphix.statevec.DensityMatrix` constructor.
         """
         # check that pattern has output nodes configured
         # assert len(pattern.output_nodes) > 0

@@ -75,16 +75,3 @@ class BasicStates:
     # remove that in the end
     # need in TN backend
     VEC = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
-
-
-# Plane.cos.value Plane.cos is an Axis, Axis.value = 0,1,2 (enum)
-
-# Everywhere this is called. use StateVec(State))
-# class States:
-#     plus = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])  # plus
-#     minus = np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)])  # minus
-#     zero = np.array([1.0, 0.0])  # zero
-#     one = np.array([0.0, 1.0])  # one
-#     iplus = np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)])  # +1 eigenstate of Pauli Y
-#     iminus = np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)])  # -1 eigenstate of Pauli Y
-#     vec = [plus, minus, zero, one, iplus, iminus]

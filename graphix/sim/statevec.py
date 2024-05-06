@@ -38,8 +38,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         -----------
         pattern : :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend : str, 'statevector'
-            optional argument for simulation.
+        input_state: same syntax as `graphix.statevec.Statevec` constructor.
         max_qubit_num : int
             optional argument specifying the maximum number of qubits
             to be stored in the statevector at a time.
@@ -217,22 +216,28 @@ class Statevec:
         data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
-        """Initialize statevector
 
-        Parameters
-        ----------
-        data : is either
-            - a single state (:class:`graphix.states.State` object). THen prepares all nodes in that state (tensor product)
-            - a dictionary mapping the inputs to a :class:`graphix.states.State` object
-            - an arbitrary :class:`graphix.statevec.Statevec` object (arbitrary input) # TODO work on that since just copy?
-        nqubit : int, optional: ignored if iterable passed (State, direct data)
-            number of qubits. Defaults to 1.
-        # plus_states : bool, optional
-            whether or not to start all qubits in + state or 0 state. Defaults to +
+        """Initialize statevector objects. The behaviour is as follows. `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of scalars (A 2**n numerical statevector)
+        - a `graphix.statevec.Statevec` object
 
-        Defaults to |+> states and 1 qubit.
-        If nqubit > 1 and only one state : tensor all of them. Use the tensor method instead of hard code.
+        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
+        in the tensor product state.
+        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
+        If a `graphix.statevec.Statevec` is passed, returns a copy.
+
+
+        :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
+        :type data: typing.Union[
+        graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
+        ], optional
+        :param nqubit: number of qubits to prepare, defaults to None
+        :type nqubit: int, optional
         """
+
         assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
 
         if isinstance(data, Statevec):
