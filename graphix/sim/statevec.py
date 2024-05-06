@@ -216,7 +216,6 @@ class Statevec:
         data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
     ):
-
         """Initialize statevector objects. The behaviour is as follows. `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
