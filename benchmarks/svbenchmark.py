@@ -12,8 +12,6 @@ GLOBAL_SEED = 2
 qu.core._NUM_THREAD_WORKERS = 1
 
 # %%
-
-# NOTE: to increase n_qubit to more than 11, increase the max_qubit_num argument in the StatevectorBackend class
 n_qubit_list = list(range(2, 21))
 
 sv_sim = []
