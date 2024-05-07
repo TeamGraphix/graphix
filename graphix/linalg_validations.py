@@ -1,4 +1,5 @@
-from typing import Union
+from __future__ import annotations
+
 
 import numpy as np
 
@@ -60,7 +61,7 @@ def check_unit_trace(matrix: np.ndarray) -> bool:
     return True
 
 
-def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
+def check_data_normalization(data: list | tuple | np.ndarray) -> bool:
     # NOTE use np.conjugate() instead of object.conj() to certify behaviour when using non-numpy float/complex types
     opsu = np.array([i["coef"] * np.conj(i["coef"]) * i["operator"].conj().T @ i["operator"] for i in data])
 
@@ -69,7 +70,7 @@ def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
     return True
 
 
-def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
+def check_data_dims(data: list | tuple | np.ndarray) -> bool:
 
     # convert to set to remove duplicates
     dims = set([i["operator"].shape for i in data])
@@ -84,7 +85,7 @@ def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
     return True
 
 
-def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
+def check_data_values_type(data: list | tuple | np.ndarray) -> bool:
 
     if not all(
         isinstance(i, dict) for i in data
@@ -107,7 +108,7 @@ def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
     return True
 
 
-def check_rank(data: Union[list, tuple, np.ndarray]) -> bool:
+def check_rank(data: list | tuple | np.ndarray) -> bool:
     # already checked that the data is list of square matrices
     if len(data) > data[0]["operator"].shape[0] ** 2:
         raise ValueError(
