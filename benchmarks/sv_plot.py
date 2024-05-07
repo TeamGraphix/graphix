@@ -18,9 +18,9 @@ color = "tab:red"
 ax1.set_xlabel("Original Circuit Size [qubit]")
 ax1.set_ylabel("Simulation time [sec]")
 ax1.set_yscale("log")
-ax1.scatter(n_qubits, sv_sim, marker="x", label="MBQC Statevector(minimizing sp)")
-ax1.scatter(n_qubits, eco_sim, marker="x", label="MBQC TN base(with cotengra)")
-ax1.scatter(n_qubits, eco_sim_wo_ctg, marker="x", label="MBQC TN base(w/o cotengra)")
+ax1.scatter(n_qubits, sv_sim, marker="x", label="MBQC Statevector (minimizing sp)")
+ax1.scatter(n_qubits, eco_sim, marker="x", label="MBQC TN base (with cotengra)")
+ax1.scatter(n_qubits, eco_sim_wo_ctg, marker="x", label="MBQC TN base (without cotengra)")
 ax1.tick_params(axis="y")
 ax1.legend(loc="upper left")
 ax1.set_title("Simulation time(Square RQC)")
@@ -32,5 +32,7 @@ ax2.set_ylabel("Max Space [qubit]")  # We already handled the x-label with ax1
 ax2.plot(n_qubits, max_sp, color=color, linestyle="--", label="Max Space")
 ax2.tick_params(axis="y")
 ax2.legend(loc="lower right")
-plt.savefig("simulation_time_wo_p.png")
-# plt.close()
+
+plt.rcParams["svg.fonttype"] = "none"
+plt.savefig("simulation_time_wo_p.svg")
+plt.close()
