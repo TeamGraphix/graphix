@@ -1014,7 +1014,7 @@ class GraphVisualizer:
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             while k in f.keys():
-                kk = list(f[k])[0]
+                kk = next(iter(f[k]))
                 pos[kk][1] = i
 
         lmax = max(l_k.values())

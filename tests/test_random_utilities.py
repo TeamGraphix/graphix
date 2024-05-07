@@ -69,7 +69,7 @@ class TestUtilities(unittest.TestCase):
 
         dimset = {i.shape for i in tmp}
         assert len(dimset) == 1
-        assert list(dimset)[0] == (dim, dim)
+        assert next(iter(dimset)) == (dim, dim)
 
     def test_check_psd_success(self):
 
