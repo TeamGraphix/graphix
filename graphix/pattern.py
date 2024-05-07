@@ -1205,7 +1205,7 @@ class Pattern:
                 }
 
             for cmd in self:
-                if cmd[0] == 'Z' or cmd[0] == 'X':
+                if (cmd[0] == 'Z' or cmd[0] == 'X') and cmd[1] in self.output_nodes:
                     node = cmd[1]
 
                     if cmd[0] == 'Z':

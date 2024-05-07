@@ -2,7 +2,7 @@ import dataclasses
 import numpy as np
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD, CLIFFORD_MUL
 import graphix.ops
-from graphix.states import State, PlanarState
+from graphix.states import State, PlanarState, BasicStates
 import graphix.pattern
 import graphix.sim.base_backend
 import graphix.sim.statevec
@@ -83,103 +83,74 @@ class MeasureParameters:
     vop: int
 
 class Client:
-    def __init__(self, pattern, input_state=None, secrets=Secrets(), backend=None):
+    def __init__(self, pattern, input_state=None, secrets=Secrets()):
         self.initial_pattern = pattern
-        self.backend = backend
 
         self.input_nodes = self.initial_pattern.input_nodes.copy()
         self.output_nodes = self.initial_pattern.output_nodes.copy()
-        # to be completed later
-        self.auxiliary_nodes = []
-
 
         # Copy the pauli-preprocessed nodes' measurement outcomes
         self.results = pattern.results.copy()
         self.measure_method = ClientMeasureMethod(self)
-
 
         self.measurement_db = pattern.get_measurement_db()
         self.byproduct_db = pattern.get_byproduct_db()
 
         self.secrets = SecretDatas.from_secrets(secrets, pattern.get_graph(), self.input_nodes, self.output_nodes)
 
-        # Client should not have input state!
-        self.input_state = self.init_inputs(input_state)
-        ## TODO : replace by the following
-
-        if backend is not None :
-            self.backend.prepare_state(nodes=self.input_nodes,
-                                    data=input_state)
-            self.blind_input_state()
-
         pattern_without_flow = pattern.remove_flow()
-        self.clean_pattern = self.add_secret_angles(pattern_without_flow)
+        self.clean_pattern = self.remove_prepared_nodes(pattern_without_flow)
+
+        self.input_state = input_state
 
 
-    def blind_input_state(self) :
-        def z_rotation(theta) :
-            return np.array([[1, 0], [0, np.exp(1j*theta)]])
-        for node in self.input_nodes :
-            theta = self.secrets.theta[node]
-            index = self.backend.node_index.index(node)
-            self.backend.state.evolve_single(op=z_rotation(theta), i=index)
-
-        pass 
-
-    def init_inputs(self, input_state) :
-        # Initialization to all |+> states if nothing specified
-        if input_state == None :
-            input_state = [PlanarState(plane=0, angle=0) for _ in self.input_nodes]
-       
-        # The input state is modified (with secrets) before being sent to server
-        def get_sent_input(input_qubit):
-            input_node, initial_state = input_qubit
-            theta_value = self.secrets.theta.get(input_node, 0)
-            a_value = self.secrets.a.a.get(input_node, 0)
-            new_angle = (-1)**a_value *initial_state.angle + theta_value*np.pi/4
-            blinded_state = PlanarState(plane=initial_state.plane, angle=new_angle)
-            return blinded_state
-
-        return [get_sent_input(input) for input in zip(self.input_nodes, input_state)]
-
-    def add_secret_angles(self, pattern) :
-        """
-        This function adds a secret angle to all auxiliary qubits (measured qubits that are not part of the input),
-        i.e the qubits created through "N" commands originally in the |+> state
-        """
-        new_pattern = graphix.Pattern(pattern.input_nodes)
+    def remove_prepared_nodes(self, pattern) :
+        clean_pattern = graphix.Pattern(self.input_nodes)
         for cmd in pattern :
-            if cmd[0] == 'N' and cmd[1] in self.secrets.theta :
-                node = cmd[1]
-                theta_value = self.secrets.theta.get(node, 0)
-                auxiliary_state = PlanarState(plane=Plane(0), angle=theta_value*np.pi/4)
-                new_pattern.add_auxiliary_node(node)
-                self.input_state.append(auxiliary_state)
-                self.auxiliary_nodes.append(node)
+            if cmd[0] == "N" :
+                clean_pattern.add_auxiliary_node(node=cmd[1])
             else :
-                new_pattern.add(cmd)
+                clean_pattern.add(cmd)
+        return clean_pattern
 
-        return new_pattern
+    def blind_qubits(self, backend) :
+        z_rotation = lambda theta : np.array([[1, 0], [0, np.exp(1j*theta)]])
+        for node, theta in self.secrets.theta.items() :
+            index = backend.node_index.index(node)
+            backend.state.evolve_single(op=z_rotation(theta), i=index)
 
+    def prepare_states(self, backend) :
+        # First prepare inputs
+        backend.prepare_state(nodes=self.input_nodes,
+                                data=self.input_state)
+        # Then iterate over auxiliaries required to blind
+        auxiliaries = []
+        for node in self.secrets.theta :
+            if node not in self.input_nodes :
+            # if node not in self.output_nodes and node not in self.input_nodes :
+                auxiliaries.append(node)
+        aux_data = [BasicStates.PLUS for _ in auxiliaries]
+        backend.prepare_state(nodes=auxiliaries, data=aux_data)
 
-    # Modifier classe backend, ne pas donner pattern en parametre. Juste la liste output nodes et les résultats des Pauli pre-processing
-    # Modifier simulate_pattern pour mettre le backend en parametre (qu'il soit construit en dehors du client, par exemple dans le test)
-    def simulate_pattern(self):
-        backend = graphix.sim.statevec.StatevectorBackend(pattern=self.clean_pattern, measure_method=self.measure_method, input_state=self.input_state, prepared_nodes=self.input_nodes + self.auxiliary_nodes)
+    def delegate_pattern(self, backend):
+        self.prepare_states(backend)        
+        self.blind_qubits(backend)
+
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
-        state = sim.run()
-        self.decode_output_state(backend, state)
-        return state, backend
+        sim.run()
+        self.decode_output_state(backend)
+        return
 
 
-    def decode_output_state(self, backend, state):
+    def decode_output_state(self, backend):
         for node in self.output_nodes:
             if node in self.byproduct_db:
+                index = backend.node_index.index(node)
                 z_decoding, x_decoding = self.decode_output(node)
                 if z_decoding:
-                    state.evolve_single(op=graphix.ops.Ops.z, i=backend.node_index.index(node))
+                    backend.state.evolve_single(op=graphix.ops.Ops.z, i=index)
                 if x_decoding:
-                    state.evolve_single(op=graphix.ops.Ops.x, i=backend.node_index.index(node))
+                    backend.state.evolve_single(op=graphix.ops.Ops.x, i=index)
 
     def get_secrets_size(self):
         secrets_size = {}

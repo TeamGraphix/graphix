@@ -32,7 +32,8 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.Nqubit = 0
         self.to_trace = []
         self.to_trace_loc = []
-
+        # Modify this
+        self.results = {}
 
     def prepare_state(self, nodes, data) :
         self.add_nodes(nodes=nodes, input_state=Statevec(data))

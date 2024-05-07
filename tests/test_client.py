@@ -1,14 +1,15 @@
 import unittest
 from random import random, randint
-
+from copy import deepcopy
 import graphix
 import tests.random_circuit as rc
 import numpy as np
-from graphix.client import Client, Secrets
+from graphix.client import Client, Secrets, ClientMeasureMethod
 from graphix.sim.statevec import StatevectorBackend, Statevec
 from graphix.sim.statevec_oracle import StatevectorBackend
 from graphix.simulator import PatternSimulator
 from graphix.states import PlanarState, BasicStates
+import graphix.pauli
 
 class TestClient(unittest.TestCase):
 
@@ -167,7 +168,6 @@ class TestClient(unittest.TestCase):
         input_state = [PlanarState(angle=0, plane=0) for _ in pattern.input_nodes]
         client = Client(pattern=pattern, backend=backend, secrets=Secrets(theta=True), input_state=input_state)
         
-        client.backend.state.evolve
         print(input_state)
         print(client.secrets.theta)
         print(client.backend.state)
@@ -185,6 +185,33 @@ class TestClient(unittest.TestCase):
         Simulateur = pilote, donne les instructions à exécuter
         décorréler client, serveur (simulateur) et monde physique (backend)
         """
+
+    def test_oracle_simulation(self) :
+        from graphix.sim.statevec_oracle import StatevectorBackend
+
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+
+
+
+        input_state = [PlanarState(angle=0, plane=0) for _ in pattern.input_nodes]
+        client = Client(pattern=pattern, secrets=Secrets(theta=True, r=True, a=True), input_state=input_state)
+        backend = StatevectorBackend(measure_method=client.measure_method)
+
+        # Creates the input state on the backend side, prepares the qubits and delegates the pattern
+        client.delegate_pattern(backend=backend)
+
+        # Blinded simulation, between the client and the server
+        blinded_simulation = backend.state
+        # Clear simulation = no secret, just simulate the circuit defined above
+        clear_simulation = circuit.simulate_statevector()
+        np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+
+        # client.simulate_pattern()
 
 
 
