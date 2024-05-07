@@ -106,28 +106,20 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
             k = rng.choice(gate_choice)
             if k == 0:
                 circuit.ry(j, np.pi / 4)
-                pass
             elif k == 1:
                 circuit.rz(j, -np.pi / 4)
-                pass
             elif k == 2:
                 circuit.rx(j, -np.pi / 4)
-                pass
             elif k == 3:  # H
                 circuit.h(j)
-                pass
             elif k == 4:  # S
                 circuit.s(j)
-                pass
             elif k == 5:  # X
                 circuit.x(j)
-                pass
             elif k == 6:  # Z
                 circuit.z(j)
-                pass
             elif k == 7:  # Y
                 circuit.y(j)
-                pass
             else:
                 pass
     return circuit
