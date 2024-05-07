@@ -11,3 +11,69 @@ profile = "black"
 py_version = 38
 line_length = 120
 wrap_length = 120
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+extend-exclude = ["setup.py", "docs/**.py"]
+
+[tool.ruff.lint]
+pydocstyle.convention = "numpy"
+
+select = [
+    "F",    # Enabled by default
+    "E",    # Enabled by default
+    "W",    # Less-critical version of E
+    "UP",   # Prohibit old styles
+    "B",    # Detect something buggy
+    "A",    # Shadowing builtins
+    "FA",   # Use __future__ for annotations
+    "PIE",  # Misc fix
+    "RSE",  # Prohibit `Exception()`
+    "SLF",  # Private-member access
+    "TCH",  # Lint type checking
+    "ARG",  # Unused args
+    "PL",   # Pylint
+    "NPY",  # Numpy-specific rules
+    "PERF", # Performance
+    "RUF",  # Ruff-specific rules
+
+    # Good rules, but require massive/unsafe fixes
+    # "C90",  # Complexity check
+    # "C4",   # Simplify list/setcomps
+    # "PT",   # Pytest
+    # "RET",  # Tidy up `return`
+    # "SIM",  # Simplify
+]
+ignore = [
+    "E501",   # Line too long (checked by black)
+    "RUF012", # Not annotated in the first place
+
+    # Good rules, but require massive/unsafe fixes
+    "E741",    # Ambiguous variable name
+    "B007",    # Loop control variable not used
+    "PLR2004", # Magic value used in comparison
+    "PLR091",  # Complexity check
+    "PERF401", # Use listcomp
+    "PERF402", # Use list copy
+    "PLW2901", # Overwriting loop variable
+    "RUF005",  # Use splat
+
+    # !!! DANGER !!! Resolve below as soon as possible!
+    "F811",    # Redefinition of unused function
+    "B006",    # Mutable default arg.
+    "A",       # Shadowing builtins
+    "SLF",     # Private-member access
+    "ARG",     # Unused args
+    "PLW0603", # `global` statement
+    "NPY002",  # `np.random` legacy API
+]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/**.py" = [
+    "E402", # Allow Jupyter-style cells
+    "B018", # Allow implicit printing
+]
+"**/__init__.py" = [
+    "F401", # Allow dead imports
+]
