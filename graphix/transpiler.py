@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import Optional, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -1359,7 +1359,7 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: Optional[Statevec] = None) -> SimulateResult:
+    def simulate_statevector(self, input_state: Statevec | None = None) -> SimulateResult:
         """Run statevector simultion of the gate sequence, using graphix.Statevec
 
         Parameters
