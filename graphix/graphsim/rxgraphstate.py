@@ -14,7 +14,12 @@ class RXGraphState(BaseGraphState):
     See :class:`~graphix.graphsim.basegraphstate.BaseGraphState` for more details.
     """
 
-    def __init__(self, nodes: list[int] | None = None, edges: list[tuple[int, int]] | None = None, vops: dict[int, int] | None = None):
+    def __init__(
+        self,
+        nodes: list[int] | None = None,
+        edges: list[tuple[int, int]] | None = None,
+        vops: dict[int, int] | None = None,
+    ):
         """
         Parameters
         ----------

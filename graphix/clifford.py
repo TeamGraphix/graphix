@@ -6,7 +6,6 @@ multiplications, conjugations and Pauli conjugations.
 
 from __future__ import annotations
 
-
 import numpy as np
 
 import graphix.pauli
