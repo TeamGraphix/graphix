@@ -7,15 +7,7 @@ from itertools import product
 import networkx as nx
 import numpy as np
 
-from graphix.gflow import (
-    find_flow,
-    find_gflow,
-    find_pauliflow,
-    get_input_from_flow,
-    verify_flow,
-    verify_gflow,
-    verify_pauliflow,
-)
+from graphix.gflow import find_flow, find_gflow, find_pauliflow, verify_flow, verify_gflow, verify_pauliflow
 from tests.random_circuit import get_rand_circuit
 
 seed = 30

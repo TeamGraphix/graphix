@@ -11,7 +11,6 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 """
 
-import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 

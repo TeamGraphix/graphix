@@ -157,7 +157,7 @@ class TestTranspiler_Opt(unittest.TestCase):
         circuit.h(1)
         circuit.cnot(0, 1)
         circuit.m(0, graphix.pauli.Plane.XY, 0.5)
-        transpile = circuit.transpile()
+        circuit.transpile()
 
         def simulate_and_measure():
             circuit_simulate = circuit.simulate_statevector()
