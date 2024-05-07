@@ -76,7 +76,7 @@ pattern.perform_pauli_measurements(use_rustworkx=True)
 # To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that one of the statevector amplitudes is what it is expected to be:
 
-import time  # noqa: E402
+import time
 
 t1 = time.time()
 tn = pattern.simulate_pattern(backend="tensornetwork")
