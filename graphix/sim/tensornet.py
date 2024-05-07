@@ -317,7 +317,7 @@ class MBQCTensorNet(TensorNetwork):
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
             list of the above, to specify the initial state of each qubit.
         """
-        if type(states) != list:
+        if not isinstance(states, list):
             states = [states] * len(indices)
         for i, ind in enumerate(indices):
             self.add_qubit(ind, state=states[i])
