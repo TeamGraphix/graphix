@@ -2,7 +2,7 @@
 Simulating noisy MBQC
 =====================
 
-:class:`~graphix.density_matrix.DensityMatrix` class (through :class:`~graphix.simulator.PatternSimulator`) 
+:class:`~graphix.density_matrix.DensityMatrix` class (through :class:`~graphix.simulator.PatternSimulator`) \
 allows the simulation of MBQC with customizable noise model.
 
 In this example, we simulate a simple MBQC pattern with various noise models to see their effects.
