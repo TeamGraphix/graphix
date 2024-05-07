@@ -1070,23 +1070,20 @@ class Pattern:
                     if cmd[6] == 0:
                         if include_identity:
                             vops[cmd[1]] = cmd[6]
+                    elif conj:
+                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
                     else:
-                        if conj:
-                            vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
-                        else:
-                            vops[cmd[1]] = cmd[6]
-                else:
-                    if include_identity:
-                        vops[cmd[1]] = 0
+                        vops[cmd[1]] = cmd[6]
+                elif include_identity:
+                    vops[cmd[1]] = 0
             elif cmd[0] == "C":
                 if cmd[2] == 0:
                     if include_identity:
                         vops[cmd[1]] = cmd[2]
+                elif conj:
+                    vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
                 else:
-                    if conj:
-                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
-                    else:
-                        vops[cmd[1]] = cmd[2]
+                    vops[cmd[1]] = cmd[2]
         for out in self.output_nodes:
             if out not in vops.keys():
                 if include_identity:
@@ -2131,7 +2128,7 @@ def cmd_to_qasm3(cmd):
             yield "p(theta" + str(qubit) + ") q" + str(qubit) + ";\n"
             yield "\n"
 
-    elif (name == "X") or (name == "Z"):
+    elif name in ("X", "Z"):
         qubit = cmd[1]
         sdomain = cmd[2]
         yield "// byproduct correction on qubit q" + str(qubit) + "\n"

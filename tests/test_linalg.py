@@ -177,7 +177,7 @@ class TestLinAlg(unittest.TestCase):
                 mat_eliminated, RHS_eliminated, _, _ = mat.forward_eliminate(RHS_input)
                 x, kernel = mat_eliminated.backward_substitute(RHS_eliminated)
                 if x is not None:
-                    self.assertTrue(np.all(x == x))
+                    self.assertTrue(np.all(x == x))  # noqa: PLR0124 (necessary)
                 self.assertEqual(len(kernel), kernel_dim)
 
 
