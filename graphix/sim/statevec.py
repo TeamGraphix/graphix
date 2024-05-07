@@ -14,12 +14,6 @@ import graphix.types
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 
-# Python >= 3.9
-# from collections.abc import Iterable # or use Protocols?
-# https://stackoverflow.com/questions/49427944/typehints-for-sized-iterable-in-python
-# Python >= 3.8
-# typing.Iterable[T]
-
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
@@ -210,7 +204,6 @@ SV_Data = typing.Union[
 class Statevec:
     """Statevector object"""
 
-    # TODO at this stage no need for indices just be careful of the ordering in add_nodes
     def __init__(
         self,
         data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
