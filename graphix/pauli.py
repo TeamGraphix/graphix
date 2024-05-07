@@ -1,6 +1,6 @@
 """
 Pauli gates ± {1,j} × {I, X, Y, Z}
-"""
+"""  # noqa: RUF002 (intentional)
 
 from __future__ import annotations
 
