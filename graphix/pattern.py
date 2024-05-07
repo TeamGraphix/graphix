@@ -315,7 +315,7 @@ class Pattern:
                 node_prop[cmd[1]]["vop"] = cmd[2]
                 node_prop[cmd[1]]["seq"].append(-4)
             elif cmd[0] == "S":
-                raise NotImplementedError()
+                raise NotImplementedError
             else:
                 raise ValueError(f"command {cmd} is invalid!")
         nodes = dict()
