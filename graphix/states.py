@@ -27,9 +27,6 @@ class State(abc.ABC):
         return np.outer(self.get_statevector(), self.get_statevector().conj())
 
 
-# don't turn it into Statevec here
-# Weird not to allow all states?
-# Made it inherit from more generic State class.
 class PlanarState(pydantic.BaseModel, State):
     """Light object used to instantiate backends.
     doesn't cover all possible states but this is

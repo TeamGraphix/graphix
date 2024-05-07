@@ -28,7 +28,6 @@ class TestStatevecBackend(unittest.TestCase):
 
         np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
 
-    # TODO This is a weird test!
     def test_measurement_into_each_XYZ_basis(self):
         n = 3
         k = 0
@@ -36,9 +35,8 @@ class TestStatevecBackend(unittest.TestCase):
         # NOTE weird choice (MINUS is orthogonal to PLUS so zero)
         for state in [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]:
             m_op = np.outer(state.get_statevector(), state.get_statevector().T.conjugate())
-            # print(m_op)
+
             sv = Statevec(nqubit=n)
-            # print(sv)
             sv.evolve(m_op, [k])
             sv.remove_qubit(k)
 

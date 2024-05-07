@@ -194,8 +194,6 @@ class DensityMatrix:
 
         return np.trace(st1.rho)
 
-    # TODO
-    # @property
     def dims(self):
         return self.rho.shape
 

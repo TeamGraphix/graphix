@@ -49,9 +49,8 @@ def rand_dm(dim: int, rank: Optional[int] = None, dm_dtype=True) -> Union[Densit
         Note that setting `dm_dtype=False` allows to generate "density matrices" inconsistent with qubits i.e. with dimensions not being powers of 2.
     """
 
-    # if not provided, use a random value.
     if rank is None:
-        rank = dim  # np.random.randint(1, dim + 1)
+        rank = dim
 
     evals = np.random.rand(rank)
 

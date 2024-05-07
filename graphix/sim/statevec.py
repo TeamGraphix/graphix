@@ -261,7 +261,6 @@ class Statevec:
             if nqubit is not None and nqubit != 0:
                 raise ValueError("nqubit is not null but input state is empty.")
 
-            # warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
             self.psi = np.array(1, dtype=np.complex128)
             # self.Nqubit = 0
         else:
@@ -287,14 +286,11 @@ class Statevec:
                 psi = np.array(input_list)
                 if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
                     raise ValueError("Input state is not normalized")
-                # just reshape
-                # NOTE too many conversions to numpy arrays?
                 self.psi = psi.reshape((2,) * nqubit)
             else:
                 raise TypeError(
                     f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
                 )
-            # self.Nqubit = state.Nqubit
 
     def __repr__(self):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."

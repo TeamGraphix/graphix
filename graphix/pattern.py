@@ -814,10 +814,6 @@ class Pattern:
         connected: set of tuple
                 set of connected edges
         """
-        # TODO modify that by using the graph nx.graph.edges(node)? and cached get_graph()?
-        # like in def get_measurement_order_from_flow(self): with self.get_graph()
-        # FIXME
-        # BUG
 
         connected = set()
         for edge in edges:
@@ -1017,9 +1013,6 @@ class Pattern:
         max_degree = max([i for i in dict(degree).values()])
         return max_degree
 
-    # TODO functools.cache() It is called in get measurement order from (g)flow
-    #
-    # It is called in get measurement order from (g)flow
     def get_graph(self):
         """returns the list of nodes and edges from the command sequence,
         extracted from 'N' and 'E' commands.

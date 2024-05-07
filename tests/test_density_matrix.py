@@ -181,9 +181,6 @@ class TestDensityMatrix(unittest.TestCase):
         assert np.allclose(dm2.rho, expected_dm)
         assert np.allclose(dm2.rho, dm.rho)
 
-        # assert dm.Nqubit == n
-        # assert dm.rho.shape == (2**n, 2**n)
-
     def test_evolve_single_fail(self):
         dm = DensityMatrix(nqubit=2)
         # generate random 4 x 4 unitary matrix
