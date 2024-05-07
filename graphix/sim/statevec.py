@@ -27,7 +27,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
             to be stored in the statevector at a time.
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
+        # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
         self.state = None

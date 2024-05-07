@@ -56,7 +56,7 @@ class TestGenerator(unittest.TestCase):
         pairs = [(0, 1), (1, 2)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
         # transpile into graph
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         # get the graph and generate pattern again with flow algorithm
@@ -74,7 +74,7 @@ class TestGenerator(unittest.TestCase):
         pattern2.standardize()
         pattern2.shift_signals()
         pattern2.minimize_space()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern2.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 

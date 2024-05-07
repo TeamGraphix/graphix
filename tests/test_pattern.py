@@ -6,6 +6,7 @@ import unittest
 import graphix.random_circuit as rc
 import numpy as np
 from graphix.pattern import CommandNode, Pattern
+from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 from parameterized import parameterized
 
@@ -25,10 +26,10 @@ class TestPattern(unittest.TestCase):
         nqubits = 2
         depth = 1
         circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         np.testing.assert_equal(pattern.is_standard(), True)
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -36,10 +37,10 @@ class TestPattern(unittest.TestCase):
         nqubits = 5
         depth = 5
         circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.minimize_space()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -51,14 +52,34 @@ class TestPattern(unittest.TestCase):
         depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+
+    @parameterized.expand(["statevector", "densitymatrix", "tensornetwork"])
+    def test_empty_output_nodes(self, backend):
+        pattern = Pattern(input_nodes=[0])
+        pattern.add(["M", 0, "XY", 0.5, [], []])
+
+        def simulate_and_measure():
+            sim = PatternSimulator(pattern, backend)
+            sim.run()
+            if backend == "statevector":
+                assert sim.state.dims() == ()
+            elif backend == "densitymatrix":
+                assert sim.state.dims() == (1, 1)
+            elif backend == "tensornetwork":
+                assert sim.state.to_statevector().shape == (1,)
+            return sim.results[0]
+
+        nb_shots = 1000
+        nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
+        assert abs(nb_ones - nb_shots / 2) < nb_shots / 20
 
     def test_minimize_space_graph_maxspace_with_flow(self):
         max_qubits = 20
@@ -66,7 +87,7 @@ class TestPattern(unittest.TestCase):
             depth = 5
             pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
             circuit = rc.generate_gate(nqubits, depth, pairs)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.minimize_space()
             np.testing.assert_equal(pattern.max_space(), nqubits + 1)
@@ -75,10 +96,10 @@ class TestPattern(unittest.TestCase):
         nqubits = 2
         depth = 1
         circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.parallelize_pattern()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -87,11 +108,11 @@ class TestPattern(unittest.TestCase):
         depth = 1
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             np.testing.assert_equal(pattern.is_standard(), True)
-            state = circuit.simulate_statevector()
+            state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -103,12 +124,12 @@ class TestPattern(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
-            state = circuit.simulate_statevector()
+            state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -120,12 +141,12 @@ class TestPattern(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
             pattern.minimize_space()
-            state = circuit.simulate_statevector()
+            state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -137,12 +158,12 @@ class TestPattern(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.transpile(opt=True)
+            pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
-            state = circuit.simulate_statevector()
+            state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -154,12 +175,12 @@ class TestPattern(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True)
+            pattern = circuit.standardize_and_transpile(opt=True).pattern
             pattern.standardize(method="global")
             pattern.shift_signals(method="global")
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
-            state = circuit.simulate_statevector()
+            state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -171,10 +192,10 @@ class TestPattern(unittest.TestCase):
         depth = 3
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True)
+            pattern = circuit.standardize_and_transpile(opt=True).pattern
             pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
             pattern.minimize_space()
-            state = circuit.simulate_statevector()
+            state = circuit.simulate_statevector().statevec
             state_mbqc = pattern.simulate_pattern()
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -198,7 +219,7 @@ class TestPattern(unittest.TestCase):
         circuit.h(0)
         swap(circuit, 0, 2)
 
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
@@ -229,7 +250,7 @@ class TestPattern(unittest.TestCase):
         circuit.h(0)
         swap(circuit, 0, 2)
 
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
@@ -292,7 +313,7 @@ class TestLocalPattern(unittest.TestCase):
     def test_no_gate(self):
         n = 3
         circuit = Circuit(n)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         localpattern = pattern.get_local_pattern()
         for node in localpattern.nodes.values():
             np.testing.assert_equal(node.seq, [])
@@ -302,7 +323,7 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rc.generate_gate(nqubits, depth, pairs)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         nodes_ref, edges_ref = pattern.get_graph()
 
         localpattern = pattern.get_local_pattern()
@@ -343,14 +364,14 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             localpattern = pattern.get_local_pattern()
             localpattern.standardize()
             pattern = localpattern.get_pattern()
             np.testing.assert_equal(pattern.is_standard(), True)
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector()
+            state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
     def test_shift_signals(self):
@@ -358,7 +379,7 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             localpattern = pattern.get_local_pattern()
             localpattern.standardize()
             localpattern.shift_signals()
@@ -366,7 +387,7 @@ class TestLocalPattern(unittest.TestCase):
             np.testing.assert_equal(pattern.is_standard(), True)
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector()
+            state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
     def test_standardize_and_shift_signals(self):
@@ -374,12 +395,12 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
+            pattern = circuit.transpile().pattern
             pattern.standardize_and_shift_signals()
             np.testing.assert_equal(pattern.is_standard(), True)
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector()
+            state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
     def test_mixed_pattern_operations(self):
@@ -397,9 +418,9 @@ class TestLocalPattern(unittest.TestCase):
         depth = 2
         for i in range(3):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            state_ref = circuit.simulate_statevector()
+            state_ref = circuit.simulate_statevector().statevec
             for process in processes:
-                pattern = circuit.transpile()
+                pattern = circuit.transpile().pattern
                 for operation in process:
                     if operation[0] == "standardize":
                         pattern.standardize(method=operation[1])
@@ -415,12 +436,12 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile(opt=True)
+            pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="local")
             np.testing.assert_equal(pattern.is_standard(), True)
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector()
+            state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
     def test_opt_transpile_shift_signals(self):
@@ -428,13 +449,13 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile(opt=True)
+            pattern = circuit.transpile(opt=True).pattern
             pattern.standardize(method="local")
             pattern.shift_signals(method="local")
             np.testing.assert_equal(pattern.is_standard(), True)
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector()
+            state_ref = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())), 1)
 
     def test_node_is_standardized(self):
@@ -454,7 +475,7 @@ class TestLocalPattern(unittest.TestCase):
         depth = 4
         for i in range(10):
             circuit = rc.get_rand_circuit(nqubits, depth)
-            localpattern = circuit.transpile().get_local_pattern()
+            localpattern = circuit.transpile().pattern.get_local_pattern()
             result1 = localpattern.is_standard()
             localpattern.standardize()
             result2 = localpattern.is_standard()

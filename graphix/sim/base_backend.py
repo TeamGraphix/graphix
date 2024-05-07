@@ -1,7 +1,35 @@
+import typing
+
 import numpy as np
 
 import graphix.clifford
 import graphix.pauli
+
+
+def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> np.ndarray:
+    op_mat = np.eye(2, dtype=np.complex128) / 2
+    sign = (-1) ** result
+    for i in range(3):
+        op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
+    return op_mat
+
+
+def perform_measure(
+    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng, pr_calc: bool = True
+) -> np.ndarray:
+    vec = plane.polar(angle)
+    if pr_calc:
+        op_mat = op_mat_from_result(vec, False)
+        prob_0 = state.expectation_single(op_mat, qubit)
+        result = rng.rand() > prob_0
+        if result:
+            op_mat = op_mat_from_result(vec, True)
+    else:
+        # choose the measurement result randomly
+        result = np.random.choice([0, 1])
+        op_mat = op_mat_from_result(vec, result)
+    state.evolve_single(op_mat, qubit)
+    return result
 
 
 class Backend:
@@ -28,27 +56,8 @@ class Backend:
             graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
-        vec = measure_update.new_plane.polar(angle)
         loc = self.node_index.index(cmd[1])
-
-        def op_mat_from_result(result: bool) -> np.ndarray:
-            op_mat = np.eye(2, dtype=np.complex128) / 2
-            sign = (-1) ** result
-            for i in range(3):
-                op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
-            return op_mat
-
-        if self.pr_calc:
-            op_mat = op_mat_from_result(False)
-            prob_0 = self.state.expectation_single(op_mat, loc)
-            result = np.random.rand() > prob_0
-            if result:
-                op_mat = op_mat_from_result(True)
-        else:
-            # choose the measurement result randomly
-            result = np.random.choice([0, 1])
-            op_mat = op_mat_from_result(result)
+        result = perform_measure(loc, measure_update.new_plane, angle, self.state, np.random, self.pr_calc)
         self.results[cmd[1]] = result
-        self.state.evolve_single(op_mat, loc)
         self.node_index.remove(cmd[1])
         return loc

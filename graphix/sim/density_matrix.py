@@ -10,8 +10,7 @@ import numpy as np
 import graphix.sim.base_backend
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
-from graphix.linalg_validations import (check_hermitian, check_square,
-                                        check_unit_trace)
+from graphix.linalg_validations import check_hermitian, check_square, check_unit_trace
 from graphix.ops import Ops
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
 
@@ -298,7 +297,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
                 if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
+        # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
         self.state = None

@@ -9,9 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Transpiled circuits can now have "measure" gates, introduced with
+  the `circ.m(qubit, plane, angle)` method.  The measured qubit cannot
+  be used in any subsequent gate.
+- Added `gflow.find_pauliflow`, `gflow.verify_pauliflow` and `pauliflow_from_pattern` methods (#117)
+
 ### Fixed
 
 ### Changed
+
+- The transpiler now returns a `TranspileResult` dataclass: the
+  pattern is available in the `pattern` field, and the field
+  `classical_outputs` contains the index where the classical measures
+  can be found in the `results` array of the simulator.
+
+- The circuit simulator now returns a `SimulateResult` dataclass: the
+  state vector is available in the `statevec` field, and the field
+  `classical_measures` contains the results of the measure gates.
+
+- Patterns are now allowed to measure all their nodes, and have an
+  empty output set.
 
 ## [0.2.11] - 2024-03-16
 
