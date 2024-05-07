@@ -5,7 +5,6 @@ M. Elliot, B. Eastin & C. Caves,
     JPhysA 43, 025301 (2010) and PRA 77, 042307 (2008)
 
 """
-
 from __future__ import annotations
 
 import warnings

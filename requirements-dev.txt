@@ -1,6 +1,5 @@
 # Style
-black==24.4.0
-isort==5.13.2
+black==22.8.0
 
 # Tests
 pytest

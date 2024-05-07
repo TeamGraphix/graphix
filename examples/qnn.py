@@ -8,22 +8,19 @@ to perform binary classification of circles dataset from sklearn.
 
 Firstly, let us import relevant modules:
 """
-
 # %%
 
-from functools import reduce
-from time import time
-
-import matplotlib.pyplot as plt
+from graphix.transpiler import Circuit
 import networkx as nx
 import numpy as np
-import seaborn as sns
-from IPython.display import clear_output
-from matplotlib import cm
-from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 from sklearn.datasets import make_circles
-
-from graphix.transpiler import Circuit
+from scipy.optimize import minimize
+from functools import reduce
+import seaborn as sns
+from matplotlib import cm
+from IPython.display import clear_output
+from time import time
 
 np.random.seed(0)
 

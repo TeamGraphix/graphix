@@ -4,14 +4,13 @@ Simulates MBQC by executing the pattern.
 
 """
 
-import warnings
-
 import numpy as np
 
-from graphix.noise_models import NoiseModel
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
+from graphix.noise_models import NoiseModel
+import warnings
 
 
 class PatternSimulator:
@@ -36,7 +35,7 @@ class PatternSimulator:
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         # check that pattern has output nodes configured
-        # assert len(pattern.output_nodes) > 0
+        assert len(pattern.output_nodes) > 0
 
         if backend == "statevector" and noise_model is None:
             self.noise_model = None
@@ -62,18 +61,12 @@ class PatternSimulator:
         else:
             raise ValueError("Unknown backend.")
         self.pattern = pattern
+        self.results = self.backend.results
+        self.state = self.backend.state
         self.node_index = []
 
     def set_noise_model(self, model):
         self.noise_model = model
-
-    @property
-    def results(self):
-        return self.backend.results
-
-    @property
-    def state(self):
-        return self.backend.state
 
     def run(self):
         """Perform the simulation.

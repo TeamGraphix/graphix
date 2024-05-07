@@ -11,12 +11,11 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 """
 
-import matplotlib.pyplot as plt
+#%%
+from graphix import Circuit
 import networkx as nx
 import numpy as np
-
-# %%
-from graphix import Circuit
+import matplotlib.pyplot as plt
 
 n = 4
 xi = np.random.rand(6)
@@ -30,7 +29,7 @@ for i, (u, v) in enumerate(g.edges):
 for v in g.nodes:
     circuit.rx(v, theta[v])
 
-# %%
+#%%
 # transpile and get the graph state
 
 pattern = circuit.transpile()
@@ -39,13 +38,13 @@ pattern.shift_signals()
 pattern.draw_graph(flow_from_pattern=False)
 
 
-# %%
+#%%
 # perform Pauli measurements and plot the new (minimal) graph to perform the same quantum computation
 
 pattern.perform_pauli_measurements()
 pattern.draw_graph(flow_from_pattern=False)
 
-# %%
+#%%
 # finally, simulate the QAOA circuit
 
 out_state = pattern.simulate_pattern()

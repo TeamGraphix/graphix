@@ -7,7 +7,6 @@
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
 [![Downloads](https://static.pepy.tech/badge/graphix)](https://pepy.tech/project/graphix)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **Graphix** is a measurement-based quantum computing (MBQC) software package, featuring
 - the measurement calculus framework with integrated graphical rewrite rules for Pauli measurement preprocessing

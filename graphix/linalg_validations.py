@@ -1,6 +1,5 @@
-from typing import Union
-
 import numpy as np
+from typing import Union
 
 
 def check_square(matrix: np.ndarray) -> bool:

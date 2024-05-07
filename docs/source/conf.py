@@ -2,8 +2,8 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
-import os
 import sys
+import os
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -57,9 +57,9 @@ html_theme_options = {
 
 sphinx_gallery_conf = {
     # path to your example scripts
-    "examples_dirs": ["../../examples"],
+    "examples_dirs": ["../../examples"], 
     # path to where to save gallery generated output
-    "gallery_dirs": ["gallery"],
+    "gallery_dirs": ["gallery"], 
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
 }

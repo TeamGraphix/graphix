@@ -5,9 +5,7 @@ multiplications, conjugations and Pauli conjugations.
 """
 
 import typing
-
 import numpy as np
-
 import graphix.pauli
 
 # 24 Unique 1-qubit Clifford gates

@@ -1,7 +1,6 @@
 import numpy as np
-
-from graphix.channels import KrausChannel
 from graphix.noise_models.noise_model import NoiseModel
+from graphix.channels import KrausChannel
 
 
 class NoiselessNoiseModel(NoiseModel):

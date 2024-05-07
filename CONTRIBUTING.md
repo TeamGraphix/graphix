@@ -20,16 +20,14 @@ Once created, you'll need to clone the repository, and you can follow below to s
 
 You may want to install additional packages for plotting, testing and code formatting. Specifically, `matplotlib` is necessary to run codes in the `example` folder.
 ```
-   $ pip install black==24.4.0 isort==5.13.2 pytest matplotlib
+   $ pip install "black==22.8.0" pytest matplotlib
 ```
 
-Before comitting the code, make sure to format with `black` and `isort`. As they sometimes have breaking changes (that will trigger error in our CI pipeline even after formatting), we fixed the versions to `black==24.4.0` and `isort==5.13.2` as above. To format a python file, just run
+Before comitting the code, make sure to format with `black`. As `black` sometimes have breaking changes (that will trigger error in our CI pipeline even after formatting), we fixed the version to `black==22.8.0` as above. To format a python file, just run
 ```
-   $ black <file path>
-   $ isort <file path>
+   $ black -l 120 <file path>
 ```
 and you are ready to commit the changes.
-Note that formatter configurations are listed in pyproject.toml.
 
 ## Creating pull request
 

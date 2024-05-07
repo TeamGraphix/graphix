@@ -12,14 +12,12 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 We will simulate the generation of 100-qubit GHZ state.
 Firstly, let us import relevant modules:
 """
-
 # %%
 
-import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
-
 from graphix import Circuit
+import networkx as nx
+import matplotlib.pyplot as plt
 
 n = 100
 print(f"{n}-qubit GHZ state generation")

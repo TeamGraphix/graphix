@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import string
 from copy import deepcopy
 
 import numpy as np
-from numpy.typing import NDArray
 import quimb.tensor as qtn
+from numpy.typing import NDArray
 from quimb.tensor import Tensor, TensorNetwork
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL

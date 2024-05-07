@@ -2,11 +2,9 @@ import unittest
 
 import numpy as np
 from graphix import Circuit
-from graphix.channels import (
-    KrausChannel,
-    depolarising_channel,
-    two_qubit_depolarising_channel,
-)
+from graphix.channels import (KrausChannel, depolarising_channel,
+                              two_qubit_depolarising_channel,
+                              two_qubit_depolarising_tensor_channel)
 from graphix.noise_models.noise_model import NoiseModel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
@@ -88,18 +86,19 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         # Hadamard pattern
         ncirc = Circuit(1)
         ncirc.h(0)
-        self.hadamardpattern = ncirc.transpile().pattern
+        self.hadamardpattern = ncirc.transpile()
 
         # Rz(alpha) pattern
         self.alpha = 2 * np.pi * self.rng.random()
         print(f"alpha is {self.alpha}")
         circ = Circuit(1)
         circ.rz(0, self.alpha)
-        self.rzpattern = circ.transpile().pattern
+        self.rzpattern = circ.transpile()
         self.rz_exact_res = 0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]])
 
     # test noiseless noisy vs noiseless
     def test_noiseless_noisy_hadamard(self):
+
         noiselessres = self.hadamardpattern.simulate_pattern(backend="densitymatrix")
         # noiseless noise model
         noisynoiselessres = self.hadamardpattern.simulate_pattern(
@@ -111,6 +110,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test measurement confuse outcome
     def test_noisy_measure_confuse_hadamard(self):
+
         res = self.hadamardpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=1.0)
         )
@@ -129,6 +129,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     def test_noisy_measure_channel_hadamard(self):
+
         measure_channel_pr = self.rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
@@ -142,6 +143,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test Pauli X error
     def test_noisy_X_hadamard(self):
+
         # x error only
         x_error_pr = self.rng.random()
         print(f"x_error_pr = {x_error_pr}")
@@ -157,6 +159,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test entanglement error
     def test_noisy_entanglement_hadamard(self):
+
         entanglement_error_pr = np.random.rand()
         res = self.hadamardpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr)
@@ -185,6 +188,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test preparation error
     def test_noisy_preparation_hadamard(self):
+
         prepare_error_pr = self.rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
         res = self.hadamardpattern.simulate_pattern(
@@ -195,10 +199,11 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
             res.rho, np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]])
         )
 
-    # Test rz gate
+    ###  Test rz gate
 
     # test noiseless noisy vs noiseless
     def test_noiseless_noisy_rz(self):
+
         noiselessres = self.rzpattern.simulate_pattern(backend="densitymatrix")
         # noiseless noise model or TestNoiseModel() since all probas are 0
         noisynoiselessres = self.rzpattern.simulate_pattern(
@@ -214,6 +219,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test preparation error
     def test_noisy_preparation_rz(self):
+
         prepare_error_pr = self.rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
         res = self.rzpattern.simulate_pattern(
@@ -243,6 +249,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test entanglement error
     def test_noisy_entanglement_rz(self):
+
         entanglement_error_pr = np.random.rand()
         res = self.rzpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr)
@@ -288,6 +295,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     def test_noisy_measure_channel_rz(self):
+
         measure_channel_pr = self.rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
@@ -317,6 +325,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     def test_noisy_X_rz(self):
+
         # x error only
         x_error_pr = self.rng.random()
         print(f"x_error_pr = {x_error_pr}")
@@ -340,6 +349,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     def test_noisy_Z_rz(self):
+
         # z error only
         z_error_pr = self.rng.random()
         print(f"z_error_pr = {z_error_pr}")
@@ -363,6 +373,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     def test_noisy_XZ_rz(self):
+
         # x and z errors
         x_error_pr = self.rng.random()
         print(f"x_error_pr = {x_error_pr}")
@@ -409,6 +420,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
 
     # test measurement confuse outcome
     def test_noisy_measure_confuse_rz(self):
+
         # probability 1 to shift both outcome
         res = self.rzpattern.simulate_pattern(
             backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=1.0)
