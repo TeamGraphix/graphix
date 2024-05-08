@@ -20,7 +20,6 @@ with the pattern, graph or the (generalized-)flow.
 # - Nodes in white are the ones measured in *non-Pauli basis*.
 #
 import numpy as np
-
 from graphix import Circuit
 
 circuit = Circuit(3)
