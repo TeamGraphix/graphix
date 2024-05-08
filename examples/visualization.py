@@ -7,7 +7,6 @@ visualization methods for inspecting the causal structure of the graph associate
 with the pattern, graph or the (generalized-)flow.
 """
 
-import numpy as np
 
 # %%
 # Causal flow
@@ -21,6 +20,7 @@ import numpy as np
 # - Nodes with blue color is the nodes that are measured in *Pauli basis*, one of *X*, *Y* or *Z* computational bases.
 # - Nodes in white are the ones measured in *non-Pauli basis*.
 #
+import numpy as np
 from graphix import Circuit
 
 circuit = Circuit(3)
@@ -29,7 +29,7 @@ circuit.cnot(2, 1)
 circuit.rx(0, np.pi / 3)
 circuit.x(2)
 circuit.cnot(2, 1)
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 # note that this visualization is not always consistent with the correction set of pattern,
 # since we find the correction sets with flow-finding algorithms.
 pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True)
@@ -90,3 +90,5 @@ graph.add_edges_from(edges)
 meas_planes = {0: "XY", 1: "XY", 2: "ZX", 3: "YZ"}
 vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
 vis.visualize(show_measurement_planes=True)
+
+# %%

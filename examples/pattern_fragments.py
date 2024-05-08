@@ -7,22 +7,21 @@ with fewer resource requirement than the standard pattern.
 
 """
 
-import numpy as np
-
 # %%
 # First, for Toffoli gate, here is the pattern based on the decomposition of CCX gate with CNOT and single-qubit rotations,
 # turned into a measurement pattern:
+import numpy as np
 from graphix import Circuit
 
 circuit = Circuit(3)
 circuit.ccx(0, 1, 2)
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.draw_graph(flow_from_pattern=False)
 
 # %%
 # Using :code:`opt=True` option for :code:`transpile` method, we switch to patterns with non-XY plane measurements allowed,
 # which has gflow (not flow). For CCX gate, the number of ancilla qubits required is nearly halved:
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(node_distance=(1.2, 0.8))
 # sphinx_gallery_thumbnail_number = 2
 
@@ -44,7 +43,7 @@ circuit.swap(1, 2)
 circuit.swap(2, 0)
 for i in range(3):
     circuit.rz(i, np.pi / 4)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(flow_from_pattern=False, node_distance=(1, 0.4))
 
 
@@ -61,7 +60,7 @@ circuit.rx(2, np.pi / 3)
 circuit.ccx(3, 1, 2)
 circuit.rx(0, np.pi / 3)
 circuit.rx(3, np.pi / 3)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(flow_from_pattern=False, node_distance=(1, 0.4))
 
 
