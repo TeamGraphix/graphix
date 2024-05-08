@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
-from numpy.random import Generator
+from numpy.random import PCG64, Generator
 
 SEED = 42
 
 
 @pytest.fixture()
 def fx_rng() -> Generator:
-    return np.random.default_rng(SEED)
+    return Generator(PCG64(SEED))
