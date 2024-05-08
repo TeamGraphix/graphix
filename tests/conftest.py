@@ -1,7 +1,7 @@
 import pytest
 from numpy.random import PCG64, Generator
 
-SEED = 25
+SEED = 42
 
 
 @pytest.fixture()

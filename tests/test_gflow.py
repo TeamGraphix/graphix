@@ -297,11 +297,11 @@ def generate_test_graphs() -> list[GraphForTest]:
 
 
 if sys.version_info >= (3, 9):
-    FlowTestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
+    TestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
 else:
-    FlowTestCaseType = Dict[str, Dict[str, Tuple[bool, Dict[int, Set[int]]]]]
+    TestCaseType = Dict[str, Dict[str, Tuple[bool, Dict[int, Set[int]]]]]
 
-FLOW_TEST_CASES: FlowTestCaseType = {
+FLOW_TEST_CASES: TestCaseType = {
     "no measurement": {
         "empty flow": (True, {}),
         "measure output": (False, {1: {2}}),
@@ -319,7 +319,7 @@ FLOW_TEST_CASES: FlowTestCaseType = {
 }
 
 
-GFLOW_TEST_CASES: FlowTestCaseType = {
+GFLOW_TEST_CASES: TestCaseType = {
     "no measurement": {
         "empty flow": (True, {}),
         "measure output": (False, {1: {2}}),
@@ -351,7 +351,7 @@ GFLOW_TEST_CASES: FlowTestCaseType = {
     },
 }
 
-PAULIFLOW_TEST_CASES: FlowTestCaseType = {
+PAULIFLOW_TEST_CASES: TestCaseType = {
     "graph with no flow and no gflow but pauliflow, No.1": {
         "correct pauliflow": (True, {0: {1}, 1: {4}, 2: {3}, 3: {2, 4}}),
         "correct pauliflow 2": (True, {0: {1, 3}, 1: {3, 4}, 2: {3}, 3: {2, 3, 4}}),
@@ -373,15 +373,15 @@ PAULIFLOW_TEST_CASES: FlowTestCaseType = {
 }
 
 if sys.version_info >= (3, 9):
-    FlowTestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
+    TestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
 else:
-    FlowTestDataType = Tuple[GraphForTest, Tuple[bool, Dict[int, Set[int]]]]
+    TestDataType = Tuple[GraphForTest, Tuple[bool, Dict[int, Set[int]]]]
 
 
 def iterate_compatible(
     graphs: Iterable[GraphForTest],
-    cases: FlowTestCaseType,
-) -> Iterator[FlowTestDataType]:
+    cases: TestCaseType,
+) -> Iterator[TestDataType]:
     for g in graphs:
         for k, v in cases.items():
             if g.label != k:
@@ -446,7 +446,7 @@ class TestGflow:
         assert test_graph.gflow_exist == (g is not None)
 
     @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), FLOW_TEST_CASES))
-    def test_verify_flow(self, data: FlowTestDataType) -> None:
+    def test_verify_flow(self, data: TestDataType) -> None:
         test_graph, test_case = data
         expected, flow = test_case
         valid = verify_flow(
@@ -459,7 +459,7 @@ class TestGflow:
         assert expected == valid
 
     @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), GFLOW_TEST_CASES))
-    def test_verify_gflow(self, data: FlowTestDataType) -> None:
+    def test_verify_gflow(self, data: TestDataType) -> None:
         test_graph, test_case = data
         expected, gflow = test_case
 
@@ -473,7 +473,7 @@ class TestGflow:
         assert expected == valid
 
     @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), PAULIFLOW_TEST_CASES))
-    def test_verify_pauliflow(self, data: FlowTestDataType) -> None:
+    def test_verify_pauliflow(self, data: TestDataType) -> None:
         test_graph, test_case = data
         expected, pauliflow = test_case
         angles = test_graph.meas_angles

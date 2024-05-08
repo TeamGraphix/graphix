@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
-import pytest
 
 from graphix import Circuit
 from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
@@ -103,7 +102,6 @@ class TestNoisyDensityMatrixBackend:
         return circ.transpile().pattern
 
     # test noiseless noisy vs noiseless
-    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_noiseless_noisy_hadamard(self) -> None:
         hadamardpattern = self.hpat()
         noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix")
@@ -220,7 +218,6 @@ class TestNoisyDensityMatrixBackend:
     ###  Test rz gate
 
     # test noiseless noisy vs noiseless
-    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_noiseless_noisy_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
         rzpattern = self.rzpat(alpha)
