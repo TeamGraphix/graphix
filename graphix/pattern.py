@@ -16,6 +16,7 @@ from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 from graphix.sim.statevec import StatevectorBackend
+from graphix.states import BasicStates
 
 
 @dataclasses.dataclass
@@ -1376,7 +1377,7 @@ class Pattern:
         client = Client(pattern=self)
         return client.simulate_pattern()
 
-    def simulate_pattern(self, backend="statevector", **kwargs):
+    def simulate_pattern(self, backend=None, **kwargs):
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
@@ -1395,7 +1396,14 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
+
+        # This forces backend reset at each simulation, to avoid continuing with the state of another simulation
+        if backend == None :
+            backend = StatevectorBackend()
+        backend.results = deepcopy(self.results)
         sim = PatternSimulator(self, backend=backend, **kwargs)
+        ## TODO : add this method for all backends
+        backend.prepare_state(nodes=self.input_nodes, data=[BasicStates.PLUS for _ in self.input_nodes])
         state = sim.run()
         return state
 

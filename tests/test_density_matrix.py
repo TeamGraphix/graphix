@@ -848,22 +848,22 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
-        backend.measure(backend.pattern[-3])
-        backend.correct_byproduct(backend.pattern[-2])
-        backend.correct_byproduct(backend.pattern[-1])
-        backend.finalize()
+        backend.measure(pattern[-4])
+        backend.measure(pattern[-3])
+        backend.correct_byproduct(pattern[-2])
+        backend.correct_byproduct(pattern[-1])
+        backend.finalize(output_nodes = pattern.output_nodes)
         rho = backend.state.rho
 
-        backend = StatevectorBackend(pattern)
+        backend = StatevectorBackend()
         # node 0 initialized in Backend
-        backend.add_nodes([1, 2])
+        backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
-        backend.measure(backend.pattern[-3])
-        backend.correct_byproduct(backend.pattern[-2])
-        backend.correct_byproduct(backend.pattern[-1])
+        backend.measure(pattern[-4])
+        backend.measure(pattern[-3])
+        backend.correct_byproduct(pattern[-2])
+        backend.correct_byproduct(pattern[-1])
         backend.finalize(output_nodes=pattern.output_nodes)
         psi = backend.state.psi
 

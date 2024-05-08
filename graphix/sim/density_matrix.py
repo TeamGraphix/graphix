@@ -307,7 +307,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS, measure_method=None):
+    def __init__(self, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS, measure_method=None):
         """
         Parameters
         ----------
@@ -321,19 +321,16 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
                 if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
-        self.pattern = pattern
-        self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
         self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
-        if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc, measure_method)
 
-        # initialize input qubits to desired init_state
-        self.add_nodes(pattern.input_nodes, input_state)
+
+
+    def prepare_state(self, nodes, data) :
+        self.add_nodes(nodes=nodes, input_state=graphix.states.BasicStates.PLUS)
 
     def add_nodes(self, nodes, input_state: Data = graphix.states.BasicStates.PLUS):
         """add new qubit to the internal density matrix

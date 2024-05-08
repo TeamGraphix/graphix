@@ -216,5 +216,40 @@ class TestClient(unittest.TestCase):
 
 
 
+
+
+    def test_flow(self) :
+        # Generate random pattern
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        pattern.standardize(method="global")
+
+        from graphix.gflow import find_flow, find_gflow, flow_from_pattern, gflow_from_pattern
+        import networkx as nx
+        graph = nx.Graph()
+        nodes, edges = pattern.get_graph()
+        graph.add_edges_from(edges)
+        graph.add_nodes_from(nodes)
+
+        g, _ = find_flow(
+            graph=graph,
+            input=set(pattern.input_nodes),
+            output=set(pattern.output_nodes),
+            meas_planes=pattern.get_meas_plane()
+        )
+
+        g_fake, _ = gflow_from_pattern(pattern)
+
+        print(g)        #   >>> {10: {11}, 6: {7}, 9: {10}, 3: {6}, 8: {9}, 5: {8}, 4: {5}, 2: {3}, 1: {4}, 0: {2}}
+
+        print(g_fake)   #   >>> None
+
+
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

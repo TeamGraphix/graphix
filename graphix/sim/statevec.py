@@ -8,6 +8,7 @@ import pydantic
 import warnings
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.states import State
 from graphix.ops import Ops
 import graphix.sim.base_backend
 import graphix.states
@@ -23,52 +24,19 @@ import graphix.types
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(
-        self,
-        pattern,
-        input_state: typing.Union[
-            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
-        ] = graphix.states.BasicStates.PLUS,
-        max_qubit_num=20,
-        pr_calc=True,
-        measure_method=None,
-        prepared_nodes=None
-    ):
-        """
-        Parameters
-        -----------
-        pattern : :class:`graphix.pattern.Pattern` object
-            MBQC pattern to be simulated.
-        backend : str, 'statevector'
-            optional argument for simulation.
-        max_qubit_num : int
-            optional argument specifying the maximum number of qubits
-            to be stored in the statevector at a time.
-        pr_calc : bool
-            whether or not to compute the probability distribution before choosing the measurement result.
-            if False, measurements yield results 0/1 with 50% probabilities each.
-        """
-        # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
-        self.pattern = pattern
-        self.prepared_nodes = prepared_nodes
-        self.results = deepcopy(pattern.results)
+    def __init__(self, max_qubit_num=20, pr_calc=True, measure_method=None):
+        self.max_qubit_num = max_qubit_num
+        super().__init__(pr_calc, measure_method)
         self.state = None
         self.node_index = []
         self.Nqubit = 0
         self.to_trace = []
         self.to_trace_loc = []
-        self.max_qubit_num = max_qubit_num
-        if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-        super().__init__(pr_calc, measure_method)
+        # Modify this
+        self.results = {}
 
-        # Initialize input qubits to desired init_state
-        # If no particular input is prepared by the client, we set the default input to be the input nodes of the pattern
-        if prepared_nodes is None :
-            prepared_nodes = pattern.input_nodes
-
-        self.add_nodes(prepared_nodes, input_state)
+    def prepare_state(self, nodes, data) :
+        self.add_nodes(nodes=nodes, input_state=Statevec(data))
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector

@@ -34,7 +34,6 @@ class TensorNetworkBackend(Backend):
                 Automatically select a preparation strategy based on the max degree of a graph
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
-        self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
         if graph_prep in ["parallel", "sequential"]:
@@ -66,8 +65,11 @@ class TensorNetworkBackend(Backend):
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
-        # initialize input qubits to desired init_state
-        self.add_nodes(pattern.input_nodes)
+
+
+    def prepare_state(self, nodes, data) :
+        self.add_nodes(nodes=nodes)
+
 
     def add_nodes(self, nodes):
         """Add nodes to the network

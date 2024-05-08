@@ -7,6 +7,7 @@ from parameterized import parameterized
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.transpiler import Circuit
+from graphix.sim.statevec import StatevectorBackend
 
 SEED = 42
 rc.set_seed(SEED)
@@ -101,6 +102,7 @@ class TestPattern(unittest.TestCase):
         nqubits = 3
         depth = 3
         for i in range(10):
+            # Important to reset the backend at each iteration!!
             circuit = rc.get_rand_circuit(nqubits, depth)
             pattern = circuit.transpile()
             pattern.standardize(method="global")
@@ -109,6 +111,8 @@ class TestPattern(unittest.TestCase):
             pattern.minimize_space()
             state = circuit.simulate_statevector()
             state_mbqc = pattern.simulate_pattern()
+            pattern.print_pattern()
+            print(state_mbqc)
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     @parameterized.expand([(False), (True)])
