@@ -8,6 +8,7 @@ import graphix.sim.base_backend
 import graphix.sim.statevec
 import graphix.simulator
 from graphix.pauli import Plane
+import graphix.pauli
 from copy import deepcopy
 import typing
 
@@ -88,6 +89,8 @@ class Client:
 
         self.input_nodes = self.initial_pattern.input_nodes.copy()
         self.output_nodes = self.initial_pattern.output_nodes.copy()
+        self.graph = self.initial_pattern.get_graph()
+        self.nodes_list = self.graph[0]
 
         # Copy the pauli-preprocessed nodes' measurement outcomes
         self.results = pattern.results.copy()
@@ -96,7 +99,7 @@ class Client:
         self.measurement_db = pattern.get_measurement_db()
         self.byproduct_db = pattern.get_byproduct_db()
 
-        self.secrets = SecretDatas.from_secrets(secrets, pattern.get_graph(), self.input_nodes, self.output_nodes)
+        self.secrets = SecretDatas.from_secrets(secrets, self.graph, self.input_nodes, self.output_nodes)
 
         pattern_without_flow = pattern.remove_flow()
         self.clean_pattern = self.remove_prepared_nodes(pattern_without_flow)
@@ -114,20 +117,25 @@ class Client:
         return clean_pattern
 
     def blind_qubits(self, backend) :
-        z_rotation = lambda theta : np.array([[1, 0], [0, np.exp(1j*theta)]])
-        for node, theta in self.secrets.theta.items() :
+        z_rotation = lambda theta : np.array([[1, 0], [0, np.exp(1j*theta*np.pi/4)]])
+        x_blind = lambda a, node : graphix.pauli.X if (a == 1 and node in self.input_nodes) else graphix.pauli.I
+        for node in self.nodes_list :
             index = backend.node_index.index(node)
+            theta = self.secrets.theta.get(node, 0)
+            a = self.secrets.a.a.get(node, 0)
+            backend.state.evolve_single(op=x_blind(a, node).matrix, i=index)
             backend.state.evolve_single(op=z_rotation(theta), i=index)
 
     def prepare_states(self, backend) :
         # First prepare inputs
         backend.prepare_state(nodes=self.input_nodes,
                                 data=self.input_state)
+        
         # Then iterate over auxiliaries required to blind
+        # But for UBQC this is the same as iterating the 
         auxiliaries = []
-        for node in self.secrets.theta :
+        for node in self.nodes_list :
             if node not in self.input_nodes :
-            # if node not in self.output_nodes and node not in self.input_nodes :
                 auxiliaries.append(node)
         aux_data = [BasicStates.PLUS for _ in auxiliaries]
         backend.prepare_state(nodes=auxiliaries, data=aux_data)
@@ -139,7 +147,7 @@ class Client:
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
         sim.run()
         self.decode_output_state(backend)
-        return
+        return backend.state
 
 
     def decode_output_state(self, backend):
@@ -162,11 +170,9 @@ class Client:
         z_decoding = 0
         x_decoding = 0
         for z_dep_node in self.byproduct_db[node]['z-domain']:
-            z_decoding += self.results[z_dep_node]
-        z_decoding = z_decoding % 2
+            z_decoding ^= self.results[z_dep_node]
         for x_dep_node in self.byproduct_db[node]['x-domain']:
-            x_decoding += self.results[x_dep_node]
-        x_decoding = x_decoding % 2
+            x_decoding ^= self.results[x_dep_node]
         return z_decoding, x_decoding
 
 

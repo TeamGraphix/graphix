@@ -188,28 +188,27 @@ class TestClient(unittest.TestCase):
 
     def test_oracle_simulation(self) :
         from graphix.sim.statevec_oracle import StatevectorBackend
+        for i in range(10) :
+            # Generate random pattern
+            nqubits = 2
+            depth = 1
+            circuit = rc.get_rand_circuit(nqubits, depth)
+            pattern = circuit.transpile()
+            pattern.standardize(method="global")
 
-        # Generate random pattern
-        nqubits = 2
-        depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
 
 
+            input_state = [PlanarState(angle=0, plane=0) for _ in pattern.input_nodes]
+            client = Client(pattern=pattern, secrets=Secrets(theta=True, r=True, a=True), input_state=input_state)
+            backend = StatevectorBackend(measure_method=client.measure_method)
 
-        input_state = [PlanarState(angle=0, plane=0) for _ in pattern.input_nodes]
-        client = Client(pattern=pattern, secrets=Secrets(theta=True, r=True, a=True), input_state=input_state)
-        backend = StatevectorBackend(measure_method=client.measure_method)
+            # Creates the input state on the backend side, prepares the qubits and delegates the pattern
 
-        # Creates the input state on the backend side, prepares the qubits and delegates the pattern
-        client.delegate_pattern(backend=backend)
-
-        # Blinded simulation, between the client and the server
-        blinded_simulation = backend.state
-        # Clear simulation = no secret, just simulate the circuit defined above
-        clear_simulation = circuit.simulate_statevector()
-        np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+            # Blinded simulation, between the client and the server
+            blinded_simulation = client.delegate_pattern(backend=backend)
+            # Clear simulation = no secret, just simulate the circuit defined above
+            clear_simulation = circuit.simulate_statevector()
+            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
 
         # client.simulate_pattern()
 
