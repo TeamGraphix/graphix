@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import itertools
 import sys
 from typing import TYPE_CHECKING, Dict, NamedTuple, Set, Tuple
 
 import networkx as nx
 import pytest
+from numpy.random import Generator
 
-from graphix.gflow import find_flow, find_gflow, verify_flow, verify_gflow
+from graphix.gflow import (
+    find_flow,
+    find_gflow,
+    find_pauliflow,
+    verify_flow,
+    verify_gflow,
+    verify_pauliflow,
+)
 from tests.random_circuit import get_rand_circuit
 
 if TYPE_CHECKING:
@@ -22,9 +31,11 @@ class GraphForTest(NamedTuple):
     inputs: set[int]
     outputs: set[int]
     meas_planes: dict[int, str]
+    meas_angles: dict[int, float] | None
     label: str
     flow_exist: bool
     gflow_exist: bool
+    pauliflow_exist: bool | None
 
 
 def _graph1() -> GraphForTest:
@@ -45,9 +56,11 @@ def _graph1() -> GraphForTest:
         inputs,
         outputs,
         meas_planes,
+        None,
         "no measurement",
         flow_exist=True,
         gflow_exist=True,
+        pauliflow_exist=None,
     )
 
 
@@ -67,9 +80,11 @@ def _graph2() -> GraphForTest:
         inputs,
         outputs,
         meas_planes,
+        None,
         "line graph with flow and gflow",
         flow_exist=True,
         gflow_exist=True,
+        pauliflow_exist=None,
     )
 
 
@@ -91,9 +106,11 @@ def _graph3() -> GraphForTest:
         inputs,
         outputs,
         meas_planes,
+        None,
         "graph with flow and gflow",
         flow_exist=True,
         gflow_exist=True,
+        pauliflow_exist=None,
     )
 
 
@@ -123,9 +140,11 @@ def _graph4() -> GraphForTest:
         inputs,
         outputs,
         meas_planes,
+        None,
         "graph with gflow but no flow",
         flow_exist=False,
         gflow_exist=True,
+        pauliflow_exist=None,
     )
 
 
@@ -149,9 +168,11 @@ def _graph5() -> GraphForTest:
         inputs,
         outputs,
         meas_planes,
+        None,
         "graph with extended gflow but no flow",
         flow_exist=False,
         gflow_exist=True,
+        pauliflow_exist=None,
     )
 
 
@@ -175,9 +196,96 @@ def _graph6() -> GraphForTest:
         inputs,
         outputs,
         meas_planes,
+        None,
         "graph with no flow and no gflow",
         flow_exist=False,
         gflow_exist=False,
+        pauliflow_exist=None,
+    )
+
+
+def _graph7() -> GraphForTest:
+    # graph with no flow or gflow but pauliflow, No.1
+    #     3
+    #     |
+    #     2
+    #     |
+    # 0 - 1 - 4
+    nodes = [0, 1, 2, 3, 4]
+    edges = [(0, 1), (1, 2), (1, 4), (2, 3)]
+    inputs = {0}
+    outputs = {4}
+    graph = nx.Graph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    meas_planes = {0: "XY", 1: "XY", 2: "XY", 3: "XY"}
+    meas_angles = {0: 0.1, 1: 0, 2: 0.1, 3: 0}
+    return GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        meas_angles,
+        "graph with no flow and no gflow but pauliflow, No.1",
+        flow_exist=False,
+        gflow_exist=False,
+        pauliflow_exist=True,
+    )
+
+
+def _graph8() -> GraphForTest:
+    # graph with no flow or gflow but pauliflow, No.2
+    # 1   2   3
+    # | /     |
+    # 0 - - - 4
+    nodes = [0, 1, 2, 3, 4]
+    edges = [(0, 1), (0, 2), (0, 4), (3, 4)]
+    inputs = {0}
+    outputs = {4}
+    graph = nx.Graph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    meas_planes = {0: "YZ", 1: "XZ", 2: "XY", 3: "YZ"}
+    meas_angles = {0: 0.5, 1: 0, 2: 0.5, 3: 0}
+    return GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        meas_angles,
+        "graph with no flow and no gflow but pauliflow, No.2",
+        flow_exist=False,
+        gflow_exist=False,
+        pauliflow_exist=True,
+    )
+
+
+def _graph9() -> GraphForTest:
+    # graph with no flow or gflow but pauliflow, No.3
+    # 0 - 1 -- 3
+    #    \|   /|
+    #     |\ / |
+    #     | /\ |
+    #     2 -- 4
+    nodes = [0, 1, 2, 3, 4]
+    edges = [(0, 1), (0, 4), (1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]
+    inputs = {0}
+    outputs = {3, 4}
+    graph = nx.Graph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    meas_planes = {0: "YZ", 1: "XZ", 2: "XY"}
+    meas_angles = {0: 0.5, 1: 0.1, 2: 0.5}
+    return GraphForTest(
+        graph,
+        inputs,
+        outputs,
+        meas_planes,
+        meas_angles,
+        "graph with no flow and no gflow but pauliflow, No.3",
+        flow_exist=False,
+        gflow_exist=False,
+        pauliflow_exist=True,
     )
 
 
@@ -189,6 +297,9 @@ def generate_test_graphs() -> list[GraphForTest]:
         _graph4(),
         _graph5(),
         _graph6(),
+        _graph7(),
+        _graph8(),
+        _graph9(),
     ]
 
 
@@ -247,6 +358,27 @@ GFLOW_TEST_CASES: TestCaseType = {
     },
 }
 
+PAULIFLOW_TEST_CASES: TestCaseType = {
+    "graph with no flow and no gflow but pauliflow, No.1": {
+        "correct pauliflow": (True, {0: {1}, 1: {4}, 2: {3}, 3: {2, 4}}),
+        "correct pauliflow 2": (True, {0: {1, 3}, 1: {3, 4}, 2: {3}, 3: {2, 3, 4}}),
+        "incorrect pauliflow": (False, {0: {1}, 1: {2}, 2: {3}, 3: {4}}),
+        "incorrect pauliflow 2": (False, {0: {1, 3}, 1: {3, 4}, 2: {3, 4}, 3: {2, 3, 4}}),
+    },
+    "graph with no flow and no gflow but pauliflow, No.2": {
+        "correct pauliflow": (True, {0: {0, 1}, 1: {1}, 2: {2}, 3: {4}}),
+        "correct pauliflow 2": (True, {0: {0, 1, 2}, 1: {1}, 2: {2}, 3: {1, 2, 4}}),
+        "incorrect pauliflow": (False, {0: {1}, 1: {1, 2}, 2: {2, 3}, 3: {4}}),
+        "incorrect pauliflow 2": (False, {0: {0}, 1: {1}, 2: {3}, 3: {3}}),
+    },
+    "graph with no flow and no gflow but pauliflow, No.3": {
+        "correct pauliflow": (True, {0: {0, 3, 4}, 1: {1, 2}, 2: {4}}),
+        "correct pauliflow 2": (True, {0: {0, 2, 4}, 1: {1, 3}, 2: {2, 3, 4}}),
+        "incorrect pauliflow": (False, {0: {0, 3, 4}, 1: {1}, 2: {3, 4}}),
+        "incorrect pauliflow 2": (False, {0: {0, 3}, 1: {1, 2, 3}, 2: {2, 3, 4}}),
+    },
+}
+
 if sys.version_info >= (3, 9):
     TestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
 else:
@@ -263,6 +395,40 @@ def iterate_compatible(
                 continue
             for vv in v.values():
                 yield (g, vv)
+
+
+class RandomMeasGraph(NamedTuple):
+    graph: nx.Graph
+    vin: set[int]
+    vout: set[int]
+    meas_planes: dict[int, str]
+    meas_angles: dict[int, float]
+
+
+def get_rand_graph(rng: Generator, n_nodes: int, edge_prob: float = 0.3) -> RandomMeasGraph:
+    graph = nx.Graph()
+    nodes = range(n_nodes)
+    graph.add_nodes_from(nodes)
+    edge_candidates = set(itertools.product(nodes, nodes)) - {(i, i) for i in nodes}
+    for edge in edge_candidates:
+        if rng.uniform() < edge_prob:
+            graph.add_edge(*edge)
+
+    input_nodes_number = rng.integers(1, len(nodes) - 1)
+    vin = set(rng.choice(nodes, input_nodes_number, replace=False))
+    output_nodes_number = rng.integers(1, len(nodes) - input_nodes_number)
+    vout = set(rng.choice(list(set(nodes) - vin), output_nodes_number, replace=False))
+
+    meas_planes = {}
+    meas_plane_candidates = ["XY", "XZ", "YZ"]
+    meas_angles = {}
+    meas_angle_candidates = [0, 0.25, 0.5, 0.75]
+
+    for node in set(graph.nodes()) - vout:
+        meas_planes[node] = rng.choice(meas_plane_candidates)
+        meas_angles[node] = rng.choice(meas_angle_candidates)
+
+    return RandomMeasGraph(graph, vin, vout, meas_planes, meas_angles)
 
 
 class TestGflow:
@@ -313,6 +479,23 @@ class TestGflow:
         )
         assert expected == valid
 
+    @pytest.mark.parametrize("data", iterate_compatible(generate_test_graphs(), PAULIFLOW_TEST_CASES))
+    def test_verify_pauliflow(self, data: TestDataType) -> None:
+        test_graph, test_case = data
+        expected, pauliflow = test_case
+        angles = test_graph.meas_angles
+        assert angles is not None
+
+        valid = verify_pauliflow(
+            test_graph.graph,
+            test_graph.inputs,
+            test_graph.outputs,
+            pauliflow,
+            test_graph.meas_planes,
+            angles,
+        )
+        assert expected == valid
+
     def test_with_rand_circ(self, fx_rng: Generator) -> None:
         # test for large graph
         # graph transpiled from circuit always has a flow
@@ -352,3 +535,35 @@ class TestGflow:
         valid = verify_gflow(graph, input_, output, g, meas_planes)
 
         assert valid
+
+    def test_rand_graph_flow(self, fx_rng: Generator) -> None:
+        # test finding algorithm and verification for random graphs
+        n_nodes = 5
+        for _ in range(50):
+            graph, vin, vout, meas_planes, meas_angles = get_rand_graph(fx_rng, n_nodes)
+            f, l_k = find_flow(graph, vin, vout, meas_planes)
+            if f:
+                valid = verify_flow(graph, vin, vout, f, meas_planes)
+                assert valid
+
+    def test_rand_graph_gflow(self, fx_rng: Generator) -> None:
+        # test finding algorithm and verification for random graphs
+        n_nodes = 5
+        for _ in range(50):
+            graph, vin, vout, meas_planes, meas_angles = get_rand_graph(fx_rng, n_nodes)
+
+            g, l_k = find_gflow(graph, vin, vout, meas_planes)
+            if g:
+                valid = verify_gflow(graph, vin, vout, g, meas_planes)
+                assert valid
+
+    def test_rand_graph_pauliflow(self, fx_rng: Generator) -> None:
+        # test finding algorithm and verification for random graphs
+        n_nodes = 5
+        for _ in range(50):
+            graph, vin, vout, meas_planes, meas_angles = get_rand_graph(fx_rng, n_nodes)
+
+            p, l_k = find_pauliflow(graph, vin, vout, meas_planes, meas_angles)
+            if p:
+                valid = verify_pauliflow(graph, vin, vout, p, meas_planes, meas_angles)
+                assert valid
