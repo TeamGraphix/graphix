@@ -32,7 +32,7 @@ circuit = Circuit(3)
 circuit.ccx(0, 1, 2)
 for i in range(3):
     circuit.rz(i, np.pi / 4)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(flow_from_pattern=True, node_distance=(1, 0.5))
 
 # %%
