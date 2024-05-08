@@ -35,7 +35,7 @@ for i in range(1, n):
 # %%
 # Transpile into pattern
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.standardize()
 
 nodes, edges = pattern.get_graph()
@@ -55,3 +55,5 @@ plt.show()
 tn = pattern.simulate_pattern(backend="tensornetwork")
 print(f"The amplitude of |00...0>: {tn.get_basis_amplitude(0)}")
 print(f"The amplitude of |00...0>: {tn.get_basis_amplitude(2**n-1)}")
+
+# %%

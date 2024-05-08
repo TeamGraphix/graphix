@@ -60,7 +60,7 @@ circuit.h(2)
 #%%
 # Now let us transpile into MBQC measurement pattern and inspect the pattern sequence and graph state
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.print_pattern(lim=15)
 pattern.draw_graph(flow_from_pattern=False)
 
@@ -86,7 +86,7 @@ pattern.draw_graph(flow_from_pattern=True)
 # Let us make sure the result is correct:
 
 out_state = pattern.simulate_pattern()
-state = circuit.simulate_statevector()
+state = circuit.simulate_statevector().statevec
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 
 # %%

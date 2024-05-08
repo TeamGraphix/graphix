@@ -38,7 +38,7 @@ circuit.rx(1, theta[1])
 # Now we transpile into measurement pattern using :meth:`~graphix.transpiler.Circuit.transpile` method.
 # This returns :class:`~graphix.pattern.Pattern` object containing measurement pattern:
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.print_pattern(lim=10)
 
 # %%
@@ -89,6 +89,6 @@ circuit.rz(1, theta[2])
 circuit.cnot(1, 0)
 circuit.rz(0, theta[3])
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.draw_graph(flow_from_pattern=False)
 # %%
