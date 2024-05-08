@@ -34,6 +34,14 @@ Pattern Generation
 
     .. automethod:: rz
 
+    .. automethod:: ccx
+
+    .. automethod:: m
+
+.. autoclass:: TranspileResult
+
+.. autoclass:: SimulateResult
+
 :mod:`graphix.generator` module
 +++++++++++++++++++++++++++++++
 
