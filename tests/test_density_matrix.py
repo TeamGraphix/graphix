@@ -864,7 +864,7 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.measure(backend.pattern[-3])
         backend.correct_byproduct(backend.pattern[-2])
         backend.correct_byproduct(backend.pattern[-1])
-        backend.finalize()
+        backend.finalize(output_nodes=pattern.output_nodes)
         psi = backend.state.psi
 
         np.testing.assert_allclose(rho, np.outer(psi, psi.conj()))

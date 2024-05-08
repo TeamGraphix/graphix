@@ -186,7 +186,7 @@ class TensorNetworkBackend(Backend):
         node_op = CLIFFORD[cmd[2]]
         self.state.evolve_single(cmd[1], node_op, "C")
 
-    def finalize(self):
+    def finalize(self, output_nodes):
         pass
 
 

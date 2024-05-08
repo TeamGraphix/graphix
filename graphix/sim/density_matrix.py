@@ -392,9 +392,9 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
                 op = Ops.z
             self.state.evolve_single(op, loc)
 
-    def sort_qubits(self):
+    def sort_qubits(self, output_nodes):
         """sort the qubit order in internal density matrix"""
-        for i, ind in enumerate(self.pattern.output_nodes):
+        for i, ind in enumerate(output_nodes):
             if not self.node_index[i] == ind:
                 move_from = self.node_index.index(ind)
                 self.state.swap((i, move_from))
@@ -422,7 +422,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         indices = [self.node_index.index(i) for i in qargs]
         self.state.apply_channel(channel, indices)
 
-    def finalize(self):
+    def finalize(self, output_nodes):
         """To be run at the end of pattern simulation."""
-        self.sort_qubits()
+        self.sort_qubits(output_nodes)
         self.state.normalize()

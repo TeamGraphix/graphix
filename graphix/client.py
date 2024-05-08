@@ -104,7 +104,7 @@ class Client:
         pattern_without_flow = pattern.remove_flow()
         self.clean_pattern = self.remove_prepared_nodes(pattern_without_flow)
 
-        self.input_state = input_state
+        self.input_state = input_state if input_state!= None else [BasicStates.PLUS for _ in self.input_nodes]
 
 
     def remove_prepared_nodes(self, pattern) :
@@ -146,7 +146,7 @@ class Client:
             a_N_value = self.secrets.a.a_N.get(node, 0)
             output_state.append(BasicStates.PLUS if r_value^a_N_value == 0 else BasicStates.MINUS)
         backend.prepare_state(nodes=self.output_nodes, data=output_state)
-            
+        return backend.state
 
 
     def delegate_pattern(self, backend):
@@ -155,8 +155,8 @@ class Client:
 
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
         sim.run()
-        self.decode_output_state(backend)
-        return backend.state
+        state = self.decode_output_state(backend)
+        return state
 
 
     def decode_output_state(self, backend):
@@ -168,6 +168,7 @@ class Client:
                     backend.state.evolve_single(op=graphix.ops.Ops.z, i=index)
                 if x_decoding:
                     backend.state.evolve_single(op=graphix.ops.Ops.x, i=index)
+        return backend.state
 
     def get_secrets_size(self):
         secrets_size = {}
