@@ -16,20 +16,6 @@ if TYPE_CHECKING:
 
 from numpy.random import PCG64, Generator
 
-deco_jumpskip = pytest.mark.parametrize(
-    ("jumps", "use_rustworkx"),
-    itertools.product(
-        range(1, 11),
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    ),
-)
-
 
 class TestPattern:
     # this fails without behaviour modification
@@ -61,8 +47,8 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @deco_jumpskip
-    def test_minimize_space_with_gflow(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_minimize_space_with_gflow(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -133,8 +119,8 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @deco_jumpskip
-    def test_pauli_measurment(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_pauli_measurment(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -148,8 +134,8 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @deco_jumpskip
-    def test_pauli_measurment_leave_input(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_pauli_measurment_leave_input(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -163,10 +149,8 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    # TODO: Remove after fixed
-    @pytest.mark.skip()
-    @deco_jumpskip
-    def test_pauli_measurment_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_pauli_measurment_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -180,10 +164,8 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    # TODO: Remove after fixed
-    @pytest.mark.skip()
-    @deco_jumpskip
-    def test_pauli_measurment_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_pauli_measurment_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -197,14 +179,12 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    # TODO: Remove after fixed
-    @pytest.mark.skip()
-    @deco_jumpskip
+    @pytest.mark.parametrize("jumps", range(1, 11))
     def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
         self,
         fx_bg: PCG64,
         jumps: int,
-        use_rustworkx: bool,
+        use_rustworkx: bool = True,
     ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
