@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import sys
 from typing import TYPE_CHECKING, Literal
 
@@ -8,7 +7,8 @@ import numpy as np
 import pytest
 
 import graphix.random_circuit as rc
-from graphix.pattern import CommandNode, Pattern, PatternSimulator
+from graphix.pattern import CommandNode, Pattern
+from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.minimize_space()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
@@ -59,7 +59,7 @@ class TestPattern:
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
@@ -102,7 +102,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.parallelize_pattern()
-        state = circuit.simulate_statevector()
+        state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
@@ -225,7 +225,7 @@ class TestPattern:
         circuit.h(0)
         swap(circuit, 0, 2)
 
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
@@ -263,7 +263,7 @@ class TestPattern:
         circuit.h(0)
         swap(circuit, 0, 2)
 
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
@@ -328,7 +328,7 @@ class TestLocalPattern:
     def test_no_gate(self) -> None:
         n = 3
         circuit = Circuit(n)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         localpattern = pattern.get_local_pattern()
         for node in localpattern.nodes.values():
             assert node.seq == []
