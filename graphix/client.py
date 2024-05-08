@@ -128,17 +128,26 @@ class Client:
 
     def prepare_states(self, backend) :
         # First prepare inputs
-        backend.prepare_state(nodes=self.input_nodes,
-                                data=self.input_state)
+        backend.prepare_state(nodes=self.input_nodes, data=self.input_state)
         
         # Then iterate over auxiliaries required to blind
         # But for UBQC this is the same as iterating the 
         auxiliaries = []
         for node in self.nodes_list :
-            if node not in self.input_nodes :
+            if node not in self.input_nodes and node not in self.output_nodes :
                 auxiliaries.append(node)
         aux_data = [BasicStates.PLUS for _ in auxiliaries]
         backend.prepare_state(nodes=auxiliaries, data=aux_data)
+
+        # Prepare outputs
+        output_state = []
+        for node in self.output_nodes :
+            r_value = self.secrets.r.get(node, 0)
+            a_N_value = self.secrets.a.a_N.get(node, 0)
+            output_state.append(BasicStates.PLUS if r_value^a_N_value == 0 else BasicStates.MINUS)
+        backend.prepare_state(nodes=self.output_nodes, data=output_state)
+            
+
 
     def delegate_pattern(self, backend):
         self.prepare_states(backend)        
@@ -167,12 +176,10 @@ class Client:
         return secrets_size
 
     def decode_output(self, node):
-        z_decoding = 0
-        x_decoding = 0
-        for z_dep_node in self.byproduct_db[node]['z-domain']:
-            z_decoding ^= self.results[z_dep_node]
-        for x_dep_node in self.byproduct_db[node]['x-domain']:
-            x_decoding ^= self.results[x_dep_node]
+        z_decoding = np.sum(self.results[z_dep] for z_dep in self.byproduct_db[node]['z-domain'])%2
+        z_decoding ^= self.secrets.r.get(node, 0)
+        x_decoding = np.sum(self.results[x_dep] for x_dep in self.byproduct_db[node]['x-domain'])%2
+        x_decoding ^= self.secrets.a.a.get(node, 0)
         return z_decoding, x_decoding
 
 
