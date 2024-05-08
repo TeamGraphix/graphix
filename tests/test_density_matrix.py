@@ -77,21 +77,22 @@ class TestDensityMatrix:
             # not really a dm since not PSD but ok.
             DensityMatrix(data=data)
 
-    def test_init_without_data_success(self) -> None:
-        for n in range(3):
-            dm = DensityMatrix(nqubit=n)
-            expected_density_matrix = np.outer(np.ones((2,) * n), np.ones((2,) * n)) / 2**n
-            assert dm.Nqubit == n
-            assert dm.rho.shape == (2**n, 2**n)
-            assert np.allclose(dm.rho, expected_density_matrix)
+    @pytest.mark.parametrize("n", range(3))
+    def test_init_without_data_success(self, n: int) -> None:
+        dm = DensityMatrix(nqubit=n)
+        expected_density_matrix = np.outer(np.ones((2,) * n), np.ones((2,) * n)) / 2**n
+        assert dm.Nqubit == n
+        assert dm.rho.shape == (2**n, 2**n)
+        assert np.allclose(dm.rho, expected_density_matrix)
 
-            dm = DensityMatrix(plus_state=False, nqubit=n)
-            expected_density_matrix = np.zeros((2**n, 2**n))
-            expected_density_matrix[0, 0] = 1
-            assert dm.Nqubit == n
-            assert dm.rho.shape == (2**n, 2**n)
-            assert np.allclose(dm.rho, expected_density_matrix)
+        dm = DensityMatrix(plus_state=False, nqubit=n)
+        expected_density_matrix = np.zeros((2**n, 2**n))
+        expected_density_matrix[0, 0] = 1
+        assert dm.Nqubit == n
+        assert dm.rho.shape == (2**n, 2**n)
+        assert np.allclose(dm.rho, expected_density_matrix)
 
+    # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_herm
     def test_init_with_data_success(self) -> None:
         # don't use rand_dm here since want to check
         for n in range(3):
@@ -179,14 +180,15 @@ class TestDensityMatrix:
         with pytest.raises(TypeError):
             dm.tensor(1)
 
-    def test_tensor_without_data_success(self) -> None:
-        for n in range(3):
-            dm_a = DensityMatrix(nqubit=n)
-            dm_b = DensityMatrix(nqubit=n + 1)
-            dm_a.tensor(dm_b)
-            assert dm_a.Nqubit == 2 * n + 1
-            assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
+    @pytest.mark.parametrize("n", range(3))
+    def test_tensor_without_data_success(self, n: int) -> None:
+        dm_a = DensityMatrix(nqubit=n)
+        dm_b = DensityMatrix(nqubit=n + 1)
+        dm_a.tensor(dm_b)
+        assert dm_a.Nqubit == 2 * n + 1
+        assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
 
+    # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_dm
     def test_tensor_with_data_success(self) -> None:
         for n in range(3):
             data_a = randobj.rand_dm(2**n, dm_dtype=False)

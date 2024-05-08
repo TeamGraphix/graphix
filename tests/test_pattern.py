@@ -368,16 +368,18 @@ def swap(circuit: Circuit, a: int, b: int) -> None:
 
 
 class TestLocalPattern:
-    def test_assert_equal_edge(self) -> None:
-        test_case = [
-            [(0, 1), (0, 1), True],
-            [(1, 0), (0, 1), True],
-            [(0, 1), (2, 0), False],
-            [(0, 1), (2, 3), False],
-            [(1, 3), (4, 1), False],
-        ]
-        for test in test_case:
-            assert assert_equal_edge(test[0], test[1]) == test[2]
+    @pytest.mark.parametrize(
+        "test",
+        [
+            ((0, 1), (0, 1), True),
+            ((1, 0), (0, 1), True),
+            ((0, 1), (2, 0), False),
+            ((0, 1), (2, 3), False),
+            ((1, 3), (4, 1), False),
+        ],
+    )
+    def test_assert_equal_edge(self, test: tuple[tuple[int, int], tuple[int, int], bool]) -> None:
+        assert assert_equal_edge(test[0], test[1]) == test[2]
 
     def test_no_gate(self) -> None:
         n = 3
@@ -527,17 +529,20 @@ class TestLocalPattern:
             state_ref = circuit.simulate_statevector().statevec
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    def test_node_is_standardized(self) -> None:
-        ref_sequence = [
-            [[1, 2, 3, -1], True],
-            [[1, 2, 3, -2, -3, -2, -4], True],
-            [[1, -4, 2, -3, -1, 3], False],
-            [[1, 2, 3, -1, -4, 2], False],
-        ]
-        for [seq, ref] in ref_sequence:
-            node = CommandNode(0, seq, [], [], False, [], [])
-            result = node.is_standard()
-            assert result == ref
+    @pytest.mark.parametrize(
+        "test",
+        [
+            ([1, 2, 3, -1], True),
+            ([1, 2, 3, -2, -3, -2, -4], True),
+            ([1, -4, 2, -3, -1, 3], False),
+            ([1, 2, 3, -1, -4, 2], False),
+        ],
+    )
+    def test_node_is_standardized(self, test: tuple[list[int], bool]) -> None:
+        seq, ref = test
+        node = CommandNode(0, seq, [], [], False, [], [])
+        result = node.is_standard()
+        assert result == ref
 
     def test_localpattern_is_standard(self, fx_rng: Generator) -> None:
         nqubits = 5

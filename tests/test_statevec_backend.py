@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from graphix.ops import States
@@ -27,18 +28,18 @@ class TestStatevec:
 
         assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
 
-    def test_measurement_into_each_xyz_basis(self) -> None:
+    @pytest.mark.parametrize("state", [States.plus, States.zero, States.one, States.iplus, States.iminus])
+    def test_measurement_into_each_xyz_basis(self, state: npt.NDArray) -> None:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
-        for state in [States.plus, States.zero, States.one, States.iplus, States.iminus]:
-            m_op = np.outer(state, state.T.conjugate())
-            sv = Statevec(nqubit=n)
-            sv.evolve(m_op, [k])
-            sv.remove_qubit(k)
+        m_op = np.outer(state, state.T.conjugate())
+        sv = Statevec(nqubit=n)
+        sv.evolve(m_op, [k])
+        sv.remove_qubit(k)
 
-            sv2 = Statevec(nqubit=n - 1)
-            assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
+        sv2 = Statevec(nqubit=n - 1)
+        assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
 
     def test_measurement_into_minus_state(self) -> None:
         n = 3
