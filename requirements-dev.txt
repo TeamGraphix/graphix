@@ -4,7 +4,7 @@ isort==5.13.2
 
 # Tests
 pytest
-parameterized
+pytest-mock
 tox
 
 # Optional dependencies
