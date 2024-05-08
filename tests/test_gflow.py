@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict, NamedTuple, Set, Tuple
 
 import networkx as nx
 import pytest
-from numpy.random import PCG64, Generator
+from numpy.random import Generator
 
 from graphix.gflow import find_flow, find_gflow, find_pauliflow, verify_flow, verify_gflow, verify_pauliflow
 from tests.random_circuit import get_rand_circuit
@@ -14,7 +14,8 @@ from tests.random_circuit import get_rand_circuit
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from numpy.random import Generator
+    from numpy.random import PCG64
+
 
 seed = 30
 
