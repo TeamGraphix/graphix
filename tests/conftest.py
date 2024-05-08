@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
