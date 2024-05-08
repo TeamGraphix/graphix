@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-import unittest
+import itertools
 
 import numpy as np
-from graphix.clifford import (CLIFFORD, CLIFFORD_CONJ,
-                              CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE,
-                              CLIFFORD_MUL)
+import numpy.typing as npt
+import pytest
+
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE, CLIFFORD_MUL
 
 
-class TestClifford(unittest.TestCase):
+class TestClifford:
     @staticmethod
-    def classify_pauli(arr):
+    def classify_pauli(arr: npt.NDArray) -> tuple[int, int]:
         """returns the index of Pauli gate with sign for a given 2x2 matrix.
 
         Compare the gate arr with Pauli gates
@@ -28,21 +29,21 @@ class TestClifford(unittest.TestCase):
 
         if np.allclose(CLIFFORD[1], arr):
             return (0, 0)
-        elif np.allclose(-1 * CLIFFORD[1], arr):
+        if np.allclose(-1 * CLIFFORD[1], arr):
             return (0, 1)
-        elif np.allclose(CLIFFORD[2], arr):
+        if np.allclose(CLIFFORD[2], arr):
             return (1, 0)
-        elif np.allclose(-1 * CLIFFORD[2], arr):
+        if np.allclose(-1 * CLIFFORD[2], arr):
             return (1, 1)
-        elif np.allclose(CLIFFORD[3], arr):
+        if np.allclose(CLIFFORD[3], arr):
             return (2, 0)
-        elif np.allclose(-1 * CLIFFORD[3], arr):
+        if np.allclose(-1 * CLIFFORD[3], arr):
             return (2, 1)
-        else:
-            raise ValueError("No Pauli found")
+        msg = "No Pauli found"
+        raise ValueError(msg)
 
     @staticmethod
-    def clifford_index(g):
+    def clifford_index(g: npt.NDArray) -> int:
         """returns the index of Clifford for a given 2x2 matrix.
 
         Compare the gate g with all Clifford gates (up to global phase)
@@ -58,43 +59,36 @@ class TestClifford(unittest.TestCase):
         """
 
         for i in range(24):
+            ci = CLIFFORD[i]
             # normalise global phase
-            if CLIFFORD[i][0, 0] == 0:
-                norm = g[0, 1] / CLIFFORD[i][0, 1]
-            else:
-                norm = g[0, 0] / CLIFFORD[i][0, 0]
+            norm = g[0, 1] / ci[0, 1] if ci[0, 0] == 0 else g[0, 0] / ci[0, 0]
             # compare
-            if np.allclose(CLIFFORD[i] * norm, g):
+            if np.allclose(ci * norm, g):
                 return i
-        raise ValueError("No Clifford found")
+        msg = "No Clifford found"
+        raise ValueError(msg)
 
-    def test_measure(self):
-        for i in range(24):
-            for j in range(3):
-                conj = CLIFFORD[i].conjugate().T
-                pauli = CLIFFORD[j + 1]
-                arr = np.matmul(np.matmul(conj, pauli), CLIFFORD[i])
-                res = self.classify_pauli(arr)
-                assert res == CLIFFORD_MEASURE[i][j]
+    @pytest.mark.parametrize(("i", "j"), itertools.product(range(24), range(3)))
+    def test_measure(self, i: int, j: int) -> None:
+        conj = CLIFFORD[i].conjugate().T
+        pauli = CLIFFORD[j + 1]
+        arr = np.matmul(np.matmul(conj, pauli), CLIFFORD[i])
+        res = self.classify_pauli(arr)
+        assert res == CLIFFORD_MEASURE[i][j]
 
-    def test_multiplication(self):
-        for i in range(24):
-            for j in range(24):
-                arr = np.matmul(CLIFFORD[i], CLIFFORD[j])
-                assert CLIFFORD_MUL[i, j] == self.clifford_index(arr)
+    @pytest.mark.parametrize(("i", "j"), itertools.product(range(24), range(24)))
+    def test_multiplication(self, i: int, j: int) -> None:
+        arr = np.matmul(CLIFFORD[i], CLIFFORD[j])
+        assert CLIFFORD_MUL[i, j] == self.clifford_index(arr)
 
-    def test_conjugation(self):
-        for i in range(24):
-            arr = CLIFFORD[i].conjugate().T
-            assert CLIFFORD_CONJ[i] == self.clifford_index(arr)
+    @pytest.mark.parametrize("i", range(24))
+    def test_conjugation(self, i: int) -> None:
+        arr = CLIFFORD[i].conjugate().T
+        assert CLIFFORD_CONJ[i] == self.clifford_index(arr)
 
-    def test_decomposition(self):
-        for i in range(1, 24):
-            op = np.eye(2)
-            for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
-                op = op @ CLIFFORD[j]
-            assert i == self.clifford_index(op)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    @pytest.mark.parametrize("i", range(1, 24))
+    def test_decomposition(self, i: int) -> None:
+        op = np.eye(2)
+        for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
+            op = op @ CLIFFORD[j]
+        assert i == self.clifford_index(op)

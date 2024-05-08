@@ -3,7 +3,7 @@ black==22.8.0
 
 # Tests
 pytest
-parameterized
+pytest-mock
 tox
 
 # Optional dependencies
