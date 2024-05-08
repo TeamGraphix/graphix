@@ -230,7 +230,7 @@ class Circuit:
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
         pattern = Pattern(input_nodes=input)
-        # pattern.extend([["N", i] for i in range(self.width)])
+        classical_outputs = []
         for instr in self.instruction:
             if instr[0] == "CNOT":
                 ancilla = [Nnode, Nnode + 1]
