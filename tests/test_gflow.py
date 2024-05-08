@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict, NamedTuple, Set, Tuple
 
 import networkx as nx
 import pytest
-from numpy.random import Generator
+from numpy.random import PCG64, Generator
 
 from graphix.gflow import find_flow, find_gflow, find_pauliflow, verify_flow, verify_gflow, verify_pauliflow
 from tests.random_circuit import get_rand_circuit
@@ -529,34 +529,37 @@ class TestGflow:
 
         assert valid
 
-    def test_rand_graph_flow(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 51))
+    def test_rand_graph_flow(self, fx_bg: PCG64, jumps: int) -> None:
         # test finding algorithm and verification for random graphs
+        rng = Generator(fx_bg.jumped(jumps))
         n_nodes = 5
-        for _ in range(50):
-            graph, vin, vout, meas_planes, meas_angles = get_rand_graph(fx_rng, n_nodes)
-            f, l_k = find_flow(graph, vin, vout, meas_planes)
-            if f:
-                valid = verify_flow(graph, vin, vout, f, meas_planes)
-                assert valid
+        graph, vin, vout, meas_planes, meas_angles = get_rand_graph(rng, n_nodes)
+        f, l_k = find_flow(graph, vin, vout, meas_planes)
+        if f:
+            valid = verify_flow(graph, vin, vout, f, meas_planes)
+            assert valid
 
-    def test_rand_graph_gflow(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 51))
+    def test_rand_graph_gflow(self, fx_bg: PCG64, jumps: int) -> None:
         # test finding algorithm and verification for random graphs
+        rng = Generator(fx_bg.jumped(jumps))
         n_nodes = 5
-        for _ in range(50):
-            graph, vin, vout, meas_planes, meas_angles = get_rand_graph(fx_rng, n_nodes)
+        graph, vin, vout, meas_planes, meas_angles = get_rand_graph(rng, n_nodes)
 
-            g, l_k = find_gflow(graph, vin, vout, meas_planes)
-            if g:
-                valid = verify_gflow(graph, vin, vout, g, meas_planes)
-                assert valid
+        g, l_k = find_gflow(graph, vin, vout, meas_planes)
+        if g:
+            valid = verify_gflow(graph, vin, vout, g, meas_planes)
+            assert valid
 
-    def test_rand_graph_pauliflow(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 51))
+    def test_rand_graph_pauliflow(self, fx_bg: PCG64, jumps: int) -> None:
         # test finding algorithm and verification for random graphs
+        rng = Generator(fx_bg.jumped(jumps))
         n_nodes = 5
-        for _ in range(50):
-            graph, vin, vout, meas_planes, meas_angles = get_rand_graph(fx_rng, n_nodes)
+        graph, vin, vout, meas_planes, meas_angles = get_rand_graph(rng, n_nodes)
 
-            p, l_k = find_pauliflow(graph, vin, vout, meas_planes, meas_angles)
-            if p:
-                valid = verify_pauliflow(graph, vin, vout, p, meas_planes, meas_angles)
-                assert valid
+        p, l_k = find_pauliflow(graph, vin, vout, meas_planes, meas_angles)
+        if p:
+            valid = verify_pauliflow(graph, vin, vout, p, meas_planes, meas_angles)
+            assert valid

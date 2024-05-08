@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import sys
 from typing import TYPE_CHECKING, Literal
 
@@ -14,7 +15,21 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from numpy.random import Generator
+from numpy.random import PCG64, Generator
+
+deco_jumpskip = pytest.mark.parametrize(
+    ("jumps", "use_rustworkx"),
+    itertools.product(
+        range(1, 11),
+        [
+            False,
+            pytest.param(
+                True,
+                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
+            ),
+        ],
+    ),
+)
 
 
 class TestPattern:
@@ -47,21 +62,13 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_minimize_space_with_gflow(self, use_rustworkx: bool, fx_rng: Generator) -> None:
+    @deco_jumpskip
+    def test_minimize_space_with_gflow(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
+        circuit = rc.generate_gate(nqubits, depth, pairs, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -113,146 +120,103 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    def test_shift_signals(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 1
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile().pattern
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            assert pattern.is_standard()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        assert pattern.is_standard()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_pauli_measurment(self, use_rustworkx: bool, fx_rng: Generator) -> None:
+    @deco_jumpskip
+    def test_pauli_measurment(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile().pattern
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_pauli_measurment_leave_input(self, use_rustworkx: bool, fx_rng: Generator) -> None:
+    @deco_jumpskip
+    def test_pauli_measurment_leave_input(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile().pattern
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     # TODO: Remove after fixed
     @pytest.mark.skip()
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_pauli_measurment_opt_gate(self, use_rustworkx: bool, fx_rng: Generator) -> None:
+    @deco_jumpskip
+    def test_pauli_measurment_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_rzz=True)
-            pattern = circuit.transpile(opt=True).pattern
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_rzz=True)
+        pattern = circuit.transpile(opt=True).pattern
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     # TODO: Remove after fixed
     @pytest.mark.skip()
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_pauli_measurment_opt_gate_transpiler(self, use_rustworkx: bool, fx_rng: Generator) -> None:
+    @deco_jumpskip
+    def test_pauli_measurment_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True).pattern
-            pattern.standardize(method="global")
-            pattern.shift_signals(method="global")
-            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_rzz=True)
+        pattern = circuit.standardize_and_transpile(opt=True).pattern
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     # TODO: Remove after fixed
     @pytest.mark.skip()
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
+    @deco_jumpskip
     def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
         self,
+        fx_bg: PCG64,
+        jumps: int,
         use_rustworkx: bool,
-        fx_rng: Generator,
     ) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_rzz=True)
-            pattern = circuit.standardize_and_transpile(opt=True).pattern
-            pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_rzz=True)
+        pattern = circuit.standardize_and_transpile(opt=True).pattern
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "use_rustworkx",
@@ -430,51 +394,56 @@ class TestLocalPattern:
         assert edges_check1
         assert edges_check2
 
-    def test_standardize(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_standardize(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile().pattern
-            localpattern = pattern.get_local_pattern()
-            localpattern.standardize()
-            pattern = localpattern.get_pattern()
-            assert pattern.is_standard()
-            pattern.minimize_space()
-            state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector().statevec
-            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        localpattern = pattern.get_local_pattern()
+        localpattern.standardize()
+        pattern = localpattern.get_pattern()
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    def test_shift_signals(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile().pattern
-            localpattern = pattern.get_local_pattern()
-            localpattern.standardize()
-            localpattern.shift_signals()
-            pattern = localpattern.get_pattern()
-            assert pattern.is_standard()
-            pattern.minimize_space()
-            state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector().statevec
-            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        localpattern = pattern.get_local_pattern()
+        localpattern.standardize()
+        localpattern.shift_signals()
+        pattern = localpattern.get_pattern()
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    def test_standardize_and_shift_signals(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_standardize_and_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile().pattern
-            pattern.standardize_and_shift_signals()
-            assert pattern.is_standard()
-            pattern.minimize_space()
-            state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector().statevec
-            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize_and_shift_signals()
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    def test_mixed_pattern_operations(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 4))
+    def test_mixed_pattern_operations(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         processes = [
             [["standardize", "global"], ["standardize", "local"]],
             [["standardize", "local"], ["signal", "global"], ["signal", "local"]],
@@ -487,47 +456,48 @@ class TestLocalPattern:
         ]
         nqubits = 3
         depth = 2
-        for _ in range(3):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            state_ref = circuit.simulate_statevector().statevec
-            for process in processes:
-                pattern = circuit.transpile().pattern
-                for operation in process:
-                    if operation[0] == "standardize":
-                        pattern.standardize(method=operation[1])
-                    elif operation[0] == "signal":
-                        pattern.shift_signals(method=operation[1])
-                assert pattern.is_standard()
-                pattern.minimize_space()
-                state_p = pattern.simulate_pattern()
-                assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
-
-    def test_opt_transpile_standardize(self, fx_rng: Generator) -> None:
-        nqubits = 5
-        depth = 4
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile(opt=True).pattern
-            pattern.standardize(method="local")
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        state_ref = circuit.simulate_statevector().statevec
+        for process in processes:
+            pattern = circuit.transpile().pattern
+            for operation in process:
+                if operation[0] == "standardize":
+                    pattern.standardize(method=operation[1])
+                elif operation[0] == "signal":
+                    pattern.shift_signals(method=operation[1])
             assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector().statevec
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    def test_opt_transpile_shift_signals(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_opt_transpile_standardize(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            pattern = circuit.transpile(opt=True).pattern
-            pattern.standardize(method="local")
-            pattern.shift_signals(method="local")
-            assert pattern.is_standard()
-            pattern.minimize_space()
-            state_p = pattern.simulate_pattern()
-            state_ref = circuit.simulate_statevector().statevec
-            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile(opt=True).pattern
+        pattern.standardize(method="local")
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_opt_transpile_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 5
+        depth = 4
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile(opt=True).pattern
+        pattern.standardize(method="local")
+        pattern.shift_signals(method="local")
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
         "test",
@@ -544,17 +514,18 @@ class TestLocalPattern:
         result = node.is_standard()
         assert result == ref
 
-    def test_localpattern_is_standard(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_localpattern_is_standard(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
-            localpattern = circuit.transpile().pattern.get_local_pattern()
-            result1 = localpattern.is_standard()
-            localpattern.standardize()
-            result2 = localpattern.is_standard()
-            assert not result1
-            assert result2
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        localpattern = circuit.transpile().pattern.get_local_pattern()
+        result1 = localpattern.is_standard()
+        localpattern.standardize()
+        result2 = localpattern.is_standard()
+        assert not result1
+        assert result2
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:

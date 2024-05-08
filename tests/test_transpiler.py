@@ -4,14 +4,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.random import PCG64, Generator
 
 import graphix.pauli
 import graphix.simulator
 import tests.random_circuit as rc
 from graphix.transpiler import Circuit
-
-if TYPE_CHECKING:
-    from numpy.random import Generator
 
 
 class TestTranspilerUnitGates:
@@ -98,30 +96,32 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    def test_ccx(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_ccx(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 4
         depth = 6
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_ccx=True)
-            pattern = circuit.transpile().pattern
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_ccx=True)
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
 
 class TestTranspilerOpt:
-    def test_ccx_opt(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_ccx_opt(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
         nqubits = 4
         depth = 6
-        for _ in range(10):
-            circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, use_ccx=True)
-            circuit.ccx(0, 1, 2)
-            pattern = circuit.transpile(opt=True).pattern
-            pattern.minimize_space()
-            state = circuit.simulate_statevector().statevec
-            state_mbqc = pattern.simulate_pattern()
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit.ccx(0, 1, 2)
+        pattern = circuit.transpile(opt=True).pattern
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_transpile_opt(self, fx_rng: Generator) -> None:
         nqubits = 2
