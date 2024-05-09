@@ -34,6 +34,8 @@ Pattern Generation
 
     .. automethod:: rz
 
+    .. automethod:: ccx
+
     .. automethod:: m
 
 .. autoclass:: TranspileResult
