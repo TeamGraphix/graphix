@@ -14,3 +14,4 @@ graphix/sim/graphix.code-workspace
 graphix/graphix.code-workspace
 *~
 .vscode/settings.json
+graphix/_version.py

@@ -3,4 +3,3 @@ from graphix.graphsim import GraphState
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
 from graphix.transpiler import Circuit
-from graphix.version import __version__
