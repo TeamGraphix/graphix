@@ -4,6 +4,7 @@ black==22.8.0
 # Tests
 pytest
 pytest-mock
+pytest-cov
 tox
 
 # Optional dependencies
