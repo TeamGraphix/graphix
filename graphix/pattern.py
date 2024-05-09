@@ -1942,7 +1942,9 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     else:
         pat = pattern
 
+    output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
+    pat.reorder_output_nodes(output_nodes)
     assert pat.Nnode == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True

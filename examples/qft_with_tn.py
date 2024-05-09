@@ -56,7 +56,7 @@ for i in range(n):
 qft(circuit, n)
 
 # standardize pattern
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.standardize()
 pattern.shift_signals()
 nodes, edges = pattern.get_graph()
@@ -70,9 +70,6 @@ pattern.perform_pauli_measurements(use_rustworkx=True)
 
 
 # %%
-# You can easily check that the below code run without too much load on your computer.
-# Also notice that we have not used :meth:`graphix.pattern.Pattern.minimize_space()`,
-# which we know reduced the burden on the simulator.
 # To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that one of the statevector amplitudes is what it is expected to be:
 

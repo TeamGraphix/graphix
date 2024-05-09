@@ -11,10 +11,10 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 """
 
+# %%
 import networkx as nx
 import numpy as np
 
-# %%
 from graphix import Circuit
 
 n = 4
@@ -32,7 +32,7 @@ for v in g.nodes:
 # %%
 # transpile and get the graph state
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 pattern.draw_graph(flow_from_pattern=False)
@@ -48,7 +48,7 @@ pattern.draw_graph(flow_from_pattern=False)
 # finally, simulate the QAOA circuit
 
 out_state = pattern.simulate_pattern()
-state = circuit.simulate_statevector()
+state = circuit.simulate_statevector().statevec
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 # sphinx_gallery_thumbnail_number = 2
 

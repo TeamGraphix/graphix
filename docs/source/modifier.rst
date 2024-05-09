@@ -10,7 +10,27 @@ Pattern Optimization
 
     .. automethod:: __init__
 
+    .. automethod:: add
+
+    .. automethod:: extend
+
+    .. automethod:: clear
+
+    .. automethod:: replace
+
+    .. automethod:: reorder_output_nodes
+    
+    .. automethod:: reorder_input_nodes
+        
     .. automethod:: simulate_pattern
+
+    .. automethod:: get_max_degree
+
+    .. automethod:: get_angles
+
+    .. automethod:: get_vops
+
+    .. automethod:: connected_nodes
 
     .. automethod:: run_pattern
 

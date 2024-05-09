@@ -24,7 +24,7 @@ circuit.cnot(0, 1)
 # Now we transpile into measurement pattern using :meth:`~graphix.transpiler.Circuit.transpile` method.
 # This returns :class:`~graphix.pattern.Pattern` object containing measurement pattern:
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.print_pattern(lim=30)
 # pattern.draw_graph()
 
