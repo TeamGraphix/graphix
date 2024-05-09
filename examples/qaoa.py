@@ -11,10 +11,10 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 
 """
 
-
 # %%
 import networkx as nx
 import numpy as np
+
 from graphix import Circuit
 
 n = 4
