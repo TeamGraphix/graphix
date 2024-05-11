@@ -25,10 +25,29 @@ classifiers = [
 ]
 requires-python = ">=3.8,<3.12"
 dynamic = ["version"]
-dependencies = {file = ["requirements.txt"]}
-
+dependencies = [
+    "numpy>=1.22,<1.26",
+    "networkx>3.0",
+    "quimb>=1.4.0",
+    "autoray>=0.6.0",
+    "opt_einsum>=3.2",
+    "galois>=0.3.0",
+    "sympy>=1.9",
+    "matplotlib",
+    "pydantic",
+    "scipy",
+]
 [project.optional-dependencies]
-dev = { file = ["requirements-dev.txt"] }
+dev = [
+    "black==24.4.0",
+    "isort==5.13.2",
+    "pytest",
+    "parameterized",
+    "tox",
+    "qiskit>=1.0",
+    "qiskit-aer",
+    "rustworkx",
+]
 extra = ["graphix-ibmq", "graphix-perceval"]
 
 [project.urls]
