@@ -25,34 +25,11 @@ classifiers = [
 ]
 requires-python = ">=3.8,<3.12"
 dynamic = ["version"]
-dependencies = [
-    "numpy>=1.22,<1.26",
-    "networkx>3.0",
-    "quimb>=1.4.0",
-    "autoray>=0.6.0",
-    "opt_einsum>=3.2",
-    "galois>=0.3.0",
-    "sympy>=1.9",
-    "matplotlib",
-    "pydantic",
-    "scipy",
-]
+dependencies = {file = ["requirements.txt"]}
 
 [project.optional-dependencies]
-dev = [
-    "black==24.4.0",
-    "isort==5.13.2",
-    "pytest",
-    "parameterized",
-    "tox",
-    "qiskit>=1.0",
-    "qiskit-aer",
-    "rustworkx",
-]
+dev = { file = ["requirements-dev.txt"] }
 extra = ["graphix-ibmq", "graphix-perceval"]
-
-[tool.setuptools]
-package-dir = { "" = "graphix" }
 
 [project.urls]
 Documentation = "https://graphix.readthedocs.io"
