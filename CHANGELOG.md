@@ -13,6 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [0.2.12] - 2024-05-11
+
+### Added
+
+- Transpiled circuits can now have "measure" gates, introduced with
+  the `circ.m(qubit, plane, angle)` method.  The measured qubit cannot
+  be used in any subsequent gate.
+- Added `gflow.find_pauliflow`, `gflow.verify_pauliflow` and `pauliflow_from_pattern` methods (#117)
+- Pauli-flow finding algorithm (#117)
+- workflow for isort, codecov (#148, #147)
+
+### Fixed
+
+- Fix output node order sorting bug in Pauli preprocessing `measure_pauli` (#145)
+
+### Changed
+
+- The transpiler now returns a `TranspileResult` dataclass: the
+  pattern is available in the `pattern` field, and the field
+  `classical_outputs` contains the index where the classical measures
+  can be found in the `results` array of the simulator.
+- The circuit simulator now returns a `SimulateResult` dataclass: the
+  state vector is available in the `statevec` field, and the field
+  `classical_measures` contains the results of the measure gates.
+- Patterns are now allowed to measure all their nodes, and have an
+  empty output set.
+- Completely migrated to pytest, no `unittest` usage remains (#134)
+
 ## [0.2.11] - 2024-03-16
 
 ### Added
@@ -20,11 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
 - Added `gflow.flow_from_pattern` method.
 - Added noisy MBQC simulation backend.
-    - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
-    - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
-    - `channels` module, defining `KrausChannel` class.
-    - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
-
+  - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
+  - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
+  - `channels` module, defining `KrausChannel` class.
+  - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
 
 ### Fixed
 
