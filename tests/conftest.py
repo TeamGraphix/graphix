@@ -1,7 +1,8 @@
 import pytest
 from numpy.random import PCG64, Generator
-import tests.random_circuit
+
 import graphix.transpiler
+import tests.random_circuit
 
 SEED = 25
 

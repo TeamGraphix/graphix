@@ -1,6 +1,6 @@
 from __future__ import annotations
-import functools
 
+import functools
 import random
 from copy import deepcopy
 from typing import TYPE_CHECKING

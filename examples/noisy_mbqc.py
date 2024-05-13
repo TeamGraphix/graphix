@@ -9,9 +9,10 @@ In this example, we simulate a simple MBQC pattern with various noise models to 
 First, let us import relevant modules and define a pattern
 """
 
+import matplotlib.pyplot as plt
+
 # %%
 import numpy as np
-import matplotlib.pyplot as plt
 
 from graphix import Circuit
 from graphix.channels import KrausChannel, dephasing_channel
