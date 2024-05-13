@@ -16,7 +16,6 @@ import graphix.pauli
 import graphix.sim.base_backend
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.density_matrix import Data, DensityMatrix
 from graphix.sim.statevec import Statevec, SV_Data
 
 
@@ -277,7 +276,6 @@ class Circuit:
         input = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
         pattern = Pattern(input_nodes=input)
-        # pattern.extend([["N", i] for i in range(self.width)])
         classical_outputs = []
         for instr in self.instruction:
             if instr[0] == "CNOT":

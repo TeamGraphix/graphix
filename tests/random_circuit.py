@@ -1,58 +1,56 @@
-from copy import deepcopy
+from __future__ import annotations
+
+import functools
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from graphix.transpiler import Circuit
 
-GLOBAL_SEED = None
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+
+    from numpy.random import Generator
 
 
-def set_seed(seed):
-    global GLOBAL_SEED
-    GLOBAL_SEED = seed
-
-
-def get_rng(seed=None):
-    if seed is not None:
-        return np.random.default_rng(seed)
-    elif seed is None and GLOBAL_SEED is not None:
-        return np.random.default_rng(GLOBAL_SEED)
-    else:
-        return np.random.default_rng()
-
-
-def first_rotation(circuit, nqubits, rng):
+def first_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
 
 
-def mid_rotation(circuit, nqubits, rng):
+def mid_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
         circuit.rz(qubit, rng.random())
 
 
-def last_rotation(circuit, nqubits, rng):
+def last_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
         circuit.rz(qubit, rng.random())
 
 
-def entangler(circuit, pairs):
+def entangler(circuit: Circuit, pairs: Iterable[tuple[int, int]]) -> None:
     for a, b in pairs:
         circuit.cnot(a, b)
 
 
-def entangler_rzz(circuit, pairs, rng):
+def entangler_rzz(circuit: Circuit, pairs: Iterable[tuple[int, int]], rng: Generator) -> None:
     for a, b in pairs:
         circuit.rzz(a, b, rng.random())
 
 
-def generate_gate(nqubits, depth, pairs, use_rzz=False, seed=None):
-    rng = get_rng(seed)
+def generate_gate(
+    nqubits: int,
+    depth: int,
+    pairs: Iterable[tuple[int, int]],
+    rng: Generator,
+    *,
+    use_rzz: bool = False,
+) -> Circuit:
     circuit = Circuit(nqubits)
     first_rotation(circuit, nqubits, rng)
     entangler(circuit, pairs)
-    for k in range(depth - 1):
+    for _ in range(depth - 1):
         mid_rotation(circuit, nqubits, rng)
         if use_rzz:
             entangler_rzz(circuit, pairs, rng)
@@ -62,36 +60,42 @@ def generate_gate(nqubits, depth, pairs, use_rzz=False, seed=None):
     return circuit
 
 
-def genpair(n_qubits, count, rng):
-    pairs = []
-    for i in range(count):
-        choice = [j for j in range(n_qubits)]
-        x = rng.choice(choice)
-        choice.pop(x)
-        y = rng.choice(choice)
-        pairs.append((x, y))
-    return pairs
+def genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int]]:
+    choice = list(range(n_qubits))
+    for _ in range(count):
+        rng.shuffle(choice)
+        x, y = choice[:2]
+        yield (x, y)
 
 
-def gentriplet(n_qubits, count, rng):
-    triplets = []
-    for i in range(count):
-        choice = [j for j in range(n_qubits)]
-        x = rng.choice(choice)
-        choice.pop(x)
-        y = rng.choice(choice)
-        locy = np.where(y == np.array(deepcopy(choice)))[0][0]
-        choice.pop(locy)
-        z = rng.choice(choice)
-        triplets.append((x, y, z))
-    return triplets
+def gentriplet(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int, int]]:
+    choice = list(range(n_qubits))
+    for _ in range(count):
+        rng.shuffle(choice)
+        x, y, z = choice[:3]
+        yield (x, y, z)
 
 
-def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
-    rng = get_rng(seed)
+def get_rand_circuit(
+    nqubits: int,
+    depth: int,
+    rng: Generator,
+    *,
+    use_rzz: bool = False,
+    use_ccx: bool = False,
+) -> Circuit:
     circuit = Circuit(nqubits)
-    gate_choice = [0, 1, 2, 3, 4, 5, 6, 7]
-    for i in range(depth):
+    gate_choice = (
+        functools.partial(circuit.ry, angle=np.pi / 4),
+        functools.partial(circuit.rz, angle=-np.pi / 4),
+        functools.partial(circuit.rx, angle=-np.pi / 4),
+        circuit.h,
+        circuit.s,
+        circuit.x,
+        circuit.z,
+        circuit.y,
+    )
+    for _ in range(depth):
         for j, k in genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
         if use_rzz:
@@ -103,31 +107,5 @@ def get_rand_circuit(nqubits, depth, use_rzz=False, use_ccx=False, seed=None):
         for j, k in genpair(nqubits, 4, rng):
             circuit.swap(j, k)
         for j in range(nqubits):
-            k = rng.choice(gate_choice)
-            if k == 0:
-                circuit.ry(j, np.pi / 4)
-                pass
-            elif k == 1:
-                circuit.rz(j, -np.pi / 4)
-                pass
-            elif k == 2:
-                circuit.rx(j, -np.pi / 4)
-                pass
-            elif k == 3:  # H
-                circuit.h(j)
-                pass
-            elif k == 4:  # S
-                circuit.s(j)
-                pass
-            elif k == 5:  # X
-                circuit.x(j)
-                pass
-            elif k == 6:  # Z
-                circuit.z(j)
-                pass
-            elif k == 7:  # Y
-                circuit.y(j)
-                pass
-            else:
-                pass
+            rng.choice(gate_choice)(j)
     return circuit
