@@ -520,10 +520,7 @@ class TestPatternSim:
         out = randpattern.simulate_pattern(backend="statevector", input_state=states)
 
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
-
-        # MBQC is up to a global phase!
         np.testing.assert_almost_equal(np.abs(np.dot(out.psi.flatten().conjugate(), out_circ.psi.flatten())), 1)
-        # assert np.allclose(out.psi, out_circ.psi)
 
     def test_dm_sim(self):
         pass

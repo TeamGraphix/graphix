@@ -50,8 +50,6 @@ class PatternSimulator:
                 )
             if noise_model is not None:
                 self.set_noise_model(noise_model)
-                # if noise: have to compute the probabilities
-                # NOTE : could remove, pr_calc defaults to True now.
                 self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
@@ -84,9 +82,6 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
-        # use add_nodes or write a new method?
-        # self.backend.initialize_inputs(self.pattern.input_nodes, option, ...)
-        # self.backend.add_nodes(self.pattern.input_nodes, input_state=state)
         if self.noise_model is None:
             for cmd in self.pattern:
                 if cmd[0] == "N":

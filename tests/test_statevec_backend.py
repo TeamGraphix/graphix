@@ -31,11 +31,10 @@ class TestStatevec:
         sv2.normalize()
 
         assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
-
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )
-    def test_measurement_into_each_xyz_basis(self, state: BasicStates) -> None:
+    def test_measurement_into_each_XYZ_basis(self, state: BasicStates) -> None:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
@@ -67,14 +66,12 @@ class TestStatevecNew:
         backend = StatevectorBackend(hadamardpattern)
         vec = Statevec(nqubit=1)
         assert np.allclose(vec.psi, backend.state.psi)
-        # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
         # minus state
         backend = StatevectorBackend(hadamardpattern, input_state=BasicStates.MINUS)
         vec = Statevec(nqubit=1, data=BasicStates.MINUS)
         assert np.allclose(vec.psi, backend.state.psi)
-        # assert backend.state.Nqubit == 1
         assert len(backend.state.dims()) == 1
 
         # random planar state
@@ -90,11 +87,6 @@ class TestStatevecNew:
         # data input and Statevec input
 
     def test_init_fail(self, hadamardpattern, fx_rng: Generator):
-        # incorrect number of dimensions for State input
-        # only one input node, two states provided
-        # doesn't fail! just takes the first qubit!
-        # Discard second qubit so can be whatever
-
         rand_angle = fx_rng.random(2) * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), 2)
 

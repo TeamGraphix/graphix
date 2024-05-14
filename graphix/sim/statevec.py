@@ -255,7 +255,7 @@ class Statevec:
                 raise ValueError("nqubit is not null but input state is empty.")
 
             self.psi = np.array(1, dtype=np.complex128)
-            # self.Nqubit = 0
+
         else:
             if isinstance(input_list[0], graphix.states.State):
                 graphix.types.check_list_elements(input_list, graphix.states.State)

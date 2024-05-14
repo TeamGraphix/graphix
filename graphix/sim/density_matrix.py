@@ -343,8 +343,6 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
                 if False, measurements yield results 0/1 with 50% probabilities each.
             input_state: same syntax as `graphix.statevec.DensityMatrix` constructor.
         """
-        # check that pattern has output nodes configured
-        # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         self.results = deepcopy(pattern.results)
         self.state = None
