@@ -17,7 +17,6 @@ class TestStatevec(unittest.TestCase):
         # set up the random numbers
         self.rng = np.random.default_rng()  # seed=422
 
-
     # test injitializing one qubit in plus state
     def test_default_success(self):
         vec = Statevec(nqubit=1)
