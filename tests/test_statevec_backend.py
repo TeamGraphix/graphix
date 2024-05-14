@@ -31,6 +31,7 @@ class TestStatevec:
         sv2.normalize()
 
         assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
+
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )
