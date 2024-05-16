@@ -768,34 +768,22 @@ class TestDensityMatrix(unittest.TestCase):
 class DensityMatrixBackendTest(unittest.TestCase):
     """Test for DensityMatrixBackend class."""
 
-    def test_init_fail(self):
-        with self.assertRaises(TypeError):
-            DensityMatrixBackend()
-
     def test_init_success(self):
-        circ = Circuit(1)
-        circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
-        backend = DensityMatrixBackend(pattern)
-        assert backend.pattern == pattern
-        assert backend.results == pattern.results
-        assert backend.node_index == [0]
-        assert backend.Nqubit == 1
+        backend = DensityMatrixBackend(max_qubit_num=12)
+        backend.add_nodes([0, 1, 2])
+        assert backend.node_index == [0, 1, 2]
+        assert backend.Nqubit == 3
         assert backend.max_qubit_num == 12
 
     def test_add_nodes(self):
-        circ = Circuit(1)
-        pattern = circ.transpile()
-        backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([1])
-        expected_matrix = np.array([0.25] * 16).reshape(4, 4)
+        backend = DensityMatrixBackend()
+        backend.add_nodes([0])
+        expected_matrix = np.array([0.5] * 4).reshape(2, 2)
         np.testing.assert_allclose(backend.state.rho, expected_matrix)
 
     def test_entangle_nodes(self):
-        circ = Circuit(1)
-        pattern = circ.transpile()
-        backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([1])
+        backend = DensityMatrixBackend()
+        backend.add_nodes([0, 1])
         backend.entangle_nodes((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
         np.testing.assert_allclose(backend.state.rho, expected_matrix)
@@ -808,11 +796,11 @@ class DensityMatrixBackendTest(unittest.TestCase):
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile()
 
-        backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([1, 2])
+        backend = DensityMatrixBackend()
+        backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
+        backend.measure(pattern[-4])
 
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
@@ -824,11 +812,11 @@ class DensityMatrixBackendTest(unittest.TestCase):
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile()
 
-        backend = DensityMatrixBackend(pattern, pr_calc=True)
-        backend.add_nodes([1, 2])
+        backend = DensityMatrixBackend(pr_calc=True)
+        backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
+        backend.measure(pattern[-4])
 
         # 3-qubit linear graph state: |+0+> + |-1->
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
@@ -843,9 +831,9 @@ class DensityMatrixBackendTest(unittest.TestCase):
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile()
 
-        backend = DensityMatrixBackend(pattern)
+        backend = DensityMatrixBackend()
         # node 0 initialized in Backend
-        backend.add_nodes([1, 2])
+        backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(pattern[-4])

@@ -142,7 +142,7 @@ class TestTN(unittest.TestCase):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
         pattern = circuit.transpile()
-        tn_mbqc = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern), graph_prep="sequential")
+        tn_mbqc = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern, graph_prep="sequential"))
         random_op3 = random_op(3)
         input = [0, 1, 2]
         for qargs in itertools.permutations(input):
@@ -178,7 +178,7 @@ class TestTN(unittest.TestCase):
         circuit = Circuit(3)
         state = circuit.simulate_statevector()
         pattern = circuit.transpile()
-        tn_mbqc = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern), graph_prep="sequential")
+        tn_mbqc = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern, graph_prep="sequential"))
         random_op2 = random_op(2)
         input = [0, 1, 2]
         for qargs in itertools.permutations(input, 2):
@@ -347,7 +347,7 @@ class TestTN(unittest.TestCase):
             pattern.shift_signals()
             pattern.perform_pauli_measurements()
             state = circuit.simulate_statevector()
-            tn_mbqc = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern), graph_prep="sequential")
+            tn_mbqc = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern, graph_prep="sequential"))
             random_op3 = random_op(3)
             input = [0, 1, 2]
             for qargs in itertools.permutations(input):

@@ -311,8 +311,6 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """
         Parameters
         ----------
-            pattern : :class:`graphix.pattern.Pattern` object
-                Pattern to be simulated.
             max_qubit_num : int
                 optional argument specifying the maximum number of qubits
                 to be stored in the statevector at a time.
@@ -325,6 +323,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.node_index = []
         self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
+        self.results = {}
         super().__init__(pr_calc, measure_method)
 
 
