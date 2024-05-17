@@ -5,14 +5,46 @@ Simulates MBQC by executing the pattern.
 """
 
 import numpy as np
-
-import graphix.sim.base_backend
-from graphix.sim.density_matrix import DensityMatrixBackend
-from graphix.sim.statevec import StatevectorBackend
-from graphix.sim.tensornet import TensorNetworkBackend
+import dataclasses
+import abc
+import graphix.sim.statevec, graphix.sim.density_matrix, graphix.sim.tensornet
 from graphix.noise_models import NoiseModel
 from graphix.states import PlanarState
 import warnings
+
+@dataclasses.dataclass
+class MeasurementDescription:
+    plane: graphix.pauli.Plane
+    angle: float
+
+
+class MeasureMethod(abc.ABC):
+    @abc.abstractmethod
+    def get_measurement_description(self, cmd) -> MeasurementDescription:
+        ...
+
+    @abc.abstractmethod
+    def set_measure_result(self, cmd, result: bool) -> None:
+        ...
+
+class DefaultMeasureMethod(MeasureMethod):
+    def get_measurement_description(self, cmd, results) -> MeasurementDescription:
+        angle = cmd[3] * np.pi
+        # extract signals for adaptive angle
+        s_signal = np.sum(results[j] for j in cmd[4])
+        t_signal = np.sum(results[j] for j in cmd[5])
+        if len(cmd) == 7:
+            vop = cmd[6]
+        else:
+            vop = 0
+        measure_update = graphix.pauli.MeasureUpdate.compute(
+            graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+        )
+        angle = angle * measure_update.coeff + measure_update.add_term
+        return MeasurementDescription(measure_update.new_plane, angle)
+
+    def set_measure_result(self, node, result: bool) -> None:
+        pass
 
 class PatternSimulator:
     """MBQC simulator
@@ -20,7 +52,7 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend="statevector", noise_model=None, **kwargs):
+    def __init__(self, pattern, backend="statevector", noise_model=None, measure_method=None, **kwargs):
         """
         Parameters
         -----------
@@ -43,12 +75,12 @@ class PatternSimulator:
             assert kwargs == dict()
             self.backend = backend
         elif backend == "statevector":
-            self.backend = StatevectorBackend(pattern, **kwargs)
+            self.backend = graphix.sim.statevec.StatevectorBackend(pattern, **kwargs)
         elif backend == "densitymatrix":
-            self.backend = DensityMatrixBackend(pattern, **kwargs)
+            self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pattern, **kwargs)
             if noise_model is None:
                 self.noise_model = None
-                self.backend = DensityMatrixBackend(pattern, **kwargs)
+                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pattern, **kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
                 )
@@ -56,20 +88,24 @@ class PatternSimulator:
                 self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities
                 # NOTE : could remove, pr_calc defaults to True now.
-                self.backend = DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
+                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
-            self.backend = TensorNetworkBackend(pattern, **kwargs)
+            self.backend = graphix.sim.tensornet.TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("Unknown backend.")
         self.set_noise_model(noise_model)
         self.pattern = pattern
         self.results = self.backend.results
         self.state = self.backend.state
+        if measure_method :
+            self.measure_method = measure_method
+        else :
+            self.measure_method = DefaultMeasureMethod()
         self.node_index = []
 
     def set_noise_model(self, model):
-        if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
+        if not isinstance(self.backend, graphix.sim.density_matrix.DensityMatrixBackend) and model is not None:
             self.noise_model = None # if not initialized yet
             raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
@@ -97,7 +133,9 @@ class PatternSimulator:
                 elif cmd[0] == "E":
                     self.backend.entangle_nodes(cmd[1])
                 elif cmd[0] == "M":
-                    self.backend.measure(cmd)
+                    measurement_description = self.measure_method.get_measurement_description(cmd, self.results) if not isinstance(self.backend, graphix.sim.tensornet.TensorNetworkBackend) else cmd
+                    result = self.backend.measure(node=cmd[1], measurement_description = measurement_description)
+                    self.measure_method.set_measure_result(node=cmd[1], result=result)
                 elif cmd[0] == "X":
                     self.backend.correct_byproduct(cmd)
                 elif cmd[0] == "Z":
@@ -119,8 +157,10 @@ class PatternSimulator:
                     self.backend.entangle_nodes(cmd[1])  # for some reaon entangle doesn't get the whole command
                     self.backend.apply_channel(self.noise_model.entangle(), cmd[1])
                 elif cmd[0] == "M":  # apply channel before measuring, then measur and confuse_result
+                    measurement_description = self.measure_method.get_measurement_description(cmd, self.results) if not isinstance(self.backend, graphix.sim.tensornet.TensorNetworkBackend) else cmd
                     self.backend.apply_channel(self.noise_model.measure(), [cmd[1]])
-                    self.backend.measure(cmd)
+                    result = self.backend.measure(node=cmd[1], measurement_description = measurement_description)
+                    self.measure_method.set_measure_result(node=cmd[1], result=result)
                     self.noise_model.confuse_result(cmd)
                 elif cmd[0] == "X":
                     self.backend.correct_byproduct(cmd)

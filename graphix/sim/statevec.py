@@ -24,9 +24,9 @@ import graphix.types
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, max_qubit_num=20, pr_calc=True, measure_method=None):
+    def __init__(self, max_qubit_num=20, pr_calc=True):
         self.max_qubit_num = max_qubit_num
-        super().__init__(pr_calc, measure_method)
+        super().__init__(pr_calc)
         self.state = None
         self.node_index = []
         self.Nqubit = 0
@@ -76,7 +76,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, cmd):
+    def measure(self, node, measurement_description):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -84,9 +84,10 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         cmd : list
             measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        loc = self._perform_measure(cmd)
+        loc, result = self._perform_measure(node, measurement_description)
         self.state.remove_qubit(loc)
         self.Nqubit -= 1
+        return result
 
     def correct_byproduct(self, cmd):
         """Byproduct correction

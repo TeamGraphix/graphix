@@ -8,7 +8,6 @@ from copy import deepcopy
 import networkx as nx
 import numpy as np
 import graphix
-from graphix.client import Client
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -1373,9 +1372,6 @@ class Pattern:
                 N_list.append(nodes)
         return N_list
 
-    def simulate_pattern_delegated(self):
-        client = Client(pattern=self)
-        return client.simulate_pattern()
 
     def simulate_pattern(self, backend=None, **kwargs):
         """Simulate the execution of the pattern by using

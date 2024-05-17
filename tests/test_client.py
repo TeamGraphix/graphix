@@ -5,7 +5,7 @@ import graphix
 import tests.random_circuit as rc
 import numpy as np
 from graphix.client import Client, Secrets, ClientMeasureMethod
-from graphix.sim.statevec_oracle import StatevectorBackend, Statevec
+from graphix.sim.statevec import StatevectorBackend, Statevec
 from graphix.simulator import PatternSimulator
 from graphix.states import PlanarState, BasicStates
 import graphix.pauli
@@ -49,11 +49,11 @@ class TestClient(unittest.TestCase):
 
             state = circuit.simulate_statevector()
 
+            backend = StatevectorBackend()
             # Initialize the client
             secrets = Secrets(r=True)
             # Giving it empty will create a random secret
             client = Client(pattern=pattern, secrets=secrets)
-            backend = StatevectorBackend(measure_method=client.measure_method)
             state_mbqc = client.delegate_pattern(backend=backend)
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
@@ -73,7 +73,7 @@ class TestClient(unittest.TestCase):
 
             # Create the client with the input state
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
-            backend = StatevectorBackend(measure_method=client.measure_method)
+            backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
             blinded_simulation = client.delegate_pattern(backend=backend)
 
@@ -97,7 +97,7 @@ class TestClient(unittest.TestCase):
 
             # Create the client with the input state
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
-            backend = StatevectorBackend(measure_method=client.measure_method)
+            backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
             blinded_simulation= client.delegate_pattern(backend=backend)
 
@@ -118,7 +118,7 @@ class TestClient(unittest.TestCase):
         secrets = Secrets(r=True)
         # Giving it empty will create a random secret
         client = Client(pattern=pattern, secrets=secrets)
-        backend = StatevectorBackend(measure_method=client.measure_method)
+        backend = StatevectorBackend()
         _backend_state = client.delegate_pattern(backend=backend)
 
         for measured_node in client.measurement_db:
@@ -148,7 +148,7 @@ class TestClient(unittest.TestCase):
             # Create the client with the input state
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
 
-            backend = StatevectorBackend(measure_method=client.measure_method)
+            backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
             blinded_simulation = client.delegate_pattern(backend=backend)
             # Clear simulation = no secret, just simulate the circuit defined above
@@ -187,65 +187,6 @@ class TestClient(unittest.TestCase):
         Simulateur = pilote, donne les instructions à exécuter
         décorréler client, serveur (simulateur) et monde physique (backend)
         """
-
-    def test_oracle_simulation(self) :
-        from graphix.sim.statevec_oracle import StatevectorBackend
-        for _ in range(10) :
-            # Generate random pattern
-            nqubits = 2
-            depth = 1
-            circuit = rc.get_rand_circuit(nqubits, depth)
-            pattern = circuit.transpile()
-            pattern.standardize(method="global")
-
-
-
-            input_state = [BasicStates.PLUS for _ in pattern.input_nodes]
-            client = Client(pattern=pattern, secrets=Secrets(theta=True, r=True, a=True), input_state=input_state)
-            backend = StatevectorBackend(measure_method=client.measure_method)
-
-            # Creates the input state on the backend side, prepares the qubits and delegates the pattern
-
-            # Blinded simulation, between the client and the server
-            blinded_simulation = client.delegate_pattern(backend=backend)
-            # Clear simulation = no secret, just simulate the circuit defined above
-            clear_simulation = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
-
-        # client.simulate_pattern()
-
-
-
-
-
-    def test_flow(self) :
-        # Generate random pattern
-        nqubits = 2
-        depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
-
-        from graphix.gflow import find_flow, find_gflow, flow_from_pattern, gflow_from_pattern
-        import networkx as nx
-        graph = nx.Graph()
-        nodes, edges = pattern.get_graph()
-        graph.add_edges_from(edges)
-        graph.add_nodes_from(nodes)
-
-        g, _ = find_flow(
-            graph=graph,
-            input=set(pattern.input_nodes),
-            output=set(pattern.output_nodes),
-            meas_planes=pattern.get_meas_plane()
-        )
-
-        g_fake, _ = gflow_from_pattern(pattern)
-
-        print(g)        #   >>> {10: {11}, 6: {7}, 9: {10}, 3: {6}, 8: {9}, 5: {8}, 4: {5}, 2: {3}, 1: {4}, 0: {2}}
-
-        print(g_fake)   #   >>> None
-
 
 
 

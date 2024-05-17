@@ -15,7 +15,7 @@ from graphix.linalg_validations import check_square, check_hermitian, check_unit
 from graphix.channels import KrausChannel
 from graphix.ops import Ops
 from graphix.clifford import CLIFFORD
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+import graphix.sim.statevec
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types
@@ -23,7 +23,7 @@ import graphix.types
 Data = typing.Union[
     graphix.states.State,
     "DensityMatrix",
-    Statevec,
+    graphix.sim.statevec.Statevec,
     typing.Iterable[graphix.states.State],
     typing.Iterable[numbers.Number],
     typing.Iterable[typing.Iterable[numbers.Number]],
@@ -72,7 +72,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
                     assert check_psd(self.rho)
                     self.Nqubit = self.rho.shape[0].bit_length() - 1
                     return
-        statevec = Statevec(data, nqubit)
+        statevec = graphix.sim.statevec.Statevec(data, nqubit)
         self.rho = np.outer(statevec.psi, statevec.psi.conj())
         self.Nqubit = len(statevec.dims())
 
@@ -198,7 +198,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
                 Edge to apply CNOT gate.
         """
 
-        self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
+        self.evolve(graphix.sim.statevec.CNOT_TENSOR.reshape(4, 4), edge)
 
     def swap(self, edge):
         """swap qubits
@@ -209,7 +209,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
                 (control, target) qubits indices.
         """
 
-        self.evolve(SWAP_TENSOR.reshape(4, 4), edge)
+        self.evolve(graphix.sim.statevec.SWAP_TENSOR.reshape(4, 4), edge)
 
     def entangle(self, edge):
         """connect graph nodes
@@ -220,7 +220,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
                 (control, target) qubit indices.
         """
 
-        self.evolve(CZ_TENSOR.reshape(4, 4), edge)
+        self.evolve(graphix.sim.statevec.CZ_TENSOR.reshape(4, 4), edge)
 
     def normalize(self):
         """normalize density matrix"""
@@ -307,7 +307,7 @@ class DensityMatrix(graphix.sim.base_backend.Backend):
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS, measure_method=None):
+    def __init__(self, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
         """
         Parameters
         ----------
@@ -324,7 +324,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
         self.results = {}
-        super().__init__(pr_calc, measure_method)
+        super().__init__(pr_calc)
 
 
 
@@ -362,7 +362,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, cmd):
+    def measure(self, node, measurement_description):
         """Perform measurement on the specified node and trase out the qubit.
 
         Parameters
@@ -370,10 +370,11 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             cmd : list
                 measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        loc = self._perform_measure(cmd)
+        loc, result = self._perform_measure(node, measurement_description)
         self.state.normalize()
         # perform ptrace right after the measurement (destructive measurement).
         self.state.ptrace(loc)
+        return result
 
     def correct_byproduct(self, cmd):
         """Byproduct correction

@@ -12,6 +12,7 @@ from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
 import graphix.states
+import graphix.simulator
 
 class TestDensityMatrix(unittest.TestCase):
     """Test for DensityMatrix class."""
@@ -800,7 +801,12 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(pattern[-4])
+
+        measure_cmd = pattern[-4]
+        node = measure_cmd[1]
+        measure_method = graphix.simulator.DefaultMeasureMethod()
+        measure_description = measure_method.get_measurement_description(measure_cmd, backend.results)
+        result = backend.measure(node, measure_description)
 
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
@@ -816,7 +822,11 @@ class DensityMatrixBackendTest(unittest.TestCase):
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(pattern[-4])
+        measure_cmd = pattern[-4]
+        node = measure_cmd[1]
+        measure_method = graphix.simulator.DefaultMeasureMethod()
+        measure_description = measure_method.get_measurement_description(measure_cmd, backend.results)
+        result = backend.measure(node, measure_description)
 
         # 3-qubit linear graph state: |+0+> + |-1->
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
@@ -832,12 +842,18 @@ class DensityMatrixBackendTest(unittest.TestCase):
         pattern = circ.transpile()
 
         backend = DensityMatrixBackend()
+        measure_method = graphix.simulator.DefaultMeasureMethod()
         # node 0 initialized in Backend
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(pattern[-4])
-        backend.measure(pattern[-3])
+
+        measure_description = measure_method.get_measurement_description(cmd=pattern[-4], results=backend.results)
+        result = backend.measure(node=pattern[-4][1], measurement_description=measure_description)
+
+        measure_description = measure_method.get_measurement_description(cmd=pattern[-3], results=backend.results)
+        result = backend.measure(node=pattern[-3][1], measurement_description=measure_description)
+        
         backend.correct_byproduct(pattern[-2])
         backend.correct_byproduct(pattern[-1])
         backend.finalize(output_nodes = pattern.output_nodes)
@@ -845,11 +861,17 @@ class DensityMatrixBackendTest(unittest.TestCase):
 
         backend = StatevectorBackend()
         # node 0 initialized in Backend
+        pattern.print_pattern()
         backend.add_nodes([0, 1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(pattern[-4])
-        backend.measure(pattern[-3])
+        
+        measure_description = measure_method.get_measurement_description(cmd=pattern[-4], results=backend.results)
+        result = backend.measure(node=pattern[-4][1], measurement_description=measure_description)
+
+        measure_description = measure_method.get_measurement_description(cmd=pattern[-3], results=backend.results)
+        result = backend.measure(node=pattern[-3][1], measurement_description=measure_description)
+        
         backend.correct_byproduct(pattern[-2])
         backend.correct_byproduct(pattern[-1])
         backend.finalize(output_nodes=pattern.output_nodes)

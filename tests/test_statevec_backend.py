@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from graphix import Circuit
 from graphix.states import BasicStates, PlanarState
-from graphix.sim.statevec_oracle import Statevec, StatevectorBackend
+from graphix.sim.statevec import Statevec, StatevectorBackend
 import graphix.pauli
 from tests.test_graphsim import meas_op
 class TestStatevec(unittest.TestCase):
@@ -65,7 +65,6 @@ class TestStatevecNew(unittest.TestCase):
     # test initialization only
     def test_init_success(self):
 
-        from graphix.sim.statevec_oracle import StatevectorBackend
         # plus state (default)
         state = BasicStates.PLUS
         vec = Statevec(nqubit=1, data=state)
@@ -99,7 +98,6 @@ class TestStatevecNew(unittest.TestCase):
 
     
     def test_init_fail(self):
-        from graphix.sim.statevec_oracle import StatevectorBackend
         # Fails if number of qubits doesn't match the dimension of the state asked to prepare
         # number of qubits is in len(nodes) or backend.prepare_states(nodes, data)
         # dimension is in len(data)

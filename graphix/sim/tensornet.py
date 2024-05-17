@@ -120,16 +120,19 @@ class TensorNetworkBackend(Backend):
         elif self.graph_prep == "opt":
             pass
 
-    def measure(self, cmd):
+    def measure(self, node, measurement_description):
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
         Parameters
         ----------
-        cmd : list
-            measurement command
-            i.e. ['M', node, plane angle, s_domain, t_domain]
+        node : int
+            node to measure
+        measurement_description : list
+            = cmd i.e. ['M', node, plane angle, s_domain, t_domain]
         """
+        # TODO : change this behaviour
+        cmd = measurement_description
         if cmd[1] in self._isolated_nodes:
             vector = self.state.get_open_tensor_from_index(cmd[1])
             probs = np.abs(vector) ** 2

@@ -131,7 +131,6 @@ class Client:
         backend.prepare_state(nodes=self.input_nodes, data=self.input_state)
         
         # Then iterate over auxiliaries required to blind
-        # But for UBQC this is the same as iterating the 
         auxiliaries = []
         for node in self.nodes_list :
             if node not in self.input_nodes and node not in self.output_nodes :
@@ -153,7 +152,7 @@ class Client:
         self.prepare_states(backend)        
         self.blind_qubits(backend)
 
-        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern)
+        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
         sim.run()
         state = self.decode_output_state(backend)
         return state
@@ -185,12 +184,12 @@ class Client:
 
 
 
-class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
+class ClientMeasureMethod(graphix.simulator.MeasureMethod):
     def __init__(self, client: Client):
         self.__client = client
 
 
-    def get_measurement_description(self, cmd, results) -> graphix.sim.base_backend.MeasurementDescription:
+    def get_measurement_description(self, cmd, results) -> graphix.simulator.MeasurementDescription:
         node = cmd[1]
 
         parameters = self.__client.measurement_db[node]
@@ -210,10 +209,10 @@ class ClientMeasureMethod(graphix.sim.base_backend.MeasureMethod):
         angle = angle * measure_update.coeff + measure_update.add_term
         angle = (-1)**a_value * angle + theta_value*np.pi/4 + np.pi * (r_value + a_N_value)
         # angle = angle * measure_update.coeff + measure_update.add_term
-        return graphix.sim.base_backend.MeasurementDescription(measure_update.new_plane, angle)
+        return graphix.simulator.MeasurementDescription(measure_update.new_plane, angle)
+        # return graphix.sim.base_backend.MeasurementDescription(measure_update.new_plane, angle)
 
-    def set_measure_result(self, cmd, result: bool) -> None:
-        node = cmd[1]
+    def set_measure_result(self, node, result: bool) -> None:
         if self.__client.secrets.r:
             result ^= self.__client.secrets.r[node]
         self.__client.results[node] = result
