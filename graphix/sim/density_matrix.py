@@ -343,6 +343,8 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             input_state: same syntax as `graphix.statevec.DensityMatrix` constructor.
         """
         self.pattern = pattern
+        if pattern._pauli_preprocessed and not input_state != graphix.states.BasicStates.PLUS:
+            raise ValueError("Pauli preprocessing is currently only available when inputs are initialized in |+> state")
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []

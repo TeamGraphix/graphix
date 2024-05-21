@@ -41,6 +41,8 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         # check that pattern has output nodes configured
         # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
+        if pattern._pauli_preprocessed and input_state != graphix.states.BasicStates.PLUS:
+            raise ValueError("Pauli preprocessing is currently only available when inputs are initialized in |+> state")
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
