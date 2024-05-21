@@ -7,12 +7,12 @@ import numpy as np
 import pytest
 
 import graphix.ops
+import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
-import graphix.sim.base_backend
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
