@@ -3,7 +3,6 @@
 Simulate MBQC with density matrix representation.
 """
 
-import functools
 import numbers
 import typing
 from copy import deepcopy
@@ -15,9 +14,9 @@ import graphix.states
 import graphix.types
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
-from graphix.linalg_validations import check_hermitian, check_psd, check_square, check_unit_trace
+from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, meas_op
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
 Data = typing.Union[
     graphix.states.State,

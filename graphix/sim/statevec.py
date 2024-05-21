@@ -1,17 +1,15 @@
 import functools
 import numbers
 import typing
-import warnings
 from copy import deepcopy
 
 import numpy as np
-import pydantic
 
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 
 
