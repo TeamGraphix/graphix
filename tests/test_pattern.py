@@ -12,6 +12,7 @@ import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
+import graphix.sim.base_backend
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -122,7 +123,11 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
+    def test_pauli_measurement_random_circuit(
+        self, fx_bg: PCG64, jumps: int, backend: graphix.sim.base_backend.Backend, use_rustworkx: bool = True
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -133,11 +138,16 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        state_mbqc = pattern.simulate_pattern(backend)
+        if backend == "statevector":
+            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        elif backend == "densitymatrix":
+            assert np.allclose(state_mbqc.rho, graphix.sim.density_matrix.DensityMatrix(state.flatten()).rho)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_leave_input(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_leave_input_random_circuit(
+        self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -152,7 +162,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -167,7 +177,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -182,7 +192,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
+    def test_pauli_measurement_opt_gate_transpiler_without_signalshift(
         self,
         fx_bg: PCG64,
         jumps: int,
