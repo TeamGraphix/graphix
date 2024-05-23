@@ -12,18 +12,6 @@ from graphix.command import N, M
 SEED = 42
 rc.set_seed(SEED)
 
-import time
-import warnings
-
-
-def get_time_exec(fun, args=[]):
-    t1 = time.time()
-    warnings.warn(f"================== {args} =====================")
-    ret = fun(*args)
-    t2 = time.time()
-    return (ret, t2 - t1)
-
-
 class TestPattern(unittest.TestCase):
     # this fails without behaviour modification
     def test_manual_generation(self):
@@ -77,16 +65,9 @@ class TestPattern(unittest.TestCase):
             depth = 5
             pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
             circuit = rc.generate_gate(nqubits, depth, pairs)
-            (pattern, time_transpile) = get_time_exec(circuit.transpile)
-            warnings.warn(f"time transpilation = {time_transpile}")
-            # pattern = circuit.transpile()
-            (_, time_standardize) = get_time_exec(pattern.standardize, ["global"])
-            warnings.warn(f"time standardize = {time_standardize}")
-            # pattern.standardize(method="global")
-            (_, time_minimize_space) = get_time_exec(pattern.minimize_space)
-            warnings.warn(f"time minimize space = {time_minimize_space}")
-            # pattern.minimize_space()
-            warnings.warn(f"==================================")
+            pattern = circuit.transpile()
+            pattern.standardize(method="global")
+            pattern.minimize_space()
             np.testing.assert_equal(pattern.max_space(), nqubits + 1)
 
     def test_parallelize_pattern(self):

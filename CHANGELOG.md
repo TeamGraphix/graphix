@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [0.2.12] - 2024-03-23
+
+### Added
+
+- Added classes for the pattern commands and circuit instructions. It has been done for data validation, readability and maintainability purposes. All the commands and instructions were represented in raw inside lists which allowed wrong datas passed, but also made it difficult to turn the code into a more general way to build commands and instructions.
+  - Added `class Command` and all its child classes that represent all the pattern commands.
+  - Added `class Instruction` for the quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
+
+### Fixed
+
+### Changed
+
+- Made all the updates inside the files making use of the commands and instructions list representation.
+
 ## [0.2.11] - 2024-03-16
 
 ### Added

@@ -16,14 +16,6 @@ from graphix.visualization import GraphVisualizer
 from graphix import command
 
 import time
-import warnings
-
-
-def get_time_exec(fun, args=[]):
-    t1 = time.time()
-    ret = fun(*args)
-    t2 = time.time()
-    return (ret, t2 - t1)
 
 
 class NodeAlreadyPrepared(Exception):
@@ -349,15 +341,9 @@ class Pattern:
             localpattern.standardize()
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
-            (_, time_move_N) = get_time_exec(self._move_N_to_left)
-            warnings.warn(f"time_move_N = {time_move_N}")
-            # self._move_N_to_left()
-            (_, time_move_byproduct) = get_time_exec(self._move_byproduct_to_right)
-            warnings.warn(f"time move byproduct = {time_move_byproduct}")
-            # self._move_byproduct_to_right()
-            (_, time_move_E) = get_time_exec(self._move_E_after_N)
-            warnings.warn(f"time move E = {time_move_E}")
-            # self._move_E_after_N()
+            self._move_N_to_left()
+            self._move_byproduct_to_right()
+            self._move_E_after_N()
         else:
             raise ValueError("Invalid method")
 
@@ -1187,16 +1173,10 @@ class Pattern:
             self.standardize()
         meas_order = None
         if not self._pauli_preprocessed:
-            (meas_order, time_meas_order) = get_time_exec(self.get_measurement_order_from_flow)
-            warnings.warn(f"time meas order = {time_meas_order}")
-            # meas_order = self.get_measurement_order_from_flow()
+            meas_order = self.get_measurement_order_from_flow()
         if meas_order is None:
-            (meas_order, time_meas_order) = get_time_exec(self._measurement_order_space)
-            warnings.warn(f"time meas order = {time_meas_order}")
-            # meas_order = self._measurement_order_space()
-        (_, time_reorder) = get_time_exec(self._reorder_pattern, [self.sort_measurement_commands(meas_order)])
-        warnings.warn(f"time reorder pattern = {time_reorder}")
-        # self._reorder_pattern(self.sort_measurement_commands(meas_order))
+            meas_order = self._measurement_order_space()
+        self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
     def _reorder_pattern(self, meas_commands: list[command.M]):
         """internal method to reorder the command sequence
