@@ -1,7 +1,7 @@
 """Data validator command classes."""
 
 from pydantic import BaseModel
-from typing import Union, Literal
+from typing import Union, Literal, List, Tuple
 import enum
 
 Node = int
@@ -45,8 +45,8 @@ class M(Command):
     node: Node
     plane: Plane = "XY"
     angle: float = 0.0
-    s_domain: list[Node] = []
-    t_domain: list[Node] = []
+    s_domain: List[Node] = []
+    t_domain: List[Node] = []
     vop: int = 0
 
 
@@ -56,7 +56,7 @@ class E(Command):
     """
 
     kind: CommandKind = CommandKind.E
-    nodes: tuple[Node, Node]
+    nodes: Tuple[Node, Node]
 
 
 class C(Command):
@@ -76,7 +76,7 @@ class Correction(Command):
     """
 
     node: Node
-    domain: list[Node] = []
+    domain: List[Node] = []
 
 
 class X(Correction):
@@ -102,7 +102,7 @@ class S(Command):
 
     kind: CommandKind = CommandKind.S
     node: Node
-    domain: list[Node] = []
+    domain: List[Node] = []
 
 
 class T(Command):

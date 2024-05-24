@@ -129,7 +129,7 @@ class TestNoisyDensityMatrixBackend:
         # arbitrary probability
         measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
-        res = self.hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate_pattern(
             backend="densitymatrix", noise_model=NoiseModelTester(measure_error_prob=measure_error_pr)
         )
         # result should be |1>

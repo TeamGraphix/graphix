@@ -17,8 +17,6 @@ if TYPE_CHECKING:
 
 from numpy.random import PCG64, Generator
 
-SEED = 42
-rc.set_seed(SEED)
 
 class TestPattern():
     # this fails without behaviour modification
@@ -69,7 +67,7 @@ class TestPattern():
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
     def test_empty_output_nodes(self, backend: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
         pattern = Pattern(input_nodes=[0])
-        pattern.add(["M", 0, "XY", 0.5, [], []])
+        pattern.add(M(node=0, angle=0.5))
 
         def simulate_and_measure():
             sim = PatternSimulator(pattern, backend)

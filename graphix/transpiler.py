@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List, Tuple
 import numpy as np
 
 import graphix.pauli
@@ -31,7 +31,7 @@ class TranspileResult:
     """
 
     pattern: Pattern
-    classical_outputs: tuple[int, ...]
+    classical_outputs: Tuple[int, ...]
 
 
 @dataclasses.dataclass
@@ -44,7 +44,7 @@ class SimulateResult:
     """
 
     statevec: Statevec
-    classical_measures: tuple[int, ...]
+    classical_measures: Tuple[int, ...]
 
 
 @dataclasses.dataclass
@@ -57,7 +57,7 @@ class TranspileResult:
     """
 
     pattern: Pattern
-    classical_outputs: tuple[int, ...]
+    classical_outputs: Tuple[int, ...]
 
 
 @dataclasses.dataclass
@@ -70,7 +70,7 @@ class SimulateResult:
     """
 
     statevec: Statevec
-    classical_measures: tuple[int, ...]
+    classical_measures: Tuple[int, ...]
 
 
 class Circuit:
@@ -94,7 +94,7 @@ class Circuit:
             number of logical qubits for the gate network
         """
         self.width = width
-        self.instruction: list[instruction.Instruction] = []
+        self.instruction: List[instruction.Instruction] = []
         self.active_qubits = set(range(width))
 
     def cnot(self, control: int, target: int):
@@ -286,7 +286,7 @@ class Circuit:
         angle : float
         """
         assert qubit in self.active_qubits
-        self.instruction.append(["M", qubit, plane, angle])
+        self.instruction.append(instruction.M(target=qubit, plane=plane, angle=angle))
         self.active_qubits.remove(qubit)
 
     def transpile(self, opt: bool = False) -> TranspileResult:
@@ -411,8 +411,15 @@ class Circuit:
                     )
                     pattern.extend(seq)
                     Nnode += 18
+            elif kind == instruction.InstructionKind.M:
+                node_index = out[instr.target]
+                seq = self._m_command(instr.target, instr.plane, instr.angle)
+                pattern.extend(seq)
+                classical_outputs.append(node_index)
+                out[instr.target] = None
             else:
                 raise ValueError("Unknown instruction, commands not added")
+        out = filter(lambda node: node is not None, out)
         pattern.reorder_output_nodes(out)
         return TranspileResult(pattern, tuple(classical_outputs))
 
@@ -430,12 +437,12 @@ class Circuit:
         --------
         pattern : :class:`graphix.pattern.Pattern` object
         """
-        self._N: list[N] = []
+        self._N: List[N] = []
         # for i in range(self.width):
         #    self._N.append(["N", i])
-        self._M: list[M] = []
-        self._E: list[E] = []
-        self._instr: list[instruction.Instruction] = []
+        self._M: List[M] = []
+        self._E: List[E] = []
+        self._instr: List[instruction.Instruction] = []
         Nnode = self.width
         inputs = [j for j in range(self.width)]
         out = [j for j in range(self.width)]
@@ -698,8 +705,8 @@ class Circuit:
         bpx_added = dict()
         bpz_added = dict()
         # byproduct command buffer
-        z_cmds: list[command.Z] = []
-        x_cmds: list[command.X] = []
+        z_cmds: List[command.Z] = []
+        x_cmds: List[command.X] = []
         for i in range(len(self._instr)):
             instr = self._instr[i]
             if instr.kind == instruction.InstructionKind.XC:
@@ -944,32 +951,52 @@ class Circuit:
                 target = self._find_byproduct_to_move(rev=True, skipnum=moved)
                 continue
             next_instr = self._instr[target + 1]
-            match next_instr.kind:
-                case instruction.InstructionKind.CNOT:
-                    target = self._commute_with_cnot(target)
-                case instruction.InstructionKind.SWAP:
-                    target = self._commute_with_swap(target)
-                case instruction.InstructionKind.H:
-                    self._commute_with_H(target)
-                case instruction.InstructionKind.S:
-                    target = self._commute_with_S(target)
-                case instruction.InstructionKind.RX:
-                    self._commute_with_Rx(target)
-                case instruction.InstructionKind.RY:
-                    self._commute_with_Ry(target)
-                case instruction.InstructionKind.RZ:
-                    self._commute_with_Rz(target)
-                case instruction.InstructionKind.RZZ:
-                    self._commute_with_Rzz(target)
-                case _:
-                    # Pauli gates commute up to global phase.
-                    self._commute_with_following(target)
+            # match next_instr.kind:
+            #     case instruction.InstructionKind.CNOT:
+            #         target = self._commute_with_cnot(target)
+            #     case instruction.InstructionKind.SWAP:
+            #         target = self._commute_with_swap(target)
+            #     case instruction.InstructionKind.H:
+            #         self._commute_with_H(target)
+            #     case instruction.InstructionKind.S:
+            #         target = self._commute_with_S(target)
+            #     case instruction.InstructionKind.RX:
+            #         self._commute_with_Rx(target)
+            #     case instruction.InstructionKind.RY:
+            #         self._commute_with_Ry(target)
+            #     case instruction.InstructionKind.RZ:
+            #         self._commute_with_Rz(target)
+            #     case instruction.InstructionKind.RZZ:
+            #         self._commute_with_Rzz(target)
+            #     case _:
+            #         # Pauli gates commute up to global phase.
+            #         self._commute_with_following(target)
+            kind = next_instr.kind
+            if kind == instruction.InstructionKind.CNOT:
+                target = self._commute_with_cnot(target)
+            elif kind == instruction.InstructionKind.SWAP:
+                target = self._commute_with_swap(target)
+            elif kind == instruction.InstructionKind.H:
+                self._commute_with_H(target)
+            elif kind == instruction.InstructionKind.S:
+                target = self._commute_with_S(target)
+            elif kind == instruction.InstructionKind.RX:
+                self._commute_with_Rx(target)
+            elif kind == instruction.InstructionKind.RY:
+                self._commute_with_Ry(target)
+            elif kind == instruction.InstructionKind.RZ:
+                self._commute_with_Rz(target)
+            elif kind == instruction.InstructionKind.RZZ:
+                self._commute_with_Rzz(target)
+            else:
+                # Pauli gates commute up to global phase.
+                self._commute_with_following(target)
             target += 1
 
     @classmethod
     def _cnot_command(
         self, control_node: int, target_node: int, ancilla: Sequence[int]
-    ) -> tuple[int, int, list[command.Command]]:
+    ) -> Tuple[int, int, List[command.Command]]:
         """MBQC commands for CNOT gate
 
         Parameters
@@ -1021,7 +1048,7 @@ class Circuit:
             list of MBQC commands
         """
         seq = [
-            M(input_node, plane.name, angle)
+            M(node=input_node, plane=plane.name, angle=angle)
         ]
         return seq
 
@@ -1050,7 +1077,7 @@ class Circuit:
         return ancilla, seq
 
     @classmethod
-    def _s_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _s_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
         """MBQC commands for S gate
 
         Parameters
@@ -1078,7 +1105,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _x_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _x_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
         """MBQC commands for Pauli X gate
 
         Parameters
@@ -1106,7 +1133,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _y_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _y_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
         """MBQC commands for Pauli Y gate
 
         Parameters
@@ -1139,7 +1166,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _z_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
+    def _z_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
         """MBQC commands for Pauli Z gate
 
         Parameters
@@ -1167,7 +1194,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> Tuple[int, List[command.Command]]:
         """MBQC commands for X rotation gate
 
         Parameters
@@ -1197,7 +1224,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> Tuple[int, List[command.Command]]:
         """MBQC commands for Y rotation gate
 
         Parameters
@@ -1232,7 +1259,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> Tuple[int, List[command.Command]]:
         """MBQC commands for Z rotation gate
 
         Parameters
@@ -1262,7 +1289,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float) -> tuple[int, list[command.Command]]:
+    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float) -> Tuple[int, List[command.Command]]:
         """optimized MBQC commands for Z rotation gate
 
         Parameters
@@ -1290,7 +1317,7 @@ class Circuit:
     @classmethod
     def _rzz_command_opt(
         self, control_node: int, target_node: int, ancilla: int, angle: float
-    ) -> tuple[int, int, list[command.Command]]:
+    ) -> Tuple[int, int, List[command.Command]]:
         """Optimized MBQC commands for ZZ-rotation gate
 
         Parameters
@@ -1326,7 +1353,7 @@ class Circuit:
         control_node2: int,
         target_node: int,
         ancilla: Sequence[int],
-    ) -> tuple[int, int, int, list[command.Command]]:
+    ) -> Tuple[int, int, int, List[command.Command]]:
         """MBQC commands for CCX gate
 
         Parameters
@@ -1509,7 +1536,7 @@ class Circuit:
         control_node2: int,
         target_node: int,
         ancilla: Sequence[int],
-    ) -> tuple[int, int, int, list[command.Command]]:
+    ) -> Tuple[int, int, int, List[command.Command]]:
         """Optimized MBQC commands for CCX gate
 
         Parameters
@@ -1637,35 +1664,41 @@ class Circuit:
         else:
             state = input_state
 
+        classical_measures = []
+
         for i in range(len(self.instruction)):
-
-            if self.instruction[i][0] == "CNOT":
-                state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))
-            elif self.instruction[i][0] == "SWAP":
-                state.swap((self.instruction[i][1][0], self.instruction[i][1][1]))
-            elif self.instruction[i][0] == "I":
+            instr = self.instruction[i]
+            kind = instr.kind
+            if kind == instruction.InstructionKind.CNOT:
+                state.CNOT((instr.control, instr.target))
+            elif kind == instruction.InstructionKind.SWAP:
+                state.swap(instr.targets)
+            elif kind == instruction.InstructionKind.I:
                 pass
-            elif self.instruction[i][0] == "S":
-                state.evolve_single(Ops.s, self.instruction[i][1])
-            elif self.instruction[i][0] == "H":
-                state.evolve_single(Ops.h, self.instruction[i][1])
-            elif self.instruction[i][0] == "X":
-                state.evolve_single(Ops.x, self.instruction[i][1])
-            elif self.instruction[i][0] == "Y":
-                state.evolve_single(Ops.y, self.instruction[i][1])
-            elif self.instruction[i][0] == "Z":
-                state.evolve_single(Ops.z, self.instruction[i][1])
-            elif self.instruction[i][0] == "Rx":
-                state.evolve_single(Ops.Rx(self.instruction[i][2]), self.instruction[i][1])
-            elif self.instruction[i][0] == "Ry":
-                state.evolve_single(Ops.Ry(self.instruction[i][2]), self.instruction[i][1])
-            elif self.instruction[i][0] == "Rz":
-                state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
-            elif self.instruction[i][0] == "Rzz":
-                state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
-            elif self.instruction[i][0] == "CCX":
-                state.evolve(Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]])
+            elif kind == instruction.InstructionKind.S:
+                state.evolve_single(Ops.s, instr.target)
+            elif kind == instruction.InstructionKind.H:
+                state.evolve_single(Ops.h, instr.target)
+            elif kind == instruction.InstructionKind.X:
+                state.evolve_single(Ops.x, instr.target)
+            elif kind == instruction.InstructionKind.Y:
+                state.evolve_single(Ops.y, instr.target)
+            elif kind == instruction.InstructionKind.Z:
+                state.evolve_single(Ops.z, instr.target)
+            elif kind == instruction.InstructionKind.RX:
+                state.evolve_single(Ops.Rx(instr.angle), instr.target)
+            elif kind == instruction.InstructionKind.RY:
+                state.evolve_single(Ops.Ry(instr.angle), instr.target)
+            elif kind == instruction.InstructionKind.RZ:
+                state.evolve_single(Ops.Rz(instr.angle), instr.target)
+            elif kind == instruction.InstructionKind.RZZ:
+                state.evolve(Ops.Rzz(instr.angle), [instr.control, instr.target])
+            elif kind == instruction.InstructionKind.CCX:
+                state.evolve(Ops.ccx, [instr.controls[0], instr.controls[1], instr.target])
+            elif kind == instruction.InstructionKind.M:
+                result = graphix.sim.base_backend.perform_measure(instr.target, instr.plane, instr.angle * np.pi, state, np.random)
+                classical_measures.append(result)
             else:
-                raise ValueError(f"Unknown instruction: {self.instruction[i][0]}")
+                raise ValueError(f"Unknown instruction: {instr}")
 
-        return state
+        return SimulateResult(state, classical_measures)

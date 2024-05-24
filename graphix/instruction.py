@@ -1,5 +1,8 @@
 from pydantic import BaseModel
+from typing import List, Tuple
+
 import enum
+from graphix.pauli import Plane
 
 
 class InstructionKind(str, enum.Enum):
@@ -15,6 +18,7 @@ class InstructionKind(str, enum.Enum):
     Y = "Y"
     Z = "Z"
     I = "I"
+    M = "M"
     RX = "RX"
     RY = "RY"
     RZ = "RZ"
@@ -42,7 +46,7 @@ class CorrectionInstruction(OneQubitInstruction):
     Correction instruction base class model.
     """
 
-    domain: list[int]
+    domain: List[int]
 
 
 class RotationInstruction(OneQubitInstruction):
@@ -66,7 +70,7 @@ class TwoControlsInstruction(OneQubitInstruction):
     Two controls instruction base class model.
     """
 
-    controls: tuple[int, int]
+    controls: Tuple[int, int]
 
 
 class XC(CorrectionInstruction):
@@ -115,7 +119,7 @@ class SWAP(Instruction):
     """
 
     kind: InstructionKind = InstructionKind.SWAP
-    targets: tuple[int, int]
+    targets: Tuple[int, int]
 
 
 class H(OneQubitInstruction):
@@ -165,6 +169,13 @@ class I(OneQubitInstruction):
 
     kind: InstructionKind = InstructionKind.I
 
+class M(OneQubitInstruction):
+    """
+    M circuit instruction.
+    """
+    kind: InstructionKind = InstructionKind.M
+    plane: Plane
+    angle: float
 
 class RX(RotationInstruction):
     """

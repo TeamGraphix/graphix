@@ -78,7 +78,7 @@ class TestChannel:
                 [
                     {
                         "coef": np.sqrt(1 - prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, 1.0]]),
+                        "oertor": np.array([[1.0, 0.0], [0.0, 1.0]]),
                     },
                     {
                         "coef": np.sqrt(prob),

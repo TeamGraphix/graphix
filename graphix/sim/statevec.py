@@ -1,15 +1,15 @@
 from copy import deepcopy
+from typing import List, Tuple, Union
 
 import numpy as np
 
-import graphix.sim.base_backend
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.sim.base_backend import Backend
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
-import graphix.sim.base_backend
 from graphix import command
 
 
-class StatevectorBackend(graphix.sim.base_backend.Backend):
+class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
     def __init__(self, pattern, max_qubit_num=20, pr_calc=True):
@@ -50,7 +50,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes: list[int]):
+    def add_nodes(self, nodes: List[int]):
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
@@ -67,7 +67,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.node_index.extend(nodes)
         self.Nqubit += n
 
-    def entangle_nodes(self, edge: tuple[int]):
+    def entangle_nodes(self, edge: Tuple[int]):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -91,7 +91,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.state.remove_qubit(loc)
         self.Nqubit -= 1
 
-    def correct_byproduct(self, cmd: command.X | command.Z):
+    def correct_byproduct(self, cmd: Union[command.X, command.Z]):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
@@ -213,7 +213,7 @@ class Statevec:
         self.psi = np.tensordot(op, self.psi, (1, i))
         self.psi = np.moveaxis(self.psi, 0, i)
 
-    def evolve(self, op: np.ndarray, qargs: list[int]):
+    def evolve(self, op: np.ndarray, qargs: List[int]):
         """Multi-qubit operation
 
         Parameters
@@ -305,7 +305,7 @@ class Statevec:
         self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
-    def entangle(self, edge: tuple[int, int]):
+    def entangle(self, edge: Tuple[int, int]):
         """connect graph nodes
 
         Parameters

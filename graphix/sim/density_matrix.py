@@ -11,7 +11,9 @@ from graphix.linalg_validations import check_square, check_hermitian, check_unit
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
-
+from graphix.sim.base_backend import Backend
+from graphix.ops import Ops
+import graphix.command
 
 class DensityMatrix:
     """DensityMatrix object."""
@@ -291,7 +293,7 @@ class DensityMatrix:
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
 
-class DensityMatrixBackend(graphix.sim.base_backend.Backend):
+class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
     def __init__(self, pattern, max_qubit_num=12, pr_calc=True):
@@ -375,9 +377,9 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """
         if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
             loc = self.node_index.index(cmd.node)
-            if isinstance(cmd, command.X):
+            if isinstance(cmd, graphix.command.X):
                 op = Ops.x
-            elif isinstance(cmd, command.Z):
+            elif isinstance(cmd, graphix.command.Z):
                 op = Ops.z
             self.state.evolve_single(op, loc)
 
