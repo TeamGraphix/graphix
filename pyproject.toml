@@ -37,7 +37,6 @@ dependencies = [
     "pydantic",
     "scipy",
 ]
-
 [project.optional-dependencies]
 dev = [
     "black==24.4.0",
@@ -50,9 +49,6 @@ dev = [
     "rustworkx",
 ]
 extra = ["graphix-ibmq", "graphix-perceval"]
-
-[tool.setuptools]
-package-dir = { "" = "graphix" }
 
 [project.urls]
 Documentation = "https://graphix.readthedocs.io"
