@@ -507,6 +507,13 @@ class TestLocalPattern():
         assert not result1
         assert result2
 
+    def test_pauli_measurement_end_with_measure(self) -> None:
+        # https://github.com/TeamGraphix/graphix/issues/153
+        p = Pattern(input_nodes=[0])
+        p.add(["N", 1])
+        p.add(["M", 1, "XY", 0, [], []])
+        p.perform_pauli_measurements()
+
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
     ans = True
