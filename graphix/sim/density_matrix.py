@@ -12,7 +12,7 @@ from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_hermitian, check_square, check_unit_trace
 from graphix.ops import Ops
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR
 
 
 class DensityMatrix:

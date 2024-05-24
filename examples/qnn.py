@@ -15,7 +15,6 @@ from functools import reduce
 from time import time
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import seaborn as sns
 from IPython.display import clear_output

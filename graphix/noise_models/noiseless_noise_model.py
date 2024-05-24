@@ -49,4 +49,3 @@ class NoiselessNoiseModel(NoiseModel):
         """notion of time in real devices - this is where we apply effect of T1 and T2.
         we assume commands that lie between 'T' commands run simultaneously on the device.
         """
-        pass

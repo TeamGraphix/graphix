@@ -8,7 +8,6 @@ import warnings
 
 import numpy as np
 
-from graphix.noise_models import NoiseModel
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
@@ -47,7 +46,8 @@ class PatternSimulator:
                 # no noise: no need to compute probabilities
                 self.backend = DensityMatrixBackend(pattern, **kwargs)
                 warnings.warn(
-                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
+                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
+                    stacklevel=1,
                 )
             if noise_model is not None:
                 self.set_noise_model(noise_model)

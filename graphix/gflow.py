@@ -223,7 +223,7 @@ def find_flow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, str] = None,
+    meas_planes: dict[int, str] | None = None,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Causal flow finding algorithm
 
@@ -321,7 +321,7 @@ def flowaux(
         N = search_neighbor(q, edges)
         p_set = N & (nodes - output)
         if len(p_set) == 1:
-            p = list(p_set)[0]
+            p = next(iter(p_set))
             f[p] = {q}
             l_k[p] = k
             v_out_prime = v_out_prime | {p}
@@ -1122,10 +1122,7 @@ def get_dependence_flow(
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    try:  # if inputs is not empty
-        dependence_flow = {input: set() for input in inputs}
-    except:
-        dependence_flow = dict()
+    dependence_flow = {input: set() for input in inputs}
     # concatenate flow and odd_flow
     combined_flow = dict()
     for node, corrections in flow.items():
@@ -1310,7 +1307,7 @@ def verify_flow(
         if len(correction) > 1:
             valid_flow = False
             return valid_flow
-        correction = list(correction)[0]
+        correction = next(iter(correction))
         if (node, correction) not in edges and (correction, node) not in edges:
             valid_flow = False
             return valid_flow

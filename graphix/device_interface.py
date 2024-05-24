@@ -29,8 +29,8 @@ class PatternRunner:
         if self.backend_name == "ibmq":
             try:
                 from graphix_ibmq.runner import IBMQBackend
-            except:
-                raise ImportError(
+            except ImportError:
+                raise ImportError(  # noqa: B904 (Just rewriting error message)
                     "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix-ibmq`."
                 )
             self.backend = IBMQBackend(pattern)
@@ -44,7 +44,7 @@ class PatternRunner:
                 self.backend.to_qiskit(save_statevector)
                 self.backend.transpile(optimization_level)
                 self.shots = kwargs.get("shots", 1024)
-            except:
+            except:  # noqa: E722 (Cannot determine exception kind)
                 save_statevector = kwargs.get("save_statevector", False)
                 optimization_level = kwargs.get("optimizer_level", 1)
                 self.backend.to_qiskit(save_statevector)

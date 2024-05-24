@@ -132,4 +132,4 @@ import importlib.metadata  # noqa: E402
 
 # print package versions.
 for pkg in ["graphix", "networkx", "rustworkx"]:
-    print("{} - {}".format(pkg, importlib.metadata.version(pkg)))
+    print(f"{pkg} - {importlib.metadata.version(pkg)}")

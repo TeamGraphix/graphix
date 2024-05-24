@@ -2,7 +2,7 @@
 Simulating noisy MBQC
 =====================
 
-:class:`~graphix.density_matrix.DensityMatrix` class (through :class:`~graphix.simulator.PatternSimulator`) 
+:class:`~graphix.density_matrix.DensityMatrix` class (through :class:`~graphix.simulator.PatternSimulator`) \
 allows the simulation of MBQC with customizable noise model.
 
 In this example, we simulate a simple MBQC pattern with various noise models to see their effects.
@@ -39,7 +39,6 @@ from graphix.noise_models.noise_model import NoiseModel
 # %%
 # Now let us define a noise model. We specify Kraus channels for each of the command executions.
 # Here, we apply dephasing noise to the qubit preparation.
-from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 
 
 class NoisyGraphState(NoiseModel):
@@ -63,7 +62,6 @@ class NoisyGraphState(NoiseModel):
         """imperfect measurement effect. here we do nothing (no error).
         cmd = "M"
         """
-        pass
 
     def byproduct_x(self):
         """apply noise to qubits after X gate correction. here no error (identity)."""
@@ -83,7 +81,6 @@ class NoisyGraphState(NoiseModel):
 
         here we assume no idle error.
         """
-        pass
 
 
 # %%

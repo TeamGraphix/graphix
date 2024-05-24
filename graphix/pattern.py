@@ -100,7 +100,7 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        assert type(cmd) == list
+        assert isinstance(cmd, list)
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             if cmd[1] in self.__output_nodes:
@@ -315,7 +315,7 @@ class Pattern:
                 node_prop[cmd[1]]["vop"] = cmd[2]
                 node_prop[cmd[1]]["seq"].append(-4)
             elif cmd[0] == "S":
-                raise NotImplementedError()
+                raise NotImplementedError
             else:
                 raise ValueError(f"command {cmd} is invalid!")
         nodes = dict()
@@ -775,7 +775,7 @@ class Pattern:
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd[0] == "N":
-                if not cmd[1] in self.output_nodes:
+                if cmd[1] not in self.output_nodes:
                     not_measured = not_measured | {cmd[1]}
         depth = 0
         l_k = dict()
@@ -1076,23 +1076,20 @@ class Pattern:
                     if cmd[6] == 0:
                         if include_identity:
                             vops[cmd[1]] = cmd[6]
+                    elif conj:
+                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
                     else:
-                        if conj:
-                            vops[cmd[1]] = CLIFFORD_CONJ[cmd[6]]
-                        else:
-                            vops[cmd[1]] = cmd[6]
-                else:
-                    if include_identity:
-                        vops[cmd[1]] = 0
+                        vops[cmd[1]] = cmd[6]
+                elif include_identity:
+                    vops[cmd[1]] = 0
             elif cmd[0] == "C":
                 if cmd[2] == 0:
                     if include_identity:
                         vops[cmd[1]] = cmd[2]
+                elif conj:
+                    vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
                 else:
-                    if conj:
-                        vops[cmd[1]] = CLIFFORD_CONJ[cmd[2]]
-                    else:
-                        vops[cmd[1]] = cmd[2]
+                    vops[cmd[1]] = cmd[2]
         for out in self.output_nodes:
             if out not in vops.keys():
                 if include_identity:
@@ -1125,10 +1122,10 @@ class Pattern:
         if not ind == "end":  # end -> 'node' is isolated
             while self.__seq[ind][0] == "E":
                 if self.__seq[ind][1][0] == node:
-                    if not self.__seq[ind][1][1] in prepared:
+                    if self.__seq[ind][1][1] not in prepared:
                         node_list.append(self.__seq[ind][1][1])
                 elif self.__seq[ind][1][1] == node:
-                    if not self.__seq[ind][1][0] in prepared:
+                    if self.__seq[ind][1][0] not in prepared:
                         node_list.append(self.__seq[ind][1][0])
                 ind += 1
         return node_list
@@ -1217,7 +1214,7 @@ class Pattern:
         # add isolated nodes
         for cmd in self.__seq:
             if cmd[0] == "N":
-                if not cmd[1] in prepared:
+                if cmd[1] not in prepared:
                     new.append(["N", cmd[1]])
         for cmd in self.__seq:
             if cmd[0] == "E":
@@ -2139,7 +2136,7 @@ def cmd_to_qasm3(cmd):
             yield "p(theta" + str(qubit) + ") q" + str(qubit) + ";\n"
             yield "\n"
 
-    elif (name == "X") or (name == "Z"):
+    elif name in ("X", "Z"):
         qubit = cmd[1]
         sdomain = cmd[2]
         yield "// byproduct correction on qubit q" + str(qubit) + "\n"
@@ -2162,7 +2159,7 @@ def cmd_to_qasm3(cmd):
         yield "\n"
 
     else:
-        raise ValueError("invalid command {}".format(name))
+        raise ValueError(f"invalid command {name}")
 
 
 def assert_permutation(original, user):
@@ -2172,4 +2169,4 @@ def assert_permutation(original, user):
         if node in node_set:
             node_set.remove(node)
         else:
-            assert False, f"{node} appears twice"
+            raise AssertionError(f"{node} appears twice")

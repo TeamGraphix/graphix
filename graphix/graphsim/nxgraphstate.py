@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import networkx as nx
-from networkx.classes.reportviews import EdgeView, NodeView
 
 from .basegraphstate import BaseGraphState
+
+if TYPE_CHECKING:
+    from networkx.classes.reportviews import EdgeView, NodeView
 
 
 class NXGraphState(BaseGraphState):
@@ -11,7 +15,12 @@ class NXGraphState(BaseGraphState):
     See :class:`~graphix.graphsim.basegraphstate.BaseGraphState` for more details.
     """
 
-    def __init__(self, nodes: list[int] = None, edges: list[tuple[int, int]] = None, vops: dict[int, int] = None):
+    def __init__(
+        self,
+        nodes: list[int] | None = None,
+        edges: list[tuple[int, int]] | None = None,
+        vops: dict[int, int] | None = None,
+    ):
         """
         Parameters
         ----------

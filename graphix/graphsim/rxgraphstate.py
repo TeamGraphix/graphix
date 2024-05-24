@@ -14,7 +14,12 @@ class RXGraphState(BaseGraphState):
     See :class:`~graphix.graphsim.basegraphstate.BaseGraphState` for more details.
     """
 
-    def __init__(self, nodes: list[int] = None, edges: list[tuple[int, int]] = None, vops: dict[int, int] = None):
+    def __init__(
+        self,
+        nodes: list[int] | None = None,
+        edges: list[tuple[int, int]] | None = None,
+        vops: dict[int, int] | None = None,
+    ):
         """
         Parameters
         ----------
@@ -80,7 +85,7 @@ class RXGraphState(BaseGraphState):
             nidx = self.nodes.get_node_index(n)
             adjacency_dict = self._graph.adj(nidx)
             new_adjacency_dict = {}
-            for nidx, _ in adjacency_dict.items():
+            for nidx in adjacency_dict:
                 new_adjacency_dict[self.nodes.get_node_index(nidx)] = {}  # replace None with {}
             ret.append((n, new_adjacency_dict))
         return iter(ret)

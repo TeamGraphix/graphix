@@ -110,7 +110,7 @@ class Ops:
 
     @staticmethod
     def build_tensor_Pauli_ops(n_qubits: int):
-        """Method to build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}
+        r"""Method to build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}
 
         :param n_qubits: number of copies (qubits) to consider
         :type n_qubits: int
