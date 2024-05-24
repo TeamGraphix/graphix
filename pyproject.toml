@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools_scm"]
+requires = ["setuptools>=66.1", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,32 +24,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 requires-python = ">=3.8,<3.12"
-dynamic = ["version"]
-dependencies = [
-    "numpy>=1.22,<1.26",
-    "networkx>3.0",
-    "quimb>=1.4.0",
-    "autoray>=0.6.0",
-    "opt_einsum>=3.2",
-    "galois>=0.3.0",
-    "sympy>=1.9",
-    "matplotlib",
-    "pydantic",
-    "scipy",
-]
-[project.optional-dependencies]
-dev = [
-    "black==24.4.0",
-    "isort==5.13.2",
-    "pytest",
-    "pytest-mock",
-    "pytest-cov",
-    "tox",
-    "qiskit>=1.0",
-    "qiskit-aer",
-    "rustworkx",
-]
-extra = ["graphix-ibmq", "graphix-perceval"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
 Documentation = "https://graphix.readthedocs.io"
@@ -57,6 +32,13 @@ Documentation = "https://graphix.readthedocs.io"
 
 [tool.setuptools_scm]
 version_file = "graphix/_version.py"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.dynamic.optional-dependencies]
+dev = { file = ["requirements-dev.txt"] }
+extra = { file = ["requirements-extra.txt"] }
 
 [tool.black]
 line-length = 120
