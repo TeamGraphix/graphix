@@ -6,14 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
 ### Added
 
 ### Fixed
 
 ### Changed
 
-## [0.2.12] - 2024-03-23
+## [0.2.13] - 2024-05-24
 
 ### Added
 
@@ -26,6 +25,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Made all the updates inside the files making use of the commands and instructions list representation.
+
+## [0.2.12] - 2024-05-11
+
+### Added
+
+- Transpiled circuits can now have "measure" gates, introduced with
+  the `circ.m(qubit, plane, angle)` method.  The measured qubit cannot
+  be used in any subsequent gate.
+- Added `gflow.find_pauliflow`, `gflow.verify_pauliflow` and `pauliflow_from_pattern` methods (#117)
+- Pauli-flow finding algorithm (#117)
+- workflow for isort, codecov (#148, #147)
+
+### Fixed
+- Fix output node order sorting bug in Pauli preprocessing `measure_pauli` (#145)
+
+### Changed
+
+- The transpiler now returns a `TranspileResult` dataclass: the
+  pattern is available in the `pattern` field, and the field
+  `classical_outputs` contains the index where the classical measures
+  can be found in the `results` array of the simulator.
+- The circuit simulator now returns a `SimulateResult` dataclass: the
+  state vector is available in the `statevec` field, and the field
+  `classical_measures` contains the results of the measure gates.
+- Patterns are now allowed to measure all their nodes, and have an
+  empty output set.
+- Completely migrated to pytest, no `unittest` usage remains (#134)
 
 ## [0.2.11] - 2024-03-16
 

@@ -175,8 +175,9 @@ class Pattern:
         output_nodes: list of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
+        output_nodes = list(output_nodes)  # make our own copy (allow iterators to be passed)
         assert_permutation(self.__output_nodes, output_nodes)
-        self.__output_nodes = list(output_nodes)
+        self.__output_nodes = output_nodes
 
     def reorder_input_nodes(self, input_nodes: list[int]):
         """arrange the order of input_nodes.
@@ -1265,7 +1266,7 @@ class Pattern:
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector', 'tensornetwork']
+        Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
 
         Parameters
         ----------
@@ -1949,7 +1950,9 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     else:
         pat = pattern
 
+    output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
+    pat.reorder_output_nodes(output_nodes)
     assert pat.Nnode == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True

@@ -1,7 +1,36 @@
+import typing
+
 import numpy as np
+
 import graphix.clifford
 import graphix.pauli
 from graphix.command import M
+
+
+def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> np.ndarray:
+    op_mat = np.eye(2, dtype=np.complex128) / 2
+    sign = (-1) ** result
+    for i in range(3):
+        op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
+    return op_mat
+
+
+def perform_measure(
+    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng, pr_calc: bool = True
+) -> np.ndarray:
+    vec = plane.polar(angle)
+    if pr_calc:
+        op_mat = op_mat_from_result(vec, False)
+        prob_0 = state.expectation_single(op_mat, qubit)
+        result = rng.rand() > prob_0
+        if result:
+            op_mat = op_mat_from_result(vec, True)
+    else:
+        # choose the measurement result randomly
+        result = np.random.choice([0, 1])
+        op_mat = op_mat_from_result(vec, result)
+    state.evolve_single(op_mat, qubit)
+    return result
 
 
 class Backend:
@@ -29,13 +58,6 @@ class Backend:
         angle = angle * measure_update.coeff + measure_update.add_term
         vec = measure_update.new_plane.polar(angle)
         loc = self.node_index.index(cmd.node)
-
-        def op_mat_from_result(result: bool) -> np.ndarray:
-            op_mat = np.eye(2, dtype=np.complex128) / 2
-            sign = (-1) ** result
-            for i in range(3):
-                op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
-            return op_mat
 
         if self.pr_calc:
             op_mat = op_mat_from_result(False)

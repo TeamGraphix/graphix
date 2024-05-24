@@ -8,21 +8,23 @@ allows the simulation of MBQC with customizable noise model.
 In this example, we simulate a simple MBQC pattern with various noise models to see their effects.
 First, let us import relevant modules and define a pattern
 """
+
 # %%
 import numpy as np
+
 from graphix import Circuit
 
 circuit = Circuit(2)
 theta = np.random.rand(2)
 circuit.rz(0, theta[0])
 circuit.rz(1, theta[1])
-circuit.cnot(0, 1)
+circuit.cnot(0,1)
 
 # %%
 # Now we transpile into measurement pattern using :meth:`~graphix.transpiler.Circuit.transpile` method.
 # This returns :class:`~graphix.pattern.Pattern` object containing measurement pattern:
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.print_pattern(lim=30)
 # pattern.draw_graph()
 
@@ -34,7 +36,6 @@ print(out_state.flatten())
 # %%
 # Now let us define a noise model. We specify Kraus channels for each of the command executions.
 # Here, we apply dephasing noise to the qubit preparation.
-from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.noise_models.noise_model import NoiseModel
 from graphix.channels import (
     KrausChannel,
@@ -84,8 +85,7 @@ class NoisyGraphState(NoiseModel):
         """
         pass
 
-
-#%%
+# %%
 # simulate with the noise model
 from graphix.simulator import PatternSimulator
 

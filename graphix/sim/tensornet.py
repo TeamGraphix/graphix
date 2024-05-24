@@ -1,11 +1,13 @@
+import string
+from copy import deepcopy
+
 import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 from graphix import command
-from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
-from graphix.ops import States, Ops
-import string
-from copy import deepcopy
+
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.ops import Ops, States
 
 
 class TensorNetworkBackend:

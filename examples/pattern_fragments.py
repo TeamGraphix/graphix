@@ -10,12 +10,13 @@ with fewer resource requirement than the standard pattern.
 #%%
 # First, for Toffoli gate, here is the pattern based on the decomposition of CCX gate with CNOT and single-qubit rotations,
 # turned into a measurement pattern:
-from graphix import Circuit
 import numpy as np
+
+from graphix import Circuit
 
 circuit = Circuit(3)
 circuit.ccx(0, 1, 2)
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.draw_graph(flow_from_pattern=False)
 
 #%%
@@ -25,17 +26,17 @@ pattern = circuit.transpile(opt=True)
 pattern.draw_graph(node_distance=(1.2, 0.8))
 # sphinx_gallery_thumbnail_number = 2
 
-#%%
+# %%
 # Now let us add z-rotation gates, requiring two ancillas in the original pattern fragment,
 # which becomes one for patterns with :code:`opt=True`.
 circuit = Circuit(3)
 circuit.ccx(0, 1, 2)
 for i in range(3):
     circuit.rz(i, np.pi / 4)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(flow_from_pattern=True, node_distance=(1, 0.5))
 
-#%%
+# %%
 # Swap gate is just a swap of node indices during compilation, requiring no ancillas.
 circuit = Circuit(3)
 circuit.ccx(0, 1, 2)
@@ -43,7 +44,7 @@ circuit.swap(1, 2)
 circuit.swap(2, 0)
 for i in range(3):
     circuit.rz(i, np.pi / 4)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(flow_from_pattern=False, node_distance=(1, 0.4))
 
 
@@ -60,7 +61,7 @@ circuit.rx(2, np.pi / 3)
 circuit.ccx(3, 1, 2)
 circuit.rx(0, np.pi / 3)
 circuit.rx(3, np.pi / 3)
-pattern = circuit.transpile(opt=True)
+pattern = circuit.transpile(opt=True).pattern
 pattern.draw_graph(flow_from_pattern=False, node_distance=(1, 0.4))
 
 

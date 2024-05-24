@@ -2,4 +2,3 @@
 ignore = E203
 max-line-length = 120
 docstring-convention = numpy
-import-order-style = numpy

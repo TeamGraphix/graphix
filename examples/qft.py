@@ -13,8 +13,10 @@ for any quantum algorithms running on MBQC.
 We will demonstrate this by simulating QFT on three qubits.
 First, import relevant modules and define additional gates we'll use:
 """
+
 # %%
 import numpy as np
+
 from graphix import Circuit
 
 
@@ -56,7 +58,7 @@ circuit.h(2)
 swap(circuit, 0, 2)
 
 # transpile and plot the graph
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.draw_graph(flow_from_pattern=False)
 nodes, _ = pattern.get_graph()
 print(len(nodes))
@@ -85,7 +87,7 @@ print(pattern.max_space())
 # Let us check the answer is correct, by comparing with statevector simulation.
 
 out_state = pattern.simulate_pattern()
-state = circuit.simulate_statevector()
+state = circuit.simulate_statevector().statevec
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 
 # %%

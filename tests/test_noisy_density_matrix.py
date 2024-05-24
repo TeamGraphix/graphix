@@ -1,20 +1,23 @@
-import unittest
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 
 from graphix import Circuit
+from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
 from graphix.noise_models.noise_model import NoiseModel
-from graphix.channels import (
-    KrausChannel,
-    depolarising_channel,
-    two_qubit_depolarising_tensor_channel,
-    two_qubit_depolarising_channel,
-)
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
 
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
-class TestNoiseModel(NoiseModel):
+    from graphix.pattern import Pattern
+
+
+class NoiseModelTester(NoiseModel):
     """Test noise model for testing.
     Only return the identity channel.
 
@@ -26,143 +29,139 @@ class TestNoiseModel(NoiseModel):
 
     def __init__(
         self,
-        prepare_error_prob=0.0,
-        x_error_prob=0.0,
-        z_error_prob=0.0,
-        entanglement_error_prob=0.0,
-        measure_channel_prob=0.0,
-        measure_error_prob=0.0,
-    ):
+        prepare_error_prob: float = 0.0,
+        x_error_prob: float = 0.0,
+        z_error_prob: float = 0.0,
+        entanglement_error_prob: float = 0.0,
+        measure_channel_prob: float = 0.0,
+        measure_error_prob: float = 0.0,
+    ) -> None:
         self.prepare_error_prob = prepare_error_prob
         self.x_error_prob = x_error_prob
         self.z_error_prob = z_error_prob
         self.entanglement_error_prob = entanglement_error_prob
         self.measure_error_prob = measure_error_prob
         self.measure_channel_prob = measure_channel_prob
+        self.rng = np.random.default_rng()
 
-    def prepare_qubit(self):
+    def prepare_qubit(self) -> KrausChannel:
         """return the channel to apply after clean single-qubit preparation. Here just identity."""
         return depolarising_channel(self.prepare_error_prob)
 
-    def entangle(self):
+    def entangle(self) -> KrausChannel:
         """return noise model to qubits that happens after the CZ gate"""
         # return two_qubit_depolarising_tensor_channel(self.entanglement_error_prob)
         return two_qubit_depolarising_channel(self.entanglement_error_prob)
 
-    def measure(self):
+    def measure(self) -> KrausChannel:
         """apply noise to qubit to be measured."""
         return depolarising_channel(self.measure_channel_prob)
 
-    def confuse_result(self, cmd):
+    def confuse_result(self, cmd: str) -> None:
         """assign wrong measurement result
         cmd = "M"
         """
 
-        if np.random.rand() < self.measure_error_prob:
+        if self.rng.uniform() < self.measure_error_prob:
             self.simulator.results[cmd.node] = 1 - self.simulator.results[cmd.node]
 
-    def byproduct_x(self):
+    def byproduct_x(self) -> KrausChannel:
         """apply noise to qubits after X gate correction"""
         return depolarising_channel(self.x_error_prob)
 
-    def byproduct_z(self):
+    def byproduct_z(self) -> KrausChannel:
         """apply noise to qubits after Z gate correction"""
         return depolarising_channel(self.z_error_prob)
 
-    def clifford(self):
+    def clifford(self) -> KrausChannel:
         """apply noise to qubits that happens in the Clifford gate process"""
         # TODO list separate different Cliffords to allow customization
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
-    def tick_clock(self):
+    def tick_clock(self) -> None:
         """notion of time in real devices - this is where we apply effect of T1 and T2.
         we assume commands that lie between 'T' commands run simultaneously on the device.
         """
-        pass
 
 
-class NoisyDensityMatrixBackendTest(unittest.TestCase):
+class TestNoisyDensityMatrixBackend:
     """Test for Noisy DensityMatrixBackend simultation."""
 
-    def setUp(self):
-        # set up the random numbers
-        self.rng = np.random.default_rng()  # seed=422
-        np.random.seed()  # 42 vs 422
+    @staticmethod
+    def rz_exact_res(alpha: float) -> npt.NDArray:
+        return 0.5 * np.array([[1, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1]])
 
-        # Hadamard pattern
-        ncirc = Circuit(1)
-        ncirc.h(0)
-        self.hadamardpattern = ncirc.transpile()
-
-        # Rz(alpha) pattern
-        self.alpha = 2 * np.pi * self.rng.random()
-        print(f"alpha is {self.alpha}")
+    @staticmethod
+    def hpat() -> Pattern:
         circ = Circuit(1)
-        circ.rz(0, self.alpha)
-        self.rzpattern = circ.transpile()
-        self.rz_exact_res = 0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]])
+        circ.h(0)
+        return circ.transpile().pattern
+
+    @staticmethod
+    def rzpat(alpha: float) -> Pattern:
+        circ = Circuit(1)
+        circ.rz(0, alpha)
+        return circ.transpile().pattern
 
     # test noiseless noisy vs noiseless
-    def test_noiseless_noisy_hadamard(self):
-
-        noiselessres = self.hadamardpattern.simulate_pattern(backend="densitymatrix")
+    def test_noiseless_noisy_hadamard(self) -> None:
+        hadamardpattern = self.hpat()
+        noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix")
         # noiseless noise model
-        noisynoiselessres = self.hadamardpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=NoiselessNoiseModel()
+        noisynoiselessres = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiselessNoiseModel(),
         )
-        np.testing.assert_allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        assert np.allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
         # result should be |0>
-        np.testing.assert_allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        assert np.allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
 
     # test measurement confuse outcome
-    def test_noisy_measure_confuse_hadamard(self):
-
-        res = self.hadamardpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=1.0)
+    def test_noisy_measure_confuse_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = self.hpat()
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiseModelTester(measure_error_prob=1.0),
         )
         # result should be |1>
-        np.testing.assert_allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
+        assert np.allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 
         # arbitrary probability
-        measure_error_pr = self.rng.random()
+        measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
         res = self.hadamardpattern.simulate_pattern(
-            backend="densitymatrix",
-            noise_model=TestNoiseModel(measure_error_prob=measure_error_pr),
+            backend="densitymatrix", noise_model=NoiseModelTester(measure_error_prob=measure_error_pr)
         )
         # result should be |1>
         assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
-            res.rho, np.array([[0.0, 0.0], [0.0, 1.0]])
+            res.rho,
+            np.array([[0.0, 0.0], [0.0, 1.0]]),
         )
 
-    def test_noisy_measure_channel_hadamard(self):
-
-        measure_channel_pr = self.rng.random()
+    def test_noisy_measure_channel_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = self.hpat()
+        measure_channel_pr = fx_rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
-        res = self.hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(measure_channel_prob=measure_channel_pr),
+            noise_model=NoiseModelTester(measure_channel_prob=measure_channel_pr),
         )
         # just TP the depolarizing channel
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
-            np.array(
-                [
-                    [1 - 2 * measure_channel_pr / 3.0, 0.0],
-                    [0.0, 2 * measure_channel_pr / 3.0],
-                ]
-            ),
+            np.array([[1 - 2 * measure_channel_pr / 3.0, 0.0], [0.0, 2 * measure_channel_pr / 3.0]]),
         )
 
     # test Pauli X error
-    def test_noisy_X_hadamard(self):
-
+    def test_noisy_x_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = self.hpat()
         # x error only
-        x_error_pr = self.rng.random()
+        x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}")
-        res = self.hadamardpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=TestNoiseModel(x_error_prob=x_error_pr)
+        res = hadamardpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiseModelTester(x_error_prob=x_error_pr),
         )
         # analytical result since deterministic pattern output is |0>.
         # if no X applied, no noise. If X applied X noise on |0><0|
@@ -173,15 +172,15 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         )
 
     # test entanglement error
-    def test_noisy_entanglement_hadamard(self):
-
-        entanglement_error_pr = np.random.rand()
-        res = self.hadamardpattern.simulate_pattern(
+    def test_noisy_entanglement_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = self.hpat()
+        entanglement_error_pr = fx_rng.uniform()
+        res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr),
+            noise_model=NoiseModelTester(entanglement_error_prob=entanglement_error_pr),
         )
         # analytical result for tensor depolarizing channel
-        # np.testing.assert_allclose(
+        # assert np.allclose(
         #     res.rho,
         #     np.array(
         #         [
@@ -192,67 +191,65 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         # )
 
         # analytical result for true 2-qubit depolarizing channel
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             np.array(
                 [
                     [1 - 8 * entanglement_error_pr / 15.0, 0.0],
                     [0.0, 8 * entanglement_error_pr / 15.0],
-                ]
+                ],
             ),
         )
 
     # test preparation error
-    def test_noisy_preparation_hadamard(self):
-
-        prepare_error_pr = self.rng.random()
+    def test_noisy_preparation_hadamard(self, fx_rng: Generator) -> None:
+        hadamardpattern = self.hpat()
+        prepare_error_pr = fx_rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
-        res = self.hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(prepare_error_prob=prepare_error_pr),
+            noise_model=NoiseModelTester(prepare_error_prob=prepare_error_pr),
         )
         # analytical result
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
-            np.array(
-                [
-                    [1 - 2 * prepare_error_pr / 3.0, 0.0],
-                    [0.0, 2 * prepare_error_pr / 3.0],
-                ]
-            ),
+            np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]]),
         )
 
     ###  Test rz gate
 
     # test noiseless noisy vs noiseless
-    def test_noiseless_noisy_rz(self):
-
-        noiselessres = self.rzpattern.simulate_pattern(backend="densitymatrix")
-        # noiseless noise model or TestNoiseModel() since all probas are 0
-        noisynoiselessres = self.rzpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=TestNoiseModel()
+    def test_noiseless_noisy_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
+        noiselessres = rzpattern.simulate_pattern(backend="densitymatrix")
+        # noiseless noise model or NoiseModelTester() since all probas are 0
+        noisynoiselessres = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiseModelTester(),
         )  # NoiselessNoiseModel()
-        np.testing.assert_allclose(
+        assert np.allclose(
             noiselessres.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]]),
+            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         )
         # result should be |0>
-        np.testing.assert_allclose(
+        assert np.allclose(
             noisynoiselessres.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]]),
+            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         )
 
     # test preparation error
-    def test_noisy_preparation_rz(self):
-
-        prepare_error_pr = self.rng.random()
+    def test_noisy_preparation_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
+        prepare_error_pr = fx_rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
-        res = self.rzpattern.simulate_pattern(
+        res = rzpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(prepare_error_prob=prepare_error_pr),
+            noise_model=NoiseModelTester(prepare_error_prob=prepare_error_pr),
         )
         # analytical result
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             0.5
             * np.array(
@@ -260,29 +257,30 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
                     [
                         1.0,
                         (3 - 4 * prepare_error_pr) ** 2
-                        * (3 * np.cos(self.alpha) + 1j * (-3 + 4 * prepare_error_pr) * np.sin(self.alpha))
+                        * (3 * np.cos(alpha) + 1j * (-3 + 4 * prepare_error_pr) * np.sin(alpha))
                         / 27,
                     ],
                     [
                         (3 - 4 * prepare_error_pr) ** 2
-                        * (3 * np.cos(self.alpha) - 1j * (-3 + 4 * prepare_error_pr) * np.sin(self.alpha))
+                        * (3 * np.cos(alpha) - 1j * (-3 + 4 * prepare_error_pr) * np.sin(alpha))
                         / 27,
                         1.0,
                     ],
-                ]
+                ],
             ),
         )
 
     # test entanglement error
-    def test_noisy_entanglement_rz(self):
-
-        entanglement_error_pr = np.random.rand()
-        res = self.rzpattern.simulate_pattern(
+    def test_noisy_entanglement_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
+        entanglement_error_pr = fx_rng.uniform()
+        res = rzpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(entanglement_error_prob=entanglement_error_pr),
+            noise_model=NoiseModelTester(entanglement_error_prob=entanglement_error_pr),
         )
         # analytical result for tensor depolarizing channel
-        # np.testing.assert_allclose(
+        # assert np.allclose(
         #     res.rho,
         #     0.5
         #     * np.array(
@@ -290,12 +288,12 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         #             [
         #                 1.0,
         #                 (-3 + 4 * entanglement_error_pr) ** 3
-        #                 * (-3 * np.cos(self.alpha) + 1j * (3 - 4 * entanglement_error_pr) * np.sin(self.alpha))
+        #                 * (-3 * np.cos(alpha) + 1j * (3 - 4 * entanglement_error_pr) * np.sin(alpha))
         #                 / 81,
         #             ],
         #             [
         #                 (-3 + 4 * entanglement_error_pr) ** 3
-        #                 * (-3 * np.cos(self.alpha) - 1j * (3 - 4 * entanglement_error_pr) * np.sin(self.alpha))
+        #                 * (-3 * np.cos(alpha) - 1j * (3 - 4 * entanglement_error_pr) * np.sin(alpha))
         #                 / 81,
         #                 1.0,
         #             ],
@@ -304,34 +302,35 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
         # )
 
         # analytical result for true 2-qubit depolarizing channel
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             0.5
             * np.array(
                 [
                     [
                         1.0,
-                        np.exp(-1j * self.alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
+                        np.exp(-1j * alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
                     ],
                     [
-                        np.exp(1j * self.alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
+                        np.exp(1j * alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
                         1.0,
                     ],
-                ]
+                ],
             ),
         )
 
-    def test_noisy_measure_channel_rz(self):
-
-        measure_channel_pr = self.rng.random()
+    def test_noisy_measure_channel_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
+        measure_channel_pr = fx_rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
-        res = self.rzpattern.simulate_pattern(
+        res = rzpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(measure_channel_prob=measure_channel_pr),
+            noise_model=NoiseModelTester(measure_channel_prob=measure_channel_pr),
         )
 
-        np.testing.assert_allclose(
+        assert np.allclose(
             res.rho,
             0.5
             * np.array(
@@ -339,101 +338,97 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
                     [
                         1.0,
                         (-3 + 4 * measure_channel_pr)
-                        * (-3 * np.cos(self.alpha) + 1j * (3 - 4 * measure_channel_pr) * np.sin(self.alpha))
+                        * (-3 * np.cos(alpha) + 1j * (3 - 4 * measure_channel_pr) * np.sin(alpha))
                         / 9,
                     ],
                     [
                         (-3 + 4 * measure_channel_pr)
-                        * (-3 * np.cos(self.alpha) - 1j * (3 - 4 * measure_channel_pr) * np.sin(self.alpha))
+                        * (-3 * np.cos(alpha) - 1j * (3 - 4 * measure_channel_pr) * np.sin(alpha))
                         / 9,
                         1.0,
                     ],
-                ]
+                ],
             ),
         )
 
-    def test_noisy_X_rz(self):
-
+    def test_noisy_x_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
         # x error only
-        x_error_pr = self.rng.random()
+        x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}")
-        res = self.rzpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=TestNoiseModel(x_error_prob=x_error_pr)
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiseModelTester(x_error_prob=x_error_pr),
         )
 
         # only two cases: if no X correction, Z or no Z correction but exact result.
         # If X correction the noise result is the same with or without the PERFECT Z correction.
         assert np.allclose(
             res.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]]),
+            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         ) or np.allclose(
             res.rho,
             0.5
             * np.array(
                 [
-                    [1.0, np.exp(-1j * self.alpha) * (3 - 4 * x_error_pr) / 3],
-                    [np.exp(1j * self.alpha) * (3 - 4 * x_error_pr) / 3, 1.0],
-                ]
+                    [1.0, np.exp(-1j * alpha) * (3 - 4 * x_error_pr) / 3],
+                    [np.exp(1j * alpha) * (3 - 4 * x_error_pr) / 3, 1.0],
+                ],
             ),
         )
 
-    def test_noisy_Z_rz(self):
-
+    def test_noisy_z_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
         # z error only
-        z_error_pr = self.rng.random()
+        z_error_pr = fx_rng.random()
         print(f"z_error_pr = {z_error_pr}")
-        res = self.rzpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=TestNoiseModel(z_error_prob=z_error_pr)
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=NoiseModelTester(z_error_prob=z_error_pr),
         )
 
         # only two cases: if no Z correction, X or no X correction but exact result.
         # If Z correction the noise result is the same with or without the PERFECT X correction.
         assert np.allclose(
             res.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]]),
+            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         ) or np.allclose(
             res.rho,
             0.5
             * np.array(
                 [
-                    [1.0, np.exp(-1j * self.alpha) * (3 - 4 * z_error_pr) / 3],
-                    [np.exp(1j * self.alpha) * (3 - 4 * z_error_pr) / 3, 1.0],
-                ]
+                    [1.0, np.exp(-1j * alpha) * (3 - 4 * z_error_pr) / 3],
+                    [np.exp(1j * alpha) * (3 - 4 * z_error_pr) / 3, 1.0],
+                ],
             ),
         )
 
-    def test_noisy_XZ_rz(self):
-
+    def test_noisy_xz_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
         # x and z errors
-        x_error_pr = self.rng.random()
+        x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}")
-        z_error_pr = self.rng.random()
+        z_error_pr = fx_rng.random()
         print(f"z_error_pr = {z_error_pr}")
-        res = self.rzpattern.simulate_pattern(
+        res = rzpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(x_error_prob=x_error_pr, z_error_prob=z_error_pr),
+            noise_model=NoiseModelTester(x_error_prob=x_error_pr, z_error_prob=z_error_pr),
         )
 
         # 4 cases : no corr, noisy X, noisy Z, noisy XZ.
         assert (
-            np.allclose(
-                res.rho,
-                0.5 * np.array([[1.0, np.exp(-1j * self.alpha)], [np.exp(1j * self.alpha), 1.0]]),
-            )
+            np.allclose(res.rho, 0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]))
             or np.allclose(
                 res.rho,
                 0.5
                 * np.array(
                     [
-                        [
-                            1.0,
-                            np.exp(-1j * self.alpha) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9,
-                        ],
-                        [
-                            np.exp(1j * self.alpha) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9,
-                            1.0,
-                        ],
-                    ]
+                        [1.0, np.exp(-1j * alpha) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
+                        [np.exp(1j * alpha) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
+                    ],
                 ),
             )
             or np.allclose(
@@ -441,9 +436,9 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
                 0.5
                 * np.array(
                     [
-                        [1.0, np.exp(-1j * self.alpha) * (3 - 4 * z_error_pr) / 3],
-                        [np.exp(1j * self.alpha) * (3 - 4 * z_error_pr) / 3, 1.0],
-                    ]
+                        [1.0, np.exp(-1j * alpha) * (3 - 4 * z_error_pr) / 3],
+                        [np.exp(1j * alpha) * (3 - 4 * z_error_pr) / 3, 1.0],
+                    ],
                 ),
             )
             or np.allclose(
@@ -451,39 +446,40 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
                 0.5
                 * np.array(
                     [
-                        [1.0, np.exp(-1j * self.alpha) * (3 - 4 * x_error_pr) / 3],
-                        [np.exp(1j * self.alpha) * (3 - 4 * x_error_pr) / 3, 1.0],
-                    ]
+                        [1.0, np.exp(-1j * alpha) * (3 - 4 * x_error_pr) / 3],
+                        [np.exp(1j * alpha) * (3 - 4 * x_error_pr) / 3, 1.0],
+                    ],
                 ),
             )
         )
 
     # test measurement confuse outcome
-    def test_noisy_measure_confuse_rz(self):
-
+    def test_noisy_measure_confuse_rz(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        rzpattern = self.rzpat(alpha)
         # probability 1 to shift both outcome
-        res = self.rzpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=TestNoiseModel(measure_error_prob=1.0)
-        )
+        res = rzpattern.simulate_pattern(backend="densitymatrix", noise_model=NoiseModelTester(measure_error_prob=1.0))
         # result X, XZ or Z
 
+        exact = self.rz_exact_res(alpha)
+
         assert (
-            np.allclose(res.rho, Ops.x @ self.rz_exact_res @ Ops.x)
-            or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
-            or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
+            np.allclose(res.rho, Ops.x @ exact @ Ops.x)
+            or np.allclose(res.rho, Ops.z @ exact @ Ops.z)
+            or np.allclose(res.rho, Ops.z @ Ops.x @ exact @ Ops.x @ Ops.z)
         )
 
         # arbitrary probability
-        measure_error_pr = self.rng.random()
+        measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
-        res = self.rzpattern.simulate_pattern(
+        res = rzpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=TestNoiseModel(measure_error_prob=measure_error_pr),
+            noise_model=NoiseModelTester(measure_error_prob=measure_error_pr),
         )
         # just add the case without readout errors
         assert (
-            np.allclose(res.rho, self.rz_exact_res)
-            or np.allclose(res.rho, Ops.x @ self.rz_exact_res @ Ops.x)
-            or np.allclose(res.rho, Ops.z @ self.rz_exact_res @ Ops.z)
-            or np.allclose(res.rho, Ops.z @ Ops.x @ self.rz_exact_res @ Ops.x @ Ops.z)
+            np.allclose(res.rho, exact)
+            or np.allclose(res.rho, Ops.x @ exact @ Ops.x)
+            or np.allclose(res.rho, Ops.z @ exact @ Ops.z)
+            or np.allclose(res.rho, Ops.z @ Ops.x @ exact @ Ops.x @ Ops.z)
         )

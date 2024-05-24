@@ -8,19 +8,22 @@ to perform binary classification of circles dataset from sklearn.
 
 Firstly, let us import relevant modules:
 """
+
 # %%
 
-from graphix.transpiler import Circuit
+from functools import reduce
+from time import time
+
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_circles
-from scipy.optimize import minimize
-from functools import reduce
 import seaborn as sns
-from matplotlib import cm
 from IPython.display import clear_output
-from time import time
+from matplotlib import cm
+from scipy.optimize import minimize
+from sklearn.datasets import make_circles
+
+from graphix.transpiler import Circuit
 
 np.random.seed(0)
 
@@ -178,7 +181,7 @@ class QNN:
         statevector of the output state of the circuit.
         """
         circuit = self.data_reuploading_circuit(data_point, params)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         out_state = pattern.simulate_pattern("tensornetwork")
@@ -325,7 +328,7 @@ input_params = np.random.rand(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
-pattern = circuit.transpile(opt=False)
+pattern = circuit.transpile(opt=False).pattern
 pattern.standardize()
 pattern.shift_signals()
 
@@ -356,7 +359,7 @@ for n_qubits in qubits:
     params = np.random.rand(n_layers * n_qubits * n_features * 2)
     qnn = QNN(n_qubits, n_layers, n_features)
     circuit = qnn.data_reuploading_circuit(input_params, params)
-    pattern = circuit.transpile()
+    pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
 

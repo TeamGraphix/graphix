@@ -12,12 +12,14 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 We will simulate the generation of 100-qubit GHZ state.
 Firstly, let us import relevant modules:
 """
+
 # %%
 
-import numpy as np
-from graphix import Circuit
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+
+from graphix import Circuit
 
 n = 100
 print(f"{n}-qubit GHZ state generation")
@@ -35,7 +37,7 @@ for i in range(1, n):
 # %%
 # Transpile into pattern
 
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.standardize()
 
 nodes, edges = pattern.get_graph()
@@ -55,3 +57,5 @@ plt.show()
 tn = pattern.simulate_pattern(backend="tensornetwork")
 print(f"The amplitude of |00...0>: {tn.get_basis_amplitude(0)}")
 print(f"The amplitude of |00...0>: {tn.get_basis_amplitude(2**n-1)}")
+
+# %%

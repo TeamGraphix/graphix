@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 from copy import deepcopy
-import unittest
 
 import numpy as np
+import numpy.typing as npt
+import pytest
 
 from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op
 
 
-class TestStatevec(unittest.TestCase):
-    def test_remove_one_qubit(self):
+class TestStatevec:
+    def test_remove_one_qubit(self) -> None:
         n = 10
         k = 3
 
@@ -23,9 +26,10 @@ class TestStatevec(unittest.TestCase):
         sv2.ptrace([k])
         sv2.normalize()
 
-        np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+        assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
 
-    def test_measurement_into_each_XYZ_basis(self):
+    @pytest.mark.parametrize("state", [States.plus, States.zero, States.one, States.iplus, States.iminus])
+    def test_measurement_into_each_xyz_basis(self, state: npt.NDArray) -> None:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
@@ -41,18 +45,14 @@ class TestStatevec(unittest.TestCase):
             sv.evolve(m_op, [k])
             sv.remove_qubit(k)
 
-            sv2 = Statevec(nqubit=n - 1)
-            np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
+        sv2 = Statevec(nqubit=n - 1)
+        assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
 
-    def test_measurement_into_minus_state(self):
+    def test_measurement_into_minus_state(self) -> None:
         n = 3
         k = 0
         m_op = np.outer(States.minus, States.minus.T.conjugate())
         sv = Statevec(nqubit=n)
         sv.evolve(m_op, [k])
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             sv.remove_qubit(k)
-
-
-if __name__ == "__main__":
-    unittest.main()
