@@ -169,13 +169,16 @@ class I(OneQubitInstruction):
 
     kind: InstructionKind = InstructionKind.I
 
+
 class M(OneQubitInstruction):
     """
     M circuit instruction.
     """
+
     kind: InstructionKind = InstructionKind.M
     plane: Plane
     angle: float
+
 
 class RX(RotationInstruction):
     """

@@ -15,6 +15,7 @@ from graphix.sim.base_backend import Backend
 from graphix.ops import Ops
 import graphix.command
 
+
 class DensityMatrix:
     """DensityMatrix object."""
 

@@ -392,7 +392,7 @@ class Pattern:
                 kind = next(it).kind
             while kind == "M":
                 kind = next(it).kind
-            xzc = { "X", "Z", "C" }
+            xzc = {"X", "Z", "C"}
             while kind in xzc:
                 kind = next(it).kind
             return False

@@ -403,7 +403,12 @@ class Circuit:
                     Nnode += 11
                 else:
                     ancilla = [Nnode + i for i in range(18)]
-                    (out[instr.controls[0]], out[instr.controls[1]], out[instr.target], seq,) = self._ccx_command(
+                    (
+                        out[instr.controls[0]],
+                        out[instr.controls[1]],
+                        out[instr.target],
+                        seq,
+                    ) = self._ccx_command(
                         out[instr.controls[0]],
                         out[instr.controls[1]],
                         out[instr.target],
@@ -1047,9 +1052,7 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        seq = [
-            M(node=input_node, plane=plane.name, angle=angle)
-        ]
+        seq = [M(node=input_node, plane=plane.name, angle=angle)]
         return seq
 
     @classmethod
@@ -1696,7 +1699,9 @@ class Circuit:
             elif kind == instruction.InstructionKind.CCX:
                 state.evolve(Ops.ccx, [instr.controls[0], instr.controls[1], instr.target])
             elif kind == instruction.InstructionKind.M:
-                result = graphix.sim.base_backend.perform_measure(instr.target, instr.plane, instr.angle * np.pi, state, np.random)
+                result = graphix.sim.base_backend.perform_measure(
+                    instr.target, instr.plane, instr.angle * np.pi, state, np.random
+                )
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")
