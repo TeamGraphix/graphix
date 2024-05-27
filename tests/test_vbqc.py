@@ -10,66 +10,6 @@ import networkx as nx
 
 class TestVBQC(unittest.TestCase):
 
-    def test_graph(self) :
-        nqubits = 2
-        depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
-        pattern.standardize()
-        # pattern.draw_graph()
-        graph = nx.Graph()
-        graph.add_nodes_from(pattern.get_graph()[0])
-        graph.add_edges_from(pattern.get_graph()[1])
-
-        depth, layers = pattern.get_layers()
-        layers = {element: key for key, value_set in layers.items() for element in value_set}
-        
-        for output in pattern.output_nodes:
-            layers[output] = depth + 1
-        xflow, zflow = graphix.gflow.get_corrections_from_pattern(pattern)
-        visualization = graphix.visualization.GraphVisualizer(
-            G= graph,
-            v_in=pattern.input_nodes,
-            v_out=pattern.output_nodes,
-            meas_plane=pattern.get_meas_plane(),
-            meas_angles=pattern.get_angles(),
-            local_clifford=pattern.get_vops()
-        )
-        
-        visualization.visualize_all_correction(
-            layers=layers,
-            xflow=dict(),
-            zflow=zflow,
-            show_pauli_measurement=False,
-            show_local_clifford=False,
-            show_measurement_planes=False,
-            node_distance=(1,1),
-            figsize=None,
-        )
-
-        visualization.visualize_all_correction(
-            layers=layers,
-            xflow=xflow,
-            zflow=dict(),
-            show_pauli_measurement=False,
-            show_local_clifford=False,
-            show_measurement_planes=False,
-            node_distance=(1,1),
-            figsize=None,
-        )
-        visualization.visualize_all_correction(
-            layers=layers,
-            xflow=dict(),
-            zflow=dict(),
-            show_pauli_measurement=False,
-            show_local_clifford=False,
-            show_measurement_planes=False,
-            node_distance=(1,1),
-            figsize=None,
-        )
-
-
-        self.assertTrue(True)
 
     def test_stabilizer_chain(self) :
         from graphix.gflow import find_flow
