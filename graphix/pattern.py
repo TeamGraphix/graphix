@@ -1396,11 +1396,11 @@ class Pattern:
         # This forces backend reset at each simulation, to avoid continuing with the state of another simulation
         if backend == None :
             backend = StatevectorBackend()
-        backend.results = deepcopy(self.results)
-        sim = PatternSimulator(self, backend=backend, **kwargs)
+        results = deepcopy(self.results)
+        input_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=self.input_nodes, data=[BasicStates.PLUS for _ in self.input_nodes])
+        sim = PatternSimulator(self, state=input_state, node_index=node_index, results=results, backend=backend, **kwargs)
         ## TODO : add this method for all backends
-        backend.prepare_state(nodes=self.input_nodes, data=[BasicStates.PLUS for _ in self.input_nodes])
-        state = sim.run()
+        state, node_index = sim.run()
         return state
 
     def run_pattern(self, backend, **kwargs):

@@ -52,7 +52,7 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend="statevector", state = None, node_index=[], noise_model=None, measure_method=None, **kwargs):
+    def __init__(self, pattern, backend="statevector", state = None, node_index=[], results=dict(),  noise_model=None, measure_method=None, **kwargs):
         """
         Parameters
         -----------
@@ -98,7 +98,7 @@ class PatternSimulator:
         self.pattern = pattern
         self.state = state
         self.node_index = node_index
-        self.results = dict()
+        self.results = results
         if measure_method :
             self.measure_method = measure_method
         else :
