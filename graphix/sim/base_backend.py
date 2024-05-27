@@ -17,10 +17,10 @@ class Backend:
         # whether to compute the probability
         self.pr_calc = pr_calc
 
-    def _perform_measure(self, node, measurement_description):
+    def _perform_measure(self, state, node_index, node, measurement_description):
         # measurement_description = self.__measure_method.get_measurement_description(cmd, self.results)
         vec = measurement_description.plane.polar(measurement_description.angle)
-        loc = self.node_index.index(node)
+        loc = node_index.index(node)
 
         def op_mat_from_result(result: bool) -> np.ndarray:
             op_mat = np.eye(2, dtype=np.complex128) / 2
@@ -31,7 +31,7 @@ class Backend:
 
         if self.pr_calc:
             op_mat = op_mat_from_result(False)
-            prob_0 = self.state.expectation_single(op_mat, loc)
+            prob_0 = state.expectation_single(op_mat, loc)
             result = np.random.rand() > prob_0
             if result:
                 op_mat = op_mat_from_result(True)
@@ -39,8 +39,7 @@ class Backend:
             # choose the measurement result randomly
             result = np.random.choice([0, 1])
             op_mat = op_mat_from_result(result)
-        self.results[node] = result
         # self.__measure_method.set_measure_result(node, result)
-        self.state.evolve_single(op_mat, loc)
-        self.node_index.remove(node)
+        state.evolve_single(op_mat, loc)
+        node_index.remove(node)
         return loc, result

@@ -54,7 +54,7 @@ class TestClient(unittest.TestCase):
             secrets = Secrets(r=True)
             # Giving it empty will create a random secret
             client = Client(pattern=pattern, secrets=secrets)
-            state_mbqc = client.delegate_pattern(backend=backend)
+            state_mbqc, _  = client.delegate_pattern(backend=backend)
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
 
     def test_theta_secret_simulation(self) :
@@ -75,7 +75,7 @@ class TestClient(unittest.TestCase):
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation = client.delegate_pattern(backend=backend)
+            blinded_simulation, _ = client.delegate_pattern(backend=backend)
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
@@ -99,7 +99,7 @@ class TestClient(unittest.TestCase):
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation= client.delegate_pattern(backend=backend)
+            blinded_simulation, _ = client.delegate_pattern(backend=backend)
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
@@ -119,14 +119,40 @@ class TestClient(unittest.TestCase):
         # Giving it empty will create a random secret
         client = Client(pattern=pattern, secrets=secrets)
         backend = StatevectorBackend()
-        _backend_state = client.delegate_pattern(backend=backend)
+        _, server = client.delegate_pattern(backend=backend)
 
         for measured_node in client.measurement_db:
             # Compare results on the client side and on the server side : should differ by r[node]
             result = client.results[measured_node]
             client_r_secret = client.secrets.r[measured_node]
-            server_result = backend.results[measured_node]
+            server_result = server.results[measured_node]
             assert result == (server_result + client_r_secret) % 2
+
+    def test_qubits_preparation(self) :
+        nqubits = 2
+        depth = 1
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        nodes = pattern.get_graph()[0]
+        pattern.standardize(method="global")
+        secrets = Secrets(a=True, r=True, theta=True)
+
+        # Create a |+> state for each input node, and associate index
+        states = [BasicStates.PLUS for node in pattern.input_nodes]
+        
+
+        # Create the client with the input state
+        client = Client(pattern=pattern, input_state=states, secrets=secrets)
+
+        backend = StatevectorBackend()
+        # Blinded simulation, between the client and the server
+        client.prepare_states(backend=backend)
+        assert (set(client.node_index) == set(nodes))
+        client.blind_qubits(backend=backend)
+        assert (set(client.node_index) == set(nodes))
+
+
+
 
 
     def test_UBQC(self) :
@@ -150,43 +176,10 @@ class TestClient(unittest.TestCase):
 
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation = client.delegate_pattern(backend=backend)
+            blinded_simulation, _ = client.delegate_pattern(backend=backend)
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
             np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
-
-
-    def test_client_oracle(self) :
-        # Generate random pattern
-        nqubits = 2
-        depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
-        pattern.standardize(method="global")
-
-        backend = StatevectorBackend()
-
-        input_state = [BasicStates.PLUS for _ in pattern.input_nodes]
-        client = Client(pattern=pattern,secrets=Secrets(theta=True), input_state=input_state)
-        prepared_state = client.prepare_states(backend=backend)
-        
-        print(input_state)
-        print(client.secrets.theta)
-        print(prepared_state)
-
-        ## TODO : how can we write a clean test to verify that the difference between the input state and the backend state is a Z(theta) rotation ?
-
-
-        ## TODO
-        # Client should not have input state! 
-        client.input_state
-
-        ## TODO
-        # Backend can currently live without input state, dangerous behavior. Input state should be created 1) when Client uses backend, or 2) when Simulator uses backend (in stand-alone mode)
-        """
-        Simulateur = pilote, donne les instructions à exécuter
-        décorréler client, serveur (simulateur) et monde physique (backend)
-        """
 
 
 

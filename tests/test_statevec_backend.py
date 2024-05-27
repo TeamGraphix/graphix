@@ -6,6 +6,8 @@ from graphix import Circuit
 from graphix.states import BasicStates, PlanarState
 from graphix.sim.statevec import Statevec, StatevectorBackend
 import graphix.pauli
+import graphix.clifford
+import graphix.simulator
 from tests.test_graphsim import meas_op
 class TestStatevec(unittest.TestCase):
     def test_remove_one_qubit(self):
@@ -60,7 +62,32 @@ class TestStatevecNew(unittest.TestCase):
         circ.h(0)
         self.hadamardpattern = circ.transpile()
 
+    def test_clifford(self) :
+        for clifford_index in range(24) :   
+            state = BasicStates.PLUS
+            vec = Statevec(nqubit=1, data=state)
+            backend = StatevectorBackend()
+            internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+            # Applies clifford gate "Z"
+            clifford_cmd = ["C", 0, clifford_index]
+            clifford_gate = graphix.clifford.CLIFFORD[clifford_index]
 
+            vec.evolve_single(clifford_gate, 0)
+
+            internal_state = backend.apply_clifford(state=internal_state, node_index=node_index, cmd=clifford_cmd)
+            np.testing.assert_allclose(vec.psi, internal_state.psi)
+        
+
+    def test_deterministic_measure(self) :
+         # plus state (default)
+        state = BasicStates.PLUS
+        vec = Statevec(nqubit=1, data=state)
+        backend = StatevectorBackend()
+        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+        measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
+        internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[0], measurement_description=measurement_description)
+        assert result == 0
+        assert node_index == []
 
     # test initialization only
     def test_init_success(self):
@@ -69,19 +96,19 @@ class TestStatevecNew(unittest.TestCase):
         state = BasicStates.PLUS
         vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        backend.prepare_state(nodes=[0], data=state)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
+        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+        np.testing.assert_allclose(vec.psi, internal_state.psi)
         # assert backend.state.Nqubit == 1
-        assert len(backend.state.dims()) == 1
+        assert node_index == [0]
 
         # minus state 
         state = BasicStates.MINUS
         vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        backend.prepare_state(nodes=[0], data=state)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
+        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+        np.testing.assert_allclose(vec.psi, internal_state.psi)
         # assert backend.state.Nqubit == 1
-        assert len(backend.state.dims()) == 1
+        assert node_index == [0]
 
         # random planar state
         rand_angle = self.rng.random() * 2 * np.pi
@@ -89,10 +116,10 @@ class TestStatevecNew(unittest.TestCase):
         state = PlanarState(plane = rand_plane, angle = rand_angle)
         vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        backend.prepare_state(nodes=[0], data=state)
-        np.testing.assert_allclose(vec.psi, backend.state.psi)
+        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+        np.testing.assert_allclose(vec.psi, internal_state.psi)
         # assert backend.state.Nqubit == 1
-        assert len(backend.state.dims()) == 1
+        assert node_index == [0]
 
 
 
@@ -109,7 +136,7 @@ class TestStatevecNew(unittest.TestCase):
         state2 = PlanarState(plane = rand_plane[1], angle = rand_angle[1])
         backend = StatevectorBackend()
         with self.assertRaises(ValueError):
-            backend.prepare_state(nodes=[0], data=[state, state2])
+            backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=[state, state2])
 
 
 

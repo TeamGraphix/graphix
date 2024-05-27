@@ -27,9 +27,6 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
     def __init__(self, max_qubit_num=20, pr_calc=True):
         self.max_qubit_num = max_qubit_num
         super().__init__(pr_calc)
-        self.state = None
-        self.node_index = []
-        self.Nqubit = 0
         self.to_trace = []
         self.to_trace_loc = []
         # Modify this
@@ -47,8 +44,8 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes, input_state=graphix.states.BasicStates.PLUS):
-        """add new qubit to internal statevector
+    def add_nodes(self, input_state, node_index, nodes, data=graphix.states.BasicStates.PLUS):
+        """add new qubit(s) to statevector in argument
         and assign the corresponding node number
         to list self.node_index.
 
@@ -56,15 +53,17 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         ----------
         nodes : list of node indices
         """
-        if not self.state:
-            self.state = Statevec(nqubit=0)
+        if not input_state:
+            input_state = Statevec(nqubit=0)
         n = len(nodes)
-        sv_to_add = Statevec(nqubit=n, data=input_state)
-        self.state.tensor(sv_to_add)
-        self.node_index.extend(nodes)
-        self.Nqubit += n
+        sv_to_add = Statevec(nqubit=n, data=data)
 
-    def entangle_nodes(self, edge):
+        input_state.tensor(sv_to_add)
+        node_index.extend(nodes)
+        
+        return input_state, node_index
+    
+    def entangle_nodes(self, state, node_index, edge):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -72,11 +71,12 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         edge : tuple (i, j)
             a pair of node indices
         """
-        target = self.node_index.index(edge[0])
-        control = self.node_index.index(edge[1])
-        self.state.entangle((target, control))
+        target = node_index.index(edge[0])
+        control = node_index.index(edge[1])
+        state.entangle((target, control))
+        return state
 
-    def measure(self, node, measurement_description):
+    def measure(self, state, node_index, node, measurement_description):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -84,45 +84,51 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         cmd : list
             measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        loc, result = self._perform_measure(node, measurement_description)
-        self.state.remove_qubit(loc)
-        self.Nqubit -= 1
-        return result
+        loc, result = self._perform_measure(state, node_index, node, measurement_description)
+        state.remove_qubit(loc)
+        return state, node_index, result
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, state, node_index, results, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            loc = self.node_index.index(cmd[1])
+        if np.mod(np.sum([results[j] for j in cmd[2]]), 2) == 1:
+            loc = node_index.index(cmd[1])
             if cmd[0] == "X":
                 op = Ops.x
             elif cmd[0] == "Z":
                 op = Ops.z
-            self.state.evolve_single(op, loc)
+            state.evolve_single(op, loc)
+        return state
+    
+    def apply_single(self, state, op, i) :
+        state.evolve_single(op=op, i=i)
+        return state
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, state, node_index, cmd):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        loc = node_index.index(cmd[1])
+        state.evolve_single(CLIFFORD[cmd[2]], loc)
+        return state
 
-    def finalize(self, output_nodes):
+    def finalize(self, output_state, node_index, output_nodes):
         """to be run at the end of pattern simulation."""
-        self.sort_qubits(output_nodes)
-        self.state.normalize()
+        self.sort_qubits(output_state, node_index, output_nodes)
+        output_state.normalize()
+        return output_state
 
-    def sort_qubits(self, output_nodes):
+    def sort_qubits(self, state, node_index, output_nodes):
         """sort the qubit order in internal statevector"""
         for i, ind in enumerate(output_nodes):
-            if not self.node_index[i] == ind:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index[i], self.node_index[move_from] = (
-                    self.node_index[move_from],
-                    self.node_index[i],
+            if not node_index[i] == ind:
+                move_from = node_index.index(ind)
+                state.swap((i, move_from))
+                node_index[i], node_index[move_from] = (
+                    node_index[move_from],
+                    node_index[i],
                 )
 
 
@@ -194,7 +200,6 @@ class Statevec:
 
             # warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
             self.psi = np.array(1, dtype=np.complex128)
-            # self.Nqubit = 0
         else:
             if isinstance(input_list[0], graphix.states.State):
                 graphix.types.check_list_elements(input_list, graphix.states.State)
@@ -225,7 +230,6 @@ class Statevec:
                 raise TypeError(
                     f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
                 )
-            # self.Nqubit = state.Nqubit
 
     def __repr__(self):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
@@ -365,9 +369,7 @@ class Statevec:
         # NOTE on tensor form not vector
         # deprecated
         total_num = len(self.dims()) + len(other.dims())
-        # self.Nqubit += other.Nqubit
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
-        # self.Nqubit = len(self.dims())
 
     def CNOT(self, qubits):
         """apply CNOT

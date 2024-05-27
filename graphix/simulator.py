@@ -52,7 +52,7 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend="statevector", noise_model=None, measure_method=None, **kwargs):
+    def __init__(self, pattern, backend="statevector", state = None, node_index=[], noise_model=None, measure_method=None, **kwargs):
         """
         Parameters
         -----------
@@ -96,13 +96,13 @@ class PatternSimulator:
             raise ValueError("Unknown backend.")
         self.set_noise_model(noise_model)
         self.pattern = pattern
-        self.results = self.backend.results
-        self.state = self.backend.state
+        self.state = state
+        self.node_index = node_index
+        self.results = dict()
         if measure_method :
             self.measure_method = measure_method
         else :
             self.measure_method = DefaultMeasureMethod()
-        self.node_index = []
 
     def set_noise_model(self, model):
         if not isinstance(self.backend, graphix.sim.density_matrix.DensityMatrixBackend) and model is not None:
@@ -127,24 +127,25 @@ class PatternSimulator:
 
                 if cmd[0] == "N":
                     if len(cmd) == 2 :
-                        self.backend.add_nodes(nodes=[cmd[1]])
+                        self.state, self.node_index = self.backend.add_nodes(input_state=self.state, node_index=self.node_index, nodes=[cmd[1]])
                     elif len(cmd) == 4 :
-                        self.backend.add_nodes(nodes=[cmd[1]], input_state=PlanarState(plane=cmd[2], angle=cmd[3]*np.pi/4))
+                        self.state, self.node_index = self.backend.add_nodes(input_state=self.state, node_index=self.node_index, nodes=[cmd[1]], data=PlanarState(plane=cmd[2], angle=cmd[3]*np.pi/4))
                 elif cmd[0] == "E":
-                    self.backend.entangle_nodes(cmd[1])
+                    self.state = self.backend.entangle_nodes(state=self.state, node_index=self.node_index, edge=cmd[1])
                 elif cmd[0] == "M":
                     measurement_description = self.measure_method.get_measurement_description(cmd, self.results) if not isinstance(self.backend, graphix.sim.tensornet.TensorNetworkBackend) else cmd
-                    result = self.backend.measure(node=cmd[1], measurement_description = measurement_description)
+                    self.state, self.node_index, result = self.backend.measure(state=self.state, node_index=self.node_index, node=cmd[1], measurement_description = measurement_description)
+                    self.results[cmd[1]] = result
                     self.measure_method.set_measure_result(node=cmd[1], result=result)
                 elif cmd[0] == "X":
-                    self.backend.correct_byproduct(cmd)
+                    self.state = self.backend.correct_byproduct(state=self.state, node_index=self.node_index, cmd=cmd, results=self.results)
                 elif cmd[0] == "Z":
-                    self.backend.correct_byproduct(cmd)
+                    self.state = self.backend.correct_byproduct(state=self.state, node_index=self.node_index, cmd=cmd, results=self.results)
                 elif cmd[0] == "C":
-                    self.backend.apply_clifford(cmd)
+                    self.state = self.backend.apply_clifford(state=self.state, node_index=self.node_index, cmd=cmd)
                 else:
                     raise ValueError("invalid commands")
-            self.backend.finalize(self.pattern.output_nodes)
+            self.backend.finalize(output_state=self.state, node_index=self.node_index, output_nodes=self.pattern.output_nodes)
         else:
             self.noise_model.assign_simulator(self)
             for node in self.pattern.input_nodes:
@@ -160,7 +161,7 @@ class PatternSimulator:
                     measurement_description = self.measure_method.get_measurement_description(cmd, self.results) if not isinstance(self.backend, graphix.sim.tensornet.TensorNetworkBackend) else cmd
                     self.backend.apply_channel(self.noise_model.measure(), [cmd[1]])
                     result = self.backend.measure(node=cmd[1], measurement_description = measurement_description)
-                    self.measure_method.set_measure_result(node=cmd[1], result=result)
+                    self.results = self.measure_method.set_measure_result(node=cmd[1], result=result, results=self.results)
                     self.noise_model.confuse_result(cmd)
                 elif cmd[0] == "X":
                     self.backend.correct_byproduct(cmd)
@@ -181,4 +182,4 @@ class PatternSimulator:
                     raise ValueError("Invalid commands.")
             self.backend.finalize(self.pattern.output_nodes)
 
-        return self.backend.state
+        return self.state, self.node_index
