@@ -124,6 +124,7 @@ class PatternSimulator:
         # self.backend.add_nodes(self.pattern.input_nodes, input_state=state)
         if self.noise_model is None:
             for cmd in self.pattern:
+                print(cmd)
 
                 if cmd[0] == "N":
                     if len(cmd) == 2 :
