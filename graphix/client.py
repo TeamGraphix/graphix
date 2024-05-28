@@ -184,12 +184,12 @@ class Client:
             for index in sorted(graph.nodes) :
                 if stabilizer[index] == graphix.pauli.X :
                     state = BasicStates.PLUS
-                if stabilizer[index] == graphix.pauli.Y :
+                elif stabilizer[index] == graphix.pauli.Y :
                     state = BasicStates.PLUS_I
-                if stabilizer[index] == graphix.pauli.Z :
+                elif stabilizer[index] == graphix.pauli.Z :
                     state = BasicStates.ZERO
                 else :
-                    state = BasicStates.PLUS
+                    state = BasicStates.ZERO
                 states_to_prepare.append(state)
             run.input_state = states_to_prepare
             run.tested_qubits = nodes_by_color[color]
@@ -207,19 +207,17 @@ class Client:
         graph.add_edges_from(edges)
         graph.add_nodes_from(nodes)
 
-        new_measurement_db = dict()
-        for node in self.measurement_db :
-            new_measurement_db[node] = MeasureParameters(plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0)
-        self.measurement_db = new_measurement_db
-        
-        
-        sim = graphix.simulator.PatternSimulator(state=self.state, node_index=self.node_index, backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        self.state, self.node_index = sim.run()
-
-        # returns the final state as well as the server object (Simulator)
-        for single_qubit_trap in run.tested_qubits :
-            if single_qubit_trap not in self.output_nodes :
-                print(f"Result for trap around {int(single_qubit_trap)} : {int(self.results[single_qubit_trap])}")
+        # Entanglement
+        for cmd in self.clean_pattern :
+            if cmd[0] == 'E' :
+                edge = cmd[1]
+                self.state = backend.entangle_nodes(state=self.state, node_index = self.node_index, edge=edge)
+        # Measure
+            if cmd[0] == 'M' :
+                node = cmd[1]
+                measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
+                self.state, self.node_index, result = backend.measure(state=self.state, node_index=self.node_index, node=node, measurement_description=measurement_description)
+                self.results[node] = result
 
         return self.state
 

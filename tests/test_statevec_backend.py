@@ -79,19 +79,28 @@ class TestStatevecNew(unittest.TestCase):
         
 
     def test_deterministic_measure(self) :
-         # plus state (default)
-        backend = StatevectorBackend()
-        N_neighbors = 10
-        states = [BasicStates.PLUS] + [BasicStates.ZERO for _ in range(N_neighbors)] ## Add 3 neighbors
-        nodes = range(N_neighbors+1)
-        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=nodes, data=states)
+        """
+         Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1.
+         Same if we entangle another |+> state with the same |0> states, without entangling it with any |+> state.
+        """
+        for _ in range(10) :
+            # plus state (default)
+            backend = StatevectorBackend()
+            N_neighbors = 10
+            states = [BasicStates.PLUS] + [BasicStates.ZERO for _ in range(N_neighbors)] + [BasicStates.PLUS]
+            nodes = range(N_neighbors+2)
+            internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=nodes, data=states)
 
-        for i in range(1, N_neighbors+1) :
-            internal_state.entangle((0, i))
-        measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
-        internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[0], measurement_description=measurement_description)
-        assert result == 0
-        assert node_index == list(range(1, N_neighbors+1))
+            for i in range(1, N_neighbors+1) :
+                internal_state = backend.entangle_nodes(state=internal_state, node_index=node_index, edge=(nodes[0], i))
+                internal_state = backend.entangle_nodes(state=internal_state, node_index=node_index, edge=(nodes[-1], i))
+            measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
+            internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[0], measurement_description=measurement_description)
+            assert result == 0
+            assert node_index == list(range(1, N_neighbors+2))
+            internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[-1], measurement_description=measurement_description)
+            assert result == 0
+            assert node_index == list(range(1, N_neighbors+1))
 
     # test initialization only
     def test_init_success(self):

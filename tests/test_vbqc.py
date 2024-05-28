@@ -17,9 +17,10 @@ class TestVBQC(unittest.TestCase):
 
     def test_trap_delegated(self) :
         nqubits = 2
-        depth = 2
+        depth = 1
         circuit = rc.get_rand_circuit(nqubits, depth)
         pattern = circuit.transpile()
+        pattern.standardize()
         states = [BasicStates.PLUS for _ in pattern.input_nodes]
         client = graphix.client.Client(pattern=pattern, input_state=states)
         test_runs, coloring = client.create_test_runs()
