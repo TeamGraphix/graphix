@@ -202,11 +202,6 @@ class Client:
         # self.prepare_states(backend) 
         self.blind_qubits(backend)
 
-        graph = nx.Graph()
-        nodes, edges = self.graph
-        graph.add_edges_from(edges)
-        graph.add_nodes_from(nodes)
-
         # Modify the pattern to be all X-basis measurements
         for node in self.measurement_db :
             self.measurement_db[node] = MeasureParameters(plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0)
