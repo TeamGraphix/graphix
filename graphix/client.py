@@ -206,15 +206,22 @@ class Client:
         nodes, edges = self.graph
         graph.add_edges_from(edges)
         graph.add_nodes_from(nodes)
+
+        new_measurement_db = dict()
+        for node in self.measurement_db :
+            new_measurement_db[node] = MeasureParameters(plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0)
+        self.measurement_db = new_measurement_db
+        
         # Entanglement
         for node in sorted(graph.nodes) :
             for neighbor in nx.neighbors(graph, node) :
                 self.state = backend.entangle_nodes(state=self.state, node_index = self.node_index, edge=(node, neighbor))
         # Measure
-        for node in run.tested_qubits :
-            measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
-            self.state, self.node_index, result = backend.measure(state=self.state, node_index=self.node_index, node=node, measurement_description=measurement_description)
-            self.measure_method.set_measure_result(node=node, result=result)
+        for node in self.nodes_list :
+            if node not in self.output_nodes :
+                measurement_description = self.measure_method.get_measurement_description(cmd=['M', node], results=self.results)
+                self.state, self.node_index, result = backend.measure(state=self.state, node_index=self.node_index, node=node, measurement_description=measurement_description)
+                self.measure_method.set_measure_result(node=node, result=result)
 
         # returns the final state as well as the server object (Simulator)
         for single_qubit_trap in run.tested_qubits :

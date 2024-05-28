@@ -28,7 +28,8 @@ class TestVBQC(unittest.TestCase):
             client.results = dict()
             client.delegate_test_run(backend=backend, run=run)
             for qubit in run.tested_qubits :
-                assert client.results[qubit] == 0
+                if qubit not in pattern.output_nodes :
+                    assert client.results[qubit] == 0
 
     def test_trap_run(self) :
         nqubits = 2
