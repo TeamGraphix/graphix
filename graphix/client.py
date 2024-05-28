@@ -161,25 +161,29 @@ class Client:
         nodes, edges = self.graph
         graph.add_edges_from(edges)
         graph.add_nodes_from(nodes)
-        coloring = nx.coloring.greedy_color(graph, strategy="largest_first")
         
+        # Create the graph coloring
+        coloring = nx.coloring.greedy_color(graph, strategy="largest_first")
         colors = set(coloring.values())
         nodes_by_color = {c:[] for c in colors}
         for node in sorted(graph.nodes) :
             color = coloring[node]
-            nodes_by_color[color].append(node)            
+            nodes_by_color[color].append(node)
+
+        # Create the test runs : one per color            
         runs = []
-        # 1 color = 1 set of traps, but 1 test run so 1 stabilizer
         for color in colors :
+            # 1 color = 1 test run = 1 set of traps = 1 stabilizer
             run = TrappifiedRun()
-                # Build stabilizer (1 per test run)
             stabilizer = dict.fromkeys(sorted(graph.nodes), graphix.pauli.I)
-            # single-qubit traps
+
+            # Definition of single-qubit trap and composition of traps of the same color (take product of stabilizers)
             for node in nodes_by_color[color] :
                 stabilizer[node] @= graphix.pauli.X
                 for n in nx.neighbors(graph, node) :
                     stabilizer[n] @= graphix.pauli.Z
             
+            # Prepare eigenstates of trap stabilizer (only +1-eigenstates for now)
             states_to_prepare = []
             for index in sorted(graph.nodes) :
                 if stabilizer[index] == graphix.pauli.X :
@@ -191,6 +195,8 @@ class Client:
                 else :
                     state = BasicStates.ZERO
                 states_to_prepare.append(state)
+
+            # Configure the test run
             run.input_state = states_to_prepare
             run.tested_qubits = nodes_by_color[color]
             run.stabilizer = stabilizer
@@ -198,17 +204,16 @@ class Client:
         return runs, coloring
 
     def delegate_test_run(self, backend, run:TrappifiedRun) :
+        # The state is entirely prepared and blinded by the client before being sent to the server
         self.state, self.node_index = backend.add_nodes(input_state = None, node_index=[], nodes=sorted(self.graph[0]), data=run.input_state)
-        # self.prepare_states(backend) 
         self.blind_qubits(backend)
 
-        # Modify the pattern to be all X-basis measurements
+        # Modify the pattern to be all X-basis measurements, no shifts/signalling updates
         for node in self.measurement_db :
             self.measurement_db[node] = MeasureParameters(plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0)
 
         sim = graphix.simulator.PatternSimulator(state=self.state, node_index=self.node_index, backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
         self.state, self.node_index = sim.run()
-
         return self.state
 
 
