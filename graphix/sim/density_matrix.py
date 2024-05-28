@@ -30,7 +30,7 @@ Data = typing.Union[
 ]
 
 
-class DensityMatrix(graphix.sim.base_backend.Backend):
+class DensityMatrix():
     """DensityMatrix object."""
 
     def __init__(
@@ -319,9 +319,6 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
                 if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # check that pattern has output nodes configured
-        self.state = None
-        self.node_index = []
-        self.Nqubit = 0
         self.max_qubit_num = max_qubit_num
         self.results = {}
         super().__init__(pr_calc)
@@ -331,9 +328,9 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     def prepare_state(self, nodes, data) :
         self.add_nodes(nodes=nodes, input_state=graphix.states.BasicStates.PLUS)
 
-    def add_nodes(self, nodes, input_state: Data = graphix.states.BasicStates.PLUS):
+    def add_nodes(self, input_state, node_index, nodes, data: Data = graphix.states.BasicStates.PLUS):
         """add new qubit to the internal density matrix
-        and asign the corresponding node number to list self.node_index.
+        and asign the corresponding node number to list node_index.
 
         Parameters
         ----------
@@ -342,15 +339,15 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         qubit_to_add : DensityMatrix object
             qubit to be added to the graph states
         """
-        if not self.state:
-            self.state = DensityMatrix(nqubit=0)
+        if not input_state:
+            input_state = DensityMatrix(nqubit=0)
         n = len(nodes)
-        dm_to_add = DensityMatrix(nqubit=n, data=input_state)
-        self.state.tensor(dm_to_add)
-        self.node_index.extend(nodes)
-        self.Nqubit += n
+        dm_to_add = DensityMatrix(nqubit=n, data=data)
+        input_state.tensor(dm_to_add)
+        node_index.extend(nodes)
+        return input_state, node_index
 
-    def entangle_nodes(self, edge):
+    def entangle_nodes(self, state, node_index, edge):
         """Apply CZ gate to the two connected nodes.
 
         Parameters
@@ -358,11 +355,12 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             edge : tuple (int, int)
                 a pair of node indices
         """
-        target = self.node_index.index(edge[0])
-        control = self.node_index.index(edge[1])
-        self.state.entangle((target, control))
+        target = node_index.index(edge[0])
+        control = node_index.index(edge[1])
+        state.entangle((target, control))
+        return state
 
-    def measure(self, node, measurement_description):
+    def measure(self, state, node_index, node, measurement_description):
         """Perform measurement on the specified node and trase out the qubit.
 
         Parameters
@@ -370,56 +368,58 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             cmd : list
                 measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        loc, result = self._perform_measure(node, measurement_description)
-        self.state.normalize()
+        loc, result = self._perform_measure(state=state, node_index=node_index, node=node, measurement_description=measurement_description)
+        state.normalize()
         # perform ptrace right after the measurement (destructive measurement).
-        self.state.ptrace(loc)
-        return result
+        state.ptrace(loc)
+        return state, node_index, result
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, state, node_index, results, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            loc = self.node_index.index(cmd[1])
+        if np.mod(np.sum([results[j] for j in cmd[2]]), 2) == 1:
+            loc = node_index.index(cmd[1])
             if cmd[0] == "X":
                 op = Ops.x
             elif cmd[0] == "Z":
                 op = Ops.z
-            self.state.evolve_single(op, loc)
+            state.evolve_single(op, loc)
+        return state
 
-    def sort_qubits(self, output_nodes):
-        """sort the qubit order in internal density matrix"""
+    def sort_qubits(self, state, node_index, output_nodes):
+        """sort the qubit order in internal statevector"""
         for i, ind in enumerate(output_nodes):
-            if not self.node_index[i] == ind:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index[i], self.node_index[move_from] = (
-                    self.node_index[move_from],
-                    self.node_index[i],
+            if not node_index[i] == ind:
+                move_from = node_index.index(ind)
+                state.swap((i, move_from))
+                node_index[i], node_index[move_from] = (
+                    node_index[move_from],
+                    node_index[i],
                 )
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, state, node_index, cmd):
+        """Apply single-qubit Clifford gate,
+        specified by vop index specified in graphix.clifford.CLIFFORD
+        """
+        loc = node_index.index(cmd[1])
+        state.evolve_single(CLIFFORD[cmd[2]], loc)
+        return state
+
+    def apply_channel(self, state, node_index, channel: KrausChannel, qargs):
         """backend version of apply_channel
         Parameters
         ----------
             qargs : list of ints. Target qubits
         """
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
 
-    def apply_channel(self, channel: KrausChannel, qargs):
-        """backend version of apply_channel
-        Parameters
-        ----------
-            qargs : list of ints. Target qubits
-        """
+        indices = [node_index.index(i) for i in qargs]
+        state.apply_channel(channel, indices)
+        return state
 
-        indices = [self.node_index.index(i) for i in qargs]
-        self.state.apply_channel(channel, indices)
-
-    def finalize(self, output_nodes):
-        """To be run at the end of pattern simulation."""
-        self.sort_qubits(output_nodes)
-        self.state.normalize()
+    def finalize(self, output_state, node_index, output_nodes):
+        """to be run at the end of pattern simulation."""
+        self.sort_qubits(output_state, node_index, output_nodes)
+        output_state.normalize()
+        return output_state
