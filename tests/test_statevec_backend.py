@@ -80,14 +80,18 @@ class TestStatevecNew(unittest.TestCase):
 
     def test_deterministic_measure(self) :
          # plus state (default)
-        state = BasicStates.PLUS
-        vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+        N_neighbors = 10
+        states = [BasicStates.PLUS] + [BasicStates.ZERO for _ in range(N_neighbors)] ## Add 3 neighbors
+        nodes = range(N_neighbors+1)
+        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=nodes, data=states)
+
+        for i in range(1, N_neighbors+1) :
+            internal_state.entangle((0, i))
         measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
         internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[0], measurement_description=measurement_description)
         assert result == 0
-        assert node_index == []
+        assert node_index == list(range(1, N_neighbors+1))
 
     # test initialization only
     def test_init_success(self):

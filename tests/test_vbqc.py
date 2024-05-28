@@ -6,9 +6,123 @@ import random
 import graphix.gflow
 import graphix.visualization
 import networkx as nx
+import matplotlib.pyplot as plt
+from collections import defaultdict
+from graphix.states import BasicStates
+import graphix.client
+from graphix.sim.statevec import StatevectorBackend
 
 
 class TestVBQC(unittest.TestCase):
+
+    def test_trap_delegated(self) :
+        nqubits = 2
+        depth = 2
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        states = [BasicStates.PLUS for _ in pattern.input_nodes]
+        client = graphix.client.Client(pattern=pattern, input_state=states)
+        test_runs, coloring = client.create_test_runs()
+        for run in test_runs :
+            backend = StatevectorBackend()
+            client.results = dict()
+            client.delegate_test_run(backend=backend, run=run)
+            for qubit in run.tested_qubits :
+                assert client.results[qubit] == 0
+
+    def test_trap_run(self) :
+        nqubits = 2
+        depth = 2
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        graph = nx.Graph()
+        graph.add_nodes_from(pattern.get_graph()[0])
+        graph.add_edges_from(pattern.get_graph()[1])
+        # Create a |+> state for each input node, and associate index
+        states = [BasicStates.PLUS for _ in pattern.input_nodes]
+        
+
+        # Create the client with the input state
+        client = graphix.client.Client(pattern=pattern, input_state=states)
+        test_runs, coloring = client.create_test_runs()
+        for run in test_runs :
+            for node, pauli in run.stabilizer.items() :
+                print(node, pauli)
+            i=0
+            for state in run.input_state :
+                print(i, state)
+                i+= 1
+            print(run.tested_qubits)
+            
+            backend = StatevectorBackend()
+            internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=sorted(graph.nodes), data=run.input_state)
+            for node in sorted(graph.nodes) :
+                for neighbor in nx.neighbors(graph, node) :
+                    internal_state = backend.entangle_nodes(state=internal_state, node_index = node_index, edge=(node, neighbor))
+
+            for node in sorted(graph.nodes) :
+                measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
+                internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node, measurement_description=measurement_description)
+                # Deterministic outcome for trap qubits
+                if node in run.tested_qubits :
+                    assert result == 0
+
+        # colors = [coloring[node] for node in graph.nodes()]
+        # nx.draw(graph, node_color=colors, with_labels=True, cmap=plt.cm.jet)
+        # plt.show()
+
+    def test_generate_trap(self) :
+        nqubits = 5
+        depth = 3
+        circuit = rc.get_rand_circuit(nqubits, depth)
+        pattern = circuit.transpile()
+        # pattern.standardize(method="global")
+
+        graph = nx.Graph()
+        nodes, edges = pattern.get_graph()
+        graph.add_edges_from(edges)
+        graph.add_nodes_from(nodes)
+        coloring = nx.coloring.greedy_color(graph, strategy="largest_first")
+        colors = set(coloring.values())
+        nodes_by_color = {c:[] for c in colors}
+        for node in graph.nodes :
+            color = coloring[node]
+            nodes_by_color[color].append(node)
+
+        print(nodes_by_color)
+            
+        
+        # 1 color = 1 set of traps, but 1 test run so 1 stabilizer
+        for color in colors :
+            run = graphix.client.TrappifiedRun()
+            stabilizer = dict.fromkeys(sorted(graph.nodes), graphix.pauli.I)
+            # single-qubit traps
+            for node in nodes_by_color[color] :
+                stabilizer[node] @= graphix.pauli.X
+                for n in nx.neighbors(graph, node) :
+                    stabilizer[n] @= graphix.pauli.Z
+            
+            states_to_prepare = []
+            for index in graph.nodes :
+                if stabilizer[index] == graphix.pauli.X :
+                    state = BasicStates.PLUS
+                if stabilizer[index] == graphix.pauli.Y :
+                    state = BasicStates.PLUS_I
+                if stabilizer[index] == graphix.pauli.Z :
+                    state = BasicStates.ZERO
+                else :
+                    state = BasicStates.PLUS
+                states_to_prepare.append(state)
+            run.input_state = states_to_prepare
+            run.tested_qubits = nodes_by_color[color]
+
+            print(f"Test run number {color}")
+            print(f"Input state is {run.input_state}")
+            print(f"Isolated traps are {run.tested_qubits}")
+                
+        colors = [coloring[node] for node in graph.nodes()]
+        nx.draw(graph, node_color=colors, with_labels=True, cmap=plt.cm.jet)
+        plt.show()
 
 
     def test_stabilizer_chain(self) :

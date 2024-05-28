@@ -11,7 +11,7 @@ from graphix.pauli import Plane
 import graphix.pauli
 from copy import deepcopy
 import typing
-
+import networkx as nx
 """
 Usage:
 
@@ -24,6 +24,11 @@ simulator.run()
 """
 
 
+@dataclasses.dataclass
+class TrappifiedRun :
+    input_state = list
+    tested_qubits = list[int]
+    stabilizer = graphix.pauli
 
 @dataclasses.dataclass
 class Secret_a:
@@ -151,9 +156,77 @@ class Client:
         return
 
 
+    def create_test_runs(self) -> tuple[list[TrappifiedRun], dict[int, int]] :
+        graph = nx.Graph()
+        nodes, edges = self.graph
+        graph.add_edges_from(edges)
+        graph.add_nodes_from(nodes)
+        coloring = nx.coloring.greedy_color(graph, strategy="largest_first")
+        
+        colors = set(coloring.values())
+        nodes_by_color = {c:[] for c in colors}
+        for node in sorted(graph.nodes) :
+            color = coloring[node]
+            nodes_by_color[color].append(node)            
+        runs = []
+        # 1 color = 1 set of traps, but 1 test run so 1 stabilizer
+        for color in colors :
+            run = TrappifiedRun()
+                # Build stabilizer (1 per test run)
+            stabilizer = dict.fromkeys(sorted(graph.nodes), graphix.pauli.I)
+            # single-qubit traps
+            for node in nodes_by_color[color] :
+                stabilizer[node] @= graphix.pauli.X
+                for n in nx.neighbors(graph, node) :
+                    stabilizer[n] @= graphix.pauli.Z
+            
+            states_to_prepare = []
+            for index in sorted(graph.nodes) :
+                if stabilizer[index] == graphix.pauli.X :
+                    state = BasicStates.PLUS
+                if stabilizer[index] == graphix.pauli.Y :
+                    state = BasicStates.PLUS_I
+                if stabilizer[index] == graphix.pauli.Z :
+                    state = BasicStates.ZERO
+                else :
+                    state = BasicStates.PLUS
+                states_to_prepare.append(state)
+            run.input_state = states_to_prepare
+            run.tested_qubits = nodes_by_color[color]
+            run.stabilizer = stabilizer
+            runs.append(run)
+        return runs, coloring
+
+    def delegate_test_run(self, backend, run:TrappifiedRun) :
+        self.state, self.node_index = backend.add_nodes(input_state = None, node_index=[], nodes=sorted(self.graph[0]), data=run.input_state)
+        # self.prepare_states(backend) 
+        self.blind_qubits(backend)
+
+        graph = nx.Graph()
+        nodes, edges = self.graph
+        graph.add_edges_from(edges)
+        graph.add_nodes_from(nodes)
+        # Entanglement
+        for node in sorted(graph.nodes) :
+            for neighbor in nx.neighbors(graph, node) :
+                self.state = backend.entangle_nodes(state=self.state, node_index = self.node_index, edge=(node, neighbor))
+        # Measure
+        for node in run.tested_qubits :
+            measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
+            self.state, self.node_index, result = backend.measure(state=self.state, node_index=self.node_index, node=node, measurement_description=measurement_description)
+            self.measure_method.set_measure_result(node=node, result=result)
+
+        # returns the final state as well as the server object (Simulator)
+        for single_qubit_trap in run.tested_qubits :
+            if single_qubit_trap not in self.output_nodes :
+                print(f"Result for trap around {int(single_qubit_trap)} : {int(self.results[single_qubit_trap])}")
+
+        return self.state
+
+
     def delegate_pattern(self, backend):
         self.state = None
-        self.prepare_states(backend)        
+        self.prepare_states(backend)      
         self.blind_qubits(backend)
 
         sim = graphix.simulator.PatternSimulator(state=self.state, node_index=self.node_index, backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
@@ -186,7 +259,6 @@ class Client:
         x_decoding = np.sum(self.results[x_dep] for x_dep in self.byproduct_db[node]['x-domain'])%2
         x_decoding ^= self.secrets.a.a.get(node, 0)
         return z_decoding, x_decoding
-
 
 
 class ClientMeasureMethod(graphix.simulator.MeasureMethod):
