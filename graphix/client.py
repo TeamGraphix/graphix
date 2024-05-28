@@ -207,17 +207,12 @@ class Client:
         graph.add_edges_from(edges)
         graph.add_nodes_from(nodes)
 
-        # Entanglement
-        for cmd in self.clean_pattern :
-            if cmd[0] == 'E' :
-                edge = cmd[1]
-                self.state = backend.entangle_nodes(state=self.state, node_index = self.node_index, edge=edge)
-        # Measure
-            if cmd[0] == 'M' :
-                node = cmd[1]
-                measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
-                self.state, self.node_index, result = backend.measure(state=self.state, node_index=self.node_index, node=node, measurement_description=measurement_description)
-                self.results[node] = result
+        # Modify the pattern to be all X-basis measurements
+        for node in self.measurement_db :
+            self.measurement_db[node] = MeasureParameters(plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0)
+
+        sim = graphix.simulator.PatternSimulator(state=self.state, node_index=self.node_index, backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
+        self.state, self.node_index = sim.run()
 
         return self.state
 
