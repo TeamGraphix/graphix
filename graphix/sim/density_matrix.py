@@ -3,8 +3,10 @@
 Simulate MBQC with density matrix representation.
 """
 
+from __future__ import annotations
+
+import collections
 import numbers
-import typing
 from copy import deepcopy
 
 import numpy as np
@@ -18,23 +20,14 @@ from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
-Data = typing.Union[
-    graphix.states.State,
-    "DensityMatrix",
-    Statevec,
-    typing.Iterable[graphix.states.State],
-    typing.Iterable[numbers.Number],
-    typing.Iterable[typing.Iterable[numbers.Number]],
-]
-
 
 class DensityMatrix:
     """DensityMatrix object."""
 
     def __init__(
         self,
-        data: typing.Optional[Data] = graphix.states.BasicStates.PLUS,
-        nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
+        data: Data = graphix.states.BasicStates.PLUS,
+        nqubit: graphix.types.PositiveOrNullInt | None = None,
     ):
         """Initialize density matrix objects. The behaviour builds on theo ne of `graphix.statevec.Statevec`.
         `data` can be:
@@ -52,14 +45,7 @@ class DensityMatrix:
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        :type data: typing.Union[
-        graphix.states.State,
-        "DensityMatrix",
-        Statevec,
-        typing.Iterable[graphix.states.State],
-        typing.Iterable[numbers.Number],
-        typing.Iterable[typing.Iterable[numbers.Number]],
-        ], optional
+        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[numbers.Number] | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]], optional
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
@@ -77,12 +63,14 @@ class DensityMatrix:
             self.rho = data.rho.copy()
             self.Nqubit = data.Nqubit
             return
-        if isinstance(data, typing.Iterable):
+        if isinstance(data, collections.abc.Iterable):
             input_list = list(data)
             if len(input_list) != 0:
                 # needed since Object is iterable but not subscribable!
                 try:
-                    if isinstance(input_list[0], typing.Iterable) and isinstance(input_list[0][0], numbers.Number):
+                    if isinstance(input_list[0], collections.abc.Iterable) and isinstance(
+                        input_list[0][0], numbers.Number
+                    ):
                         self.rho = np.array(input_list)
                         assert check_square(self.rho)
                         check_size_consistency(self.rho)
@@ -448,3 +436,13 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """To be run at the end of pattern simulation."""
         self.sort_qubits()
         self.state.normalize()
+
+
+Data = (
+    graphix.states.State
+    | DensityMatrix
+    | Statevec
+    | collections.abc.Iterable[graphix.states.State]
+    | collections.abc.Iterable[numbers.Number]
+    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
+)

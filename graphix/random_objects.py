@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import numpy as np
 import scipy.linalg
@@ -9,28 +9,28 @@ from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 
 
-def rand_herm(l: int):
+def rand_herm(sz: int):
     """
-    generate random hermitian matrix of size l*l
+    generate random hermitian matrix of size sz*sz
     """
-    tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
+    tmp = np.random.rand(sz, sz) + 1j * np.random.rand(sz, sz)
     return tmp + tmp.conj().T
 
 
-def rand_unit(l: int):
+def rand_unit(sz: int):
     """
-    generate haar random unitary matrix of size l*l
+    generate haar random unitary matrix of size sz*sz
     """
-    if l == 1:
+    if sz == 1:
         return np.array([np.exp(1j * np.random.rand(1) * 2 * np.pi)])
     else:
-        return unitary_group.rvs(l)
+        return unitary_group.rvs(sz)
 
 
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rank: Optional[int] = None, dm_dtype=True) -> Union[DensityMatrix, np.ndarray]:
+def rand_dm(dim: int, rank: int | None = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
     """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 

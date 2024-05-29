@@ -1,6 +1,8 @@
+from __future__ import annotations
+
+import collections
 import functools
 import numbers
-import typing
 from copy import deepcopy
 
 import numpy as np
@@ -19,9 +21,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
     def __init__(
         self,
         pattern,
-        input_state: typing.Union[
-            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
-        ] = graphix.states.BasicStates.PLUS,
+        input_state: SV_Data = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
     ):
@@ -196,18 +196,14 @@ SWAP_TENSOR = np.array(
     dtype=np.complex128,
 )
 
-SV_Data = typing.Union[
-    graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
-]
-
 
 class Statevec:
     """Statevector object"""
 
     def __init__(
         self,
-        data: typing.Optional[SV_Data] = graphix.states.BasicStates.PLUS,
-        nqubit: typing.Optional[graphix.types.PositiveOrNullInt] = None,
+        data: SV_Data = graphix.states.BasicStates.PLUS,
+        nqubit: graphix.types.PositiveOrNullInt | None = None,
     ):
         """Initialize statevector objects. The behaviour is as follows. `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
@@ -223,9 +219,7 @@ class Statevec:
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        :type data: typing.Union[
-        graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
-        ], optional
+        :type data: SV_Data, optional
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
@@ -245,7 +239,7 @@ class Statevec:
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
-        elif isinstance(data, typing.Iterable):
+        elif isinstance(data, collections.abc.Iterable):
             input_list = list(data)
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}")
@@ -502,3 +496,11 @@ class Statevec:
 def _get_statevec_norm(psi):
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
+
+
+SV_Data = (
+    graphix.states.State
+    | Statevec
+    | collections.abc.Iterable[graphix.states.State]
+    | collections.abc.Iterable[numbers.Number]
+)
