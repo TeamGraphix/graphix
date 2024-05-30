@@ -66,6 +66,7 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
+    @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
     def test_empty_output_nodes(self, backend: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
         pattern = Pattern(input_nodes=[0])
@@ -517,6 +518,13 @@ class TestLocalPattern:
         result2 = localpattern.is_standard()
         assert not result1
         assert result2
+
+    def test_pauli_measurement_end_with_measure(self) -> None:
+        # https://github.com/TeamGraphix/graphix/issues/153
+        p = Pattern(input_nodes=[0])
+        p.add(["N", 1])
+        p.add(["M", 1, "XY", 0, [], []])
+        p.perform_pauli_measurements()
 
 
 # for testing with arbitrary inputs

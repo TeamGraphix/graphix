@@ -955,8 +955,14 @@ class Pattern:
         ind = self._find_op_to_be_moved("M")
         if ind == "end":
             return []
-        while self.__seq[ind][0] == "M":
-            meas_cmds.append(self.__seq[ind])
+        while True:
+            try:
+                cmd = self.__seq[ind]
+            except IndexError:
+                break
+            if cmd[0] != "M":
+                break
+            meas_cmds.append(cmd)
             ind += 1
         return meas_cmds
 

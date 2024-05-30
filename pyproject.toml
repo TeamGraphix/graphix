@@ -69,3 +69,7 @@ wrap_length = 120
 
 [tool.ruff]
 line-length = 120
+
+[tool.pytest.ini_options]
+# Silence cotengra warning
+filterwarnings = ["ignore:Couldn't import `kahypar`"]
