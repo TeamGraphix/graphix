@@ -5,6 +5,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 from __future__ import annotations
 
 from copy import deepcopy
+import numbers
 
 import networkx as nx
 import numpy as np
@@ -1294,6 +1295,10 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
+        if self.is_parameterized():
+            raise ValueError(
+                "Cannot simulate parameterized patterns: the pattern should be instantiated with `subs` first."
+            )
         sim = PatternSimulator(self, backend=backend, **kwargs)
         state = sim.run()
         return state
@@ -1421,6 +1426,57 @@ class Pattern:
             for cmd in self.__seq:
                 for line in cmd_to_qasm3(cmd):
                     file.write(line)
+
+    def is_parameterized(self) -> bool:
+        """Return True if there is at least one measurement angle that
+        is not just an instance of `numbers.Number`. A parameterized
+        pattern is a pattern where at least one measurement angle is an
+        expression that is not a number, typically an instance of `sympy.Expr`
+        (but we don't force to choose `sympy` here).
+        """
+        return any(not isinstance(cmd[3], numbers.Number) for cmd in self if cmd[0] == "M")
+
+    def subs(self, variable, substitute) -> "Pattern":
+        """Return a copy of the pattern where all occurrences of the
+        given variable in measurement angles are substituted by the
+        given value.
+
+        Substitution is performed by calling the method `subs` on
+        measurement angles, if the method exists, which is the case in
+        particular for `sympy.Expr`. If the substitution returns a
+        number, this number is coerced to `float`, to get numbers that
+        implement the full number protocol (in particular, sympy
+        numbers don't implement `cos`).
+
+        """
+        result = Pattern(input_nodes=self.input_nodes)
+        for cmd in self:
+            if cmd[0] == "M":
+                angle = cmd[3]
+                try:
+                    # We only require parameterized angles to
+                    # implement the `subs` method: it is the case for
+                    # sympy.Expr, but we may want to use other kinds
+                    # of expressions.
+                    subs = angle.subs
+                except AttributeError:
+                    subs = None
+            else:
+                subs = None
+            if subs:
+                new_cmd = cmd.copy()
+                new_angle = subs(variable, substitute)
+                if isinstance(new_angle, numbers.Number):
+                    # Coercion to float: sympy numbers do not
+                    # implement the full number protocol.
+                    new_cmd[3] = float(new_angle)
+                else:
+                    # new_angle is still a parameterized expression.
+                    new_cmd[3] = new_angle
+                result.add(new_cmd)
+            else:
+                result.add(cmd)
+        return result
 
 
 class CommandNode:
