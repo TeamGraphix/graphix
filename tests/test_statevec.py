@@ -1,29 +1,23 @@
 import functools
-import unittest
 
 import numpy as np
 import pytest
 
 import graphix.pauli
-import graphix.random_objects as randobj
 from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, PlanarState
 
 
-class TestStatevec(unittest.TestCase):
+class TestStatevec:
     """Test for Statevec class. Particularly new constructor."""
 
-    def setUp(self):
-        # set up the random numbers
-        self.rng = np.random.default_rng()  # seed=422
-
     # test injitializing one qubit in plus state
-    def test_default_success(self):
+    def test_default_success(self) -> None:
         vec = Statevec(nqubit=1)
         assert np.allclose(vec.psi, np.array([1, 1] / np.sqrt(2)))
         assert len(vec.dims()) == 1
 
-    def test_basicstates_success(self):
+    def test_basicstates_success(self) -> None:
         # minus
         vec = Statevec(nqubit=1, data=BasicStates.MINUS)
         assert np.allclose(vec.psi, np.array([1, -1] / np.sqrt(2)))
@@ -50,8 +44,8 @@ class TestStatevec(unittest.TestCase):
         assert len(vec.dims()) == 1
 
     # even more tests?
-    def test_default_tensor_success(self):
-        nqb = self.rng.integers(2, 5)
+    def test_default_tensor_success(self, fx_rng: np.random.Generator) -> None:
+        nqb = fx_rng.integers(2, 5)
         print(f"nqb is {nqb}")
         vec = Statevec(nqubit=nqb)
         assert np.allclose(vec.psi, np.ones(((2,) * nqb)) / (np.sqrt(2)) ** nqb)
@@ -64,8 +58,8 @@ class TestStatevec(unittest.TestCase):
         assert len(vec.dims()) == nqb
 
         # tensor of same state
-        rand_angle = self.rng.random() * 2 * np.pi
-        rand_plane = self.rng.choice(np.array([i for i in graphix.pauli.Plane]))
+        rand_angle = fx_rng.random() * 2 * np.pi
+        rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]))
         state = PlanarState(plane=rand_plane, angle=rand_angle)
         vec = Statevec(nqubit=nqb, data=state)
         sv_list = [state.get_statevector() for _ in range(nqb)]
@@ -74,8 +68,8 @@ class TestStatevec(unittest.TestCase):
         assert len(vec.dims()) == nqb
 
         # tensor of different states
-        rand_angles = self.rng.random(nqb) * 2 * np.pi
-        rand_planes = self.rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(nqubit=nqb, data=states)
         sv_list = [state.get_statevector() for state in states]
@@ -83,48 +77,48 @@ class TestStatevec(unittest.TestCase):
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
 
-    def test_data_success(self):
-        nqb = self.rng.integers(2, 5)
-        l = 2**nqb
-        rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
+    def test_data_success(self, fx_rng: np.random.Generator) -> None:
+        nqb = fx_rng.integers(2, 5)
+        length = 2**nqb
+        rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         vec = Statevec(data=rand_vec)
         assert np.allclose(vec.psi, rand_vec.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
 
     # fail: incorrect len
-    def test_data_dim_fail(self):
-        l = 5
-        rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
+    def test_data_dim_fail(self, fx_rng: np.random.Generator) -> None:
+        length = 5
+        rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         with pytest.raises(ValueError):
-            vec = Statevec(data=rand_vec)
+            _vec = Statevec(data=rand_vec)
 
     # fail: with less qubit than number of qubits inferred from a correct state vect
-    def test_data_dim_fail_mismatch(self):
+    def test_data_dim_fail_mismatch(self, fx_rng: np.random.Generator) -> None:
         nqb = 3
-        rand_vec = self.rng.random(2**nqb) + 1j * self.rng.random(2**nqb)
+        rand_vec = fx_rng.random(2**nqb) + 1j * fx_rng.random(2**nqb)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         with pytest.raises(ValueError):
-            vec = Statevec(nqubit=2, data=rand_vec)
+            _vec = Statevec(nqubit=2, data=rand_vec)
 
     # fail: not normalized
-    def test_data_norm_fail(self):
-        nqb = self.rng.integers(2, 5)
-        l = 2**nqb
-        rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
+    def test_data_norm_fail(self, fx_rng: np.random.Generator) -> None:
+        nqb = fx_rng.integers(2, 5)
+        length = 2**nqb
+        rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         with pytest.raises(ValueError):
-            vec = Statevec(data=rand_vec)
+            _vec = Statevec(data=rand_vec)
 
-    def test_defaults_to_one(self):
+    def test_defaults_to_one(self) -> None:
         vec = Statevec()
         assert len(vec.dims()) == 1
 
     # try copying Statevec input
-    def test_copy_success(self):
-        nqb = self.rng.integers(2, 5)
-        l = 2**nqb
-        rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
+    def test_copy_success(self, fx_rng: np.random.Generator) -> None:
+        nqb = fx_rng.integers(2, 5)
+        length = 2**nqb
+        rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         test_vec = Statevec(data=rand_vec)
         # try to copy it
@@ -134,12 +128,12 @@ class TestStatevec(unittest.TestCase):
         assert len(vec.dims()) == len(test_vec.dims())
 
     # try calling with incorrect number of qubits compared to inferred one
-    def test_copy_fail(self):
-        nqb = self.rng.integers(2, 5)
-        l = 2**nqb
-        rand_vec = self.rng.random(l) + 1j * self.rng.random(l)
+    def test_copy_fail(self, fx_rng: np.random.Generator) -> None:
+        nqb = fx_rng.integers(2, 5)
+        length = 2**nqb
+        rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
         test_vec = Statevec(data=rand_vec)
 
         with pytest.raises(ValueError):
-            vec = Statevec(nqubit=l - 1, data=test_vec)
+            _vec = Statevec(nqubit=length - 1, data=test_vec)

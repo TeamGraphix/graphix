@@ -62,7 +62,7 @@ class TestStatevecNew:
     # more tests not really needed since redundant with Statevec constructor tests
 
     # test initialization only
-    def test_init_success(self, hadamardpattern, fx_rng: Generator):
+    def test_init_success(self, hadamardpattern, fx_rng: Generator) -> None:
         # plus state (default)
         backend = StatevectorBackend(hadamardpattern)
         vec = Statevec(nqubit=1)
@@ -87,7 +87,7 @@ class TestStatevecNew:
 
         # data input and Statevec input
 
-    def test_init_fail(self, hadamardpattern, fx_rng: Generator):
+    def test_init_fail(self, hadamardpattern, fx_rng: Generator) -> None:
         rand_angle = fx_rng.random(2) * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), 2)
 

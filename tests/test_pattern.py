@@ -530,7 +530,7 @@ class TestLocalPattern:
 # for testing with arbitrary inputs
 # SV and DM backend
 class TestPatternSim:
-    def test_sv_sim(self, fx_rng: Generator, nqb, rand_circ):
+    def test_sv_sim(self, fx_rng: Generator, nqb, rand_circ) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
@@ -540,7 +540,7 @@ class TestPatternSim:
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
         np.testing.assert_almost_equal(np.abs(np.dot(out.psi.flatten().conjugate(), out_circ.psi.flatten())), 1)
 
-    def test_dm_sim(self):
+    def test_dm_sim(self) -> None:
         pass
 
 
