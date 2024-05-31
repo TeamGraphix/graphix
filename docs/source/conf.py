@@ -4,6 +4,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import os
 import sys
+from dataclasses import asdict
+from sphinxawesome_theme import ThemeOptions
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -46,14 +48,24 @@ def setup(app):
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinxawesome_theme"
+extensions += [
+    "sphinxawesome_theme.highlighting",
+]
 # html_theme = 'pydata_sphinx_theme'
 html_static_path = ["_static"]
-html_logo = "../logo/white_with_text.png"
-html_theme_options = {
-    "logo_only": True,
-    "display_version": False,
+
+html_context = {
+    "mode": "production",
 }
+
+theme_options = ThemeOptions(
+    show_breadcrumbs=True,
+    logo_dark="../logo/white.png",
+    logo_light="../logo/black_with_name.png",
+)
+
+html_theme_options = asdict(theme_options)
 
 sphinx_gallery_conf = {
     # path to your example scripts
@@ -63,17 +75,19 @@ sphinx_gallery_conf = {
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
 }
-html_context = {
-    "css_files": [
-        "_static/basic.css",
-        "_static/pygments.css",
-        "_static/sg_gallery-binder.css",
-        "_static/sg_gallery-dataframe.css",
-        "_static/sg_gallery-rendered-html.css",
-        "_static/sg_gallery.css",
-        "_static/css/badge_only.css",
-        "_static/css/theme.css",
-        "_static/css/my_theme.css",
-        "_static/css/custom.css",
-    ],
-}
+
+# html_context = {
+#     "css_files": [
+#         "_static/basic.css",
+#         "_static/pygments.css",
+#         "_static/sg_gallery-binder.css",
+#         "_static/sg_gallery-dataframe.css",
+#         "_static/sg_gallery-rendered-html.css",
+#         "_static/sg_gallery.css",
+#         "_static/css/badge_only.css",
+#         "_static/css/theme.css",
+#         "_static/css/my_theme.css",
+#         "_static/css/custom.css",
+#     ],
+# }
+
