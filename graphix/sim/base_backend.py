@@ -26,19 +26,19 @@ def perform_measure(
     if pr_calc:
         op_mat = op_mat_from_result(vec, False)
         prob_0 = state.expectation_single(op_mat, qubit)
-        result = rng.rand() > prob_0
+        result = rng.random() > prob_0
         if result:
             op_mat = op_mat_from_result(vec, True)
     else:
         # choose the measurement result randomly
-        result = np.random.choice([0, 1])
+        result = rng.choice([0, 1])
         op_mat = op_mat_from_result(vec, result)
     state.evolve_single(op_mat, qubit)
     return result
 
 
 class Backend:
-    def __init__(self, pr_calc: bool = True):
+    def __init__(self, pr_calc: bool = True, rng: np.random.Generator = None):
         """
         Parameters
         ----------
@@ -48,6 +48,10 @@ class Backend:
         """
         # whether to compute the probability
         self.pr_calc = pr_calc
+        if rng is None:
+            self.rng = np.random.default_rng()
+        else:
+            self.rng = rng
 
     def _perform_measure(self, cmd: graphix.command.M):
         s_signal = np.sum([self.results[j] for j in cmd.s_domain])
@@ -59,7 +63,7 @@ class Backend:
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         loc = self.node_index.index(cmd.node)
-        result = perform_measure(loc, measure_update.new_plane, angle, self.state, np.random, self.pr_calc)
+        result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.rng, self.pr_calc)
         self.results[cmd.node] = result
         self.node_index.remove(cmd.node)
         return loc

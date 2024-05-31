@@ -381,17 +381,24 @@ class TestPattern:
         pattern43.simulate_pattern()
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
-    def test_parameter_simulation(self, backend) -> None:
+    def test_parameter_simulation(self, backend, fx_rng: Generator) -> None:
         alpha = graphix.parameter.Parameter("alpha")
         circuit = Circuit(1)
         circuit.rx(0, alpha)
         pattern = circuit.transpile().pattern
-        result_subs_then_simulate = pattern.subs(alpha, 0.5).simulate_pattern(backend)
+        # Both simulations (numeric and symbolic) will use the same
+        # seed for random number generation, to ensure that the
+        # explored branch is the same for the two simulations.
+        seed = fx_rng.integers(2**63)
+        result_subs_then_simulate = pattern.subs(alpha, 0.5).simulate_pattern(
+            backend, pr_calc=False, rng=np.random.default_rng(seed)
+        )
         # Note: pr_calc=False is mandatory since we cannot compute
         # probabilities on symbolic states; we explore one arbitrary
-        # branch, and we rely on the fact that the pattern is
-        # transpiled from a circuit and is therefore deterministic.
-        result_simulate_then_subs = pattern.simulate_pattern(backend, pr_calc=False).subs(alpha, 0.5)
+        # branch.
+        result_simulate_then_subs = pattern.simulate_pattern(
+            backend, pr_calc=False, rng=np.random.default_rng(seed)
+        ).subs(alpha, 0.5)
         if backend == "statevector":
             assert np.allclose(result_subs_then_simulate.psi, result_simulate_then_subs.psi)
         elif backend == "densitymatrix":

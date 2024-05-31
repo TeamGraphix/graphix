@@ -139,9 +139,9 @@ class ParameterExpression:
         return str(self._expression)
 
     def subs(self, variable, value) -> ParameterExpression | numbers.Number:
-        result = sp.simplify(self._expression.subs(variable._expression, value))
+        result = sp.simplify(self._expression.subs(variable._expression, value)).evalf()
         if isinstance(result, numbers.Number):
-            return result
+            return complex(result)
         else:
             return ParameterExpression(result)
 
@@ -154,20 +154,24 @@ class Parameter(ParameterExpression):
     Example:
     .. code-block:: python
 
-        # rotation gate
+        import numpy as np
         from graphix import Circuit
         circuit = Circuit(1)
         alpha = Parameter('alpha')
+        # rotation gate
         circuit.rx(0, alpha)
         pattern = circuit.transpile()
+        # Both simulations (numeric and symbolic) will use the same
+        # seed for random number generation, to ensure that the
+        # explored branch is the same for the two simulations.
+        seed = np.random.integers(2**63)
         # simulate with parameter assignment
-        sv = pattern.subs(alpha, 0.5).simulate_pattern()
+        sv = pattern.subs(alpha, 0.5).simulate_pattern(pr_calc=False, rng=np.random.default_rng(seed))
         # simulate without pattern assignment
         # (the resulting state vector is symbolic)
         # Note: pr_calc=False is mandatory since we cannot compute probabilities on
-        # symbolic states; we explore one arbitrary branch, and the result is only
-        # well-defined if the pattern is deterministic.
-        sv2 = pattern.simulate_pattern(pr_calc=False)
+        # symbolic states; we explore one arbitrary branch.
+        sv2 = pattern.simulate_pattern(pr_calc=False, rng=np.random.default_rng(seed))
         # Substituting alpha in the resulting state vector should yield the same result
         assert np.allclose(sv.psi, sv2.subs(alpha, 0.5).psi)
     """
