@@ -76,18 +76,3 @@ sphinx_gallery_conf = {
     "thumbnail_size": (800, 550),
 }
 
-# html_context = {
-#     "css_files": [
-#         "_static/basic.css",
-#         "_static/pygments.css",
-#         "_static/sg_gallery-binder.css",
-#         "_static/sg_gallery-dataframe.css",
-#         "_static/sg_gallery-rendered-html.css",
-#         "_static/sg_gallery.css",
-#         "_static/css/badge_only.css",
-#         "_static/css/theme.css",
-#         "_static/css/my_theme.css",
-#         "_static/css/custom.css",
-#     ],
-# }
-

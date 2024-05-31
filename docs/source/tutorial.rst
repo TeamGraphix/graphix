@@ -293,6 +293,95 @@ for example, the three-qubit `quantum Fourier transform (QFT)
 In fact, for patterns transpiled from gate network, the minimum `space` we can realize is typically :math:`n_w+1` where :math:`n_w` is the width of the circuit.
 
 
+Simulating noisy MBQC
++++++++++++++++++++++
+
+We can simulate the MBQC pattern with various noise models to understand their effects. The pattern that we used above can be simulated with the statevector backend.
+
+.. code-block:: python
+    
+    out_state = pattern.simulate_pattern(backend="statevector")
+
+With the simulated pattern, we can define a noise model. We specify Kraus channels for each of the command executions, and we apply dephasing noise to the qubit preparation.
+
+.. code-block:: python
+
+    from graphix.channels import KrausChannel, dephasing_channel
+    from graphix.noise_models.noise_model import NoiseModel
+    from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
+
+    class NoisyGraphState(NoiseModel):
+
+        def __init__(self, p_z=0.1):
+            self.p_z = p_z
+
+        def prepare_qubit(self):
+            """return the channel to apply after clean single-qubit preparation. Here just we prepare dephased qubits."""
+            return dephasing_channel(self.p_z)
+
+        def entangle(self):
+            """return noise model to qubits that happens after the CZ gate. just identity no noise for this noise model."""
+            return KrausChannel([{"coef": 1.0, "operator": np.eye(4)}])
+
+        def measure(self):
+            """apply noise to qubit to be measured."""
+            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
+
+        def confuse_result(self, cmd):
+            """imperfect measurement effect. here we do nothing (no error).
+            cmd = "M"
+            """
+            pass
+
+        def byproduct_x(self):
+            """apply noise to qubits after X gate correction. here no error (identity)."""
+            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
+
+        def byproduct_z(self):
+            """apply noise to qubits after Z gate correction. here no error (identity)."""
+            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
+
+        def clifford(self):
+            """apply noise to qubits that happens in the Clifford gate process. here no error (identity)."""
+            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
+
+        def tick_clock(self):
+            """notion of time in real devices - this is where we apply effect of T1 and T2.
+            we assume commands that lie between 'T' commands run simultaneously on the device.
+
+            here we assume no idle error.
+            """
+            pass
+
+With the noise model written, we can simulate it.
+
+.. code-block:: python
+
+    from graphix.simulator import PatternSimulator
+
+    simulator = PatternSimulator(pattern, backend="densitymatrix", noise_model=NoisyGraphState(p_z=0.01))
+    dm_result = simulator.run()
+    print(dm_result.fidelity(out_state.psi.flatten()))
+
+We can plot the results from the model,
+
+.. code-block:: python
+
+    import matplotlib.pyplot as plt
+
+    err_arr = np.logspace(-4, -1, 10)
+    fidelity = np.zeros(10)
+    for i in range(10):
+        simulator = PatternSimulator(pattern, backend="densitymatrix", noise_model=NoisyGraphState(p_z=err_arr[i]))
+        dm_result = simulator.run()
+        fidelity[i] = dm_result.fidelity(out_state.psi.flatten())
+
+     plt.semilogx(err_arr, fidelity, "o:")
+     plt.xlabel("dephasing error of qubit preparation")
+     plt.ylabel("Final fidelity")
+     plt.show()
+
+
 Running pattern on quantum devices
 ++++++++++++++++++++++++++++++++++
 
