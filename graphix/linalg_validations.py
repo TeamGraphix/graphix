@@ -18,6 +18,13 @@ def check_square(matrix: np.ndarray) -> bool:
     return True
 
 
+def truncate(s: str, max_length: int = 80, ellipsis: str = "...") -> str:
+    "Auxilliary function to truncate a long string for formatting error messages."
+    if len(s) <= max_length:
+        return s
+    return s[: max_length - len(ellipsis)] + ellipsis
+
+
 def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     """
     check if a density matrix is positive semidefinite by diagonalizing.
@@ -33,7 +40,7 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     evals = np.linalg.eigvalsh(matrix)
 
     if not all(evals >= -tol):
-        raise ValueError("The matrix {matrix} is not positive semi-definite.")
+        raise ValueError("The matrix {truncate(str(matrix))} is not positive semi-definite.")
 
     return True
 
