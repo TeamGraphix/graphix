@@ -16,7 +16,7 @@ import graphix.pauli
 import graphix.sim.base_backend
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.statevec import Statevec, SV_Data
+import graphix.sim.statevec
 
 
 @dataclasses.dataclass
@@ -41,7 +41,7 @@ class SimulateResult:
     classical_measures : tuple[int,...], classical measures
     """
 
-    statevec: Statevec
+    statevec: graphix.sim.statevec.Statevec
     classical_measures: tuple[int, ...]
 
 
@@ -1358,7 +1358,7 @@ class Circuit:
             elif cmd[1] in old_out:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
-    def simulate_statevector(self, input_state: SV_Data | None = None) -> SimulateResult:
+    def simulate_statevector(self, input_state: graphix.sim.statevec.Data | None = None) -> SimulateResult:
         """Run statevector simulation of the gate sequence, using graphix.Statevec
 
         Parameters
@@ -1372,9 +1372,9 @@ class Circuit:
         """
 
         if input_state is None:
-            state = Statevec(nqubit=self.width)
+            state = graphix.sim.statevec.Statevec(nqubit=self.width)
         else:
-            state = Statevec(nqubit=self.width, data=input_state)
+            state = graphix.sim.statevec.Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
 

@@ -21,7 +21,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
     def __init__(
         self,
         pattern,
-        input_state: SV_Data = graphix.states.BasicStates.PLUS,
+        input_state: Data = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
     ):
@@ -202,7 +202,7 @@ class Statevec:
 
     def __init__(
         self,
-        data: SV_Data = graphix.states.BasicStates.PLUS,
+        data: Data = graphix.states.BasicStates.PLUS,
         nqubit: graphix.types.PositiveOrNullInt | None = None,
     ):
         """Initialize statevector objects. The behaviour is as follows. `data` can be:
@@ -498,7 +498,7 @@ def _get_statevec_norm(psi):
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
-SV_Data = (
+Data = (
     graphix.states.State
     | Statevec
     | collections.abc.Iterable[graphix.states.State]
