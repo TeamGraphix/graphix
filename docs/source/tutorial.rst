@@ -255,7 +255,7 @@ We exploit this fact to minimize the `space` of the pattern, which is crucial fo
 We can simply call :meth:`~graphix.pattern.Pattern.minimize_space()` to reduce the `space`:
 
 >>> pattern.minimize_space()
->>> pattern.print_pattern()
+>>> pattern.print_pattern(lim=20)
 N, node = 1
 N, node = 7
 E, nodes = (1, 7)
@@ -299,7 +299,7 @@ Simulating noisy MBQC
 We can simulate the MBQC pattern with various noise models to understand their effects. The pattern that we used above can be simulated with the statevector backend.
 
 .. code-block:: python
-    
+
     out_state = pattern.simulate_pattern(backend="statevector")
 
 With the simulated pattern, we can define a noise model. We specify Kraus channels for each of the command executions, and we apply dephasing noise to the qubit preparation.
