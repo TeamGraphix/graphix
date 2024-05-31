@@ -5,6 +5,7 @@ quantum states and operators
 import abc
 
 import numpy as np
+import numpy.typing as npt
 import pydantic
 
 import graphix.pauli
@@ -19,10 +20,10 @@ class State(abc.ABC):
     """
 
     @abc.abstractmethod
-    def get_statevector(self) -> np.ndarray:
+    def get_statevector(self) -> npt.NDArray:
         pass
 
-    def get_densitymatrix(self) -> np.ndarray:
+    def get_densitymatrix(self) -> npt.NDArray:
         # return DM in 2**n x 2**n dim (2x2 here)
         return np.outer(self.get_statevector(), self.get_statevector().conj())
 
@@ -45,10 +46,10 @@ class PlanarState(pydantic.BaseModel, State):
     plane: graphix.pauli.Plane
     angle: float
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
-    def get_statevector(self) -> np.ndarray:
+    def get_statevector(self) -> npt.NDArray:
         if self.plane == graphix.pauli.Plane.XY:
             return np.array([1, np.exp(1j * self.angle)]) / np.sqrt(2)
 

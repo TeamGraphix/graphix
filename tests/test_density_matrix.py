@@ -103,7 +103,7 @@ class TestDensityMatrix:
         nqb = fx_rng.integers(2, 5)
         print(f"nqb is {nqb}")
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        rand_planes = fx_rng.choice([i for i in graphix.pauli.Plane], nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(data=states)
         # flattens input!
