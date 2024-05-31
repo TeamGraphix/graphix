@@ -7,7 +7,7 @@ import tests.random_circuit
 SEED = 25
 
 
-def pytest_configure():
+def pytest_configure() -> None:
     pytest.depth = 1
 
 
@@ -22,22 +22,22 @@ def fx_bg() -> PCG64:
 
 
 @pytest.fixture
-def hadamardpattern():
+def hadamardpattern() -> graphix.pattern.Pattern:
     circ = graphix.transpiler.Circuit(1)
     circ.h(0)
     return circ.transpile().pattern
 
 
 @pytest.fixture
-def nqb(fx_rng: Generator):
+def nqb(fx_rng: Generator) -> int:
     return fx_rng.integers(2, 5)
 
 
 @pytest.fixture
-def rand_circ(nqb, fx_rng: Generator):
+def rand_circ(nqb, fx_rng: Generator) -> graphix.transpiler.Circuit:
     return tests.random_circuit.get_rand_circuit(nqb, pytest.depth, fx_rng)
 
 
 @pytest.fixture
-def randpattern(rand_circ):
+def randpattern(rand_circ) -> graphix.pattern.Pattern:
     return rand_circ.transpile().pattern
