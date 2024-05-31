@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 
+- Parameterized circuits and patterns: angles in instructions and
+  measures can be expressions with parameters created with
+  `parameter.Parameter` class.  Patterns can be instantiated with the
+  method `subs` or simulated symbolically, and the resulting
+  (symbolic) state vector or density matrix can be instantiated with
+  the method `subs`. Probabilities cannot be computed symbolically,
+  so `pr_calc=False` should be passed to simulators for symbolic
+  computation, and an arbitrary path will be computed.
+
+- Simulator back-ends have an additional optional argument `rng`,
+  to specify the random generator to use during the simulation.
+
 ### Fixed
 
 ### Changed
