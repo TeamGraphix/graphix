@@ -12,6 +12,8 @@ from copy import deepcopy
 
 import numpy as np
 
+import graphix.parameter
+import graphix.sim.base_backend
 import graphix.states
 import graphix.types
 from graphix.channels import KrausChannel
@@ -312,6 +314,16 @@ class DensityMatrix:
 
         if not np.allclose(self.rho.trace(), 1.0):
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
+
+    def subs(self, variable, substitute) -> DensityMatrix:
+        """Return a copy of the density matrix where all occurrences
+        of the given variable in measurement angles are substituted by
+        the given value.
+
+        """
+        result = DensityMatrix(nqubit=self.Nqubit)
+        result.rho = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.rho)
+        return result
 
 
 class DensityMatrixBackend(Backend):

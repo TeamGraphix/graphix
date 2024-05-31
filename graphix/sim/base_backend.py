@@ -4,11 +4,15 @@ import numpy as np
 
 import graphix.clifford
 import graphix.command
+import graphix.parameter
 import graphix.pauli
 
 
 def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
-    op_mat = np.eye(2, dtype=np.complex128) / 2
+    if any(isinstance(value, graphix.parameter.ParameterExpression) for value in vec):
+        op_mat = np.eye(2, dtype="O") / 2
+    else:
+        op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
         op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
