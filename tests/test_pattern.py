@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 import sympy
 
+import graphix.parameter
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator
@@ -308,9 +309,6 @@ class TestPattern:
         pattern.simulate_pattern()
         pattern.add(["M", 1, "XY", alpha, [], []])
         assert pattern.is_parameterized()
-        # A parameterized pattern cannot be simulated.
-        with pytest.raises(ValueError):
-            pattern.simulate_pattern()
         # Parameterized patterns can be substituted, even if some angles are not parameterized.
         pattern0 = pattern.subs(alpha, 0)
         # If all parameterized angles have been instantiated, the pattern is no longer parameterized.
@@ -350,6 +348,23 @@ class TestPattern:
             ["M", 2, "XY", 3.0, [], []],
         ]
         pattern43.simulate_pattern()
+
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    def test_parameter_simulation(self, backend) -> None:
+        alpha = graphix.parameter.Parameter("alpha")
+        circuit = Circuit(1)
+        circuit.rx(0, alpha)
+        pattern = circuit.transpile().pattern
+        result_subs_then_simulate = pattern.subs(alpha, 0.5).simulate_pattern(backend)
+        # Note: pr_calc=False is mandatory since we cannot compute
+        # probabilities on symbolic states; we explore one arbitrary
+        # branch, and we rely on the fact that the pattern is
+        # transpiled from a circuit and is therefore deterministic.
+        result_simulate_then_subs = pattern.simulate_pattern(backend, pr_calc=False).subs(alpha, 0.5)
+        if backend == "statevector":
+            assert np.allclose(result_subs_then_simulate.psi, result_simulate_then_subs.psi)
+        elif backend == "densitymatrix":
+            assert np.allclose(result_subs_then_simulate.rho, result_simulate_then_subs.rho)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:

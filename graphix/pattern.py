@@ -2,12 +2,15 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 
+from __future__ import annotations
+
 import numbers
 from copy import deepcopy
 
 import networkx as nx
 import numpy as np
 
+import graphix.parameter
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -1297,10 +1300,6 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        if self.is_parameterized():
-            raise ValueError(
-                "Cannot simulate parameterized patterns: the pattern should be instantiated with `subs` first."
-            )
         sim = PatternSimulator(self, backend=backend, **kwargs)
         state = sim.run()
         return state
@@ -1438,7 +1437,7 @@ class Pattern:
         """
         return any(not isinstance(cmd[3], numbers.Number) for cmd in self if cmd[0] == "M")
 
-    def subs(self, variable, substitute) -> "Pattern":
+    def subs(self, variable, substitute) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
         given variable in measurement angles are substituted by the
         given value.
@@ -1454,27 +1453,8 @@ class Pattern:
         result = Pattern(input_nodes=self.input_nodes)
         for cmd in self:
             if cmd[0] == "M":
-                angle = cmd[3]
-                try:
-                    # We only require parameterized angles to
-                    # implement the `subs` method: it is the case for
-                    # sympy.Expr, but we may want to use other kinds
-                    # of expressions.
-                    subs = angle.subs
-                except AttributeError:
-                    subs = None
-            else:
-                subs = None
-            if subs:
                 new_cmd = cmd.copy()
-                new_angle = subs(variable, substitute)
-                if isinstance(new_angle, numbers.Number):
-                    # Coercion to float: sympy numbers do not
-                    # implement the full number protocol.
-                    new_cmd[3] = float(new_angle)
-                else:
-                    # new_angle is still a parameterized expression.
-                    new_cmd[3] = new_angle
+                new_cmd[3] = graphix.parameter.subs(new_cmd[3], variable, substitute)
                 result.add(new_cmd)
             else:
                 result.add(cmd)

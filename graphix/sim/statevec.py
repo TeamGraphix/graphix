@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+import numbers
 from copy import deepcopy
 
 import numpy as np
 
+import graphix.parameter
 import graphix.sim.base_backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -301,9 +305,18 @@ class Statevec:
         qarg : int
             qubit index
         """
-        assert not np.isclose(_get_statevec_norm(self.psi), 0)
+        norm = _get_statevec_norm(self.psi)
+        if isinstance(norm, numbers.Number):
+            assert not np.isclose(norm, 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        if isinstance(psi, graphix.parameter.ParameterExpression):
+            psi = np.array([psi])
+        norm = _get_statevec_norm(psi)
+        self.psi = (
+            psi
+            if not isinstance(norm, numbers.Number) or not np.isclose(norm, 0)
+            else self.psi.take(indices=1, axis=qarg)
+        )
         self.normalize()
 
     def entangle(self, edge):
@@ -407,6 +420,16 @@ class Statevec:
         st2 = deepcopy(st1)
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
+
+    def subs(self, variable, substitute) -> Statevec:
+        """Return a copy of the state vector where all occurrences of
+        the given variable in measurement angles are substituted by
+        the given value.
+
+        """
+        result = Statevec()
+        result.psi = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.psi)
+        return result
 
 
 def _get_statevec_norm(psi):
