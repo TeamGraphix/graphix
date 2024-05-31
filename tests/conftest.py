@@ -7,6 +7,10 @@ import tests.random_circuit
 SEED = 25
 
 
+def pytest_configure():
+    pytest.depth = 1
+
+
 @pytest.fixture()
 def fx_rng() -> Generator:
     return Generator(PCG64(SEED))
@@ -30,13 +34,8 @@ def nqb(fx_rng: Generator):
 
 
 @pytest.fixture
-def depth():
-    return 1
-
-
-@pytest.fixture
-def rand_circ(nqb, depth, fx_rng: Generator):
-    return tests.random_circuit.get_rand_circuit(nqb, depth, fx_rng)
+def rand_circ(nqb, fx_rng: Generator):
+    return tests.random_circuit.get_rand_circuit(nqb, pytest.depth, fx_rng)
 
 
 @pytest.fixture
