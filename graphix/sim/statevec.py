@@ -14,7 +14,7 @@ from graphix.ops import Ops
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20, pr_calc=True, rng: np.random.Generator = None):
+    def __init__(self, pattern, max_qubit_num=20, pr_calc=True, rng: np.random.Generator | None = None):
         """
         Parameters
         -----------
