@@ -18,7 +18,7 @@ circuit = Circuit(2)
 theta = np.random.rand(2)
 circuit.rz(0, theta[0])
 circuit.rz(1, theta[1])
-circuit.cnot(0,1)
+circuit.cnot(0, 1)
 
 # %%
 # Now we transpile into measurement pattern using :meth:`~graphix.transpiler.Circuit.transpile` method.

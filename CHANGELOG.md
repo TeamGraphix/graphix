@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Made all the updates inside the files making use of the commands and instructions list representation.
+- Made all the updates inside the files making use of the commands and instructions list representation. According to the API, the user cannot write `pattern.add(["M", 0, "XY", 0, [], []])` anymore but should write `pattern.add(M(node=0))` for instance.
 
 ## [0.2.12] - 2024-05-11
 

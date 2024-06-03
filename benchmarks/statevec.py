@@ -99,9 +99,7 @@ for width in test_cases:
 # to transpile into a measurement pattern.
 
 
-def translate_graphix_rc_into_paddle_quantum_circuit(
-    graphix_circuit: Circuit,
-) -> PaddleCircuit:
+def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -> PaddleCircuit:
     """Translate graphix circuit into paddle_quantum circuit.
 
     Parameters
@@ -146,17 +144,10 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ax.scatter(
-    test_cases,
-    circuit_time,
-    label="direct statevector sim of original gate-based circuit (reference)",
-    marker="x",
+    test_cases, circuit_time, label="direct statevector sim of original gate-based circuit (reference)", marker="x"
 )
 ax.scatter(test_cases, pattern_time, label="graphix pattern simulator")
-ax.scatter(
-    test_cases_for_paddle_quantum,
-    paddle_quantum_time,
-    label="paddle_quantum pattern simulator",
-)
+ax.scatter(test_cases_for_paddle_quantum, paddle_quantum_time, label="paddle_quantum pattern simulator")
 ax.set(
     xlabel="Width of the original circuit",
     ylabel="time (s)",

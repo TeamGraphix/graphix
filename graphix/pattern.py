@@ -2,8 +2,9 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import List, Tuple
 
 import networkx as nx
 import numpy as np
@@ -15,6 +16,7 @@ from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 from graphix import command
+import graphix.pauli
 
 
 class NodeAlreadyPrepared(Exception):
@@ -68,7 +70,7 @@ class Pattern:
         self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
-        self.__seq: List[command.Command] = []
+        self.__seq: list[command.Command] = []
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
 
@@ -111,7 +113,7 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: List[command.Command]):
+    def extend(self, cmds: list[command.Command]):
         """Add a list of commands.
 
         :param cmds: list of commands
@@ -125,7 +127,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: List[command.Command], input_nodes=None):
+    def replace(self, cmds: list[command.Command], input_nodes=None):
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -166,7 +168,7 @@ class Pattern:
         """count of nodes that are either `input_nodes` or prepared with `N` commands"""
         return self.__Nnode
 
-    def reorder_output_nodes(self, output_nodes: List[int]):
+    def reorder_output_nodes(self, output_nodes: list[int]):
         """arrange the order of output_nodes.
 
         Parameters
@@ -178,7 +180,7 @@ class Pattern:
         assert_permutation(self.__output_nodes, output_nodes)
         self.__output_nodes = output_nodes
 
-    def reorder_input_nodes(self, input_nodes: List[int]):
+    def reorder_input_nodes(self, input_nodes: list[int]):
         """arrange the order of input_nodes.
 
         Parameters
@@ -194,29 +196,36 @@ class Pattern:
             f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
         )
 
-    def equal(self, other: "Pattern"):
+    def equal(self, other: Pattern):
         return (
             self.__seq == other.__seq
             and self.input_nodes == other.input_nodes
             and self.output_nodes == other.output_nodes
         )
 
-    def print_pattern(self, lim=40, filter: List[str] = None):
+    def print_pattern(self, lim=40, filter: list[command.CommandKind] = None):
         """print the pattern sequence (Pattern.seq).
 
         Parameters
         ----------
         lim: int, optional
             maximum number of commands to show
-        filter : list of str, optional
-            show only specified commands, e.g. ['M', 'X', 'Z']
+        filter : list of command.CommandKind, optional
+            show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
         if len(self.__seq) < lim:
             nmax = len(self.__seq)
         else:
             nmax = lim
         if filter is None:
-            filter = ["N", "E", "M", "X", "Z", "C"]
+            filter = [
+                command.CommandKind.N,
+                command.CommandKind.E,
+                command.CommandKind.M,
+                command.CommandKind.X,
+                command.CommandKind.Z,
+                command.CommandKind.C,
+            ]
         count = 0
         i = -1
         while count < nmax:
@@ -224,19 +233,19 @@ class Pattern:
             if i == len(self.__seq):
                 break
             cmd = self.__seq[i]
-            if cmd.kind == command.CommandKind.N and ("N" in filter):
+            if cmd.kind == command.CommandKind.N and (command.CommandKind.N in filter):
                 count += 1
                 print(f"N, node = {cmd.node}")
-            elif cmd.kind == command.CommandKind.E and ("E" in filter):
+            elif cmd.kind == command.CommandKind.E and (command.CommandKind.E in filter):
                 count += 1
                 print(f"E, nodes = {cmd.nodes}")
-            elif cmd.kind == command.CommandKind.M and ("M" in filter):
+            elif cmd.kind == command.CommandKind.M and (command.CommandKind.M in filter):
                 count += 1
                 print(
                     f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
                     + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}, Clifford index = {cmd.vop}"
                 )
-            elif cmd.kind == command.CommandKind.X and ("X" in filter):
+            elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in filter):
                 count += 1
                 # remove duplicates
                 _domain = np.array(cmd.domain)
@@ -246,7 +255,7 @@ class Pattern:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
                 print(f"X byproduct, node = {cmd.node}, domain = {unique_domain}")
-            elif cmd.kind == command.CommandKind.Z and ("Z" in filter):
+            elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in filter):
                 count += 1
                 # remove duplicates
                 _domain = np.array(cmd.domain)
@@ -256,7 +265,7 @@ class Pattern:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
                 print(f"Z byproduct, node = {cmd.node}, domain = {unique_domain}")
-            elif cmd.kind == command.CommandKind.C and ("C" in filter):
+            elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in filter):
                 count += 1
                 print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
 
@@ -386,13 +395,13 @@ class Pattern:
         it = iter(self)
         try:
             kind = next(it).kind
-            while kind == "N":
+            while kind == command.CommandKind.N:
                 kind = next(it).kind
-            while kind == "E":
+            while kind == command.CommandKind.E:
                 kind = next(it).kind
-            while kind == "M":
+            while kind == command.CommandKind.M:
                 kind = next(it).kind
-            xzc = {"X", "Z", "C"}
+            xzc = {command.CommandKind.X, command.CommandKind.Z, command.CommandKind.C}
             while kind in xzc:
                 kind = next(it).kind
             return False
@@ -423,11 +432,11 @@ class Pattern:
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
             self.extract_signals()
-            target = self._find_op_to_be_moved("S", rev=True)
+            target = self._find_op_to_be_moved(command.CommandKind.S, rev=True)
             while target is not None:
                 if target == len(self.__seq) - 1:
                     self.__seq.pop(target)
-                    target = self._find_op_to_be_moved("S", rev=True)
+                    target = self._find_op_to_be_moved(command.CommandKind.S, rev=True)
                     continue
                 cmd = self.__seq[target + 1]
                 kind = cmd.kind
@@ -456,12 +465,12 @@ class Pattern:
         else:
             raise ValueError("Invalid method")
 
-    def _find_op_to_be_moved(self, op: str, rev=False, skipnum=0):
+    def _find_op_to_be_moved(self, op: command.CommandKind, rev=False, skipnum=0):
         """Internal method for pattern modification.
 
         Parameters
         ----------
-        op : str, 'N', 'E', 'M', 'X', 'Z', 'S'
+        op : command.CommandKind, N, E, M, X, Z, S
             command types to be searched
         rev : bool
             search from the end (true) or start (false) of seq
@@ -725,14 +734,14 @@ class Pattern:
         before all N commands. assumes that _move_N_to_left() method was called.
         """
         moved_E = 0
-        target = self._find_op_to_be_moved("E", skipnum=moved_E)
+        target = self._find_op_to_be_moved(command.CommandKind.E, skipnum=moved_E)
         while target is not None:
             if (target == 0) or (
                 self.__seq[target - 1].kind == command.CommandKind.N
                 or self.__seq[target - 1].kind == command.CommandKind.E
             ):
                 moved_E += 1
-                target = self._find_op_to_be_moved("E", skipnum=moved_E)
+                target = self._find_op_to_be_moved(command.CommandKind.E, skipnum=moved_E)
                 continue
             self._commute_with_preceding(target)
             target -= 1
@@ -976,7 +985,7 @@ class Pattern:
                 target += 1
         return meas_cmds
 
-    def get_measurement_commands(self) -> List[command.M]:
+    def get_measurement_commands(self) -> list[command.M]:
         """Returns the list containing the measurement commands,
         in the order of measurements
 
@@ -988,11 +997,17 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_cmds = []
-        ind = self._find_op_to_be_moved("M")
+        ind = self._find_op_to_be_moved(command.CommandKind.M)
         if ind is None:
             return []
-        while self.__seq[ind].kind == command.CommandKind.M:
-            meas_cmds.append(self.__seq[ind])
+        while True:
+            try:
+                cmd = self.__seq[ind]
+            except IndexError:
+                break
+            if cmd.kind != command.CommandKind.M:
+                break
+            meas_cmds.append(cmd)
             ind += 1
         return meas_cmds
 
@@ -1147,7 +1162,7 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         node_list = []
-        ind = self._find_op_to_be_moved("E")
+        ind = self._find_op_to_be_moved(command.CommandKind.E)
         if ind is not None:  # end -> 'node' is isolated
             cmd = self.__seq[ind]
             while cmd.kind == command.CommandKind.E:
@@ -1217,7 +1232,7 @@ class Pattern:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
-    def _reorder_pattern(self, meas_commands: List[command.M]):
+    def _reorder_pattern(self, meas_commands: list[command.M]):
         """internal method to reorder the command sequence
 
         Parameters
@@ -2029,9 +2044,9 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     if not pattern.is_standard():
         pattern.standardize()
     m_commands = pattern.get_measurement_commands()
-    pauli_node: List[Tuple[command.M, str]] = []
+    pauli_node: list[tuple[command.M, str]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
-    non_pauli_node: List[int] = []
+    non_pauli_node: list[int] = []
     for cmd in m_commands:
         pm = is_pauli_measurement(cmd, ignore_vop=True)
         if pm is not None and (
