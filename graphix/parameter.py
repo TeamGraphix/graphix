@@ -22,7 +22,7 @@ class ParameterExpression:
     expected by the simulator back-ends.
     """
 
-    def __init__(self, expression: sp.Expr):
+    def __init__(self, expression: sp.Expr) -> None:
         assert isinstance(expression, sp.Expr)
         self._expression = expression
 
@@ -176,7 +176,7 @@ class Parameter(ParameterExpression):
         assert np.allclose(sv.psi, sv2.subs(alpha, 0.5).psi)
     """
 
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         """Create a new :class:`Parameter` object.
 
         Parameters
@@ -189,7 +189,7 @@ class Parameter(ParameterExpression):
         super().__init__(sp.Symbol(name=name))
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
 
