@@ -6,10 +6,13 @@ import numpy as np
 import pytest
 
 import graphix.random_objects as randobj
-from graphix.channels import (KrausChannel, dephasing_channel,
-                              depolarising_channel,
-                              two_qubit_depolarising_channel,
-                              two_qubit_depolarising_tensor_channel)
+from graphix.channels import (
+    KrausChannel,
+    dephasing_channel,
+    depolarising_channel,
+    two_qubit_depolarising_channel,
+    two_qubit_depolarising_tensor_channel,
+)
 from graphix.ops import Ops
 
 if TYPE_CHECKING:

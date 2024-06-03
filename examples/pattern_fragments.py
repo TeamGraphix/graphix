@@ -78,6 +78,7 @@ from graphix.extraction import get_fusion_network_from_graph
 
 nodes, edges = pattern.get_graph()
 from graphix import GraphState
+
 gs = GraphState(nodes=nodes, edges=edges)
 get_fusion_network_from_graph(gs, max_ghz=4, max_lin=4)
 
