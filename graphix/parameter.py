@@ -23,7 +23,6 @@ class ParameterExpression:
     """
 
     def __init__(self, expression: sp.Expr) -> None:
-        assert isinstance(expression, sp.Expr)
         self._expression = expression
 
     def __mul__(self, other) -> ParameterExpression:
@@ -98,7 +97,6 @@ class ParameterExpression:
         mod of measurement angles in :meth:`graphix.pattern.is_pauli_measurement`
         will not cause error. returns nan so that this will not be considered Pauli measurement.
         """
-        assert isinstance(other, float) or isinstance(other, int)
         return np.nan
 
     def sin(self) -> ParameterExpression:
@@ -176,7 +174,7 @@ class Parameter(ParameterExpression):
         assert np.allclose(sv.psi, sv2.subs(alpha, 0.5).psi)
     """
 
-    def __init__(self, name) -> None:
+    def __init__(self, name: str) -> None:
         """Create a new :class:`Parameter` object.
 
         Parameters
@@ -184,7 +182,6 @@ class Parameter(ParameterExpression):
         name : str
             name of the parameter, used for binding values.
         """
-        assert isinstance(name, str)
         self._name = name
         super().__init__(sp.Symbol(name=name))
 
