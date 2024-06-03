@@ -43,7 +43,6 @@ from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 
 
 class NoisyGraphState(NoiseModel):
-
     def __init__(self, p_z=0.1):
         self.p_z = p_z
 
