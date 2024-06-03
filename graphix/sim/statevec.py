@@ -28,7 +28,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         input_state: Data = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
-        rng: np.random.Generator = None,
+        rng: np.random.Generator | None = None,
     ):
         """
         Parameters
