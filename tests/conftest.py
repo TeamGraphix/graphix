@@ -5,10 +5,7 @@ import graphix.transpiler
 import tests.random_circuit
 
 SEED = 25
-
-
-def pytest_configure() -> None:
-    pytest.depth = 1
+DEPTH = 1
 
 
 @pytest.fixture()
@@ -35,7 +32,7 @@ def nqb(fx_rng: Generator) -> int:
 
 @pytest.fixture
 def rand_circ(nqb, fx_rng: Generator) -> graphix.transpiler.Circuit:
-    return tests.random_circuit.get_rand_circuit(nqb, pytest.depth, fx_rng)
+    return tests.random_circuit.get_rand_circuit(nqb, DEPTH, fx_rng)
 
 
 @pytest.fixture
