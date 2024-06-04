@@ -152,6 +152,6 @@ ax.set_ylabel("Probabilites")
 ax.set_title("Measurement probabilities using the optimized parameters")
 plt.show()
 # As we can see the most probable are 15 and 16 (|11110> and |00001> because of bit ordering),
-# which mean the that splitting the graph so that node number 0 is in one set,
+# which mean that splitting the graph so that node number 0 is in one set,
 # and all other nodes in the other solves the max cut problem.
-# This result is what we would expect from a star-like graph.
+# This result is what we would expect from this star-like graph.
