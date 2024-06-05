@@ -8,6 +8,7 @@ import numpy as np
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
 from graphix.command import N, M, E, C, X, Z
+import graphix.pauli
 
 
 def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
@@ -56,7 +57,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
-        meas_planes = {i: "XY" for i in measuring_nodes}
+        meas_planes = {i: graphix.pauli.Plane.XY for i in measuring_nodes}
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)

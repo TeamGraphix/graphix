@@ -51,7 +51,7 @@ class Backend:
         angle = cmd.angle * np.pi
         vop = cmd.vop
         measure_update = graphix.pauli.MeasureUpdate.compute(
-            graphix.pauli.Plane[cmd.plane], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         loc = self.node_index.index(cmd.node)

@@ -66,7 +66,7 @@ class GraphVisualizer:
         self.v_in = v_in
         self.v_out = v_out
         if meas_plane is None:
-            self.meas_planes = {i: "XY" for i in iter(G.nodes)}
+            self.meas_planes = {i: graphix.pauli.Plane.XY for i in iter(G.nodes)}
         else:
             self.meas_planes = meas_plane
         self.meas_angles = meas_angles

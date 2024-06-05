@@ -25,6 +25,7 @@ import numpy as np
 import sympy as sp
 
 from graphix.linalg import MatGF2
+import graphix.pauli
 
 
 def find_gflow(
@@ -151,13 +152,13 @@ def gflowaux(
     for i_row in range(len(node_order_row)):
         node = node_order_row[i_row]
         vec = MatGF2(np.zeros(len(node_order_row), dtype=int))
-        if meas_planes[node] == "XY":
+        if meas_planes[node] == graphix.pauli.Plane.XY:
             vec.data[i_row] = 1
-        elif meas_planes[node] == "XZ":
+        elif meas_planes[node] == graphix.pauli.Plane.XZ:
             vec.data[i_row] = 1
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
-        elif meas_planes[node] == "YZ":
+        elif meas_planes[node] == graphix.pauli.Plane.YZ:
             vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
     adj_mat, b, _, col_permutation = adj_mat.forward_eliminate(b)
@@ -174,7 +175,7 @@ def gflowaux(
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
             g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-            if meas_planes[non_out_node] in ["XZ", "YZ"]:
+            if meas_planes[non_out_node] in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
                 g[non_out_node] |= {non_out_node}
 
         elif mode == "all":
@@ -185,7 +186,7 @@ def gflowaux(
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-                if meas_planes[non_out_node] in ["XZ", "YZ"]:
+                if meas_planes[non_out_node] in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
@@ -195,7 +196,7 @@ def gflowaux(
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
-            if meas_planes[non_out_node] in ["XZ", "YZ"]:
+            if meas_planes[non_out_node] in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
                 g[non_out_node][non_out_node] = sp.true
 
         l_k[non_out_node] = k
@@ -258,10 +259,10 @@ def find_flow(
     edges = set(graph.edges)
 
     if meas_planes is None:
-        meas_planes = {i: "XY" for i in (nodes - output)}
+        meas_planes = {i: graphix.pauli.Plane.XY for i in (nodes - output)}
 
     for plane in meas_planes.values():
-        if plane != "XY":
+        if plane != graphix.pauli.Plane.XY:
             return None, None
 
     l_k = {i: 0 for i in nodes}
@@ -503,7 +504,7 @@ def pauliflowaux(
             p[node] = list()
 
         solved = False
-        if meas_planes[node] == "XY" or node in Lx or node in Ly:
+        if meas_planes[node] == graphix.pauli.Plane.XY or node in Lx or node in Ly:
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             S.data[node_order_row_.index(node), :] = 1
             S_lower = MatGF2(np.zeros((len(node_order_row_lower_), 1), dtype=int))
@@ -539,7 +540,7 @@ def pauliflowaux(
                         p_i[node_temp] = x_XY[i]
                     p[node].append(p_i)
 
-        if not solved and (meas_planes[node] == "XZ" or node in Lz or node in Lx):
+        if not solved and (meas_planes[node] == graphix.pauli.Plane.XZ or node in Lz or node in Lx):
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             S.data[node_order_row_.index(node)] = 1
             for neighbor in search_neighbor(node, graph.edges):
@@ -581,7 +582,7 @@ def pauliflowaux(
                     p_i[node] = sp.true
                     p[node].append(p_i)
 
-        if not solved and (meas_planes[node] == "YZ" or node in Ly or node in Lz):
+        if not solved and (meas_planes[node] == graphix.pauli.Plane.YZ or node in Ly or node in Lz):
             S = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             for neighbor in search_neighbor(node, graph.edges):
                 if neighbor in P | {node}:
@@ -649,7 +650,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     """
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
-        if plane != "XY":
+        if plane != graphix.pauli.Plane.XY:
             return None, None
     G = nx.Graph()
     nodes, edges = pattern.get_graph()
@@ -722,7 +723,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in ["XZ", "YZ"]:
+        if plane in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
             if node not in xflow.keys():
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -877,7 +878,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     """
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
-        if plane != "XY":
+        if plane != graphix.pauli.Plane.XY:
             return None, None
     G = nx.Graph()
     nodes, edges = pattern.get_graph()
@@ -950,7 +951,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in ["XZ", "YZ"]:
+        if plane in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
             if node not in xflow.keys():
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -1295,7 +1296,7 @@ def verify_flow(
     non_outputs = set(graph.nodes) - output
     # if meas_planes is given, check whether all measurement planes are "XY"
     for node, plane in meas_planes.items():
-        if plane != "XY" or node not in non_outputs:
+        if plane != graphix.pauli.Plane.XY or node not in non_outputs:
             valid_flow = False
             return valid_flow
 
@@ -1366,11 +1367,11 @@ def verify_gflow(
     # check for each measurement plane
     for node, plane in meas_planes.items():
         # index = node_order.index(node)
-        if plane == "XY":
+        if plane == graphix.pauli.Plane.XY:
             valid_gflow &= (node not in gflow[node]) and (node in odd_flow[node])
-        elif plane == "XZ":
+        elif plane == graphix.pauli.Plane.XZ:
             valid_gflow &= (node in gflow[node]) and (node in odd_flow[node])
-        elif plane == "YZ":
+        elif plane == graphix.pauli.Plane.YZ:
             valid_gflow &= (node in gflow[node]) and (node not in odd_flow[node])
 
     return valid_gflow
@@ -1434,11 +1435,11 @@ def verify_pauliflow(
             valid_pauliflow &= node in pauliflow[node]
         elif node in Ly:
             valid_pauliflow &= node in pauliflow[node].symmetric_difference(odd_flow[node])
-        elif plane == "XY":
+        elif plane == graphix.pauli.Plane.XY:
             valid_pauliflow &= (node not in pauliflow[node]) and (node in odd_flow[node])
-        elif plane == "XZ":
+        elif plane == graphix.pauli.Plane.XZ:
             valid_pauliflow &= (node in pauliflow[node]) and (node in odd_flow[node])
-        elif plane == "YZ":
+        elif plane == graphix.pauli.Plane.YZ:
             valid_pauliflow &= (node in pauliflow[node]) and (node not in odd_flow[node])
 
     return valid_pauliflow
@@ -1506,16 +1507,16 @@ def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) 
     """
     Lx, Ly, Lz = set(), set(), set()
     for node, plane in meas_planes.items():
-        if plane == "XY" and meas_angles[node] == int(meas_angles[node]):  # measurement angle is integer
+        if plane == graphix.pauli.Plane.XY and meas_angles[node] == int(meas_angles[node]):  # measurement angle is integer
             Lx |= {node}
-        elif plane == "XY" and 2 * meas_angles[node] == int(2 * meas_angles[node]):  # measurement angle is half integer
+        elif plane == graphix.pauli.Plane.XY and 2 * meas_angles[node] == int(2 * meas_angles[node]):  # measurement angle is half integer
             Ly |= {node}
-        elif plane == "XZ" and meas_angles[node] == int(meas_angles[node]):
+        elif plane == graphix.pauli.Plane.XZ and meas_angles[node] == int(meas_angles[node]):
             Lz |= {node}
-        elif plane == "XZ" and 2 * meas_angles[node] == int(2 * meas_angles[node]):
+        elif plane == graphix.pauli.Plane.XZ and 2 * meas_angles[node] == int(2 * meas_angles[node]):
             Lx |= {node}
-        elif plane == "YZ" and meas_angles[node] == int(meas_angles[node]):
+        elif plane == graphix.pauli.Plane.YZ and meas_angles[node] == int(meas_angles[node]):
             Ly |= {node}
-        elif plane == "YZ" and 2 * meas_angles[node] == int(2 * meas_angles[node]):
+        elif plane == graphix.pauli.Plane.YZ and 2 * meas_angles[node] == int(2 * meas_angles[node]):
             Lz |= {node}
     return Lx, Ly, Lz

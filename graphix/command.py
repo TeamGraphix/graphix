@@ -2,11 +2,10 @@
 
 from pydantic import BaseModel
 from typing import Union, Literal, List, Tuple
+from graphix.pauli import Plane
 import enum
 
 Node = int
-Plane = Union[Literal["XY"], Literal["YZ"], Literal["XZ"]]
-
 
 class CommandKind(str, enum.Enum):
     N = "N"
@@ -43,7 +42,7 @@ class M(Command):
 
     kind: CommandKind = CommandKind.M
     node: Node
-    plane: Plane = "XY"
+    plane: Plane = Plane.XY
     angle: float = 0.0
     s_domain: List[Node] = []
     t_domain: List[Node] = []

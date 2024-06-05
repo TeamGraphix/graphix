@@ -9,6 +9,7 @@ from graphix import command
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops, States
+from graphix.pauli import Plane
 
 
 class TensorNetworkBackend:
@@ -720,13 +721,13 @@ def proj_basis(angle, vop, plane, choice):
     numpy.ndarray :
         projected state
     """
-    if plane == "XY":
+    if plane == Plane.XY:
         vec = States.vec[0 + choice]
         rotU = Ops.Rz(angle)
-    elif plane == "YZ":
+    elif plane == Plane.YZ:
         vec = States.vec[4 + choice]
         rotU = Ops.Rx(angle)
-    elif plane == "XZ":
+    elif plane == Plane.XZ:
         vec = States.vec[0 + choice]
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)

@@ -11,6 +11,7 @@ from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 from graphix.command import N, M
+import graphix.pauli
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -276,21 +277,21 @@ class TestPattern():
         assert isolated_nodes == isolated_nodes_ref
 
     def test_get_meas_plane(self) -> None:
-        preset_meas_plane = ["XY", "XY", "XY", "YZ", "YZ", "YZ", "XZ", "XZ", "XZ"]
+        preset_meas_plane = [graphix.pauli.Plane.XY, graphix.pauli.Plane.XY, graphix.pauli.Plane.XY, graphix.pauli.Plane.YZ, graphix.pauli.Plane.YZ, graphix.pauli.Plane.YZ, graphix.pauli.Plane.XZ, graphix.pauli.Plane.XZ, graphix.pauli.Plane.XZ]
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):
             pattern.add(M(node=i, plane=preset_meas_plane[i], vop=vop_list[i % 3]))
         ref_meas_plane = {
-            0: "XY",
-            1: "XY",
-            2: "YZ",
-            3: "YZ",
-            4: "XZ",
-            5: "XY",
-            6: "XZ",
-            7: "YZ",
-            8: "XZ",
+            0: graphix.pauli.Plane.XY,
+            1: graphix.pauli.Plane.XY,
+            2: graphix.pauli.Plane.YZ,
+            3: graphix.pauli.Plane.YZ,
+            4: graphix.pauli.Plane.XZ,
+            5: graphix.pauli.Plane.XY,
+            6: graphix.pauli.Plane.XZ,
+            7: graphix.pauli.Plane.YZ,
+            8: graphix.pauli.Plane.XZ,
         }
         meas_plane = pattern.get_meas_plane()
         assert meas_plane == ref_meas_plane
@@ -512,7 +513,7 @@ class TestLocalPattern():
         # https://github.com/TeamGraphix/graphix/issues/153
         p = Pattern(input_nodes=[0])
         p.add(N(node=1))
-        p.add(M(node=1, plane="XY"))
+        p.add(M(node=1, plane=graphix.pauli.Plane.XY))
         p.perform_pauli_measurements()
 
 

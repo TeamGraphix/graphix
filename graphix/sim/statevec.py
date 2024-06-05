@@ -7,6 +7,7 @@ from graphix.sim.base_backend import Backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 from graphix import command
+import graphix.pauli
 
 
 class StatevectorBackend(Backend):
@@ -126,7 +127,7 @@ class StatevectorBackend(Backend):
 
 
 # This function is no longer used
-def meas_op(angle, vop=0, plane="XY", choice=0):
+def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`
@@ -150,12 +151,12 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
     """
     assert vop in np.arange(24)
     assert choice in [0, 1]
-    assert plane in ["XY", "YZ", "XZ"]
-    if plane == "XY":
+    assert plane in [graphix.pauli.Plane.XY, graphix.pauli.Plane.YZ, graphix.pauli.Plane.XZ]
+    if plane == graphix.pauli.Plane.XY:
         vec = (np.cos(angle), np.sin(angle), 0)
-    elif plane == "YZ":
+    elif plane == graphix.pauli.Plane.YZ:
         vec = (0, np.cos(angle), np.sin(angle))
-    elif plane == "XZ":
+    elif plane == graphix.pauli.Plane.XZ:
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):

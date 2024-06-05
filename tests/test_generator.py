@@ -8,6 +8,7 @@ import pytest
 
 import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
+import graphix.pauli
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -21,7 +22,7 @@ class TestGenerator:
         angles = fx_rng.normal(size=6)
         results = []
         repeats = 3  # for testing the determinism of a pattern
-        meas_planes = {i: "XY" for i in range(6)}
+        meas_planes = {i: graphix.pauli.Plane.XY for i in range(6)}
         for _ in range(repeats):
             pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
@@ -38,7 +39,7 @@ class TestGenerator:
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
         angles = fx_rng.normal(size=6)
-        meas_planes = {i: "XY" for i in range(1, 6)}
+        meas_planes = {i: graphix.pauli.Plane.XY for i in range(1, 6)}
         results = []
         repeats = 3  # for testing the determinism of a pattern
         for _ in range(repeats):

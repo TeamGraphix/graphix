@@ -1052,7 +1052,7 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        seq = [M(node=input_node, plane=plane.name, angle=angle)]
+        seq = [M(node=input_node, plane=plane, angle=angle)]
         return seq
 
     @classmethod

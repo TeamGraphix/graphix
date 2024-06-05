@@ -535,9 +535,9 @@ class Pattern:
         M = self.__seq[target + 1]
         if X.node == M.node:
             vop = M.vop
-            if M.plane == "YZ" or vop == 6:
+            if M.plane == graphix.pauli.Plane.YZ or vop == 6:
                 M.t_domain.extend(X.domain)
-            elif M.plane == "XY":
+            elif M.plane == graphix.pauli.Plane.XY:
                 M.s_domain.extend(X.domain)
             self.__seq.pop(target)  # del X
             return True
@@ -560,9 +560,9 @@ class Pattern:
         M = self.__seq[target + 1]
         if Z.node == M.node:
             vop = M.vop
-            if M.plane == "YZ" or vop == 6:
+            if M.plane == graphix.pauli.Plane.YZ or vop == 6:
                 M.s_domain.extend(Z.domain)
-            elif M.plane == "XY":
+            elif M.plane == graphix.pauli.Plane.XY:
                 M.t_domain.extend(Z.domain)
             self.__seq.pop(target)  # del Z
             return True
@@ -755,7 +755,7 @@ class Pattern:
         while pos < len(self.__seq):
             if self.__seq[pos].kind == command.CommandKind.M:
                 cmd: command.M = self.__seq[pos]
-                if cmd.plane == "XY":
+                if cmd.plane == graphix.pauli.Plane.XY:
                     node = cmd.node
                     if cmd.t_domain:
                         self.__seq.insert(pos + 1, command.S(node=node, domain=cmd.t_domain))
@@ -1020,17 +1020,24 @@ class Pattern:
             list of str representing measurement plane for each node.
         """
         meas_plane = dict()
-        order = ["X", "Y", "Z"]
+        order = [graphix.pauli.Axis.X, graphix.pauli.Axis.Y, graphix.pauli.Axis.Z]
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
                 mplane = cmd.plane
                 converted_mplane = ""
                 clifford_measure = CLIFFORD_MEASURE[cmd.vop]
-                for axis in mplane:
+                for axis in mplane.axes:
                     converted = order[clifford_measure[order.index(axis)][0]]
-                    converted_mplane += converted
+                    converted_mplane += str(converted)
                 mplane = "".join(sorted(converted_mplane))
-                meas_plane[cmd.node] = mplane
+                if mplane == "XY":
+                    meas_plane[cmd.node] = graphix.pauli.Plane.XY
+                elif mplane == "YZ":
+                    meas_plane[cmd.node] = graphix.pauli.Plane.YZ
+                elif mplane == "XZ":
+                    meas_plane[cmd.node] = graphix.pauli.Plane.XZ
+                else:
+                    raise NameError("Wrong plane", mplane)
         return meas_plane
 
     def get_angles(self):
@@ -1585,9 +1592,9 @@ class CommandNode:
             self.Xsignal = combined_Xsignal
             self.Xsignals = [combined_Xsignal]
         else:
-            if self.Mprop[0] == "YZ" or self.vop == 6:
+            if self.Mprop[0] == graphix.pauli.Plane.YZ or self.vop == 6:
                 self.Mprop[3] = xor_combination_list(combined_Xsignal, self.Mprop[3])
-            elif self.Mprop[0] == "XY":
+            elif self.Mprop[0] == graphix.pauli.Plane.XY:
                 self.Mprop[2] = xor_combination_list(combined_Xsignal, self.Mprop[2])
             self.Xsignal = []
             self.Xsignals = []
@@ -1602,9 +1609,9 @@ class CommandNode:
         if self.output and z_in_seq:
             self.seq.append(-3)
         else:
-            if self.Mprop[0] == "YZ" or self.vop == 6:
+            if self.Mprop[0] == graphix.pauli.Plane.YZ or self.vop == 6:
                 self.Mprop[2] = xor_combination_list(self.Zsignal, self.Mprop[2])
-            elif self.Mprop[0] == "XY":
+            elif self.Mprop[0] == graphix.pauli.Plane.XY:
                 self.Mprop[3] = xor_combination_list(self.Zsignal, self.Mprop[3])
             self.Zsignal = []
 
@@ -2104,38 +2111,38 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
     # second item: 0 or 1. correspond to sign (+, -)
     basis_index = (0, 0)
     if np.mod(cmd.angle, 2) == 0:
-        if cmd.plane == "XY":
+        if cmd.plane == graphix.pauli.Plane.XY:
             basis_index = (0, 0)
-        elif cmd.plane == "YZ":
+        elif cmd.plane == graphix.pauli.Plane.YZ:
             basis_index = (1, 0)
-        elif cmd.plane == "XZ":
+        elif cmd.plane == graphix.pauli.Plane.XZ:
             basis_index = (0, 0)
         else:
             raise ValueError("Unknown measurement plane")
     elif np.mod(cmd.angle, 2) == 1:
-        if cmd.plane == "XY":
+        if cmd.plane == graphix.pauli.Plane.XY:
             basis_index = (0, 1)
-        elif cmd.plane == "YZ":
+        elif cmd.plane == graphix.pauli.Plane.YZ:
             basis_index = (1, 1)
-        elif cmd.plane == "XZ":
+        elif cmd.plane == graphix.pauli.Plane.XZ:
             basis_index = (0, 1)
         else:
             raise ValueError("Unknown measurement plane")
     elif np.mod(cmd.angle, 2) == 0.5:
-        if cmd.plane == "XY":
+        if cmd.plane == graphix.pauli.Plane.XY:
             basis_index = (1, 0)
-        elif cmd.plane == "YZ":
+        elif cmd.plane == graphix.pauli.Plane.YZ:
             basis_index = (2, 0)
-        elif cmd.plane == "XZ":
+        elif cmd.plane == graphix.pauli.Plane.XZ:
             basis_index = (2, 0)
         else:
             raise ValueError("Unknown measurement plane")
     elif np.mod(cmd.angle, 2) == 1.5:
-        if cmd.plane == "XY":
+        if cmd.plane == graphix.pauli.Plane.XY:
             basis_index = (1, 1)
-        elif cmd.plane == "YZ":
+        elif cmd.plane == graphix.pauli.Plane.YZ:
             basis_index = (2, 1)
-        elif cmd.plane == "XZ":
+        elif cmd.plane == graphix.pauli.Plane.XZ:
             basis_index = (2, 1)
         else:
             raise ValueError("Unknown measurement plane")
@@ -2186,7 +2193,7 @@ def cmd_to_qasm3(cmd):
         yield "// measure qubit q" + str(qubit) + "\n"
         yield "bit c" + str(qubit) + ";\n"
         yield "float theta" + str(qubit) + " = 0;\n"
-        if plane == "XY":
+        if plane == graphix.pauli.Plane.XY:
             if sdomain != []:
                 yield "int s" + str(qubit) + " = 0;\n"
                 for sid in sdomain:

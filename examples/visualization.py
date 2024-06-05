@@ -22,6 +22,7 @@ with the pattern, graph or the (generalized-)flow.
 import numpy as np
 
 from graphix import Circuit
+import graphix.pauli
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
@@ -73,7 +74,7 @@ outputs = {4, 5, 6}
 graph = nx.Graph()
 graph.add_nodes_from(nodes)
 graph.add_edges_from(edges)
-meas_planes = {1: "XY", 2: "XY", 3: "XY"}
+meas_planes = {1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XY, 3: graphix.pauli.Plane.XY}
 vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
 vis.visualize(show_measurement_planes=True)
 
@@ -87,7 +88,7 @@ outputs = {4, 5}
 graph = nx.Graph()
 graph.add_nodes_from(nodes)
 graph.add_edges_from(edges)
-meas_planes = {0: "XY", 1: "XY", 2: "ZX", 3: "YZ"}
+meas_planes = {0: graphix.pauli.Plane.XY, 1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.ZX, 3: graphix.pauli.Plane.YZ}
 vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
 vis.visualize(show_measurement_planes=True)
 
