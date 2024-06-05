@@ -52,17 +52,20 @@ html_theme = "sphinxawesome_theme"
 extensions += [
     "sphinxawesome_theme.highlighting",
 ]
-# html_theme = 'pydata_sphinx_theme'
+html_title = ""
+
 html_static_path = ["_static"]
 
 html_context = {
     "mode": "production",
 }
 
+pygments_style = 'sphinx'
+
 theme_options = ThemeOptions(
     show_breadcrumbs=True,
     logo_dark="../logo/white.png",
-    logo_light="../logo/black_with_name.png",
+    logo_light="../logo/black.png",
 )
 
 html_theme_options = asdict(theme_options)

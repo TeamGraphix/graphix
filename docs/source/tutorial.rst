@@ -177,7 +177,7 @@ Z byproduct, node = 3, domain = [5]
     :alt: visualization of optimized pattern
 
 
-As we see below, we can significantly optimize this for better simulation performance and even operations in quantum hardware.
+As we see below, we can simplify and optimize the pattern by calling various methods of :class:`~graphix.pattern.Pattern`.
 
 Standardization and signal shifting
 +++++++++++++++++++++++++++++++++++
@@ -219,7 +219,7 @@ Z byproduct, node = 7, domain = [1, 5]
     :scale: 60 %
     :alt: pattern visualization after standarziation
 
-The command sequence is now much clear and note that the byproduct commands now only apply to output nodes (3, 7).
+The command sequence is now simpler and note that the most byproduct commands now apply to output nodes (3, 7).
 This reveals the graph structure of the resource state which we can inspect:
 
 .. code-block:: python
@@ -326,7 +326,7 @@ In fact, for patterns transpiled from gate network, the minimum `space` we can r
 
 
 Simulating noisy MBQC
-+++++++++++++++++++++
+-------------------------------
 
 We can simulate the MBQC pattern with various noise models to understand their effects. The pattern that we used above can be simulated with the statevector backend.
 
@@ -421,7 +421,7 @@ We can plot the results from the model,
    :alt: mqbc pattern with various noise models
 
 Running pattern on quantum devices
-++++++++++++++++++++++++++++++++++
+-----------------------------------------
 
 We are currently adding cloud-based quantum devices to run MBQC pattern. Our first such interface is for IBMQ devices, and is available as `graphix-ibmq <https://github.com/TeamGraphix/graphix-ibmq>`_ module.
 
@@ -457,7 +457,7 @@ This can be run on Aer simulator or IBMQ devices. See `documentation page for gr
 
 
 Generating QASM file
-++++++++++++++++++++
+-------------------------------
 
 For other systems, we can generate QASM3 instruction set corresponding to the pattern, following
 
