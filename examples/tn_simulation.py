@@ -12,6 +12,7 @@ Firstly, let's import the relevant modules:
 from functools import reduce
 
 import cotengra as ctg
+import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import opt_einsum as oe
@@ -27,6 +28,7 @@ from graphix import Circuit
 # %%
 # Let's start with defining a helper function for buidling the circuit.
 
+
 def ansatz(circuit, n, gamma, beta, iterations):
     for j in range(0, iterations):
         for i in range(1, n):
@@ -35,6 +37,7 @@ def ansatz(circuit, n, gamma, beta, iterations):
             circuit.cnot(i, 0)
         for i in range(0, n):
             circuit.rx(i, beta[j])
+
 
 # %%
 # Let's look at how the quantum circuit is going to be built.
@@ -106,6 +109,7 @@ print("Expectation value for Z^n: ", exp_val)
 # then we must deploy a classical minimizer too for an apropriate cost function.
 # Create a cost function using the elements of graphix, which were already discussed above.
 
+
 def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     circuit = Circuit(n)
     gamma = params[:slice_index]
@@ -122,6 +126,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
         exp_val += np.real(mbqc_tn.expectation_value(op, range(n), optimize=opt))
     return exp_val
 
+
 # %%
 # We want to find the ground state energy for the Hamiltonian = \sum Z_k  + \sum Z_i Z_j  with i,j running over the edges.
 
@@ -133,10 +138,12 @@ for i in range(1, n):
     op = reduce(np.kron, op)
     ham.append(op)
 
+
 # Use yet again another optimizer for path contraction.
 class MyOptimizer(oe.paths.PathOptimizer):
     def __call__(self, inputs, output, size_dict, memory_limit=None):
         return [(0, 1)] * (len(inputs) - 1)
+
 
 opt = MyOptimizer()
 # Define initial parameters, which will be optimized through running the algorithm.
@@ -180,5 +187,12 @@ plt.show()
 # As we can see the most probable are 15 and 16 ( ``|11110>`` and ``|00001>`` because of bit ordering),
 # which mean that splitting the graph so that node number 0 is in one set,
 # and all other nodes in the other solves the max cut problem.
-# This result is what we would expect from this star-like graph.
+# This result is what we would expect from this star-like graph. 
+# The follow image illustrates the results, nodes with different colors belong to different groups.
 
+g = nx.Graph()
+for i in range(1, n):
+    g.add_edge(0, i)
+color = ['blue']*n
+color[0] = "red"
+nx.draw(g, node_color=color, with_labels=True)
