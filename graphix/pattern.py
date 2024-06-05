@@ -1016,28 +1016,20 @@ class Pattern:
 
         Returns
         -------
-        meas_plane: dict of str
-            list of str representing measurement plane for each node.
+        meas_plane: dict of graphix.pauli.Plane
+            list of planes representing measurement plane for each node.
         """
         meas_plane = dict()
         order = [graphix.pauli.Axis.X, graphix.pauli.Axis.Y, graphix.pauli.Axis.Z]
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
                 mplane = cmd.plane
-                converted_mplane = ""
                 clifford_measure = CLIFFORD_MEASURE[cmd.vop]
+                new_axes = []
                 for axis in mplane.axes:
                     converted = order[clifford_measure[order.index(axis)][0]]
-                    converted_mplane += str(converted)
-                mplane = "".join(sorted(converted_mplane))
-                if mplane == "XY":
-                    meas_plane[cmd.node] = graphix.pauli.Plane.XY
-                elif mplane == "YZ":
-                    meas_plane[cmd.node] = graphix.pauli.Plane.YZ
-                elif mplane == "XZ":
-                    meas_plane[cmd.node] = graphix.pauli.Plane.XZ
-                else:
-                    raise NameError("Wrong plane", mplane)
+                    new_axes.append(converted)
+                meas_plane[cmd.node] = graphix.pauli.Plane.from_axes(new_axes[0], new_axes[1])
         return meas_plane
 
     def get_angles(self):

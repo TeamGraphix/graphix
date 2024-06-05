@@ -107,9 +107,6 @@ class Axis(enum.Enum):
     Y = 1
     Z = 2
 
-    def __str__(self):
-        return self.name
-
 class Plane(enum.Enum):
     XY = 0
     YZ = 1

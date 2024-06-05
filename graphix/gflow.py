@@ -224,7 +224,7 @@ def find_flow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, str] = None,
+    meas_planes: dict[int, graphix.pauli.Plane] = None,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Causal flow finding algorithm
 
@@ -243,10 +243,10 @@ def find_flow(
         set of node labels for input
     output: set
         set of node labels for output
-    meas_planes: int(optional)
+    meas_planes: dict(int, graphix.pauli.Plane)
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
-        Note that an underlying graph has a causal flow only if all measurement planes are "XY".
-        If not specified, all measurement planes are interpreted as "XY".
+        Note that an underlying graph has a causal flow only if all measurement planes are graphix.pauli.Plane.XY.
+        If not specified, all measurement planes are interpreted as graphix.pauli.Plane.XY.
 
     Returns
     -------

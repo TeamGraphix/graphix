@@ -158,7 +158,7 @@ def _graph5() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: "XY", 1: "XY", 2: "ZX", 3: "YZ"}
+    meas_planes = {0: graphix.pauli.Plane.XY, 1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XZ, 3: graphix.pauli.Plane.YZ}
     return GraphForTest(
         graph,
         inputs,
@@ -186,7 +186,7 @@ def _graph6() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {1: "XY", 2: "XY"}
+    meas_planes = {1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XY}
     return GraphForTest(
         graph,
         inputs,
@@ -214,7 +214,7 @@ def _graph7() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: "XY", 1: "XY", 2: "XY", 3: "XY"}
+    meas_planes = {0: graphix.pauli.Plane.XY, 1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XY, 3: graphix.pauli.Plane.XY}
     meas_angles = {0: 0.1, 1: 0, 2: 0.1, 3: 0}
     return GraphForTest(
         graph,
@@ -241,7 +241,7 @@ def _graph8() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: "YZ", 1: "XZ", 2: "XY", 3: "YZ"}
+    meas_planes = {0: graphix.pauli.Plane.YZ, 1: graphix.pauli.Plane.XZ, 2: graphix.pauli.Plane.XY, 3: graphix.pauli.Plane.YZ}
     meas_angles = {0: 0.5, 1: 0, 2: 0.5, 3: 0}
     return GraphForTest(
         graph,
@@ -270,7 +270,7 @@ def _graph9() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: "YZ", 1: "XZ", 2: "XY"}
+    meas_planes = {0: graphix.pauli.Plane.YZ, 1: graphix.pauli.Plane.XZ, 2: graphix.pauli.Plane.XY}
     meas_angles = {0: 0.5, 1: 0.1, 2: 0.5}
     return GraphForTest(
         graph,
