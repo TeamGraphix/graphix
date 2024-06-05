@@ -17,6 +17,7 @@ from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 from graphix import command
 import graphix.pauli
+import graphix.clifford
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1024,12 +1025,9 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
                 mplane = cmd.plane
-                clifford_measure = CLIFFORD_MEASURE[cmd.vop]
-                new_axes = []
-                for axis in mplane.axes:
-                    converted = order[clifford_measure[order.index(axis)][0]]
-                    new_axes.append(converted)
-                meas_plane[cmd.node] = graphix.pauli.Plane.from_axes(new_axes[0], new_axes[1])
+                cliff = graphix.clifford.get(cmd.vop)
+                new_axes = [cliff.measure(graphix.pauli.Pauli.from_axis(axis)).axis for axis in mplane.axes]
+                meas_plane[cmd.node] = graphix.pauli.Plane.from_axes(*new_axes)
         return meas_plane
 
     def get_angles(self):
