@@ -88,8 +88,10 @@ print("Statevector after the simulation:", sv)
 # In the following, the TN construction can finally take place.
 # From each node in the graph a tensor is constructed, which has a dimension that is exactly one larger than its neighbour count.
 # The tensor is described using two outer products for which the list used from above, that describes the edges for every node.
-# \nFor additional information on TN construction please refer to: https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315
-# \nLet's also plot the resulting tensor network.
+# For additional information on TN construction please refer to: https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315
+
+# %%
+# Let's also plot the resulting tensor network.
 
 fig, ax = plt.subplots(figsize=(13, 10))
 color = ["Z", "M", "X", "ancilla"]
@@ -214,6 +216,8 @@ plt.show()
 # which mean that splitting the graph so that node number 0 is in one set,
 # and all other nodes in the other solves the max cut problem.
 # This result is what we would expect from this star-like graph.
+
+# %%
 # The following illustration shows the starting graph on the left,
 # and the graph with the resulting sets found on the right, where the nodes with different colours belong to different groups.
 
