@@ -12,8 +12,8 @@ Firstly, let's import the relevant modules:
 from functools import reduce
 
 import cotengra as ctg
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import opt_einsum as oe
 from scipy.optimize import minimize
@@ -78,6 +78,32 @@ sv = mbqc_tn.to_statevector().flatten()
 print("Statevector after the simulation:", sv)
 
 # %%
+# Let's explore what is really happening, how the TN is being constructed.
+# The tensor network is created using the graph structure, so from the list of nodes as well as the edges.
+# The graph must be preprocessed before the constraction of the TN itself.
+# For every node a list is created, which stores the index labels for each dimension for that given node.
+# Its length will be one larger than the number of edges of the node (for more information look for properties of MPS).
+# Additionally, the type of edges are also stored in a binary valued list for each node.
+# These are used to construct the tensor itself later.
+# In the following, the TN construction can finally take place.
+# From each node in the graph a tensor is constructed, which has a dimension that is exactly one larger than its neighbour count.
+# The tensor is described using two outer products for which the list used from above, that describes the edges for every node.
+# \nFor additional information on TN construction please refer to: https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315
+# \nLet's also plot the resulting tensor network.
+
+fig, ax = plt.subplots(figsize=(13, 10))
+color = ["Z", "M", "X", "ancilla"]
+mbqc_tn.draw(
+    ax=ax,
+    color=color,
+    show_tags=False,
+    show_inds=False,
+    layout="kamada_kawai",
+    iterations=100,
+    k=0.01,
+)
+plt.show()
+# %%
 # Let's calculate the measuring probability corresponding to the first basis state.
 
 value = mbqc_tn.get_basis_amplitude(0)
@@ -128,7 +154,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
 
 
 # %%
-# We want to find the ground state energy for the Hamiltonian = \sum Z_k  + \sum Z_i Z_j  with i,j running over the edges.
+# We want to find the ground state energy for the Hamiltonian :math:`\hat{H} = \sum \hat{Z}_k + \sum \hat{Z}_i \hat{Z}_j` with i,j running over the edges.
 
 ham = [reduce(np.kron, [pauli_z] * n)]
 for i in range(1, n):
@@ -187,12 +213,17 @@ plt.show()
 # As we can see the most probable are 15 and 16 ( ``|11110>`` and ``|00001>`` because of bit ordering),
 # which mean that splitting the graph so that node number 0 is in one set,
 # and all other nodes in the other solves the max cut problem.
-# This result is what we would expect from this star-like graph. 
-# The follow image illustrates the results, nodes with different colors belong to different groups.
+# This result is what we would expect from this star-like graph.
+# The following illustration shows the starting graph on the left,
+# and the graph with the resulting sets found on the right, where the nodes with different colours belong to different groups.
 
+fig, ax = plt.subplots(ncols=2, figsize=(8, 6))
+ax = ax.flatten()
 g = nx.Graph()
 for i in range(1, n):
     g.add_edge(0, i)
-color = ['blue']*n
+color = ["blue"] * n
 color[0] = "red"
-nx.draw(g, node_color=color, with_labels=True)
+nx.draw(g, ax=ax[0], with_labels=True)
+nx.draw(g, ax=ax[1], node_color=color, with_labels=True)
+plt.show()
