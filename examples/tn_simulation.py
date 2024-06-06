@@ -113,13 +113,13 @@ plt.show()
 # Additionally, the type of edges are also stored, in a binary valued list for each node.
 # These are used to construct the tensor itself.
 # From each node in the graph a tensor is constructed, which has a dimension that is exactly one larger than its neighbour count.
-# The tensor is described using two outer products, for which the list used from above, that describes the edges for every node.
+# The tensor is described using two outer products, for which the list from above is used, that describes the edges for every node.
 # For additional information on TN construction please refer to: https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315 .
 # Section III A provides further information on Matrix Porduct States and section III C gives an example using a 1-D cluster state.
 # In section IV novel resource states are explored, where parts A, B can be used for getting a deeper understanding.
 
 # %%
-# Let's also plot the resulting tensor network (notice that there are five dangling edges, which exactly the number of qubits that were defined in the quantum circuit).
+# Let's also plot the resulting tensor network (notice that there are five dangling edges, which is exactly the number of qubits that were defined in the quantum circuit).
 
 fig, ax = plt.subplots(figsize=(13, 10))
 color = ["Z", "M", "X", "ancilla"]
