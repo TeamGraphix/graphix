@@ -48,7 +48,7 @@ def setup(app):
 
 html_theme = "furo"
 
-html_title = " " # title for documentation (shown in sidebar, kept empty)
+html_title = " "  # title for documentation (shown in sidebar, kept empty)
 
 html_static_path = ["_static"]
 
@@ -74,4 +74,3 @@ sphinx_gallery_conf = {
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
 }
-
