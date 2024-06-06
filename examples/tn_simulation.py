@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import opt_einsum as oe
+import quimb.tensor as qtn
 from scipy.optimize import minimize
 
 from graphix import Circuit
@@ -81,17 +82,44 @@ print("Statevector after the simulation:", sv)
 # Let's explore what is really happening, how the TN is being constructed.
 # The tensor network is created using the graph structure, so from the list of nodes as well as the edges.
 # The graph must be preprocessed before the constraction of the TN itself.
-# For every node a list is created, which stores the index labels for each dimension for that given node.
-# Its length will be one larger than the number of edges of the node (for more information look for properties of MPS).
-# Additionally, the type of edges are also stored in a binary valued list for each node.
-# These are used to construct the tensor itself later.
-# In the following, the TN construction can finally take place.
-# From each node in the graph a tensor is constructed, which has a dimension that is exactly one larger than its neighbour count.
-# The tensor is described using two outer products for which the list used from above, that describes the edges for every node.
-# For additional information on TN construction please refer to: https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315
 
 # %%
-# Let's also plot the resulting tensor network.
+# The goal is to represent quantum states, so for every node a list is created, which stores the index labels for each dimension for that given node.
+# Its length will be one larger than the number of edges of the node.
+# This is due to the fact that the first entry of the list represents the "dangling" index, which corresponds to the physical index of the qubit (i.e., the index that represents the local Hilbert space of the qubit).
+# The following entries in the list are then correspond to neighbouring tensors, and can be contracted with them.
+# For additional details and visualization visit: https://quimb.readthedocs.io/en/latest/tensor-1d.html.
+
+# %%
+# Let's take a closer look at an MPS tensor (left plot) and an MPS tensor network that consists of two MPS tensors (right plot).
+# By the network on the right the middle index is shared between the two tensors, essentially allowing for contraction between them by summing over it.
+
+t = qtn.rand_tensor([2], "a")
+fig, ax = plt.subplots(1, 2)
+t.draw(
+    ax=ax[0],
+    title="MPS tensor",
+    legend=False,
+)
+t1 = qtn.rand_tensor([2, 2], ["a", "b"])
+t2 = qtn.rand_tensor([1, 2], ["b", "c"])
+t1.add_tag("T1")
+t2.add_tag("T2")
+t = qtn.TensorNetwork([t1, t2])
+t.draw(ax=ax[1], title="MPS", legend=False, color=["T1", "T2", "b"])
+plt.show()
+
+# %%
+# Additionally, the type of edges are also stored, in a binary valued list for each node.
+# These are used to construct the tensor itself.
+# From each node in the graph a tensor is constructed, which has a dimension that is exactly one larger than its neighbour count.
+# The tensor is described using two outer products, for which the list used from above, that describes the edges for every node.
+# For additional information on TN construction please refer to: https://journals.aps.org/pra/abstract/10.1103/PhysRevA.76.052315 .
+# Section III A provides further information on Matrix Porduct States and section III C gives an example using a 1-D cluster state.
+# In section IV novel resource states are explored, where parts A, B can be used for getting a deeper understanding.
+
+# %%
+# Let's also plot the resulting tensor network (notice that there are five dangling edges, which exactly the number of qubits that were defined in the quantum circuit).
 
 fig, ax = plt.subplots(figsize=(13, 10))
 color = ["Z", "M", "X", "ancilla"]
@@ -100,7 +128,6 @@ mbqc_tn.draw(
     color=color,
     show_tags=False,
     show_inds=False,
-    layout="kamada_kawai",
     iterations=100,
     k=0.01,
 )
