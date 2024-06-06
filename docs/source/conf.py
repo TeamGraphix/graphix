@@ -4,8 +4,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import os
 import sys
-from dataclasses import asdict
-from sphinxawesome_theme import ThemeOptions
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -24,6 +22,7 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
     "sphinx_gallery.gen_gallery",
+    "sphinxawesome_theme.highlighting",
 ]
 
 templates_path = ["_templates"]
@@ -47,12 +46,9 @@ def setup(app):
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+html_theme = "furo"
 
-html_theme = "sphinxawesome_theme"
-extensions += [
-    "sphinxawesome_theme.highlighting",
-]
-html_title = ""
+html_title = " " # title for documentation (shown in sidebar, kept empty)
 
 html_static_path = ["_static"]
 
@@ -60,15 +56,15 @@ html_context = {
     "mode": "production",
 }
 
-pygments_style = 'sphinx'
+# code highlighting for light and dark themes
+pygments_style = "sphinx"
+pygments_dark_style = "monokai"
 
-theme_options = ThemeOptions(
-    show_breadcrumbs=True,
-    logo_dark="../logo/white.png",
-    logo_light="../logo/black.png",
-)
-
-html_theme_options = asdict(theme_options)
+# customizing theme options
+html_theme_options = {
+    "light_logo": "black_with_name.png",
+    "dark_logo": "white_with_text.png",
+}
 
 sphinx_gallery_conf = {
     # path to your example scripts
