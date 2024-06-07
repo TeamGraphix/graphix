@@ -106,7 +106,7 @@ t2 = qtn.rand_tensor([1, 2], ["b", "c"])
 t1.add_tag("T1")
 t2.add_tag("T2")
 t = qtn.TensorNetwork([t1, t2])
-t.draw(ax=ax[1], title="MPS", legend=False, color=["T1", "T2", "b"])
+t.draw(ax=ax[1], title="MPS", legend=False, color=["T1", "T2"])
 plt.show()
 
 # %%
@@ -120,9 +120,10 @@ plt.show()
 
 # %%
 # Let's also plot the resulting tensor network (notice that there are five dangling edges, which is exactly the number of qubits that were defined in the quantum circuit).
+# Here open means that the node has a dangling index.
 
 fig, ax = plt.subplots(figsize=(13, 10))
-color = ["Z", "M", "X", "ancilla"]
+color = ["Open", "Close"]
 mbqc_tn.draw(
     ax=ax,
     color=color,
