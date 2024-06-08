@@ -20,6 +20,8 @@ import quimb.tensor as qtn
 from scipy.optimize import minimize
 
 from graphix import Circuit
+from graphix.gflow import find_gflow
+from graphix.visualization import GraphVisualizer
 
 # %%
 # This application will be for the QAOA (Quantum Approximate Optimization Algorithm),
@@ -60,9 +62,9 @@ pattern.shift_signals()
 # %%
 # Print some properties of the graph.
 
-nodes, edges = pattern.get_graph()
-print(f"Number of nodes: {len(nodes)}")
-print(f"Number of edges: {len(edges)}")
+ind_map, tag_map = pattern.get_graph()
+print(f"Number of nodes: {len(ind_map)}")
+print(f"Number of edges: {len(tag_map)}")
 
 # %%
 # Optimizing by performing Pauli measurements in the pattern using efficient stabilizer simulator.
@@ -120,19 +122,63 @@ plt.show()
 
 # %%
 # Let's also plot the resulting tensor network (notice that there are five dangling edges, which is exactly the number of qubits that were defined in the quantum circuit).
-# Here open means that the node has a dangling index.
+# Here open means that the node has a dangling index, but the "dangling" edge itself is not drawn, rather the tensors are color coded.
 
 fig, ax = plt.subplots(figsize=(13, 10))
 color = ["Open", "Close"]
+
+# Rebuilding the graph to be visualizable
+# Ignoring dangling edges when plotting, but coloring according to them
+ind_map, tag_map, default_output_nodes = mbqc_tn.ind_map, mbqc_tn.tag_map, mbqc_tn.default_output_nodes
+nodes = set()
+nodes.update(list(tag_map["Open"]))  # The node has "dangling" index
+nodes.update(list(tag_map["Close"]))
+edges = []
+for i in ind_map.items():
+    if len(i[1]) < 2:
+        continue
+    edges.append(list(i[1]))
+input_nodes = []
+for node in nodes:
+    candidate = True
+    for edge in edges:
+        if edge[1] == node:
+            candidate = False
+            continue
+    if candidate:
+        input_nodes.append(node)
+for i in range(0, len(default_output_nodes)):
+    default_output_nodes[i] = str(default_output_nodes[i])
+out_nodes = []
+for i in tag_map.items():
+    if i[0] in default_output_nodes:
+        out_nodes.append(list(i[-1])[-1])
+meas_planes = dict()
+for c in ["M", "Z", "C", "X"]:
+    if c in tag_map.keys():
+        for i in list(tag_map[c]):
+            meas_planes[i] = c
+for i in nodes:
+    if i not in meas_planes.keys():
+        meas_planes[i] = ""
+
+G = nx.Graph()
+G.add_nodes_from(nodes)
+G.add_edges_from(edges)
+f, l_k = find_gflow(G, input=set(input_nodes), output=set(out_nodes), meas_planes=meas_planes)
+pos = GraphVisualizer(G, input_nodes, out_nodes).get_pos_from_gflow(g=f, l_k=l_k)
+
 mbqc_tn.draw(
     ax=ax,
     color=color,
     show_tags=False,
     show_inds=False,
+    fix=pos,
     iterations=100,
     k=0.01,
 )
 plt.show()
+
 # %%
 # Let's calculate the measuring probability corresponding to the first basis state.
 
