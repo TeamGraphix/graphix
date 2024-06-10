@@ -2,6 +2,7 @@ import string
 from copy import deepcopy
 
 import numpy as np
+from numpy.typing import NDArray
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
@@ -491,28 +492,30 @@ class MBQCTensorNet(TensorNetwork):
         coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, indices=None, **kwagrs):
-        """Retrieve the statevector from the tensornetwork.
-        This method tends to be slow however we plan to parallelize this.
+    def to_statevector(self, skip=False, **kwagrs) -> NDArray:
+        """Take outer product of the tensors in the network and return the statevector.
 
         Parameters
         ----------
-        indices (optional): list of int
-            target qubit indices. Default is the MBQC output nodes (self.default_output_nodes).
+        skip : bool
+            if True, skip the simplification process.
 
         Returns
         -------
         numpy.ndarray :
             statevector
         """
-        if indices is None:
-            n_qubit = len(self.default_output_nodes)
-        else:
-            n_qubit = len(indices)
-        statevec = np.zeros(2**n_qubit, np.complex128)
-        for i in range(len(statevec)):
-            statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices, **kwagrs)
-        return statevec / np.linalg.norm(statevec)
+        if skip:
+            tn = self.copy()
+            output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
+            psi = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
+            return psi
+
+        tn = self.copy()
+        tn_simplified = tn.full_simplify("ADCR")
+        output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
+        psi = tn_simplified.contract(output_inds=output_inds, **kwagrs)
+        return np.array([psi]) if isinstance(psi, (np.complex128, np.float64)) else psi.data.reshape(-1)
 
     def get_norm(self, **kwagrs):
         """Calculate the norm of the state.

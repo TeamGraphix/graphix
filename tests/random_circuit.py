@@ -84,6 +84,21 @@ def get_rand_circuit(
     use_rzz: bool = False,
     use_ccx: bool = False,
 ) -> Circuit:
+    """Generate a random circuit.
+
+    Parameters
+    ----------
+    nqubits : int
+        Number of qubits in the circuit. Must be at least 2.
+    depth : int
+        Number of layers in the circuit.
+    rng : Generator
+        Random number generator.
+    use_rzz : bool, optional
+        Whether to include RZZ gates, by default False.
+    use_ccx : bool, optional
+        Whether to include CCX gates, by default False.
+    """
     circuit = Circuit(nqubits)
     gate_choice = (
         functools.partial(circuit.ry, angle=np.pi / 4),
