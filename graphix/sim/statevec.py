@@ -1,9 +1,10 @@
 from copy import deepcopy
 
 import numpy as np
+from numpy.typing import NDArray
 
 import graphix.sim.base_backend
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 
 
@@ -182,21 +183,19 @@ SWAP_TENSOR = np.array(
 class Statevec:
     """Simple statevector simulator"""
 
-    def __init__(self, nqubit=1, plus_states=True):
+    def __init__(self, nqubit=1, psi=None, plus_states=True):
         """Initialize statevector
 
         Parameters
         ----------
         nqubit : int, optional:
             number of qubits. Defaults to 1.
+        psi : numpy.ndarray, optional
+            statevector. Defaults to None.
         plus_states : bool, optional
             whether or not to start all qubits in + state or 0 state. Defaults to +
         """
-        if plus_states:
-            self.psi = np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
-        else:
-            self.psi = np.zeros((2,) * nqubit)
-            self.psi[(0,) * nqubit] = 1
+        self.psi = _initial_state(nqubit, psi, plus_states)
 
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
@@ -225,8 +224,7 @@ class Statevec:
             target qubits' indices
         """
         op_dim = int(np.log2(len(op)))
-        # TODO shape = (2,)* 2 * op_dim
-        shape = [2 for _ in range(2 * op_dim)]
+        shape = [2,] * 2 * op_dim
         op_tensor = op.reshape(shape)
         self.psi = np.tensordot(
             op_tensor,
@@ -409,6 +407,32 @@ class Statevec:
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
 
-def _get_statevec_norm(psi):
+def _get_statevec_norm(psi) -> float:
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
+
+
+def _initial_state(nqubit=1, psi=None, plus_states=True) -> NDArray:
+    """Create initial state
+
+    Parameters
+    ----------
+    nqubit : int, optional:
+        number of qubits. Defaults to 1.
+    psi : numpy.ndarray, optional
+        statevector. Defaults to None.
+    plus_states : bool, optional
+        whether or not to start all qubits in + state or 0 state. Defaults to +
+
+    Returns
+    -------
+    numpy.ndarray
+        statevector
+    """
+    if psi is not None:
+        return psi
+    if plus_states:
+        return np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
+    psi = np.zeros((2,) * nqubit)
+    psi[(0,) * nqubit] = 1
+    return psi
