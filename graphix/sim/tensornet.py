@@ -317,7 +317,7 @@ class MBQCTensorNet(TensorNetwork):
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
             list of the above, to specify the initial state of each qubit.
         """
-        if type(states) != list:
+        if isinstance(states, list):
             states = [states] * len(indices)
         for i, ind in enumerate(indices):
             self.add_qubit(ind, state=states[i])
@@ -352,7 +352,7 @@ class MBQCTensorNet(TensorNetwork):
             else:
                 result = np.random.choice([0, 1])
             # Basis state to be projected
-            if type(basis) == np.ndarray:
+            if isinstance(basis, np.ndarray):
                 if outcome is not None:
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
@@ -435,14 +435,15 @@ class MBQCTensorNet(TensorNetwork):
         normalize (optional): bool
             if True, normalize the coefficient by the norm of the entire state.
         indices (optional): list of int
-            target qubit indices to compute the coefficients, default is the MBQC output nodes (self.default_output_nodes).
+            target qubit indices to compute the coefficients,
+            default is the MBQC output nodes (self.default_output_nodes).
 
         Returns
         -------
         coef : complex
             coefficient
         """
-        if indices == None:
+        if indices is None:
             indices = self.default_output_nodes
         if isinstance(basis, str):
             basis = int(basis, 2)
@@ -504,7 +505,7 @@ class MBQCTensorNet(TensorNetwork):
         numpy.ndarray :
             statevector
         """
-        if indices == None:
+        if indices is None:
             n_qubit = len(self.default_output_nodes)
         else:
             n_qubit = len(indices)
@@ -546,8 +547,8 @@ class MBQCTensorNet(TensorNetwork):
         float :
             Expectation value
         """
-        if output_node_indices == None:
-            if self.default_output_nodes == None:
+        if output_node_indices is None:
+            if self.default_output_nodes is None:
                 raise ValueError("output_nodes is not set.")
             else:
                 target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
@@ -556,7 +557,7 @@ class MBQCTensorNet(TensorNetwork):
             target_nodes = [output_node_indices[ind] for ind in qubit_indices]
             out_inds = output_node_indices
         op_dim = len(qubit_indices)
-        op = op.reshape([2 for _ in range(2 * op_dim)])
+        op = op.reshape([2,] * (2 * op_dim))
         new_ind_left = [gen_str() for _ in range(op_dim)]
         new_ind_right = [gen_str() for _ in range(op_dim)]
         tn_cp_left = self.copy()
@@ -594,7 +595,8 @@ class MBQCTensorNet(TensorNetwork):
             Applied positions of **logical** qubits.
         decompose : bool, optional
             default True
-            whether a given operator will be decomposed or not. If True, operator is decomposed into Matrix Product Operator(MPO)
+            whether a given operator will be decomposed or not.
+            If True, operator is decomposed into Matrix Product Operator(MPO)
         """
         if len(operator.shape) != len(qubit_indices) * 2:
             shape = [2 for _ in range(2 * len(qubit_indices))]
