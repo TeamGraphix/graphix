@@ -3,6 +3,13 @@ import dataclasses
 import numpy as np
 import graphix.clifford
 import graphix.pauli
+import graphix.states
+
+
+@dataclasses.dataclass
+class BackendState :
+    state : graphix.states.State = None
+    node_index : list[int] = dataclasses.field(default_factory=list)
 
 
 class Backend:
@@ -17,10 +24,10 @@ class Backend:
         # whether to compute the probability
         self.pr_calc = pr_calc
 
-    def _perform_measure(self, state, node_index, node, measurement_description):
+    def _perform_measure(self, backendState:BackendState, node, measurement_description):
         # measurement_description = self.__measure_method.get_measurement_description(cmd, self.results)
         vec = measurement_description.plane.polar(measurement_description.angle)
-        loc = node_index.index(node)
+        loc = backendState.node_index.index(node)
 
         def op_mat_from_result(result: bool) -> np.ndarray:
             op_mat = np.eye(2, dtype=np.complex128) / 2
@@ -31,7 +38,7 @@ class Backend:
 
         if self.pr_calc:
             op_mat = op_mat_from_result(False)
-            prob_0 = state.expectation_single(op_mat, loc)
+            prob_0 = backendState.state.expectation_single(op_mat, loc)
             result = np.random.rand() > prob_0
             if result:
                 op_mat = op_mat_from_result(True)
@@ -40,6 +47,6 @@ class Backend:
             result = np.random.choice([0, 1])
             op_mat = op_mat_from_result(result)
         # self.__measure_method.set_measure_result(node, result)
-        state.evolve_single(op_mat, loc)
-        node_index.remove(node)
+        backendState.state.evolve_single(op_mat, loc)
+        backendState.node_index.remove(node)
         return loc, result

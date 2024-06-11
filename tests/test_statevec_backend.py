@@ -5,6 +5,7 @@ import numpy as np
 from graphix import Circuit
 from graphix.states import BasicStates, PlanarState
 from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.base_backend import BackendState
 import graphix.pauli
 import graphix.clifford
 import graphix.simulator
@@ -67,15 +68,15 @@ class TestStatevecNew(unittest.TestCase):
             state = BasicStates.PLUS
             vec = Statevec(nqubit=1, data=state)
             backend = StatevectorBackend()
-            internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
+            backendState = backend.add_nodes(backendState=BackendState(), nodes=[0], data=state)
             # Applies clifford gate "Z"
             clifford_cmd = ["C", 0, clifford_index]
             clifford_gate = graphix.clifford.CLIFFORD[clifford_index]
 
             vec.evolve_single(clifford_gate, 0)
 
-            internal_state = backend.apply_clifford(state=internal_state, node_index=node_index, cmd=clifford_cmd)
-            np.testing.assert_allclose(vec.psi, internal_state.psi)
+            backendState = backend.apply_clifford(backendState=backendState, cmd=clifford_cmd)
+            np.testing.assert_allclose(vec.psi, backendState.state.psi)
         
 
     def test_deterministic_measure(self) :
@@ -89,18 +90,20 @@ class TestStatevecNew(unittest.TestCase):
             N_neighbors = 10
             states = [BasicStates.PLUS] + [BasicStates.ZERO for _ in range(N_neighbors)] + [BasicStates.PLUS]
             nodes = range(N_neighbors+2)
-            internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=nodes, data=states)
+            backendState = backend.add_nodes(backendState=BackendState(), nodes=nodes, data=states)
 
             for i in range(1, N_neighbors+1) :
-                internal_state = backend.entangle_nodes(state=internal_state, node_index=node_index, edge=(nodes[0], i))
-                internal_state = backend.entangle_nodes(state=internal_state, node_index=node_index, edge=(nodes[-1], i))
+                backendState = backend.entangle_nodes(backendState=backendState, edge=(nodes[0], i))
+                backendState = backend.entangle_nodes(backendState=backendState, edge=(nodes[-1], i))
             measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
-            internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[0], measurement_description=measurement_description)
+            node_to_measure = backendState.node_index[0]
+            backendState, result = backend.measure(backendState=backendState, node=node_to_measure, measurement_description=measurement_description)
             assert result == 0
-            assert node_index == list(range(1, N_neighbors+2))
-            internal_state, node_index, result = backend.measure(state=internal_state, node_index=node_index, node=node_index[-1], measurement_description=measurement_description)
+            assert backendState.node_index == list(range(1, N_neighbors+2))
+            node_to_measure = backendState.node_index[-1]
+            backendState, result = backend.measure(backendState=backendState, node=node_to_measure, measurement_description=measurement_description)
             assert result == 0
-            assert node_index == list(range(1, N_neighbors+1))
+            assert backendState.node_index == list(range(1, N_neighbors+1))
 
     # test initialization only
     def test_init_success(self):
@@ -109,19 +112,19 @@ class TestStatevecNew(unittest.TestCase):
         state = BasicStates.PLUS
         vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
-        np.testing.assert_allclose(vec.psi, internal_state.psi)
+        backendState = backend.add_nodes(backendState=BackendState(), nodes=[0], data=state)
+        np.testing.assert_allclose(vec.psi, backendState.state.psi)
         # assert backend.state.Nqubit == 1
-        assert node_index == [0]
+        assert backendState.node_index == [0]
 
         # minus state 
         state = BasicStates.MINUS
         vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
-        np.testing.assert_allclose(vec.psi, internal_state.psi)
+        backendState = backend.add_nodes(backendState=BackendState(), nodes=[0], data=state)
+        np.testing.assert_allclose(vec.psi, backendState.state.psi)
         # assert backend.state.Nqubit == 1
-        assert node_index == [0]
+        assert backendState.node_index == [0]
 
         # random planar state
         rand_angle = self.rng.random() * 2 * np.pi
@@ -129,10 +132,10 @@ class TestStatevecNew(unittest.TestCase):
         state = PlanarState(plane = rand_plane, angle = rand_angle)
         vec = Statevec(nqubit=1, data=state)
         backend = StatevectorBackend()
-        internal_state, node_index = backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=state)
-        np.testing.assert_allclose(vec.psi, internal_state.psi)
+        backendState = backend.add_nodes(backendState=BackendState(), nodes=[0], data=state)
+        np.testing.assert_allclose(vec.psi, backendState.state.psi)
         # assert backend.state.Nqubit == 1
-        assert node_index == [0]
+        assert backendState.node_index == [0]
 
 
 
@@ -149,7 +152,7 @@ class TestStatevecNew(unittest.TestCase):
         state2 = PlanarState(plane = rand_plane[1], angle = rand_angle[1])
         backend = StatevectorBackend()
         with self.assertRaises(ValueError):
-            backend.add_nodes(input_state=None, node_index=[], nodes=[0], data=[state, state2])
+            backend.add_nodes(backendState=BackendState(), nodes=[0], data=[state, state2])
 
 
 

@@ -5,6 +5,7 @@ import graphix.ops
 from graphix.states import State, PlanarState, BasicStates
 import graphix.pattern
 import graphix.sim.base_backend
+from graphix.sim.base_backend import BackendState
 import graphix.sim.statevec
 import graphix.simulator
 from graphix.pauli import Plane
@@ -109,7 +110,7 @@ class Client:
         pattern_without_flow = pattern.remove_flow()
         self.clean_pattern = self.remove_prepared_nodes(pattern_without_flow)
 
-        self.state = None
+        self.backend_state = BackendState()
         self.input_state = input_state if input_state!= None else [BasicStates.PLUS for _ in self.input_nodes]
 
 
@@ -126,15 +127,14 @@ class Client:
         z_rotation = lambda theta : np.array([[1, 0], [0, np.exp(1j*theta*np.pi/4)]])
         x_blind = lambda a : graphix.pauli.X if (a == 1) else graphix.pauli.I
         for node in self.nodes_list :
-            index = self.node_index.index(node)
             theta = self.secrets.theta.get(node, 0)
             a = self.secrets.a.a.get(node, 0)
-            self.state = backend.apply_single(state=self.state, op=x_blind(a).matrix, i=index)
-            self.state = backend.apply_single(state=self.state, op=z_rotation(theta), i=index)
+            self.backend_state = backend.apply_single(backendState=self.backend_state, node=node, op=x_blind(a).matrix)
+            self.backend_state = backend.apply_single(backendState=self.backend_state, node=node, op=z_rotation(theta))
 
     def prepare_states(self, backend) :
         # First prepare inputs
-        state, node_index = backend.add_nodes(input_state=self.state, node_index=[], nodes=self.input_nodes, data=self.input_state)
+        backendState =  backend.add_nodes(backendState=self.backend_state, nodes=self.input_nodes, data=self.input_state)
         
         # Then iterate over auxiliaries required to blind
         aux_nodes = []
@@ -142,7 +142,7 @@ class Client:
             if node not in self.input_nodes and node not in self.output_nodes :
                 aux_nodes.append(node)
         aux_data = [BasicStates.PLUS for _ in aux_nodes]
-        state, node_index = backend.add_nodes(input_state=state, node_index=node_index, nodes = aux_nodes, data=aux_data)   
+        backendState =  backend.add_nodes(backendState=backendState, nodes = aux_nodes, data=aux_data)   
 
         # Prepare outputs
         output_data = []
@@ -150,9 +150,9 @@ class Client:
             r_value = self.secrets.r.get(node, 0)
             a_N_value = self.secrets.a.a_N.get(node, 0)
             output_data.append(BasicStates.PLUS if r_value^a_N_value == 0 else BasicStates.MINUS)
-        state, node_index = backend.add_nodes(input_state=state, node_index=node_index, nodes = self.output_nodes, data=output_data)   
+        backendState =  backend.add_nodes(backendState=backendState, nodes = self.output_nodes, data=output_data)   
 
-        self.state, self.node_index = state, node_index
+        self.backend_state = backendState
         return
 
 
@@ -176,68 +176,54 @@ class Client:
             # 1 color = 1 test run = 1 set of traps = 1 stabilizer
             run = TrappifiedRun()
             stabilizer = dict.fromkeys(sorted(graph.nodes), graphix.pauli.I)
-
-            # Definition of single-qubit trap and composition of traps of the same color (take product of stabilizers)
-            for node in nodes_by_color[color] :
-                stabilizer[node] @= graphix.pauli.X
-                for n in nx.neighbors(graph, node) :
-                    stabilizer[n] @= graphix.pauli.Z
-            
-            # Prepare eigenstates of trap stabilizer (only +1-eigenstates for now)
-            states_to_prepare = []
-            for index in sorted(graph.nodes) :
-                if stabilizer[index] == graphix.pauli.X :
-                    state = BasicStates.PLUS
-                elif stabilizer[index] == graphix.pauli.Y :
-                    state = BasicStates.PLUS_I
-                elif stabilizer[index] == graphix.pauli.Z :
-                    state = BasicStates.ZERO
-                else :
-                    state = BasicStates.ZERO
-                states_to_prepare.append(state)
-
+            trap_qubits = nodes_by_color[color]
+            stabilizer = Stabilizer(graph=graph, nodes=trap_qubits)
+            print(trap_qubits)
+            print(stabilizer)
+            # A run can be defined by its associated stabilizer (not totally in the case of multiple multi-qubit traps in the same trap run)
+            run = TrappifiedRun()
             # Configure the test run
-            run.input_state = states_to_prepare
-            run.tested_qubits = nodes_by_color[color]
-            run.stabilizer = stabilizer
+            run.input_state = stabilizer.states
+            run.stabilizer = stabilizer.chain
+            run.tested_qubits = stabilizer.nodes
             runs.append(run)
         return runs, coloring
 
     def delegate_test_run(self, backend, run:TrappifiedRun) :
         # The state is entirely prepared and blinded by the client before being sent to the server
-        self.state, self.node_index = backend.add_nodes(input_state = None, node_index=[], nodes=sorted(self.graph[0]), data=run.input_state)
+        backendState =  BackendState(state=None, node_index=[])
+        self.backend_state = backend.add_nodes(backendState, nodes=sorted(self.graph[0]), data=run.input_state)
         self.blind_qubits(backend)
 
         # Modify the pattern to be all X-basis measurements, no shifts/signalling updates
         for node in self.measurement_db :
             self.measurement_db[node] = MeasureParameters(plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0)
 
-        sim = graphix.simulator.PatternSimulator(state=self.state, node_index=self.node_index, backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        self.state, self.node_index = sim.run()
-        return self.state
+        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
+        self.backend_state = sim.run(backend_state=self.backend_state)
+        return self.backend_state
 
 
     def delegate_pattern(self, backend):
-        self.state = None
+        self.backend_state = BackendState()
         self.prepare_states(backend)      
         self.blind_qubits(backend)
 
-        sim = graphix.simulator.PatternSimulator(state=self.state, node_index=self.node_index, backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        self.state, self.node_index = sim.run()
+        sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
+        self.backend_state = sim.run(self.backend_state)
         self.decode_output_state(backend)
         # returns the final state as well as the server object (Simulator)
-        return self.state, sim
+        return self.backend_state, sim
 
 
     def decode_output_state(self, backend):
         for node in self.output_nodes:
             if node in self.byproduct_db:
-                index = self.node_index.index(node)
                 z_decoding, x_decoding = self.decode_output(node)
                 if z_decoding:
-                    self.state = backend.apply_single(state=self.state, op=graphix.ops.Ops.z, i=index)
+                    backend.apply_single(backendState=self.backend_state, node=node, op=graphix.ops.Ops.z)
                 if x_decoding:
-                    self.state = backend.apply_single(state=self.state, op=graphix.ops.Ops.x, i=index)
+                    backend.apply_single(backendState=self.backend_state, node=node, op=graphix.ops.Ops.x)
         return 
 
     def get_secrets_size(self):
@@ -287,3 +273,53 @@ class ClientMeasureMethod(graphix.simulator.MeasureMethod):
             result ^= self.__client.secrets.r[node]
         self.__client.results[node] = result
 
+
+
+
+import random
+class Stabilizer :
+    def __init__(self, graph:nx.Graph, nodes:list[int]) -> None:
+        self.graph = graph
+        self.nodes = nodes
+        self.chain:list[graphix.pauli.Pauli] = [graphix.pauli.I for _ in self.graph.nodes]
+        self.init_chain(nodes)
+        self.coins = self.sample_random_even(n=self.size)
+        self.states = self.generate_eigenstate()
+        
+    @property
+    def size(self) -> int :
+        return len(self.graph.nodes)
+
+    def init_chain(self, nodes):
+        for node in nodes :
+            self.compute_product(node)
+
+    def compute_product(self, node):
+        self.chain[node] @= graphix.pauli.X
+        for neighbor in self.graph.neighbors(node) :
+            self.chain[neighbor] @= graphix.pauli.Z
+
+
+    def sample_random_even(self, n) -> list[int] :
+        """
+        Builds a bit string of size $n$ with even number of 1s
+        the number of 1s is taken randomly in the set of even numbers < n
+        so we rather say that the "half-number of 1s" is a random integer < n/2
+        """
+        n_ones = random.randint(0, n//2)
+        coins = [1]*2*n_ones + [0]*(n-2*n_ones)
+        random.shuffle(coins)
+        return [0]*n
+
+    def generate_eigenstate(self) -> list[State] :
+        states = []
+        for node in sorted(self.graph.nodes) :
+            operator = self.chain[node]
+            states.append(operator.get_eigenstate(eigenvalue=self.coins[node]))
+        return states
+    
+    def __repr__(self) -> str:
+        string = ""
+        for node in sorted(self.graph.nodes):
+            string += f"{node} ^{self.coins[node]} {self.chain[node]} -> {self.states[node]}\n"
+        return string

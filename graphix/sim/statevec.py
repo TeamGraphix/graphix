@@ -11,6 +11,7 @@ from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.states import State
 from graphix.ops import Ops
 import graphix.sim.base_backend
+from graphix.sim.base_backend import BackendState
 import graphix.states
 import graphix.pauli
 import graphix.types
@@ -35,16 +36,17 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
     def prepare_state(self, nodes, data) :
         self.add_nodes(nodes=nodes, input_state=Statevec(data))
 
-    def qubit_dim(self):
-        """Returns the qubit number in the internal statevector
+    ## TODO : delete ?
+    # def qubit_dim(self):
+    #     """Returns the qubit number in the internal statevector
 
-        Returns
-        -------
-        n_qubit : int
-        """
-        return len(self.state.dims())
+    #     Returns
+    #     -------
+    #     n_qubit : int
+    #     """
+    #     return len(self.state.dims())
 
-    def add_nodes(self, input_state, node_index, nodes, data=graphix.states.BasicStates.PLUS):
+    def add_nodes(self, backendState:BackendState, nodes, data=graphix.states.BasicStates.PLUS):
         """add new qubit(s) to statevector in argument
         and assign the corresponding node number
         to list self.node_index.
@@ -53,17 +55,17 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         ----------
         nodes : list of node indices
         """
-        if not input_state:
-            input_state = Statevec(nqubit=0)
+        if not backendState.state:
+            backendState.state = Statevec(nqubit=0)
         n = len(nodes)
         sv_to_add = Statevec(nqubit=n, data=data)
 
-        input_state.tensor(sv_to_add)
-        node_index.extend(nodes)
+        backendState.state.tensor(sv_to_add)
+        backendState.node_index.extend(nodes)
         
-        return input_state, node_index
+        return backendState
     
-    def entangle_nodes(self, state, node_index, edge):
+    def entangle_nodes(self, backendState:BackendState, edge):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -71,12 +73,12 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         edge : tuple (i, j)
             a pair of node indices
         """
-        target = node_index.index(edge[0])
-        control = node_index.index(edge[1])
-        state.entangle((target, control))
-        return state
+        target = backendState.node_index.index(edge[0])
+        control = backendState.node_index.index(edge[1])
+        backendState.state.entangle((target, control))
+        return backendState
 
-    def measure(self, state, node_index, node, measurement_description):
+    def measure(self, backendState:BackendState, node, measurement_description):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -84,51 +86,51 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         cmd : list
             measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        loc, result = self._perform_measure(state, node_index, node, measurement_description)
-        state.remove_qubit(loc)
-        return state, node_index, result
+        loc, result = self._perform_measure(backendState=backendState, node=node, measurement_description=measurement_description)
+        backendState.state.remove_qubit(loc)
+        return backendState, result
 
-    def correct_byproduct(self, state, node_index, results, cmd):
+    def correct_byproduct(self, backendState:BackendState, results, cmd):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
         if np.mod(np.sum([results[j] for j in cmd[2]]), 2) == 1:
-            loc = node_index.index(cmd[1])
             if cmd[0] == "X":
                 op = Ops.x
             elif cmd[0] == "Z":
                 op = Ops.z
-            state.evolve_single(op, loc)
-        return state
+            self.apply_single(backendState=backendState, node=cmd[1], op=op)
+        return backendState
     
-    def apply_single(self, state, op, i) :
-        state.evolve_single(op=op, i=i)
-        return state
+    def apply_single(self, backendState:BackendState, node, op) :
+        index = backendState.node_index.index(node)
+        backendState.state.evolve_single(op=op, i=index)
+        return backendState
 
-    def apply_clifford(self, state, node_index, cmd):
+    def apply_clifford(self, backendState:BackendState, cmd):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = node_index.index(cmd[1])
-        state.evolve_single(CLIFFORD[cmd[2]], loc)
-        return state
+        loc = backendState.node_index.index(cmd[1])
+        backendState.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        return backendState
 
-    def finalize(self, output_state, node_index, output_nodes):
+    def finalize(self, backendState:BackendState, output_nodes):
         """to be run at the end of pattern simulation."""
-        self.sort_qubits(output_state, node_index, output_nodes)
-        output_state.normalize()
-        return output_state
+        self.sort_qubits(backendState, output_nodes)
+        backendState.state.normalize()
+        return backendState
 
-    def sort_qubits(self, state, node_index, output_nodes):
+    def sort_qubits(self, backendState:BackendState, output_nodes):
         """sort the qubit order in internal statevector"""
         for i, ind in enumerate(output_nodes):
-            if not node_index[i] == ind:
-                move_from = node_index.index(ind)
-                state.swap((i, move_from))
-                node_index[i], node_index[move_from] = (
-                    node_index[move_from],
-                    node_index[i],
+            if not backendState.node_index[i] == ind:
+                move_from = backendState.node_index.index(ind)
+                backendState.state.swap((i, move_from))
+                backendState.node_index[i], backendState.node_index[move_from] = (
+                    backendState.node_index[move_from],
+                    backendState.node_index[i],
                 )
 
 

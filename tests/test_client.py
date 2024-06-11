@@ -55,7 +55,7 @@ class TestClient(unittest.TestCase):
             # Giving it empty will create a random secret
             client = Client(pattern=pattern, secrets=secrets)
             state_mbqc, _  = client.delegate_pattern(backend=backend)
-            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())), 1)
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.state.psi.flatten().conjugate(), state.psi.flatten())), 1)
 
     def test_theta_secret_simulation(self) :
         # Generate random pattern
@@ -79,7 +79,8 @@ class TestClient(unittest.TestCase):
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+
+            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.state.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1)
     
     def test_a_secret_simulation(self) :
         # Generate random pattern
@@ -103,7 +104,7 @@ class TestClient(unittest.TestCase):
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.state.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1)
 
 
     def test_r_secret_results(self):
@@ -147,9 +148,9 @@ class TestClient(unittest.TestCase):
         backend = StatevectorBackend()
         # Blinded simulation, between the client and the server
         client.prepare_states(backend=backend)
-        assert (set(client.node_index) == set(nodes))
+        assert (set(client.backend_state.node_index) == set(nodes))
         client.blind_qubits(backend=backend)
-        assert (set(client.node_index) == set(nodes))
+        assert (set(client.backend_state.node_index) == set(nodes))
 
 
 
@@ -179,7 +180,7 @@ class TestClient(unittest.TestCase):
             blinded_simulation, _ = client.delegate_pattern(backend=backend)
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
-            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.flatten().conjugate(), clear_simulation.flatten())), 1)
+            np.testing.assert_almost_equal(np.abs(np.dot(blinded_simulation.state.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1)
 
 
 

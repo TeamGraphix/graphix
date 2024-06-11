@@ -8,7 +8,6 @@ import numpy as np
 import pydantic
 import graphix.clifford
 
-
 class IXYZ(enum.Enum):
     I = -1
     X = 0
@@ -224,6 +223,17 @@ class Pauli:
         """
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
+    def get_eigenstate(self, eigenvalue):
+        if self.symbol == IXYZ.X :
+            return graphix.states.BasicStates.PLUS if eigenvalue == 0 else graphix.states.BasicStates.MINUS
+        elif self.symbol == IXYZ.Y :
+            return graphix.states.BasicStates.PLUS_I if eigenvalue == 0 else graphix.states.BasicStates.MINUS_I
+        elif self.symbol == IXYZ.Z :
+            return graphix.states.BasicStates.ZERO if eigenvalue == 0 else graphix.states.BasicStates.ONE
+        # Any state is eigenstate of the identity
+        elif self.symbol == IXYZ.I :
+            return graphix.states.BasicStates.ZERO
+        
     def __repr__(self):
         return self.__unit.prefix(self.__symbol.name)
 
