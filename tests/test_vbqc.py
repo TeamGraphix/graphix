@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from graphix.states import BasicStates
 import graphix.client
+from graphix.client import TrappifiedCanvas
 from graphix.sim.statevec import StatevectorBackend
 
 
@@ -29,7 +30,7 @@ class TestVBQC(unittest.TestCase):
             backend = StatevectorBackend()
             client.results = dict()
             client.delegate_test_run(backend=backend, run=run)
-            for qubit in run.tested_qubits :
+            for qubit in run.trap_qubits :
                 if qubit not in pattern.output_nodes :
                     assert client.results[qubit] == 0
 

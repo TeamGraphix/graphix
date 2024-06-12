@@ -89,6 +89,77 @@ class MeasureParameters:
     t_domain: list[int]
     vop: int
 
+## TODO : extract somewhere else
+import random
+
+class Stabilizer :
+    def __init__(self, graph:nx.Graph, nodes:list[int]) -> None:
+        self.graph = graph
+        self.nodes = nodes
+        self.chain:list[graphix.pauli.Pauli] = [graphix.pauli.I for _ in self.graph.nodes]
+        self.init_chain(nodes)
+
+        
+    @property
+    def size(self) -> int :
+        return len(self.graph.nodes)
+
+    def init_chain(self, nodes):
+        for node in nodes :
+            self.compute_product(node)
+
+    def compute_product(self, node):
+        self.chain[node] @= graphix.pauli.X
+        for neighbor in self.graph.neighbors(node) :
+            self.chain[neighbor] @= graphix.pauli.Z
+    
+
+    def __repr__(self) -> str:
+        string = ""
+        for node in sorted(self.graph.nodes):
+            string += f"{node} {self.chain[node]}\n"
+
+        return string
+
+
+class TrappifiedCanvas :
+    def __init__(self, stabilizer:Stabilizer, trap_qubits:list[int]) -> None:
+        self.stabilizer = stabilizer
+        self.trap_qubits = trap_qubits
+
+        dummies_coins = self.generate_coins_dummies()
+        self.coins = self.generate_coins_trap_qubits(coins=dummies_coins)
+        self.states = self.generate_eigenstate()
+
+
+    def generate_eigenstate(self) -> list[State] :
+        states = []
+        for node in sorted(self.stabilizer.graph.nodes) :
+            operator = self.stabilizer.chain[node]
+            states.append(operator.get_eigenstate(eigenvalue=self.coins[node]))
+        return states
+
+    def generate_coins_dummies(self):
+        coins = dict()
+        for node in self.stabilizer.graph.nodes :
+            if node not in self.trap_qubits :
+                coins[node]= random.randint(0,1)
+                coins[node]= 0
+            else :
+                coins[node] = 0
+        return coins
+
+    def generate_coins_trap_qubits(self, coins):
+        for node in self.trap_qubits :
+            neighbors_coins = sum(coins[n] for n in self.stabilizer.graph.neighbors(node))%2
+            coins[node] = neighbors_coins
+        return coins
+
+    def get_span(self, node):
+        return [node] + list(self.stabilizer.graph.neighbors(n=node))
+
+
+
 class Client:
     def __init__(self, pattern, input_state=None, secrets=Secrets()):
         self.initial_pattern = pattern
@@ -156,7 +227,7 @@ class Client:
         return
 
 
-    def create_test_runs(self) -> tuple[list[TrappifiedRun], dict[int, int]] :
+    def create_test_runs(self) -> tuple[list[TrappifiedCanvas], dict[int, int]] :
         graph = nx.Graph()
         nodes, edges = self.graph
         graph.add_edges_from(edges)
@@ -171,28 +242,20 @@ class Client:
             nodes_by_color[color].append(node)
 
         # Create the test runs : one per color            
-        runs = []
+        runs:list[TrappifiedCanvas] = []
         for color in colors :
             # 1 color = 1 test run = 1 set of traps = 1 stabilizer
-            run = TrappifiedRun()
-            stabilizer = dict.fromkeys(sorted(graph.nodes), graphix.pauli.I)
             trap_qubits = nodes_by_color[color]
             stabilizer = Stabilizer(graph=graph, nodes=trap_qubits)
-            print(trap_qubits)
-            print(stabilizer)
-            # A run can be defined by its associated stabilizer (not totally in the case of multiple multi-qubit traps in the same trap run)
-            run = TrappifiedRun()
-            # Configure the test run
-            run.input_state = stabilizer.states
-            run.stabilizer = stabilizer.chain
-            run.tested_qubits = stabilizer.nodes
-            runs.append(run)
+            trappified_canvas = TrappifiedCanvas(stabilizer, trap_qubits)
+ 
+            runs.append(trappified_canvas)
         return runs, coloring
 
-    def delegate_test_run(self, backend, run:TrappifiedRun) :
+    def delegate_test_run(self, backend, run:TrappifiedCanvas) :
         # The state is entirely prepared and blinded by the client before being sent to the server
         backendState =  BackendState(state=None, node_index=[])
-        self.backend_state = backend.add_nodes(backendState, nodes=sorted(self.graph[0]), data=run.input_state)
+        self.backend_state = backend.add_nodes(backendState, nodes=sorted(self.graph[0]), data=run.states)
         self.blind_qubits(backend)
 
         # Modify the pattern to be all X-basis measurements, no shifts/signalling updates
@@ -276,50 +339,3 @@ class ClientMeasureMethod(graphix.simulator.MeasureMethod):
 
 
 
-import random
-class Stabilizer :
-    def __init__(self, graph:nx.Graph, nodes:list[int]) -> None:
-        self.graph = graph
-        self.nodes = nodes
-        self.chain:list[graphix.pauli.Pauli] = [graphix.pauli.I for _ in self.graph.nodes]
-        self.init_chain(nodes)
-        self.coins = self.sample_random_even(n=self.size)
-        self.states = self.generate_eigenstate()
-        
-    @property
-    def size(self) -> int :
-        return len(self.graph.nodes)
-
-    def init_chain(self, nodes):
-        for node in nodes :
-            self.compute_product(node)
-
-    def compute_product(self, node):
-        self.chain[node] @= graphix.pauli.X
-        for neighbor in self.graph.neighbors(node) :
-            self.chain[neighbor] @= graphix.pauli.Z
-
-
-    def sample_random_even(self, n) -> list[int] :
-        """
-        Builds a bit string of size $n$ with even number of 1s
-        the number of 1s is taken randomly in the set of even numbers < n
-        so we rather say that the "half-number of 1s" is a random integer < n/2
-        """
-        n_ones = random.randint(0, n//2)
-        coins = [1]*2*n_ones + [0]*(n-2*n_ones)
-        random.shuffle(coins)
-        return [0]*n
-
-    def generate_eigenstate(self) -> list[State] :
-        states = []
-        for node in sorted(self.graph.nodes) :
-            operator = self.chain[node]
-            states.append(operator.get_eigenstate(eigenvalue=self.coins[node]))
-        return states
-    
-    def __repr__(self) -> str:
-        string = ""
-        for node in sorted(self.graph.nodes):
-            string += f"{node} ^{self.coins[node]} {self.chain[node]} -> {self.states[node]}\n"
-        return string

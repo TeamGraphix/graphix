@@ -223,7 +223,7 @@ class Pauli:
         """
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
-    def get_eigenstate(self, eigenvalue):
+    def get_eigenstate(self, eigenvalue=0):
         if self.symbol == IXYZ.X :
             return graphix.states.BasicStates.PLUS if eigenvalue == 0 else graphix.states.BasicStates.MINUS
         elif self.symbol == IXYZ.Y :
