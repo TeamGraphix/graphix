@@ -103,6 +103,15 @@ class Stabilizer :
     @property
     def size(self) -> int :
         return len(self.graph.nodes)
+    
+    @property
+    def span(self) -> set[int] :
+        span = set(self.nodes)
+        for node in self.nodes :
+            for neighbor in self.graph.neighbors(node):
+                span.add(neighbor)
+        return span
+    
 
     def init_chain(self, nodes):
         for node in nodes :
@@ -113,10 +122,12 @@ class Stabilizer :
         self.chain[node] = graphix.pauli.X
         for neighbor in self.graph.neighbors(node) :
             self.chain[neighbor] = graphix.pauli.Z
-    
 
     def __repr__(self) -> str:
-        string = ""
+        string = f"""
+        Product stabilizer of nodes in {self.nodes}\n
+        For graph with edges {self.graph.edges}\n
+        """
         for node in sorted(self.graph.nodes):
             string += f"{node} {self.chain[node]}\n"
 
@@ -124,17 +135,52 @@ class Stabilizer :
 
 
 class TrappifiedCanvas :
-    def __init__(self, stabilizer:Stabilizer, trap_qubits:list[int]) -> None:
-        self.stabilizer = stabilizer
-        self.trap_qubits = trap_qubits
-
+    def __init__(self, graph:nx.Graph, traps_list:list[list[int]]) -> None:
+        self.graph = graph
+        self.traps_list = traps_list
+        stabilizers = [Stabilizer(graph, trap_nodes) for trap_nodes in traps_list]
+        self.stabilizer = self.merge_stabilizers(stabilizers)
+        print(self.stabilizer)
         dummies_coins = self.generate_coins_dummies()
         self.coins = self.generate_coins_trap_qubits(coins=dummies_coins)
         self.spans = dict(zip(
-            self.trap_qubits, [self.get_span(node=node) for node in self.trap_qubits]
+            self.trap_qubits, [stabilizer.span for stabilizer in stabilizers]
         ))
         self.states = self.generate_eigenstate()
 
+    @property
+    def trap_qubits(self) :
+        return [node
+                for trap in self.traps_list
+                for node in trap]
+    @property
+    def dummy_qubits(self):
+        return [neighbor
+                for trap in self.traps_list
+                for node in trap
+                for neighbor in list(self.graph.neighbors(node))]
+
+
+
+    def merge_stabilizers(self, stabilizers:list[Stabilizer]) :
+        common_stabilizer = Stabilizer(self.graph, [])
+        for stabilizer in stabilizers :
+            for node in stabilizer.span :
+                # If the Pauli was identity, just replace it by the upcoming Pauli
+                if common_stabilizer.chain[node] == graphix.pauli.I :
+                    common_stabilizer.chain[node] = stabilizer.chain[node]
+                else :
+                # If the Pauli wasn't identity, the incoming Pauli must coincide with the previous one
+                # otherwise it's dramatic
+                    if common_stabilizer.chain[node] != stabilizer.chain[node] :
+                        print("Huge error")
+                        return
+                    else :
+                        # (nothing to do as they already coincide)
+                        pass 
+            common_stabilizer.nodes += stabilizer.nodes
+        return common_stabilizer
+                
 
     def generate_eigenstate(self) -> list[State] :
         states = []
@@ -159,8 +205,6 @@ class TrappifiedCanvas :
             coins[node] = neighbors_coins
         return coins
 
-    def get_span(self, node) -> list[int]:
-        return [node] + list(self.stabilizer.graph.neighbors(n=node))
 
     def __repr__(self) -> str:
         text = ""
@@ -258,8 +302,8 @@ class Client:
         for color in colors :
             # 1 color = 1 test run = 1 set of traps = 1 stabilizer
             trap_qubits = nodes_by_color[color]
-            stabilizer = Stabilizer(graph=graph, nodes=trap_qubits)
-            trappified_canvas = TrappifiedCanvas(stabilizer, trap_qubits)
+            isolated_traps = [[node] for node in trap_qubits]
+            trappified_canvas = TrappifiedCanvas(graph, traps_list=isolated_traps)
  
             runs.append(trappified_canvas)
         return runs, coloring
