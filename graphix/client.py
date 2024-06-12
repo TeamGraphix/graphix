@@ -194,7 +194,7 @@ class TrappifiedCanvas :
         for node in self.stabilizer.graph.nodes :
             if node not in self.trap_qubits :
                 coins[node]= random.randint(0,1)
-                coins[node]= 0
+                # coins[node]= 0
             else :
                 coins[node] = 0
         return coins

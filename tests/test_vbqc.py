@@ -23,7 +23,7 @@ class TestVBQC(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize()
         states = [BasicStates.PLUS for _ in pattern.input_nodes]
-        secrets = graphix.client.Secrets(r=False, a=False, theta=False)
+        secrets = graphix.client.Secrets(r=True, a=True, theta=True)
         client = graphix.client.Client(pattern=pattern, input_state=states, secrets=secrets)
         test_runs, coloring = client.create_test_runs()
         for run in test_runs :
