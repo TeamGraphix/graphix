@@ -109,9 +109,9 @@ class Stabilizer :
             self.compute_product(node)
 
     def compute_product(self, node):
-        self.chain[node] @= graphix.pauli.X
+        self.chain[node] = graphix.pauli.X
         for neighbor in self.graph.neighbors(node) :
-            self.chain[neighbor] @= graphix.pauli.Z
+            self.chain[neighbor] = graphix.pauli.Z
     
 
     def __repr__(self) -> str:

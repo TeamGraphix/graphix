@@ -232,7 +232,7 @@ class Pauli:
             return graphix.states.BasicStates.ZERO if eigenvalue == 0 else graphix.states.BasicStates.ONE
         # Any state is eigenstate of the identity
         elif self.symbol == IXYZ.I :
-            return graphix.states.BasicStates.ZERO
+            return graphix.states.BasicStates.PLUS
         
     def __repr__(self):
         return self.__unit.prefix(self.__symbol.name)

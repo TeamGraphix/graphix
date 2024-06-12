@@ -23,15 +23,17 @@ class TestVBQC(unittest.TestCase):
         pattern = circuit.transpile()
         pattern.standardize()
         states = [BasicStates.PLUS for _ in pattern.input_nodes]
-        secrets = graphix.client.Secrets(r=True, a=True, theta=True)
+        secrets = graphix.client.Secrets(r=False, a=False, theta=False)
         client = graphix.client.Client(pattern=pattern, input_state=states, secrets=secrets)
         test_runs, coloring = client.create_test_runs()
         for run in test_runs :
+            print(run)
             backend = StatevectorBackend()
             client.results = dict()
             client.delegate_test_run(backend=backend, run=run)
             for qubit in run.trap_qubits :
                 if qubit not in pattern.output_nodes :
+                    print(qubit, client.results[qubit])
                     assert client.results[qubit] == 0
 
 
