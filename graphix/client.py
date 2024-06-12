@@ -109,6 +109,7 @@ class Stabilizer :
             self.compute_product(node)
 
     def compute_product(self, node):
+        ## Caution : here the stabilizer is re-written because there could be overlap on neighbors only
         self.chain[node] = graphix.pauli.X
         for neighbor in self.graph.neighbors(node) :
             self.chain[neighbor] = graphix.pauli.Z
