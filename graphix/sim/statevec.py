@@ -392,8 +392,6 @@ class Statevec:
         if isinstance(norm, numbers.Number):
             assert not np.isclose(norm, 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        if isinstance(psi, graphix.parameter.ParameterExpression):
-            psi = np.array([psi])
         norm = _get_statevec_norm(psi)
         self.psi = (
             psi
