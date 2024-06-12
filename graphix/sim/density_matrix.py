@@ -3,10 +3,13 @@
 Simulate MBQC with density matrix representation.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
 
 import numpy as np
 
+import graphix.parameter
 import graphix.sim.base_backend
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
@@ -279,11 +282,21 @@ class DensityMatrix:
         if not np.allclose(self.rho.trace(), 1.0):
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
+    def subs(self, variable, substitute) -> DensityMatrix:
+        """Return a copy of the density matrix where all occurrences
+        of the given variable in measurement angles are substituted by
+        the given value.
+
+        """
+        result = DensityMatrix(nqubit=self.Nqubit)
+        result.rho = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.rho)
+        return result
+
 
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, rng: np.random.Generator | None = None):
         """
         Parameters
         ----------
@@ -306,7 +319,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-        super().__init__(pr_calc)
+        super().__init__(pr_calc, rng)
 
     def add_nodes(self, nodes, qubit_to_add=None):
         """add new qubit to the internal density matrix

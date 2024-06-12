@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pytest
+import sympy
 
+import graphix.parameter
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator

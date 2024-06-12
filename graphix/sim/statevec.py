@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import numbers
 from copy import deepcopy
 
 import numpy as np
@@ -10,7 +13,7 @@ from graphix.ops import Ops
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20, pr_calc=True):
+    def __init__(self, pattern, max_qubit_num=20, pr_calc=True, rng: np.random.Generator | None = None):
         """
         Parameters
         -----------
@@ -37,7 +40,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
-        super().__init__(pr_calc)
+        super().__init__(pr_calc, rng)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -301,9 +304,16 @@ class Statevec:
         qarg : int
             qubit index
         """
-        assert not np.isclose(_get_statevec_norm(self.psi), 0)
+        norm = _get_statevec_norm(self.psi)
+        if isinstance(norm, numbers.Number):
+            assert not np.isclose(norm, 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        norm = _get_statevec_norm(psi)
+        self.psi = (
+            psi
+            if not isinstance(norm, numbers.Number) or not np.isclose(norm, 0)
+            else self.psi.take(indices=1, axis=qarg)
+        )
         self.normalize()
 
     def entangle(self, edge):
@@ -407,6 +417,16 @@ class Statevec:
         st2 = deepcopy(st1)
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
+
+    def subs(self, variable, substitute) -> Statevec:
+        """Return a copy of the state vector where all occurrences of
+        the given variable in measurement angles are substituted by
+        the given value.
+
+        """
+        result = Statevec()
+        result.psi = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.psi)
+        return result
 
 
 def _get_statevec_norm(psi):

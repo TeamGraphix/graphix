@@ -2,11 +2,15 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 
+from __future__ import annotations
+
+import numbers
 from copy import deepcopy
 
 import networkx as nx
 import numpy as np
 
+import graphix.parameter
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -1423,6 +1427,38 @@ class Pattern:
             for command in self.__seq:
                 for line in cmd_to_qasm3(command):
                     file.write(line)
+
+    def is_parameterized(self) -> bool:
+        """Return True if there is at least one measurement angle that
+        is not just an instance of `numbers.Number`. A parameterized
+        pattern is a pattern where at least one measurement angle is an
+        expression that is not a number, typically an instance of `sympy.Expr`
+        (but we don't force to choose `sympy` here).
+        """
+        return any(not isinstance(cmd[3], numbers.Number) for cmd in self if cmd[0] == "M")
+
+    def subs(self, variable, substitute) -> Pattern:
+        """Return a copy of the pattern where all occurrences of the
+        given variable in measurement angles are substituted by the
+        given value.
+
+        Substitution is performed by calling the method `subs` on
+        measurement angles, if the method exists, which is the case in
+        particular for `sympy.Expr`. If the substitution returns a
+        number, this number is coerced to `float`, to get numbers that
+        implement the full number protocol (in particular, sympy
+        numbers don't implement `cos`).
+
+        """
+        result = Pattern(input_nodes=self.input_nodes)
+        for cmd in self:
+            if cmd[0] == "M":
+                new_cmd = cmd.copy()
+                new_cmd[3] = graphix.parameter.subs(new_cmd[3], variable, substitute)
+                result.add(new_cmd)
+            else:
+                result.add(cmd)
+        return result
 
 
 class CommandNode:

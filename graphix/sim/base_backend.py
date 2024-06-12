@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import numbers
 import typing
 
 import numpy as np
@@ -7,7 +10,11 @@ import graphix.pauli
 
 
 def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> np.ndarray:
-    op_mat = np.eye(2, dtype=np.complex128) / 2
+    if all(isinstance(value, numbers.Number) for value in vec):
+        op_mat = np.eye(2, dtype=np.complex128) / 2
+    else:
+        # At least one value is symbolic (i.e., parameterized).
+        op_mat = np.eye(2, dtype="O") / 2
     sign = (-1) ** result
     for i in range(3):
         op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
@@ -21,19 +28,19 @@ def perform_measure(
     if pr_calc:
         op_mat = op_mat_from_result(vec, False)
         prob_0 = state.expectation_single(op_mat, qubit)
-        result = rng.rand() > prob_0
+        result = rng.random() > prob_0
         if result:
             op_mat = op_mat_from_result(vec, True)
     else:
         # choose the measurement result randomly
-        result = np.random.choice([0, 1])
+        result = rng.choice([0, 1])
         op_mat = op_mat_from_result(vec, result)
     state.evolve_single(op_mat, qubit)
     return result
 
 
 class Backend:
-    def __init__(self, pr_calc: bool = True):
+    def __init__(self, pr_calc: bool = True, rng: np.random.Generator | None = None):
         """
         Parameters
         ----------
@@ -43,6 +50,10 @@ class Backend:
         """
         # whether to compute the probability
         self.pr_calc = pr_calc
+        if rng is None:
+            self.rng = np.random.default_rng()
+        else:
+            self.rng = rng
 
     def _perform_measure(self, cmd):
         s_signal = np.sum([self.results[j] for j in cmd[4]])
@@ -57,7 +68,7 @@ class Backend:
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         loc = self.node_index.index(cmd[1])
-        result = perform_measure(loc, measure_update.new_plane, angle, self.state, np.random, self.pr_calc)
+        result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.rng, self.pr_calc)
         self.results[cmd[1]] = result
         self.node_index.remove(cmd[1])
         return loc
