@@ -129,6 +129,9 @@ class TrappifiedCanvas :
 
         dummies_coins = self.generate_coins_dummies()
         self.coins = self.generate_coins_trap_qubits(coins=dummies_coins)
+        self.spans = dict(zip(
+            self.trap_qubits, [self.get_span(node=node) for node in self.trap_qubits]
+        ))
         self.states = self.generate_eigenstate()
 
 
@@ -155,9 +158,17 @@ class TrappifiedCanvas :
             coins[node] = neighbors_coins
         return coins
 
-    def get_span(self, node):
+    def get_span(self, node) -> list[int]:
         return [node] + list(self.stabilizer.graph.neighbors(n=node))
 
+    def __repr__(self) -> str:
+        text = ""
+        for node in sorted(self.stabilizer.graph.nodes) :
+            trap_span = ""
+            if node in self.trap_qubits :
+                trap_span += f"{self.spans[node]}"
+            text += f"{node} {self.stabilizer.chain[node]} ^ {self.coins[node]} {trap_span} -> {self.states[node]}\n"
+        return text
 
 
 class Client:
