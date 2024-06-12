@@ -1,17 +1,18 @@
+import numbers
 import typing
 
 import numpy as np
 
 import graphix.clifford
-import graphix.parameter
 import graphix.pauli
 
 
 def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> np.ndarray:
-    if any(isinstance(value, graphix.parameter.ParameterExpression) for value in vec):
-        op_mat = np.eye(2, dtype="O") / 2
-    else:
+    if all(isinstance(value, numbers.Number) for value in vec):
         op_mat = np.eye(2, dtype=np.complex128) / 2
+    else:
+        # At least one value is symbolic (i.e., parameterized).
+        op_mat = np.eye(2, dtype="O") / 2
     sign = (-1) ** result
     for i in range(3):
         op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2

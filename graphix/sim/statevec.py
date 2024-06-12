@@ -5,7 +5,6 @@ from copy import deepcopy
 
 import numpy as np
 
-import graphix.parameter
 import graphix.sim.base_backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -309,8 +308,6 @@ class Statevec:
         if isinstance(norm, numbers.Number):
             assert not np.isclose(norm, 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        if isinstance(psi, graphix.parameter.ParameterExpression):
-            psi = np.array([psi])
         norm = _get_statevec_norm(psi)
         self.psi = (
             psi
