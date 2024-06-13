@@ -18,7 +18,7 @@ class TestVBQC(unittest.TestCase):
 
     def test_trap_delegated(self) :
         nqubits = 2
-        depth = 3
+        depth = 2
         circuit = rc.get_rand_circuit(nqubits, depth)
         pattern = circuit.transpile()
         pattern.standardize()

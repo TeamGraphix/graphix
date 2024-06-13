@@ -94,7 +94,13 @@ import random
 
 class Stabilizer :
     def __init__(self, graph:nx.Graph, nodes:list[int]) -> None:
-        self.graph = graph
+        """
+        Builds a multi-qubit Pauli operator from a list of nodes, computing the product of canonical stabilizer generators of the desired nodes
+
+        graph : Instance of networkx.Graph, the underlying graph
+        nodes : list of nodes, to take the product of their associated canonical stabilizers
+        """
+        self.graph = graph  
         self.nodes = nodes
         self.chain:list[graphix.pauli.Pauli] = [graphix.pauli.I for _ in self.graph.nodes]
         self.init_chain(nodes)
@@ -106,6 +112,10 @@ class Stabilizer :
     
     @property
     def span(self) -> set[int] :
+        """
+        Return the nodes involved in the stabilizer product, and their neighbors, in the same set
+        Equivalent to return the node indices where the Pauli isn't the identity
+        """
         span = set(self.nodes)
         for node in self.nodes :
             for neighbor in self.graph.neighbors(node):
@@ -118,7 +128,11 @@ class Stabilizer :
             self.compute_product(node)
 
     def compute_product(self, node):
-        ## Caution : here the stabilizer is re-written because there could be overlap on neighbors only
+        """
+        Computes the product of the current stabilizer with the canonical generator of a given node
+        A canonical generator for a node is : X on the node, Z on the neighbors
+        The underlying graph structure helps to match the node indices
+        """
         self.chain[node] @= graphix.pauli.X
         for neighbor in self.graph.neighbors(node) :
             self.chain[neighbor] @= graphix.pauli.Z
