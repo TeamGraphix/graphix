@@ -194,7 +194,6 @@ class TrappifiedCanvas :
         for node in self.stabilizer.graph.nodes :
             if node not in self.trap_qubits :
                 coins[node]= random.randint(0,1)
-                # coins[node]= 0
             else :
                 coins[node] = 0
         return coins
@@ -320,7 +319,14 @@ class Client:
 
         sim = graphix.simulator.PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
         self.backend_state = sim.run(backend_state=self.backend_state)
-        return self.backend_state
+
+        trap_outcomes = []
+        for trap in run.traps_list:
+            outcomes = [self.results.get(component, 0) for component in trap]
+            trap_outcome = sum(outcomes)%2
+            trap_outcomes.append(trap_outcome)
+
+        return self.backend_state, trap_outcomes
 
 
     def delegate_pattern(self, backend):

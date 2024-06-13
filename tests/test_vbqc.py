@@ -18,23 +18,18 @@ class TestVBQC(unittest.TestCase):
 
     def test_trap_delegated(self) :
         nqubits = 2
-        depth = 2
+        depth = 3
         circuit = rc.get_rand_circuit(nqubits, depth)
         pattern = circuit.transpile()
         pattern.standardize()
         states = [BasicStates.PLUS for _ in pattern.input_nodes]
         secrets = graphix.client.Secrets(r=True, a=True, theta=True)
         client = graphix.client.Client(pattern=pattern, input_state=states, secrets=secrets)
-        test_runs, coloring = client.create_test_runs()
+        test_runs, _ = client.create_test_runs()
         for run in test_runs :
-            print(run)
             backend = StatevectorBackend()
-            client.results = dict()
-            client.delegate_test_run(backend=backend, run=run)
-            for qubit in run.trap_qubits :
-                if qubit not in pattern.output_nodes :
-                    print(qubit, client.results[qubit])
-                    assert client.results[qubit] == 0
+            _, trap_outcomes = client.delegate_test_run(backend=backend, run=run)
+            assert trap_outcomes == [0 for _ in run.traps_list]
 
 
     def test_stabilizer(self) :
