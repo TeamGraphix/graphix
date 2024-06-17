@@ -410,7 +410,7 @@ def _get_statevec_norm(psi) -> float:
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
-def _initial_state(nqubit=1, psi=None, plus_states=True) -> NDArray:
+def _initial_state(nqubit: int = 1, psi: NDArray = None, plus_states: bool = True) -> NDArray:
     """Create initial state
 
     Parameters
@@ -427,8 +427,12 @@ def _initial_state(nqubit=1, psi=None, plus_states=True) -> NDArray:
     numpy.ndarray
         statevector
     """
-    if psi is not None:
+    if isinstance(psi, np.ndarray):
         return psi
+    if not isinstance(nqubit, int):
+        raise TypeError("nqubit must be an integer")
+    if nqubit < 0:
+        raise ValueError("nqubit must be a non-negative integer")
     if plus_states:
         return np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
     psi = np.zeros((2,) * nqubit)
