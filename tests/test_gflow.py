@@ -9,7 +9,7 @@ import pytest
 from numpy.random import Generator
 
 from graphix.gflow import find_flow, find_gflow, find_pauliflow, verify_flow, verify_gflow, verify_pauliflow
-from tests.random_circuit import get_rand_circuit
+from graphix.random_circuit import get_rand_circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
