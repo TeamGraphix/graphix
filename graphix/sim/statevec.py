@@ -35,7 +35,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.Nqubit = 0
         self.to_trace = []
         self.to_trace_loc = []
-        self.max_qubit_num = _validate_max_qubit_num(max_qubit_num, pattern.max_space)
+        self.max_qubit_num = _validate_max_qubit_num(max_qubit_num, pattern.max_space())
         super().__init__(pr_calc)
 
     def qubit_dim(self):
