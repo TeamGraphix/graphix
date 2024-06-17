@@ -22,8 +22,8 @@ from copy import deepcopy
 from time import perf_counter
 
 import cotengra as ctg
-from numpy.random import Generator, PCG64
 import quimb as qu
+from numpy.random import PCG64, Generator
 
 from graphix.random_circuit import get_rand_circuit
 
@@ -88,15 +88,12 @@ for n_qubit in n_qubit_list:
 with open("sqrqcresults.txt", "w") as f:
     f.write("n_qubit, sv_sim, eco_sim, eco_sim_wo_ctg, max_space_ls\n")
     for i in range(len(n_qubit_list)):
-        f.write(
-            f"{n_qubit_list[i]}, {sv_sim[i]}, {eco_sim[i]}, {eco_sim_wo_ctg[i]}, {max_space_ls[i]}\n"
-        )
+        f.write(f"{n_qubit_list[i]}, {sv_sim[i]}, {eco_sim[i]}, {eco_sim_wo_ctg[i]}, {max_space_ls[i]}\n")
 
 # %%
 # We can now plot the simulation time results.
 import matplotlib.pyplot as plt
 import numpy as np
-
 
 data = np.loadtxt("sqrqcresults.txt", delimiter=",", skiprows=1)
 n_qubits = data[:, 0].astype(int)

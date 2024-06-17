@@ -22,8 +22,10 @@ the expectation value of the Hamiltonian, effectively finding the ground state e
 import networkx as nx
 import numpy as np
 from scipy.optimize import minimize
+
 from graphix import Circuit
 from graphix.simulator import PatternSimulator
+
 
 # %%
 # Define the Hamiltonian for the VQE problem (Example: H = Z0Z1 + X0 + X1)
@@ -32,6 +34,7 @@ def create_hamiltonian():
     X = np.array([[0, 1], [1, 0]])
     H = np.kron(Z, Z) + np.kron(X, np.eye(2)) + np.kron(np.eye(2), X)
     return H
+
 
 # %%
 # Function to build the VQE circuit
@@ -44,6 +47,7 @@ def build_vqe_circuit(n_qubits, params):
     for i in range(n_qubits - 1):
         circuit.cnot(i, i + 1)
     return circuit
+
 
 # %%
 class MBQCVQE:
@@ -85,6 +89,7 @@ class MBQCVQE:
         energy = tn.expectation_value(self.hamiltonian, qubit_indices=range(self.n_qubits))
         return energy
 
+
 # %%
 # Set parameters for VQE
 n_qubits = 2
@@ -99,13 +104,14 @@ mbqc_vqe = MBQCVQE(n_qubits, hamiltonian)
 def cost_function(params):
     return mbqc_vqe.compute_energy(params)
 
+
 # %%
 # Random initial parameters
 initial_params = np.random.rand(n_qubits * 3)
 
 # %%
 # Perform the optimization using COBYLA
-result = minimize(cost_function, initial_params, method='COBYLA', options={'maxiter': 100})
+result = minimize(cost_function, initial_params, method="COBYLA", options={"maxiter": 100})
 
 print(f"Optimized parameters: {result.x}")
 print(f"Optimized energy: {result.fun}")

@@ -5,8 +5,8 @@ import pytest
 from numpy.random import PCG64, Generator
 
 import graphix.pauli
-import graphix.simulator
 import graphix.random_circuit as rc
+import graphix.simulator
 from graphix.transpiler import Circuit
 
 
