@@ -438,17 +438,18 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.sort_qubits()
         self.state.normalize()
 
+
 ## Python <3.10:
 ## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
 ## TypeError: 'ABCMeta' object is not subscriptable
-#Data = (
+# Data = (
 #    graphix.states.State
 #    | DensityMatrix
 #    | Statevec
 #    | collections.abc.Iterable[graphix.states.State]
 #    | collections.abc.Iterable[numbers.Number]
 #    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
-#)
+# )
 Data = typing.Union[
     graphix.states.State,
     DensityMatrix,

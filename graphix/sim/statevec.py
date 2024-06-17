@@ -498,15 +498,16 @@ def _get_statevec_norm(psi):
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
+
 ## Python <3.10:
 ## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
 ## TypeError: 'ABCMeta' object is not subscriptable
-#Data = (
+# Data = (
 #    graphix.states.State
 #    | Statevec
 #    | collections.abc.Iterable[graphix.states.State]
 #    | collections.abc.Iterable[numbers.Number]
-#)
+# )
 Data = typing.Union[
     graphix.states.State,
     Statevec,
