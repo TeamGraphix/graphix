@@ -12,7 +12,6 @@ Graphix - optimizing and simulating MBQC
 
    tutorial
    gallery/index
-   benchmarks/index
    references
 
 .. toctree::
