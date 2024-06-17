@@ -7,10 +7,23 @@ import numpy.typing as npt
 import pytest
 
 from graphix.ops import States
-from graphix.sim.statevec import Statevec, meas_op
+from graphix.sim.statevec import Statevec, meas_op, _validate_max_qubit_num
 
 
 class TestStatevec:
+    @pytest.mark.parametrize("max_qubit_num, max_space", [
+        (1.0, 2), (1.1, 2), (0, 2), (1, 2), ("2", 1)
+    ])
+    def test_validate_max_qubit_num_fail(self, max_qubit_num: float | int, max_space: int):
+        with pytest.raises(ValueError):
+            _validate_max_qubit_num(max_qubit_num, max_space)
+
+    @pytest.mark.parametrize("max_qubit_num, max_space, expect", [
+        (None, 2, None), (None, 3, None), (1, 1, 1), (10, 1, 10), (10, 2, 10)
+    ])
+    def test_validate_max_qubit_num_pass(self, max_qubit_num: int | None, max_space: int, expect: int | None):
+        assert _validate_max_qubit_num(max_qubit_num, max_space) == expect
+
     def test_remove_one_qubit(self) -> None:
         n = 10
         k = 3
