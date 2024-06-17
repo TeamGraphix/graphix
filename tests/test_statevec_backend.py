@@ -10,7 +10,7 @@ from graphix.ops import States
 from graphix.sim.statevec import Statevec, meas_op, _validate_max_qubit_num
 
 
-class TestStatevec:
+class TestStatevectorBackend:
     @pytest.mark.parametrize("max_qubit_num, max_space", [
         (1.0, 2), (1.1, 2), (0, 2), (1, 2), ("2", 1)
     ])
@@ -24,6 +24,8 @@ class TestStatevec:
     def test_validate_max_qubit_num_pass(self, max_qubit_num: int | None, max_space: int, expect: int | None):
         assert _validate_max_qubit_num(max_qubit_num, max_space) == expect
 
+
+class TestStatevec:
     def test_remove_one_qubit(self) -> None:
         n = 10
         k = 3
