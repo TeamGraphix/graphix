@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 import pytest
 
-import tests.random_circuit as rc
+import graphix.random_circuit as rc
 from graphix.generator import generate_from_graph
 
 if TYPE_CHECKING:

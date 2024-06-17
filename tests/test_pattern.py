@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import pytest
 
-import tests.random_circuit as rc
+import graphix.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit

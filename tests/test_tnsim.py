@@ -8,7 +8,7 @@ import pytest
 from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
-import tests.random_circuit as rc
+import graphix.random_circuit as rc
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops, States
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
