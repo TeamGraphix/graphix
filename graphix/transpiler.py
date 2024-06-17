@@ -14,9 +14,9 @@ import numpy as np
 
 import graphix.pauli
 import graphix.sim.base_backend
+import graphix.sim.statevec
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-import graphix.sim.statevec
 
 
 @dataclasses.dataclass
