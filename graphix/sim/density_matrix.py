@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import collections
 import numbers
+import typing
 from copy import deepcopy
 
 import numpy as np
@@ -437,12 +438,22 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.sort_qubits()
         self.state.normalize()
 
-
-Data = (
-    graphix.states.State
-    | DensityMatrix
-    | Statevec
-    | collections.abc.Iterable[graphix.states.State]
-    | collections.abc.Iterable[numbers.Number]
-    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
-)
+## Python <3.10:
+## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
+## TypeError: 'ABCMeta' object is not subscriptable
+#Data = (
+#    graphix.states.State
+#    | DensityMatrix
+#    | Statevec
+#    | collections.abc.Iterable[graphix.states.State]
+#    | collections.abc.Iterable[numbers.Number]
+#    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
+#)
+Data = typing.Union[
+    graphix.states.State,
+    DensityMatrix,
+    Statevec,
+    typing.Iterable[graphix.states.State],
+    typing.Iterable[numbers.Number],
+    typing.Iterable[typing.Iterable[numbers.Number]],
+]
