@@ -7,7 +7,7 @@ import numpy.typing as npt
 import pytest
 
 from graphix.ops import States
-from graphix.sim.statevec import Statevec, meas_op, _validate_max_qubit_num
+from graphix.sim.statevec import Statevec, meas_op, _validate_max_qubit_num, _initial_state
 
 
 class TestStatevectorBackend:
@@ -26,6 +26,22 @@ class TestStatevectorBackend:
 
 
 class TestStatevec:
+    @pytest.mark.parametrize("nqubit, error", [
+        (1.0, TypeError), (-1, ValueError),
+    ])
+    def test_init_fail(self, nqubit: float | int, error: Exception):
+        with pytest.raises(error):
+            _initial_state(nqubit=nqubit)
+
+    @pytest.mark.parametrize("nqubit, psi, plus_states, expect", [
+        (1, States.zero, False, States.zero),
+        (1, States.zero, True, States.zero),
+        (10, States.zero, False, States.zero),
+        (2, None, True, np.tensordot(States.plus, States.plus, 0)),
+    ])
+    def test_init_pass(self, nqubit: int, psi: npt.NDArray | None, plus_states: bool, expect: npt.NDArray):
+        np.testing.assert_allclose(_initial_state(nqubit=nqubit, psi=psi, plus_states=plus_states), expect)
+
     def test_remove_one_qubit(self) -> None:
         n = 10
         k = 3
