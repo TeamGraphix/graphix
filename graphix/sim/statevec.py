@@ -220,7 +220,7 @@ class Statevec:
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        :type data: SV_Data, optional
+        :type data: Data, optional
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
