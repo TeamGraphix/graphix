@@ -549,7 +549,7 @@ class TestLocalPattern:
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
-        with pytest.raises(TypeError):  # __init__() got an unexpected keyword argument 'input_state'
+        with pytest.raises(NotImplementedError):
             randpattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", input_state=states)
 
 

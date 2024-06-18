@@ -43,7 +43,9 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
         if pattern._pauli_preprocessed and input_state != graphix.states.BasicStates.PLUS:
-            raise ValueError("Pauli preprocessing is currently only available when inputs are initialized in |+> state")
+            raise NotImplementedError(
+                "Pauli preprocessing is currently only available when inputs are initialized in |+> state (see https://github.com/TeamGraphix/graphix/issues/168 )."
+            )
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []

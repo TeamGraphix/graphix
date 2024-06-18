@@ -16,7 +16,7 @@ class TensorNetworkBackend:
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="auto", **kwargs):
+    def __init__(self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, **kwargs):
         """
 
         Parameters
@@ -33,8 +33,13 @@ class TensorNetworkBackend:
                 In this strategy, All N and E commands executed sequentially.
             'auto'(default) :
                 Automatically select a preparation strategy based on the max degree of a graph
+        input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
+        if input_state != BasicStates.PLUS:
+            raise NotImplementedError(
+                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
+            )
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
