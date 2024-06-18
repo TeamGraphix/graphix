@@ -11,6 +11,8 @@ import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 
@@ -18,6 +20,15 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from numpy.random import PCG64, Generator
+
+
+def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
+    if backend == "statevector":
+        return np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten()))
+    elif backend == "densitymatrix":
+        return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
+    else:
+        raise NotImplementedError(backend)
 
 
 class TestPattern:
@@ -140,10 +151,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(backend)
-        if backend == "statevector":
-            assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-        elif backend == "densitymatrix":
-            assert np.allclose(state_mbqc.rho, graphix.sim.density_matrix.DensityMatrix(state.flatten()).rho)
+        assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_pauli_measurement_leave_input_random_circuit(
@@ -526,22 +534,23 @@ class TestLocalPattern:
         p.add(["M", 1, "XY", 0, [], []])
         p.perform_pauli_measurements()
 
-
-# for testing with arbitrary inputs
-# SV and DM backend
-class TestPatternSim:
-    def test_sv_sim(self, fx_rng: Generator, nqb, rand_circ) -> None:
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
-        out = randpattern.simulate_pattern(backend="statevector", input_state=states)
-
+        out = randpattern.simulate_pattern(backend=backend, input_state=states)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
-        np.testing.assert_almost_equal(np.abs(np.dot(out.psi.flatten().conjugate(), out_circ.psi.flatten())), 1)
+        assert compare_backend_result_with_statevec(backend, out, out_circ) == pytest.approx(1)
 
-    def test_dm_sim(self) -> None:
-        pass
+    def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        randpattern = rand_circ.transpile().pattern
+        with pytest.raises(TypeError):  # __init__() got an unexpected keyword argument 'input_state'
+            randpattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", input_state=states)
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
