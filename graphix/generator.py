@@ -5,8 +5,6 @@ MBQC pattern generator
 
 from __future__ import annotations
 
-import numpy as np
-
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
 
