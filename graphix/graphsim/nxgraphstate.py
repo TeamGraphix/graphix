@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import networkx as nx
 from networkx.classes.reportviews import EdgeView, NodeView
 
@@ -49,7 +51,7 @@ class NXGraphState(BaseGraphState):
     def graph(self) -> nx.Graph:
         return self._graph
 
-    def degree(self) -> iter[tuple[int, int]]:
+    def degree(self) -> Iterator[tuple[int, int]]:
         return iter(self._graph.degree())
 
     def add_nodes_from(self, nodes):
@@ -75,7 +77,7 @@ class NXGraphState(BaseGraphState):
             raise ValueError("u and v must be specified together")
         return self._graph.number_of_edges(u, v)
 
-    def neighbors(self, node) -> iter:
+    def neighbors(self, node) -> Iterator:
         return self._graph.neighbors(node)
 
     def subgraph(self, nodes: list) -> nx.Graph:
@@ -93,7 +95,7 @@ class NXGraphState(BaseGraphState):
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
         self._graph.remove_edges_from(edges)
 
-    def adjacency(self) -> iter:
+    def adjacency(self) -> Iterator:
         return self._graph.adjacency()
 
     def local_complement(self, node):
