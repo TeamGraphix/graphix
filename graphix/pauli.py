@@ -4,9 +4,12 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 
 import enum
 import typing
+
 import numpy as np
 import pydantic
+
 import graphix.clifford
+
 
 class IXYZ(enum.Enum):
     I = -1
@@ -224,16 +227,16 @@ class Pauli:
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
     def get_eigenstate(self, eigenvalue=0):
-        if self.symbol == IXYZ.X :
+        if self.symbol == IXYZ.X:
             return graphix.states.BasicStates.PLUS if eigenvalue == 0 else graphix.states.BasicStates.MINUS
-        elif self.symbol == IXYZ.Y :
+        elif self.symbol == IXYZ.Y:
             return graphix.states.BasicStates.PLUS_I if eigenvalue == 0 else graphix.states.BasicStates.MINUS_I
-        elif self.symbol == IXYZ.Z :
+        elif self.symbol == IXYZ.Z:
             return graphix.states.BasicStates.ZERO if eigenvalue == 0 else graphix.states.BasicStates.ONE
         # Any state is eigenstate of the identity
-        elif self.symbol == IXYZ.I :
+        elif self.symbol == IXYZ.I:
             return graphix.states.BasicStates.PLUS
-        
+
     def __repr__(self):
         return self.__unit.prefix(self.__symbol.name)
 

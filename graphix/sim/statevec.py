@@ -1,20 +1,23 @@
-from copy import deepcopy
+from __future__ import annotations
+
+import functools
 import numbers
 import typing
+import warnings
+from copy import deepcopy
 
 import numpy as np
-import functools
 import pydantic
-import warnings
 
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
-from graphix.states import State
-from graphix.ops import Ops
-import graphix.sim.base_backend
-from graphix.sim.base_backend import BackendState
-import graphix.states
 import graphix.pauli
+import graphix.sim.base_backend
+import graphix.states
 import graphix.types
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.ops import Ops
+from graphix.sim.base_backend import Backend, IndexedState, NodeIndex
+from graphix.sim.base_backend import State as BackendState
+from graphix.states import State
 
 # Python >= 3.9
 # from collections.abc import Iterable # or use Protocols?
@@ -22,7 +25,8 @@ import graphix.types
 # Python >= 3.8
 # typing.Iterable[T]
 
-class StatevectorBackend(graphix.sim.base_backend.Backend):
+
+class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
     def __init__(self, max_qubit_num=20, pr_calc=True):
@@ -33,7 +37,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         # Modify this
         self.results = {}
 
-    def prepare_state(self, nodes, data) :
+    def prepare_state(self, nodes, data):
         self.add_nodes(nodes=nodes, input_state=Statevec(data))
 
     ## TODO : delete ?
@@ -46,7 +50,10 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
     #     """
     #     return len(self.state.dims())
 
-    def add_nodes(self, backendState:BackendState, nodes, data=graphix.states.BasicStates.PLUS):
+    def initial_state(self) -> IndexedState:
+        return IndexedState(Statevec(nqubit=0), NodeIndex())
+
+    def add_nodes(self, state: IndexedState, nodes, data=graphix.states.BasicStates.PLUS) -> IndexedState:
         """add new qubit(s) to statevector in argument
         and assign the corresponding node number
         to list self.node_index.
@@ -55,17 +62,15 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         ----------
         nodes : list of node indices
         """
-        if not backendState.state:
-            backendState.state = Statevec(nqubit=0)
         n = len(nodes)
         sv_to_add = Statevec(nqubit=n, data=data)
 
-        backendState.state.tensor(sv_to_add)
-        backendState.node_index.extend(nodes)
-        
-        return backendState
-    
-    def entangle_nodes(self, backendState:BackendState, edge):
+        new_state = state.state.tensor(sv_to_add)
+        new_node_index = state.node_index.extend(nodes)
+
+        return IndexedState(new_state, new_node_index)
+
+    def entangle_nodes(self, state: IndexedState, edge: tuple[int, int]) -> IndexedState:
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -73,12 +78,12 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         edge : tuple (i, j)
             a pair of node indices
         """
-        target = backendState.node_index.index(edge[0])
-        control = backendState.node_index.index(edge[1])
-        backendState.state.entangle((target, control))
-        return backendState
+        target = state.node_index[edge[0]]
+        control = state.node_index[edge[1]]
+        new_state = state.state.entangle((target, control))
+        return IndexedState(new_state, state.node_index)
 
-    def measure(self, backendState:BackendState, node, measurement_description):
+    def measure(self, state: IndexedState, node: int, measurement_description) -> IndexedState:
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -86,11 +91,13 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         cmd : list
             measurement command : ['M', node, plane, angle, s_domain, t_domain]
         """
-        loc, result = self._perform_measure(backendState=backendState, node=node, measurement_description=measurement_description)
-        backendState.state.remove_qubit(loc)
-        return backendState, result
+        state, loc, result = self._perform_measure(
+            state=state, node=node, measurement_description=measurement_description
+        )
+        new_state = state.state.remove_qubit(loc)
+        return IndexedState(new_state, state.node_index), result
 
-    def correct_byproduct(self, backendState:BackendState, results, cmd):
+    def correct_byproduct(self, state: IndexedState, results, cmd) -> IndexedState:
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
@@ -100,38 +107,22 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
                 op = Ops.x
             elif cmd[0] == "Z":
                 op = Ops.z
-            self.apply_single(backendState=backendState, node=cmd[1], op=op)
-        return backendState
-    
-    def apply_single(self, backendState:BackendState, node, op) :
-        index = backendState.node_index.index(node)
-        backendState.state.evolve_single(op=op, i=index)
-        return backendState
+            return self.apply_single(state, node=cmd[1], op=op)
+        else:
+            return state
 
-    def apply_clifford(self, backendState:BackendState, cmd):
+    def apply_single(self, state: IndexedState, node, op) -> IndexedState:
+        index = state.node_index[node]
+        new_state = state.state.evolve_single(op=op, i=index)
+        return IndexedState(new_state, node_index=state.node_index)
+
+    def apply_clifford(self, state: IndexedState, cmd) -> IndexedState:
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = backendState.node_index.index(cmd[1])
-        backendState.state.evolve_single(CLIFFORD[cmd[2]], loc)
-        return backendState
-
-    def finalize(self, backendState:BackendState, output_nodes):
-        """to be run at the end of pattern simulation."""
-        self.sort_qubits(backendState, output_nodes)
-        backendState.state.normalize()
-        return backendState
-
-    def sort_qubits(self, backendState:BackendState, output_nodes):
-        """sort the qubit order in internal statevector"""
-        for i, ind in enumerate(output_nodes):
-            if not backendState.node_index[i] == ind:
-                move_from = backendState.node_index.index(ind)
-                backendState.state.swap((i, move_from))
-                backendState.node_index[i], backendState.node_index[move_from] = (
-                    backendState.node_index[move_from],
-                    backendState.node_index[i],
-                )
+        loc = state.node_index[cmd[1]]
+        new_state = state.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        return IndexedState(new_state, node_index=state.node_index)
 
 
 CZ_TENSOR = np.array(
@@ -148,7 +139,7 @@ SWAP_TENSOR = np.array(
 )
 
 
-class Statevec:
+class Statevec(BackendState):
     """Statevector object"""
 
     # TODO at this stage no need for indices just be careful of the ordering in add_nodes
@@ -159,7 +150,6 @@ class Statevec:
         ] = graphix.states.BasicStates.PLUS,
         nqubit: typing.Optional[graphix.types.PositiveInt] = None,
     ):
-
         """Initialize statevector
 
         Parameters
@@ -236,7 +226,13 @@ class Statevec:
     def __repr__(self):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
-    def evolve_single(self, op, i):
+    @classmethod
+    def __from_nparray(cls, psi) -> Statevec:
+        result = cls.__new__(cls)
+        result.psi = psi
+        return result
+
+    def evolve_single(self, op, i) -> Statevec:
         """Single-qubit operation
 
         Parameters
@@ -246,10 +242,11 @@ class Statevec:
         i : int
             qubit index
         """
-        self.psi = np.tensordot(op, self.psi, (1, i))
-        self.psi = np.moveaxis(self.psi, 0, i)
+        psi = np.tensordot(op, self.psi, (1, i))
+        psi = np.moveaxis(psi, 0, i)
+        return Statevec.__from_nparray(psi)
 
-    def evolve(self, op, qargs):
+    def evolve(self, op, qargs) -> Statevec:
         """Multi-qubit operation
 
         Parameters
@@ -263,17 +260,18 @@ class Statevec:
         # TODO shape = (2,)* 2 * op_dim
         shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
-        self.psi = np.tensordot(
+        psi = np.tensordot(
             op_tensor,
             self.psi,
             (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)),
         )
-        self.psi = np.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
+        psi = np.moveaxis(psi, [i for i in range(len(qargs))], qargs)
+        return Statevec.__from_nparray(psi)
 
     def dims(self):
         return self.psi.shape
 
-    def ptrace(self, qargs):
+    def ptrace(self, qargs) -> Statevec:
         """Perform partial trace of the selected qubits.
 
         .. warning::
@@ -295,9 +293,10 @@ class Statevec:
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         # NOTE works since only one 1 in the eigenvalues corresponding to the state
         # TODO use np.eigh since rho is Hermitian?
-        self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
+        psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
+        return Statevec.__from_nparray(psi)
 
-    def remove_qubit(self, qarg):
+    def remove_qubit(self, qarg) -> Statevec:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
@@ -340,10 +339,10 @@ class Statevec:
         """
         assert not np.isclose(_get_statevec_norm(self.psi), 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
-        self.normalize()
+        psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        return Statevec.__from_nparray(psi).normalize()
 
-    def entangle(self, edge):
+    def entangle(self, edge) -> Statevec:
         """connect graph nodes
 
         Parameters
@@ -352,11 +351,12 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
+        psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), edge)
+        psi = np.moveaxis(psi, (0, 1), edge)
+        return Statevec.__from_nparray(psi)
 
-    def tensor(self, other):
+    def tensor(self, other) -> Statevec:
         r"""Tensor product state with other qubits.
         Results in self :math:`\otimes` other.
 
@@ -371,9 +371,10 @@ class Statevec:
         # NOTE on tensor form not vector
         # deprecated
         total_num = len(self.dims()) + len(other.dims())
-        self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
+        psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
+        return Statevec.__from_nparray(psi)
 
-    def CNOT(self, qubits):
+    def CNOT(self, qubits) -> Statevec:
         """apply CNOT
 
         Parameters
@@ -382,11 +383,12 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
+        psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
+        psi = np.moveaxis(psi, (0, 1), qubits)
+        return Statevec.__from_nparray(psi)
 
-    def swap(self, qubits):
+    def swap(self, qubits) -> Statevec:
         """swap qubits
 
         Parameters
@@ -395,20 +397,22 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
+        psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
+        psi = np.moveaxis(psi, (0, 1), qubits)
+        return Statevec.__from_nparray(psi)
 
-    def normalize(self):
+    def normalize(self) -> Statevec:
         """normalize the state"""
         norm = _get_statevec_norm(self.psi)
-        self.psi = self.psi / norm
+        psi = self.psi / norm
+        return Statevec.__from_nparray(psi)
 
     def flatten(self):
         """returns flattened statevector"""
         return self.psi.flatten()
 
-    def expectation_single(self, op, loc):
+    def expectation_single(self, op, loc) -> complex:
         """Expectation value of single-qubit operator.
 
         Parameters
@@ -422,13 +426,11 @@ class Statevec:
         -------
         complex : expectation value.
         """
-        st1 = deepcopy(self)
-        st1.normalize()
-        st2 = deepcopy(st1)
-        st1.evolve_single(op, loc)
+        st1 = self.normalize()
+        st2 = st1.evolve_single(op, loc)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
-    def expectation_value(self, op, qargs):
+    def expectation_value(self, op, qargs) -> complex:
         """Expectation value of multi-qubit operator.
 
         Parameters
@@ -442,10 +444,8 @@ class Statevec:
         -------
         complex : expectation value
         """
-        st1 = deepcopy(self)
-        st1.normalize()
-        st2 = deepcopy(st1)
-        st1.evolve(op, qargs)
+        st2 = self.normalize()
+        st1 = st2.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
 

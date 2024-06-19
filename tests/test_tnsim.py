@@ -7,10 +7,9 @@ from quimb.tensor import Tensor
 import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops
+from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend, gen_str
 from graphix.states import BasicStates
-from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.transpiler import Circuit
-from graphix.sim.tensornet import TensorNetworkBackend
 
 SEED = 42
 rc.set_seed(SEED)
@@ -402,7 +401,7 @@ class TestTN(unittest.TestCase):
             random_op3 = random_op(3)
             random_op3_exp = random_op(3)
 
-            state.evolve(random_op3, [0, 1, 2])
+            state = state.evolve(random_op3, [0, 1, 2])
             tn_mbqc.evolve(random_op3, [0, 1, 2], decompose=False)
 
             expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])

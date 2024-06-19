@@ -1245,7 +1245,7 @@ class Circuit:
                 cmd[1] = output_nodes[old_out.index(cmd[1])]
 
     def simulate_statevector(self, input_state: Optional[Statevec] = None):
-        """Run statevector simultion of the gate sequence, using graphix.Statevec
+        """Run statevector simulation of the gate sequence, using graphix.Statevec
 
         Parameters
         ----------
@@ -1264,31 +1264,35 @@ class Circuit:
 
         for i in range(len(self.instruction)):
             if self.instruction[i][0] == "CNOT":
-                state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))
+                state = state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))
             elif self.instruction[i][0] == "SWAP":
-                state.swap((self.instruction[i][1][0], self.instruction[i][1][1]))
+                state = state.swap((self.instruction[i][1][0], self.instruction[i][1][1]))
             elif self.instruction[i][0] == "I":
                 pass
             elif self.instruction[i][0] == "S":
-                state.evolve_single(Ops.s, self.instruction[i][1])
+                state = state.evolve_single(Ops.s, self.instruction[i][1])
             elif self.instruction[i][0] == "H":
-                state.evolve_single(Ops.h, self.instruction[i][1])
+                state = state.evolve_single(Ops.h, self.instruction[i][1])
             elif self.instruction[i][0] == "X":
-                state.evolve_single(Ops.x, self.instruction[i][1])
+                state = state.evolve_single(Ops.x, self.instruction[i][1])
             elif self.instruction[i][0] == "Y":
-                state.evolve_single(Ops.y, self.instruction[i][1])
+                state = state.evolve_single(Ops.y, self.instruction[i][1])
             elif self.instruction[i][0] == "Z":
-                state.evolve_single(Ops.z, self.instruction[i][1])
+                state = state.evolve_single(Ops.z, self.instruction[i][1])
             elif self.instruction[i][0] == "Rx":
-                state.evolve_single(Ops.Rx(self.instruction[i][2]), self.instruction[i][1])
+                state = state.evolve_single(Ops.Rx(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Ry":
-                state.evolve_single(Ops.Ry(self.instruction[i][2]), self.instruction[i][1])
+                state = state.evolve_single(Ops.Ry(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rz":
-                state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
+                state = state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rzz":
-                state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
+                state = state.evolve(
+                    Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]]
+                )
             elif self.instruction[i][0] == "CCX":
-                state.evolve(Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]])
+                state = state.evolve(
+                    Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]]
+                )
             else:
                 raise ValueError(f"Unknown instruction: {self.instruction[i][0]}")
 

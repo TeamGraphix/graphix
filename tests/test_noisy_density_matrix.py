@@ -3,16 +3,16 @@ import unittest
 import numpy as np
 
 from graphix import Circuit
-from graphix.noise_models.noise_model import NoiseModel
-from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.channels import (
     KrausChannel,
     depolarising_channel,
-    two_qubit_depolarising_tensor_channel,
     two_qubit_depolarising_channel,
+    two_qubit_depolarising_tensor_channel,
 )
+from graphix.noise_models.noise_model import NoiseModel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
+from graphix.sim.density_matrix import DensityMatrixBackend
 
 
 class TestNoiseModel(NoiseModel):
@@ -117,9 +117,7 @@ class NoisyDensityMatrixBackendTest(unittest.TestCase):
     # test measurement confuse outcome
     def test_noisy_measure_confuse_hadamard(self):
         backend = DensityMatrixBackend()
-        res = self.hadamardpattern.simulate_pattern(
-            backend=backend, noise_model=TestNoiseModel(measure_error_prob=1.0)
-        )
+        res = self.hadamardpattern.simulate_pattern(backend=backend, noise_model=TestNoiseModel(measure_error_prob=1.0))
         # result should be |1>
         np.testing.assert_allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 

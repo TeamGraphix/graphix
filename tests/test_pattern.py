@@ -6,8 +6,8 @@ from parameterized import parameterized
 
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
-from graphix.transpiler import Circuit
 from graphix.sim.statevec import StatevectorBackend
+from graphix.transpiler import Circuit
 
 SEED = 42
 rc.set_seed(SEED)

@@ -11,12 +11,13 @@ try:
 except ModuleNotFoundError:
     pass
 
+import graphix.clifford
+import graphix.pauli
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
-import graphix.clifford
-import graphix.pauli
+
 
 def get_state(g):
     node_list = list(g.nodes)
@@ -57,7 +58,7 @@ def meas_op(angle, plane: graphix.pauli.Plane = graphix.pauli.Plane.XY):
 
     """
     if plane == graphix.pauli.Plane.YZ:
-        vec = (0, np.cos(angle), np.sin(angle)) # tests rely on former convention
+        vec = (0, np.cos(angle), np.sin(angle))  # tests rely on former convention
     else:
         vec = plane.polar(angle)
     op_mat = np.eye(2, dtype=np.complex128) / 2
@@ -81,23 +82,20 @@ class TestGraphSim(unittest.TestCase):
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
         gstate = get_state(g)
         g.measure_x(0)
-        gstate.evolve_single(meas_op(0), [0])  # x meas
-        gstate.normalize()
-        gstate.remove_qubit(0)
+        gstate = gstate.evolve_single(meas_op(0), [0])  # x meas
+        gstate = gstate.normalize().remove_qubit(0)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_y(1, choice=0)
-        gstate.evolve_single(meas_op(0.5 * np.pi), [0])  # y meas
-        gstate.normalize()
-        gstate.remove_qubit(0)
+        gstate = gstate.evolve_single(meas_op(0.5 * np.pi), [0])  # y meas
+        gstate = gstate.normalize().remove_qubit(0)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_z(3)
         gstate.evolve_single(meas_op(0.5 * np.pi, plane=graphix.pauli.Plane.YZ), 1)  # z meas
-        gstate.normalize()
-        gstate.remove_qubit(1)
+        gstate = gstate.normalize().remove_qubit(1)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 

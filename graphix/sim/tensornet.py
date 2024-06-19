@@ -1,12 +1,14 @@
+import string
+from copy import deepcopy
+
 import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
-from graphix.clifford import CLIFFORD, CLIFFORD_MUL, CLIFFORD_CONJ
-from graphix.sim.base_backend import Backend
+
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
+from graphix.sim.base_backend import Backend
 from graphix.states import BasicStates
-import string
-from copy import deepcopy
 
 
 class TensorNetworkBackend(Backend):
@@ -65,13 +67,13 @@ class TensorNetworkBackend(Backend):
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
+    def initial_state(self):
+        return self
 
-
-    def prepare_state(self, nodes, data) :
+    def prepare_state(self, nodes, data):
         self.add_nodes(nodes=nodes)
 
-
-    def add_nodes(self, nodes):
+    def add_nodes(self, state, nodes, data=None):
         """Add nodes to the network
 
         Parameters
@@ -83,8 +85,9 @@ class TensorNetworkBackend(Backend):
             self.state.add_qubits(nodes)
         elif self.graph_prep == "opt":
             pass
+        return state
 
-    def entangle_nodes(self, edge):
+    def entangle_nodes(self, state, edge):
         """Make entanglement between nodes specified by edge.
 
         Parameters
@@ -119,8 +122,9 @@ class TensorNetworkBackend(Backend):
             self.state.add_tensor_network(CZ_tn)
         elif self.graph_prep == "opt":
             pass
+        return state
 
-    def measure(self, node, measurement_description):
+    def measure(self, state, node, measurement_description):
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
@@ -162,9 +166,10 @@ class TensorNetworkBackend(Backend):
 
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
-        self.state.measure_single(cmd[1], basis=proj_vec)
+        result = self.state.measure_single(cmd[1], basis=proj_vec)
+        return state, result
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, state, results, cmd):
         """Perform byproduct correction.
 
         Parameters
@@ -178,8 +183,9 @@ class TensorNetworkBackend(Backend):
                 self.state.evolve_single(cmd[1], Ops.x, "X")
             elif cmd[0] == "Z":
                 self.state.evolve_single(cmd[1], Ops.z, "Z")
+        return state
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, state, cmd):
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -190,9 +196,10 @@ class TensorNetworkBackend(Backend):
         """
         node_op = CLIFFORD[cmd[2]]
         self.state.evolve_single(cmd[1], node_op, "C")
+        return state
 
-    def finalize(self, output_nodes):
-        pass
+    def finalize(self, state, output_nodes):
+        return state
 
 
 class MBQCTensorNet(TensorNetwork):
