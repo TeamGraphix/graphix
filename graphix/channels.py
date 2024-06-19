@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from graphix.linalg_validations import check_data_dims, check_data_normalization, check_data_values_type, check_rank

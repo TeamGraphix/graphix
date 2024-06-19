@@ -4,6 +4,8 @@ multiplications, conjugations and Pauli conjugations.
 
 """
 
+from __future__ import annotations
+
 import typing
 
 import numpy as np

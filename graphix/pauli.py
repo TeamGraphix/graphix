@@ -2,6 +2,8 @@
 Pauli gates ± {1,j} × {I, X, Y, Z}
 """
 
+from __future__ import annotations
+
 import enum
 import typing
 

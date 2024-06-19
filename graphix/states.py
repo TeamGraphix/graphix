@@ -2,6 +2,8 @@
 quantum states and operators
 """
 
+from __future__ import annotations
+
 import abc
 
 import numpy as np
