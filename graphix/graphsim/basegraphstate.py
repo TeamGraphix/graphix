@@ -22,7 +22,7 @@ except ModuleNotFoundError:
     rx = None
     PyGraph = None
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     NodesObject = nx_reportviews.NodeView | NodeList
     EdgesObject = nx_reportviews.EdgeView | EdgeList
     GraphObject = nx.Graph | PyGraph
