@@ -125,31 +125,31 @@ class TestStatevecNew(unittest.TestCase):
         for _ in range(10) :
             # plus state (default)
             backend = StatevectorBackend()
-            N_neighbors = 10
-            N_traps = 3
+            N_traps = 5
+            N_neighbors = 5
             N_whatever = 5
-            traps = [graphix.pauli.X.get_eigenstate() for _ in range(N_neighbors)]
+            traps = [graphix.pauli.X.get_eigenstate() for _ in range(N_traps)]
             dummies = [graphix.pauli.Z.get_eigenstate() for _ in range(N_neighbors)] 
             others = [graphix.pauli.I.get_eigenstate() for _ in range(N_whatever)]
             states = traps + dummies + others
             nodes = range(len(states))
             backendState = backend.add_nodes(backendState=BackendState(), nodes=nodes, data=states)
 
-            for dummy in nodes[N_traps:N_neighbors] :
+            for dummy in nodes[N_traps: N_traps + N_neighbors] :
                 for trap in nodes[:N_traps]:
                     backendState = backend.entangle_nodes(backendState=backendState, edge=(trap, dummy))
-                for other in nodes[N_neighbors:]:
+                for other in nodes[N_traps + N_neighbors:]:
                     backendState = backend.entangle_nodes(backendState=backendState, edge=(other, dummy))
 
             # Same measurement for all traps
             measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
             
             for trap in nodes[:N_traps] :
-                node_to_measure = backendState.node_index[trap]
+                node_to_measure = trap
                 backendState, result = backend.measure(backendState=backendState, node=node_to_measure, measurement_description=measurement_description)
                 assert result == 0
 
-            assert backendState.node_index == list(range(N_traps, N_neighbors+N_traps))
+            assert backendState.node_index == list(range(N_traps, N_neighbors+N_traps+N_whatever))
 
     def test_deterministic_measure_with_coin(self) :
         """
