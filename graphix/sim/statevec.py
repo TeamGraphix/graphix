@@ -4,7 +4,6 @@ import collections
 import functools
 import numbers
 import sys
-from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
@@ -502,10 +501,12 @@ def _get_statevec_norm(psi):
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
+    from collections.abc import Iterable
+
     Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[numbers.Number]
 else:
-    from typing import Union
+    from typing import Iterable, Union
 
     Data = Union[
         graphix.states.State,
