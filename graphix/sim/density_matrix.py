@@ -8,6 +8,7 @@ from __future__ import annotations
 import collections
 import numbers
 import typing
+from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
@@ -454,7 +455,7 @@ Data = typing.Union[
     graphix.states.State,
     DensityMatrix,
     Statevec,
-    typing.Iterable[graphix.states.State],
-    typing.Iterable[numbers.Number],
-    typing.Iterable[typing.Iterable[numbers.Number]],
+    Iterable[graphix.states.State],
+    Iterable[numbers.Number],
+    Iterable[Iterable[numbers.Number]],
 ]

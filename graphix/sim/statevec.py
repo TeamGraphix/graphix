@@ -4,6 +4,7 @@ import collections
 import functools
 import numbers
 import typing
+from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
@@ -513,6 +514,6 @@ def _get_statevec_norm(psi):
 Data = typing.Union[
     graphix.states.State,
     Statevec,
-    typing.Iterable[graphix.states.State],
-    typing.Iterable[numbers.Number],
+    Iterable[graphix.states.State],
+    Iterable[numbers.Number],
 ]
