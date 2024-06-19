@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import sys
 from abc import ABC, abstractmethod
-from typing import Union
 
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
@@ -22,9 +22,16 @@ except ModuleNotFoundError:
     rx = None
     PyGraph = None
 
-NodesObject = Union[nx_reportviews.NodeView, NodeList]
-EdgesObject = Union[nx_reportviews.EdgeView, EdgeList]
-GraphObject = Union[nx.Graph, PyGraph]
+if sys.version_info >= (3, 9):
+    NodesObject = nx_reportviews.NodeView | NodeList
+    EdgesObject = nx_reportviews.EdgeView | EdgeList
+    GraphObject = nx.Graph | PyGraph
+else:
+    from typing import Union
+
+    NodesObject = Union[nx_reportviews.NodeView, NodeList]
+    EdgesObject = Union[nx_reportviews.EdgeView, EdgeList]
+    GraphObject = Union[nx.Graph, PyGraph]
 
 
 class BaseGraphState(ABC):

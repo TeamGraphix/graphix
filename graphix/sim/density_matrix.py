@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import collections
 import numbers
-import typing
+import sys
 from collections.abc import Iterable
 from copy import deepcopy
 
@@ -451,11 +451,24 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
 #    | collections.abc.Iterable[numbers.Number]
 #    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
 # )
-Data = typing.Union[
-    graphix.states.State,
-    DensityMatrix,
-    Statevec,
-    Iterable[graphix.states.State],
-    Iterable[numbers.Number],
-    Iterable[Iterable[numbers.Number]],
-]
+
+if sys.version_info >= (3, 9):
+    Data = (
+        graphix.states.State
+        | DensityMatrix
+        | Statevec
+        | Iterable[graphix.states.State]
+        | Iterable[numbers.Number]
+        | Iterable[Iterable[numbers.Number]]
+    )
+else:
+    from typing import Union
+
+    Data = Union[
+        graphix.states.State,
+        DensityMatrix,
+        Statevec,
+        Iterable[graphix.states.State],
+        Iterable[numbers.Number],
+        Iterable[Iterable[numbers.Number]],
+    ]

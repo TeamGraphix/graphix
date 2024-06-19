@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import functools
 import numbers
-import typing
+import sys
 from collections.abc import Iterable
 from copy import deepcopy
 
@@ -502,18 +502,14 @@ def _get_statevec_norm(psi):
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
-## Python <3.10:
-## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
-## TypeError: 'ABCMeta' object is not subscriptable
-# Data = (
-#    graphix.states.State
-#    | Statevec
-#    | collections.abc.Iterable[graphix.states.State]
-#    | collections.abc.Iterable[numbers.Number]
-# )
-Data = typing.Union[
-    graphix.states.State,
-    Statevec,
-    Iterable[graphix.states.State],
-    Iterable[numbers.Number],
-]
+if sys.version_info >= (3, 9):
+    Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[numbers.Number]
+else:
+    from typing import Union
+
+    Data = Union[
+        graphix.states.State,
+        Statevec,
+        Iterable[graphix.states.State],
+        Iterable[numbers.Number],
+    ]
