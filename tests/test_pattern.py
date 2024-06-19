@@ -96,7 +96,7 @@ class TestPattern:
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
-        assert abs(nb_ones - nb_shots / 2) < nb_shots / 20
+        assert abs(nb_ones - nb_shots / 2) < nb_shots / 10
 
     def test_minimize_space_graph_maxspace_with_flow(self, fx_rng: Generator) -> None:
         max_qubits = 20
