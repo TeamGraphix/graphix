@@ -100,7 +100,7 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        assert type(cmd) == list
+        assert isinstance(cmd, list)
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             if cmd[1] in self.__output_nodes:
@@ -775,7 +775,7 @@ class Pattern:
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd[0] == "N":
-                if not cmd[1] in self.output_nodes:
+                if cmd[1] not in self.output_nodes:
                     not_measured = not_measured | {cmd[1]}
         depth = 0
         l_k = dict()
@@ -814,6 +814,7 @@ class Pattern:
         connected: set of tuple
                 set of connected edges
         """
+
         connected = set()
         for edge in edges:
             if edge[0] == node:
@@ -1125,10 +1126,10 @@ class Pattern:
         if not ind == "end":  # end -> 'node' is isolated
             while self.__seq[ind][0] == "E":
                 if self.__seq[ind][1][0] == node:
-                    if not self.__seq[ind][1][1] in prepared:
+                    if self.__seq[ind][1][1] not in prepared:
                         node_list.append(self.__seq[ind][1][1])
                 elif self.__seq[ind][1][1] == node:
-                    if not self.__seq[ind][1][0] in prepared:
+                    if self.__seq[ind][1][0] not in prepared:
                         node_list.append(self.__seq[ind][1][0])
                 ind += 1
         return node_list
@@ -1217,7 +1218,7 @@ class Pattern:
         # add isolated nodes
         for cmd in self.__seq:
             if cmd[0] == "N":
-                if not cmd[1] in prepared:
+                if cmd[1] not in prepared:
                     new.append(["N", cmd[1]])
         for cmd in self.__seq:
             if cmd[0] == "E":

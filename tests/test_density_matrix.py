@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import random
 from copy import deepcopy
 from typing import TYPE_CHECKING
@@ -8,7 +9,9 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
+import graphix.pauli
 import graphix.random_objects as randobj
+import graphix.states
 from graphix import Circuit
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.ops import Ops
@@ -35,9 +38,9 @@ class TestDensityMatrix:
     def test_init_without_data_fail(self) -> None:
         with pytest.raises(AssertionError):
             DensityMatrix(nqubit=-2)
-        with pytest.raises(TypeError):
+        with pytest.raises(AssertionError):
             DensityMatrix(nqubit="hello")
-        with pytest.raises(TypeError):
+        with pytest.raises(AssertionError):
             DensityMatrix(nqubit=[])
 
     def test_init_with_invalid_data_fail(self, fx_rng: Generator) -> None:
@@ -45,14 +48,12 @@ class TestDensityMatrix:
             DensityMatrix("hello")
         with pytest.raises(TypeError):
             DensityMatrix(1)
-        # deprecated data shape (these test might be unnecessary)
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             DensityMatrix([1, 2, [3]])
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
             DensityMatrix(data=randobj.rand_herm(2 ** fx_rng.integers(2, 5)))
-
         # check with non hermitian dm but unit trace
         tmp = _randdm_raw(fx_rng.integers(2, 5), fx_rng)
         with pytest.raises(ValueError):
@@ -60,16 +61,13 @@ class TestDensityMatrix:
         # check with non hermitian dm and not unit trace
         with pytest.raises(ValueError):
             DensityMatrix(data=_randdm_raw(fx_rng.integers(2, 5), fx_rng))
-
         # check not square matrix
         with pytest.raises(ValueError):
             # l = 2 ** fx_rng.integers(2, 5) # fx_rng.integers(2, 20)
             DensityMatrix(data=fx_rng.uniform(size=(3, 2)))
-
         # check higher dimensional matrix
-        with pytest.raises(ValueError):
-            DensityMatrix(data=(2, 2, 3))
-
+        with pytest.raises(TypeError):
+            DensityMatrix(data=fx_rng.uniform(size=(2, 2, 3)))
         # check square and hermitian but with incorrect dimension (non-qubit type)
         data = randobj.rand_herm(5)
         data /= np.trace(data)
@@ -85,7 +83,7 @@ class TestDensityMatrix:
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
-        dm = DensityMatrix(plus_state=False, nqubit=n)
+        dm = DensityMatrix(data=graphix.states.BasicStates.ZERO, nqubit=n)
         expected_density_matrix = np.zeros((2**n, 2**n))
         expected_density_matrix[0, 0] = 1
         assert dm.Nqubit == n
@@ -96,13 +94,91 @@ class TestDensityMatrix:
     def test_init_with_data_success(self) -> None:
         # don't use rand_dm here since want to check
         for n in range(3):
-            data = randobj.rand_herm(2**n)
+            _data = randobj.rand_herm(2**n)
 
-            data /= np.trace(data)
-            dm = DensityMatrix(data=data)
-            assert dm.Nqubit == n
-            assert dm.rho.shape == (2**n, 2**n)
-            assert np.allclose(dm.rho, data)
+    def test_init_with_state_sucess(self, fx_rng: Generator) -> None:
+        # both "numerical" statevec and Statevec object
+        # relies on Statevec constructor validation
+
+        nqb = fx_rng.integers(2, 5)
+        print(f"nqb is {nqb}")
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice([i for i in graphix.pauli.Plane], nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        vec = Statevec(data=states)
+        # flattens input!
+        expected_dm = np.outer(vec.psi, vec.psi.conj())
+
+        # input with a State object
+        dm = DensityMatrix(data=states)
+        assert dm.dims() == (2**nqb, 2**nqb)
+        assert np.allclose(dm.rho, expected_dm)
+
+    def test_init_with_state_fail(self, fx_rng: Generator) -> None:
+        nqb = 2
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+
+        with pytest.raises(ValueError):
+            _dm = DensityMatrix(nqubit=1, data=states)
+
+        with pytest.raises(ValueError):
+            _dm = DensityMatrix(nqubit=3, data=states)
+
+    def test_init_with_statevec_sucess(self, fx_rng: Generator) -> None:
+        # both "numerical" statevec and Statevec object
+        # relies on Statevec constructor validation
+
+        nqb = fx_rng.integers(2, 5)
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        vec = Statevec(data=states)
+        # flattens input!
+        expected_dm = np.outer(vec.psi, vec.psi.conj())
+
+        # input with a Statevec object
+        dm = DensityMatrix(data=vec)
+        assert dm.dims() == (2**nqb, 2**nqb)
+        assert np.allclose(dm.rho, expected_dm)
+
+        sv_list = [state.get_statevector() for state in states]
+        sv = functools.reduce(np.kron, sv_list)
+
+        # input with a statevector DATA (not Statevec object)
+        dm2 = DensityMatrix(data=sv)
+
+        print("dims", dm.dims())
+        assert dm2.dims() == (2**nqb, 2**nqb)
+        assert np.allclose(dm2.rho, dm.rho)
+        assert np.allclose(dm2.rho, expected_dm)
+
+    def test_init_with_densitymatrix_sucess(self, fx_rng: Generator) -> None:
+        # both "numerical" densitymatrix and DensityMatrix object
+
+        nqb = fx_rng.integers(2, 5)
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        print("planes", rand_planes)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        vec = Statevec(data=states)
+        expected_dm = np.outer(vec.psi, vec.psi.conj())
+
+        # input with a huge density matrix
+        dm_list = [state.get_densitymatrix() for state in states]
+        num_dm = functools.reduce(np.kron, dm_list)
+
+        dm = DensityMatrix(data=num_dm)
+
+        assert dm.dims() == (2**nqb, 2**nqb)
+        assert np.allclose(dm.rho, expected_dm)
+
+        # check copying
+        dm2 = DensityMatrix(dm)
+        assert dm2.dims() == (2**nqb, 2**nqb)
+        assert np.allclose(dm2.rho, expected_dm)
+        assert np.allclose(dm2.rho, dm.rho)
 
     def test_evolve_single_fail(self) -> None:
         dm = DensityMatrix(nqubit=2)
@@ -441,7 +517,7 @@ class TestDensityMatrix:
     # TODO: the test for normalization is done at initialization with data.
     # Now check that all operations conserve the norm.
     def test_normalize(self, fx_rng: Generator) -> None:
-        data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
+        data = randobj.rand_dm(2 ** fx_rng.integers(2, 4), dm_dtype=False)
 
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
@@ -496,9 +572,7 @@ class TestDensityMatrix:
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
-        data = randobj.rand_herm(2)
-        data /= np.trace(data)
-        dm = DensityMatrix(data=data)
+        dm = randobj.rand_dm(2)
 
         # copy of initial dm
         rho_test = deepcopy(dm.rho)
@@ -580,9 +654,7 @@ class TestDensityMatrix:
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
-        data = randobj.rand_herm(2)
-        data /= np.trace(data)
-        dm = DensityMatrix(data=data)
+        dm = randobj.rand_dm(2)
 
         # copy of initial dm
         rho_test = deepcopy(dm.rho)
@@ -793,27 +865,64 @@ class TestDensityMatrix:
 class TestDensityMatrixBackend:
     """Test for DensityMatrixBackend class."""
 
-    def test_init_fail(self) -> None:
+    # test initialization only
+    def test_init_success(self, fx_rng: Generator, hadamardpattern, randpattern, nqb) -> None:
+        # plus state (default)
+        backend = DensityMatrixBackend(hadamardpattern)
+        dm = DensityMatrix(nqubit=1)
+        assert np.allclose(dm.rho, backend.state.rho)
+        # assert backend.state.Nqubit == 1
+        assert backend.state.dims() == (2, 2)
+
+        # minus state
+        backend = DensityMatrixBackend(randpattern, input_state=graphix.states.BasicStates.MINUS)
+        dm = DensityMatrix(nqubit=nqb, data=graphix.states.BasicStates.MINUS)
+        assert np.allclose(dm.rho, backend.state.rho)
+        # assert backend.state.Nqubit == 1
+        assert backend.state.dims() == (2**nqb, 2**nqb)
+
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+
+        expected_dm = DensityMatrix(data=states).rho
+
+        backend = DensityMatrixBackend(randpattern, input_state=states)
+        dm = backend.state
+
+        assert dm.dims() == (2**nqb, 2**nqb)
+        assert np.allclose(dm.rho, expected_dm)
+        assert backend.Nqubit == nqb
+
+    def test_init_fail(self, fx_rng: Generator, nqb, randpattern) -> None:
+        rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb + 1)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+
+        # test init from State Iterable with incorrect size
+        with pytest.raises(ValueError):
+            _backend = DensityMatrixBackend(randpattern, input_state=states)
+
+        # don't provide required pattern argument
         with pytest.raises(TypeError):
             DensityMatrixBackend()
 
-    def test_init_success(self) -> None:
+    def test_init_success_2(self) -> None:
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
         assert backend.pattern == pattern
         assert backend.results == pattern.results
-        assert backend.state is None
-        assert backend.node_index == []
-        assert backend.Nqubit == 0
+        assert backend.node_index == [0]
+        assert backend.Nqubit == 1
         assert backend.max_qubit_num == 12
 
     def test_add_nodes(self) -> None:
         circ = Circuit(1)
         pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1])
+        backend.add_nodes([1])
         expected_matrix = np.array([0.25] * 16).reshape(4, 4)
         assert np.allclose(backend.state.rho, expected_matrix)
 
@@ -821,7 +930,7 @@ class TestDensityMatrixBackend:
         circ = Circuit(1)
         pattern = circ.transpile().pattern
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1])
+        backend.add_nodes([1])
         backend.entangle_nodes((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
         assert np.allclose(backend.state.rho, expected_matrix)
@@ -835,7 +944,7 @@ class TestDensityMatrixBackend:
         pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1, 2])
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])
@@ -851,7 +960,7 @@ class TestDensityMatrixBackend:
         pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern, pr_calc=True)
-        backend.add_nodes([0, 1, 2])
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])
@@ -868,7 +977,8 @@ class TestDensityMatrixBackend:
         pattern = circ.transpile().pattern
 
         backend = DensityMatrixBackend(pattern)
-        backend.add_nodes([0, 1, 2])
+        # node 0 initialized in Backend
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])
@@ -879,7 +989,8 @@ class TestDensityMatrixBackend:
         rho = backend.state.rho
 
         backend = StatevectorBackend(pattern)
-        backend.add_nodes([0, 1, 2])
+        # node 0 initialized in Backend
+        backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
         backend.measure(backend.pattern[-4])

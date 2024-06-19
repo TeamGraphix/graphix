@@ -1,23 +1,37 @@
+from __future__ import annotations
+
+import collections
+import functools
+import numbers
+import typing
 from copy import deepcopy
 
 import numpy as np
 
+import graphix.pauli
 import graphix.sim.base_backend
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+import graphix.states
+import graphix.types
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pattern, max_qubit_num=20, pr_calc=True):
+    def __init__(
+        self,
+        pattern,
+        input_state: Data = graphix.states.BasicStates.PLUS,
+        max_qubit_num=20,
+        pr_calc=True,
+    ):
         """
         Parameters
         -----------
         pattern : :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
-        backend : str, 'statevector'
-            optional argument for simulation.
+        input_state: same syntax as `graphix.statevec.Statevec` constructor.
         max_qubit_num : int
             optional argument specifying the maximum number of qubits
             to be stored in the statevector at a time.
@@ -28,6 +42,10 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         # check that pattern has output nodes configured
         # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
+        if pattern._pauli_preprocessed and input_state != graphix.states.BasicStates.PLUS:
+            raise NotImplementedError(
+                "Pauli preprocessing is currently only available when inputs are initialized in |+> state (see https://github.com/TeamGraphix/graphix/issues/168 )."
+            )
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
@@ -36,8 +54,11 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
+            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc)
+
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes, input_state)
 
     def qubit_dim(self):
         """Returns the qubit number in the internal statevector
@@ -48,7 +69,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes):
+    def add_nodes(self, nodes, input_state=graphix.states.BasicStates.PLUS):
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
@@ -60,7 +81,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         if not self.state:
             self.state = Statevec(nqubit=0)
         n = len(nodes)
-        sv_to_add = Statevec(nqubit=n)
+        sv_to_add = Statevec(nqubit=n, data=input_state)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
@@ -180,26 +201,89 @@ SWAP_TENSOR = np.array(
 
 
 class Statevec:
-    """Simple statevector simulator"""
+    """Statevector object"""
 
-    def __init__(self, nqubit=1, plus_states=True):
-        """Initialize statevector
+    def __init__(
+        self,
+        data: Data = graphix.states.BasicStates.PLUS,
+        nqubit: graphix.types.PositiveOrNullInt | None = None,
+    ):
+        """Initialize statevector objects. The behaviour is as follows. `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of scalars (A 2**n numerical statevector)
+        - a `graphix.statevec.Statevec` object
 
-        Parameters
-        ----------
-        nqubit : int, optional:
-            number of qubits. Defaults to 1.
-        plus_states : bool, optional
-            whether or not to start all qubits in + state or 0 state. Defaults to +
+        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
+        in the tensor product state.
+        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
+        If a `graphix.statevec.Statevec` is passed, returns a copy.
+
+
+        :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
+        :type data: Data, optional
+        :param nqubit: number of qubits to prepare, defaults to None
+        :type nqubit: int, optional
         """
-        if plus_states:
-            self.psi = np.ones((2,) * nqubit) / 2 ** (nqubit / 2)
+
+        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+
+        if isinstance(data, Statevec):
+            # assert nqubit is None or len(state.flatten()) == 2**nqubit
+            if nqubit is not None and len(data.flatten()) != 2**nqubit:
+                raise ValueError(
+                    f"Inconsistent parameters between nqubit = {nqubit} and the inferred number of qubit = {len(data.flatten())}."
+                )
+            self.psi = data.psi.copy()
+            return
+
+        if isinstance(data, graphix.states.State):
+            if nqubit is None:
+                nqubit = 1
+            input_list = [data] * nqubit
+        elif isinstance(data, collections.abc.Iterable):
+            input_list = list(data)
         else:
-            self.psi = np.zeros((2,) * nqubit)
-            self.psi[(0,) * nqubit] = 1
+            raise TypeError(f"Incorrect type for data: {type(data)}")
+
+        if len(input_list) == 0:
+            if nqubit is not None and nqubit != 0:
+                raise ValueError("nqubit is not null but input state is empty.")
+
+            self.psi = np.array(1, dtype=np.complex128)
+
+        else:
+            if isinstance(input_list[0], graphix.states.State):
+                graphix.types.check_list_elements(input_list, graphix.states.State)
+                if nqubit is None:
+                    nqubit = len(input_list)
+                elif nqubit != len(input_list):
+                    raise ValueError("Mismatch between nqubit and length of input state.")
+                list_of_sv = [s.get_statevector() for s in input_list]
+                tmp_psi = functools.reduce(np.kron, list_of_sv)
+                # reshape
+                self.psi = tmp_psi.reshape((2,) * nqubit)
+            elif isinstance(input_list[0], numbers.Number):
+                graphix.types.check_list_elements(input_list, numbers.Number)
+                if nqubit is None:
+                    length = len(input_list)
+                    if length & (length - 1):
+                        raise ValueError("Length is not a power of two")
+                    nqubit = length.bit_length() - 1
+                elif nqubit != len(input_list).bit_length() - 1:
+                    raise ValueError("Mismatch between nqubit and length of input state")
+                psi = np.array(input_list)
+                if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
+                    raise ValueError("Input state is not normalized")
+                self.psi = psi.reshape((2,) * nqubit)
+            else:
+                raise TypeError(
+                    f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
+                )
 
     def __repr__(self):
-        return f"Statevec, data={self.psi}, shape={self.dims()}"
+        return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
     def evolve_single(self, op, i):
         """Single-qubit operation
@@ -258,6 +342,8 @@ class Statevec:
         rho = np.tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
         rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
         evals, evecs = np.linalg.eig(rho)  # back to statevector
+        # NOTE works since only one 1 in the eigenvalues corresponding to the state
+        # TODO use np.eigh since rho is Hermitian?
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg):
@@ -330,6 +416,7 @@ class Statevec:
         """
         psi_self = self.psi.flatten()
         psi_other = other.psi.flatten()
+
         total_num = len(self.dims()) + len(other.dims())
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
@@ -412,3 +499,20 @@ class Statevec:
 def _get_statevec_norm(psi):
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
+
+
+## Python <3.10:
+## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
+## TypeError: 'ABCMeta' object is not subscriptable
+# Data = (
+#    graphix.states.State
+#    | Statevec
+#    | collections.abc.Iterable[graphix.states.State]
+#    | collections.abc.Iterable[numbers.Number]
+# )
+Data = typing.Union[
+    graphix.states.State,
+    Statevec,
+    typing.Iterable[graphix.states.State],
+    typing.Iterable[numbers.Number],
+]

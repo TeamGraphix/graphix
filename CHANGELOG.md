@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pauli-flow finding algorithm (#117)
 - workflow for isort, codecov (#148, #147)
 
+- Allow arbitrary states for initializing input nodes in state vector
+  and density matrix backends.
+
 ### Fixed
 - Fix output node order sorting bug in Pauli preprocessing `measure_pauli` (#145)
 
@@ -39,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Patterns are now allowed to measure all their nodes, and have an
   empty output set.
 - Completely migrated to pytest, no `unittest` usage remains (#134)
+
+- Basic states are now defined in `states.BasicStates` and no longer
+  in `ops.States`.
 
 ## [0.2.11] - 2024-03-16
 

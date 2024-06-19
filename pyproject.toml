@@ -50,6 +50,9 @@ py_version = 38
 line_length = 120
 wrap_length = 120
 
+[tool.ruff]
+line-length = 120
+
 [tool.pytest.ini_options]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
