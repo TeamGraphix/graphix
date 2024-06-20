@@ -91,11 +91,13 @@ class Backend:
             result = np.random.choice([0, 1])
             op_mat = op_mat_from_result(result)
         # self.__measure_method.set_measure_result(node, result)
-        new_state = state.state.evolve_single(op_mat, loc)
+        new_state = state.state.copy()
+        new_state.evolve_single(op_mat, loc)
         new_node_index = state.node_index.remove(node)
         return IndexedState(state=new_state, node_index=new_node_index), loc, result
 
-    def initial_state(self) -> IndexedState: ...
+    def initial_state(self) -> IndexedState:
+        ...
 
     def sort_qubits(self, state: IndexedState, output_nodes) -> IndexedState:
         """sort the qubit order in internal statevector"""
@@ -104,7 +106,8 @@ class Backend:
         for i, ind in enumerate(output_nodes):
             if new_node_index[ind] != i:
                 move_from = new_node_index[ind]
-                new_state = new_state.swap((i, move_from))
+                new_state = new_state.copy()
+                new_state.swap((i, move_from))
                 new_node_index = new_node_index.swap(i, move_from)
         return IndexedState(new_state, new_node_index)
 

@@ -1264,35 +1264,31 @@ class Circuit:
 
         for i in range(len(self.instruction)):
             if self.instruction[i][0] == "CNOT":
-                state = state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))
+                state.CNOT((self.instruction[i][1][0], self.instruction[i][1][1]))
             elif self.instruction[i][0] == "SWAP":
-                state = state.swap((self.instruction[i][1][0], self.instruction[i][1][1]))
+                state.swap((self.instruction[i][1][0], self.instruction[i][1][1]))
             elif self.instruction[i][0] == "I":
                 pass
             elif self.instruction[i][0] == "S":
-                state = state.evolve_single(Ops.s, self.instruction[i][1])
+                state.evolve_single(Ops.s, self.instruction[i][1])
             elif self.instruction[i][0] == "H":
-                state = state.evolve_single(Ops.h, self.instruction[i][1])
+                state.evolve_single(Ops.h, self.instruction[i][1])
             elif self.instruction[i][0] == "X":
-                state = state.evolve_single(Ops.x, self.instruction[i][1])
+                state.evolve_single(Ops.x, self.instruction[i][1])
             elif self.instruction[i][0] == "Y":
-                state = state.evolve_single(Ops.y, self.instruction[i][1])
+                state.evolve_single(Ops.y, self.instruction[i][1])
             elif self.instruction[i][0] == "Z":
-                state = state.evolve_single(Ops.z, self.instruction[i][1])
+                state.evolve_single(Ops.z, self.instruction[i][1])
             elif self.instruction[i][0] == "Rx":
-                state = state.evolve_single(Ops.Rx(self.instruction[i][2]), self.instruction[i][1])
+                state.evolve_single(Ops.Rx(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Ry":
-                state = state.evolve_single(Ops.Ry(self.instruction[i][2]), self.instruction[i][1])
+                state.evolve_single(Ops.Ry(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rz":
-                state = state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
+                state.evolve_single(Ops.Rz(self.instruction[i][2]), self.instruction[i][1])
             elif self.instruction[i][0] == "Rzz":
-                state = state.evolve(
-                    Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]]
-                )
+                state.evolve(Ops.Rzz(self.instruction[i][2]), [self.instruction[i][1][0], self.instruction[i][1][1]])
             elif self.instruction[i][0] == "CCX":
-                state = state.evolve(
-                    Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]]
-                )
+                state.evolve(Ops.ccx, [self.instruction[i][1][0], self.instruction[i][1][1], self.instruction[i][1][2]])
             else:
                 raise ValueError(f"Unknown instruction: {self.instruction[i][0]}")
 

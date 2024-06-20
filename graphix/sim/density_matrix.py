@@ -96,10 +96,15 @@ class DensityMatrix:
         result.rho = rho
         return result
 
+    def copy(self) -> DensityMatrix:
+        result = self.__new__(self.__class__)
+        result.rho = self.rho
+        return result
+
     def __repr__(self):
         return f"DensityMatrix object , with density matrix {self.rho} and shape{self.dims()}."
 
-    def evolve_single(self, op, i) -> DensityMatrix:
+    def evolve_single(self, op, i) -> None:
         """Single-qubit operation.
 
         Parameters
@@ -116,10 +121,9 @@ class DensityMatrix:
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
         rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
-        rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
-        return DensityMatrix.__from_nparray(rho)
+        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
-    def evolve(self, op, qargs) -> DensityMatrix:
+    def evolve(self, op, qargs) -> None:
         """Multi-qubit operation
 
         Args:
@@ -165,8 +169,7 @@ class DensityMatrix:
             [i for i in range(len(qargs))] + [-i for i in range(1, len(qargs) + 1)],
             [i for i in qargs] + [i + self.Nqubit for i in reversed(list(qargs))],
         )
-        rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
-        return DensityMatrix.__from_nparray(rho)
+        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
     def expectation_single(self, op, i) -> complex:
         """Expectation value of single-qubit operator.
@@ -184,7 +187,8 @@ class DensityMatrix:
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
 
-        st1 = self.normalize()
+        st1 = self.copy()
+        st1.normalize()
 
         rho_tensor = st1.rho.reshape((2,) * st1.Nqubit * 2)
         rho_tensor = np.tensordot(op, rho_tensor, axes=[1, i])
@@ -195,7 +199,7 @@ class DensityMatrix:
     def dims(self):
         return self.rho.shape
 
-    def tensor(self, other) -> DensityMatrix:
+    def tensor(self, other) -> None:
         r"""Tensor product state with other density matrix.
         Results in self :math:`\otimes` other.
 
@@ -206,10 +210,9 @@ class DensityMatrix:
         """
         if not isinstance(other, DensityMatrix):
             other = DensityMatrix(other)
-        rho = np.kron(self.rho, other.rho)
-        return DensityMatrix.__from_nparray(rho)
+        self.rho = np.kron(self.rho, other.rho)
 
-    def cnot(self, edge) -> DensityMatrix:
+    def cnot(self, edge) -> None:
         """Apply CNOT gate to density matrix.
 
         Parameters
@@ -218,9 +221,9 @@ class DensityMatrix:
                 Edge to apply CNOT gate.
         """
 
-        return self.evolve(graphix.sim.statevec.CNOT_TENSOR.reshape(4, 4), edge)
+        self.evolve(graphix.sim.statevec.CNOT_TENSOR.reshape(4, 4), edge)
 
-    def swap(self, edge) -> DensityMatrix:
+    def swap(self, edge) -> None:
         """swap qubits
 
         Parameters
@@ -229,9 +232,9 @@ class DensityMatrix:
                 (control, target) qubits indices.
         """
 
-        return self.evolve(graphix.sim.statevec.SWAP_TENSOR.reshape(4, 4), edge)
+        self.evolve(graphix.sim.statevec.SWAP_TENSOR.reshape(4, 4), edge)
 
-    def entangle(self, edge) -> DensityMatrix:
+    def entangle(self, edge) -> None:
         """connect graph nodes
 
         Parameters
@@ -240,14 +243,13 @@ class DensityMatrix:
                 (control, target) qubit indices.
         """
 
-        return self.evolve(graphix.sim.statevec.CZ_TENSOR.reshape(4, 4), edge)
+        self.evolve(graphix.sim.statevec.CZ_TENSOR.reshape(4, 4), edge)
 
-    def normalize(self) -> DensityMatrix:
+    def normalize(self) -> None:
         """normalize density matrix"""
-        rho = self.rho / np.trace(self.rho)
-        return DensityMatrix.__from_nparray(rho)
+        self.rho = self.rho / np.trace(self.rho)
 
-    def ptrace(self, qargs) -> DensityMatrix:
+    def ptrace(self, qargs) -> None:
         """partial trace
 
         Parameters
@@ -271,8 +273,7 @@ class DensityMatrix:
             np.eye(2**qargs_num).reshape((2,) * qargs_num * 2), rho_res, axes=(list(range(2 * qargs_num)), trace_axes)
         )
 
-        rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
-        return DensityMatrix.__from_nparray(rho)
+        self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
 
     def fidelity(self, statevec):
         """calculate the fidelity against reference statevector.
@@ -284,7 +285,7 @@ class DensityMatrix:
         """
         return np.abs(statevec.transpose().conj() @ self.rho @ statevec)
 
-    def apply_channel(self, channel: KrausChannel, qargs):
+    def apply_channel(self, channel: KrausChannel, qargs) -> None:
         """Applies a channel to a density matrix.
 
         Parameters
@@ -313,14 +314,15 @@ class DensityMatrix:
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
         for k_op in channel.kraus_ops:
-            dm = self.evolve(k_op["operator"], qargs)
+            dm = self.copy()
+            dm.evolve(k_op["operator"], qargs)
             result_array += k_op["coef"] * np.conj(k_op["coef"]) * dm.rho
             # reinitialize to input density matrix
 
         if not np.allclose(result_array.trace(), 1.0):
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
-        return DensityMatrix.__from_nparray(result_array)
+        self.rho = result_array
 
 
 class DensityMatrixBackend(graphix.sim.base_backend.Backend):
@@ -339,7 +341,6 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """
         # check that pattern has output nodes configured
         self.max_qubit_num = max_qubit_num
-        self.results = {}
         super().__init__(pr_calc)
 
     def initial_state(self) -> IndexedState:
@@ -358,11 +359,12 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """
         n = len(nodes)
         dm_to_add = DensityMatrix(nqubit=n, data=data)
-        new_dm = state.state.tensor(dm_to_add)
+        new_dm = state.state.copy()
+        new_dm.tensor(dm_to_add)
         new_node_index = state.node_index.extend(nodes)
         return IndexedState(new_dm, new_node_index)
 
-    def entangle_nodes(self, state, edge):
+    def entangle_nodes(self, state, edge) -> IndexedState:
         """Apply CZ gate to the two connected nodes.
 
         Parameters
@@ -372,10 +374,11 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """
         target = state.node_index[edge[0]]
         control = state.node_index[edge[1]]
-        new_dm = state.state.entangle((target, control))
+        new_dm = state.state.copy()
+        new_dm.entangle((target, control))
         return IndexedState(new_dm, state.node_index)
 
-    def measure(self, state, node, measurement_description):
+    def measure(self, state: IndexedState, node, measurement_description) -> tuple[IndexedState, int]:
         """Perform measurement on the specified node and trase out the qubit.
 
         Parameters
@@ -387,10 +390,12 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             state=state, node=node, measurement_description=measurement_description
         )
         # perform ptrace right after the measurement (destructive measurement).
-        new_dm = state.state.normalize().ptrace(loc)
+        new_dm = state.state.copy()
+        new_dm.normalize()
+        new_dm.ptrace(loc)
         return IndexedState(new_dm, state.node_index), result
 
-    def correct_byproduct(self, state, results, cmd):
+    def correct_byproduct(self, state: IndexedState, results, cmd) -> IndexedState:
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
@@ -401,18 +406,21 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
                 op = Ops.x
             elif cmd[0] == "Z":
                 op = Ops.z
-            return IndexedState(state.state.evolve_single(op, loc), state.node_index)
+            new_state = state.state.copy()
+            new_state.evolve_single(op, loc)
+            return IndexedState(new_state, state.node_index)
         return state
 
-    def apply_clifford(self, state, cmd):
+    def apply_clifford(self, state: IndexedState, cmd) -> IndexedState:
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
         loc = node_index[cmd[1]]
-        new_dm = state.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        new_dm = state.state.copy()
+        new_dm.evolve_single(CLIFFORD[cmd[2]], loc)
         return IndexedState(new_dm, state.node_index)
 
-    def apply_channel(self, state, channel: KrausChannel, qargs):
+    def apply_channel(self, state: IndexedState, channel: KrausChannel, qargs) -> IndexedState:
         """backend version of apply_channel
         Parameters
         ----------
@@ -420,5 +428,6 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """
 
         indices = [state.node_index[i] for i in qargs]
-        new_dm = state.state.apply_channel(channel, indices)
+        new_dm = state.state.copy()
+        new_dm.apply_channel(channel, indices)
         return IndexedState(new_dm, state.node_index)

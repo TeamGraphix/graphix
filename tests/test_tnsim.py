@@ -401,7 +401,7 @@ class TestTN(unittest.TestCase):
             random_op3 = random_op(3)
             random_op3_exp = random_op(3)
 
-            state = state.evolve(random_op3, [0, 1, 2])
+            state.evolve(random_op3, [0, 1, 2])
             tn_mbqc.evolve(random_op3, [0, 1, 2], decompose=False)
 
             expval_tn = tn_mbqc.expectation_value(random_op3_exp, [0, 1, 2])

@@ -82,20 +82,23 @@ class TestGraphSim(unittest.TestCase):
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=self.use_rustworkx)
         gstate = get_state(g)
         g.measure_x(0)
-        gstate = gstate.evolve_single(meas_op(0), [0])  # x meas
-        gstate = gstate.normalize().remove_qubit(0)
+        gstate.evolve_single(meas_op(0), [0])  # x meas
+        gstate.normalize()
+        gstate.remove_qubit(0)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_y(1, choice=0)
-        gstate = gstate.evolve_single(meas_op(0.5 * np.pi), [0])  # y meas
-        gstate = gstate.normalize().remove_qubit(0)
+        gstate.evolve_single(meas_op(0.5 * np.pi), [0])  # y meas
+        gstate.normalize()
+        gstate.remove_qubit(0)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 
         g.measure_z(3)
         gstate.evolve_single(meas_op(0.5 * np.pi, plane=graphix.pauli.Plane.YZ), 1)  # z meas
-        gstate = gstate.normalize().remove_qubit(1)
+        gstate.normalize()
+        gstate.remove_qubit(1)
         gstate2 = get_state(g)
         np.testing.assert_almost_equal(np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())), 1)
 

@@ -43,8 +43,8 @@ class TestStatevec(unittest.TestCase):
             # print(m_op)
             sv = Statevec(nqubit=n)
             # print(sv)
-            sv = sv.evolve(m_op, [k])
-            sv = sv.remove_qubit(k)
+            sv.evolve(m_op, [k])
+            sv.remove_qubit(k)
 
             sv2 = Statevec(nqubit=n - 1)
             np.testing.assert_almost_equal(np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())), 1)
@@ -54,7 +54,7 @@ class TestStatevec(unittest.TestCase):
         k = 0
         m_op = np.outer(BasicStates.MINUS.get_statevector(), BasicStates.MINUS.get_statevector().T.conjugate())
         sv = Statevec(nqubit=n)
-        sv = sv.evolve(m_op, [k])
+        sv.evolve(m_op, [k])
         with self.assertRaises(AssertionError):
             sv.remove_qubit(k)
 
@@ -79,7 +79,7 @@ class TestStatevecNew(unittest.TestCase):
             clifford_cmd = ["C", 0, clifford_index]
             clifford_gate = graphix.clifford.CLIFFORD[clifford_index]
 
-            vec = vec.evolve_single(clifford_gate, 0)
+            vec.evolve_single(clifford_gate, 0)
 
             backend_state = backend.apply_clifford(state=backend_state, cmd=clifford_cmd)
             np.testing.assert_allclose(vec.psi, backend_state.state.psi)
