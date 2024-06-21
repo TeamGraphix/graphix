@@ -14,7 +14,8 @@ except ModuleNotFoundError:
 import graphix.clifford
 import graphix.pauli
 from graphix.graphsim.graphstate import GraphState
-from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
+from graphix.graphsim.utils import (convert_rustworkx_to_networkx,
+                                    is_graphs_equal)
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 

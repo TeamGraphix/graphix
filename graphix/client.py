@@ -17,6 +17,7 @@ from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.pauli import Plane
 from graphix.sim.base_backend import Backend
 from graphix.sim.base_backend import State as BackendState
+from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates, PlanarState, State
 
 """
@@ -261,19 +262,19 @@ class Client:
                 clean_pattern.add(cmd)
         return clean_pattern
 
-    def blind_qubits(self, backend: Backend, state: BackendState) -> BackendState:
+    def blind_qubits(self, backend: Backend) -> Backend:
         z_rotation = lambda theta: np.array([[1, 0], [0, np.exp(1j * theta * np.pi / 4)]])
         x_blind = lambda a: graphix.pauli.X if (a == 1) else graphix.pauli.I
         for node in self.nodes_list:
             theta = self.secrets.theta.get(node, 0)
             a = self.secrets.a.a.get(node, 0)
-            state = backend.apply_single(state=state, node=node, op=x_blind(a).matrix)
-            state = backend.apply_single(state=state, node=node, op=z_rotation(theta))
-        return state
+            backend = backend.apply_single(node=node, op=x_blind(a).matrix)
+            backend = backend.apply_single(node=node, op=z_rotation(theta))
+        return backend
 
-    def prepare_states(self, backend: Backend, state: BackendState) -> BackendState:
+    def prepare_states(self, backend: Backend) -> Backend:
         # First prepare inputs
-        state = backend.add_nodes(state=state, nodes=self.input_nodes, data=self.input_state)
+        backend = backend.add_nodes(nodes=self.input_nodes, data=self.input_state)
 
         # Then iterate over auxiliaries required to blind
         aux_nodes = []
@@ -281,7 +282,7 @@ class Client:
             if node not in self.input_nodes and node not in self.output_nodes:
                 aux_nodes.append(node)
         aux_data = [BasicStates.PLUS for _ in aux_nodes]
-        state = backend.add_nodes(state=state, nodes=aux_nodes, data=aux_data)
+        backend = backend.add_nodes(nodes=aux_nodes, data=aux_data)
 
         # Prepare outputs
         output_data = []
@@ -289,9 +290,9 @@ class Client:
             r_value = self.secrets.r.get(node, 0)
             a_N_value = self.secrets.a.a_N.get(node, 0)
             output_data.append(BasicStates.PLUS if r_value ^ a_N_value == 0 else BasicStates.MINUS)
-        state = backend.add_nodes(state=state, nodes=self.output_nodes, data=output_data)
+        backend = backend.add_nodes(nodes=self.output_nodes, data=output_data)
 
-        return state
+        return backend
 
     def create_test_runs(self) -> tuple[list[TrappifiedCanvas], dict[int, int]]:
         graph = nx.Graph()
@@ -318,10 +319,10 @@ class Client:
             runs.append(trappified_canvas)
         return runs, coloring
 
-    def delegate_test_run(self, backend: Backend, state: BackendState, run: TrappifiedCanvas) -> BackendState:
+    def delegate_test_run(self, backend: Backend, run: TrappifiedCanvas) -> Backend:
         # The state is entirely prepared and blinded by the client before being sent to the server
-        state = backend.add_nodes(state, nodes=sorted(self.graph[0]), data=run.states)
-        state = self.blind_qubits(backend, state)
+        backend = backend.add_nodes(nodes=sorted(self.graph[0]), data=run.states)
+        backend = self.blind_qubits(backend)
 
         # Modify the pattern to be all X-basis measurements, no shifts/signalling updates
         for node in self.measurement_db:
@@ -329,10 +330,8 @@ class Client:
                 plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0
             )
 
-        sim = graphix.simulator.PatternSimulator(
-            backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method
-        )
-        state = sim.run(state=state)
+        sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
+        backend = sim.run()
 
         trap_outcomes = []
         for trap in run.traps_list:
@@ -340,31 +339,27 @@ class Client:
             trap_outcome = sum(outcomes) % 2
             trap_outcomes.append(trap_outcome)
 
-        return state, trap_outcomes
+        return backend, trap_outcomes
 
-    def delegate_pattern(
-        self, backend: Backend, state: BackendState
-    ) -> tuple[BackendState, graphix.simulator.PatternSimulator]:
-        state = self.prepare_states(backend, state)
-        state = self.blind_qubits(backend, state)
+    def delegate_pattern(self, backend: Backend) -> tuple[Backend, PatternSimulator]:
+        backend = self.prepare_states(backend)
+        backend = self.blind_qubits(backend)
 
-        sim = graphix.simulator.PatternSimulator(
-            backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method
-        )
-        state = sim.run(state)
-        state = self.decode_output_state(backend, state)
-        # returns the final state as well as the server object (Simulator)
-        return state, sim
+        sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
+        backend = sim.run()
+        backend = self.decode_output_state(backend)
+        # returns the final state
+        return backend, sim
 
-    def decode_output_state(self, backend: Backend, state: BackendState) -> BackendState:
+    def decode_output_state(self, backend: Backend) -> Backend:
         for node in self.output_nodes:
             if node in self.byproduct_db:
                 z_decoding, x_decoding = self.decode_output(node)
                 if z_decoding:
-                    state = backend.apply_single(state=state, node=node, op=graphix.ops.Ops.z)
+                    backend = backend.apply_single(node=node, op=graphix.ops.Ops.z)
                 if x_decoding:
-                    state = backend.apply_single(state=state, node=node, op=graphix.ops.Ops.x)
-        return state
+                    backend = backend.apply_single(node=node, op=graphix.ops.Ops.x)
+        return backend
 
     def get_secrets_size(self):
         secrets_size = {}

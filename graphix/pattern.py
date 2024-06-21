@@ -1391,13 +1391,11 @@ class Pattern:
         if backend == None:
             backend = StatevectorBackend()
         results = deepcopy(self.results)
-        state = backend.add_nodes(
-            state=backend.initial_state(), nodes=self.input_nodes, data=[BasicStates.PLUS for _ in self.input_nodes]
-        )
+        backend = backend.add_nodes(nodes=self.input_nodes, data=[BasicStates.PLUS for _ in self.input_nodes])
         sim = PatternSimulator(self, results=results, backend=backend, **kwargs)
         ## TODO : add this method for all backends
-        state = sim.run(state)
-        return state.state
+        backend = sim.run()
+        return backend.state
 
     def run_pattern(self, backend, **kwargs):
         """run the pattern on cloud-based quantum devices and their simulators.

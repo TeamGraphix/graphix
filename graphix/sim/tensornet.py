@@ -73,7 +73,7 @@ class TensorNetworkBackend(Backend):
     def prepare_state(self, nodes, data):
         self.add_nodes(nodes=nodes)
 
-    def add_nodes(self, state, nodes, data=None):
+    def add_nodes(self, nodes, data=None):
         """Add nodes to the network
 
         Parameters
@@ -85,9 +85,9 @@ class TensorNetworkBackend(Backend):
             self.state.add_qubits(nodes)
         elif self.graph_prep == "opt":
             pass
-        return state
+        return self
 
-    def entangle_nodes(self, state, edge):
+    def entangle_nodes(self, edge):
         """Make entanglement between nodes specified by edge.
 
         Parameters
@@ -122,9 +122,9 @@ class TensorNetworkBackend(Backend):
             self.state.add_tensor_network(CZ_tn)
         elif self.graph_prep == "opt":
             pass
-        return state
+        return self
 
-    def measure(self, state, node, measurement_description):
+    def measure(self, node, measurement_description):
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
@@ -167,9 +167,9 @@ class TensorNetworkBackend(Backend):
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
         result = self.state.measure_single(cmd[1], basis=proj_vec)
-        return state, result
+        return self, result
 
-    def correct_byproduct(self, state, results, cmd):
+    def correct_byproduct(self, results, cmd):
         """Perform byproduct correction.
 
         Parameters
@@ -183,9 +183,9 @@ class TensorNetworkBackend(Backend):
                 self.state.evolve_single(cmd[1], Ops.x, "X")
             elif cmd[0] == "Z":
                 self.state.evolve_single(cmd[1], Ops.z, "Z")
-        return state
+        return self
 
-    def apply_clifford(self, state, cmd):
+    def apply_clifford(self, cmd):
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -196,10 +196,10 @@ class TensorNetworkBackend(Backend):
         """
         node_op = CLIFFORD[cmd[2]]
         self.state.evolve_single(cmd[1], node_op, "C")
-        return state
+        return self
 
-    def finalize(self, state, output_nodes):
-        return state
+    def finalize(self, output_nodes):
+        return self
 
 
 class MBQCTensorNet(TensorNetwork):

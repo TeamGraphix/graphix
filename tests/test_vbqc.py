@@ -30,7 +30,7 @@ class TestVBQC(unittest.TestCase):
         test_runs, _ = client.create_test_runs()
         for run in test_runs:
             backend = StatevectorBackend()
-            _, trap_outcomes = client.delegate_test_run(backend=backend, state=backend.initial_state(), run=run)
+            _, trap_outcomes = client.delegate_test_run(backend=backend, run=run)
             assert trap_outcomes == [0 for _ in run.traps_list]
 
     def test_stabilizer(self):

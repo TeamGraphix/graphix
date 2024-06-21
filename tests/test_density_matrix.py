@@ -4,15 +4,18 @@ from copy import deepcopy
 
 import numpy as np
 import pydantic
+from parameterized import parameterized
 
 import graphix.random_objects as randobj
 import graphix.simulator
 import graphix.states
 from graphix import Circuit
-from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
+from graphix.channels import (KrausChannel, dephasing_channel,
+                              depolarising_channel)
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
+from graphix.sim.statevec import (CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR,
+                                  Statevec, StatevectorBackend)
 
 
 class TestDensityMatrix(unittest.TestCase):
@@ -761,78 +764,52 @@ class DensityMatrixBackendTest(unittest.TestCase):
     """Test for DensityMatrixBackend class."""
 
     def test_init_success(self):
-        backend = DensityMatrixBackend(max_qubit_num=12)
+        backend = DensityMatrixBackend()
         nodes = [0, 1, 2]
         states = graphix.states.BasicStates.PLUS
-        state = backend.initial_state()
-        state = backend.add_nodes(state=state, nodes=nodes, data=states)
-        assert state.node_index.to_list() == [0, 1, 2]
-        assert backend.max_qubit_num == 12
+        backend = backend.add_nodes(nodes=nodes, data=states)
+        assert backend.node_index.to_list() == [0, 1, 2]
 
     def test_add_nodes(self):
         backend = DensityMatrixBackend()
-        state = backend.initial_state()
-        state = backend.add_nodes(state=state, nodes=[0])
+        backend = backend.add_nodes(nodes=[0])
         expected_matrix = np.array([0.5] * 4).reshape(2, 2)
-        np.testing.assert_allclose(state.state.rho, expected_matrix)
-        assert state.node_index.to_list() == [0]
+        np.testing.assert_allclose(backend.state.rho, expected_matrix)
+        assert backend.node_index.to_list() == [0]
 
     def test_entangle_nodes(self):
         backend = DensityMatrixBackend()
-        state = backend.initial_state()
-        state = backend.add_nodes(state=state, nodes=[0, 1])
-        state = backend.entangle_nodes(state=state, edge=(0, 1))
+        backend = backend.add_nodes(nodes=[0, 1])
+        backend = backend.entangle_nodes(edge=(0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
-        np.testing.assert_allclose(state.state.rho, expected_matrix)
+        np.testing.assert_allclose(backend.state.rho, expected_matrix)
 
-        state = backend.entangle_nodes(state=state, edge=(0, 1))
-        np.testing.assert_allclose(state.state.rho, np.array([0.25] * 16).reshape(4, 4))
+        backend = backend.entangle_nodes(edge=(0, 1))
+        np.testing.assert_allclose(backend.state.rho, np.array([0.25] * 16).reshape(4, 4))
 
-    def test_measure(self):
-        circ = Circuit(1)
-        circ.rx(0, np.pi / 2)
-        pattern = circ.transpile()
-
-        backend = DensityMatrixBackend()
-        state = backend.initial_state()
-        state = backend.add_nodes(state=state, nodes=[0, 1, 2])
-        state = backend.entangle_nodes(state=state, edge=(0, 1))
-        state = backend.entangle_nodes(state=state, edge=(1, 2))
-
-        measure_cmd = pattern[-4]
-        node = measure_cmd[1]
-        measure_method = graphix.simulator.DefaultMeasureMethod()
-        results = {}
-        measure_description = measure_method.get_measurement_description(measure_cmd, results)
-        state, result = backend.measure(state=state, node=node, measurement_description=measure_description)
-
-        expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
-        expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
-        assert np.allclose(state.state.rho, expected_matrix_1) or np.allclose(state.state.rho, expected_matrix_2)
-
-    def test_measure_pr_calc(self):
+    @parameterized.expand([(False), (True)])
+    def test_measure(self, pr_calc):
         # circuit there just to provide a measurement command to try out. Weird.
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile()
 
-        backend = DensityMatrixBackend(pr_calc=True)
-        state = backend.initial_state()
-        state = backend.add_nodes(state=state, nodes=[0, 1, 2])
-        state = backend.entangle_nodes(state=state, edge=(0, 1))
-        state = backend.entangle_nodes(state=state, edge=(1, 2))
+        backend = DensityMatrixBackend(pr_calc)
+        backend = backend.add_nodes(nodes=[0, 1, 2])
+        backend = backend.entangle_nodes(edge=(0, 1))
+        backend = backend.entangle_nodes(edge=(1, 2))
         measure_cmd = pattern[-4]
         node = measure_cmd[1]
         measure_method = graphix.simulator.DefaultMeasureMethod()
         results = {}
         measure_description = measure_method.get_measurement_description(measure_cmd, results)
-        state, result = backend.measure(state=state, node=node, measurement_description=measure_description)
+        backend, result = backend.measure(node=node, measurement_description=measure_description)
 
         # 3-qubit linear graph state: |+0+> + |-1->
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
 
-        assert np.allclose(state.state.rho, expected_matrix_1) or np.allclose(state.state.rho, expected_matrix_2)
+        assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
 
     def test_correct_byproduct(self):
         np.random.seed(0)
@@ -845,48 +822,45 @@ class DensityMatrixBackendTest(unittest.TestCase):
         results = dict()
         measure_method = graphix.simulator.DefaultMeasureMethod()
         # node 0 initialized in Backend
-        state = backend.initial_state()
-        state = backend.add_nodes(state=state, nodes=[0, 1, 2])
-        state = backend.entangle_nodes(state=state, edge=(0, 1))
-        state = backend.entangle_nodes(state=state, edge=(1, 2))
+        backend = backend.add_nodes(nodes=[0, 1, 2])
+        backend = backend.entangle_nodes(edge=(0, 1))
+        backend = backend.entangle_nodes(edge=(1, 2))
 
         measure_description = measure_method.get_measurement_description(cmd=pattern[-4], results=results)
         node = pattern[-4][1]
-        state, result = backend.measure(state=state, node=node, measurement_description=measure_description)
+        backend, result = backend.measure(node=node, measurement_description=measure_description)
         results[node] = result
 
         measure_description = measure_method.get_measurement_description(cmd=pattern[-3], results=results)
         node = pattern[-3][1]
-        state, result = backend.measure(state=state, node=node, measurement_description=measure_description)
+        backend, result = backend.measure(node=node, measurement_description=measure_description)
         results[node] = result
 
-        state = backend.correct_byproduct(state=state, cmd=pattern[-2], results=results)
-        state = backend.correct_byproduct(state=state, cmd=pattern[-1], results=results)
-        state = backend.finalize(state=state, output_nodes=pattern.output_nodes)
-        rho = state.state.rho
+        backend = backend.correct_byproduct(cmd=pattern[-2], results=results)
+        backend = backend.correct_byproduct(cmd=pattern[-1], results=results)
+        backend = backend.finalize(output_nodes=pattern.output_nodes)
+        rho = backend.state.rho
 
         backend = StatevectorBackend()
         # node 0 initialized in Backend
-        pattern.print_pattern()
-        state = backend.initial_state()
-        state = backend.add_nodes(state, nodes=[0, 1, 2])
-        state = backend.entangle_nodes(state=state, edge=(0, 1))
-        state = backend.entangle_nodes(state=state, edge=(1, 2))
+        backend = backend.add_nodes(nodes=[0, 1, 2])
+        backend = backend.entangle_nodes(edge=(0, 1))
+        backend = backend.entangle_nodes(edge=(1, 2))
 
         measure_description = measure_method.get_measurement_description(cmd=pattern[-4], results=results)
         node = pattern[-4][1]
-        state, result = backend.measure(state=state, node=node, measurement_description=measure_description)
+        backend, result = backend.measure(node=node, measurement_description=measure_description)
         results[node] = result
 
         measure_description = measure_method.get_measurement_description(cmd=pattern[-3], results=results)
         node = pattern[-3][1]
-        state, result = backend.measure(state=state, node=node, measurement_description=measure_description)
+        backend, result = backend.measure(node=node, measurement_description=measure_description)
         results[node] = result
 
-        state = backend.correct_byproduct(state=state, cmd=pattern[-2], results=results)
-        state = backend.correct_byproduct(state=state, cmd=pattern[-1], results=results)
-        state = backend.finalize(state=state, output_nodes=pattern.output_nodes)
-        psi = state.state.psi
+        backend = backend.correct_byproduct(cmd=pattern[-2], results=results)
+        backend = backend.correct_byproduct(cmd=pattern[-1], results=results)
+        backend = backend.finalize(output_nodes=pattern.output_nodes)
+        psi = backend.state.psi
 
         np.testing.assert_allclose(rho, np.outer(psi, psi.conj()))
 

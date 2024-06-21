@@ -54,7 +54,7 @@ class TestClient(unittest.TestCase):
             secrets = Secrets(r=True)
             # Giving it empty will create a random secret
             client = Client(pattern=pattern, secrets=secrets)
-            state_mbqc, _ = client.delegate_pattern(backend=backend, state=backend.initial_state())
+            state_mbqc, _ = client.delegate_pattern(backend)
             np.testing.assert_almost_equal(
                 np.abs(np.dot(state_mbqc.state.psi.flatten().conjugate(), state.psi.flatten())), 1
             )
@@ -77,7 +77,7 @@ class TestClient(unittest.TestCase):
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation, _ = client.delegate_pattern(backend=backend, state=backend.initial_state())
+            blinded_simulation, _ = client.delegate_pattern(backend)
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
@@ -104,7 +104,7 @@ class TestClient(unittest.TestCase):
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation, _ = client.delegate_pattern(backend=backend, state=backend.initial_state())
+            blinded_simulation, _ = client.delegate_pattern(backend)
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
@@ -125,7 +125,7 @@ class TestClient(unittest.TestCase):
         # Giving it empty will create a random secret
         client = Client(pattern=pattern, secrets=secrets)
         backend = StatevectorBackend()
-        _, server = client.delegate_pattern(backend=backend, state=backend.initial_state())
+        _, server = client.delegate_pattern(backend)
 
         for measured_node in client.measurement_db:
             # Compare results on the client side and on the server side : should differ by r[node]
@@ -151,10 +151,10 @@ class TestClient(unittest.TestCase):
 
         backend = StatevectorBackend()
         # Blinded simulation, between the client and the server
-        state = client.prepare_states(backend=backend, state=backend.initial_state())
-        assert set(state.node_index) == set(nodes)
-        state = client.blind_qubits(backend=backend, state=state)
-        assert set(state.node_index) == set(nodes)
+        backend = client.prepare_states(backend)
+        assert set(backend.node_index) == set(nodes)
+        backend = client.blind_qubits(backend)
+        assert set(backend.node_index) == set(nodes)
 
     def test_UBQC(self):
         # Generate random pattern
@@ -176,8 +176,7 @@ class TestClient(unittest.TestCase):
 
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            state = backend.initial_state()
-            blinded_simulation, _ = client.delegate_pattern(backend=backend, state=state)
+            blinded_simulation, _ = client.delegate_pattern(backend)
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector()
             np.testing.assert_almost_equal(

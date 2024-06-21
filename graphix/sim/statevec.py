@@ -16,7 +16,7 @@ import graphix.states
 import graphix.types
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-from graphix.sim.base_backend import Backend, IndexedState, NodeIndex
+from graphix.sim.base_backend import Backend, NodeIndex
 from graphix.sim.base_backend import State as BackendState
 from graphix.states import State
 
@@ -30,105 +30,8 @@ from graphix.states import State
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, max_qubit_num=20, pr_calc=True):
-        self.max_qubit_num = max_qubit_num
-        super().__init__(pr_calc)
-        self.to_trace = []
-        self.to_trace_loc = []
-        # Modify this
-        # self.results = {}
-
-    def prepare_state(self, nodes, data):
-        self.add_nodes(nodes=nodes, input_state=Statevec(data))
-
-    ## TODO : delete ?
-    # def qubit_dim(self):
-    #     """Returns the qubit number in the internal statevector
-
-    #     Returns
-    #     -------
-    #     n_qubit : int
-    #     """
-    #     return len(self.state.dims())
-
-    def initial_state(self) -> IndexedState:
-        return IndexedState(Statevec(nqubit=0), NodeIndex())
-
-    def add_nodes(self, state: IndexedState, nodes, data=graphix.states.BasicStates.PLUS) -> IndexedState:
-        """add new qubit(s) to statevector in argument
-        and assign the corresponding node number
-        to list self.node_index.
-
-        Parameters
-        ----------
-        nodes : list of node indices
-        """
-        n = len(nodes)
-        sv_to_add = Statevec(nqubit=n, data=data)
-
-        new_state = state.state.copy()
-        new_state.tensor(sv_to_add)
-        new_node_index = state.node_index.extend(nodes)
-
-        return IndexedState(new_state, new_node_index)
-
-    def entangle_nodes(self, state: IndexedState, edge: tuple[int, int]) -> IndexedState:
-        """Apply CZ gate to two connected nodes
-
-        Parameters
-        ----------
-        edge : tuple (i, j)
-            a pair of node indices
-        """
-        target = state.node_index[edge[0]]
-        control = state.node_index[edge[1]]
-        new_state = state.state.copy()
-        new_state.entangle((target, control))
-        return IndexedState(new_state, state.node_index)
-
-    def measure(self, state: IndexedState, node: int, measurement_description) -> IndexedState:
-        """Perform measurement of a node in the internal statevector and trace out the qubit
-
-        Parameters
-        ----------
-        cmd : list
-            measurement command : ['M', node, plane, angle, s_domain, t_domain]
-        """
-        state, loc, result = self._perform_measure(
-            state=state, node=node, measurement_description=measurement_description
-        )
-        new_state = state.state.copy()
-        new_state.remove_qubit(loc)
-        return IndexedState(new_state, state.node_index), result
-
-    def correct_byproduct(self, state: IndexedState, results, cmd) -> IndexedState:
-        """Byproduct correction
-        correct for the X or Z byproduct operators,
-        by applying the X or Z gate.
-        """
-        if np.mod(np.sum([results[j] for j in cmd[2]]), 2) == 1:
-            if cmd[0] == "X":
-                op = Ops.x
-            elif cmd[0] == "Z":
-                op = Ops.z
-            return self.apply_single(state, node=cmd[1], op=op)
-        else:
-            return state
-
-    def apply_single(self, state: IndexedState, node, op) -> IndexedState:
-        index = state.node_index[node]
-        new_state = state.state.copy()
-        new_state.evolve_single(op=op, i=index)
-        return IndexedState(new_state, node_index=state.node_index)
-
-    def apply_clifford(self, state: IndexedState, cmd) -> IndexedState:
-        """Apply single-qubit Clifford gate,
-        specified by vop index specified in graphix.clifford.CLIFFORD
-        """
-        loc = state.node_index[cmd[1]]
-        new_state = state.state.copy()
-        new_state.evolve_single(CLIFFORD[cmd[2]], loc)
-        return IndexedState(new_state, node_index=state.node_index)
+    def __init__(self, pr_calc=True):
+        super().__init__(Statevec(nqubit=0), pr_calc=pr_calc)
 
 
 CZ_TENSOR = np.array(
@@ -232,16 +135,14 @@ class Statevec(BackendState):
     def __repr__(self):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
-    @classmethod
-    def __from_nparray(cls, psi) -> Statevec:
-        result = cls.__new__(cls)
-        result.psi = psi
-        return result
-
     def copy(self) -> Statevec:
         result = self.__new__(self.__class__)
         result.psi = self.psi
         return result
+
+    def add_nodes(self, nqubit, data) -> None:
+        sv_to_add = Statevec(nqubit=nqubit, data=data)
+        self.tensor(sv_to_add)
 
     def evolve_single(self, op, i) -> None:
         """Single-qubit operation

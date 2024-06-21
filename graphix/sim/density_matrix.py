@@ -22,7 +22,8 @@ from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_hermitian, check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
-from graphix.sim.base_backend import IndexedState, NodeIndex
+from graphix.sim.base_backend import Backend, NodeIndex
+from graphix.sim.base_backend import State as BackendState
 from graphix.sim.statevec import Statevec
 
 Data = typing.Union[
@@ -35,7 +36,7 @@ Data = typing.Union[
 ]
 
 
-class DensityMatrix:
+class DensityMatrix(BackendState):
     """DensityMatrix object."""
 
     def __init__(
@@ -90,12 +91,6 @@ class DensityMatrix:
     def Nqubit(self) -> int:
         return self.rho.shape[0].bit_length() - 1
 
-    @classmethod
-    def __from_nparray(cls, rho) -> DensityMatrix:
-        result = cls.__new__(cls)
-        result.rho = rho
-        return result
-
     def copy(self) -> DensityMatrix:
         result = self.__new__(self.__class__)
         result.rho = self.rho
@@ -103,6 +98,10 @@ class DensityMatrix:
 
     def __repr__(self):
         return f"DensityMatrix object , with density matrix {self.rho} and shape{self.dims()}."
+
+    def add_nodes(self, nqubit, data) -> None:
+        dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
+        self.tensor(dm_to_add)
 
     def evolve_single(self, op, i) -> None:
         """Single-qubit operation.
@@ -249,6 +248,10 @@ class DensityMatrix:
         """normalize density matrix"""
         self.rho = self.rho / np.trace(self.rho)
 
+    def remove_qubit(self, loc) -> None:
+        self.ptrace(loc)
+        self.normalize()
+
     def ptrace(self, qargs) -> None:
         """partial trace
 
@@ -325,109 +328,19 @@ class DensityMatrix:
         self.rho = result_array
 
 
-class DensityMatrixBackend(graphix.sim.base_backend.Backend):
+class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
-        """
-        Parameters
-        ----------
-            max_qubit_num : int
-                optional argument specifying the maximum number of qubits
-                to be stored in the statevector at a time.
-            pr_calc : bool
-                whether or not to compute the probability distribution before choosing the measurement result.
-                if False, measurements yield results 0/1 with 50% probabilities each.
-        """
-        # check that pattern has output nodes configured
-        self.max_qubit_num = max_qubit_num
-        super().__init__(pr_calc)
+    def __init__(self, pr_calc=True):
+        super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc)
 
-    def initial_state(self) -> IndexedState:
-        return IndexedState(DensityMatrix(nqubit=0), NodeIndex())
-
-    def add_nodes(self, state, nodes, data: Data = graphix.states.BasicStates.PLUS) -> IndexedState:
-        """add new qubit to the internal density matrix
-        and asign the corresponding node number to list node_index.
-
-        Parameters
-        ----------
-        nodes : list
-            list of node indices
-        qubit_to_add : DensityMatrix object
-            qubit to be added to the graph states
-        """
-        n = len(nodes)
-        dm_to_add = DensityMatrix(nqubit=n, data=data)
-        new_dm = state.state.copy()
-        new_dm.tensor(dm_to_add)
-        new_node_index = state.node_index.extend(nodes)
-        return IndexedState(new_dm, new_node_index)
-
-    def entangle_nodes(self, state, edge) -> IndexedState:
-        """Apply CZ gate to the two connected nodes.
-
-        Parameters
-        ----------
-            edge : tuple (int, int)
-                a pair of node indices
-        """
-        target = state.node_index[edge[0]]
-        control = state.node_index[edge[1]]
-        new_dm = state.state.copy()
-        new_dm.entangle((target, control))
-        return IndexedState(new_dm, state.node_index)
-
-    def measure(self, state: IndexedState, node, measurement_description) -> tuple[IndexedState, int]:
-        """Perform measurement on the specified node and trase out the qubit.
-
-        Parameters
-        ----------
-            cmd : list
-                measurement command : ['M', node, plane, angle, s_domain, t_domain]
-        """
-        state, loc, result = self._perform_measure(
-            state=state, node=node, measurement_description=measurement_description
-        )
-        # perform ptrace right after the measurement (destructive measurement).
-        new_dm = state.state.copy()
-        new_dm.normalize()
-        new_dm.ptrace(loc)
-        return IndexedState(new_dm, state.node_index), result
-
-    def correct_byproduct(self, state: IndexedState, results, cmd) -> IndexedState:
-        """Byproduct correction
-        correct for the X or Z byproduct operators,
-        by applying the X or Z gate.
-        """
-        if np.mod(np.sum([results[j] for j in cmd[2]]), 2) == 1:
-            loc = state.node_index[cmd[1]]
-            if cmd[0] == "X":
-                op = Ops.x
-            elif cmd[0] == "Z":
-                op = Ops.z
-            new_state = state.state.copy()
-            new_state.evolve_single(op, loc)
-            return IndexedState(new_state, state.node_index)
-        return state
-
-    def apply_clifford(self, state: IndexedState, cmd) -> IndexedState:
-        """Apply single-qubit Clifford gate,
-        specified by vop index specified in graphix.clifford.CLIFFORD
-        """
-        loc = node_index[cmd[1]]
-        new_dm = state.state.copy()
-        new_dm.evolve_single(CLIFFORD[cmd[2]], loc)
-        return IndexedState(new_dm, state.node_index)
-
-    def apply_channel(self, state: IndexedState, channel: KrausChannel, qargs) -> IndexedState:
+    def apply_channel(self, channel: KrausChannel, qargs) -> DensityMatrixBackend:
         """backend version of apply_channel
         Parameters
         ----------
             qargs : list of ints. Target qubits
         """
 
-        indices = [state.node_index[i] for i in qargs]
-        new_dm = state.state.copy()
-        new_dm.apply_channel(channel, indices)
-        return IndexedState(new_dm, state.node_index)
+        indices = [self.node_index[i] for i in qargs]
+        new_dm = self.state.apply_channel(channel, indices)
+        return self.with_changes(state=new_dm)
