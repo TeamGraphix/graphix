@@ -7,11 +7,12 @@
 [![Documentation Status](https://readthedocs.org/projects/graphix/badge/?version=latest)](https://graphix.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/TeamGraphix/graphix)
 [![Downloads](https://static.pepy.tech/badge/graphix)](https://pepy.tech/project/graphix)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **Graphix** is a measurement-based quantum computing (MBQC) software package, featuring
 - the measurement calculus framework with integrated graphical rewrite rules for Pauli measurement preprocessing
 - circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
-- flow- and gflow-based graph visualization tools
+- flow, gflow and pauliflow finding tools and graph visualization based on flows (see below)
 - statevector, density matrix and tensornetwork pattern simulation backends
 - QPU interface and fusion network extraction tool
 
@@ -51,7 +52,7 @@ pattern.draw_graph()
 ```
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="logo" width="140">
 
-<small>(here, the graph has [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
+<small>(here, the graph is visualized based on [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
 
 ### simulating the pattern
 ```python

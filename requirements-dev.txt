@@ -1,9 +1,11 @@
 # Style
-black==22.8.0
+black==24.4.0
+isort==5.13.2
 
 # Tests
 pytest
-parameterized
+pytest-mock
+pytest-cov
 tox
 
 # Optional dependencies

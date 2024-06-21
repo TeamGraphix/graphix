@@ -181,7 +181,7 @@ class QNN:
         statevector of the output state of the circuit.
         """
         circuit = self.data_reuploading_circuit(data_point, params)
-        pattern = circuit.transpile()
+        pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         out_state = pattern.simulate_pattern("tensornetwork")
@@ -328,7 +328,7 @@ input_params = np.random.rand(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
-pattern = circuit.transpile(opt=False)
+pattern = circuit.transpile(opt=False).pattern
 pattern.standardize()
 pattern.shift_signals()
 
@@ -359,7 +359,7 @@ for n_qubits in qubits:
     params = np.random.rand(n_layers * n_qubits * n_features * 2)
     qnn = QNN(n_qubits, n_layers, n_features)
     circuit = qnn.data_reuploading_circuit(input_params, params)
-    pattern = circuit.transpile()
+    pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
 

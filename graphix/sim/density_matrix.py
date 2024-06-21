@@ -6,7 +6,6 @@ Simulate MBQC with density matrix representation.
 from __future__ import annotations
 
 import collections
-import functools
 import numbers
 import typing
 from copy import deepcopy
@@ -15,25 +14,13 @@ import numpy as np
 import pydantic
 
 import graphix.sim.base_backend
-import graphix.sim.statevec
 import graphix.states
 import graphix.types
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
-from graphix.linalg_validations import check_hermitian, check_psd, check_square, check_unit_trace
+from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
-from graphix.sim.base_backend import Backend, NodeIndex
-from graphix.sim.base_backend import State as BackendState
-from graphix.sim.statevec import Statevec
-
-Data = typing.Union[
-    graphix.states.State,
-    "DensityMatrix",
-    graphix.sim.statevec.Statevec,
-    typing.Iterable[graphix.states.State],
-    typing.Iterable[numbers.Number],
-    typing.Iterable[typing.Iterable[numbers.Number]],
-]
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
 
 class DensityMatrix(BackendState):
@@ -42,16 +29,27 @@ class DensityMatrix(BackendState):
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
+        nqubit: graphix.types.PositiveOrNullInt | None = None,
     ):
-        """
-        rewrite!
-        Parameters
-        ----------
-            data : DensityMatrix, list, tuple, np.ndarray or None
-                Density matrix of shape (2**nqubits, 2**nqubits).
-            nqubit : int
-                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, consistency is checked.
+        """Initialize density matrix objects. The behaviour builds on theo ne of `graphix.statevec.Statevec`.
+        `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of iterable of scalars (A 2**n x 2**n numerical density matrix)
+        - a `graphix.statevec.DensityMatrix` object
+        - a `graphix.statevec.Statevector` object
+
+        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
+        in the tensor product state.
+        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
+        If a `graphix.statevec.Statevec` or `graphix.statevec.DensityMatrix` is passed, returns a copy.
+
+
+        :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
+        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[numbers.Number] | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]], optional
+        :param nqubit: number of qubits to prepare, defaults to None
+        :type nqubit: int, optional
         """
         assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
 
@@ -97,7 +95,7 @@ class DensityMatrix(BackendState):
         return result
 
     def __repr__(self):
-        return f"DensityMatrix object , with density matrix {self.rho} and shape{self.dims()}."
+        return f"DensityMatrix object, with density matrix {self.rho} and shape{self.dims()}."
 
     def add_nodes(self, nqubit, data) -> None:
         dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
@@ -344,3 +342,24 @@ class DensityMatrixBackend(Backend):
         indices = [self.node_index[i] for i in qargs]
         new_dm = self.state.apply_channel(channel, indices)
         return self.with_changes(state=new_dm)
+
+
+## Python <3.10:
+## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
+## TypeError: 'ABCMeta' object is not subscriptable
+# Data = (
+#    graphix.states.State
+#    | DensityMatrix
+#    | Statevec
+#    | collections.abc.Iterable[graphix.states.State]
+#    | collections.abc.Iterable[numbers.Number]
+#    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
+# )
+Data = typing.Union[
+    graphix.states.State,
+    DensityMatrix,
+    Statevec,
+    typing.Iterable[graphix.states.State],
+    typing.Iterable[numbers.Number],
+    typing.Iterable[typing.Iterable[numbers.Number]],
+]

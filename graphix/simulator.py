@@ -4,16 +4,15 @@ Simulates MBQC by executing the pattern.
 
 """
 
-import abc
-import dataclasses
 import warnings
 
 import numpy as np
 
-import graphix.sim.density_matrix
-import graphix.sim.statevec
-import graphix.sim.tensornet
 from graphix.noise_models import NoiseModel
+from graphix.sim.density_matrix import DensityMatrixBackend
+from graphix.sim.statevec import StatevectorBackend
+from graphix.sim.tensornet import TensorNetworkBackend
+
 from graphix.sim.base_backend import Backend, State
 from graphix.states import PlanarState
 
@@ -77,7 +76,7 @@ class PatternSimulator:
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         # check that pattern has output nodes configured
-        assert len(pattern.output_nodes) > 0
+        # assert len(pattern.output_nodes) > 0
 
         if isinstance(backend, graphix.sim.base_backend.Backend):
             assert kwargs == dict()
@@ -88,18 +87,16 @@ class PatternSimulator:
             self.backend = graphix.sim.density_matrix.DensityMatrixBackend(**kwargs)
             if noise_model is None:
                 self.noise_model = None
-                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(**kwargs)
+                self.backend = DensityMatrixBackend(**kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
                 )
             if noise_model is not None:
                 self.set_noise_model(noise_model)
-                # if noise: have to compute the probabilities
-                # NOTE : could remove, pr_calc defaults to True now.
-                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pr_calc=True, **kwargs)
+                self.backend = DensityMatrixBackend(pr_calc=True, **kwargs)
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
-            self.backend = graphix.sim.tensornet.TensorNetworkBackend(pattern, **kwargs)
+            self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("Unknown backend.")
         self.set_noise_model(noise_model)
@@ -125,9 +122,6 @@ class PatternSimulator:
             the output quantum state,
             in the representation depending on the backend used.
         """
-        # use add_nodes or write a new method?
-        # self.backend.initialize_inputs(self.pattern.input_nodes, option, ...)
-        # self.backend.add_nodes(self.pattern.input_nodes, state=state)
         backend = self.backend
         if self.noise_model is None:
             for cmd in self.pattern:

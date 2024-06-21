@@ -2,32 +2,17 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 
-from __future__ import annotations
-
-import dataclasses
 from copy import deepcopy
 
 import networkx as nx
 import numpy as np
 
-import graphix
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
-from graphix.sim.statevec import StatevectorBackend
 from graphix.simulator import PatternSimulator
-from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
-
-
-@dataclasses.dataclass
-class MeasureParameters:
-    plane: graphix.pauli.Plane
-    angle: float
-    s_domain: list[int]
-    t_domain: list[int]
-    vop: int
 
 
 class NodeAlreadyPrepared(Exception):
@@ -84,8 +69,6 @@ class Pattern:
         self.__seq = []
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
-        self.measurement_db = None
-        self.byproduct_db = None
 
     def add(self, cmd):
         """add command to the end of the pattern.
@@ -117,7 +100,7 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        assert type(cmd) == list
+        assert isinstance(cmd, list)
         assert cmd[0] in ["N", "E", "M", "X", "Z", "S", "C"]
         if cmd[0] == "N":
             if cmd[1] in self.__output_nodes:
@@ -160,28 +143,12 @@ class Pattern:
         """list of input nodes"""
         return list(self.__input_nodes)  # copy for preventing modification
 
-    def add_auxiliary_node(self, node):
-        self.__output_nodes.append(node)
-        self.__Nnode += 1
-
     @property
     def output_nodes(self):
         """list of all nodes that are either `input_nodes` or prepared with
         `N` commands and that have not been measured with an `M` command
         """
         return list(self.__output_nodes)  # copy for preventing modification
-
-    @property
-    def auxiliary_nodes(self):
-        aux = []
-        for cmd in self:
-            if cmd[0] == "N":
-                aux.append(cmd[1])
-        return aux.copy()
-
-    @property
-    def non_output_nodes(self):
-        return list(set(range(self.Nnode)) - set(self.output_nodes))
 
     def __len__(self):
         """length of command sequence"""
@@ -207,8 +174,9 @@ class Pattern:
         output_nodes: list of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
+        output_nodes = list(output_nodes)  # make our own copy (allow iterators to be passed)
         assert_permutation(self.__output_nodes, output_nodes)
-        self.__output_nodes = list(output_nodes)
+        self.__output_nodes = output_nodes
 
     def reorder_input_nodes(self, input_nodes):
         """arrange the order of input_nodes.
@@ -257,17 +225,12 @@ class Pattern:
                 break
             if self.__seq[i][0] == "N" and ("N" in filter):
                 count += 1
-                if len(self.__seq[i]) == 2:
-                    print(f"N, node = {self.__seq[i][1]}")
-                elif len(self.__seq[i]) == 4:
-                    print(f"N, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle = {self.__seq[i][3]}pi/4")
+                print(f"N, node = {self.__seq[i][1]}")
             elif self.__seq[i][0] == "E" and ("E" in filter):
                 count += 1
                 print(f"E, nodes = {self.__seq[i][1]}")
             elif self.__seq[i][0] == "M" and ("M" in filter):
                 count += 1
-                if len(self.__seq[i]) == 2:
-                    print(f"M, node = {self.__seq[i][1]}, ask server for the rest.")
                 if len(self.__seq[i]) == 6:
                     print(
                         f"M, node = {self.__seq[i][1]}, plane = {self.__seq[i][2]}, angle(pi) = {self.__seq[i][3]}, "
@@ -812,7 +775,7 @@ class Pattern:
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd[0] == "N":
-                if not cmd[1] in self.output_nodes:
+                if cmd[1] not in self.output_nodes:
                     not_measured = not_measured | {cmd[1]}
         depth = 0
         l_k = dict()
@@ -851,10 +814,6 @@ class Pattern:
         connected: set of tuple
                 set of connected edges
         """
-        # TODO modify that by using the graph nx.graph.edges(node)? and cached get_graph()?
-        # like in def get_measurement_order_from_flow(self): with self.get_graph()
-        # FIXME
-        # BUG
 
         connected = set()
         for edge in edges:
@@ -996,10 +955,15 @@ class Pattern:
         ind = self._find_op_to_be_moved("M")
         if ind == "end":
             return []
-
-        for cmd in self.__seq[ind:]:
-            if cmd[0] == "M":
-                meas_cmds.append(cmd)
+        while True:
+            try:
+                cmd = self.__seq[ind]
+            except IndexError:
+                break
+            if cmd[0] != "M":
+                break
+            meas_cmds.append(cmd)
+            ind += 1
         return meas_cmds
 
     def get_meas_plane(self):
@@ -1055,9 +1019,6 @@ class Pattern:
         max_degree = max([i for i in dict(degree).values()])
         return max_degree
 
-    # TODO functools.cache() It is called in get measurement order from (g)flow
-    #
-    # It is called in get measurement order from (g)flow
     def get_graph(self):
         """returns the list of nodes and edges from the command sequence,
         extracted from 'N' and 'E' commands.
@@ -1165,63 +1126,13 @@ class Pattern:
         if not ind == "end":  # end -> 'node' is isolated
             while self.__seq[ind][0] == "E":
                 if self.__seq[ind][1][0] == node:
-                    if not self.__seq[ind][1][1] in prepared:
+                    if self.__seq[ind][1][1] not in prepared:
                         node_list.append(self.__seq[ind][1][1])
                 elif self.__seq[ind][1][1] == node:
-                    if not self.__seq[ind][1][0] in prepared:
+                    if self.__seq[ind][1][0] not in prepared:
                         node_list.append(self.__seq[ind][1][0])
                 ind += 1
         return node_list
-
-    def get_measurement_db(self):
-        """
-        Builds and returns a dictionary containing the information about the measurement of any node to be measured
-        """
-        if self.measurement_db == None:
-            self.measurement_db = dict()
-            for cmd in self:
-                if cmd[0] == "M":
-                    node = cmd[1]
-                    plane = graphix.pauli.Plane[cmd[2]]
-                    angle = cmd[3] * np.pi
-                    s_domain = cmd[4]
-                    t_domain = cmd[5]
-                    if len(cmd) == 7:
-                        vop = cmd[6]
-                    else:
-                        vop = 0
-                    self.measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
-        return self.measurement_db
-
-    def get_byproduct_db(self):
-        if self.byproduct_db == None:
-            self.byproduct_db = dict()
-            for node in self.output_nodes:
-                self.byproduct_db[node] = {"z-domain": [], "x-domain": []}
-
-            for cmd in self:
-                if (cmd[0] == "Z" or cmd[0] == "X") and cmd[1] in self.output_nodes:
-                    node = cmd[1]
-
-                    if cmd[0] == "Z":
-                        self.byproduct_db[node]["z-domain"] = cmd[2]
-                    if cmd[0] == "X":
-                        self.byproduct_db[node]["x-domain"] = cmd[2]
-        return self.byproduct_db
-
-    def remove_flow(self):
-        clean_pattern = graphix.pattern.Pattern(self.input_nodes)
-        for cmd in self:
-            # by default, copy the command
-            new_cmd = deepcopy(cmd)
-
-            # If measure, remove the s-domain and t-domain, vop
-            if cmd[0] == "M":
-                del new_cmd[2:]
-            # If byproduct, remove it so it's not done by the server
-            if cmd[0] != "X" and cmd[0] != "Z":
-                clean_pattern.add(new_cmd)
-        return clean_pattern
 
     def standardize_and_shift_signals(self, method="local"):
         """Executes standardization and signal shifting.
@@ -1307,7 +1218,7 @@ class Pattern:
         # add isolated nodes
         for cmd in self.__seq:
             if cmd[0] == "N":
-                if not cmd[1] in prepared:
+                if cmd[1] not in prepared:
                     new.append(["N", cmd[1]])
         for cmd in self.__seq:
             if cmd[0] == "E":
@@ -1367,11 +1278,11 @@ class Pattern:
                 N_list.append(nodes)
         return N_list
 
-    def simulate_pattern(self, backend=None, **kwargs):
+    def simulate_pattern(self, backend="statevector", **kwargs):
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
-        Available backend: ['statevector', 'tensornetwork']
+        Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
 
         Parameters
         ----------
@@ -1386,16 +1297,9 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-
-        # This forces backend reset at each simulation, to avoid continuing with the state of another simulation
-        if backend == None:
-            backend = StatevectorBackend()
-        results = deepcopy(self.results)
-        backend = backend.add_nodes(nodes=self.input_nodes, data=[BasicStates.PLUS for _ in self.input_nodes])
-        sim = PatternSimulator(self, results=results, backend=backend, **kwargs)
-        ## TODO : add this method for all backends
-        backend = sim.run()
-        return backend.state
+        sim = PatternSimulator(self, backend=backend, **kwargs)
+        state = sim.run()
+        return state
 
     def run_pattern(self, backend, **kwargs):
         """run the pattern on cloud-based quantum devices and their simulators.
@@ -2048,7 +1952,9 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     else:
         pat = pattern
 
+    output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
+    pat.reorder_output_nodes(output_nodes)
     assert pat.Nnode == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True

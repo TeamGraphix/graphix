@@ -17,7 +17,7 @@ class TensorNetworkBackend(Backend):
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="auto", **kwargs):
+    def __init__(self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, **kwargs):
         """
 
         Parameters
@@ -34,8 +34,14 @@ class TensorNetworkBackend(Backend):
                 In this strategy, All N and E commands executed sequentially.
             'auto'(default) :
                 Automatically select a preparation strategy based on the max degree of a graph
+        input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
+        if input_state != BasicStates.PLUS:
+            raise NotImplementedError(
+                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
+            )
+        self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
         if graph_prep in ["parallel", "sequential"]:
@@ -67,13 +73,10 @@ class TensorNetworkBackend(Backend):
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
-    def initial_state(self):
-        return self
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes)
 
-    def prepare_state(self, nodes, data):
-        self.add_nodes(nodes=nodes)
-
-    def add_nodes(self, nodes, data=None):
+    def add_nodes(self, nodes):
         """Add nodes to the network
 
         Parameters

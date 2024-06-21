@@ -4,7 +4,6 @@ import collections
 import functools
 import numbers
 import typing
-import warnings
 from copy import deepcopy
 
 import numpy as np
@@ -14,17 +13,8 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
-from graphix.sim.base_backend import Backend, NodeIndex
-from graphix.sim.base_backend import State as BackendState
-from graphix.states import State
-
-# Python >= 3.9
-# from collections.abc import Iterable # or use Protocols?
-# https://stackoverflow.com/questions/49427944/typehints-for-sized-iterable-in-python
-# Python >= 3.8
-# typing.Iterable[T]
 
 
 class StatevectorBackend(Backend):
@@ -51,31 +41,31 @@ SWAP_TENSOR = np.array(
 class Statevec(BackendState):
     """Statevector object"""
 
-    # TODO at this stage no need for indices just be careful of the ordering in add_nodes
     def __init__(
         self,
-        data: typing.Union[
-            graphix.states.State, "Statevec", typing.Iterable[graphix.states.State], typing.Iterable[numbers.Number]
-        ] = graphix.states.BasicStates.PLUS,
-        nqubit: typing.Optional[graphix.types.PositiveInt] = None,
+        data: Data = graphix.states.BasicStates.PLUS,
+        nqubit: graphix.types.PositiveOrNullInt | None = None,
     ):
-        """Initialize statevector
+        """Initialize statevector objects. The behaviour is as follows. `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of scalars (A 2**n numerical statevector)
+        - a `graphix.statevec.Statevec` object
 
-        Parameters
-        ----------
-        data : is either
-            - a single state (:class:`graphix.states.State` object). THen prepares all nodes in that state (tensor product)
-            - a dictionary mapping the inputs to a :class:`graphix.states.State` object
-            - an arbitrary :class:`graphix.statevec.Statevec` object (arbitrary input) # TODO work on that since just copy?
-        nqubit : int, optional: ignored if iterable passed (State, direct data)
-            number of qubits. Defaults to 1.
-        # plus_states : bool, optional
-            whether or not to start all qubits in + state or 0 state. Defaults to +
+        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
+        in the tensor product state.
+        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
+        If a `graphix.statevec.Statevec` is passed, returns a copy.
 
-        Defaults to |+> states and 1 qubit.
-        If nqubit > 1 and only one state : tensor all of them. Use the tensor method instead of hard code.
+
+        :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
+        :type data: Data, optional
+        :param nqubit: number of qubits to prepare, defaults to None
+        :type nqubit: int, optional
         """
-        pydantic.TypeAdapter(typing.Optional[graphix.types.PositiveInt]).validate_python(nqubit)
+
+        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
@@ -90,7 +80,7 @@ class Statevec(BackendState):
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
-        elif isinstance(data, typing.Iterable):
+        elif isinstance(data, collections.abc.Iterable):
             input_list = list(data)
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}")
@@ -99,15 +89,15 @@ class Statevec(BackendState):
             if nqubit is not None and nqubit != 0:
                 raise ValueError("nqubit is not null but input state is empty.")
 
-            # warnings.warn(f"Called Statevec with 0 qubits. Ignoring the state.")
             self.psi = np.array(1, dtype=np.complex128)
+
         else:
             if isinstance(input_list[0], graphix.states.State):
                 graphix.types.check_list_elements(input_list, graphix.states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
-                    raise ValueError("Mismatch between nqubit and length of input state")
+                    raise ValueError("Mismatch between nqubit and length of input state.")
                 list_of_sv = [s.get_statevector() for s in input_list]
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape
@@ -124,8 +114,6 @@ class Statevec(BackendState):
                 psi = np.array(input_list)
                 if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
                     raise ValueError("Input state is not normalized")
-                # just reshape
-                # NOTE too many conversions to numpy arrays?
                 self.psi = psi.reshape((2,) * nqubit)
             else:
                 raise TypeError(
@@ -203,8 +191,7 @@ class Statevec(BackendState):
         evals, evecs = np.linalg.eig(rho)  # back to statevector
         # NOTE works since only one 1 in the eigenvalues corresponding to the state
         # TODO use np.eigh since rho is Hermitian?
-        psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
-        self.psi = psi
+        self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     def remove_qubit(self, qarg) -> None:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
@@ -278,8 +265,6 @@ class Statevec(BackendState):
         psi_self = self.psi.flatten()
         psi_other = other.psi.flatten()
 
-        # NOTE on tensor form not vector
-        # deprecated
         total_num = len(self.dims()) + len(other.dims())
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
@@ -362,3 +347,20 @@ class Statevec(BackendState):
 def _get_statevec_norm(psi):
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
+
+
+## Python <3.10:
+## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
+## TypeError: 'ABCMeta' object is not subscriptable
+# Data = (
+#    graphix.states.State
+#    | Statevec
+#    | collections.abc.Iterable[graphix.states.State]
+#    | collections.abc.Iterable[numbers.Number]
+# )
+Data = typing.Union[
+    graphix.states.State,
+    Statevec,
+    typing.Iterable[graphix.states.State],
+    typing.Iterable[numbers.Number],
+]

@@ -18,16 +18,21 @@ def check_square(matrix: np.ndarray) -> bool:
     return True
 
 
+def truncate(s: str, max_length: int = 80, ellipsis: str = "...") -> str:
+    "Auxilliary function to truncate a long string for formatting error messages."
+    if len(s) <= max_length:
+        return s
+    return s[: max_length - len(ellipsis)] + ellipsis
+
+
 def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     """
     check if a density matrix is positive semidefinite by diagonalizing.
-    After check_square and check_hermitian (osef) so that it already is square with power of 2 dimension.
-
 
     Parameters
     ----------
     matrix : np.ndarray
-        matrix to check. Normally already square and 2**n x 2**n
+        matrix to check
     tol : float
         tolerance on the small negatives. Default 1e-15.
     """
@@ -35,7 +40,7 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     evals = np.linalg.eigvalsh(matrix)
 
     if not all(evals >= -tol):
-        raise ValueError("The matrix is not positive semi-definite.")
+        raise ValueError("The matrix {truncate(str(matrix))} is not positive semi-definite.")
 
     return True
 
@@ -70,7 +75,6 @@ def check_data_normalization(data: Union[list, tuple, np.ndarray]) -> bool:
 
 
 def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
-
     # convert to set to remove duplicates
     dims = set([i["operator"].shape for i in data])
 
@@ -85,7 +89,6 @@ def check_data_dims(data: Union[list, tuple, np.ndarray]) -> bool:
 
 
 def check_data_values_type(data: Union[list, tuple, np.ndarray]) -> bool:
-
     if not all(
         isinstance(i, dict) for i in data
     ):  # ni liste ni ensemble mais iterable (lazy) pas stocké, executé au besoin

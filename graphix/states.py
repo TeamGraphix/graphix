@@ -5,6 +5,7 @@ quantum states and operators
 import abc
 
 import numpy as np
+import numpy.typing as npt
 import pydantic
 
 import graphix.pauli
@@ -12,20 +13,21 @@ import graphix.pauli
 
 # generic class State for all States
 class State(abc.ABC):
-    """Abstract base class for states objects.
+    """Abstract base class for single qubit states objects.
     Only requirement for concrete classes is to have
     a get_statevector() method that returns the statevector
     representation of the state
     """
 
     @abc.abstractmethod
-    def get_statevector(self) -> np.ndarray:
+    def get_statevector(self) -> npt.NDArray:
         pass
 
+    def get_densitymatrix(self) -> npt.NDArray:
+        # return DM in 2**n x 2**n dim (2x2 here)
+        return np.outer(self.get_statevector(), self.get_statevector().conj())
 
-# don't turn it into Statevec here
-# Weird not to allow all states?
-# Made it inherit from more generic State class.
+
 class PlanarState(pydantic.BaseModel, State):
     """Light object used to instantiate backends.
     doesn't cover all possible states but this is
@@ -44,10 +46,10 @@ class PlanarState(pydantic.BaseModel, State):
     plane: graphix.pauli.Plane
     angle: float
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
-    def get_statevector(self) -> np.ndarray:
+    def get_statevector(self) -> npt.NDArray:
         if self.plane == graphix.pauli.Plane.XY:
             return np.array([1, np.exp(1j * self.angle)]) / np.sqrt(2)
 
@@ -71,16 +73,3 @@ class BasicStates:
     # remove that in the end
     # need in TN backend
     VEC = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
-
-
-# Plane.cos.value Plane.cos is an Axis, Axis.value = 0,1,2 (enum)
-
-# Everywhere this is called. use StateVec(State))
-# class States:
-#     plus = np.array([1.0 / np.sqrt(2), 1.0 / np.sqrt(2)])  # plus
-#     minus = np.array([1.0 / np.sqrt(2), -1.0 / np.sqrt(2)])  # minus
-#     zero = np.array([1.0, 0.0])  # zero
-#     one = np.array([0.0, 1.0])  # one
-#     iplus = np.array([1.0 / np.sqrt(2), 1.0j / np.sqrt(2)])  # +1 eigenstate of Pauli Y
-#     iminus = np.array([1.0 / np.sqrt(2), -1.0j / np.sqrt(2)])  # -1 eigenstate of Pauli Y
-#     vec = [plus, minus, zero, one, iplus, iminus]
