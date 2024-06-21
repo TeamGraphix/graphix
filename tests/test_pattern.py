@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 from numpy.random import PCG64, Generator
 
 
-class TestPattern():
+class TestPattern:
     # this fails without behaviour modification
     def test_manual_generation(self) -> None:
         pattern = Pattern()
@@ -313,7 +313,7 @@ def swap(circuit: Circuit, a: int, b: int) -> None:
     circuit.cnot(a, b)
 
 
-class TestLocalPattern():
+class TestLocalPattern:
     @pytest.mark.parametrize(
         "test",
         [

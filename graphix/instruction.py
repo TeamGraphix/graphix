@@ -3,9 +3,10 @@ from typing import List, Tuple
 
 import enum
 from graphix.pauli import Plane
+import abc
 
 
-class InstructionKind(str, enum.Enum):
+class InstructionKind(enum.Enum):
     XC = "XC"
     ZC = "ZC"
     CCX = "CCX"
@@ -24,7 +25,7 @@ class InstructionKind(str, enum.Enum):
     RZ = "RZ"
 
 
-class Instruction(BaseModel):
+class Instruction(BaseModel, abc.ABC):
     """
     Circuit instruction base class model.
     """

@@ -1,7 +1,8 @@
+from __future__ import annotations
 from copy import deepcopy
-from typing import List, Tuple, Union
 
 import numpy as np
+import numpy.typing as npt
 
 from graphix.sim.base_backend import Backend
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
@@ -51,7 +52,7 @@ class StatevectorBackend(Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes: List[int]):
+    def add_nodes(self, nodes: list[int]):
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
@@ -68,7 +69,7 @@ class StatevectorBackend(Backend):
         self.node_index.extend(nodes)
         self.Nqubit += n
 
-    def entangle_nodes(self, edge: Tuple[int]):
+    def entangle_nodes(self, edge: tuple[int]):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -92,7 +93,7 @@ class StatevectorBackend(Backend):
         self.state.remove_qubit(loc)
         self.Nqubit -= 1
 
-    def correct_byproduct(self, cmd: Union[command.X, command.Z]):
+    def correct_byproduct(self, cmd: list[command.X, command.Z]):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
@@ -201,7 +202,7 @@ class Statevec:
     def __repr__(self):
         return f"Statevec, data={self.psi}, shape={self.dims()}"
 
-    def evolve_single(self, op: np.ndarray, i: int):
+    def evolve_single(self, op: npt.NDArray, i: int):
         """Single-qubit operation
 
         Parameters
@@ -214,7 +215,7 @@ class Statevec:
         self.psi = np.tensordot(op, self.psi, (1, i))
         self.psi = np.moveaxis(self.psi, 0, i)
 
-    def evolve(self, op: np.ndarray, qargs: List[int]):
+    def evolve(self, op: np.ndarray, qargs: list[int]):
         """Multi-qubit operation
 
         Parameters
@@ -306,7 +307,7 @@ class Statevec:
         self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
-    def entangle(self, edge: Tuple[int, int]):
+    def entangle(self, edge: tuple[int, int]):
         """connect graph nodes
 
         Parameters

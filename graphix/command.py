@@ -4,10 +4,11 @@ from pydantic import BaseModel
 from typing import Union, Literal, List, Tuple
 from graphix.pauli import Plane
 import enum
+import abc
 
 Node = int
 
-class CommandKind(str, enum.Enum):
+class CommandKind(enum.Enum):
     N = "N"
     M = "M"
     E = "E"
@@ -18,7 +19,7 @@ class CommandKind(str, enum.Enum):
     S = "S"
 
 
-class Command(BaseModel):
+class Command(BaseModel, abc.ABC):
     """
     Base command class.
     """
