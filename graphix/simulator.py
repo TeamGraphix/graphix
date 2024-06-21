@@ -83,12 +83,12 @@ class PatternSimulator:
             assert kwargs == dict()
             self.backend = backend
         elif backend == "statevector":
-            self.backend = graphix.sim.statevec.StatevectorBackend(pattern, **kwargs)
+            self.backend = graphix.sim.statevec.StatevectorBackend(**kwargs)
         elif backend == "densitymatrix":
-            self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pattern, **kwargs)
+            self.backend = graphix.sim.density_matrix.DensityMatrixBackend(**kwargs)
             if noise_model is None:
                 self.noise_model = None
-                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pattern, **kwargs)
+                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(**kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
                 )
@@ -96,7 +96,7 @@ class PatternSimulator:
                 self.set_noise_model(noise_model)
                 # if noise: have to compute the probabilities
                 # NOTE : could remove, pr_calc defaults to True now.
-                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pattern, pr_calc=True, **kwargs)
+                self.backend = graphix.sim.density_matrix.DensityMatrixBackend(pr_calc=True, **kwargs)
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
             self.backend = graphix.sim.tensornet.TensorNetworkBackend(pattern, **kwargs)

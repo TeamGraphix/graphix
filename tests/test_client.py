@@ -9,7 +9,6 @@ import graphix.pauli
 import tests.random_circuit as rc
 from graphix.client import Client, ClientMeasureMethod, Secrets
 from graphix.sim.statevec import Statevec, StatevectorBackend
-from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates, PlanarState
 
 
