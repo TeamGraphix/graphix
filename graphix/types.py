@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import annotated_types
 import typing_extensions
 

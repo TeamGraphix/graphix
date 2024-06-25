@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import galois
 import numpy as np
 import sympy as sp

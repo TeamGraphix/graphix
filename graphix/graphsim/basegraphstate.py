@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import sys
 from abc import ABC, abstractmethod
-from typing import Union
+from collections.abc import Iterator
 
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
@@ -22,9 +23,16 @@ except ModuleNotFoundError:
     rx = None
     PyGraph = None
 
-NodesObject = Union[nx_reportviews.NodeView, NodeList]
-EdgesObject = Union[nx_reportviews.EdgeView, EdgeList]
-GraphObject = Union[nx.Graph, PyGraph]
+if sys.version_info >= (3, 10):
+    NodesObject = nx_reportviews.NodeView | NodeList
+    EdgesObject = nx_reportviews.EdgeView | EdgeList
+    GraphObject = nx.Graph | PyGraph
+else:
+    from typing import Union
+
+    NodesObject = Union[nx_reportviews.NodeView, NodeList]
+    EdgesObject = Union[nx_reportviews.EdgeView, EdgeList]
+    GraphObject = Union[nx.Graph, PyGraph]
 
 
 class BaseGraphState(ABC):
@@ -62,14 +70,14 @@ class BaseGraphState(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def degree(self) -> iter[tuple[int, int]]:
+    def degree(self) -> Iterator[tuple[int, int]]:
         """Returns an iterator for (node, degree) tuples,
         where degree is the number of edges adjacent to the node
         """
         raise NotImplementedError
 
     @abstractmethod
-    def neighbors(self, node: int) -> iter:
+    def neighbors(self, node: int) -> Iterator:
         """Returns an iterator over all neighbors of node n.
 
         Parameters
@@ -120,7 +128,7 @@ class BaseGraphState(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def adjacency(self) -> iter:
+    def adjacency(self) -> Iterator:
         """Returns an iterator over (node, adjacency dict) tuples for all nodes.
 
         Returns

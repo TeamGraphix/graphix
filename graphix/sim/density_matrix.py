@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import collections
 import numbers
-import typing
+import sys
 from copy import deepcopy
 
 import numpy as np
@@ -439,22 +439,25 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         self.state.normalize()
 
 
-## Python <3.10:
-## TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'type'
-## TypeError: 'ABCMeta' object is not subscriptable
-# Data = (
-#    graphix.states.State
-#    | DensityMatrix
-#    | Statevec
-#    | collections.abc.Iterable[graphix.states.State]
-#    | collections.abc.Iterable[numbers.Number]
-#    | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]]
-# )
-Data = typing.Union[
-    graphix.states.State,
-    DensityMatrix,
-    Statevec,
-    typing.Iterable[graphix.states.State],
-    typing.Iterable[numbers.Number],
-    typing.Iterable[typing.Iterable[numbers.Number]],
-]
+if sys.version_info >= (3, 10):
+    from collections.abc import Iterable
+
+    Data = (
+        graphix.states.State
+        | DensityMatrix
+        | Statevec
+        | Iterable[graphix.states.State]
+        | Iterable[numbers.Number]
+        | Iterable[Iterable[numbers.Number]]
+    )
+else:
+    from typing import Iterable, Union
+
+    Data = Union[
+        graphix.states.State,
+        DensityMatrix,
+        Statevec,
+        Iterable[graphix.states.State],
+        Iterable[numbers.Number],
+        Iterable[Iterable[numbers.Number]],
+    ]

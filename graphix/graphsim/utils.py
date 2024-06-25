@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from networkx import Graph
 from networkx.utils import graphs_equal
 
