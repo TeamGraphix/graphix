@@ -20,10 +20,7 @@ try:
 
     RUSTWORKX_INSTALLED = True
 except ModuleNotFoundError:
-    # !!! INVALID !!!
-    # We cannot define "dynamic" type hints
     rx = None
-    # PyGraph is not regarded as a type hint here
     PyGraph = None
 
 if sys.version_info >= (3, 10):
