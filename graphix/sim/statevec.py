@@ -18,7 +18,7 @@ from graphix.ops import Ops
 from graphix import command
 
 
-class StatevectorBackend(Backend):
+class StatevectorBackend(graphix.sim.base_backend.Backend):
     """MBQC simulator with statevector method."""
 
     def __init__(

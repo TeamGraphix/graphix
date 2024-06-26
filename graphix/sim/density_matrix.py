@@ -434,8 +434,8 @@ class DensityMatrixBackend(Backend):
         ----------
             qargs : list of ints. Target qubits
         """
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        loc = self.node_index.index(cmd.node)
+        self.state.evolve_single(CLIFFORD[cmd.cliff_index], loc)
 
     def apply_channel(self, channel: KrausChannel, qargs):
         """backend version of apply_channel
