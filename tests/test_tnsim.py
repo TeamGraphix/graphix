@@ -10,8 +10,9 @@ from quimb.tensor import Tensor
 
 import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
-from graphix.ops import Ops, States
+from graphix.ops import Ops
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
+from graphix.states import BasicStates
 from graphix.transpiler import Circuit
 from graphix.command import X, Z, C, E
 
@@ -25,7 +26,7 @@ def random_op(sites: int, dtype: type, rng: Generator) -> npt.NDArray:
 
 
 CZ = Ops.cz
-plus = States.plus
+plus = BasicStates.PLUS.get_statevector()
 
 
 class TestTN:

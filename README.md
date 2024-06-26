@@ -12,7 +12,7 @@
 **Graphix** is a measurement-based quantum computing (MBQC) software package, featuring
 - the measurement calculus framework with integrated graphical rewrite rules for Pauli measurement preprocessing
 - circuit-to-pattern transpiler, graph-based deterministic pattern generator and manual pattern generation
-- flow- and gflow-based graph visualization tools
+- flow, gflow and pauliflow finding tools and graph visualization based on flows (see below)
 - statevector, density matrix and tensornetwork pattern simulation backends
 - QPU interface and fusion network extraction tool
 
@@ -52,7 +52,7 @@ pattern.draw_graph()
 ```
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="logo" width="140">
 
-<small>(here, the graph has [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
+<small>(here, the graph is visualized based on [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
 
 ### simulating the pattern
 ```python

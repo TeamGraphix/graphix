@@ -822,7 +822,7 @@ class Pattern:
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.N:
-                if not cmd.node in self.output_nodes:
+                if cmd.node not in self.output_nodes:
                     not_measured = not_measured | {cmd.node}
         depth = 0
         l_k = dict()
@@ -861,6 +861,7 @@ class Pattern:
         connected: set of tuple
                 set of connected edges
         """
+
         connected = set()
         for edge in edges:
             if edge[0] == node:
@@ -1164,10 +1165,10 @@ class Pattern:
             cmd = self.__seq[ind]
             while cmd.kind == command.CommandKind.E:
                 if cmd.nodes[0] == node:
-                    if not cmd.nodes[1] in prepared:
+                    if cmd.nodes[1] not in prepared:
                         node_list.append(cmd.nodes[1])
                 elif cmd.nodes[1] == node:
-                    if not cmd.nodes[0] in prepared:
+                    if cmd.nodes[0] not in prepared:
                         node_list.append(cmd.nodes[0])
                 ind += 1
                 cmd = self.__seq[ind]

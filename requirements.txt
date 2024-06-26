@@ -1,4 +1,4 @@
-numpy>=1.22,<1.26
+numpy>=1.22,<2
 networkx>3.0
 quimb>=1.4.0
 autoray>=0.6.0

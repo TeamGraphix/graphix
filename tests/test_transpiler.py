@@ -165,6 +165,6 @@ class TestTranspilerOpt:
             assert circuit_simulate.classical_measures[0] == (circuit_simulate.statevec.psi[0][1].imag > 0)
             return circuit_simulate.classical_measures[0]
 
-        nb_shots = 1000
+        nb_shots = 10000
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20

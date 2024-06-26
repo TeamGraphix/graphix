@@ -31,7 +31,7 @@ class ResourceGraph:
         Graph state of the cluster.
     """
 
-    def __init__(self, type: ResourceType, graph: GraphState = None):
+    def __init__(self, type: ResourceType, graph: GraphState | None = None):
         self.graph = graph
         self.type = type
 

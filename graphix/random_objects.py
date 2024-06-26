@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.linalg
 from scipy.stats import unitary_group
 
@@ -8,48 +9,48 @@ from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 
 
-def rand_herm(l: int):
+def rand_herm(sz: int):
     """
-    generate random hermitian matrix of size l*l
+    generate random hermitian matrix of size sz*sz
     """
-    tmp = np.random.rand(l, l) + 1j * np.random.rand(l, l)
+    tmp = np.random.rand(sz, sz) + 1j * np.random.rand(sz, sz)
     return tmp + tmp.conj().T
 
 
-def rand_unit(l: int):
+def rand_unit(sz: int):
     """
-    generate haar random unitary matrix of size l*l
+    generate haar random unitary matrix of size sz*sz
     """
-    if l == 1:
+    if sz == 1:
         return np.array([np.exp(1j * np.random.rand(1) * 2 * np.pi)])
     else:
-        return unitary_group.rvs(l)
+        return unitary_group.rvs(sz)
 
 
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rank: int = None, dm_dtype=True) -> DensityMatrix:
-    """Returns a "density matrix" as a DensityMatrix object ie a positive-semidefinite (hence Hermitian) matrix with unit trace
-    Note, not a proper DM since its dim can be something else than a power of 2.
-    The rank is random between 1 (pure) and dim if not specified
-    Thanks to Ulysse Chabaud.
+def rand_dm(dim: int, rank: int | None = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
+    """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
+    Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 
     :param dim: Linear dimension of the (square) matrix
     :type dim: int
-    :param rank: If rank not specified then random between 1 and matrix dimension
-        If rank is one : then pure state else mixed state. Defaults to None
+    :param rank: Rank of the density matrix (1 = pure state). If not specified then sent to dim (maximal rank).
+        Defaults to None
     :type rank: int, optional
-    :param dm_dtype: If True returns a :class:`graphix.sim.density_matrix.DensityMatrix` or a numpy.ndarray if False. Defaults to True.
+    :param dm_dtype: If `True` returns a :class:`graphix.sim.density_matrix.DensityMatrix` object. If `False`returns a :class:`np.ndarray`
     :type dm_dtype: bool, optional
-    :return: Random density matrix as a :class:`graphix.sim.density_matrix.DensityMatrix` object or a numpy.ndarray.
-    :rtype: :class:`graphix.sim.density_matrix.DensityMatrix` or numpy.ndarray.
-
+    :return: the density matrix in the specified format.
+    :rtype: DensityMatrix | np.ndarray
+    .. note::
+        Thanks to Ulysse Chabaud.
+    .. warning::
+        Note that setting `dm_dtype=False` allows to generate "density matrices" inconsistent with qubits i.e. with dimensions not being powers of 2.
     """
 
-    # if not provided, use a random value.
     if rank is None:
-        rank = np.random.randint(1, dim + 1)
+        rank = dim
 
     evals = np.random.rand(rank)
 
@@ -68,7 +69,7 @@ def rand_dm(dim: int, rank: int = None, dm_dtype=True) -> DensityMatrix:
         return dm
 
 
-def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
+def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
     """
     Returns a square array of standard normal complex random variates.
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
@@ -89,7 +90,7 @@ def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
     return np.sum(np.random.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
 
 
-def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
+def rand_channel_kraus(dim: int, rank: int | None = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
     """
     Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
@@ -128,7 +129,7 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 
 # or merge with previous with a "pauli" kwarg?
 ### continue here
-def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
+def rand_Pauli_channel_kraus(dim: int, rank: int | None = None) -> KrausChannel:
     if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
 

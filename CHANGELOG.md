@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-## [0.2.13] - 2024-05-24
+## [0.2.16] - 2024-05-24
 
 ### Added
 
@@ -26,7 +26,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Made all the updates inside the files making use of the commands and instructions list representation. According to the API, the user cannot write `pattern.add(["M", 0, "XY", 0, [], []])` anymore but should write `pattern.add(M(node=0))` for instance.
 
-## [0.2.12] - 2024-05-11
+
+
+## [0.2.15]
+### Added
+- python 3.12 support
+- Arbitrary states now allowed for initializing input nodes in state vector
+  and density matrix backends. use `input_state` optional argument in `Statevector` and `DensityMatrix` backends.
+- Simple planar state class `graphix.states.PlanarState` for states on one of the three planes (XY, XZ, YZ).
+
+### Fixed
+
+### Changed
+- Basic states such as |0>, |+> states are now defined in `states.BasicStates` and no longer
+  in `ops.States`.
+
+
+## [0.2.14] - 2024-05-11
 
 ### Added
 
@@ -52,6 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Patterns are now allowed to measure all their nodes, and have an
   empty output set.
 - Completely migrated to pytest, no `unittest` usage remains (#134)
+
+## [0.2.12, 0.2.13] - pypi build failed, not available in `pip`
+
+- 0.2.12 yanked on `pypi`
 
 ## [0.2.11] - 2024-03-16
 

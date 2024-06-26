@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
 
@@ -16,9 +18,9 @@ class RXGraphState(BaseGraphState):
 
     def __init__(
         self,
-        nodes: list[int] = None,
-        edges: list[tuple[int, int]] = None,
-        vops: dict[int, int] = None,
+        nodes: list[int] | None = None,
+        edges: list[tuple[int, int]] | None = None,
+        vops: dict[int, int] | None = None,
     ):
         """
         Parameters
@@ -54,7 +56,7 @@ class RXGraphState(BaseGraphState):
     def graph(self) -> rx.PyGraph:
         return self._graph
 
-    def degree(self) -> iter[tuple[int, int]]:
+    def degree(self) -> Iterator[tuple[int, int]]:
         ret = []
         for n in self.nodes:
             nidx = self.nodes.get_node_index(n)
@@ -62,7 +64,7 @@ class RXGraphState(BaseGraphState):
             ret.append((n, degree))
         return iter(ret)
 
-    def neighbors(self, node) -> iter:
+    def neighbors(self, node) -> Iterator:
         nidx = self.nodes.get_node_index(node)
         return iter(self._graph.neighbors(nidx))
 
@@ -79,7 +81,7 @@ class RXGraphState(BaseGraphState):
         vidx = self.nodes.get_node_index(v)
         return len(self._graph.get_all_edge_data(uidx, vidx))
 
-    def adjacency(self) -> iter:
+    def adjacency(self) -> Iterator:
         ret = []
         for n in self.nodes:
             nidx = self.nodes.get_node_index(n)

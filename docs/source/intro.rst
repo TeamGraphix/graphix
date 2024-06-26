@@ -3,7 +3,7 @@ Introduction to MBQC
 
 Here, we provide an introduction to the measurement-based quantum computing (MBQC), more specifically the one-way model of MBQC.
 
-If you already know the basics of MBQC and would like to read about LC-MBQC (MBQC on local-Clifford decorated graph state), go to :doc:`lc-mbqc`. We assume basic understnding of quantum mechanics.
+If you already know the basics of MBQC and would like to read about LC-MBQC (MBQC on local-Clifford decorated graph state), go to :doc:`lc-mbqc`. We assume basic understnding of quantum mechanics. Backens et al. [#backens]_ includes the general framework of MBQC with LC-decorated graph states, on which the idea of pattern-based MBQC with LC is based on.
 
 For those new to quantum mechanics and quantum information, `qiskit provides a nice introduction <https://qiskit.org/textbook/ch-states/introduction.html>`_ (chapters 0-2 of the their textbook would be sufficient to understand our introduction here).
 
@@ -197,6 +197,8 @@ In the following page (:doc:`lc-mbqc`), we will further optimize the measurement
 
 References and footnotes
 ------------------------
+
+.. [#backens] Backens `et al.`, `Quantum 5, 421 (2021) <https://arxiv.org/abs/2003.01664>`_.
 
 .. [#gktheorem] For example, we know that `a certain type of quantum gates are not so essential for quantum computations (efficiently simulatable on classical computers) <https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`_. However, in gate sequences these 'classical' parts are interleaved with 'quantum' parts of the algorithm. In fact, by translating the problem into MBQC, one can classically preprocess such a part - see :doc:`lc-mbqc`.
 

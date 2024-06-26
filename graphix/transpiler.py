@@ -7,12 +7,14 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import Optional, Sequence, List, Tuple
+
 import numpy as np
 
 import graphix.pauli
 import graphix.sim.base_backend
+import graphix.sim.statevec
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
@@ -43,8 +45,8 @@ class SimulateResult:
     classical_measures : tuple[int,...], classical measures
     """
 
-    statevec: Statevec
-    classical_measures: Tuple[int, ...]
+    statevec: graphix.sim.statevec.Statevec
+    classical_measures: tuple[int, ...]
 
 
 @dataclasses.dataclass
@@ -1649,8 +1651,8 @@ class Circuit:
             elif cmd.nodes in old_out:
                 cmd.nodes = output_nodes[old_out.index(cmd.nodes)]
 
-    def simulate_statevector(self, input_state: Optional[Statevec] = None) -> SimulateResult:
-        """Run statevector simultion of the gate sequence, using graphix.Statevec
+    def simulate_statevector(self, input_state: graphix.sim.statevec.Data | None = None) -> SimulateResult:
+        """Run statevector simulation of the gate sequence, using graphix.Statevec
 
         Parameters
         ----------
@@ -1663,9 +1665,9 @@ class Circuit:
         """
 
         if input_state is None:
-            state = Statevec(nqubit=self.width)
+            state = graphix.sim.statevec.Statevec(nqubit=self.width)
         else:
-            state = input_state
+            state = graphix.sim.statevec.Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
 

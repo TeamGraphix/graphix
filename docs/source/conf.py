@@ -22,6 +22,7 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
     "sphinx_gallery.gen_gallery",
+    "sphinxawesome_theme.highlighting",
 ]
 
 templates_path = ["_templates"]
@@ -45,14 +46,24 @@ def setup(app):
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+html_theme = "furo"
 
-html_theme = "sphinx_rtd_theme"
-# html_theme = 'pydata_sphinx_theme'
+html_title = " "  # title for documentation (shown in sidebar, kept empty)
+
 html_static_path = ["_static"]
-html_logo = "../logo/white_with_text.png"
+
+html_context = {
+    "mode": "production",
+}
+
+# code highlighting for light and dark themes
+pygments_style = "sphinx"
+pygments_dark_style = "monokai"
+
+# customizing theme options
 html_theme_options = {
-    "logo_only": True,
-    "display_version": False,
+    "light_logo": "black_with_name.png",
+    "dark_logo": "white_with_text.png",
 }
 
 sphinx_gallery_conf = {
@@ -62,18 +73,4 @@ sphinx_gallery_conf = {
     "gallery_dirs": ["gallery"],
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
-}
-html_context = {
-    "css_files": [
-        "_static/basic.css",
-        "_static/pygments.css",
-        "_static/sg_gallery-binder.css",
-        "_static/sg_gallery-dataframe.css",
-        "_static/sg_gallery-rendered-html.css",
-        "_static/sg_gallery.css",
-        "_static/css/badge_only.css",
-        "_static/css/theme.css",
-        "_static/css/my_theme.css",
-        "_static/css/custom.css",
-    ],
 }

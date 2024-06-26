@@ -3,7 +3,7 @@ MBQC pattern generator
 
 """
 
-import numpy as np
+from __future__ import annotations
 
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern

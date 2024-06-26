@@ -1,4 +1,4 @@
-import typing
+from __future__ import annotations
 
 import numpy as np
 
@@ -7,7 +7,7 @@ import graphix.command
 import graphix.pauli
 
 
-def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> np.ndarray:
+def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):

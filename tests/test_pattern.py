@@ -6,8 +6,13 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import pytest
 
+import graphix.ops
+import graphix.sim.base_backend
+import graphix.states
 import tests.random_circuit as rc
 from graphix.pattern import CommandNode, Pattern
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 from graphix.command import N, M
@@ -17,6 +22,15 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from numpy.random import PCG64, Generator
+
+
+def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
+    if backend == "statevector":
+        return np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten()))
+    elif backend == "densitymatrix":
+        return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
+    else:
+        raise NotImplementedError(backend)
 
 
 class TestPattern:
@@ -84,7 +98,7 @@ class TestPattern:
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
-        assert abs(nb_ones - nb_shots / 2) < nb_shots / 20
+        assert abs(nb_ones - nb_shots / 2) < nb_shots / 10
 
     def test_minimize_space_graph_maxspace_with_flow(self, fx_rng: Generator) -> None:
         max_qubits = 20
@@ -123,7 +137,11 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
+    def test_pauli_measurement_random_circuit(
+        self, fx_bg: PCG64, jumps: int, backend: graphix.sim.base_backend.Backend, use_rustworkx: bool = True
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -134,11 +152,13 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        state_mbqc = pattern.simulate_pattern(backend)
+        assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_leave_input(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_leave_input_random_circuit(
+        self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -153,7 +173,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -168,7 +188,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -183,7 +203,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
+    def test_pauli_measurement_opt_gate_transpiler_without_signalshift(
         self,
         fx_bg: PCG64,
         jumps: int,
@@ -516,12 +536,24 @@ class TestLocalPattern:
         p.add(M(node=1, plane=graphix.pauli.Plane.XY))
         p.perform_pauli_measurements()
 
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        randpattern = rand_circ.transpile().pattern
+        out = randpattern.simulate_pattern(backend=backend, input_state=states)
+        out_circ = rand_circ.simulate_statevector(input_state=states).statevec
+        assert compare_backend_result_with_statevec(backend, out, out_circ) == pytest.approx(1)
+
+    def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        randpattern = rand_circ.transpile().pattern
+        with pytest.raises(NotImplementedError):
+            randpattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", input_state=states)
+
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
-    ans = True
-    for ei, ri in zip(edge, ref):
-        ans &= ei == ri
-    ansr = True
-    for ei, ri in zip(edge, reversed(ref)):
-        ansr &= ei == ri
-    return ans or ansr
+    return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))

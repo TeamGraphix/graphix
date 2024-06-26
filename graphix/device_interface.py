@@ -4,6 +4,8 @@ Runs MBQC command sequence on quantum hardware.
 
 """
 
+from __future__ import annotations
+
 
 class PatternRunner:
     """MBQC pattern runner

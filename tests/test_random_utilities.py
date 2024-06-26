@@ -38,7 +38,6 @@ class TestUtilities:
         assert np.allclose(tmp.conj().T @ tmp, np.eye(d), atol=1e-15)
 
     def test_random_channel_success(self, fx_rng: Generator) -> None:
-
         nqb = int(fx_rng.integers(1, 5))
         dim = 2**nqb  # fx_rng.integers(2, 8)
 
@@ -63,7 +62,6 @@ class TestUtilities:
         assert channel.is_normalized
 
     def test_random_channel_fail(self) -> None:
-
         # incorrect rank type
         with pytest.raises(TypeError):
             _ = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
@@ -73,7 +71,6 @@ class TestUtilities:
             _ = randobj.rand_channel_kraus(dim=2**2, rank=0)
 
     def test_rand_gauss_cpx(self, fx_rng: Generator) -> None:
-
         nsample = int(1e4)
 
         dim = fx_rng.integers(2, 20)
@@ -84,7 +81,6 @@ class TestUtilities:
         assert next(iter(dimset)) == (dim, dim)
 
     def test_check_psd_success(self, fx_rng: Generator) -> None:
-
         # Generate a random mixed state from state vectors with same probability
         # We know this is PSD
 
@@ -104,14 +100,13 @@ class TestUtilities:
         assert check_psd(dm)
 
     def test_check_psd_fail(self, fx_rng: Generator) -> None:
-
         # not hermitian
         # don't use dim = 2, too easy to have a PSD matrix.
         # NOTE useless test since eigvalsh treats the matrix as hermitian and takes only the L or U part
 
-        l = fx_rng.integers(5, 20)
+        lst = fx_rng.integers(5, 20)
 
-        mat = fx_rng.uniform(size=(l, l)) + 1j * fx_rng.uniform(size=(l, l))
+        mat = fx_rng.uniform(size=(lst, lst)) + 1j * fx_rng.uniform(size=(lst, lst))
 
         # eigvalsh doesn't raise a LinAlgError since just use upper or lower part of the matrix.
         # instead Value error
@@ -119,7 +114,7 @@ class TestUtilities:
             check_psd(mat)
 
         # hermitian but not positive eigenvalues
-        mat = randobj.rand_herm(l)
+        mat = randobj.rand_herm(lst)
 
         with pytest.raises(ValueError):
             check_psd(mat)
@@ -140,7 +135,6 @@ class TestUtilities:
             _ = randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1)
 
     def test_rand_dm_rank(self, fx_rng: Generator) -> None:
-
         rk = 3
         dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk)
 
@@ -168,7 +162,6 @@ class TestUtilities:
         assert np.all(dims == (2**nqb, 2**nqb))
 
     def test_pauli_tensor_ops_fail(self, fx_rng: Generator) -> None:
-
         with pytest.raises(TypeError):
             _ = Ops.build_tensor_Pauli_ops(fx_rng.integers(2, 6) + 0.5)
 
@@ -176,7 +169,6 @@ class TestUtilities:
             _ = Ops.build_tensor_Pauli_ops(0)
 
     def test_random_pauli_channel_success(self, fx_rng: Generator) -> None:
-
         nqb = int(fx_rng.integers(2, 6))
         rk = int(fx_rng.integers(1, 2**nqb + 1))
         pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank

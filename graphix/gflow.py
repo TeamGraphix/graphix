@@ -224,7 +224,7 @@ def find_flow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, graphix.pauli.Plane] = None,
+    meas_planes: dict[int, graphix.pauli.Plane] | None = None,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Causal flow finding algorithm
 
