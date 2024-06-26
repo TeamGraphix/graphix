@@ -2,7 +2,10 @@
 ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
+from dataclasses import dataclass
 
 import networkx as nx
 import numpy as np
@@ -11,8 +14,19 @@ from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
+from graphix.pauli import Plane
 from graphix.simulator import PatternSimulator
+from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
+
+
+@dataclass
+class MeasureParameters:
+    plane: Plane
+    angle: float
+    s_domain: list[int]
+    t_domain: list[int]
+    vop: int
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1278,7 +1292,7 @@ class Pattern:
                 N_list.append(nodes)
         return N_list
 
-    def simulate_pattern(self, backend="statevector", **kwargs):
+    def simulate_pattern(self, backend="statevector", input_state=BasicStates.PLUS, **kwargs):
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
@@ -1298,8 +1312,8 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        state = sim.run()
-        return state
+        backend = sim.run(input_state)
+        return backend.state
 
     def run_pattern(self, backend, **kwargs):
         """run the pattern on cloud-based quantum devices and their simulators.
@@ -1424,6 +1438,69 @@ class Pattern:
             for command in self.__seq:
                 for line in cmd_to_qasm3(command):
                     file.write(line)
+
+    def get_measurement_db(self):
+        """
+        Builds and returns a dictionary containing the information about the measurement of any node to be measured
+        """
+        measurement_db = dict()
+        for cmd in self:
+            if cmd[0] == "M":
+                node = cmd[1]
+                plane = Plane[cmd[2]]
+                angle = cmd[3] * np.pi
+                s_domain = cmd[4]
+                t_domain = cmd[5]
+                if len(cmd) == 7:
+                    vop = cmd[6]
+                else:
+                    vop = 0
+                measurement_db[node] = MeasureParameters(plane, angle, s_domain, t_domain, vop)
+        return measurement_db
+
+    def get_byproduct_db(self):
+        byproduct_db = dict()
+        for node in self.output_nodes:
+            byproduct_db[node] = {"z-domain": [], "x-domain": []}
+
+        for cmd in self:
+            if (cmd[0] == "Z" or cmd[0] == "X") and cmd[1] in self.output_nodes:
+                node = cmd[1]
+
+                if cmd[0] == "Z":
+                    byproduct_db[node]["z-domain"] = cmd[2]
+                if cmd[0] == "X":
+                    byproduct_db[node]["x-domain"] = cmd[2]
+        return byproduct_db
+
+    def remove_flow(self):
+        clean_pattern = Pattern(self.input_nodes)
+        for cmd in self:
+            # by default, copy the command
+            new_cmd = deepcopy(cmd)
+
+            # If measure, remove the s-domain and t-domain, vop
+            if cmd[0] == "M":
+                del new_cmd[2:]
+            # If byproduct, remove it so it's not done by the server
+            if cmd[0] != "X" and cmd[0] != "Z":
+                clean_pattern.add(new_cmd)
+        return clean_pattern
+
+    def get_prepared_nodes(self) -> set[int]:
+        prepared_nodes = set()
+        for cmd in self:
+            if cmd[0] == "N":
+                prepared_nodes.add(cmd[1])
+        return prepared_nodes
+
+    def prepared_nodes_as_input_nodes(self) -> Pattern:
+        prepared_nodes = self.get_prepared_nodes()
+        result = Pattern(self.input_nodes + list(prepared_nodes))
+        for cmd in self:
+            if cmd[0] != "N":
+                result.add(cmd)
+        return result
 
 
 class CommandNode:

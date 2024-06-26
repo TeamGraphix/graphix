@@ -74,25 +74,26 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
+        print(list(pattern))
         state_mbqc = pattern.simulate_pattern()
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
-    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(self, backend: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
+    @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
+    def test_empty_output_nodes(self, backend_type: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.add(["M", 0, "XY", 0.5, [], []])
 
         def simulate_and_measure():
-            sim = PatternSimulator(pattern, backend)
-            sim.run()
-            if backend == "statevector":
-                assert sim.state.dims() == ()
-            elif backend == "densitymatrix":
-                assert sim.state.dims() == (1, 1)
-            elif backend == "tensornetwork":
-                assert sim.state.to_statevector().shape == (1,)
-            return sim.results[0]
+            sim = PatternSimulator(pattern, backend_type)
+            backend = sim.run()
+            if backend_type == "statevector":
+                assert backend.state.dims() == ()
+            elif backend_type == "densitymatrix":
+                assert backend.state.dims() == (1, 1)
+            elif backend_type == "tensornetwork":
+                assert backend.state.to_statevector().shape == (1,)
+            return sim.measure_method.results[0]
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())

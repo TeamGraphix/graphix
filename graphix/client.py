@@ -17,7 +17,7 @@ from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.pauli import Plane
 from graphix.sim.base_backend import Backend
 from graphix.sim.base_backend import State as BackendState
-from graphix.simulator import PatternSimulator
+from graphix.simulator import MeasureMethod, PatternSimulator
 from graphix.states import BasicStates, PlanarState, State
 
 """
@@ -231,7 +231,7 @@ class TrappifiedCanvas:
 
 
 class Client:
-    def __init__(self, pattern, input_state=None, secrets=Secrets()):
+    def __init__(self, pattern, input_state=None, measure_method_cls=None, secrets=None):
         self.initial_pattern = pattern
 
         self.input_nodes = self.initial_pattern.input_nodes.copy()
@@ -241,26 +241,21 @@ class Client:
 
         # Copy the pauli-preprocessed nodes' measurement outcomes
         self.results = pattern.results.copy()
-        self.measure_method = ClientMeasureMethod(self)
+        if measure_method_cls is None:
+            measure_method_cls = ClientMeasureMethod
+        self.measure_method = measure_method_cls(self)
 
         self.measurement_db = pattern.get_measurement_db()
         self.byproduct_db = pattern.get_byproduct_db()
 
+        if secrets is None:
+            secrets = Secrets()
         self.secrets = SecretDatas.from_secrets(secrets, self.graph, self.input_nodes, self.output_nodes)
 
         pattern_without_flow = pattern.remove_flow()
-        self.clean_pattern = self.remove_prepared_nodes(pattern_without_flow)
+        self.clean_pattern = pattern_without_flow.prepared_nodes_as_input_nodes()
 
         self.input_state = input_state if input_state != None else [BasicStates.PLUS for _ in self.input_nodes]
-
-    def remove_prepared_nodes(self, pattern):
-        clean_pattern = graphix.Pattern(self.input_nodes)
-        for cmd in pattern:
-            if cmd[0] == "N":
-                clean_pattern.add_auxiliary_node(node=cmd[1])
-            else:
-                clean_pattern.add(cmd)
-        return clean_pattern
 
     def blind_qubits(self, backend: Backend) -> Backend:
         z_rotation = lambda theta: np.array([[1, 0], [0, np.exp(1j * theta * np.pi / 4)]])
@@ -331,7 +326,7 @@ class Client:
             )
 
         sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        backend = sim.run()
+        backend = sim.run(input_state=None)
 
         trap_outcomes = []
         for trap in run.traps_list:
@@ -344,9 +339,8 @@ class Client:
     def delegate_pattern(self, backend: Backend) -> tuple[Backend, PatternSimulator]:
         backend = self.prepare_states(backend)
         backend = self.blind_qubits(backend)
-
         sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        backend = sim.run()
+        backend = sim.run(input_state=None)
         backend = self.decode_output_state(backend)
         # returns the final state
         return backend, sim
@@ -375,11 +369,11 @@ class Client:
         return z_decoding, x_decoding
 
 
-class ClientMeasureMethod(graphix.simulator.MeasureMethod):
+class ClientMeasureMethod(MeasureMethod):
     def __init__(self, client: Client):
         self.__client = client
 
-    def get_measurement_description(self, cmd, results) -> graphix.simulator.MeasurementDescription:
+    def get_measurement_description(self, cmd) -> graphix.simulator.MeasurementDescription:
         node = cmd[1]
 
         parameters = self.__client.measurement_db[node]
@@ -402,7 +396,10 @@ class ClientMeasureMethod(graphix.simulator.MeasureMethod):
         return graphix.simulator.MeasurementDescription(measure_update.new_plane, angle)
         # return graphix.sim.base_backend.MeasurementDescription(measure_update.new_plane, angle)
 
-    def set_measure_result(self, node, result: bool) -> None:
+    def get_measure_result(self, node: int) -> bool:
+        raise ValueError("Server cannot have access to measurement results")
+
+    def set_measure_result(self, node: int, result: bool) -> None:
         if self.__client.secrets.r:
             result ^= self.__client.secrets.r[node]
         self.__client.results[node] = result

@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import typing
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -7,6 +10,13 @@ import graphix.pauli
 import graphix.states
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops
+from graphix.pauli import MeasureUpdate, Plane
+
+
+@dataclass
+class MeasurementDescription:
+    plane: Plane
+    angle: float
 
 
 class NodeIndex:
@@ -56,8 +66,26 @@ def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> 
     return op_mat
 
 
+def perform_measure(
+    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
+) -> bool:
+    vec = plane.polar(angle)
+    if pr_calc:
+        op_mat = op_mat_from_result(vec, False)
+        prob_0 = state.expectation_single(op_mat, qubit)
+        result = rng.random() > prob_0
+        if result:
+            op_mat = op_mat_from_result(vec, True)
+    else:
+        # choose the measurement result randomly
+        result = rng.choice([False, True])
+        op_mat = op_mat_from_result(vec, result)
+    state.evolve_single(op_mat, qubit)
+    return result
+
+
 class Backend:
-    def __init__(self, state: State, pr_calc: bool = True):
+    def __init__(self, state: State, pr_calc: bool = True, rng: np.random.Generator = None):
         """
         Parameters
         ----------
@@ -67,8 +95,13 @@ class Backend:
         """
         self.state = state
         self.node_index = NodeIndex()
+        if not isinstance(pr_calc, bool):
+            raise TypeError("`pr_calc` should be bool")
         # whether to compute the probability
-        self.pr_calc = pr_calc
+        self.__pr_calc = pr_calc
+        if rng is None:
+            rng = np.random.default_rng()
+        self.__rng = rng
 
     def with_changes(self, *, state: State | None = None, node_index: NodeIndex | None = None) -> Backend:
         result = self.__new__(self.__class__)
@@ -80,28 +113,9 @@ class Backend:
             result.node_index = self.node_index
         else:
             result.node_index = node_index
-        result.pr_calc = self.pr_calc
+        result.__pr_calc = self.__pr_calc
+        result.__rng = self.__rng
         return result
-
-    def _perform_measure(self, node, measurement_description) -> Backend:
-        # measurement_description = self.__measure_method.get_measurement_description(cmd, self.results)
-        vec = measurement_description.plane.polar(measurement_description.angle)
-        loc = self.node_index[node]
-        if self.pr_calc:
-            op_mat = op_mat_from_result(vec, False)
-            prob_0 = self.state.expectation_single(op_mat, loc)
-            result = np.random.rand() > prob_0
-            if result:
-                op_mat = op_mat_from_result(vec, True)
-        else:
-            # choose the measurement result randomly
-            result = np.random.choice([0, 1])
-            op_mat = op_mat_from_result(vec, result)
-        # self.__measure_method.set_measure_result(node, result)
-        new_state = self.state.copy()
-        new_state.evolve_single(op_mat, loc)
-        new_node_index = self.node_index.remove(node)
-        return self.with_changes(state=new_state, node_index=new_node_index), loc, result
 
     def add_nodes(self, nodes, data=graphix.states.BasicStates.PLUS) -> Backend:
         """add new qubit(s) to statevector in argument
@@ -131,24 +145,29 @@ class Backend:
         new_state.entangle((target, control))
         return self.with_changes(state=new_state)
 
-    def measure(self, node: int, measurement_description) -> Backend:
+    def measure(self, node: int, measurement_description: MeasurementDescription) -> Backend:
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
         ----------
-        cmd : list
-            measurement command : ['M', node, plane, angle, s_domain, t_domain]
+        node: int
+        measurement_description: MeasurementDescription
         """
-        backend, loc, result = self._perform_measure(node=node, measurement_description=measurement_description)
-        backend.state.remove_qubit(loc)
-        return backend, result
+        loc = self.node_index[node]
+        new_state = self.state.copy()
+        result = perform_measure(
+            loc, measurement_description.plane, measurement_description.angle, new_state, self.__rng, self.__pr_calc
+        )
+        new_node_index = self.node_index.remove(node)
+        new_state.remove_qubit(loc)
+        return self.with_changes(state=new_state, node_index=new_node_index), result
 
-    def correct_byproduct(self, results, cmd) -> Backend:
+    def correct_byproduct(self, cmd, measure_method) -> Backend:
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([results[j] for j in cmd[2]]), 2) == 1:
+        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd[2]]), 2) == 1:
             if cmd[0] == "X":
                 op = Ops.x
             elif cmd[0] == "Z":
@@ -187,3 +206,7 @@ class Backend:
     def finalize(self, output_nodes) -> Backend:
         """to be run at the end of pattern simulation."""
         return self.sort_qubits(output_nodes)
+
+    @property
+    def Nqubit(self) -> int:
+        return self.state.Nqubit

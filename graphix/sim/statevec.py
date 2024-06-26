@@ -10,11 +10,11 @@ import numpy as np
 import pydantic
 
 import graphix.pauli
-import graphix.sim.base_backend
 import graphix.states
 import graphix.types
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
+from graphix.sim.base_backend import Backend, State
 
 
 class StatevectorBackend(Backend):
@@ -38,7 +38,7 @@ SWAP_TENSOR = np.array(
 )
 
 
-class Statevec(BackendState):
+class Statevec(State):
     """Statevector object"""
 
     def __init__(

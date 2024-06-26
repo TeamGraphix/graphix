@@ -57,13 +57,15 @@ class NoiseModelTester(NoiseModel):
         """apply noise to qubit to be measured."""
         return depolarising_channel(self.measure_channel_prob)
 
-    def confuse_result(self, cmd: str) -> None:
+    def confuse_result(self, result: bool) -> bool:
         """assign wrong measurement result
         cmd = "M"
         """
 
         if self.rng.uniform() < self.measure_error_prob:
-            self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
+            return not result
+        else:
+            return result
 
     def byproduct_x(self) -> KrausChannel:
         """apply noise to qubits after X gate correction"""
@@ -130,7 +132,7 @@ class TestNoisyDensityMatrixBackend:
         # arbitrary probability
         measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
-;        res = hadamardpattern.simulate_pattern(
+        res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=NoiseModelTester(measure_error_prob=measure_error_pr),
         )

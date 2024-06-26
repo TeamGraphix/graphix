@@ -5,9 +5,10 @@ import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
+import graphix.clifford
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-from graphix.sim.base_backend import Backend
+from graphix.sim.base_backend import Backend, op_mat_from_result
 from graphix.states import BasicStates
 
 
@@ -37,10 +38,6 @@ class TensorNetworkBackend(Backend):
         input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
-        if input_state != BasicStates.PLUS:
-            raise NotImplementedError(
-                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
-            )
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
@@ -76,7 +73,7 @@ class TensorNetworkBackend(Backend):
         # initialize input qubits to desired init_state
         self.add_nodes(pattern.input_nodes)
 
-    def add_nodes(self, nodes):
+    def add_nodes(self, nodes, input_state=BasicStates.PLUS):
         """Add nodes to the network
 
         Parameters
@@ -84,6 +81,10 @@ class TensorNetworkBackend(Backend):
         nodes : iterator of int
             index set of the new nodes.
         """
+        if input_state != BasicStates.PLUS:
+            raise NotImplementedError(
+                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
+            )
         if self.graph_prep == "sequential":
             self.state.add_qubits(nodes)
         elif self.graph_prep == "opt":
@@ -133,46 +134,64 @@ class TensorNetworkBackend(Backend):
 
         Parameters
         ----------
-        node : int
-            node to measure
-        measurement_description : list
-            = cmd i.e. ['M', node, plane angle, s_domain, t_domain]
+        cmd : list
+            measurement command
+            i.e. ['M', node, plane angle, s_domain, t_domain]
         """
-        # TODO : change this behaviour
-        cmd = measurement_description
-        if cmd[1] in self._isolated_nodes:
-            vector = self.state.get_open_tensor_from_index(cmd[1])
+        if node in self._isolated_nodes:
+            vector = self.state.get_open_tensor_from_index(node)
             probs = np.abs(vector) ** 2
             probs = probs / (np.sum(probs))
             result = np.random.choice([0, 1], p=probs)
-            self.results[cmd[1]] = result
+            self.results[node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
             # choose the measurement result randomly
             result = np.random.choice([0, 1])
-            self.results[cmd[1]] = result
+            self.results[node] = result
             buffer = 2**0.5
-
-        # extract signals for adaptive angle
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
-        if int(s_signal % 2) == 1:
-            vop = CLIFFORD_MUL[1, vop]
-        if int(t_signal % 2) == 1:
-            vop = CLIFFORD_MUL[3, vop]
-        proj_vec = proj_basis(angle, vop=vop, plane=cmd[2], choice=result)
-
-        # buffer is necessary for maintaing the norm invariant
-        proj_vec = proj_vec * buffer
-        result = self.state.measure_single(cmd[1], basis=proj_vec)
+        vec = graphix.states.PlanarState(
+            plane=measurement_description.plane, angle=measurement_description.angle
+        ).get_statevector()
+        if result:
+            vec = measurement_description.plane.complement.op @ vec
+        proj_vec = vec * buffer
+        self.state.measure_single(node, basis=proj_vec)
         return self, result
 
-    def correct_byproduct(self, results, cmd):
+    #    def measure(self, node, measurement_description):
+    #        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
+    #        applying measurement operator to the tensor. Here, directly contracted with the projected state.
+    #
+    #        Parameters
+    #        ----------
+    #        node : int
+    #            node to measure
+    #        measurement_description : list
+    #            = cmd i.e. ['M', node, plane angle, s_domain, t_domain]
+    #        """
+    #        if node in self._isolated_nodes:
+    #            vector = self.state.get_open_tensor_from_index(node)
+    #            probs = np.abs(vector) ** 2
+    #            probs = probs / (np.sum(probs))
+    #            result = np.random.choice([0, 1], p=probs)
+    #            self.results[node] = result
+    #            buffer = 1 / probs[result] ** 0.5
+    #        else:
+    #            # choose the measurement result randomly
+    #            result = np.random.choice([0, 1])
+    #            self.results[node] = result
+    #            buffer = 2**0.5
+    #
+    #        # extract signals for adaptive angle
+    #        proj_vec = proj_basis(measurement_description.angle, vop=0, plane=measurement_description.plane.name, choice=result)
+    #
+    #        # buffer is necessary for maintaing the norm invariant
+    #        proj_vec = proj_vec * buffer
+    #        result = self.state.measure_single(node, basis=proj_vec)
+    #        return self, result
+
+    def correct_byproduct(self, cmd, measure_method):
         """Perform byproduct correction.
 
         Parameters
@@ -181,7 +200,7 @@ class TensorNetworkBackend(Backend):
             Byproduct command
             i.e. ['X' or 'Z', node, signal_domain]
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd[2]]), 2) == 1:
             if cmd[0] == "X":
                 self.state.evolve_single(cmd[1], Ops.x, "X")
             elif cmd[0] == "Z":
@@ -728,6 +747,7 @@ def proj_basis(angle, vop, plane, choice):
     numpy.ndarray :
         projected state
     """
+    assert plane == "XY"
     if plane == "XY":
         vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Rz(angle)
@@ -735,8 +755,13 @@ def proj_basis(angle, vop, plane, choice):
         vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
     elif plane == "XZ":
-        vec = States.VEC[0 + choice].get_statevector()
+        vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
+    if choice:
+        vec = np.array([1, np.exp(1j * np.pi)]) / np.sqrt(2)
+    else:
+        vec = np.array([1, np.exp(1j * 0)]) / np.sqrt(2)
+    rotU = np.array([[np.exp(-1j * angle / 2), 0], [0, np.exp(1j * angle / 2)]])
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
     return vec

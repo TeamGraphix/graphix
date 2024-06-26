@@ -13,9 +13,9 @@ with contextlib.suppress(ModuleNotFoundError):
 
 import graphix.clifford
 import graphix.pauli
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.graphsim.graphstate import GraphState
-from graphix.graphsim.utils import (convert_rustworkx_to_networkx,
-                                    is_graphs_equal)
+from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
@@ -38,6 +38,43 @@ def get_state(g) -> Statevec:
         if g.nodes[mapping[i]]["hollow"]:
             gstate.evolve_single(Ops.h, i)
     return gstate
+
+
+def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0):
+    """Returns the projection operator for given measurement angle and local Clifford op (VOP).
+
+    .. seealso:: :mod:`graphix.clifford`
+
+    Parameters
+    ----------
+    angle : float
+        original measurement angle in radian
+    vop : int
+        index of local Clifford (vop), see graphq.clifford.CLIFFORD
+    plane : 'XY', 'YZ' or 'ZX'
+        measurement plane on which angle shall be defined
+    choice : 0 or 1
+        choice of measurement outcome. measured eigenvalue would be (-1)**choice.
+
+    Returns
+    -------
+    op : numpy array
+        projection operator
+
+    """
+    assert vop in np.arange(24)
+    assert choice in [0, 1]
+    if plane == graphix.pauli.Plane.XY:
+        vec = (np.cos(angle), np.sin(angle), 0)
+    elif plane == graphix.pauli.Plane.YZ:
+        vec = (0, np.cos(angle), np.sin(angle))
+    elif plane == graphix.pauli.Plane.XZ:
+        vec = (np.cos(angle), 0, np.sin(angle))
+    op_mat = np.eye(2, dtype=np.complex128) / 2
+    for i in range(3):
+        op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
+    op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
+    return op_mat
 
 
 @pytest.mark.parametrize(

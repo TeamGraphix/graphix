@@ -35,6 +35,7 @@ print(out_state.flatten())
 
 from graphix.channels import KrausChannel, dephasing_channel
 from graphix.noise_models.noise_model import NoiseModel
+
 # %%
 # Now let us define a noise model. We specify Kraus channels for each of the command executions.
 # Here, we apply dephasing noise to the qubit preparation.

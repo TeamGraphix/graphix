@@ -6,9 +6,11 @@ import enum
 import typing
 
 import numpy as np
+import numpy.typing as npt
 import pydantic
 
 import graphix.clifford
+import graphix.ops
 
 
 class IXYZ(enum.Enum):
@@ -107,6 +109,15 @@ class Axis(enum.Enum):
     Y = 1
     Z = 2
 
+    @property
+    def op(self) -> npt.NDArray:
+        if self == Axis.X:
+            return graphix.ops.Ops.x
+        elif self == Axis.Y:
+            return graphix.ops.Ops.y
+        elif self == Axis.Z:
+            return graphix.ops.Ops.z
+
 
 class Plane(enum.Enum):
     XY = 0
@@ -128,6 +139,15 @@ class Plane(enum.Enum):
             return [Axis.Y, Axis.Z]
         elif self == Plane.XZ:
             return [Axis.X, Axis.Z]
+
+    @property
+    def complement(self) -> Axis:
+        if self == Plane.XY:
+            return Axis.Z
+        elif self == Plane.YZ:
+            return Axis.X
+        elif self == Plane.XZ:
+            return Axis.Y
 
     @property
     def cos(self) -> Axis:

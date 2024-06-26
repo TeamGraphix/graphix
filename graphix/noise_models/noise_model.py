@@ -29,9 +29,9 @@ class NoiseModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def confuse_result(self):
+    def confuse_result(self, result):
         """assign wrong measurement result"""
-        pass
+        return result
 
     @abc.abstractmethod
     def byproduct_x(self):

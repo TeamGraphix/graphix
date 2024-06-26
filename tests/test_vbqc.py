@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
 import graphix.client
 import graphix.gflow
@@ -16,13 +17,13 @@ from graphix.sim.statevec import StatevectorBackend
 from graphix.states import BasicStates
 
 
-class TestVBQC(unittest.TestCase):
+class TestVBQC:
 
-    def test_trap_delegated(self):
+    def test_trap_delegated(self, fx_rng: np.random.Generator):
         nqubits = 2
         depth = 2
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
+        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
         pattern.standardize()
         states = [BasicStates.PLUS for _ in pattern.input_nodes]
         secrets = graphix.client.Secrets(r=True, a=True, theta=True)
@@ -33,11 +34,11 @@ class TestVBQC(unittest.TestCase):
             _, trap_outcomes = client.delegate_test_run(backend=backend, run=run)
             assert trap_outcomes == [0 for _ in run.traps_list]
 
-    def test_stabilizer(self):
+    def test_stabilizer(self, fx_rng: np.random.Generator):
         nqubits = 2
         depth = 2
-        circuit = rc.get_rand_circuit(nqubits, depth)
-        pattern = circuit.transpile()
+        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
         pattern.standardize()
         nodes, edges = pattern.get_graph()[0], pattern.get_graph()[1]
         graph = nx.Graph()

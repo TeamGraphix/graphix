@@ -55,7 +55,7 @@ class TestTN:
         circuit = Circuit(2)
         pattern = circuit.transpile().pattern
         pattern.add(["E", (0, 1)])
-        tn = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern))
+        tn = pattern.simulate_pattern(backend="tensornetwork")
         dummy_index = [gen_str() for _ in range(2)]
         for qubit_index, n in enumerate(tn._dangling):
             ind = tn._dangling[n]
@@ -83,7 +83,7 @@ class TestTN:
         pattern.results[15] = 1  # X&Z operator will be applied.
         for cmd in cmds:
             pattern.add(cmd)
-        tn = pattern.simulate_pattern(backend=TensorNetworkBackend(pattern))
+        tn = pattern.simulate_pattern(backend="tensornetwork")
         dummy_index = gen_str()
         ind = tn._dangling.pop("0")
         tensor = tn.tensor_map[tn._get_tids_from_inds(ind).popleft()]

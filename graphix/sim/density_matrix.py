@@ -13,17 +13,17 @@ from copy import deepcopy
 import numpy as np
 import pydantic
 
-import graphix.sim.base_backend
 import graphix.states
 import graphix.types
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
+from graphix.sim.base_backend import Backend, State
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
 
-class DensityMatrix(BackendState):
+class DensityMatrix(State):
     """DensityMatrix object."""
 
     def __init__(
@@ -63,7 +63,6 @@ class DensityMatrix(BackendState):
             check_size_consistency(data)
             # safe: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.copy.html
             self.rho = data.rho.copy()
-            self.Nqubit = data.Nqubit
             return
         if isinstance(data, collections.abc.Iterable):
             input_list = list(data)

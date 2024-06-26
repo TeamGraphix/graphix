@@ -4,53 +4,71 @@ Simulates MBQC by executing the pattern.
 
 """
 
+import abc
+import collections
 import warnings
 
 import numpy as np
 
+import graphix.clifford
 from graphix.noise_models import NoiseModel
+from graphix.pauli import MeasureUpdate, Plane
+from graphix.sim.base_backend import Backend, MeasurementDescription, State
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
-
-from graphix.sim.base_backend import Backend, State
 from graphix.states import PlanarState
 
 
-@dataclasses.dataclass
-class MeasurementDescription:
-    plane: graphix.pauli.Plane
-    angle: float
-
-
 class MeasureMethod(abc.ABC):
+    def measure(self, backend: Backend, cmd, noise_model=None) -> Backend:
+        node = cmd[1]
+        description = self.get_measurement_description(cmd)
+        backend, result = backend.measure(node, description)
+        if noise_model is not None:
+            result = noise_model.confuse_result(result)
+        self.set_measure_result(node, result)
+        return backend
+
     @abc.abstractmethod
     def get_measurement_description(self, cmd) -> MeasurementDescription:
         ...
 
     @abc.abstractmethod
-    def set_measure_result(self, cmd, result: bool) -> None:
+    def get_measure_result(self, node: int) -> bool:
+        ...
+
+    @abc.abstractmethod
+    def set_measure_result(self, node: int, result: bool) -> None:
         ...
 
 
 class DefaultMeasureMethod(MeasureMethod):
-    def get_measurement_description(self, cmd, results) -> MeasurementDescription:
+    def __init__(self, results=None):
+        if results is None:
+            results = dict()
+        self.results = results
+
+    def get_measurement_description(self, cmd) -> MeasurementDescription:
         angle = cmd[3] * np.pi
         # extract signals for adaptive angle
-        s_signal = np.sum(results[j] for j in cmd[4])
-        t_signal = np.sum(results[j] for j in cmd[5])
+        s_signal = np.sum(self.results[j] for j in cmd[4])
+        t_signal = np.sum(self.results[j] for j in cmd[5])
         if len(cmd) == 7:
             vop = cmd[6]
         else:
             vop = 0
-        measure_update = graphix.pauli.MeasureUpdate.compute(
-            graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+        measure_update = MeasureUpdate.compute(
+            Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         return MeasurementDescription(measure_update.new_plane, angle)
 
-    def set_measure_result(self, node, result: bool) -> None:
-        pass
+    def get_measure_result(self, node: int) -> bool:
+        return self.results[node]
+
+    def set_measure_result(self, node: int, result: bool) -> None:
+        self.results[node] = result
 
 
 class PatternSimulator:
@@ -59,7 +77,9 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend="statevector", results=dict(), noise_model=None, measure_method=None, **kwargs):
+    def __init__(
+        self, pattern, backend="statevector", measure_method: MeasureMethod = None, noise_model=None, **kwargs
+    ):
         """
         Parameters
         -----------
@@ -78,22 +98,21 @@ class PatternSimulator:
         # check that pattern has output nodes configured
         # assert len(pattern.output_nodes) > 0
 
-        if isinstance(backend, graphix.sim.base_backend.Backend):
+        if isinstance(backend, Backend):
             assert kwargs == dict()
             self.backend = backend
         elif backend == "statevector":
-            self.backend = graphix.sim.statevec.StatevectorBackend(**kwargs)
+            self.backend = StatevectorBackend(**kwargs)
         elif backend == "densitymatrix":
-            self.backend = graphix.sim.density_matrix.DensityMatrixBackend(**kwargs)
             if noise_model is None:
                 self.noise_model = None
                 self.backend = DensityMatrixBackend(**kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
                 )
-            if noise_model is not None:
-                self.set_noise_model(noise_model)
+            else:
                 self.backend = DensityMatrixBackend(pr_calc=True, **kwargs)
+                self.set_noise_model(noise_model)
         elif backend in {"tensornetwork", "mps"} and noise_model is None:
             self.noise_model = None
             self.backend = TensorNetworkBackend(pattern, **kwargs)
@@ -101,19 +120,21 @@ class PatternSimulator:
             raise ValueError("Unknown backend.")
         self.set_noise_model(noise_model)
         self.pattern = pattern
-        self.results = results
-        if measure_method:
-            self.measure_method = measure_method
-        else:
-            self.measure_method = DefaultMeasureMethod()
+        if measure_method is None:
+            measure_method = DefaultMeasureMethod(pattern.results)
+        self.__measure_method = measure_method
+
+    @property
+    def measure_method(self):
+        return self.__measure_method
 
     def set_noise_model(self, model):
-        if not isinstance(self.backend, graphix.sim.density_matrix.DensityMatrixBackend) and model is not None:
+        if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
             self.noise_model = None  # if not initialized yet
             raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self) -> Backend:
+    def run(self, input_state=graphix.states.BasicStates.PLUS) -> Backend:
         """Perform the simulation.
 
         Returns
@@ -123,6 +144,8 @@ class PatternSimulator:
             in the representation depending on the backend used.
         """
         backend = self.backend
+        if input_state is not None:
+            backend = backend.add_nodes(self.pattern.input_nodes, input_state)
         if self.noise_model is None:
             for cmd in self.pattern:
                 if cmd[0] == "N":
@@ -135,20 +158,13 @@ class PatternSimulator:
                 elif cmd[0] == "E":
                     backend = backend.entangle_nodes(edge=cmd[1])
                 elif cmd[0] == "M":
-                    measurement_description = (
-                        self.measure_method.get_measurement_description(cmd, self.results)
-                        if not isinstance(self.backend, graphix.sim.tensornet.TensorNetworkBackend)
-                        else cmd
-                    )
-                    backend, result = backend.measure(node=cmd[1], measurement_description=measurement_description)
-                    self.results[cmd[1]] = result
-                    self.measure_method.set_measure_result(node=cmd[1], result=result)
+                    backend = self.__measure_method.measure(backend, cmd)
                 elif cmd[0] == "X":
-                    backend = backend.correct_byproduct(cmd=cmd, results=self.results)
+                    backend = backend.correct_byproduct(cmd, self.__measure_method)
                 elif cmd[0] == "Z":
-                    backend = backend.correct_byproduct(cmd=cmd, results=self.results)
+                    backend = backend.correct_byproduct(cmd, self.__measure_method)
                 elif cmd[0] == "C":
-                    backend = backend.apply_clifford(cmd=cmd)
+                    backend = backend.apply_clifford(cmd)
                 else:
                     raise ValueError("invalid commands")
             backend = backend.finalize(output_nodes=self.pattern.output_nodes)
@@ -164,23 +180,15 @@ class PatternSimulator:
                     backend = backend.entangle_nodes(cmd[1])  # for some reaon entangle doesn't get the whole command
                     backend = backend.apply_channel(self.noise_model.entangle(), cmd[1])
                 elif cmd[0] == "M":  # apply channel before measuring, then measur and confuse_result
-                    measurement_description = (
-                        self.measure_method.get_measurement_description(cmd, self.results)
-                        if not isinstance(self.backend, graphix.sim.tensornet.TensorNetworkBackend)
-                        else cmd
-                    )
                     backend = backend.apply_channel(self.noise_model.measure(), [cmd[1]])
-                    backend, result = backend.measure(node=cmd[1], measurement_description=measurement_description)
-                    self.results[cmd[1]] = result
-                    self.measure_method.set_measure_result(node=cmd[1], result=result)
-                    self.noise_model.confuse_result(cmd)
+                    backend = self.__measure_method.measure(backend, cmd, noise_model=self.noise_model)
                 elif cmd[0] == "X":
-                    backend = backend.correct_byproduct(results=self.results, cmd=cmd)
-                    if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+                    backend = backend.correct_byproduct(cmd, self.__measure_method)
+                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd[2]]), 2) == 1:
                         backend = backend.apply_channel(self.noise_model.byproduct_x(), [cmd[1]])
                 elif cmd[0] == "Z":
-                    backend = backend.correct_byproduct(results=self.results, cmd=cmd)
-                    if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
+                    backend = backend.correct_byproduct(cmd, self.__measure_method)
+                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd[2]]), 2) == 1:
                         backend = backend.apply_channel(self.noise_model.byproduct_z(), [cmd[1]])
                 elif cmd[0] == "C":
                     backend = backend.apply_clifford(cmd)
