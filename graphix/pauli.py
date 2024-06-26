@@ -108,7 +108,6 @@ class Axis(enum.Enum):
     Y = 1
     Z = 2
 
-
 class Plane(enum.Enum):
     XY = 0
     YZ = 1

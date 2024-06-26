@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import string
 from copy import deepcopy
+from typing import Union, List
 
 import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
+from graphix import command
 
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.states import BasicStates
+from graphix.pauli import Plane
 
 
 class TensorNetworkBackend:
@@ -126,7 +129,7 @@ class TensorNetworkBackend:
         elif self.graph_prep == "opt":
             pass
 
-    def measure(self, cmd):
+    def measure(self, cmd: command.M):
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
@@ -136,38 +139,35 @@ class TensorNetworkBackend:
             measurement command
             i.e. ['M', node, plane angle, s_domain, t_domain]
         """
-        if cmd[1] in self._isolated_nodes:
-            vector = self.state.get_open_tensor_from_index(cmd[1])
+        if cmd.node in self._isolated_nodes:
+            vector = self.state.get_open_tensor_from_index(cmd.node)
             probs = np.abs(vector) ** 2
             probs = probs / (np.sum(probs))
             result = np.random.choice([0, 1], p=probs)
-            self.results[cmd[1]] = result
+            self.results[cmd.node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
             # choose the measurement result randomly
             result = np.random.choice([0, 1])
-            self.results[cmd[1]] = result
+            self.results[cmd.node] = result
             buffer = 2**0.5
 
         # extract signals for adaptive angle
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
+        s_signal = np.sum([self.results[j] for j in cmd.s_domain])
+        t_signal = np.sum([self.results[j] for j in cmd.t_domain])
+        angle = cmd.angle * np.pi
+        vop = cmd.vop
         if int(s_signal % 2) == 1:
             vop = CLIFFORD_MUL[1, vop]
         if int(t_signal % 2) == 1:
             vop = CLIFFORD_MUL[3, vop]
-        proj_vec = proj_basis(angle, vop=vop, plane=cmd[2], choice=result)
+        proj_vec = proj_basis(angle, vop=vop, plane=cmd.plane, choice=result)
 
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
-        self.state.measure_single(cmd[1], basis=proj_vec)
+        self.state.measure_single(cmd.node, basis=proj_vec)
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, cmd: Union[command.X, command.Z]):
         """Perform byproduct correction.
 
         Parameters
@@ -176,13 +176,11 @@ class TensorNetworkBackend:
             Byproduct command
             i.e. ['X' or 'Z', node, signal_domain]
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            if cmd[0] == "X":
-                self.state.evolve_single(cmd[1], Ops.x, "X")
-            elif cmd[0] == "Z":
-                self.state.evolve_single(cmd[1], Ops.z, "Z")
+        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+            op = Ops.x if isinstance(cmd, command.X) else Ops.z
+            self.state.evolve_single(cmd.node, op, cmd.kind)
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, cmd: command.C):
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -191,8 +189,8 @@ class TensorNetworkBackend:
             clifford command.
             See https://arxiv.org/pdf/2212.11975.pdf for the detail.
         """
-        node_op = CLIFFORD[cmd[2]]
-        self.state.evolve_single(cmd[1], node_op, "C")
+        node_op = CLIFFORD[cmd.cliff_index]
+        self.state.evolve_single(cmd.node, node_op, cmd.kind)
 
     def finalize(self):
         pass
@@ -269,6 +267,23 @@ class MBQCTensorNet(TensorNetwork):
         """
         ind = gen_str()
         tag = str(index)
+        # match state:
+        #     case "plus":
+        #         vec = States.plus
+        #     case "minus":
+        #         vec = States.minus
+        #     case "zero":
+        #         vec = States.zero
+        #     case "one":
+        #         vec = States.one
+        #     case "iplus":
+        #         vec = States.iplus
+        #     case "iminus":
+        #         vec = States.iminus
+        #     case _:
+        #         assert state.shape == (2,), "state must be 2-element np.ndarray"
+        #         assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
+        #         vec = state
         if state == "plus":
             vec = BasicStates.PLUS.get_statevector()
         elif state == "minus":
@@ -285,7 +300,7 @@ class MBQCTensorNet(TensorNetwork):
             assert state.shape == (2,), "state must be 2-element np.ndarray"
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
             vec = state
-        tsr = qtn.Tensor(vec, [ind], [tag, "Open"])
+        tsr = Tensor(vec, [ind], [tag, "Open"])
         self.add_tensor(tsr)
         self._dangling[tag] = ind
 
@@ -308,7 +323,7 @@ class MBQCTensorNet(TensorNetwork):
         new_ind = gen_str()
         tensor.retag({"Open": "Close"}, inplace=True)
 
-        node_ts = qtn.Tensor(
+        node_ts = Tensor(
             arr,
             [new_ind, old_ind],
             [str(index), label, "Open"],
@@ -721,13 +736,13 @@ def proj_basis(angle, vop, plane, choice):
     numpy.ndarray :
         projected state
     """
-    if plane == "XY":
+    if plane == Plane.XY:
         vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Rz(angle)
-    elif plane == "YZ":
+    elif plane == Plane.YZ:
         vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
-    elif plane == "XZ":
+    elif plane == Plane.XZ:
         vec = States.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)

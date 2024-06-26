@@ -26,6 +26,8 @@ class NoiseModelTester(NoiseModel):
     :type NoiseModel: class
     """
 
+    __test__ = False
+
     def __init__(
         self,
         prepare_error_prob: float = 0.0,
@@ -62,7 +64,7 @@ class NoiseModelTester(NoiseModel):
         """
 
         if self.rng.uniform() < self.measure_error_prob:
-            self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
+            self.simulator.results[cmd.node] = 1 - self.simulator.results[cmd.node]
 
     def byproduct_x(self) -> KrausChannel:
         """apply noise to qubits after X gate correction"""
@@ -130,8 +132,7 @@ class TestNoisyDensityMatrixBackend:
         measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
         res = hadamardpattern.simulate_pattern(
-            backend="densitymatrix",
-            noise_model=NoiseModelTester(measure_error_prob=measure_error_pr),
+            backend="densitymatrix", noise_model=NoiseModelTester(measure_error_prob=measure_error_pr)
         )
         # result should be |1>
         assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
