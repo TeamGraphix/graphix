@@ -2,13 +2,15 @@
 quantum states and operators
 """
 
+from __future__ import annotations
+
 import abc
 
 import numpy as np
 import numpy.typing as npt
 import pydantic
 
-import graphix.pauli
+from graphix.pauli import Plane
 
 
 # generic class State for all States
@@ -43,20 +45,20 @@ class PlanarState(pydantic.BaseModel, State):
     :rtype: :class:`graphix.states.State` object
     """
 
-    plane: graphix.pauli.Plane
+    plane: Plane
     angle: float
 
     def __repr__(self) -> str:
         return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
     def get_statevector(self) -> npt.NDArray:
-        if self.plane == graphix.pauli.Plane.XY:
+        if self.plane == Plane.XY:
             return np.array([1, np.exp(1j * self.angle)]) / np.sqrt(2)
 
-        if self.plane == graphix.pauli.Plane.YZ:
+        if self.plane == Plane.YZ:
             return np.array([np.cos(self.angle / 2), 1j * np.sin(self.angle / 2)])
 
-        if self.plane == graphix.pauli.Plane.XZ:
+        if self.plane == Plane.XZ:
             return np.array([np.cos(self.angle / 2), np.sin(self.angle / 2)])
         # other case never happens since exhaustive
         assert False
@@ -64,12 +66,12 @@ class PlanarState(pydantic.BaseModel, State):
 
 # States namespace for input initialization.
 class BasicStates:
-    ZERO = PlanarState(plane=graphix.pauli.Plane.XZ, angle=0)
-    ONE = PlanarState(plane=graphix.pauli.Plane.XZ, angle=np.pi)
-    PLUS = PlanarState(plane=graphix.pauli.Plane.XY, angle=0)
-    MINUS = PlanarState(plane=graphix.pauli.Plane.XY, angle=np.pi)
-    PLUS_I = PlanarState(plane=graphix.pauli.Plane.XY, angle=np.pi / 2)
-    MINUS_I = PlanarState(plane=graphix.pauli.Plane.XY, angle=-np.pi / 2)
+    ZERO = PlanarState(plane=Plane.XZ, angle=0)
+    ONE = PlanarState(plane=Plane.XZ, angle=np.pi)
+    PLUS = PlanarState(plane=Plane.XY, angle=0)
+    MINUS = PlanarState(plane=Plane.XY, angle=np.pi)
+    PLUS_I = PlanarState(plane=Plane.XY, angle=np.pi / 2)
+    MINUS_I = PlanarState(plane=Plane.XY, angle=-np.pi / 2)
     # remove that in the end
     # need in TN backend
     VEC = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]

@@ -90,7 +90,7 @@ def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
     return np.sum(np.random.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
 
 
-def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
+def rand_channel_kraus(dim: int, rank: int | None = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
     """
     Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
@@ -129,7 +129,7 @@ def rand_channel_kraus(dim: int, rank: int = None, sig: float = 1 / np.sqrt(2)) 
 
 # or merge with previous with a "pauli" kwarg?
 ### continue here
-def rand_Pauli_channel_kraus(dim: int, rank: int = None) -> KrausChannel:
+def rand_Pauli_channel_kraus(dim: int, rank: int | None = None) -> KrausChannel:
     if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
 

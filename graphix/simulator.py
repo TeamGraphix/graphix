@@ -4,8 +4,9 @@ Simulates MBQC by executing the pattern.
 
 """
 
+from __future__ import annotations
+
 import abc
-import collections
 import warnings
 
 import numpy as np
@@ -13,7 +14,7 @@ import numpy as np
 import graphix.clifford
 from graphix.noise_models import NoiseModel
 from graphix.pauli import MeasureUpdate, Plane
-from graphix.sim.base_backend import Backend, MeasurementDescription, State
+from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend

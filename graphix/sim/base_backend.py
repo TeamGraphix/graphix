@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -58,7 +57,7 @@ class State:
     pass
 
 
-def op_mat_from_result(vec: typing.Tuple[float, float, float], result: bool) -> np.ndarray:
+def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):

@@ -4,11 +4,12 @@ multiplications, conjugations and Pauli conjugations.
 
 """
 
-import typing
+from __future__ import annotations
 
 import numpy as np
 
 import graphix.pauli
+from graphix.pauli import IXYZ, Pauli
 
 # 24 Unique 1-qubit Clifford gates
 _C0 = np.array([[1, 0], [0, 1]])  # identity
@@ -249,27 +250,27 @@ class Clifford:
         return CLIFFORD_LABEL[self.__index]
 
     @property
-    def conj(self) -> "Clifford":
+    def conj(self) -> Clifford:
         """
         Return the conjugate of the Clifford gate.
         """
         return get(CLIFFORD_CONJ[self.__index])
 
     @property
-    def hsz(self) -> typing.List["Clifford"]:
+    def hsz(self) -> list[Clifford]:
         """
         Return a decomposition of the Clifford gate with the gates H, S, Z.
         """
         return list(map(get, CLIFFORD_HSZ_DECOMPOSITION[self.__index]))
 
     @property
-    def qasm3(self) -> typing.Tuple[str, ...]:
+    def qasm3(self) -> tuple[str, ...]:
         """
         Return a decomposition of the Clifford gate as qasm3 gates.
         """
         return CLIFFORD_TO_QASM3[self.__index]
 
-    def __matmul__(self, other) -> "Clifford":
+    def __matmul__(self, other) -> Clifford:
         """
         Multiplication within the Clifford group (modulo unit factor).
         """
@@ -277,11 +278,11 @@ class Clifford:
             return get(CLIFFORD_MUL[self.__index, other.__index])
         return NotImplemented
 
-    def measure(self, pauli: "graphix.pauli.Pauli") -> "graphix.pauli.Pauli":
+    def measure(self, pauli: Pauli) -> Pauli:
         """
         Compute C† P C.
         """
-        if pauli.symbol == graphix.pauli.IXYZ.I:
+        if pauli.symbol == IXYZ.I:
             return pauli
         table = CLIFFORD_MEASURE[self.__index]
         symbol, sign = table[pauli.symbol.value]

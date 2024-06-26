@@ -5,7 +5,7 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 from __future__ import annotations
 
 import enum
-import typing
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -13,7 +13,9 @@ import pydantic
 
 import graphix.clifford
 import graphix.ops
-from graphix.states import BasicStates
+
+if TYPE_CHECKING:
+    from graphix.states import BasicStates
 
 
 class IXYZ(enum.Enum):
@@ -257,6 +259,8 @@ class Pauli:
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
     def get_eigenstate(self, eigenvalue=0) -> BasicStates:
+        from graphix.states import BasicStates
+
         if self.symbol == IXYZ.X:
             return BasicStates.PLUS if eigenvalue == 0 else BasicStates.MINUS
         elif self.symbol == IXYZ.Y:
@@ -332,7 +336,7 @@ class MeasureUpdate(pydantic.BaseModel):
     add_term: float
 
     @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford: "graphix.clifford.Clifford") -> "MeasureUpdate":
+    def compute(plane: Plane, s: bool, t: bool, clifford: graphix.clifford.Clifford) -> MeasureUpdate:
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford = graphix.clifford.X @ clifford

@@ -7,8 +7,8 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import Sequence
 
 import numpy as np
 

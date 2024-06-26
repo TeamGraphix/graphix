@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import string
 from copy import deepcopy
 
@@ -154,7 +156,7 @@ class TensorNetworkBackend(Backend):
             plane=measurement_description.plane, angle=measurement_description.angle
         ).get_statevector()
         if result:
-            vec = measurement_description.plane.complement.op @ vec
+            vec = measurement_description.plane.orth.op @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec)
         return self, result
