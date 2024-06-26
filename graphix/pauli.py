@@ -2,6 +2,8 @@
 Pauli gates ± {1,j} × {I, X, Y, Z}
 """
 
+from __future__ import annotations
+
 import enum
 import typing
 
@@ -11,6 +13,7 @@ import pydantic
 
 import graphix.clifford
 import graphix.ops
+from graphix.states import BasicStates
 
 
 class IXYZ(enum.Enum):
@@ -125,7 +128,8 @@ class Plane(enum.Enum):
     XZ = 2
 
     @property
-    def axes(self) -> typing.List[Axis]:
+    def axes(self) -> list[Axis]:
+        """Return the pair of axes that carry the plane."""
         # match self:
         #     case Plane.XY:
         #         return [Axis.X, Axis.Y]
@@ -141,7 +145,8 @@ class Plane(enum.Enum):
             return [Axis.X, Axis.Z]
 
     @property
-    def complement(self) -> Axis:
+    def orth(self) -> Axis:
+        """Return the axis orthogonal to the plane."""
         if self == Plane.XY:
             return Axis.Z
         elif self == Plane.YZ:
@@ -151,6 +156,7 @@ class Plane(enum.Enum):
 
     @property
     def cos(self) -> Axis:
+        """Return the axis of the plane that conventionally carries the cos."""
         # match self:
         #     case Plane.XY:
         #         return Axis.X
@@ -167,6 +173,7 @@ class Plane(enum.Enum):
 
     @property
     def sin(self) -> Axis:
+        """Return the axis of the plane that conventionally carries the sin."""
         # match self:
         #     case Plane.XY:
         #         return Axis.Y
@@ -181,14 +188,17 @@ class Plane(enum.Enum):
         elif self == Plane.XZ:
             return Axis.X  # former convention was Z
 
-    def polar(self, angle: float) -> typing.Tuple[float, float, float]:
+    def polar(self, angle: float) -> tuple[float, float, float]:
+        """Return the Cartesian coordinates of the point of module 1 at the
+        given angle, following the conventional orientation for cos and sin."""
         result = [0, 0, 0]
         result[self.cos.value] = np.cos(angle)
         result[self.sin.value] = np.sin(angle)
         return tuple(result)
 
     @staticmethod
-    def from_axes(a: Axis, b: Axis) -> "Plane":
+    def from_axes(a: Axis, b: Axis) -> Plane:
+        """Return the plane carried by the given axes."""
         if b.value < a.value:
             a, b = b, a
         # match a, b:
@@ -222,7 +232,7 @@ class Pauli:
         self.__unit = unit
 
     @staticmethod
-    def from_axis(axis: Axis) -> "Pauli":
+    def from_axis(axis: Axis) -> Pauli:
         return Pauli(IXYZ[axis.name], UNIT)
 
     @property
@@ -232,11 +242,11 @@ class Pauli:
         return Axis[self.__symbol.name]
 
     @property
-    def symbol(self):
+    def symbol(self) -> IXYZ:
         return self.__symbol
 
     @property
-    def unit(self):
+    def unit(self) -> ComplexUnit:
         return self.__unit
 
     @property
@@ -246,18 +256,18 @@ class Pauli:
         """
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
-    def get_eigenstate(self, eigenvalue=0):
+    def get_eigenstate(self, eigenvalue=0) -> BasicStates:
         if self.symbol == IXYZ.X:
-            return graphix.states.BasicStates.PLUS if eigenvalue == 0 else graphix.states.BasicStates.MINUS
+            return BasicStates.PLUS if eigenvalue == 0 else BasicStates.MINUS
         elif self.symbol == IXYZ.Y:
-            return graphix.states.BasicStates.PLUS_I if eigenvalue == 0 else graphix.states.BasicStates.MINUS_I
+            return BasicStates.PLUS_I if eigenvalue == 0 else BasicStates.MINUS_I
         elif self.symbol == IXYZ.Z:
-            return graphix.states.BasicStates.ZERO if eigenvalue == 0 else graphix.states.BasicStates.ONE
+            return BasicStates.ZERO if eigenvalue == 0 else BasicStates.ONE
         # Any state is eigenstate of the identity
         elif self.symbol == IXYZ.I:
-            return graphix.states.BasicStates.PLUS
+            return BasicStates.PLUS
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__unit.prefix(self.__symbol.name)
 
     def __matmul__(self, other):
@@ -280,10 +290,12 @@ class Pauli:
             return get(symbol, unit * self.__unit * other.__unit)
         return NotImplemented
 
-    def __rmul__(self, other):
-        return get(self.__symbol, other * self.__unit)
+    def __rmul__(self, other) -> Pauli:
+        if isinstance(other, ComplexUnit):
+            return get(self.__symbol, other * self.__unit)
+        return NotImplemented
 
-    def __neg__(self):
+    def __neg__(self) -> Pauli:
         return get(self.__symbol, -self.__unit)
 
 

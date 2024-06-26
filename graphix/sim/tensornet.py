@@ -159,38 +159,6 @@ class TensorNetworkBackend(Backend):
         self.state.measure_single(node, basis=proj_vec)
         return self, result
 
-    #    def measure(self, node, measurement_description):
-    #        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
-    #        applying measurement operator to the tensor. Here, directly contracted with the projected state.
-    #
-    #        Parameters
-    #        ----------
-    #        node : int
-    #            node to measure
-    #        measurement_description : list
-    #            = cmd i.e. ['M', node, plane angle, s_domain, t_domain]
-    #        """
-    #        if node in self._isolated_nodes:
-    #            vector = self.state.get_open_tensor_from_index(node)
-    #            probs = np.abs(vector) ** 2
-    #            probs = probs / (np.sum(probs))
-    #            result = np.random.choice([0, 1], p=probs)
-    #            self.results[node] = result
-    #            buffer = 1 / probs[result] ** 0.5
-    #        else:
-    #            # choose the measurement result randomly
-    #            result = np.random.choice([0, 1])
-    #            self.results[node] = result
-    #            buffer = 2**0.5
-    #
-    #        # extract signals for adaptive angle
-    #        proj_vec = proj_basis(measurement_description.angle, vop=0, plane=measurement_description.plane.name, choice=result)
-    #
-    #        # buffer is necessary for maintaing the norm invariant
-    #        proj_vec = proj_vec * buffer
-    #        result = self.state.measure_single(node, basis=proj_vec)
-    #        return self, result
-
     def correct_byproduct(self, cmd, measure_method):
         """Perform byproduct correction.
 

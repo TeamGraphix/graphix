@@ -27,7 +27,7 @@ class NoiselessNoiseModel(NoiseModel):
         """apply noise to qubit to be measured."""
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
-    def confuse_result(self, result):
+    def confuse_result(self, result: bool) -> bool:
         """assign wrong measurement result"""
         return result
 
