@@ -156,7 +156,7 @@ def _graph5() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: "XY", 1: "XY", 2: "ZX", 3: "YZ"}
+    meas_planes = {0: "XY", 1: "XY", 2: "XZ", 3: "YZ"}
     return GraphForTest(
         graph,
         inputs,
