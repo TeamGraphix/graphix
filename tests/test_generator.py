@@ -6,9 +6,9 @@ import networkx as nx
 import numpy as np
 import pytest
 
+import graphix.pauli
 import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
-import graphix.pauli
 
 if TYPE_CHECKING:
     from numpy.random import Generator

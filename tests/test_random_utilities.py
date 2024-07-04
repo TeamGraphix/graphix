@@ -7,13 +7,7 @@ import pytest
 
 import graphix.random_objects as randobj
 from graphix.channels import KrausChannel
-from graphix.linalg_validations import (
-    check_data_dims,
-    check_hermitian,
-    check_psd,
-    check_square,
-    check_unit_trace,
-)
+from graphix.linalg_validations import check_data_dims, check_hermitian, check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 

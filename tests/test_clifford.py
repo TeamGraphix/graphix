@@ -6,13 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from graphix.clifford import (
-    CLIFFORD,
-    CLIFFORD_CONJ,
-    CLIFFORD_HSZ_DECOMPOSITION,
-    CLIFFORD_MEASURE,
-    CLIFFORD_MUL,
-)
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE, CLIFFORD_MUL
 
 
 class TestClifford:

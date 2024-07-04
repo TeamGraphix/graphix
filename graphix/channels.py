@@ -2,12 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from graphix.linalg_validations import (
-    check_data_dims,
-    check_data_normalization,
-    check_data_values_type,
-    check_rank,
-)
+from graphix.linalg_validations import check_data_dims, check_data_normalization, check_data_values_type, check_rank
 from graphix.ops import Ops
 
 
@@ -94,10 +89,7 @@ def dephasing_channel(prob: float) -> KrausChannel:
         containing the corresponding Kraus operators
     """
     return KrausChannel(
-        [
-            {"coef": np.sqrt(1 - prob), "operator": np.eye(2)},
-            {"coef": np.sqrt(prob), "operator": Ops.z},
-        ]
+        [{"coef": np.sqrt(1 - prob), "operator": np.eye(2)}, {"coef": np.sqrt(prob), "operator": Ops.z}]
     )
 
 
@@ -206,30 +198,12 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(Ops.x, np.eye(2)),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(Ops.y, np.eye(2)),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(Ops.z, np.eye(2)),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(np.eye(2), Ops.x),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(np.eye(2), Ops.y),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(np.eye(2), Ops.z),
-            },
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},

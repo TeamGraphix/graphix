@@ -16,13 +16,7 @@ from graphix import Circuit
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import (
-    CNOT_TENSOR,
-    CZ_TENSOR,
-    SWAP_TENSOR,
-    Statevec,
-    StatevectorBackend,
-)
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -565,20 +559,12 @@ class TestDensityMatrix:
         expected_matrix = np.array([1])
         assert np.allclose(dm.rho, expected_matrix)
 
-        psi = np.kron(
-            np.kron(np.array([1, np.sqrt(2)]) / np.sqrt(3), np.array([1, 0])),
-            np.array([0, 1]),
-        )
+        psi = np.kron(np.kron(np.array([1, np.sqrt(2)]) / np.sqrt(3), np.array([1, 0])), np.array([0, 1]))
         data = np.outer(psi, psi)
         dm = DensityMatrix(data=data)
         dm.ptrace((2,))
         expected_matrix = np.array(
-            [
-                [1 / 3, 0, np.sqrt(2) / 3, 0],
-                [0, 0, 0, 0],
-                [np.sqrt(2) / 3, 0, 2 / 3, 0],
-                [0, 0, 0, 0],
-            ],
+            [[1 / 3, 0, np.sqrt(2) / 3, 0], [0, 0, 0, 0], [np.sqrt(2) / 3, 0, 2 / 3, 0], [0, 0, 0, 0]],
         )
         assert np.allclose(dm.rho, expected_matrix)
 

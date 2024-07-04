@@ -119,9 +119,7 @@ def get_fusion_network_from_graph(
                 if len(nodes) == 3:
                     resource_list.append(
                         create_resource_graph(
-                            [nodes[1], nodes[0], nodes[2]],
-                            root=nodes[1],
-                            use_rustworkx=use_rustworkx,
+                            [nodes[1], nodes[0], nodes[2]], root=nodes[1], use_rustworkx=use_rustworkx
                         )
                     )
                 elif len(nodes) == 2:

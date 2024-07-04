@@ -16,10 +16,9 @@ import graphix.states
 import graphix.types
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
-from graphix.sim.base_backend import Backend
-from graphix.linalg_validations import check_psd, check_square, check_unit_trace, check_hermitian
+from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
-import graphix.command
+from graphix.sim.base_backend import Backend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
 
@@ -105,11 +104,7 @@ class DensityMatrix:
             raise ValueError("op must be 2*2 matrix.")
 
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(
-            np.tensordot(op, rho_tensor, axes=[1, i]),
-            op.conj().T,
-            axes=[i + self.Nqubit, 0],
-        )
+        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
@@ -150,16 +145,9 @@ class DensityMatrix:
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
 
         rho_tensor = np.tensordot(
-            np.tensordot(
-                op_tensor,
-                rho_tensor,
-                axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)],
-            ),
+            np.tensordot(op_tensor, rho_tensor, axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)]),
             op.conj().T.reshape((2,) * 2 * nqb_op),
-            axes=[
-                tuple(i + self.Nqubit for i in qargs),
-                tuple(i for i in range(len(qargs))),
-            ],
+            axes=[tuple(i + self.Nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
@@ -269,9 +257,7 @@ class DensityMatrix:
         # ket, bra indices to trace out
         trace_axes = list(qargs) + [n + qarg for qarg in qargs]
         rho_res = np.tensordot(
-            np.eye(2**qargs_num).reshape((2,) * qargs_num * 2),
-            rho_res,
-            axes=(list(range(2 * qargs_num)), trace_axes),
+            np.eye(2**qargs_num).reshape((2,) * qargs_num * 2), rho_res, axes=(list(range(2 * qargs_num)), trace_axes)
         )
 
         self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))

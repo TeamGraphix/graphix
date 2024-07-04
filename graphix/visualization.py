@@ -299,14 +299,7 @@ class GraphVisualizer:
 
         for arrow in arrow_path.keys():
             if len(arrow_path[arrow]) == 2:
-                nx.draw_networkx_edges(
-                    self.G,
-                    pos,
-                    edgelist=[arrow],
-                    edge_color="black",
-                    arrowstyle="->",
-                    arrows=True,
-                )
+                nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True)
             else:
                 path = arrow_path[arrow]
                 last = np.array(path[-1])
@@ -348,22 +341,12 @@ class GraphVisualizer:
         if show_local_clifford and self.local_clifford is not None:
             for node in self.G.nodes():
                 if node in self.local_clifford.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.2, 0.2]),
-                        f"{self.local_clifford[node]}",
-                        fontsize=10,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_planes.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.22, -0.2]),
-                        f"{self.meas_planes[node]}",
-                        fontsize=9,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
@@ -379,18 +362,11 @@ class GraphVisualizer:
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
             plt.axvline(
-                x=(layer + 0.5) * node_distance[0],
-                color="gray",
-                linestyle="--",
-                alpha=0.5,
+                x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
             )  # Draw line between layers
         for layer in range(min(l_k.values()), max(l_k.values()) + 1):
             plt.text(
-                layer * node_distance[0],
-                y_min - 0.5,
-                f"l: {max(l_k.values()) - layer}",
-                ha="center",
-                va="top",
+                layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
             )  # Add layer label at bottom
 
         plt.xlim(
@@ -476,14 +452,7 @@ class GraphVisualizer:
                         arrowprops=dict(arrowstyle="->", color="k", lw=1),
                     )
             elif len(arrow_path[arrow]) == 2:  # straight line
-                nx.draw_networkx_edges(
-                    self.G,
-                    pos,
-                    edgelist=[arrow],
-                    edge_color="black",
-                    arrowstyle="->",
-                    arrows=True,
-                )
+                nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True)
             else:
                 path = arrow_path[arrow]
                 last = np.array(path[-1])
@@ -525,22 +494,12 @@ class GraphVisualizer:
         if show_local_clifford and self.local_clifford is not None:
             for node in self.G.nodes():
                 if node in self.local_clifford.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.2, 0.2]),
-                        f"{self.local_clifford[node]}",
-                        fontsize=10,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_planes.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.22, -0.2]),
-                        f"{self.meas_planes[node]}",
-                        fontsize=9,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
@@ -556,18 +515,11 @@ class GraphVisualizer:
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
             plt.axvline(
-                x=(layer + 0.5) * node_distance[0],
-                color="gray",
-                linestyle="--",
-                alpha=0.5,
+                x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
             )  # Draw line between layers
         for layer in range(min(l_k.values()), max(l_k.values()) + 1):
             plt.text(
-                layer * node_distance[0],
-                y_min - 0.5,
-                f"l: {max(l_k.values()) - layer}",
-                ha="center",
-                va="top",
+                layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
             )  # Add layer label at bottom
 
         plt.xlim(
@@ -653,22 +605,12 @@ class GraphVisualizer:
         if show_local_clifford and self.local_clifford is not None:
             for node in self.G.nodes():
                 if node in self.local_clifford.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.2, 0.2]),
-                        f"{self.local_clifford[node]}",
-                        fontsize=10,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_planes.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.22, -0.2]),
-                        f"{self.meas_planes[node]}",
-                        fontsize=9,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
@@ -769,14 +711,7 @@ class GraphVisualizer:
             else:
                 color = "tab:brown"
             if len(arrow_path[arrow]) == 2:  # straight line
-                nx.draw_networkx_edges(
-                    self.G,
-                    pos,
-                    edgelist=[arrow],
-                    edge_color=color,
-                    arrowstyle="->",
-                    arrows=True,
-                )
+                nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True)
             else:
                 path = arrow_path[arrow]
                 last = np.array(path[-1])
@@ -817,22 +752,12 @@ class GraphVisualizer:
         if show_local_clifford and self.local_clifford is not None:
             for node in self.G.nodes():
                 if node in self.local_clifford.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.2, 0.2]),
-                        f"{self.local_clifford[node]}",
-                        fontsize=10,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.G.nodes():
                 if node in self.meas_planes.keys():
-                    plt.text(
-                        *pos[node] + np.array([0.22, -0.2]),
-                        f"{self.meas_planes[node]}",
-                        fontsize=9,
-                        zorder=3,
-                    )
+                    plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
@@ -943,10 +868,7 @@ class GraphVisualizer:
                                 [
                                     i,
                                     self._control_point(
-                                        bezier_path[0],
-                                        bezier_path[-1],
-                                        pos[node],
-                                        distance=0.6 / iteration,
+                                        bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
                                     ),
                                 ]
                             )
@@ -964,10 +886,7 @@ class GraphVisualizer:
 
                 def _point_from_node(pos, dist, angle):
                     angle = np.deg2rad(angle)
-                    return [
-                        pos[0] + dist * np.cos(angle),
-                        pos[1] + dist * np.sin(angle),
-                    ]
+                    return [pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle)]
 
                 bezier_path = [
                     _point_from_node(pos[arrow[0]], 0.2, 170),
@@ -1009,12 +928,7 @@ class GraphVisualizer:
                                 ctrl_points.append(
                                     [
                                         i,
-                                        self._control_point(
-                                            start,
-                                            end,
-                                            pos[node],
-                                            distance=0.6 / iteration,
-                                        ),
+                                        self._control_point(start, end, pos[node], distance=0.6 / iteration),
                                     ]
                                 )
                     if not intersect:
@@ -1064,10 +978,7 @@ class GraphVisualizer:
                                 [
                                     i,
                                     self._control_point(
-                                        bezier_path[0],
-                                        bezier_path[-1],
-                                        pos[node],
-                                        distance=0.6 / iteration,
+                                        bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
                                     ),
                                 ]
                             )

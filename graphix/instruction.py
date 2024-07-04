@@ -1,14 +1,13 @@
-from pydantic import BaseModel
+import abc
+import enum
 from typing import List, Tuple
 
-import enum
+from pydantic import BaseModel
+
 from graphix.pauli import Plane
-import abc
 
 
 class InstructionKind(enum.Enum):
-    XC = "XC"
-    ZC = "ZC"
     CCX = "CCX"
     RZZ = "RZZ"
     CNOT = "CNOT"
@@ -23,6 +22,9 @@ class InstructionKind(enum.Enum):
     RX = "RX"
     RY = "RY"
     RZ = "RZ"
+    # The two following instructions are used internally by the transpiler
+    XC = "XC"
+    ZC = "ZC"
 
 
 class Instruction(BaseModel, abc.ABC):
@@ -76,7 +78,7 @@ class TwoControlsInstruction(OneQubitInstruction):
 
 class XC(CorrectionInstruction):
     """
-    X correction circuit instruction.
+    X correction circuit instruction. Used internally by the transpiler.
     """
 
     kind: InstructionKind = InstructionKind.XC
@@ -84,7 +86,7 @@ class XC(CorrectionInstruction):
 
 class ZC(CorrectionInstruction):
     """
-    Z correction circuit instruction.
+    Z correction circuit instruction. Used internally by the transpiler.
     """
 
     kind: InstructionKind = InstructionKind.ZC

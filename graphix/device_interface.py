@@ -96,11 +96,7 @@ class PatternRunner:
             format_result = kwargs.get("format_result", True)
             optimization_level = kwargs.get("optimizer_level", 1)
 
-            result = self.backend.run(
-                shots=shots,
-                format_result=format_result,
-                optimization_level=optimization_level,
-            )
+            result = self.backend.run(shots=shots, format_result=format_result, optimization_level=optimization_level)
 
         return result
 

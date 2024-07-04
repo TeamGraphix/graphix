@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import string
 from copy import deepcopy
-from typing import Union, List
+from typing import List, Union
 
 import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
-from graphix import command
 
+from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
-from graphix.states import BasicStates
 from graphix.pauli import Plane
+from graphix.states import BasicStates
 
 
 class TensorNetworkBackend:

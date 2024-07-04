@@ -26,8 +26,6 @@ class NoiseModelTester(NoiseModel):
     :type NoiseModel: class
     """
 
-    __test__ = False
-
     def __init__(
         self,
         prepare_error_prob: float = 0.0,

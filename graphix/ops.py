@@ -49,12 +49,7 @@ class Ops:
         operator : 2*2 np.array
         """
 
-        return np.array(
-            [
-                [np.cos(theta / 2), -1j * np.sin(theta / 2)],
-                [-1j * np.sin(theta / 2), np.cos(theta / 2)],
-            ]
-        )
+        return np.array([[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]])
 
     @staticmethod
     def Ry(theta):
@@ -69,12 +64,7 @@ class Ops:
         ----------
         operator : 2*2 np.array
         """
-        return np.array(
-            [
-                [np.cos(theta / 2), -np.sin(theta / 2)],
-                [np.sin(theta / 2), np.cos(theta / 2)],
-            ]
-        )
+        return np.array([[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]])
 
     @staticmethod
     def Rz(theta):

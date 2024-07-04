@@ -28,15 +28,9 @@ class TestChannel:
         prob = fx_rng.uniform()
         mychannel = KrausChannel(
             [
-                {
-                    "coef": np.sqrt(1 - prob),
-                    "operator": np.array([[1.0, 0.0], [0.0, 1.0]]),
-                },
-                {
-                    "coef": np.sqrt(prob),
-                    "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                },
-            ]
+                {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+            ],
         )
         assert isinstance(mychannel.nqubit, int)
         assert mychannel.nqubit == 1
@@ -61,30 +55,18 @@ class TestChannel:
         with pytest.raises(KeyError):
             _ = KrausChannel(
                 [
-                    {
-                        "coefficients": np.sqrt(1 - prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, 1.0]]),
-                    },
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coefficients": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ],
             )
 
         # incorrect "operator" key
         with pytest.raises(KeyError):
             _ = KrausChannel(
                 [
-                    {
-                        "coef": np.sqrt(1 - prob),
-                        "oertor": np.array([[1.0, 0.0], [0.0, 1.0]]),
-                    },
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coef": np.sqrt(1 - prob), "oertor": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ],
             )
 
         # incorrect parameter type
@@ -92,11 +74,8 @@ class TestChannel:
             _ = KrausChannel(
                 [
                     {"coef": "a", "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ],
             )
 
         # incorrect operator type
@@ -104,11 +83,8 @@ class TestChannel:
             _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": "a"},
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ],
             )
 
         # incorrect operator dimension
@@ -116,11 +92,8 @@ class TestChannel:
             _ = KrausChannel(
                 [
                     {"coef": np.sqrt(1 - prob), "operator": np.array([1.0, 0.0])},
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ],
             )
 
         # incorrect operator dimension: square but not qubits
@@ -136,30 +109,18 @@ class TestChannel:
         with pytest.raises(ValueError):
             _ = KrausChannel(
                 [
-                    {
-                        "coef": 2 * np.sqrt(1 - prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, 1.0]]),
-                    },
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coef": 2 * np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 0.0], [0.0, -1.0]])},
+                ],
             )
 
         # doesn't square to 1. Not normalized. Operator.
         with pytest.raises(ValueError):
             _ = KrausChannel(
                 [
-                    {
-                        "coef": np.sqrt(1 - prob),
-                        "operator": np.array([[1.0, 0.0], [0.0, 1.0]]),
-                    },
-                    {
-                        "coef": np.sqrt(prob),
-                        "operator": np.array([[1.0, 3.0], [0.0, -1.0]]),
-                    },
-                ]
+                    {"coef": np.sqrt(1 - prob), "operator": np.array([[1.0, 0.0], [0.0, 1.0]])},
+                    {"coef": np.sqrt(prob), "operator": np.array([[1.0, 3.0], [0.0, -1.0]])},
+                ],
             )
 
         # incorrect rank (number of kraus_operators)
@@ -242,30 +203,12 @@ class TestChannel:
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(Ops.x, np.eye(2)),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(Ops.y, np.eye(2)),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(Ops.z, np.eye(2)),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(np.eye(2), Ops.x),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(np.eye(2), Ops.y),
-            },
-            {
-                "coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0),
-                "operator": np.kron(np.eye(2), Ops.z),
-            },
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
+            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
             {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
@@ -282,13 +225,5 @@ class TestChannel:
         assert depol_tensor_channel_2_qubit.is_normalized
 
         for i in range(len(depol_tensor_channel_2_qubit.kraus_ops)):
-            np.testing.assert_allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
-            np.testing.assert_allclose(
-                depol_tensor_channel_2_qubit.kraus_ops[i]["operator"],
-                data[i]["operator"],
-            )
-
-
-if __name__ == "__main__":
-    np.random.seed(2)
-    unittest.main()
+            assert np.allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["coef"], data[i]["coef"])
+            assert np.allclose(depol_tensor_channel_2_qubit.kraus_ops[i]["operator"], data[i]["operator"])

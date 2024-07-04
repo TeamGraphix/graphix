@@ -7,16 +7,16 @@ import numpy as np
 import pytest
 
 import graphix.ops
+import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
+from graphix.command import M, N
 from graphix.pattern import CommandNode, Pattern
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
-from graphix.command import N, M
-import graphix.pauli
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -297,7 +297,17 @@ class TestPattern:
         assert isolated_nodes == isolated_nodes_ref
 
     def test_get_meas_plane(self) -> None:
-        preset_meas_plane = [graphix.pauli.Plane.XY, graphix.pauli.Plane.XY, graphix.pauli.Plane.XY, graphix.pauli.Plane.YZ, graphix.pauli.Plane.YZ, graphix.pauli.Plane.YZ, graphix.pauli.Plane.XZ, graphix.pauli.Plane.XZ, graphix.pauli.Plane.XZ]
+        preset_meas_plane = [
+            graphix.pauli.Plane.XY,
+            graphix.pauli.Plane.XY,
+            graphix.pauli.Plane.XY,
+            graphix.pauli.Plane.YZ,
+            graphix.pauli.Plane.YZ,
+            graphix.pauli.Plane.YZ,
+            graphix.pauli.Plane.XZ,
+            graphix.pauli.Plane.XZ,
+            graphix.pauli.Plane.XZ,
+        ]
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):

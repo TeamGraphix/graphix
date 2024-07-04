@@ -15,12 +15,11 @@ import numpy as np
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.sim.statevec
+from graphix import command, instruction
+from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
-from graphix import command
-from graphix.command import N, M, E, X, Z, CommandKind
-from graphix import instruction
 
 
 @dataclasses.dataclass
@@ -33,7 +32,7 @@ class TranspileResult:
     """
 
     pattern: Pattern
-    classical_outputs: Tuple[int, ...]
+    classical_outputs: tuple[int, ...]
 
 
 @dataclasses.dataclass
@@ -47,32 +46,6 @@ class SimulateResult:
 
     statevec: graphix.sim.statevec.Statevec
     classical_measures: tuple[int, ...]
-
-
-@dataclasses.dataclass
-class TranspileResult:
-    """
-    The result of a transpilation.
-
-    pattern : :class:`graphix.pattern.Pattern` object
-    classical_outputs : tuple[int,...], index of nodes measured with `M` gates
-    """
-
-    pattern: Pattern
-    classical_outputs: Tuple[int, ...]
-
-
-@dataclasses.dataclass
-class SimulateResult:
-    """
-    The result of a simulation.
-
-    statevec : :class:`graphix.sim.statevec.Statevec` object
-    classical_measures : tuple[int,...], classical measures
-    """
-
-    statevec: Statevec
-    classical_measures: Tuple[int, ...]
 
 
 class Circuit:
@@ -390,12 +363,7 @@ class Circuit:
             elif kind == instruction.InstructionKind.CCX:
                 if opt:
                     ancilla = [Nnode + i for i in range(11)]
-                    (
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        seq,
-                    ) = self._ccx_command_opt(
+                    (out[instr.controls[0]], out[instr.controls[1]], out[instr.target], seq,) = self._ccx_command_opt(
                         out[instr.controls[0]],
                         out[instr.controls[1]],
                         out[instr.target],
@@ -405,12 +373,7 @@ class Circuit:
                     Nnode += 11
                 else:
                     ancilla = [Nnode + i for i in range(18)]
-                    (
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        seq,
-                    ) = self._ccx_command(
+                    (out[instr.controls[0]], out[instr.controls[1]], out[instr.target], seq,) = self._ccx_command(
                         out[instr.controls[0]],
                         out[instr.controls[1]],
                         out[instr.target],
@@ -1003,7 +966,7 @@ class Circuit:
     @classmethod
     def _cnot_command(
         self, control_node: int, target_node: int, ancilla: Sequence[int]
-    ) -> Tuple[int, int, List[command.Command]]:
+    ) -> tuple[int, int, List[command.Command]]:
         """MBQC commands for CNOT gate
 
         Parameters
@@ -1082,7 +1045,7 @@ class Circuit:
         return ancilla, seq
 
     @classmethod
-    def _s_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
+    def _s_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, List[command.Command]]:
         """MBQC commands for S gate
 
         Parameters
@@ -1110,7 +1073,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _x_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
+    def _x_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, List[command.Command]]:
         """MBQC commands for Pauli X gate
 
         Parameters
@@ -1138,7 +1101,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _y_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
+    def _y_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, List[command.Command]]:
         """MBQC commands for Pauli Y gate
 
         Parameters
@@ -1171,7 +1134,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _z_command(self, input_node: int, ancilla: Sequence[int]) -> Tuple[int, List[command.Command]]:
+    def _z_command(self, input_node: int, ancilla: Sequence[int]) -> tuple[int, List[command.Command]]:
         """MBQC commands for Pauli Z gate
 
         Parameters
@@ -1199,7 +1162,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> Tuple[int, List[command.Command]]:
+    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, List[command.Command]]:
         """MBQC commands for X rotation gate
 
         Parameters
@@ -1229,7 +1192,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> Tuple[int, List[command.Command]]:
+    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, List[command.Command]]:
         """MBQC commands for Y rotation gate
 
         Parameters
@@ -1264,7 +1227,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> Tuple[int, List[command.Command]]:
+    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, List[command.Command]]:
         """MBQC commands for Z rotation gate
 
         Parameters
@@ -1294,7 +1257,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float) -> Tuple[int, List[command.Command]]:
+    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float) -> tuple[int, List[command.Command]]:
         """optimized MBQC commands for Z rotation gate
 
         Parameters
@@ -1322,7 +1285,7 @@ class Circuit:
     @classmethod
     def _rzz_command_opt(
         self, control_node: int, target_node: int, ancilla: int, angle: float
-    ) -> Tuple[int, int, List[command.Command]]:
+    ) -> tuple[int, int, List[command.Command]]:
         """Optimized MBQC commands for ZZ-rotation gate
 
         Parameters
@@ -1358,7 +1321,7 @@ class Circuit:
         control_node2: int,
         target_node: int,
         ancilla: Sequence[int],
-    ) -> Tuple[int, int, int, List[command.Command]]:
+    ) -> tuple[int, int, int, List[command.Command]]:
         """MBQC commands for CCX gate
 
         Parameters
@@ -1541,7 +1504,7 @@ class Circuit:
         control_node2: int,
         target_node: int,
         ancilla: Sequence[int],
-    ) -> Tuple[int, int, int, List[command.Command]]:
+    ) -> tuple[int, int, int, List[command.Command]]:
         """Optimized MBQC commands for CCX gate
 
         Parameters

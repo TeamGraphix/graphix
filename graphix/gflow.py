@@ -12,6 +12,7 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 from __future__ import annotations
 
+import numbers
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,8 +25,8 @@ import networkx as nx
 import numpy as np
 import sympy as sp
 
-from graphix.linalg import MatGF2
 import graphix.pauli
+from graphix.linalg import MatGF2
 
 
 def find_gflow(
@@ -969,9 +970,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         return None, None
 
 
-def get_corrections_from_pattern(
-    pattern: Pattern,
-) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
+def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
     """Get x and z corrections from pattern
 
     Parameters
@@ -1487,6 +1486,10 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
     return outputs
 
 
+def is_int(value: numbers.Number) -> bool:
+    return value == int(value)
+
+
 def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) -> tuple[set[int], set[int], set[int]]:
     """Get sets of nodes measured in X, Y, Z basis.
 
@@ -1508,16 +1511,19 @@ def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) 
     """
     Lx, Ly, Lz = set(), set(), set()
     for node, plane in meas_planes.items():
-        if plane == graphix.pauli.Plane.XY and meas_angles[node] == int(meas_angles[node]):  # measurement angle is integer
-            Lx |= {node}
-        elif plane == graphix.pauli.Plane.XY and 2 * meas_angles[node] == int(2 * meas_angles[node]):  # measurement angle is half integer
-            Ly |= {node}
-        elif plane == graphix.pauli.Plane.XZ and meas_angles[node] == int(meas_angles[node]):
-            Lz |= {node}
-        elif plane == graphix.pauli.Plane.XZ and 2 * meas_angles[node] == int(2 * meas_angles[node]):
-            Lx |= {node}
-        elif plane == graphix.pauli.Plane.YZ and meas_angles[node] == int(meas_angles[node]):
-            Ly |= {node}
-        elif plane == graphix.pauli.Plane.YZ and 2 * meas_angles[node] == int(2 * meas_angles[node]):
-            Lz |= {node}
+        if plane == graphix.pauli.Plane.XY:
+            if is_int(meas_angles[node]):  # measurement angle is integer
+                Lx |= {node}
+            elif is_int(2 * meas_angles[node]):  # measurement angle is half integer
+                Ly |= {node}
+        elif plane == graphix.pauli.Plane.XZ:
+            if is_int(meas_angles[node]):
+                Lz |= {node}
+            elif is_int(2 * meas_angles[node]):
+                Lx |= {node}
+        elif plane == graphix.pauli.Plane.YZ:
+            if is_int(meas_angles[node]):
+                Ly |= {node}
+            elif is_int(2 * meas_angles[node]):
+                Lz |= {node}
     return Lx, Ly, Lz

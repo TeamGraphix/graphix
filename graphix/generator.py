@@ -5,10 +5,10 @@ MBQC pattern generator
 
 from __future__ import annotations
 
+import graphix.pauli
+from graphix.command import C, E, M, N, X, Z
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
-from graphix.command import N, M, E, C, X, Z
-import graphix.pauli
 
 
 def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):

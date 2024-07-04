@@ -11,11 +11,11 @@ from networkx.utils import graphs_equal
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
 
+import graphix.pauli
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec, meas_op
-import graphix.pauli
 
 
 def get_state(g) -> Statevec:

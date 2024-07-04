@@ -8,12 +8,7 @@ class NodeList:
     This class defines a node list with node_num as key.
     """
 
-    def __init__(
-        self,
-        node_nums: list[int] = [],
-        node_datas: list[dict] = [],
-        node_indices: list[int] = [],
-    ):
+    def __init__(self, node_nums: list[int] = [], node_datas: list[dict] = [], node_indices: list[int] = []):
         if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
             raise ValueError("node_nums, node_datas and node_indices must have the same length")
         self.nodes = set(node_nums)
@@ -75,10 +70,7 @@ class EdgeList:
     """
 
     def __init__(
-        self,
-        edge_nums: list[tuple[int, int]] = [],
-        edge_datas: list[dict] = [],
-        edge_indices: list[int] = [],
+        self, edge_nums: list[tuple[int, int]] = [], edge_datas: list[dict] = [], edge_indices: list[int] = []
     ):
         if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
             raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
@@ -125,12 +117,7 @@ class EdgeList:
         self.nnum_to_edges[enum[0]].add(enum)
         self.nnum_to_edges[enum[1]].add(enum)
 
-    def add_edges_from(
-        self,
-        edge_nums: list[tuple[int, int]],
-        edge_datas: list[dict],
-        edge_indices: list[int],
-    ):
+    def add_edges_from(self, edge_nums: list[tuple[int, int]], edge_datas: list[dict], edge_indices: list[int]):
         if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
             raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
         for enum, edata, eidx in zip(edge_nums, edge_datas, edge_indices):

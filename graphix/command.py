@@ -1,12 +1,15 @@
 """Data validator command classes."""
 
-from pydantic import BaseModel
-from typing import Union, Literal, List, Tuple
-from graphix.pauli import Plane
-import enum
 import abc
+import enum
+from typing import List, Literal, Tuple, Union
+
+from pydantic import BaseModel
+
+from graphix.pauli import Plane
 
 Node = int
+
 
 class CommandKind(enum.Enum):
     N = "N"

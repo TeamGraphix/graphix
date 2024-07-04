@@ -9,15 +9,15 @@ from copy import deepcopy
 import networkx as nx
 import numpy as np
 
+import graphix.clifford
+import graphix.pauli
+from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
-from graphix import command
-import graphix.pauli
-import graphix.clifford
 
 
 class NodeAlreadyPrepared(Exception):
@@ -197,7 +197,7 @@ class Pattern:
             f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
         )
 
-    def equal(self, other: Pattern):
+    def __eq__(self, other: Pattern) -> bool:
         return (
             self.__seq == other.__seq
             and self.input_nodes == other.input_nodes
@@ -1200,7 +1200,7 @@ class Pattern:
         assert self.is_standard()
         Clist = []
         for i in range(len(self.__seq)):
-            if self.__seq[i].kind == command.CommandKind.X or (self.__seq[i].kind == command.CommandKind.Z):
+            if self.__seq[i].kind in (command.CommandKind.X, command.CommandKind.Z):
                 Clist.append(self.__seq[i])
         return Clist
 
@@ -1990,10 +1990,8 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     # update command sequence
     vops = graph_state.get_vops()
     new_seq = []
-    # TO CHECK: why the order is relevant?
-    for index in graph_state.nodes:
-        if index not in new_inputs:
-            new_seq.append(command.N(node=index))
+    for index in set(graph_state.nodes) - set(new_inputs):
+        new_seq.append(command.N(node=index))
     for edge in graph_state.edges:
         new_seq.append(command.E(nodes=edge))
     for cmd in pattern:
@@ -2047,9 +2045,8 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     non_pauli_node: list[int] = []
     for cmd in m_commands:
         pm = is_pauli_measurement(cmd, ignore_vop=True)
-        if pm is not None and (
-            cmd.node not in pattern.input_nodes or not leave_input
-        ):  # Pauli measurement to be removed
+        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
+            # Pauli measurement to be removed
             if pm in ["+X", "-X"]:
                 t_cond = np.any(np.isin(cmd.t_domain, np.array(non_pauli_node)))
                 if t_cond:  # cmd depend on non-Pauli measurement
