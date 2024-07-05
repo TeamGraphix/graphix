@@ -297,34 +297,6 @@ class Pattern:
         node_prop = {input: fresh_node() for input in self.__input_nodes}
         morder = []
         for cmd in self.__seq:
-            # match cmd.kind:
-            #     case command.CommandKind.N:
-            #         node_prop[cmd.node] = fresh_node()
-            #     case command.CommandKind.E:
-            #         node_prop[cmd.nodes[1]]["seq"].append(cmd.nodes[0])
-            #         node_prop[cmd.nodes[0]]["seq"].append(cmd.nodes[1])
-            #     case command.CommandKind.M:
-            #         node_prop[cmd.node]["Mprop"] = [cmd.plane, cmd.angle, cmd.s_domain, cmd.t_domain, cmd.vop]
-            #         node_prop[cmd.node]["seq"].append(-1)
-            #         morder.append(cmd.node)
-            #     case command.CommandKind.X:
-            #         if standardized:
-            #             node_prop[cmd.node]["Xsignal"] += cmd.domain
-            #             node_prop[cmd.node]["Xsignals"] += [cmd.domain]
-            #         else:
-            #             node_prop[cmd.node]["Xsignals"].append(cmd.domain)
-            #         node_prop[cmd.node]["seq"].append(-2)
-            #     case command.CommandKind.Z:
-            #         node_prop[cmd.node]["Zsignal"] += cmd.domain
-            #         node_prop[cmd.node]["seq"].append(-3)
-            #     case command.CommandKind.C:
-            #         node_prop[cmd.node]["vop"] = cmd.cliff_index
-            #         node_prop[cmd.node]["seq"].append(-4)
-            #     case command.CommandKind.S:
-            #         raise NotImplementedError()
-            #     case _:
-            #         raise ValueError(f"command {cmd} is invalid!")
-
             kind = cmd.kind
             if kind == command.CommandKind.N:
                 node_prop[cmd.node] = fresh_node()
