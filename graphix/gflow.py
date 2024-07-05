@@ -30,11 +30,17 @@ from graphix.command import CommandKind
 from graphix.linalg import MatGF2
 
 
+def check_meas_planes(meas_planes: dict[int, graphix.pauli.Plane]) -> None:
+    for node, plane in meas_planes.items():
+        if not isinstance(plane, graphix.pauli.Plane):
+            raise ValueError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
+
+
 def find_gflow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, str],
+    meas_planes: dict[int, graphix.pauli.Plane],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Maximally delayed gflow finding algorithm
@@ -80,6 +86,7 @@ def find_gflow(
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
+    check_meas_planes(meas_planes)
     l_k = dict()
     g = dict()
     for node in graph.nodes:
@@ -91,7 +98,7 @@ def gflowaux(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, str],
+    meas_planes: dict[int, graphix.pauli.Plane],
     k: int,
     l_k: dict[int, int],
     g: dict[int, set[int]],
@@ -257,6 +264,7 @@ def find_flow(
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
+    check_meas_planes(meas_planes)
     nodes = set(graph.nodes)
     edges = set(graph.edges)
 
@@ -351,7 +359,7 @@ def find_pauliflow(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, str],
+    meas_planes: dict[int, graphix.pauli.Plane],
     meas_angles: dict[int, float],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -400,6 +408,7 @@ def find_pauliflow(
     l_k: dict
         layers obtained by  Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
+    check_meas_planes(meas_planes)
     l_k = dict()
     p = dict()
     Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
@@ -414,7 +423,7 @@ def pauliflowaux(
     graph: nx.Graph,
     input: set[int],
     output: set[int],
-    meas_planes: dict[int, str],
+    meas_planes: dict[int, graphix.pauli.Plane],
     k: int,
     correction_candidate: set[int],
     solved_nodes: set[int],
@@ -1223,7 +1232,7 @@ def verify_flow(
     input: set[int],
     output: set[int],
     flow: dict[int, set],
-    meas_planes: dict[int, str] = {},
+    meas_planes: dict[int, graphix.pauli.Plane] = {},
 ) -> bool:
     """Check whether the flow is valid.
 
@@ -1242,7 +1251,7 @@ def verify_flow(
     valid_flow: bool
         True if the flow is valid. False otherwise.
     """
-
+    check_meas_planes(meas_planes)
     valid_flow = True
     non_outputs = set(graph.nodes) - output
     # if meas_planes is given, check whether all measurement planes are "XY"
@@ -1276,7 +1285,7 @@ def verify_gflow(
     input: set[int],
     output: set[int],
     gflow: dict[int, set],
-    meas_planes: dict[int, str],
+    meas_planes: dict[int, graphix.pauli.Plane],
 ) -> bool:
     """Check whether the gflow is valid.
 
@@ -1299,6 +1308,7 @@ def verify_gflow(
     valid_gflow: bool
         True if the gflow is valid. False otherwise.
     """
+    check_meas_planes(meas_planes)
     valid_gflow = True
     non_outputs = set(graph.nodes) - output
     odd_flow = dict()
@@ -1333,7 +1343,7 @@ def verify_pauliflow(
     input: set[int],
     output: set[int],
     pauliflow: dict[int, set[int]],
-    meas_planes: dict[int, str],
+    meas_planes: dict[int, graphix.pauli.Plane],
     meas_angles: dict[int, float],
 ) -> bool:
     """Check whether the Pauliflow is valid.
@@ -1348,7 +1358,7 @@ def verify_pauliflow(
         set of node labels for output
     pauliflow: dict[int, set]
         Pauli flow function. pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
-    meas_planes: dict[int, str]
+    meas_planes: dict[int, graphix.pauli.Plane]
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     meas_angles: dict[int, float]
         measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
@@ -1358,6 +1368,7 @@ def verify_pauliflow(
     valid_pauliflow: bool
         True if the Pauliflow is valid. False otherwise.
     """
+    check_meas_planes(meas_planes)
     Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
 
     valid_pauliflow = True
@@ -1441,12 +1452,14 @@ def is_int(value: numbers.Number) -> bool:
     return value == int(value)
 
 
-def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) -> tuple[set[int], set[int], set[int]]:
+def get_pauli_nodes(
+    meas_planes: dict[int, graphix.pauli.Plane], meas_angles: dict[int, float]
+) -> tuple[set[int], set[int], set[int]]:
     """Get sets of nodes measured in X, Y, Z basis.
 
     Parameters
     ----------
-    meas_planes: dict[int, str]
+    meas_planes: dict[int, graphix.pauli.Plane]
         measurement planes for each node.
     meas_angles: dict[int, float]
         measurement angles for each node.
@@ -1460,6 +1473,7 @@ def get_pauli_nodes(meas_planes: dict[int, str], meas_angles: dict[int, float]) 
     Lz: set
         set of nodes measured in Z basis.
     """
+    check_meas_planes(meas_planes)
     Lx, Ly, Lz = set(), set(), set()
     for node, plane in meas_planes.items():
         if plane == graphix.pauli.Plane.XY:
