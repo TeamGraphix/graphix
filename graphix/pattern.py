@@ -1908,21 +1908,6 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
             graph_state.h(pattern_cmd.node)
         if int(t_signal % 2) == 1:  # equivalent to Z byproduct
             graph_state.z(pattern_cmd.node)
-        # match measurement_basis:
-        #     case "+X":
-        #         results[pattern_cmd.node] = graph_state.measure_x(pattern_cmd.node, choice=0)
-        #     case "-X":
-        #         results[pattern_cmd.node] = 1 - graph_state.measure_x(pattern_cmd.node, choice=1)
-        #     case "+Y":
-        #         results[pattern_cmd.node] = graph_state.measure_y(pattern_cmd.node, choice=0)
-        #     case "-Y":
-        #         results[pattern_cmd.node] = 1 - graph_state.measure_y(pattern_cmd.node, choice=1)
-        #     case "+Z":
-        #         results[pattern_cmd.node] = graph_state.measure_z(pattern_cmd.node, choice=0)
-        #     case "-Z":
-        #         results[pattern_cmd.node] = 1 - graph_state.measure_z(pattern_cmd.node, choice=1)
-        #     case _:
-        #         raise ValueError("unknown Pauli measurement basis", measurement_basis)
         basis = measurement_basis
         if basis == "+X":
             results[pattern_cmd.node] = graph_state.measure_x(pattern_cmd.node, choice=0)
