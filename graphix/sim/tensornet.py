@@ -153,8 +153,8 @@ class TensorNetworkBackend:
             buffer = 2**0.5
 
         # extract signals for adaptive angle
-        s_signal = np.sum([self.results[j] for j in cmd.s_domain])
-        t_signal = np.sum([self.results[j] for j in cmd.t_domain])
+        s_signal = np.sum(self.results[j] for j in cmd.s_domain)
+        t_signal = np.sum(self.results[j] for j in cmd.t_domain)
         angle = cmd.angle * np.pi
         vop = cmd.vop
         if int(s_signal % 2) == 1:

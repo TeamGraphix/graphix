@@ -104,7 +104,7 @@ class DensityMatrix:
             raise ValueError("op must be 2*2 matrix.")
 
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
+        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.Nqubit, 0))
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
