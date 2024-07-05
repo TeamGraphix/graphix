@@ -101,21 +101,6 @@ class PatternSimulator:
                     self.backend.apply_clifford(cmd)
                 else:
                     raise ValueError("invalid commands")
-                # match cmd.kind:
-                #     case CommandKind.N:
-                #         self.backend.add_nodes([cmd.node])
-                #     case CommandKind.E:
-                #         self.backend.entangle_nodes(cmd.nodes)
-                #     case CommandKind.M:
-                #         self.backend.measure(cmd)
-                #     case CommandKind.X:
-                #         self.backend.correct_byproduct(cmd)
-                #     case CommandKind.Z:
-                #         self.backend.correct_byproduct(cmd)
-                #     case CommandKind.C:
-                #         self.backend.apply_clifford(cmd)
-                #     case _:
-                #         raise ValueError("invalid commands")
             self.backend.finalize()
         else:
             self.noise_model.assign_simulator(self)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import string
 from copy import deepcopy
-from typing import List, Union
 
 import numpy as np
 import quimb.tensor as qtn
@@ -167,7 +166,7 @@ class TensorNetworkBackend:
         proj_vec = proj_vec * buffer
         self.state.measure_single(cmd.node, basis=proj_vec)
 
-    def correct_byproduct(self, cmd: Union[command.X, command.Z]):
+    def correct_byproduct(self, cmd: command.X | command.Z):
         """Perform byproduct correction.
 
         Parameters
@@ -267,23 +266,6 @@ class MBQCTensorNet(TensorNetwork):
         """
         ind = gen_str()
         tag = str(index)
-        # match state:
-        #     case "plus":
-        #         vec = States.plus
-        #     case "minus":
-        #         vec = States.minus
-        #     case "zero":
-        #         vec = States.zero
-        #     case "one":
-        #         vec = States.one
-        #     case "iplus":
-        #         vec = States.iplus
-        #     case "iminus":
-        #         vec = States.iminus
-        #     case _:
-        #         assert state.shape == (2,), "state must be 2-element np.ndarray"
-        #         assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
-        #         vec = state
         if state == "plus":
             vec = BasicStates.PLUS.get_statevector()
         elif state == "minus":
