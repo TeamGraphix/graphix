@@ -833,10 +833,10 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     xflow = dict()
     zflow = dict()
     for cmd in pattern:
-        if cmd[0] == "M":
-            target = cmd[1]
-            xflow_source = {x for x in cmd[4] if cmd[4].count(x) % 2 != 0} & nodes
-            zflow_source = {x for x in cmd[5] if cmd[5].count(x) % 2 != 0} & nodes
+        if cmd.kind == "M":
+            target = cmd.node
+            xflow_source = {x for x in cmd.s_domain if cmd.s_domain.count(x) % 2 != 0} & nodes
+            zflow_source = {x for x in cmd.t_domain if cmd.t_domain.count(x) % 2 != 0} & nodes
             for node in xflow_source:
                 if node not in xflow.keys():
                     xflow[node] = set()
@@ -845,16 +845,16 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
                 if node not in zflow.keys():
                     zflow[node] = set()
                 zflow[node] |= {target}
-        if cmd[0] == "X":
-            target = cmd[1]
-            xflow_source = {x for x in cmd[2] if cmd[2].count(x) % 2 != 0} & nodes
+        if cmd.kind == "X":
+            target = cmd.node
+            xflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
             for node in xflow_source:
                 if node not in xflow.keys():
                     xflow[node] = set()
                 xflow[node] |= {target}
-        if cmd[0] == "Z":
-            target = cmd[1]
-            zflow_source = {x for x in cmd[2] if cmd[2].count(x) % 2 != 0} & nodes
+        if cmd.kind == "Z":
+            target = cmd.node
+            zflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
             for node in zflow_source:
                 if node not in zflow.keys():
                     zflow[node] = set()
