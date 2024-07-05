@@ -363,7 +363,12 @@ class Circuit:
             elif kind == instruction.InstructionKind.CCX:
                 if opt:
                     ancilla = [Nnode + i for i in range(11)]
-                    (out[instr.controls[0]], out[instr.controls[1]], out[instr.target], seq,) = self._ccx_command_opt(
+                    (
+                        out[instr.controls[0]],
+                        out[instr.controls[1]],
+                        out[instr.target],
+                        seq,
+                    ) = self._ccx_command_opt(
                         out[instr.controls[0]],
                         out[instr.controls[1]],
                         out[instr.target],
@@ -373,7 +378,12 @@ class Circuit:
                     Nnode += 11
                 else:
                     ancilla = [Nnode + i for i in range(18)]
-                    (out[instr.controls[0]], out[instr.controls[1]], out[instr.target], seq,) = self._ccx_command(
+                    (
+                        out[instr.controls[0]],
+                        out[instr.controls[1]],
+                        out[instr.target],
+                        seq,
+                    ) = self._ccx_command(
                         out[instr.controls[0]],
                         out[instr.controls[1]],
                         out[instr.target],
