@@ -931,26 +931,6 @@ class Circuit:
                 target = self._find_byproduct_to_move(rev=True, skipnum=moved)
                 continue
             next_instr = self._instr[target + 1]
-            # match next_instr.kind:
-            #     case instruction.InstructionKind.CNOT:
-            #         target = self._commute_with_cnot(target)
-            #     case instruction.InstructionKind.SWAP:
-            #         target = self._commute_with_swap(target)
-            #     case instruction.InstructionKind.H:
-            #         self._commute_with_H(target)
-            #     case instruction.InstructionKind.S:
-            #         target = self._commute_with_S(target)
-            #     case instruction.InstructionKind.RX:
-            #         self._commute_with_Rx(target)
-            #     case instruction.InstructionKind.RY:
-            #         self._commute_with_Ry(target)
-            #     case instruction.InstructionKind.RZ:
-            #         self._commute_with_Rz(target)
-            #     case instruction.InstructionKind.RZZ:
-            #         self._commute_with_Rzz(target)
-            #     case _:
-            #         # Pauli gates commute up to global phase.
-            #         self._commute_with_following(target)
             kind = next_instr.kind
             if kind == instruction.InstructionKind.CNOT:
                 target = self._commute_with_cnot(target)

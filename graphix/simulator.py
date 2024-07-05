@@ -148,32 +148,6 @@ class PatternSimulator:
                     self.noise_model.tick_clock()
                 else:
                     raise ValueError("Invalid commands.")
-                # match cmd.kind:
-                #     case CommandKind.N:
-                #         self.backend.add_nodes([cmd.node])
-                #         self.backend.apply_channel(self.noise_model.prepare_qubit(), [cmd.node])
-                #     case CommandKind.E:
-                #         self.backend.entangle_nodes(cmd.nodes)  # for some reaon entangle doesn't get the whole command
-                #         self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
-                #     case CommandKind.M:
-                #         self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
-                #         self.backend.measure(cmd)
-                #         self.noise_model.confuse_result(cmd)
-                #     case CommandKind.X:
-                #         self.backend.correct_byproduct(cmd)
-                #         if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
-                #             self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
-                #     case CommandKind.Z:
-                #         self.backend.correct_byproduct(cmd)
-                #         if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
-                #             self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
-                #     case CommandKind.C:
-                #         self.backend.apply_clifford(cmd.node)
-                #         self.backend.apply_channel(self.noise_model.clifford(), [cmd.node])
-                #     case CommandKind.T:
-                #         self.noise_model.tick_clock()
-                #     case _:
-                #         raise ValueError("Invalid commands.")
             self.backend.finalize()
 
         return self.backend.state
