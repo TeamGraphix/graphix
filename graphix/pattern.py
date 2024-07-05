@@ -423,17 +423,6 @@ class Pattern:
                     self._commute_SS(target)
                 else:
                     self._commute_with_following(target)
-                # match cmd.kind:
-                #     case command.CommandKind.X:
-                #         self._commute_XS(target)
-                #     case command.CommandKind.Z:
-                #         self._commute_ZS(target)
-                #     case command.CommandKind.M:
-                #         self._commute_MS(target)
-                #     case command.CommandKind.S:
-                #         self._commute_SS(target)
-                #     case _:
-
                 target += 1
         else:
             raise ValueError("Invalid method")
