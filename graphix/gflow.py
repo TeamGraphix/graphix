@@ -26,6 +26,7 @@ import numpy as np
 import sympy as sp
 
 import graphix.pauli
+from graphix.command import CommandKind
 from graphix.linalg import MatGF2
 
 
@@ -833,7 +834,7 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     xflow = dict()
     zflow = dict()
     for cmd in pattern:
-        if cmd.kind == "M":
+        if cmd.kind == CommandKind.M:
             target = cmd.node
             xflow_source = {x for x in cmd.s_domain if cmd.s_domain.count(x) % 2 != 0} & nodes
             zflow_source = {x for x in cmd.t_domain if cmd.t_domain.count(x) % 2 != 0} & nodes
@@ -845,14 +846,14 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
                 if node not in zflow.keys():
                     zflow[node] = set()
                 zflow[node] |= {target}
-        if cmd.kind == "X":
+        if cmd.kind == CommandKind.X:
             target = cmd.node
             xflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
             for node in xflow_source:
                 if node not in xflow.keys():
                     xflow[node] = set()
                 xflow[node] |= {target}
-        if cmd.kind == "Z":
+        if cmd.kind == CommandKind.Z:
             target = cmd.node
             zflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
             for node in zflow_source:
@@ -968,56 +969,6 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         return xflow, l_k
     else:
         return None, None
-
-
-def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
-    """Get x and z corrections from pattern
-
-    Parameters
-    ----------
-    pattern: graphix.Pattern object
-        pattern to be based on
-
-    Returns
-    -------
-    xflow: dict
-        xflow function. xflow[i] is the set of qubits to be corrected in the X basis for the measurement of qubit i.
-    zflow: dict
-        zflow function. zflow[i] is the set of qubits to be corrected in the Z basis for the measurement of qubit i.
-    """
-    nodes, _ = pattern.get_graph()
-    nodes = set(nodes)
-    xflow = dict()
-    zflow = dict()
-    for cmd in pattern.__seq:
-        kind = cmd.kind
-        if kind == "M":
-            target = cmd.node
-            xflow_source = {x for x in cmd.s_domain if cmd.s_domain.count(x) % 2 != 0} & nodes
-            zflow_source = {x for x in cmd.t_domain if cmd.t_domain.count(x) % 2 != 0} & nodes
-            for node in xflow_source:
-                if node not in xflow.keys():
-                    xflow[node] = set()
-                xflow[node] |= {target}
-            for node in zflow_source:
-                if node not in zflow.keys():
-                    zflow[node] = set()
-                zflow[node] |= {target}
-        if kind == "X":
-            target = cmd.node
-            xflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
-            for node in xflow_source:
-                if node not in xflow.keys():
-                    xflow[node] = set()
-                xflow[node] |= {target}
-        if kind == "Z":
-            target = cmd.node
-            zflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
-            for node in zflow_source:
-                if node not in zflow.keys():
-                    zflow[node] = set()
-                zflow[node] |= {target}
-    return xflow, zflow
 
 
 def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:

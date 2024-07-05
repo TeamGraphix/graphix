@@ -9,15 +9,18 @@ import pytest
 from numpy.random import Generator
 
 import graphix.pauli
+from graphix.command import M, X, Z
 from graphix.gflow import (
     find_flow,
     find_gflow,
     find_pauliflow,
+    get_corrections_from_pattern,
     get_input_from_flow,
     verify_flow,
     verify_gflow,
     verify_pauliflow,
 )
+from graphix.pattern import Pattern
 from tests.random_circuit import get_rand_circuit
 
 if TYPE_CHECKING:
@@ -597,3 +600,14 @@ class TestGflow:
         if p:
             valid = verify_pauliflow(graph, vin, vout, p, meas_planes, meas_angles)
             assert valid
+
+    def test_corrections_from_pattern(self) -> None:
+        pattern = Pattern(input_nodes=range(5))
+        pattern.add(graphix.command.M(node=0))
+        pattern.add(graphix.command.M(node=1))
+        pattern.add(graphix.command.M(node=2, s_domain=(0,), t_domain=(1,)))
+        pattern.add(graphix.command.X(node=3, domain=(2,)))
+        pattern.add(graphix.command.Z(node=4, domain=(3,)))
+        xflow, zflow = get_corrections_from_pattern(pattern)
+        assert xflow == {0: {2}, 2: {3}}
+        assert zflow == {1: {2}, 3: {4}}
