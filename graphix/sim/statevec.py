@@ -7,11 +7,13 @@ import sys
 from copy import deepcopy
 
 import numpy as np
+import numpy.typing as npt
 
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types
+from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 
@@ -69,7 +71,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         return len(self.state.dims())
 
-    def add_nodes(self, nodes, input_state=graphix.states.BasicStates.PLUS):
+    def add_nodes(self, nodes: list[int], input_state=graphix.states.BasicStates.PLUS) -> None:
         """add new qubit to internal statevector
         and assign the corresponding node number
         to list self.node_index.
@@ -86,7 +88,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.node_index.extend(nodes)
         self.Nqubit += n
 
-    def entangle_nodes(self, edge):
+    def entangle_nodes(self, edge: tuple[int]):
         """Apply CZ gate to two connected nodes
 
         Parameters
@@ -98,7 +100,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, cmd):
+    def measure(self, cmd: command.M):
         """Perform measurement of a node in the internal statevector and trace out the qubit
 
         Parameters
@@ -110,25 +112,22 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.state.remove_qubit(loc)
         self.Nqubit -= 1
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, cmd: list[command.X, command.Z]):
         """Byproduct correction
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            loc = self.node_index.index(cmd[1])
-            if cmd[0] == "X":
-                op = Ops.x
-            elif cmd[0] == "Z":
-                op = Ops.z
+        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+            loc = self.node_index.index(cmd.node)
+            op = Ops.x if isinstance(cmd, command.X) else Ops.z
             self.state.evolve_single(op, loc)
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, cmd: command.C):
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        loc = self.node_index.index(cmd.node)
+        self.state.evolve_single(CLIFFORD[cmd.cliff_index], loc)
 
     def finalize(self):
         """to be run at the end of pattern simulation."""
@@ -148,7 +147,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
 
 
 # This function is no longer used
-def meas_op(angle, vop=0, plane="XY", choice=0):
+def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0):
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`
@@ -172,12 +171,12 @@ def meas_op(angle, vop=0, plane="XY", choice=0):
     """
     assert vop in np.arange(24)
     assert choice in [0, 1]
-    assert plane in ["XY", "YZ", "XZ"]
-    if plane == "XY":
+    assert plane in [graphix.pauli.Plane.XY, graphix.pauli.Plane.YZ, graphix.pauli.Plane.XZ]
+    if plane == graphix.pauli.Plane.XY:
         vec = (np.cos(angle), np.sin(angle), 0)
-    elif plane == "YZ":
+    elif plane == graphix.pauli.Plane.YZ:
         vec = (0, np.cos(angle), np.sin(angle))
-    elif plane == "XZ":
+    elif plane == graphix.pauli.Plane.XZ:
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
@@ -285,7 +284,7 @@ class Statevec:
     def __repr__(self):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
-    def evolve_single(self, op, i):
+    def evolve_single(self, op: npt.NDArray, i: int):
         """Single-qubit operation
 
         Parameters
@@ -298,7 +297,7 @@ class Statevec:
         self.psi = np.tensordot(op, self.psi, (1, i))
         self.psi = np.moveaxis(self.psi, 0, i)
 
-    def evolve(self, op, qargs):
+    def evolve(self, op: np.ndarray, qargs: list[int]):
         """Multi-qubit operation
 
         Parameters
@@ -346,7 +345,7 @@ class Statevec:
         # TODO use np.eigh since rho is Hermitian?
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
-    def remove_qubit(self, qarg):
+    def remove_qubit(self, qarg: int):
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
@@ -392,7 +391,7 @@ class Statevec:
         self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
         self.normalize()
 
-    def entangle(self, edge):
+    def entangle(self, edge: tuple[int, int]):
         """connect graph nodes
 
         Parameters

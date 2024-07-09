@@ -10,6 +10,7 @@ from quimb.tensor import Tensor
 
 import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
+from graphix.command import C, E, X, Z
 from graphix.ops import Ops
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
@@ -54,7 +55,7 @@ class TestTN:
         random_vec = np.array([1.0, 1.0, 1.0, 1.0]).reshape(2, 2)
         circuit = Circuit(2)
         pattern = circuit.transpile().pattern
-        pattern.add(["E", (0, 1)])
+        pattern.add(E(nodes=(0, 1)))
         tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
         dummy_index = [gen_str() for _ in range(2)]
         for qubit_index, n in enumerate(tn._dangling):
@@ -72,9 +73,9 @@ class TestTN:
 
     def test_apply_one_site_operator(self, fx_rng: Generator) -> None:
         cmds = [
-            ["X", 0, [15]],
-            ["Z", 0, [15]],
-            ["C", 0, fx_rng.integers(0, 23)],
+            X(node=0, domain=[15]),
+            Z(node=0, domain=[15]),
+            C(node=0, cliff_index=fx_rng.integers(23)),
         ]
         random_vec = fx_rng.normal(size=2)
 
@@ -96,7 +97,7 @@ class TestTN:
         ops = [
             np.array([[0.0, 1.0], [1.0, 0.0]]),
             np.array([[1.0, 0.0], [0.0, -1.0]]),
-            CLIFFORD[cmds[2][2]],
+            CLIFFORD[cmds[2].cliff_index],
         ]
         contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
         assert contracted == pytest.approx(contracted_ref)

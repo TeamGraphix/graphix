@@ -1,3 +1,4 @@
+eval_type_backport
 numpy>=1.22,<2
 networkx>3.0
 quimb>=1.4.0

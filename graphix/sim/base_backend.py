@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 import graphix.clifford
+import graphix.command
 import graphix.pauli
 
 
@@ -44,20 +45,17 @@ class Backend:
         # whether to compute the probability
         self.pr_calc = pr_calc
 
-    def _perform_measure(self, cmd):
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
+    def _perform_measure(self, cmd: graphix.command.M):
+        s_signal = np.sum([self.results[j] for j in cmd.s_domain])
+        t_signal = np.sum([self.results[j] for j in cmd.t_domain])
+        angle = cmd.angle * np.pi
+        vop = cmd.vop
         measure_update = graphix.pauli.MeasureUpdate.compute(
-            graphix.pauli.Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
-        loc = self.node_index.index(cmd[1])
+        loc = self.node_index.index(cmd.node)
         result = perform_measure(loc, measure_update.new_plane, angle, self.state, np.random, self.pr_calc)
-        self.results[cmd[1]] = result
-        self.node_index.remove(cmd[1])
+        self.results[cmd.node] = result
+        self.node_index.remove(cmd.node)
         return loc
