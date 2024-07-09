@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import abc
 import enum
-from typing import List, Tuple
 
 from pydantic import BaseModel
 
@@ -49,7 +50,7 @@ class CorrectionInstruction(OneQubitInstruction):
     Correction instruction base class model.
     """
 
-    domain: List[int]
+    domain: list[int]
 
 
 class RotationInstruction(OneQubitInstruction):
@@ -73,7 +74,7 @@ class TwoControlsInstruction(OneQubitInstruction):
     Two controls instruction base class model.
     """
 
-    controls: Tuple[int, int]
+    controls: tuple[int, int]
 
 
 class XC(CorrectionInstruction):
@@ -122,7 +123,7 @@ class SWAP(Instruction):
     """
 
     kind: InstructionKind = InstructionKind.SWAP
-    targets: Tuple[int, int]
+    targets: tuple[int, int]
 
 
 class H(OneQubitInstruction):
