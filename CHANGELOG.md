@@ -6,29 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Added
-
-### Fixed
-
-### Changed
-
-## [0.2.16] - 2024-05-24
 
 ### Added
 
-- Added classes for the pattern commands and circuit instructions. It has been done for data validation, readability and maintainability purposes. All the commands and instructions were represented in raw inside lists which allowed wrong datas passed, but also made it difficult to turn the code into a more general way to build commands and instructions.
+- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable. 
+- The following changes were made (#155):
   - Added `class Command` and all its child classes that represent all the pattern commands.
-  - Added `class Instruction` for the quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
+  - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
 
 ### Fixed
 
 ### Changed
 
-- Made all the updates inside the files making use of the commands and instructions list representation. According to the API, the user cannot write `pattern.add(["M", 0, "XY", 0, [], []])` anymore but should write `pattern.add(M(node=0))` for instance.
+- Entire package was udpated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
 
 
 
-## [0.2.15]
+## [0.2.15] - 2024-06-21
 ### Added
 - python 3.12 support
 - Arbitrary states now allowed for initializing input nodes in state vector
