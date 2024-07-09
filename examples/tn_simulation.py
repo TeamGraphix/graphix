@@ -128,48 +128,6 @@ plt.show()
 fig, ax = plt.subplots(figsize=(13, 10))
 color = ["Open", "Close"]
 
-# # Rebuilding the graph to be visualizable
-# # Ignoring dangling edges when plotting, but coloring according to them
-# ind_map, tag_map, default_output_nodes = mbqc_tn.ind_map, mbqc_tn.tag_map, mbqc_tn.default_output_nodes
-# nodes = set()
-# nodes.update(list(tag_map["Open"]))  # The node has "dangling" index
-# nodes.update(list(tag_map["Close"]))
-# edges = []
-# for i in ind_map.items():
-#     if len(i[1]) < 2:
-#         continue
-#     edges.append(list(i[1]))
-# input_nodes = []
-# for node in nodes:
-#     candidate = True
-#     for edge in edges:
-#         if edge[1] == node:
-#             candidate = False
-#             continue
-#     if candidate:
-#         input_nodes.append(node)
-# for i in range(0, len(default_output_nodes)):
-#     default_output_nodes[i] = str(default_output_nodes[i])
-# out_nodes = []
-# for i in tag_map.items():
-#     if i[0] in default_output_nodes:
-#         out_nodes.append(list(i[-1])[-1])
-# meas_planes = pattern.get_meas_plane()
-# # meas_planes = dict()
-# # for c in ["M", "Z", "C", "X"]:
-# #     if c in tag_map.keys():
-# #         for i in list(tag_map[c]):
-# #             meas_planes[i] = c
-# # for i in nodes:
-# #     if i not in meas_planes.keys():
-# #         meas_planes[i] = ""
-
-# # G = nx.Graph()
-# # G.add_nodes_from(nodes)
-# # G.add_edges_from(edges)
-# # f, l_k = find_gflow(G, input=set(input_nodes), output=set(out_nodes), meas_planes=meas_planes)
-# pos = GraphVisualizer(G, input_nodes, out_nodes).get_pos_from_gflow(g=f, l_k=l_k)
-
 mbqc_tn.draw(
     ax=ax,
     color=color,
