@@ -8,6 +8,7 @@ import enum
 from pydantic import BaseModel
 
 from graphix.pauli import Plane
+from graphix.parameter import ExpressionOrFloat
 
 Node = int
 
@@ -48,7 +49,7 @@ class M(Command):
     kind: CommandKind = CommandKind.M
     node: Node
     plane: Plane = Plane.XY
-    angle: float = 0.0
+    angle: ExpressionOrFloat = 0.0
     s_domain: list[Node] = []
     t_domain: list[Node] = []
     vop: int = 0

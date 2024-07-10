@@ -1668,16 +1668,10 @@ class Circuit:
     def subs(self, variable, substitute) -> Circuit:
         result = Circuit(self.width)
         for instr in self.instruction:
-            if instr[0] == "Rx" or instr[0] == "Ry" or instr[0] == "Rz" or instr[0] == "Rzz":
-                measure_index = 2
-            elif instr[0] == "M":
-                measure_index = 3
-            else:
-                measure_index = None
-            if measure_index:
-                new_instr = instr.copy()
-                new_instr[measure_index] = graphix.parameter.subs(new_instr[measure_index], variable, substitute)
-                result.instruction.append(new_instr)
-            else:
+            angle = getattr(instr, "angle", None)
+            if angle is None:
                 result.instruction.append(instr)
+            else:
+                new_instr = instr.model_copy(update={"angle": graphix.parameter.subs(angle, variable, substitute)})
+                result.instruction.append(new_instr)
         return result

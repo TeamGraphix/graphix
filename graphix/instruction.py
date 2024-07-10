@@ -6,6 +6,7 @@ import enum
 from pydantic import BaseModel
 
 from graphix.pauli import Plane
+from graphix.parameter import ExpressionOrFloat
 
 
 class InstructionKind(enum.Enum):
@@ -18,7 +19,7 @@ class InstructionKind(enum.Enum):
     X = "X"
     Y = "Y"
     Z = "Z"
-    I = "I"
+    I = "I"  # noqa: E741
     M = "M"
     RX = "RX"
     RY = "RY"
@@ -58,7 +59,7 @@ class RotationInstruction(OneQubitInstruction):
     Rotation instruction base class model.
     """
 
-    angle: float
+    angle: ExpressionOrFloat
 
 
 class OneControlInstruction(OneQubitInstruction):
@@ -166,7 +167,7 @@ class Z(OneQubitInstruction):
     kind: InstructionKind = InstructionKind.Z
 
 
-class I(OneQubitInstruction):
+class I(OneQubitInstruction):  # noqa: E742
     """
     I circuit instruction.
     """
@@ -181,7 +182,7 @@ class M(OneQubitInstruction):
 
     kind: InstructionKind = InstructionKind.M
     plane: Plane
-    angle: float
+    angle: ExpressionOrFloat
 
 
 class RX(RotationInstruction):

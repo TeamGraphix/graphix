@@ -4,16 +4,16 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
-from copy import deepcopy
 import numbers
+from copy import deepcopy
 
 import networkx as nx
 import numpy as np
 
 import graphix.clifford
+import graphix.parameter
 import graphix.pauli
 from graphix import command
-import graphix.parameter
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -1431,7 +1431,7 @@ class Pattern:
         expression that is not a number, typically an instance of `sympy.Expr`
         (but we don't force to choose `sympy` here).
         """
-        return any(not isinstance(cmd[3], numbers.Number) for cmd in self if cmd[0] == "M")
+        return any(not isinstance(cmd.angle, numbers.Number) for cmd in self if cmd.kind == command.CommandKind.M)
 
     def subs(self, variable, substitute) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
@@ -1448,9 +1448,8 @@ class Pattern:
         """
         result = Pattern(input_nodes=self.input_nodes)
         for cmd in self:
-            if cmd[0] == "M":
-                new_cmd = cmd.copy()
-                new_cmd[3] = graphix.parameter.subs(new_cmd[3], variable, substitute)
+            if cmd.kind == command.CommandKind.M:
+                new_cmd = cmd.model_copy(update={"angle": graphix.parameter.subs(cmd.angle, variable, substitute)})
                 result.add(new_cmd)
             else:
                 result.add(cmd)

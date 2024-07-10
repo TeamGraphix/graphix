@@ -329,7 +329,14 @@ class DensityMatrix:
 class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS, rng: np.random.Generator | None = None):
+    def __init__(
+        self,
+        pattern,
+        max_qubit_num=12,
+        pr_calc=True,
+        input_state: Data = graphix.states.BasicStates.PLUS,
+        rng: np.random.Generator | None = None,
+    ):
         """
         Parameters
         ----------

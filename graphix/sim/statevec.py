@@ -9,8 +9,8 @@ from copy import deepcopy
 import numpy as np
 import numpy.typing as npt
 
-import graphix.pauli
 import graphix.parameter
+import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import graphix.types

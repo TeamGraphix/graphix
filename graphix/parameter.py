@@ -8,8 +8,12 @@ value assignment.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import numbers
+from abc import ABC, abstractmethod
+import pydantic
+import pydantic_core
+import typing
+
 
 class Expression(ABC):
     """Expression with parameters."""
@@ -89,21 +93,30 @@ class Expression(ABC):
     @abstractmethod
     def subs(self, variable: Parameter, value: ExpressionOrNumber) -> ExpressionOrNumber: ...
 
-    @abstractmethod
-    def flatten(self) -> ExpressionOrNumber: ...
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
+    ) -> pydantic_core.CoreSchema:
+        def check_expression(obj) -> Expression:
+            if not isinstance(obj, Expression):
+                raise ValueError("Expression expected")
+            return obj
 
-    @abstractmethod
-    def conj(self) -> ExpressionOrNumber: ...
+        return pydantic_core.core_schema.no_info_plain_validator_function(function=check_expression)
 
 
 class PlaceholderOperationError(ValueError):
     def __init__(self):
-        super().__init__("Placeholder angles do not support any form of computation before substitution. Either use `subst` with an actual value before the computation, or use a symbolic parameter implementation, such that https://github.com/TeamGraphix/graphix-symbolic .")
+        super().__init__(
+            "Placeholder angles do not support any form of computation before substitution. Either use `subst` with an actual value before the computation, or use a symbolic parameter implementation, such that https://github.com/TeamGraphix/graphix-symbolic ."
+        )
 
 
 class Parameter(Expression):
     """Abstract class for substituable parameter."""
+
     ...
+
 
 class Placeholder(Parameter):
     """Placeholder for measurement angles, which allows the pattern optimizations
@@ -133,12 +146,11 @@ class Placeholder(Parameter):
         return self.__name
 
     def subs(self, variable: Parameter, value: ExpressionOrNumber) -> ExpressionOrNumber:
-        if self == variable:
+        if self is variable:
             if isinstance(value, numbers.Number):
                 return complex(value)
             return value
-        else:
-            return self
+        return self
 
     def __mul__(self, other) -> ExpressionOrNumber:
         return NotImplemented
@@ -206,17 +218,8 @@ class Placeholder(Parameter):
     def sqrt(self) -> ExpressionOrNumber:
         raise PlaceholderOperationError()
 
-    def subs(self, variable: Parameter, value: ExpressionOrNumber) -> ExpressionOrNumber:
-        if variable is self:
-            return value
-        return self
 
-    def flatten(self) -> ExpressionOrNumber:
-        raise PlaceholderOperationError()
-
-    def conj(self) -> ExpressionOrNumber:
-        raise PlaceholderOperationError()
-
+ExpressionOrFloat = Expression | float
 
 ExpressionOrNumber = Expression | numbers.Number
 
