@@ -4,16 +4,13 @@ import collections
 import functools
 import numbers
 import sys
-from copy import deepcopy
 
 import numpy as np
-import pydantic
+import numpy.typing as npt
 
 import graphix.pauli
 import graphix.states
 import graphix.types
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
-from graphix.ops import Ops
 from graphix.sim.base_backend import Backend, State
 
 
@@ -132,7 +129,7 @@ class Statevec(State):
         sv_to_add = Statevec(nqubit=nqubit, data=data)
         self.tensor(sv_to_add)
 
-    def evolve_single(self, op, i) -> None:
+    def evolve_single(self, op: npt.NDArray, i: int) -> None:
         """Single-qubit operation
 
         Parameters
@@ -145,7 +142,7 @@ class Statevec(State):
         psi = np.tensordot(op, self.psi, (1, i))
         self.psi = np.moveaxis(psi, 0, i)
 
-    def evolve(self, op, qargs) -> None:
+    def evolve(self, op: np.ndarray, qargs: list[int]) -> None:
         """Multi-qubit operation
 
         Parameters
@@ -193,7 +190,7 @@ class Statevec(State):
         # TODO use np.eigh since rho is Hermitian?
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
-    def remove_qubit(self, qarg) -> None:
+    def remove_qubit(self, qarg: int) -> None:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 

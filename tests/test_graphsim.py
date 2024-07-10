@@ -13,7 +13,7 @@ with contextlib.suppress(ModuleNotFoundError):
 
 import graphix.clifford
 import graphix.pauli
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops

@@ -11,16 +11,13 @@ import sys
 from copy import deepcopy
 
 import numpy as np
-import pydantic
 
 import graphix.states
 import graphix.types
 from graphix.channels import KrausChannel
-from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
-from graphix.ops import Ops
 from graphix.sim.base_backend import Backend, State
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.sim.statevec import Statevec
 
 
 class DensityMatrix(State):
@@ -115,7 +112,7 @@ class DensityMatrix(State):
             raise ValueError("op must be 2*2 matrix.")
 
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
+        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.Nqubit, 0))
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 

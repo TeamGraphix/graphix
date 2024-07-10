@@ -5,6 +5,7 @@ Module reference
     :maxdepth: 2
 
     generator
+    data
     modifier
     simulator
     graphsim

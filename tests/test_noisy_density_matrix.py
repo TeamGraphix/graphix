@@ -11,7 +11,6 @@ from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depol
 from graphix.noise_models.noise_model import NoiseModel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
-from graphix.sim.density_matrix import DensityMatrixBackend
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -61,7 +60,6 @@ class NoiseModelTester(NoiseModel):
         """assign wrong measurement result
         cmd = "M"
         """
-
         if self.rng.uniform() < self.measure_error_prob:
             return not result
         else:
@@ -133,8 +131,7 @@ class TestNoisyDensityMatrixBackend:
         measure_error_pr = fx_rng.random()
         print(f"measure_error_pr = {measure_error_pr}")
         res = hadamardpattern.simulate_pattern(
-            backend="densitymatrix",
-            noise_model=NoiseModelTester(measure_error_prob=measure_error_pr),
+            backend="densitymatrix", noise_model=NoiseModelTester(measure_error_prob=measure_error_pr)
         )
         # result should be |1>
         assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(

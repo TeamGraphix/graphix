@@ -1,6 +1,6 @@
 """
 Variational Quantum Eigensolver (VQE) with Measurement-Based Quantum Computing (MBQC)
-====================================================================================
+=====================================================================================
 
 In this example, we solve a simple VQE problem using a measurement-based quantum
 computing (MBQC) approach. The Hamiltonian for the system is given by:

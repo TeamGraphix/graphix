@@ -5,17 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
+
 ### Added
+
+- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable. 
+- The following changes were made (#155):
+  - Added `class Command` and all its child classes that represent all the pattern commands.
+  - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
 
 ### Fixed
 
 ### Changed
 
+- Entire package was udpated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
 
 
-## [0.2.15]
+
+## [0.2.15] - 2024-06-21
 ### Added
 - python 3.12 support
 - Arbitrary states now allowed for initializing input nodes in state vector

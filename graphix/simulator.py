@@ -12,13 +12,12 @@ import warnings
 import numpy as np
 
 import graphix.clifford
-from graphix.noise_models import NoiseModel
+from graphix.command import CommandKind
 from graphix.pauli import MeasureUpdate, Plane
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
-from graphix.states import PlanarState
 
 
 class MeasureMethod(abc.ABC):
@@ -32,16 +31,13 @@ class MeasureMethod(abc.ABC):
         return backend
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd) -> MeasurementDescription:
-        ...
+    def get_measurement_description(self, cmd) -> MeasurementDescription: ...
 
     @abc.abstractmethod
-    def get_measure_result(self, node: int) -> bool:
-        ...
+    def get_measure_result(self, node: int) -> bool: ...
 
     @abc.abstractmethod
-    def set_measure_result(self, node: int, result: bool) -> None:
-        ...
+    def set_measure_result(self, node: int, result: bool) -> None: ...
 
 
 class DefaultMeasureMethod(MeasureMethod):
@@ -149,23 +145,18 @@ class PatternSimulator:
             backend = backend.add_nodes(self.pattern.input_nodes, input_state)
         if self.noise_model is None:
             for cmd in self.pattern:
-                if cmd[0] == "N":
-                    if len(cmd) == 2:
-                        backend = backend.add_nodes(nodes=[cmd[1]])
-                    elif len(cmd) == 4:
-                        backend = backend.add_nodes(
-                            nodes=[cmd[1]], data=PlanarState(plane=cmd[2], angle=cmd[3] * np.pi / 4)
-                        )
-                elif cmd[0] == "E":
-                    backend = backend.entangle_nodes(edge=cmd[1])
-                elif cmd[0] == "M":
+                if cmd[0] == CommandKind.N:
+                    backend = backend.add_nodes(nodes=[cmd.node], data=cmd.state)
+                elif cmd[0] == CommandKind.E:
+                    backend = backend.entangle_nodes(edge=cmd.node)
+                elif cmd[0] == CommandKind.M:
                     backend = self.__measure_method.measure(backend, cmd)
-                elif cmd[0] == "X":
+                elif cmd[0] == CommandKind.X:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                elif cmd[0] == "Z":
+                elif cmd[0] == CommandKind.Z:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                elif cmd[0] == "C":
-                    backend = backend.apply_clifford(cmd)
+                elif cmd[0] == CommandKind.C:
+                    backend = backend.apply_clifford(cmd.clifford)
                 else:
                     raise ValueError("invalid commands")
             backend = backend.finalize(output_nodes=self.pattern.output_nodes)
@@ -174,27 +165,27 @@ class PatternSimulator:
             for node in self.pattern.input_nodes:
                 backend = backend.apply_channel(self.noise_model.prepare_qubit(), [node])
             for cmd in self.pattern:
-                if cmd[0] == "N":  # prepare clean qubit and apply channel
-                    backend = backend.add_nodes([cmd[1]])
-                    backend = backend.apply_channel(self.noise_model.prepare_qubit(), [cmd[1]])
-                elif cmd[0] == "E":  # for "E" cmd[1] is already a tuyple
-                    backend = backend.entangle_nodes(cmd[1])  # for some reaon entangle doesn't get the whole command
-                    backend = backend.apply_channel(self.noise_model.entangle(), cmd[1])
-                elif cmd[0] == "M":  # apply channel before measuring, then measur and confuse_result
-                    backend = backend.apply_channel(self.noise_model.measure(), [cmd[1]])
+                if cmd.kind == CommandKind.N:
+                    backend = backend.add_nodes([cmd.node])
+                    backend = backend.apply_channel(self.noise_model.prepare_qubit(), [cmd.node])
+                elif cmd.kind == CommandKind.E:
+                    backend = backend.entangle_nodes(cmd.nodes)
+                    backend = backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
+                elif cmd.kind == CommandKind.M:
+                    backend = backend.apply_channel(self.noise_model.measure(), [cmd.node])
                     backend = self.__measure_method.measure(backend, cmd, noise_model=self.noise_model)
-                elif cmd[0] == "X":
+                elif cmd.kind == CommandKind.X:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd[2]]), 2) == 1:
-                        backend = backend.apply_channel(self.noise_model.byproduct_x(), [cmd[1]])
-                elif cmd[0] == "Z":
+                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                        backend = backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
+                elif cmd.kind == CommandKind.Z:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd[2]]), 2) == 1:
-                        backend = backend.apply_channel(self.noise_model.byproduct_z(), [cmd[1]])
-                elif cmd[0] == "C":
-                    backend = backend.apply_clifford(cmd)
-                    backend = backend.apply_channel(self.noise_model.clifford(), [cmd[1]])
-                elif cmd[0] == "T":
+                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                        backend = backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
+                elif cmd.kind == CommandKind.C:
+                    backend = backend.apply_clifford(cmd.clifford)
+                    backend = backend.apply_channel(self.noise_model.clifford(), [cmd.node])
+                elif cmd.kind == CommandKind.T:
                     # T command is a flag for one clock cycle in simulated experiment,
                     # to be added via hardware-agnostic pattern modifier
                     self.noise_model.tick_clock()

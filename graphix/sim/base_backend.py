@@ -5,11 +5,12 @@ from dataclasses import dataclass
 import numpy as np
 
 import graphix.clifford
+import graphix.command
 import graphix.pauli
 import graphix.states
-from graphix.clifford import CLIFFORD
+from graphix.clifford import Clifford
 from graphix.ops import Ops
-from graphix.pauli import MeasureUpdate, Plane
+from graphix.pauli import Plane
 
 
 @dataclass
@@ -181,13 +182,13 @@ class Backend:
         new_state.evolve_single(op=op, i=index)
         return self.with_changes(state=new_state)
 
-    def apply_clifford(self, cmd) -> Backend:
+    def apply_clifford(self, clifford: Clifford) -> Backend:
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
         loc = self.node_index[cmd[1]]
         new_state = self.state.copy()
-        new_state.evolve_single(CLIFFORD[cmd[2]], loc)
+        new_state.evolve_single(clifford.matrix, loc)
         return self.with_changes(state=new_state)
 
     def sort_qubits(self, output_nodes) -> Backend:

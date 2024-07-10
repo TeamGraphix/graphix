@@ -38,10 +38,10 @@ from graphix import Circuit
 circuit = Circuit(4)
 circuit.h(0)
 ...
-pattern = circuit.transpile()
+pattern = circuit.transpile().pattern
 pattern.draw_graph()
 ```
-<img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="logo" width="750">
+<img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="graph_flow" width="750">
 
 <small>note: this graph is generated from QAOA circuit, see [our example code](examples/qaoa.py). Arrows indicate the [*causal flow*](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. the vertical dashed partitions and the labels 'l:n' below indicate the execution *layers* or the order in the graph (measurements should happen from left to right, and nodes in the same layer can be measured simultaneously), based on the partial order associated with the (maximally-delayed) flow. </small>
 
@@ -50,7 +50,7 @@ pattern.draw_graph()
 pattern.perform_pauli_measurements()
 pattern.draw_graph()
 ```
-<img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="logo" width="140">
+<img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="graph_gflow" width="140">
 
 <small>(here, the graph is visualized based on [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
 
@@ -80,7 +80,7 @@ Many thanks for letting us know about this work - at the time of the writing we 
 
 ## Contributing
 
-We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking feature requests and bugs reports. 
+We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking feature requests and bug reports. 
 
 ## Discord Server
 

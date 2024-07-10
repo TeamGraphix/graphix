@@ -8,9 +8,11 @@ import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+import graphix.command
+from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
-from graphix.sim.base_backend import Backend, op_mat_from_result
+from graphix.pauli import Plane
+from graphix.sim.base_backend import Backend
 from graphix.states import BasicStates
 
 
@@ -130,7 +132,7 @@ class TensorNetworkBackend(Backend):
             pass
         return self
 
-    def measure(self, node, measurement_description):
+    def measure(self, node: int, measurement_description: MeasurementDescription) -> tuple[Backend, int]:
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
@@ -161,7 +163,7 @@ class TensorNetworkBackend(Backend):
         self.state.measure_single(node, basis=proj_vec)
         return self, result
 
-    def correct_byproduct(self, cmd, measure_method):
+    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> Backend:
         """Perform byproduct correction.
 
         Parameters
@@ -171,13 +173,11 @@ class TensorNetworkBackend(Backend):
             i.e. ['X' or 'Z', node, signal_domain]
         """
         if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd[2]]), 2) == 1:
-            if cmd[0] == "X":
-                self.state.evolve_single(cmd[1], Ops.x, "X")
-            elif cmd[0] == "Z":
-                self.state.evolve_single(cmd[1], Ops.z, "Z")
+            op = Ops.x if isinstance(cmd, command.X) else Ops.z
+            self.state.evolve_single(cmd.node, op, cmd.kind)
         return self
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, cmd: command.C) -> Backend:
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -186,8 +186,8 @@ class TensorNetworkBackend(Backend):
             clifford command.
             See https://arxiv.org/pdf/2212.11975.pdf for the detail.
         """
-        node_op = CLIFFORD[cmd[2]]
-        self.state.evolve_single(cmd[1], node_op, "C")
+        node_op = CLIFFORD[cmd.cliff_index]
+        self.state.evolve_single(cmd.node, node_op, cmd.kind)
         return self
 
     def finalize(self, output_nodes):
@@ -281,7 +281,7 @@ class MBQCTensorNet(TensorNetwork):
             assert state.shape == (2,), "state must be 2-element np.ndarray"
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
             vec = state
-        tsr = qtn.Tensor(vec, [ind], [tag, "Open"])
+        tsr = Tensor(vec, [ind], [tag, "Open"])
         self.add_tensor(tsr)
         self._dangling[tag] = ind
 
@@ -304,7 +304,7 @@ class MBQCTensorNet(TensorNetwork):
         new_ind = gen_str()
         tensor.retag({"Open": "Close"}, inplace=True)
 
-        node_ts = qtn.Tensor(
+        node_ts = Tensor(
             arr,
             [new_ind, old_ind],
             [str(index), label, "Open"],
@@ -717,15 +717,14 @@ def proj_basis(angle, vop, plane, choice):
     numpy.ndarray :
         projected state
     """
-    assert plane == "XY"
-    if plane == "XY":
+    if plane == Plane.XY:
         vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Rz(angle)
-    elif plane == "YZ":
+    elif plane == Plane.YZ:
         vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
-    elif plane == "XZ":
-        vec = BasicStates.VEC[0 + choice].get_statevector()
+    elif plane == Plane.XZ:
+        vec = States.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
     if choice:
         vec = np.array([1, np.exp(1j * np.pi)]) / np.sqrt(2)
