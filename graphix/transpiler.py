@@ -48,7 +48,7 @@ class SimulateResult:
     classical_measures: tuple[int, ...]
 
 
-Angle = float | graphix.parameter.Expression
+Angle = graphix.parameter.ExpressionOrFloat
 
 
 class Circuit:

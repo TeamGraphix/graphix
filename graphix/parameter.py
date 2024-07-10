@@ -12,6 +12,7 @@ import numbers
 from abc import ABC, abstractmethod
 import pydantic
 import pydantic_core
+import sys
 import typing
 
 
@@ -219,11 +220,18 @@ class Placeholder(Parameter):
         raise PlaceholderOperationError()
 
 
-ExpressionOrFloat = Expression | float
+if sys.version_info >= (3, 10):
+    ExpressionOrFloat = Expression | float
 
-ExpressionOrNumber = Expression | numbers.Number
+    ExpressionOrNumber = Expression | numbers.Number
 
-ExpressionOperatorResult = ExpressionOrNumber | type(NotImplemented)
+    ExpressionOperatorResult = ExpressionOrNumber | type(NotImplemented)
+else:
+    ExpressionOrFloat = typing.Union[Expression, float]
+
+    ExpressionOrNumber = typing.Union[Expression, numbers.Number]
+
+    ExpressionOperatorResult = typing.Union[ExpressionOrNumber, type(NotImplemented)]
 
 
 def subs(value, variable: Parameter, substitute: ExpressionOrNumber):
