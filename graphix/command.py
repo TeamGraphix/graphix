@@ -7,8 +7,8 @@ import enum
 
 from pydantic import BaseModel
 
-from graphix.pauli import Plane
 from graphix.parameter import ExpressionOrFloat
+from graphix.pauli import Plane
 
 Node = int
 

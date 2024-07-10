@@ -9,11 +9,12 @@ value assignment.
 from __future__ import annotations
 
 import numbers
-from abc import ABC, abstractmethod
-import pydantic
-import pydantic_core
 import sys
 import typing
+from abc import ABC, abstractmethod
+
+import pydantic
+import pydantic_core
 
 
 class Expression(ABC):
