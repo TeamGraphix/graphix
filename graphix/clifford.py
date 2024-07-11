@@ -7,9 +7,10 @@ multiplications, conjugations and Pauli conjugations.
 from __future__ import annotations
 
 import numpy as np
+import pydantic
+import pydantic_core
 
 import graphix.pauli
-from graphix.pauli import IXYZ, Pauli
 
 # 24 Unique 1-qubit Clifford gates
 _C0 = np.array([[1, 0], [0, 1]])  # identity
@@ -278,15 +279,26 @@ class Clifford:
             return get(CLIFFORD_MUL[self.__index, other.__index])
         return NotImplemented
 
-    def measure(self, pauli: Pauli) -> Pauli:
+    def measure(self, pauli: graphix.pauli.Pauli) -> graphix.pauli.Pauli:
         """
         Compute C† P C.
         """
-        if pauli.symbol == IXYZ.I:
+        if pauli.symbol == graphix.pauli.IXYZ.I:
             return pauli
         table = CLIFFORD_MEASURE[self.__index]
         symbol, sign = table[pauli.symbol.value]
         return pauli.unit * graphix.pauli.TABLE[symbol + 1][sign][False]
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
+    ) -> pydantic_core.CoreSchema:
+        def check_clifford(obj) -> Clifford:
+            if not isinstance(obj, Clifford):
+                raise ValueError("Clifford expected")
+            return obj
+
+        return pydantic_core.core_schema.no_info_plain_validator_function(function=check_clifford)
 
 
 TABLE = tuple(map(Clifford, range(len(CLIFFORD))))

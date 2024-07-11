@@ -96,18 +96,14 @@ class TestStatevecNew:
             StatevectorBackend().add_nodes(hadamardpattern.input_nodes, data=[state, state2])
 
     def test_clifford(self):
-        for clifford_index in range(24):
+        for clifford in graphix.clifford.TABLE:
             state = BasicStates.PLUS
             vec = Statevec(nqubit=1, data=state)
             backend = StatevectorBackend()
             backend = backend.add_nodes(nodes=[0], data=state)
             # Applies clifford gate "Z"
-            clifford_cmd = ["C", 0, clifford_index]
-            clifford_gate = graphix.clifford.CLIFFORD[clifford_index]
-
-            vec.evolve_single(clifford_gate, 0)
-
-            backend = backend.apply_clifford(cmd=clifford_cmd)
+            vec.evolve_single(clifford.matrix, 0)
+            backend = backend.apply_clifford(node=0, clifford=clifford)
             np.testing.assert_allclose(vec.psi, backend.state.psi)
 
     def test_deterministic_measure_one(self, fx_rng: Generator):

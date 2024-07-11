@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import dataclasses
 import typing
 from copy import deepcopy
+from dataclasses import dataclass
 
 import networkx as nx
 import numpy as np
 
+import graphix.command
 import graphix.ops
 import graphix.pattern
 import graphix.pauli
@@ -14,6 +15,8 @@ import graphix.sim.base_backend
 import graphix.sim.statevec
 import graphix.simulator
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix.command import CommandKind
+from graphix.pattern import Pattern
 from graphix.pauli import Plane
 from graphix.sim.base_backend import Backend
 from graphix.sim.base_backend import State as BackendState
@@ -32,27 +35,27 @@ simulator.run()
 """
 
 
-@dataclasses.dataclass
+@dataclass
 class TrappifiedRun:
     input_state: list
     tested_qubits: list[int]
     stabilizer: graphix.pauli
 
 
-@dataclasses.dataclass
+@dataclass
 class Secret_a:
     a: dict[int, int]
     a_N: dict[int, int]
 
 
-@dataclasses.dataclass
+@dataclass
 class Secrets:
     r: bool = False
     a: bool = False
     theta: bool = False
 
 
-@dataclasses.dataclass
+@dataclass
 class SecretDatas:
     r: dict[int, int]
     a: Secret_a
@@ -90,15 +93,6 @@ class SecretDatas:
                 a_N[i] = a_N_value
 
         return SecretDatas(r, Secret_a(a, a_N), theta)
-
-
-@dataclasses.dataclass
-class MeasureParameters:
-    plane: graphix.pauli.Plane
-    angle: float
-    s_domain: list[int]
-    t_domain: list[int]
-    vop: int
 
 
 ## TODO : extract somewhere else
@@ -230,6 +224,41 @@ class TrappifiedCanvas:
         return text
 
 
+@dataclass
+class ByProduct:
+    z_domain: list[int]
+    x_domain: list[int]
+
+
+def get_byproduct_db(pattern: Pattern) -> dict[int, ByProduct]:
+    byproduct_db = dict()
+    for node in pattern.output_nodes:
+        byproduct_db[node] = ByProduct(z_domain=[], x_domain=[])
+
+    for cmd in pattern.correction_commands():
+        if cmd.node in pattern.output_nodes:
+            if cmd.kind == CommandKind.Z:
+                byproduct_db[cmd.node].z_domain = cmd.domain
+            if cmd.kind == CommandKind.X:
+                byproduct_db[cmd.node].x_domain = cmd.domain
+    return byproduct_db
+
+
+def remove_flow(pattern):
+    clean_pattern = Pattern(pattern.input_nodes)
+    for cmd in pattern:
+        if cmd.kind in (CommandKind.X, CommandKind.Z):
+            # If byproduct, remove it so it's not done by the server
+            continue
+        if cmd.kind == CommandKind.M:
+            # If measure, remove measure parameters
+            new_cmd = graphix.command.M(node=cmd.node)
+        else:
+            new_cmd = cmd
+        clean_pattern.add(new_cmd)
+    return clean_pattern
+
+
 class Client:
     def __init__(self, pattern, input_state=None, measure_method_cls=None, secrets=None):
         self.initial_pattern = pattern
@@ -245,14 +274,14 @@ class Client:
             measure_method_cls = ClientMeasureMethod
         self.measure_method = measure_method_cls(self)
 
-        self.measurement_db = pattern.get_measurement_db()
-        self.byproduct_db = pattern.get_byproduct_db()
+        self.measurement_db = {measure.node: measure for measure in pattern.get_measurement_commands()}
+        self.byproduct_db = get_byproduct_db(pattern)
 
         if secrets is None:
             secrets = Secrets()
         self.secrets = SecretDatas.from_secrets(secrets, self.graph, self.input_nodes, self.output_nodes)
 
-        pattern_without_flow = pattern.remove_flow()
+        pattern_without_flow = remove_flow(pattern)
         self.clean_pattern = pattern_without_flow.prepared_nodes_as_input_nodes()
 
         self.input_state = input_state if input_state != None else [BasicStates.PLUS for _ in self.input_nodes]
@@ -321,9 +350,7 @@ class Client:
 
         # Modify the pattern to be all X-basis measurements, no shifts/signalling updates
         for node in self.measurement_db:
-            self.measurement_db[node] = MeasureParameters(
-                plane=graphix.pauli.Plane.XY, angle=0, s_domain=[], t_domain=[], vop=0
-            )
+            self.measurement_db[node] = graphix.command.M(node=node)
 
         sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
         backend = sim.run(input_state=None)
@@ -347,12 +374,11 @@ class Client:
 
     def decode_output_state(self, backend: Backend) -> Backend:
         for node in self.output_nodes:
-            if node in self.byproduct_db:
-                z_decoding, x_decoding = self.decode_output(node)
-                if z_decoding:
-                    backend = backend.apply_single(node=node, op=graphix.ops.Ops.z)
-                if x_decoding:
-                    backend = backend.apply_single(node=node, op=graphix.ops.Ops.x)
+            z_decoding, x_decoding = self.decode_output(node)
+            if z_decoding:
+                backend = backend.apply_single(node=node, op=graphix.ops.Ops.z)
+            if x_decoding:
+                backend = backend.apply_single(node=node, op=graphix.ops.Ops.x)
         return backend
 
     def get_secrets_size(self):
@@ -362,9 +388,9 @@ class Client:
         return secrets_size
 
     def decode_output(self, node):
-        z_decoding = np.sum(self.results[z_dep] for z_dep in self.byproduct_db[node]["z-domain"]) % 2
+        z_decoding = sum(self.results[z_dep] for z_dep in self.byproduct_db[node].z_domain) % 2
         z_decoding ^= self.secrets.r.get(node, 0)
-        x_decoding = np.sum(self.results[x_dep] for x_dep in self.byproduct_db[node]["x-domain"]) % 2
+        x_decoding = sum(self.results[x_dep] for x_dep in self.byproduct_db[node].x_domain) % 2
         x_decoding ^= self.secrets.a.a.get(node, 0)
         return z_decoding, x_decoding
 
@@ -374,22 +400,20 @@ class ClientMeasureMethod(MeasureMethod):
         self.__client = client
 
     def get_measurement_description(self, cmd) -> graphix.simulator.MeasurementDescription:
-        node = cmd[1]
+        parameters = self.__client.measurement_db[cmd.node]
 
-        parameters = self.__client.measurement_db[node]
-
-        r_value = self.__client.secrets.r.get(node, 0)
-        theta_value = self.__client.secrets.theta.get(node, 0)
-        a_value = self.__client.secrets.a.a.get(node, 0)
-        a_N_value = self.__client.secrets.a.a_N.get(node, 0)
+        r_value = self.__client.secrets.r.get(cmd.node, 0)
+        theta_value = self.__client.secrets.theta.get(cmd.node, 0)
+        a_value = self.__client.secrets.a.a.get(cmd.node, 0)
+        a_N_value = self.__client.secrets.a.a_N.get(cmd.node, 0)
 
         # extract signals for adaptive angle
-        s_signal = np.sum(self.__client.results[j] for j in parameters.s_domain)
-        t_signal = np.sum(self.__client.results[j] for j in parameters.t_domain)
+        s_signal = sum(self.__client.results[j] for j in parameters.s_domain)
+        t_signal = sum(self.__client.results[j] for j in parameters.t_domain)
         measure_update = graphix.pauli.MeasureUpdate.compute(
             parameters.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[parameters.vop]
         )
-        angle = parameters.angle
+        angle = parameters.angle * np.pi
         angle = angle * measure_update.coeff + measure_update.add_term
         angle = (-1) ** a_value * angle + theta_value * np.pi / 4 + np.pi * (r_value + a_N_value)
         # angle = angle * measure_update.coeff + measure_update.add_term

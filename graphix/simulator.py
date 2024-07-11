@@ -22,12 +22,11 @@ from graphix.sim.tensornet import TensorNetworkBackend
 
 class MeasureMethod(abc.ABC):
     def measure(self, backend: Backend, cmd, noise_model=None) -> Backend:
-        node = cmd[1]
         description = self.get_measurement_description(cmd)
-        backend, result = backend.measure(node, description)
+        backend, result = backend.measure(cmd.node, description)
         if noise_model is not None:
             result = noise_model.confuse_result(result)
-        self.set_measure_result(node, result)
+        self.set_measure_result(cmd.node, result)
         return backend
 
     @abc.abstractmethod
@@ -47,16 +46,12 @@ class DefaultMeasureMethod(MeasureMethod):
         self.results = results
 
     def get_measurement_description(self, cmd) -> MeasurementDescription:
-        angle = cmd[3] * np.pi
+        angle = cmd.angle * np.pi
         # extract signals for adaptive angle
-        s_signal = np.sum(self.results[j] for j in cmd[4])
-        t_signal = np.sum(self.results[j] for j in cmd[5])
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
+        s_signal = sum(self.results[j] for j in cmd.s_domain)
+        t_signal = sum(self.results[j] for j in cmd.t_domain)
         measure_update = MeasureUpdate.compute(
-            Plane[cmd[2]], s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[cmd.vop]
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         return MeasurementDescription(measure_update.new_plane, angle)
@@ -116,10 +111,14 @@ class PatternSimulator:
         else:
             raise ValueError("Unknown backend.")
         self.set_noise_model(noise_model)
-        self.pattern = pattern
+        self.__pattern = pattern
         if measure_method is None:
             measure_method = DefaultMeasureMethod(pattern.results)
         self.__measure_method = measure_method
+
+    @property
+    def pattern(self):
+        return self.__pattern
 
     @property
     def measure_method(self):
@@ -145,18 +144,18 @@ class PatternSimulator:
             backend = backend.add_nodes(self.pattern.input_nodes, input_state)
         if self.noise_model is None:
             for cmd in self.pattern:
-                if cmd[0] == CommandKind.N:
+                if cmd.kind == CommandKind.N:
                     backend = backend.add_nodes(nodes=[cmd.node], data=cmd.state)
-                elif cmd[0] == CommandKind.E:
-                    backend = backend.entangle_nodes(edge=cmd.node)
-                elif cmd[0] == CommandKind.M:
+                elif cmd.kind == CommandKind.E:
+                    backend = backend.entangle_nodes(edge=cmd.nodes)
+                elif cmd.kind == CommandKind.M:
                     backend = self.__measure_method.measure(backend, cmd)
-                elif cmd[0] == CommandKind.X:
+                elif cmd.kind == CommandKind.X:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                elif cmd[0] == CommandKind.Z:
+                elif cmd.kind == CommandKind.Z:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                elif cmd[0] == CommandKind.C:
-                    backend = backend.apply_clifford(cmd.clifford)
+                elif cmd.kind == CommandKind.C:
+                    backend = backend.apply_clifford(cmd.node, cmd.clifford)
                 else:
                     raise ValueError("invalid commands")
             backend = backend.finalize(output_nodes=self.pattern.output_nodes)
@@ -176,14 +175,14 @@ class PatternSimulator:
                     backend = self.__measure_method.measure(backend, cmd, noise_model=self.noise_model)
                 elif cmd.kind == CommandKind.X:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                    if np.mod(sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
                         backend = backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
                 elif cmd.kind == CommandKind.Z:
                     backend = backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(np.sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                    if np.mod(sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
                         backend = backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
                 elif cmd.kind == CommandKind.C:
-                    backend = backend.apply_clifford(cmd.clifford)
+                    backend = backend.apply_clifford(cmd.node, cmd.clifford)
                     backend = backend.apply_channel(self.noise_model.clifford(), [cmd.node])
                 elif cmd.kind == CommandKind.T:
                     # T command is a flag for one clock cycle in simulated experiment,

@@ -7,9 +7,8 @@ import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
-import graphix.clifford
 import graphix.command
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
+from graphix.clifford import Clifford
 from graphix.ops import Ops
 from graphix.pauli import Plane
 from graphix.sim.base_backend import Backend
@@ -74,10 +73,7 @@ class TensorNetworkBackend(Backend):
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
-        # initialize input qubits to desired init_state
-        self.add_nodes(pattern.input_nodes)
-
-    def add_nodes(self, nodes, input_state=BasicStates.PLUS):
+    def add_nodes(self, nodes, data=BasicStates.PLUS):
         """Add nodes to the network
 
         Parameters
@@ -85,7 +81,7 @@ class TensorNetworkBackend(Backend):
         nodes : iterator of int
             index set of the new nodes.
         """
-        if input_state != BasicStates.PLUS:
+        if data != BasicStates.PLUS:
             raise NotImplementedError(
                 "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
             )
@@ -172,12 +168,12 @@ class TensorNetworkBackend(Backend):
             Byproduct command
             i.e. ['X' or 'Z', node, signal_domain]
         """
-        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd[2]]), 2) == 1:
-            op = Ops.x if isinstance(cmd, command.X) else Ops.z
+        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
+            op = Ops.x if isinstance(cmd, graphix.command.X) else Ops.z
             self.state.evolve_single(cmd.node, op, cmd.kind)
         return self
 
-    def apply_clifford(self, cmd: command.C) -> Backend:
+    def apply_clifford(self, node: int, clifford: Clifford) -> Backend:
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -186,8 +182,7 @@ class TensorNetworkBackend(Backend):
             clifford command.
             See https://arxiv.org/pdf/2212.11975.pdf for the detail.
         """
-        node_op = CLIFFORD[cmd.cliff_index]
-        self.state.evolve_single(cmd.node, node_op, cmd.kind)
+        self.state.evolve_single(node, clifford.matrix)
         return self
 
     def finalize(self, output_nodes):
@@ -696,44 +691,6 @@ def gen_str():
     """Generate dummy string for einsum."""
     result = qtn.rand_uuid()
     return result
-
-
-def proj_basis(angle, vop, plane, choice):
-    """the projected statevector.
-
-    Parameters
-    ----------
-    angle : float
-        measurement angle
-    vop : int
-        CLIFFORD index
-    plane : str
-        measurement plane
-    choice : int
-        measurement result
-
-    Returns
-    -------
-    numpy.ndarray :
-        projected state
-    """
-    if plane == Plane.XY:
-        vec = BasicStates.VEC[0 + choice].get_statevector()
-        rotU = Ops.Rz(angle)
-    elif plane == Plane.YZ:
-        vec = BasicStates.VEC[4 + choice].get_statevector()
-        rotU = Ops.Rx(angle)
-    elif plane == Plane.XZ:
-        vec = States.VEC[0 + choice].get_statevector()
-        rotU = Ops.Ry(-angle)
-    if choice:
-        vec = np.array([1, np.exp(1j * np.pi)]) / np.sqrt(2)
-    else:
-        vec = np.array([1, np.exp(1j * 0)]) / np.sqrt(2)
-    rotU = np.array([[np.exp(-1j * angle / 2), 0], [0, np.exp(1j * angle / 2)]])
-    vec = np.matmul(rotU, vec)
-    vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
-    return vec
 
 
 def outer_product(vectors):

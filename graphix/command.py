@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from graphix.clifford import Clifford
 from graphix.pauli import Plane
-from graphix.states import State, BasicStates
+from graphix.states import BasicStates, State
 
 Node = int
 

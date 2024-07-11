@@ -5,10 +5,10 @@ from dataclasses import dataclass
 import numpy as np
 
 import graphix.clifford
-import graphix.command
 import graphix.pauli
 import graphix.states
 from graphix.clifford import Clifford
+from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.pauli import Plane
 
@@ -167,12 +167,12 @@ class Backend:
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd[2]]), 2) == 1:
-            if cmd[0] == "X":
+        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
+            if cmd.kind == CommandKind.X:
                 op = Ops.x
-            elif cmd[0] == "Z":
+            elif cmd.kind == CommandKind.Z:
                 op = Ops.z
-            return self.apply_single(node=cmd[1], op=op)
+            return self.apply_single(node=cmd.node, op=op)
         else:
             return self
 
@@ -182,11 +182,11 @@ class Backend:
         new_state.evolve_single(op=op, i=index)
         return self.with_changes(state=new_state)
 
-    def apply_clifford(self, clifford: Clifford) -> Backend:
+    def apply_clifford(self, node: int, clifford: Clifford) -> Backend:
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """
-        loc = self.node_index[cmd[1]]
+        loc = self.node_index[node]
         new_state = self.state.copy()
         new_state.evolve_single(clifford.matrix, loc)
         return self.with_changes(state=new_state)

@@ -9,6 +9,7 @@ import abc
 import numpy as np
 import numpy.typing as npt
 import pydantic
+import pydantic_core
 
 from graphix.pauli import Plane
 
@@ -28,6 +29,17 @@ class State(abc.ABC):
     def get_densitymatrix(self) -> npt.NDArray:
         # return DM in 2**n x 2**n dim (2x2 here)
         return np.outer(self.get_statevector(), self.get_statevector().conj())
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
+    ) -> pydantic_core.CoreSchema:
+        def check_state(obj) -> State:
+            if not isinstance(obj, State):
+                raise ValueError("State expected")
+            return obj
+
+        return pydantic_core.core_schema.no_info_plain_validator_function(function=check_state)
 
 
 class PlanarState(pydantic.BaseModel, State):

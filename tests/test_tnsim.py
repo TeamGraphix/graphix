@@ -8,8 +8,8 @@ import pytest
 from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
+import graphix.clifford
 import tests.random_circuit as rc
-from graphix.clifford import CLIFFORD
 from graphix.command import C, E, X, Z
 from graphix.ops import Ops
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
@@ -75,7 +75,7 @@ class TestTN:
         cmds = [
             X(node=0, domain=[15]),
             Z(node=0, domain=[15]),
-            C(node=0, cliff_index=fx_rng.integers(23)),
+            C(node=0, clifford=fx_rng.choice(graphix.clifford.TABLE)),
         ]
         random_vec = fx_rng.normal(size=2)
 
@@ -97,7 +97,7 @@ class TestTN:
         ops = [
             np.array([[0.0, 1.0], [1.0, 0.0]]),
             np.array([[1.0, 0.0], [0.0, -1.0]]),
-            CLIFFORD[cmds[2].cliff_index],
+            cmds[2].clifford.matrix,
         ]
         contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
         assert contracted == pytest.approx(contracted_ref)
