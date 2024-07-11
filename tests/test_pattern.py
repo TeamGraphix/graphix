@@ -87,13 +87,13 @@ class TestPattern:
 
         def simulate_and_measure():
             sim = PatternSimulator(pattern, backend_type)
-            backend = sim.run()
+            sim.run()
             if backend_type == "statevector":
-                assert backend.state.dims() == ()
+                assert sim.backend.state.dims() == ()
             elif backend_type == "densitymatrix":
-                assert backend.state.dims() == (1, 1)
+                assert sim.backend.state.dims() == (1, 1)
             elif backend_type == "tensornetwork":
-                assert backend.state.to_statevector().shape == (1,)
+                assert sim.backend.state.to_statevector().shape == (1,)
             return sim.measure_method.results[0]
 
         nb_shots = 1000

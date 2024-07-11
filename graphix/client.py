@@ -286,19 +286,18 @@ class Client:
 
         self.input_state = input_state if input_state != None else [BasicStates.PLUS for _ in self.input_nodes]
 
-    def blind_qubits(self, backend: Backend) -> Backend:
+    def blind_qubits(self, backend: Backend) -> None:
         z_rotation = lambda theta: np.array([[1, 0], [0, np.exp(1j * theta * np.pi / 4)]])
         x_blind = lambda a: graphix.pauli.X if (a == 1) else graphix.pauli.I
         for node in self.nodes_list:
             theta = self.secrets.theta.get(node, 0)
             a = self.secrets.a.a.get(node, 0)
-            backend = backend.apply_single(node=node, op=x_blind(a).matrix)
-            backend = backend.apply_single(node=node, op=z_rotation(theta))
-        return backend
+            backend.apply_single(node=node, op=x_blind(a).matrix)
+            backend.apply_single(node=node, op=z_rotation(theta))
 
-    def prepare_states(self, backend: Backend) -> Backend:
+    def prepare_states(self, backend: Backend) -> None:
         # First prepare inputs
-        backend = backend.add_nodes(nodes=self.input_nodes, data=self.input_state)
+        backend.add_nodes(nodes=self.input_nodes, data=self.input_state)
 
         # Then iterate over auxiliaries required to blind
         aux_nodes = []
@@ -306,7 +305,7 @@ class Client:
             if node not in self.input_nodes and node not in self.output_nodes:
                 aux_nodes.append(node)
         aux_data = [BasicStates.PLUS for _ in aux_nodes]
-        backend = backend.add_nodes(nodes=aux_nodes, data=aux_data)
+        backend.add_nodes(nodes=aux_nodes, data=aux_data)
 
         # Prepare outputs
         output_data = []
@@ -314,9 +313,7 @@ class Client:
             r_value = self.secrets.r.get(node, 0)
             a_N_value = self.secrets.a.a_N.get(node, 0)
             output_data.append(BasicStates.PLUS if r_value ^ a_N_value == 0 else BasicStates.MINUS)
-        backend = backend.add_nodes(nodes=self.output_nodes, data=output_data)
-
-        return backend
+        backend.add_nodes(nodes=self.output_nodes, data=output_data)
 
     def create_test_runs(self) -> tuple[list[TrappifiedCanvas], dict[int, int]]:
         graph = nx.Graph()
@@ -343,17 +340,17 @@ class Client:
             runs.append(trappified_canvas)
         return runs, coloring
 
-    def delegate_test_run(self, backend: Backend, run: TrappifiedCanvas) -> Backend:
+    def delegate_test_run(self, backend: Backend, run: TrappifiedCanvas) -> list[int]:
         # The state is entirely prepared and blinded by the client before being sent to the server
-        backend = backend.add_nodes(nodes=sorted(self.graph[0]), data=run.states)
-        backend = self.blind_qubits(backend)
+        backend.add_nodes(nodes=sorted(self.graph[0]), data=run.states)
+        self.blind_qubits(backend)
 
         # Modify the pattern to be all X-basis measurements, no shifts/signalling updates
         for node in self.measurement_db:
             self.measurement_db[node] = graphix.command.M(node=node)
 
         sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        backend = sim.run(input_state=None)
+        sim.run(input_state=None)
 
         trap_outcomes = []
         for trap in run.traps_list:
@@ -361,25 +358,24 @@ class Client:
             trap_outcome = sum(outcomes) % 2
             trap_outcomes.append(trap_outcome)
 
-        return backend, trap_outcomes
+        return trap_outcomes
 
-    def delegate_pattern(self, backend: Backend) -> tuple[Backend, PatternSimulator]:
-        backend = self.prepare_states(backend)
-        backend = self.blind_qubits(backend)
+    def delegate_pattern(self, backend: Backend) -> PatternSimulator:
+        self.prepare_states(backend)
+        self.blind_qubits(backend)
         sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
-        backend = sim.run(input_state=None)
-        backend = self.decode_output_state(backend)
+        sim.run(input_state=None)
+        self.decode_output_state(backend)
         # returns the final state
-        return backend, sim
+        return sim
 
-    def decode_output_state(self, backend: Backend) -> Backend:
+    def decode_output_state(self, backend: Backend):
         for node in self.output_nodes:
             z_decoding, x_decoding = self.decode_output(node)
             if z_decoding:
-                backend = backend.apply_single(node=node, op=graphix.ops.Ops.z)
+                backend.apply_single(node=node, op=graphix.ops.Ops.z)
             if x_decoding:
-                backend = backend.apply_single(node=node, op=graphix.ops.Ops.x)
-        return backend
+                backend.apply_single(node=node, op=graphix.ops.Ops.x)
 
     def get_secrets_size(self):
         secrets_size = {}

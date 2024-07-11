@@ -1297,8 +1297,8 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        backend = sim.run(input_state)
-        return backend.state
+        sim.run(input_state)
+        return sim.backend.state
 
     def run_pattern(self, backend, **kwargs):
         """run the pattern on cloud-based quantum devices and their simulators.

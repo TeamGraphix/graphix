@@ -62,18 +62,19 @@ class TensorNetworkBackend(Backend):
             if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
             nodes, edges = pattern.get_graph()
-            self.state = MBQCTensorNet(
+            state = MBQCTensorNet(
                 graph_nodes=nodes,
                 graph_edges=edges,
                 default_output_nodes=pattern.output_nodes,
                 **kwargs,
             )
         elif self.graph_prep == "sequential":
-            self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
+            state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
+        super().__init__(state)
 
-    def add_nodes(self, nodes, data=BasicStates.PLUS):
+    def add_nodes(self, nodes, data=BasicStates.PLUS) -> None:
         """Add nodes to the network
 
         Parameters
@@ -89,9 +90,8 @@ class TensorNetworkBackend(Backend):
             self.state.add_qubits(nodes)
         elif self.graph_prep == "opt":
             pass
-        return self
 
-    def entangle_nodes(self, edge):
+    def entangle_nodes(self, edge) -> None:
         """Make entanglement between nodes specified by edge.
 
         Parameters
@@ -126,7 +126,6 @@ class TensorNetworkBackend(Backend):
             self.state.add_tensor_network(CZ_tn)
         elif self.graph_prep == "opt":
             pass
-        return self
 
     def measure(self, node: int, measurement_description: MeasurementDescription) -> tuple[Backend, int]:
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
@@ -157,9 +156,9 @@ class TensorNetworkBackend(Backend):
             vec = measurement_description.plane.orth.op @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec)
-        return self, result
+        return result
 
-    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> Backend:
+    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
         """Perform byproduct correction.
 
         Parameters
@@ -168,12 +167,11 @@ class TensorNetworkBackend(Backend):
             Byproduct command
             i.e. ['X' or 'Z', node, signal_domain]
         """
-        if np.mod(np.sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
+        if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
             op = Ops.x if isinstance(cmd, graphix.command.X) else Ops.z
             self.state.evolve_single(cmd.node, op, cmd.kind)
-        return self
 
-    def apply_clifford(self, node: int, clifford: Clifford) -> Backend:
+    def apply_clifford(self, node: int, clifford: Clifford) -> None:
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -183,10 +181,9 @@ class TensorNetworkBackend(Backend):
             See https://arxiv.org/pdf/2212.11975.pdf for the detail.
         """
         self.state.evolve_single(node, clifford.matrix)
-        return self
 
-    def finalize(self, output_nodes):
-        return self
+    def finalize(self, output_nodes) -> None:
+        pass
 
 
 class MBQCTensorNet(TensorNetwork):

@@ -328,16 +328,15 @@ class DensityMatrixBackend(Backend):
     def __init__(self, pr_calc=True):
         super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc)
 
-    def apply_channel(self, channel: KrausChannel, qargs) -> DensityMatrixBackend:
+    def apply_channel(self, channel: KrausChannel, qargs) -> None:
         """backend version of apply_channel
         Parameters
         ----------
             qargs : list of ints. Target qubits
         """
 
-        indices = [self.node_index[i] for i in qargs]
-        new_dm = self.state.apply_channel(channel, indices)
-        return self.with_changes(state=new_dm)
+        indices = [self.node_index.index(i) for i in qargs]
+        self.state.apply_channel(channel, indices)
 
 
 if sys.version_info >= (3, 10):

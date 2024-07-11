@@ -49,10 +49,8 @@ class TestClient:
             secrets = Secrets(r=True)
             # Giving it empty will create a random secret
             client = Client(pattern=pattern, secrets=secrets)
-            state_mbqc, _ = client.delegate_pattern(backend)
-            np.testing.assert_almost_equal(
-                np.abs(np.dot(state_mbqc.state.psi.flatten().conjugate(), state.psi.flatten())), 1
-            )
+            state_mbqc = client.delegate_pattern(backend).backend.state
+            np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.psi.flatten().conjugate(), state.psi.flatten())), 1)
 
     def test_theta_secret_simulation(self, fx_rng: Generator):
         # Generate random pattern
@@ -72,13 +70,13 @@ class TestClient:
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation, _ = client.delegate_pattern(backend)
+            blinded_simulation = client.delegate_pattern(backend).backend.state
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector().statevec
 
             np.testing.assert_almost_equal(
-                np.abs(np.dot(blinded_simulation.state.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1
+                np.abs(np.dot(blinded_simulation.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1
             )
 
     def test_a_secret_simulation(self, fx_rng: Generator):
@@ -99,12 +97,12 @@ class TestClient:
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation, _ = client.delegate_pattern(backend)
+            blinded_simulation = client.delegate_pattern(backend).backend.state
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(
-                np.abs(np.dot(blinded_simulation.state.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1
+                np.abs(np.dot(blinded_simulation.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1
             )
 
     def test_r_secret_results(self, fx_rng: Generator):
@@ -127,7 +125,7 @@ class TestClient:
         # Giving it empty will create a random secret
         client = Client(pattern=pattern, measure_method_cls=CacheMeasureMethod, secrets=secrets)
         backend = StatevectorBackend()
-        _, server = client.delegate_pattern(backend)
+        client.delegate_pattern(backend)
 
         for measured_node in client.measurement_db:
             # Compare results on the client side and on the server side : should differ by r[node]
@@ -153,9 +151,9 @@ class TestClient:
 
         backend = StatevectorBackend()
         # Blinded simulation, between the client and the server
-        backend = client.prepare_states(backend)
+        client.prepare_states(backend)
         assert set(backend.node_index) == set(nodes)
-        backend = client.blind_qubits(backend)
+        client.blind_qubits(backend)
         assert set(backend.node_index) == set(nodes)
 
     def test_UBQC(self, fx_rng: Generator):
@@ -178,11 +176,11 @@ class TestClient:
 
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation, _ = client.delegate_pattern(backend)
+            blinded_simulation = client.delegate_pattern(backend).backend.state
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(
-                np.abs(np.dot(blinded_simulation.state.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1
+                np.abs(np.dot(blinded_simulation.psi.flatten().conjugate(), clear_simulation.psi.flatten())), 1
             )
 
 
