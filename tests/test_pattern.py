@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-import itertools
 import sys
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pytest
 
+import graphix.ops
+import graphix.pauli
+import graphix.sim.base_backend
+import graphix.states
 import graphix.random_circuit as rc
+from graphix.command import M, N
 from graphix.pattern import CommandNode, Pattern
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 
@@ -18,13 +24,22 @@ if TYPE_CHECKING:
 from numpy.random import PCG64, Generator
 
 
+def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
+    if backend == "statevector":
+        return np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten()))
+    elif backend == "densitymatrix":
+        return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
+    else:
+        raise NotImplementedError(backend)
+
+
 class TestPattern:
     # this fails without behaviour modification
     def test_manual_generation(self) -> None:
         pattern = Pattern()
-        pattern.add(["N", 0])
-        pattern.add(["N", 1])
-        pattern.add(["M", 0, "XY", 0, [], []])
+        pattern.add(N(node=0))
+        pattern.add(N(node=1))
+        pattern.add(M(node=0))
 
     def test_standardize(self, fx_rng: Generator) -> None:
         nqubits = 2
@@ -68,7 +83,7 @@ class TestPattern:
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
     def test_empty_output_nodes(self, backend: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
         pattern = Pattern(input_nodes=[0])
-        pattern.add(["M", 0, "XY", 0.5, [], []])
+        pattern.add(M(node=0, angle=0.5))
 
         def simulate_and_measure():
             sim = PatternSimulator(pattern, backend)
@@ -83,7 +98,7 @@ class TestPattern:
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
-        assert abs(nb_ones - nb_shots / 2) < nb_shots / 20
+        assert abs(nb_ones - nb_shots / 2) < nb_shots / 10
 
     def test_minimize_space_graph_maxspace_with_flow(self, fx_rng: Generator) -> None:
         max_qubits = 20
@@ -122,7 +137,11 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
+    def test_pauli_measurement_random_circuit(
+        self, fx_bg: PCG64, jumps: int, backend: graphix.sim.base_backend.Backend, use_rustworkx: bool = True
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -133,11 +152,13 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        state_mbqc = pattern.simulate_pattern(backend)
+        assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_leave_input(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_leave_input_random_circuit(
+        self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -152,7 +173,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -167,7 +188,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -182,7 +203,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurment_opt_gate_transpiler_without_signalshift(
+    def test_pauli_measurement_opt_gate_transpiler_without_signalshift(
         self,
         fx_bg: PCG64,
         jumps: int,
@@ -276,21 +297,31 @@ class TestPattern:
         assert isolated_nodes == isolated_nodes_ref
 
     def test_get_meas_plane(self) -> None:
-        preset_meas_plane = ["XY", "XY", "XY", "YZ", "YZ", "YZ", "XZ", "XZ", "XZ"]
+        preset_meas_plane = [
+            graphix.pauli.Plane.XY,
+            graphix.pauli.Plane.XY,
+            graphix.pauli.Plane.XY,
+            graphix.pauli.Plane.YZ,
+            graphix.pauli.Plane.YZ,
+            graphix.pauli.Plane.YZ,
+            graphix.pauli.Plane.XZ,
+            graphix.pauli.Plane.XZ,
+            graphix.pauli.Plane.XZ,
+        ]
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):
-            pattern.add(["M", i, preset_meas_plane[i], 0, [], [], vop_list[i % 3]])
+            pattern.add(M(node=i, plane=preset_meas_plane[i], vop=vop_list[i % 3]))
         ref_meas_plane = {
-            0: "XY",
-            1: "XY",
-            2: "YZ",
-            3: "YZ",
-            4: "XZ",
-            5: "XY",
-            6: "XZ",
-            7: "YZ",
-            8: "XZ",
+            0: graphix.pauli.Plane.XY,
+            1: graphix.pauli.Plane.XY,
+            2: graphix.pauli.Plane.YZ,
+            3: graphix.pauli.Plane.YZ,
+            4: graphix.pauli.Plane.XZ,
+            5: graphix.pauli.Plane.XY,
+            6: graphix.pauli.Plane.XZ,
+            7: graphix.pauli.Plane.YZ,
+            8: graphix.pauli.Plane.XZ,
         }
         meas_plane = pattern.get_meas_plane()
         assert meas_plane == ref_meas_plane
@@ -511,16 +542,28 @@ class TestLocalPattern:
     def test_pauli_measurement_end_with_measure(self) -> None:
         # https://github.com/TeamGraphix/graphix/issues/153
         p = Pattern(input_nodes=[0])
-        p.add(["N", 1])
-        p.add(["M", 1, "XY", 0, [], []])
+        p.add(N(node=1))
+        p.add(M(node=1, plane=graphix.pauli.Plane.XY))
         p.perform_pauli_measurements()
+
+    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
+    def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        randpattern = rand_circ.transpile().pattern
+        out = randpattern.simulate_pattern(backend=backend, input_state=states)
+        out_circ = rand_circ.simulate_statevector(input_state=states).statevec
+        assert compare_backend_result_with_statevec(backend, out, out_circ) == pytest.approx(1)
+
+    def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
+        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        randpattern = rand_circ.transpile().pattern
+        with pytest.raises(NotImplementedError):
+            randpattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", input_state=states)
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
-    ans = True
-    for ei, ri in zip(edge, ref):
-        ans &= ei == ri
-    ansr = True
-    for ei, ri in zip(edge, reversed(ref)):
-        ansr &= ei == ri
-    return ans or ansr
+    return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))

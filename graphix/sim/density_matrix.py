@@ -3,57 +3,91 @@
 Simulate MBQC with density matrix representation.
 """
 
+from __future__ import annotations
+
+import collections
+import numbers
+import sys
 from copy import deepcopy
 
 import numpy as np
 
-import graphix.sim.base_backend
+import graphix.states
+import graphix.types
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
-from graphix.linalg_validations import check_hermitian, check_square, check_unit_trace
+from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, meas_op
+from graphix.sim.base_backend import Backend
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
 
 class DensityMatrix:
     """DensityMatrix object."""
 
-    def __init__(self, data=None, plus_state=True, nqubit=1):
-        """
-        Parameters
-        ----------
-            data : DensityMatrix, list, tuple, np.ndarray or None
-                Density matrix of shape (2**nqubits, 2**nqubits).
-            nqubit : int
-                Number of qubits. Default is 1. If both `data` and `nqubit` are specified, `nqubit` is ignored.
-        """
-        if data is None:
-            assert nqubit >= 0
-            self.Nqubit = nqubit
-            if plus_state:
-                self.rho = np.ones((2**nqubit, 2**nqubit)) / 2**nqubit
-            else:
-                self.rho = np.zeros((2**nqubit, 2**nqubit))
-                self.rho[0, 0] = 1.0
-        else:
-            if isinstance(data, DensityMatrix):
-                data = data.rho
-            elif isinstance(data, (list, tuple)):
-                data = np.asarray(data, dtype=complex)
-            elif isinstance(data, np.ndarray):
-                pass
-            else:
-                raise TypeError("data must be DensityMatrix, list, tuple, or np.ndarray.")
+    def __init__(
+        self,
+        data: Data = graphix.states.BasicStates.PLUS,
+        nqubit: graphix.types.PositiveOrNullInt | None = None,
+    ):
+        """Initialize density matrix objects. The behaviour builds on theo ne of `graphix.statevec.Statevec`.
+        `data` can be:
+        - a single :class:`graphix.states.State` (classical description of a quantum state)
+        - an iterable of :class:`graphix.states.State` objects
+        - an iterable of iterable of scalars (A 2**n x 2**n numerical density matrix)
+        - a `graphix.statevec.DensityMatrix` object
+        - a `graphix.statevec.Statevector` object
 
-            assert check_square(data)
-            self.Nqubit = len(data).bit_length() - 1
+        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
+        in the tensor product state.
+        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
+        If a `graphix.statevec.Statevec` or `graphix.statevec.DensityMatrix` is passed, returns a copy.
 
-            self.rho = data
-        assert check_hermitian(self.rho)
-        assert check_unit_trace(self.rho)
+
+        :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
+        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[numbers.Number] | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]], optional
+        :param nqubit: number of qubits to prepare, defaults to None
+        :type nqubit: int, optional
+        """
+        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+
+        def check_size_consistency(mat):
+            if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):
+                raise ValueError(
+                    f"Inconsistent parameters between nqubit = {nqubit} and the shape of the provided density matrix = {mat.shape}."
+                )
+
+        if isinstance(data, DensityMatrix):
+            check_size_consistency(data)
+            # safe: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.copy.html
+            self.rho = data.rho.copy()
+            self.Nqubit = data.Nqubit
+            return
+        if isinstance(data, collections.abc.Iterable):
+            input_list = list(data)
+            if len(input_list) != 0:
+                # needed since Object is iterable but not subscribable!
+                try:
+                    if isinstance(input_list[0], collections.abc.Iterable) and isinstance(
+                        input_list[0][0], numbers.Number
+                    ):
+                        self.rho = np.array(input_list)
+                        assert check_square(self.rho)
+                        check_size_consistency(self.rho)
+                        assert check_unit_trace(self.rho)
+                        assert check_psd(self.rho)
+                        self.Nqubit = self.rho.shape[0].bit_length() - 1
+                        return
+                except TypeError:
+                    pass
+        statevec = Statevec(data, nqubit)
+        # NOTE this works since np.outer flattens the inputs!
+        self.rho = np.outer(statevec.psi, statevec.psi.conj())
+        self.Nqubit = len(statevec.dims())
 
     def __repr__(self):
-        return f"DensityMatrix, data={self.rho}, shape={self.dims()}"
+        return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
     def evolve_single(self, op, i):
         """Single-qubit operation.
@@ -70,7 +104,7 @@ class DensityMatrix:
             raise ValueError("op must be 2*2 matrix.")
 
         rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=[1, i]), op.conj().T, axes=[i + self.Nqubit, 0])
+        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.Nqubit, 0))
         rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
         self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
 
@@ -280,10 +314,10 @@ class DensityMatrix:
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
 
-class DensityMatrixBackend(graphix.sim.base_backend.Backend):
+class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True):
+    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
         """
         Parameters
         ----------
@@ -295,10 +329,11 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             pr_calc : bool
                 whether or not to compute the probability distribution before choosing the measurement result.
                 if False, measurements yield results 0/1 with 50% probabilities each.
+            input_state: same syntax as `graphix.statevec.DensityMatrix` constructor.
         """
-        # check that pattern has output nodes configured
-        # assert len(pattern.output_nodes) > 0
         self.pattern = pattern
+        if pattern._pauli_preprocessed and input_state != graphix.states.BasicStates.PLUS:
+            raise ValueError("Pauli preprocessing is currently only available when inputs are initialized in |+> state")
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
@@ -308,7 +343,10 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
         super().__init__(pr_calc)
 
-    def add_nodes(self, nodes, qubit_to_add=None):
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes, input_state)
+
+    def add_nodes(self, nodes, input_state: Data = graphix.states.BasicStates.PLUS):
         """add new qubit to the internal density matrix
         and asign the corresponding node number to list self.node_index.
 
@@ -322,12 +360,7 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         if not self.state:
             self.state = DensityMatrix(nqubit=0)
         n = len(nodes)
-        if qubit_to_add is None:
-            dm_to_add = DensityMatrix(nqubit=n)
-        else:
-            assert isinstance(qubit_to_add, DensityMatrix)
-            assert qubit_to_add.nqubit == 1
-            dm_to_add = qubit_to_add
+        dm_to_add = DensityMatrix(nqubit=n, data=input_state)
         self.state.tensor(dm_to_add)
         self.node_index.extend(nodes)
         self.Nqubit += n
@@ -362,11 +395,11 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         correct for the X or Z byproduct operators,
         by applying the X or Z gate.
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            loc = self.node_index.index(cmd[1])
-            if cmd[0] == "X":
+        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+            loc = self.node_index.index(cmd.node)
+            if isinstance(cmd, graphix.command.X):
                 op = Ops.x
-            elif cmd[0] == "Z":
+            elif isinstance(cmd, graphix.command.Z):
                 op = Ops.z
             self.state.evolve_single(op, loc)
 
@@ -387,8 +420,8 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         ----------
             qargs : list of ints. Target qubits
         """
-        loc = self.node_index.index(cmd[1])
-        self.state.evolve_single(CLIFFORD[cmd[2]], loc)
+        loc = self.node_index.index(cmd.node)
+        self.state.evolve_single(CLIFFORD[cmd.cliff_index], loc)
 
     def apply_channel(self, channel: KrausChannel, qargs):
         """backend version of apply_channel
@@ -404,3 +437,27 @@ class DensityMatrixBackend(graphix.sim.base_backend.Backend):
         """To be run at the end of pattern simulation."""
         self.sort_qubits()
         self.state.normalize()
+
+
+if sys.version_info >= (3, 10):
+    from collections.abc import Iterable
+
+    Data = (
+        graphix.states.State
+        | DensityMatrix
+        | Statevec
+        | Iterable[graphix.states.State]
+        | Iterable[numbers.Number]
+        | Iterable[Iterable[numbers.Number]]
+    )
+else:
+    from typing import Iterable, Union
+
+    Data = Union[
+        graphix.states.State,
+        DensityMatrix,
+        Statevec,
+        Iterable[graphix.states.State],
+        Iterable[numbers.Number],
+        Iterable[Iterable[numbers.Number]],
+    ]

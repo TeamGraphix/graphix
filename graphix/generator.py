@@ -3,8 +3,10 @@ MBQC pattern generator
 
 """
 
-import numpy as np
+from __future__ import annotations
 
+import graphix.pauli
+from graphix.command import C, E, M, N, X, Z
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
 
@@ -55,7 +57,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
-        meas_planes = {i: "XY" for i in measuring_nodes}
+        meas_planes = {i: graphix.pauli.Plane.XY for i in measuring_nodes}
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -65,21 +67,21 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
         pattern = Pattern(input_nodes=inputs)
         # pattern.extend([["N", i] for i in inputs])
         for i in set(graph.nodes) - set(inputs):
-            pattern.add(["N", i])
+            pattern.add(N(node=i))
         for e in graph.edges:
-            pattern.add(["E", e])
+            pattern.add(E(nodes=e))
         measured = []
         for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
             for j in layers[i]:
                 measured.append(j)
-                pattern.add(["M", j, "XY", angles[j], [], []])
+                pattern.add(M(node=j, angle=angles[j]))
                 neighbors = set()
                 for k in f[j]:
                     neighbors = neighbors | set(graph.neighbors(k))
                 for k in neighbors - set([j]):
                     # if k not in measured:
-                    pattern.add(["Z", k, [j]])
-                pattern.add(["X", f[j].pop(), [j]])
+                    pattern.add(Z(node=k, domain=[j]))
+                pattern.add(X(node=f[j].pop(), domain=[j]))
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -89,17 +91,17 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
             pattern = Pattern(input_nodes=inputs)
             # pattern.extend([["N", i] for i in inputs])
             for i in set(graph.nodes) - set(inputs):
-                pattern.add(["N", i])
+                pattern.add(N(node=i))
             for e in graph.edges:
-                pattern.add(["E", e])
+                pattern.add(E(nodes=e))
             for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
                 for j in layers[i]:
-                    pattern.add(["M", j, meas_planes[j], angles[j], [], []])
+                    pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
                     odd_neighbors = find_odd_neighbor(graph, g[j])
                     for k in odd_neighbors - set([j]):
-                        pattern.add(["Z", k, [j]])
+                        pattern.add(Z(node=k, domain=[j]))
                     for k in g[j] - set([j]):
-                        pattern.add(["X", k, [j]])
+                        pattern.add(X(node=k, domain=[j]))
         else:
             raise ValueError("no flow or gflow found")
 

@@ -11,6 +11,7 @@ from networkx.utils import graphs_equal
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
 
+import graphix.pauli
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
@@ -71,7 +72,7 @@ class TestGraphSim:
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * np.pi, plane="YZ"), 1)  # z meas
+        gstate.evolve_single(meas_op(0.5 * np.pi, plane=graphix.pauli.Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
         gstate2 = get_state(g)

@@ -5,15 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
+
 ### Added
+
+- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable. 
+- The following changes were made (#155):
+  - Added `class Command` and all its child classes that represent all the pattern commands.
+  - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
 
 ### Fixed
 
 ### Changed
 
-## [0.2.12] - 2024-05-11
+- Entire package was udpated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
+
+
+
+## [0.2.15] - 2024-06-21
+### Added
+- python 3.12 support
+- Arbitrary states now allowed for initializing input nodes in state vector
+  and density matrix backends. use `input_state` optional argument in `Statevector` and `DensityMatrix` backends.
+- Simple planar state class `graphix.states.PlanarState` for states on one of the three planes (XY, XZ, YZ).
+
+### Fixed
+
+### Changed
+- Basic states such as |0>, |+> states are now defined in `states.BasicStates` and no longer
+  in `ops.States`.
+
+
+## [0.2.14] - 2024-05-11
 
 ### Added
 
@@ -39,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Patterns are now allowed to measure all their nodes, and have an
   empty output set.
 - Completely migrated to pytest, no `unittest` usage remains (#134)
+
+## [0.2.12, 0.2.13] - pypi build failed, not available in `pip`
+
+- 0.2.12 yanked on `pypi`
 
 ## [0.2.11] - 2024-03-16
 

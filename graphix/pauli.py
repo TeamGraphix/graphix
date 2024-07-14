@@ -2,8 +2,9 @@
 Pauli gates ± {1,j} × {I, X, Y, Z}
 """
 
+from __future__ import annotations
+
 import enum
-import typing
 
 import numpy as np
 import pydantic
@@ -114,7 +115,7 @@ class Plane(enum.Enum):
     XZ = 2
 
     @property
-    def axes(self) -> typing.List[Axis]:
+    def axes(self) -> list[Axis]:
         # match self:
         #     case Plane.XY:
         #         return [Axis.X, Axis.Y]
@@ -161,14 +162,14 @@ class Plane(enum.Enum):
         elif self == Plane.XZ:
             return Axis.X  # former convention was Z
 
-    def polar(self, angle: float) -> typing.Tuple[float, float, float]:
+    def polar(self, angle: float) -> tuple[float, float, float]:
         result = [0, 0, 0]
         result[self.cos.value] = np.cos(angle)
         result[self.sin.value] = np.sin(angle)
         return tuple(result)
 
     @staticmethod
-    def from_axes(a: Axis, b: Axis) -> "Plane":
+    def from_axes(a: Axis, b: Axis) -> Plane:
         if b.value < a.value:
             a, b = b, a
         # match a, b:
@@ -202,7 +203,7 @@ class Pauli:
         self.__unit = unit
 
     @staticmethod
-    def from_axis(axis: Axis) -> "Pauli":
+    def from_axis(axis: Axis) -> Pauli:
         return Pauli(IXYZ[axis.name], UNIT)
 
     @property
@@ -289,7 +290,7 @@ class MeasureUpdate(pydantic.BaseModel):
     add_term: float
 
     @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford: "graphix.clifford.Clifford") -> "MeasureUpdate":
+    def compute(plane: Plane, s: bool, t: bool, clifford: graphix.clifford.Clifford) -> MeasureUpdate:
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford = graphix.clifford.X @ clifford

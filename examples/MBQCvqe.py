@@ -1,6 +1,6 @@
 """
 Variational Quantum Eigensolver (VQE) with Measurement-Based Quantum Computing (MBQC)
-====================================================================================
+=====================================================================================
 
 In this example, we solve a simple VQE problem using a measurement-based quantum
 computing (MBQC) approach. The Hamiltonian for the system is given by:
@@ -98,6 +98,7 @@ hamiltonian = create_hamiltonian()
 # %%
 # Instantiate the MBQCVQE class
 mbqc_vqe = MBQCVQE(n_qubits, hamiltonian)
+
 
 # %%
 # Define the cost function

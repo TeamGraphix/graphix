@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import string
 from copy import deepcopy
 
@@ -6,8 +8,11 @@ import quimb.tensor as qtn
 from numpy.typing import NDArray
 from quimb.tensor import Tensor, TensorNetwork
 
+from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
-from graphix.ops import Ops, States
+from graphix.ops import Ops
+from graphix.pauli import Plane
+from graphix.states import BasicStates
 
 
 class TensorNetworkBackend:
@@ -16,7 +21,7 @@ class TensorNetworkBackend:
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="auto", **kwargs):
+    def __init__(self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, **kwargs):
         """
 
         Parameters
@@ -33,8 +38,13 @@ class TensorNetworkBackend:
                 In this strategy, All N and E commands executed sequentially.
             'auto'(default) :
                 Automatically select a preparation strategy based on the max degree of a graph
+        input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
+        if input_state != BasicStates.PLUS:
+            raise NotImplementedError(
+                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
+            )
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
@@ -66,6 +76,9 @@ class TensorNetworkBackend:
             self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
+
+        # initialize input qubits to desired init_state
+        self.add_nodes(pattern.input_nodes)
 
     def add_nodes(self, nodes):
         """Add nodes to the network
@@ -116,7 +129,7 @@ class TensorNetworkBackend:
         elif self.graph_prep == "opt":
             pass
 
-    def measure(self, cmd):
+    def measure(self, cmd: command.M):
         """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
@@ -126,38 +139,35 @@ class TensorNetworkBackend:
             measurement command
             i.e. ['M', node, plane angle, s_domain, t_domain]
         """
-        if cmd[1] in self._isolated_nodes:
-            vector = self.state.get_open_tensor_from_index(cmd[1])
+        if cmd.node in self._isolated_nodes:
+            vector = self.state.get_open_tensor_from_index(cmd.node)
             probs = np.abs(vector) ** 2
             probs = probs / (np.sum(probs))
             result = np.random.choice([0, 1], p=probs)
-            self.results[cmd[1]] = result
+            self.results[cmd.node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
             # choose the measurement result randomly
             result = np.random.choice([0, 1])
-            self.results[cmd[1]] = result
+            self.results[cmd.node] = result
             buffer = 2**0.5
 
         # extract signals for adaptive angle
-        s_signal = np.sum([self.results[j] for j in cmd[4]])
-        t_signal = np.sum([self.results[j] for j in cmd[5]])
-        angle = cmd[3] * np.pi
-        if len(cmd) == 7:
-            vop = cmd[6]
-        else:
-            vop = 0
+        s_signal = np.sum(self.results[j] for j in cmd.s_domain)
+        t_signal = np.sum(self.results[j] for j in cmd.t_domain)
+        angle = cmd.angle * np.pi
+        vop = cmd.vop
         if int(s_signal % 2) == 1:
             vop = CLIFFORD_MUL[1, vop]
         if int(t_signal % 2) == 1:
             vop = CLIFFORD_MUL[3, vop]
-        proj_vec = proj_basis(angle, vop=vop, plane=cmd[2], choice=result)
+        proj_vec = proj_basis(angle, vop=vop, plane=cmd.plane, choice=result)
 
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
-        self.state.measure_single(cmd[1], basis=proj_vec)
+        self.state.measure_single(cmd.node, basis=proj_vec)
 
-    def correct_byproduct(self, cmd):
+    def correct_byproduct(self, cmd: command.X | command.Z):
         """Perform byproduct correction.
 
         Parameters
@@ -166,13 +176,11 @@ class TensorNetworkBackend:
             Byproduct command
             i.e. ['X' or 'Z', node, signal_domain]
         """
-        if np.mod(np.sum([self.results[j] for j in cmd[2]]), 2) == 1:
-            if cmd[0] == "X":
-                self.state.evolve_single(cmd[1], Ops.x, "X")
-            elif cmd[0] == "Z":
-                self.state.evolve_single(cmd[1], Ops.z, "Z")
+        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
+            op = Ops.x if isinstance(cmd, command.X) else Ops.z
+            self.state.evolve_single(cmd.node, op, cmd.kind)
 
-    def apply_clifford(self, cmd):
+    def apply_clifford(self, cmd: command.C):
         """Apply single-qubit Clifford gate
 
         Parameters
@@ -181,8 +189,8 @@ class TensorNetworkBackend:
             clifford command.
             See https://arxiv.org/pdf/2212.11975.pdf for the detail.
         """
-        node_op = CLIFFORD[cmd[2]]
-        self.state.evolve_single(cmd[1], node_op, "C")
+        node_op = CLIFFORD[cmd.cliff_index]
+        self.state.evolve_single(cmd.node, node_op, cmd.kind)
 
     def finalize(self):
         pass
@@ -260,22 +268,22 @@ class MBQCTensorNet(TensorNetwork):
         ind = gen_str()
         tag = str(index)
         if state == "plus":
-            vec = States.plus
+            vec = BasicStates.PLUS.get_statevector()
         elif state == "minus":
-            vec = States.minus
+            vec = BasicStates.MINUS.get_statevector()
         elif state == "zero":
-            vec = States.zero
+            vec = BasicStates.ZERO.get_statevector()
         elif state == "one":
-            vec = States.one
+            vec = BasicStates.ONE.get_statevector()
         elif state == "iplus":
-            vec = States.iplus
+            vec = BasicStates.PLUS_I.get_statevector()
         elif state == "iminus":
-            vec = States.iminus
+            vec = BasicStates.MINUS_I.get_statevector()
         else:
             assert state.shape == (2,), "state must be 2-element np.ndarray"
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
             vec = state
-        tsr = qtn.Tensor(vec, [ind], [tag, "Open"])
+        tsr = Tensor(vec, [ind], [tag, "Open"])
         self.add_tensor(tsr)
         self._dangling[tag] = ind
 
@@ -298,7 +306,7 @@ class MBQCTensorNet(TensorNetwork):
         new_ind = gen_str()
         tensor.retag({"Open": "Close"}, inplace=True)
 
-        node_ts = qtn.Tensor(
+        node_ts = Tensor(
             arr,
             [new_ind, old_ind],
             [str(index), label, "Open"],
@@ -358,17 +366,17 @@ class MBQCTensorNet(TensorNetwork):
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
             elif basis == "Z" and result == 0:
-                proj_vec = States.zero
+                proj_vec = BasicStates.ZERO.get_statevector()
             elif basis == "Z" and result == 1:
-                proj_vec = States.one
+                proj_vec = BasicStates.ONE.get_statevector()
             elif basis == "X" and result == 0:
-                proj_vec = States.plus
+                proj_vec = BasicStates.PLUS.get_statevector()
             elif basis == "X" and result == 1:
-                proj_vec = States.minus
+                proj_vec = BasicStates.MINUS.get_statevector()
             elif basis == "Y" and result == 0:
-                proj_vec = States.iplus
+                proj_vec = BasicStates.PLUS_I.get_statevector()
             elif basis == "Y" and result == 1:
-                proj_vec = States.iminus
+                proj_vec = BasicStates.MINUS_I.get_statevector()
             else:
                 raise ValueError("Invalid measurement basis.")
         else:
@@ -415,13 +423,17 @@ class MBQCTensorNet(TensorNetwork):
             if node not in ind_dict.keys():
                 ind = gen_str()
                 self._dangling[str(node)] = ind
-                self.add_tensor(Tensor(States.plus, [ind], [str(node), "Open"]))
+                self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))
                 continue
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
                 [
-                    outer_product([States.vec[0 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
-                    outer_product([States.vec[1 + 2 * vec_dict[node][i]] for i in range(dim_tensor)]),
+                    outer_product(
+                        [BasicStates.VEC[0 + 2 * vec_dict[node][i]].get_statevector() for i in range(dim_tensor)]
+                    ),
+                    outer_product(
+                        [BasicStates.VEC[1 + 2 * vec_dict[node][i]].get_statevector() for i in range(dim_tensor)]
+                    ),
                 ]
             ) * 2 ** (dim_tensor / 4 - 1.0 / 2)
             self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
@@ -454,10 +466,10 @@ class MBQCTensorNet(TensorNetwork):
             node = str(indices[i])
             exp = len(indices) - i - 1
             if (basis // 2**exp) == 1:
-                state_out = States.one  # project onto |1>
+                state_out = BasicStates.ONE.get_statevector()  # project onto |1>
                 basis -= 2**exp
             else:
-                state_out = States.zero  # project onto |0>
+                state_out = BasicStates.ZERO.get_statevector()  # project onto |0>
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
@@ -716,14 +728,14 @@ def proj_basis(angle, vop, plane, choice):
     numpy.ndarray :
         projected state
     """
-    if plane == "XY":
-        vec = States.vec[0 + choice]
+    if plane == Plane.XY:
+        vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Rz(angle)
-    elif plane == "YZ":
-        vec = States.vec[4 + choice]
+    elif plane == Plane.YZ:
+        vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
-    elif plane == "XZ":
-        vec = States.vec[0 + choice]
+    elif plane == Plane.XZ:
+        vec = States.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
