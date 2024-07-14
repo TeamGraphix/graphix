@@ -5,7 +5,7 @@ import pytest
 from numpy.random import PCG64, Generator
 
 import graphix.pauli
-import graphix.random_circuit as rc
+import graphix.random_objects as ro
 import graphix.simulator
 from graphix.transpiler import Circuit
 
@@ -99,7 +99,7 @@ class TestTranspilerUnitGates:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 4
         depth = 6
-        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit = ro.get_rand_circuit(nqubits, depth, rng, use_ccx=True)
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -113,7 +113,7 @@ class TestTranspilerOpt:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 4
         depth = 6
-        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit = ro.get_rand_circuit(nqubits, depth, rng, use_ccx=True)
         circuit.ccx(0, 1, 2)
         pattern = circuit.transpile(opt=True).pattern
         pattern.minimize_space()
@@ -125,7 +125,7 @@ class TestTranspilerOpt:
         nqubits = 2
         depth = 1
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
+        circuit = ro.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.transpile(opt=True).pattern
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
@@ -135,7 +135,7 @@ class TestTranspilerOpt:
         nqubits = 3
         depth = 2
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
+        circuit = ro.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.standardize_and_transpile().pattern
         state = circuit.simulate_statevector().statevec
         pattern.minimize_space()
@@ -146,7 +146,7 @@ class TestTranspilerOpt:
         nqubits = 3
         depth = 2
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
+        circuit = ro.generate_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
         pattern = circuit.standardize_and_transpile(opt=True).pattern
         state = circuit.simulate_statevector().statevec
         pattern.minimize_space()

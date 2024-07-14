@@ -19,7 +19,7 @@ from graphix.gflow import (
     verify_pauliflow,
 )
 from graphix.pattern import Pattern
-from graphix.random_circuit import get_rand_circuit
+from graphix.random_objects import get_rand_circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator

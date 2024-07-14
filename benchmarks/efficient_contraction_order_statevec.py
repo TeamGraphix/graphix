@@ -25,7 +25,7 @@ import cotengra as ctg
 import quimb as qu
 from numpy.random import PCG64, Generator
 
-from graphix.random_circuit import get_rand_circuit
+from graphix.random_objects import get_rand_circuit
 
 # %%
 # Next, set global seed and number of thread workers
