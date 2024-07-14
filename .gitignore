@@ -18,3 +18,5 @@ graphix/sim/graphix.code-workspace
 .vscode/settings.json
 .pre-commit-config.yaml
 graphix/_version.py
+.coverage
+coverage.xml
