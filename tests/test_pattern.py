@@ -8,9 +8,9 @@ import pytest
 
 import graphix.ops
 import graphix.pauli
+import graphix.random_circuit as rc
 import graphix.sim.base_backend
 import graphix.states
-import graphix.random_circuit as rc
 from graphix.command import M, N
 from graphix.pattern import CommandNode, Pattern
 from graphix.sim.density_matrix import DensityMatrix

@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from numpy.random import PCG64, Generator
 
+import graphix.random_circuit as rc
 import graphix.transpiler
-import tests.random_circuit
 
 SEED = 25
 DEPTH = 1
@@ -34,7 +34,7 @@ def nqb(fx_rng: Generator) -> int:
 
 @pytest.fixture
 def rand_circ(nqb, fx_rng: Generator) -> graphix.transpiler.Circuit:
-    return tests.random_circuit.get_rand_circuit(nqb, DEPTH, fx_rng)
+    return rc.get_rand_circuit(nqb, DEPTH, fx_rng)
 
 
 @pytest.fixture
