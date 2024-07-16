@@ -42,14 +42,16 @@ class N(Command):
     node: Node
     state: State = BasicStates.PLUS
 
+class BaseM(Command):
+    kind: CommandKind = CommandKind.M
+    node: Node
 
-class M(Command):
+
+class M(BaseM):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
 
-    kind: CommandKind = CommandKind.M
-    node: Node
     plane: Plane = Plane.XY
     angle: float = 0.0
     s_domain: list[Node] = []

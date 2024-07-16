@@ -49,7 +49,8 @@ class TestClient:
             secrets = Secrets(r=True)
             # Giving it empty will create a random secret
             client = Client(pattern=pattern, secrets=secrets)
-            state_mbqc = client.delegate_pattern(backend).backend.state
+            _server = client.delegate_pattern(backend)
+            state_mbqc = backend.state
             np.testing.assert_almost_equal(np.abs(np.dot(state_mbqc.psi.flatten().conjugate(), state.psi.flatten())), 1)
 
     def test_theta_secret_simulation(self, fx_rng: Generator):
@@ -70,7 +71,8 @@ class TestClient:
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation = client.delegate_pattern(backend).backend.state
+            _server = client.delegate_pattern(backend)
+            blinded_simulation = backend.state
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector().statevec
@@ -97,7 +99,8 @@ class TestClient:
             client = Client(pattern=pattern, input_state=states, secrets=secrets)
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation = client.delegate_pattern(backend).backend.state
+            _server = client.delegate_pattern(backend)
+            blinded_simulation = backend.state
 
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector().statevec
@@ -176,7 +179,8 @@ class TestClient:
 
             backend = StatevectorBackend()
             # Blinded simulation, between the client and the server
-            blinded_simulation = client.delegate_pattern(backend).backend.state
+            _server = client.delegate_pattern(backend)
+            blinded_simulation = backend.state
             # Clear simulation = no secret, just simulate the circuit defined above
             clear_simulation = circuit.simulate_statevector().statevec
             np.testing.assert_almost_equal(

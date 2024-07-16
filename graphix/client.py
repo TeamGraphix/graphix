@@ -15,7 +15,7 @@ import graphix.sim.base_backend
 import graphix.sim.statevec
 import graphix.simulator
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
-from graphix.command import CommandKind
+from graphix.command import CommandKind, BaseM
 from graphix.pattern import Pattern
 from graphix.pauli import Plane
 from graphix.sim.base_backend import Backend
@@ -252,7 +252,7 @@ def remove_flow(pattern):
             continue
         if cmd.kind == CommandKind.M:
             # If measure, remove measure parameters
-            new_cmd = graphix.command.M(node=cmd.node)
+            new_cmd = graphix.command.BaseM(node=cmd.node)
         else:
             new_cmd = cmd
         clean_pattern.add(new_cmd)
@@ -360,14 +360,12 @@ class Client:
 
         return trap_outcomes
 
-    def delegate_pattern(self, backend: Backend) -> PatternSimulator:
+    def delegate_pattern(self, backend: Backend) -> None:
         self.prepare_states(backend)
         self.blind_qubits(backend)
         sim = PatternSimulator(backend=backend, pattern=self.clean_pattern, measure_method=self.measure_method)
         sim.run(input_state=None)
         self.decode_output_state(backend)
-        # returns the final state
-        return sim
 
     def decode_output_state(self, backend: Backend):
         for node in self.output_nodes:
@@ -395,7 +393,7 @@ class ClientMeasureMethod(MeasureMethod):
     def __init__(self, client: Client):
         self.__client = client
 
-    def get_measurement_description(self, cmd) -> graphix.simulator.MeasurementDescription:
+    def get_measurement_description(self, cmd: BaseM) -> graphix.simulator.MeasurementDescription:
         parameters = self.__client.measurement_db[cmd.node]
 
         r_value = self.__client.secrets.r.get(cmd.node, 0)

@@ -12,7 +12,7 @@ import warnings
 import numpy as np
 
 import graphix.clifford
-from graphix.command import CommandKind
+from graphix.command import BaseM, CommandKind, M
 from graphix.pauli import MeasureUpdate, Plane
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
@@ -29,7 +29,7 @@ class MeasureMethod(abc.ABC):
         self.set_measure_result(cmd.node, result)
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd) -> MeasurementDescription: ...
+    def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription: ...
 
     @abc.abstractmethod
     def get_measure_result(self, node: int) -> bool: ...
@@ -44,7 +44,8 @@ class DefaultMeasureMethod(MeasureMethod):
             results = dict()
         self.results = results
 
-    def get_measurement_description(self, cmd) -> MeasurementDescription:
+    def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription:
+        assert isinstance(cmd, M)
         angle = cmd.angle * np.pi
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
