@@ -42,6 +42,7 @@ class N(Command):
     node: Node
     state: State = BasicStates.PLUS
 
+
 class BaseM(Command):
     kind: CommandKind = CommandKind.M
     node: Node
