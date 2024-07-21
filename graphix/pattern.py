@@ -1758,8 +1758,8 @@ class LocalPattern:
             if node.Mprop[0] is None:
                 continue
             extracted_signal = extract_signal(node.Mprop[0], node.Mprop[2], node.Mprop[3])
-            signal_dict[node_index] = extracted_signal.signal
             signal = extracted_signal.signal
+            signal_dict[node_index] = signal
             self.nodes[node_index].Mprop[2] = extracted_signal.s_domain
             self.nodes[node_index].Mprop[3] = extracted_signal.t_domain
             for signal_label, destinated_nodes in self.signal_destination[node_index].items():
