@@ -105,7 +105,9 @@ for n_qubit in n_qubit_list:
 with open("sqrqcresults.txt", "w") as f:
     f.write("n_qubit, neco_sim, sv_sim, eco_sim, eco_sim_wo_ctg, max_space_ls\n")
     for i in range(len(n_qubit_list)):
-        f.write(f"{n_qubit_list[i]}, {sv_sim[i]}, {neco_sim[i]}, {eco_sim[i]}, {eco_sim_wo_ctg[i]}, {max_space_ls[i]}\n")
+        f.write(
+            f"{n_qubit_list[i]}, {sv_sim[i]}, {neco_sim[i]}, {eco_sim[i]}, {eco_sim_wo_ctg[i]}, {max_space_ls[i]}\n"
+        )
 
 # %%
 # We can now plot the simulation time results.
