@@ -730,7 +730,7 @@ def proj_basis(angle, vop, plane, choice):
         vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
     elif plane == Plane.XZ:
-        vec = States.VEC[0 + choice].get_statevector()
+        vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
