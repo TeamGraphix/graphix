@@ -384,7 +384,7 @@ class Pattern:
         except StopIteration:
             return True
 
-    def shift_signals(self, method="local"):
+    def shift_signals(self, method="local") -> dict[int, list[int]]:
         """Performs signal shifting procedure
         Extract the t-dependence of the measurement into 'S' commands
         and commute them to the end of the command sequence where it can be removed.
@@ -401,13 +401,19 @@ class Pattern:
             'global' shift_signals is executed on a conventional Pattern sequence.
             'local' shift_signals is done on a LocalPattern class which is faster but results in equivalent pattern.
             defaults to 'local'
+
+        Returns
+        -------
+        swapped_dict : dict[int, list[int]]
+            for each node, the signal that have been shifted if the outcome is
+            swapped by the shift.
         """
         if method == "local":
             localpattern = self.get_local_pattern()
-            localpattern.shift_signals()
+            swapped_dict = localpattern.shift_signals()
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
-            self.extract_signals()
+            swapped_dict = self.extract_signals()
             target = self._find_op_to_be_moved(command.CommandKind.S, rev=True)
             while target is not None:
                 if target == len(self.__seq) - 1:
@@ -429,6 +435,7 @@ class Pattern:
                 target += 1
         else:
             raise ValueError("Invalid method")
+        return swapped_dict
 
     def _find_op_to_be_moved(self, op: command.CommandKind, rev=False, skipnum=0):
         """Internal method for pattern modification.
@@ -703,11 +710,12 @@ class Pattern:
             self._commute_with_preceding(target)
             target -= 1
 
-    def extract_signals(self):
+    def extract_signals(self) -> dict[int, list[int]]:
         """Extracts 't' domain of measurement commands, turn them into
         signal 'S' commands and add to the command sequence.
         This is used for shift_signals() method.
         """
+        signal_dict = {}
         pos = 0
         while pos < len(self.__seq):
             if self.__seq[pos].kind == command.CommandKind.M:
@@ -718,7 +726,9 @@ class Pattern:
                     cmd.s_domain = extracted_signal.s_domain
                     cmd.t_domain = extracted_signal.t_domain
                     pos += 1
+                signal_dict[cmd.node] = extracted_signal.signal
             pos += 1
+        return signal_dict
 
     def _get_dependency(self):
         """Get dependency (byproduct correction & dependent measurement)
@@ -1726,14 +1736,16 @@ class LocalPattern:
             for dependent_node in dependent_node_dicts["Z"]:
                 self.signal_destination[dependent_node]["Z"] |= {index}
 
-    def shift_signals(self):
+    def shift_signals(self) -> dict[int, list[int]]:
         """Shift signals to the back based on signal destinations."""
         self.collect_signal_destination()
+        signal_dict = {}
         for node_index in self.morder + self.output_nodes:
             node = self.nodes[node_index]
             if node.Mprop[0] is None:
                 continue
             extracted_signal = extract_signal(node.Mprop[0], node.Mprop[2], node.Mprop[3])
+            signal_dict[node_index] = extracted_signal.signal
             signal = extracted_signal.signal
             self.nodes[node_index].Mprop[2] = extracted_signal.s_domain
             self.nodes[node_index].Mprop[3] = extracted_signal.t_domain
@@ -1750,6 +1762,7 @@ class LocalPattern:
                         node.Zsignal += signal
                     else:
                         raise ValueError(f"Invalid signal label: {signal_label}")
+        return signal_dict
 
     def get_graph(self):
         """Get a graph from a local pattern
@@ -2180,7 +2193,7 @@ def extract_signal(plane: Plane, s_domain: list[int], t_domain: list[int]) -> Ex
     if plane == Plane.XY:
         return ExtractedSignal(s_domain=s_domain, t_domain=[], signal=t_domain)
     if plane == Plane.XZ:
-        return ExtractedSignal(s_domain=[], t_domain=t_domain, signal=s_domain)
-    if plane == Plane.YZ:
         return ExtractedSignal(s_domain=[], t_domain=s_domain + t_domain, signal=s_domain)
+    if plane == Plane.YZ:
+        return ExtractedSignal(s_domain=[], t_domain=t_domain, signal=s_domain)
     assert False

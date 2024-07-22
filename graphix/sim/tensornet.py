@@ -7,6 +7,7 @@ import numpy as np
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
+import graphix.clifford
 from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -158,11 +159,11 @@ class TensorNetworkBackend:
         if cmd.plane == Plane.XY:
             vop = 0
         elif cmd.plane == Plane.YZ:
-            vop = 6
+            vop = graphix.clifford.H.index
             angle = -angle
             s_domain, t_domain = t_domain, s_domain
         elif cmd.plane == Plane.XZ:
-            vop = 19
+            vop = (graphix.clifford.H @ graphix.clifford.S).index
             angle = -angle
             t_domain = t_domain + s_domain
             s_domain, t_domain = t_domain, s_domain

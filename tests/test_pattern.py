@@ -353,16 +353,15 @@ class TestPattern:
         pattern.add(M(node=2, angle=0.5, plane=plane, s_domain=[0], t_domain=[1]))
         pattern_ref = pattern.copy()
         pattern.standardize(method="global")
-        pattern.shift_signals(method=method)
+        signal_dict = pattern.shift_signals(method=method)
         # Test for every possible outcome of each measure
-        for outcomes in itertools.product(*([[0, 1]] * 3)):
-            state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes)))
-            outcomes_ref = list(outcomes)
-            # If the t-domain of measure 2 (i.e., the outcome of measure 1) is 1,
-            # then the outcome of measure 2 is swapped on plane XY.
-            if plane == Plane.XY and outcomes_ref[1]:
-                outcomes_ref[2] = 1 - outcomes_ref[2]
+        for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
             state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
+            outcomes_p = [
+                1 - outcome if sum(outcomes_ref[i] for i in swapped) % 2 == 1 else outcome
+                for outcome, swapped in zip(outcomes_ref, signal_dict.values())
+            ]
+            state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_p)))
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
 
