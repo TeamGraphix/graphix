@@ -572,12 +572,7 @@ class MBQCTensorNet(TensorNetwork):
             target_nodes = [output_node_indices[ind] for ind in qubit_indices]
             out_inds = output_node_indices
         op_dim = len(qubit_indices)
-        op = op.reshape(
-            [
-                2,
-            ]
-            * (2 * op_dim)
-        )
+        op = op.reshape([2,] * (2 * op_dim))
         new_ind_left = [gen_str() for _ in range(op_dim)]
         new_ind_right = [gen_str() for _ in range(op_dim)]
         tn_cp_left = self.copy()
