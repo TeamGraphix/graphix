@@ -1421,13 +1421,32 @@ class Pattern:
         result = exe.run()
         return result
 
-    def perform_pauli_measurements(self, leave_input=False, use_rustworkx=False):
+    def perform_pauli_measurements(self, leave_input=False, use_rustworkx=False, ignore_pauli_with_deps=False):
         """Perform Pauli measurements in the pattern using
         efficient stabilizer simulator.
+
+        Parameters
+        ----------
+        leave_input : bool
+            Optional (`False` by default).
+            If `True`, measurements on input nodes are preserved as-is in the pattern.
+        use_rustworkx : bool
+            Optional (`False` by default).
+            If `True`, `rustworkx` is used for fast graph processing.
+            If `False`, `networkx` is used.
+        ignore_pauli_with_deps : bool
+            Optional (`False` by default).
+            If `True`, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
+            If `False`, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
 
         .. seealso:: :func:`measure_pauli`
 
         """
+        if not ignore_pauli_with_deps:
+            self.standardize()
+            pauli_nodes = self.__extract_pauli_nodes()
+            first_measure_index = next((i for i, cmd in enumerate(self) if cmd.kind == CommandKind.M), len(self))
+            self.__seq[first_measure_index:first_measure_index] = pauli_nodes.values()
         measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
 
     def draw_graph(
@@ -1527,13 +1546,64 @@ class Pattern:
 
     def copy(self) -> Pattern:
         result = self.__new__(self.__class__)
-        result.__seq = [cmd.model_copy() for cmd in self.__seq]
+        result.__seq = [cmd.model_copy(deep=True) for cmd in self.__seq]
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node
         result._pauli_preprocessed = self._pauli_preprocessed
         result.results = self.results.copy()
         return result
+
+    def __extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, tuple[command.M]]:
+        """Remove and return all the Pauli measurements of the sequence (except on nodes in `leave_nodes`).
+
+        The return dictionary is indexed by node index. The returned
+        Pauli measurements are intended to be measured first
+        (typically, by Pauli presimulation). This is an internal
+        function since the sequence is left in a state that breaks the
+        pattern invariant: the Pauli measurement commands are removed
+        from the pattern but the nodes are still considered to be
+        measured (they are not output nodes and can appear in the
+        domains of other commands). These measurements are supposed to
+        be reinserted in the pattern and/or presimulated.
+
+        """
+        if leave_nodes is None:
+            leave_nodes = set()
+        pauli_nodes = {}
+        shift_domains = {}
+        index = 0
+        while index < len(self.__seq):
+            cmd = self.__seq[index]
+
+            def expand_domain(domain):
+                for node in domain & shift_domains.keys():
+                    domain ^= shift_domains[node]
+
+            if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
+                expand_domain(cmd.domain)
+            if cmd.kind == CommandKind.M:
+                expand_domain(cmd.s_domain)
+                expand_domain(cmd.t_domain)
+                pm = PauliMeasurement.try_from(
+                    cmd.plane, cmd.angle
+                )  # None returned if the measurement is not in Pauli basis
+                if pm is not None and cmd.node not in leave_nodes:
+                    if pm.axis == Axis.X:
+                        shift_domains[cmd.node] = cmd.t_domain
+                    elif pm.axis == Axis.Y:
+                        shift_domains[cmd.node] = cmd.s_domain ^ cmd.t_domain
+                    elif pm.axis == Axis.Z:
+                        shift_domains[cmd.node] = cmd.s_domain
+                    else:
+                        typing_extensions.assert_never(pm.axis)
+                    cmd.s_domain = set()
+                    cmd.t_domain = set()
+                    pauli_nodes[cmd.node] = cmd
+                    del self.__seq[index]
+                    index -= 1
+            index += 1
+        return pauli_nodes
 
 
 class CommandNode:
