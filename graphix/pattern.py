@@ -15,6 +15,7 @@ import graphix.clifford
 import graphix.pauli
 from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.command import CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
@@ -357,12 +358,12 @@ class Pattern:
         Z_dict = {}
         X_dict = {}
 
-        def add_correction_command(dict, cmd):
-            previous_cmd = dict.get(cmd.node)
+        def add_correction_command(cmd_dict, cmd):
+            previous_cmd = cmd_dict.get(cmd.node)
             if previous_cmd is None:
-                dict[cmd.node] = cmd
+                cmd_dict[cmd.node] = cmd
             else:
-                previous_cmd.domain += cmd.domain
+                previous_cmd.domain ^= cmd.domain
 
         for cmd in self:
             if cmd.kind == CommandKind.N:
@@ -376,10 +377,10 @@ class Pattern:
             elif cmd.kind == CommandKind.M:
                 z_cmd = Z_dict.pop(cmd.node, None)
                 if z_cmd is not None:
-                    cmd.t_domain.extend(z_cmd.domain)
+                    cmd.t_domain ^= z_cmd.domain
                 x_cmd = X_dict.pop(cmd.node, None)
                 if x_cmd is not None:
-                    cmd.s_domain.extend(x_cmd.domain)
+                    cmd.s_domain ^= x_cmd.domain
                 M_list.append(cmd)
             elif cmd.kind == CommandKind.Z:
                 add_correction_command(Z_dict, cmd)
@@ -460,9 +461,42 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
+        elif method == "direct":
+            swapped_dict = self.shift_signals_direct()
         else:
             raise ValueError("Invalid method")
         return swapped_dict
+
+    def shift_signals_direct(self) -> dict[int, set[int]]:
+        signal_dict = {}
+
+        def expand_domain(domain):
+            for node in domain & signal_dict.keys():
+                domain ^= signal_dict[node]
+
+        for cmd in self:
+            if cmd.kind == CommandKind.M:
+                s_domain = cmd.s_domain
+                t_domain = cmd.t_domain
+                expand_domain(s_domain)
+                expand_domain(t_domain)
+                plane = cmd.plane
+                if plane == Plane.XY:
+                    if t_domain:
+                        cmd.t_domain = {}
+                        signal_dict[cmd.node] = t_domain
+                elif plane == Plane.XZ:
+                    if s_domain:
+                        cmd.s_domain = {}
+                        t_domain ^= s_domain
+                        signal_dict[cmd.node] = s_domain
+                elif plane == Plane.YZ:
+                    if s_domain:
+                        cmd.s_domain = {}
+                        signal_dict[cmd.node] = s_domain
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
+                expand_domain(cmd.domain)
+        return signal_dict
 
     def _find_op_to_be_moved(self, op: command.CommandKind, rev=False, skipnum=0):
         """Internal method for pattern modification.
@@ -1170,9 +1204,9 @@ class Pattern:
             localpattern.standardize()
             localpattern.shift_signals()
             self.__seq = localpattern.get_pattern().__seq
-        elif method == "global":
-            self.standardize()
-            self.shift_signals()
+        elif method == "global" or method == "direct":
+            self.standardize(method)
+            self.shift_signals(method)
         else:
             raise ValueError("Invalid method")
 
