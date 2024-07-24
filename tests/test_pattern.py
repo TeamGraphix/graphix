@@ -365,6 +365,20 @@ class TestPattern:
             state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_p)))
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_standardize_direct(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 5
+        depth = 4
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize(method="direct")
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed"""

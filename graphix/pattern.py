@@ -345,8 +345,47 @@ class Pattern:
             self._move_N_to_left()
             self._move_byproduct_to_right()
             self._move_E_after_N()
+        elif method == "direct":
+            self.standardize_direct()
         else:
             raise ValueError("Invalid method")
+
+    def standardize_direct(self):
+        N_list = []
+        E_list = []
+        M_list = []
+        Z_dict = {}
+        X_dict = {}
+
+        def add_correction_command(dict, cmd):
+            previous_cmd = dict.get(cmd.node)
+            if previous_cmd is None:
+                dict[cmd.node] = cmd
+            else:
+                previous_cmd.domain += cmd.domain
+
+        for cmd in self:
+            if cmd.kind == CommandKind.N:
+                N_list.append(cmd)
+            elif cmd.kind == CommandKind.E:
+                for side in (0, 1):
+                    x_cmd = X_dict.get(cmd.nodes[side], None)
+                    if x_cmd is not None:
+                        add_correction_command(Z_dict, command.Z(node=cmd.nodes[1 - side], domain=x_cmd.domain))
+                E_list.append(cmd)
+            elif cmd.kind == CommandKind.M:
+                z_cmd = Z_dict.pop(cmd.node, None)
+                if z_cmd is not None:
+                    cmd.t_domain.extend(z_cmd.domain)
+                x_cmd = X_dict.pop(cmd.node, None)
+                if x_cmd is not None:
+                    cmd.s_domain.extend(x_cmd.domain)
+                M_list.append(cmd)
+            elif cmd.kind == CommandKind.Z:
+                add_correction_command(Z_dict, cmd)
+            elif cmd.kind == CommandKind.X:
+                add_correction_command(X_dict, cmd)
+        self.__seq = [*N_list, *E_list, *M_list, *Z_dict.values(), *X_dict.values()]
 
     def is_standard(self):
         """determines whether the command sequence is standard
