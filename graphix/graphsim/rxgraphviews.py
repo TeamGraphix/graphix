@@ -81,7 +81,7 @@ class EdgeList:
     """
 
     def __init__(
-        self, edge_nums: list[tuple[int, int]] = None, edge_datas: list[dict] = None, edge_indices: list[int] = None
+        self, edge_nums: list[tuple[int, int]] | None = None, edge_datas: list[dict] | None = None, edge_indices: list[int] | None = None
     ):
         if edge_indices is None:
             edge_indices = []
