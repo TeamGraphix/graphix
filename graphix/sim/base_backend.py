@@ -34,7 +34,7 @@ def perform_measure(
 
 
 class Backend:
-    def __init__(self, pr_calc: bool = True, rng: np.random.Generator = None):
+    def __init__(self, pr_calc: bool = True, rng: np.random.Generator | None = None):
         """
         Parameters
         ----------
