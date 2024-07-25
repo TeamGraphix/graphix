@@ -504,7 +504,7 @@ class MBQCTensorNet(TensorNetwork):
         coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, skip_tn_simp=False, **kwagrs) -> NDArray:
+    def to_statevector(self, **kwagrs) -> NDArray:
         """Take outer product of the tensors in the network and return the statevector.
         This method uses the contract method and full_simplify method of quimb.tensor.TensorNetwork,
         which enables the efficient contraction order search and simplification of the tensor network.
@@ -514,25 +514,11 @@ class MBQCTensorNet(TensorNetwork):
         This eco simulation is not always exactly optimal, but it is efficient enough for most cases.
         The current implementation does NOT support intermediate measurements according to the probability distribution.
 
-        Parameters
-        ----------
-        skip_tn_simp : bool
-            If True, skip the tensor simplification process.
-            For n_qubits \lessapprox 25, set skip_tn_simp=True is recommended to reduce the simulation time,
-            while for n_qubits \gtrapprox 25, set skip_tn_simp=False is recommended.
-            See benchmarks/efficient_contraction_order_statevec.py for the detail.
-
         Returns
         -------
          : numpy.ndarray
             statevector
         """
-        if skip_tn_simp:
-            tn = self.copy()
-            output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
-            psi = tn.contract(output_inds=output_inds, **kwagrs).data.reshape(-1)
-            return psi
-
         tn = self.copy()
         tn_simplified = tn.full_simplify("ADCR")
         output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
