@@ -70,14 +70,13 @@ class M(Command):
             else:
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         update = graphix.pauli.MeasureUpdate.compute(self.plane, False, False, clifford)
-        result = M(
+        return M(
             node=self.node,
             plane=update.new_plane,
             angle=self.angle * update.coeff + update.add_term / np.pi,
             s_domain=s_domain,
             t_domain=t_domain,
         )
-        return result
 
 
 class E(Command):
