@@ -68,7 +68,7 @@ class M(Command):
             elif gate == graphix.clifford.Z:
                 pass
             else:
-                assert False
+                raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         update = graphix.pauli.MeasureUpdate.compute(self.plane, False, False, clifford)
         result = M(
             node=self.node,
