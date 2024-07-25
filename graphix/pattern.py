@@ -206,22 +206,22 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
-    def print_pattern(self, lim=40, filter: list[command.CommandKind] = None):
+    def print_pattern(self, lim=40, target: list[command.CommandKind] | None = None) -> None:
         """print the pattern sequence (Pattern.seq).
 
         Parameters
         ----------
         lim: int, optional
             maximum number of commands to show
-        filter : list of command.CommandKind, optional
+        target : list of command.CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
         if len(self.__seq) < lim:
             nmax = len(self.__seq)
         else:
             nmax = lim
-        if filter is None:
-            filter = [
+        if target is None:
+            target = [
                 command.CommandKind.N,
                 command.CommandKind.E,
                 command.CommandKind.M,
@@ -236,19 +236,19 @@ class Pattern:
             if i == len(self.__seq):
                 break
             cmd = self.__seq[i]
-            if cmd.kind == command.CommandKind.N and (command.CommandKind.N in filter):
+            if cmd.kind == command.CommandKind.N and (command.CommandKind.N in target):
                 count += 1
                 print(f"N, node = {cmd.node}")
-            elif cmd.kind == command.CommandKind.E and (command.CommandKind.E in filter):
+            elif cmd.kind == command.CommandKind.E and (command.CommandKind.E in target):
                 count += 1
                 print(f"E, nodes = {cmd.nodes}")
-            elif cmd.kind == command.CommandKind.M and (command.CommandKind.M in filter):
+            elif cmd.kind == command.CommandKind.M and (command.CommandKind.M in target):
                 count += 1
                 print(
                     f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
                     + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}, Clifford index = {cmd.vop}"
                 )
-            elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in filter):
+            elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in target):
                 count += 1
                 # remove duplicates
                 _domain = np.array(cmd.domain)
@@ -258,7 +258,7 @@ class Pattern:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
                 print(f"X byproduct, node = {cmd.node}, domain = {unique_domain}")
-            elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in filter):
+            elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in target):
                 count += 1
                 # remove duplicates
                 _domain = np.array(cmd.domain)
@@ -268,7 +268,7 @@ class Pattern:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
                 print(f"Z byproduct, node = {cmd.node}, domain = {unique_domain}")
-            elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in filter):
+            elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in target):
                 count += 1
                 print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
 
@@ -292,8 +292,8 @@ class Pattern:
                 "Xsignal": [],
                 "Xsignals": [],
                 "Zsignal": [],
-                "input": False,
-                "output": False,
+                "is_input": False,
+                "is_output": False,
             }
 
         node_prop = {u: fresh_node() for u in self.__input_nodes}
@@ -329,9 +329,9 @@ class Pattern:
         nodes = dict()
         for index in node_prop.keys():
             if index in self.output_nodes:
-                node_prop[index]["output"] = True
+                node_prop[index]["is_output"] = True
             if index in self.input_nodes:
-                node_prop[index]["input"] = True
+                node_prop[index]["is_input"] = True
             node = CommandNode(index, **node_prop[index])
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
@@ -1456,7 +1456,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=None, Xsignals=None):
+    def __init__(self, node_index, seq, Mprop, Zsignal, is_input, is_output, Xsignal=None, Xsignals=None):
         """
         Parameters
         ----------
@@ -1479,10 +1479,10 @@ class CommandNode:
         Zsignal : list
             signal domain for Z byproduct correction
 
-        input : bool
+        is_input : bool
             whether the node is an input or not
 
-        output : bool
+        is_output : bool
             whether the node is an output or not
         """
         if Xsignals is None:
@@ -1497,8 +1497,8 @@ class CommandNode:
         self.Xsignals = Xsignals
         self.Zsignal = Zsignal  # appeared at most e + 1
         self.vop = Mprop[4] if len(Mprop) == 5 else 0
-        self.input = input
-        self.output = output
+        self.input = is_input
+        self.output = is_output
 
     def is_standard(self):
         """Check whether the local command sequence is standardized.

@@ -38,8 +38,8 @@ def check_meas_planes(meas_planes: dict[int, graphix.pauli.Plane]) -> None:
 
 def find_gflow(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     meas_planes: dict[int, graphix.pauli.Plane],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -61,9 +61,9 @@ def find_gflow(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
@@ -91,13 +91,13 @@ def find_gflow(
     g = dict()
     for node in graph.nodes:
         l_k[node] = 0
-    return gflowaux(graph, input, output, meas_planes, 1, l_k, g, mode=mode)
+    return gflowaux(graph, iset, oset, meas_planes, 1, l_k, g, mode=mode)
 
 
 def gflowaux(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     meas_planes: dict[int, graphix.pauli.Plane],
     k: int,
     l_k: dict[int, int],
@@ -112,9 +112,9 @@ def gflowaux(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
@@ -140,16 +140,16 @@ def gflowaux(
     """
 
     nodes = set(graph.nodes)
-    if output == nodes:
+    if oset == nodes:
         return g, l_k
-    non_output = nodes - output
-    correction_candidate = output - input
+    non_output = nodes - oset
+    correction_candidate = oset - iset
     adj_mat, node_order_list = get_adjacency_matrix(graph)
     node_order_row = node_order_list.copy()
     node_order_row.sort()
     node_order_col = node_order_list.copy()
     node_order_col.sort()
-    for out in output:
+    for out in oset:
         adj_mat.remove_row(node_order_row.index(out))
         node_order_row.remove(out)
     adj_mat_row_reduced = adj_mat.copy()  # later use for construct RHS
@@ -212,15 +212,15 @@ def gflowaux(
         corrected_nodes |= {non_out_node}
 
     if len(corrected_nodes) == 0:
-        if output == nodes:
+        if oset == nodes:
             return g, l_k
         else:
             return None, None
     else:
         return gflowaux(
             graph,
-            input,
-            output | corrected_nodes,
+            iset,
+            oset | corrected_nodes,
             meas_planes,
             k + 1,
             l_k,
@@ -231,8 +231,8 @@ def gflowaux(
 
 def find_flow(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     meas_planes: dict[int, graphix.pauli.Plane] | None = None,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Causal flow finding algorithm
@@ -248,9 +248,9 @@ def find_flow(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     meas_planes: dict(int, graphix.pauli.Plane)
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
@@ -269,7 +269,7 @@ def find_flow(
     edges = set(graph.edges)
 
     if meas_planes is None:
-        meas_planes = {i: graphix.pauli.Plane.XY for i in (nodes - output)}
+        meas_planes = {i: graphix.pauli.Plane.XY for i in (nodes - oset)}
 
     for plane in meas_planes.values():
         if plane != graphix.pauli.Plane.XY:
@@ -278,15 +278,15 @@ def find_flow(
     l_k = {i: 0 for i in nodes}
     f = dict()
     k = 1
-    v_c = output - input
-    return flowaux(nodes, edges, input, output, v_c, f, l_k, k)
+    v_c = oset - iset
+    return flowaux(nodes, edges, iset, oset, v_c, f, l_k, k)
 
 
 def flowaux(
     nodes: set[int],
     edges: set[tuple[int, int]],
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     v_c: set[int],
     f: dict[int, set[int]],
     l_k: dict[int, int],
@@ -303,9 +303,9 @@ def flowaux(
         labels of all qubits (nodes)
     edges: set
         edges
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     v_c: set
         correction candidate qubits
@@ -330,7 +330,7 @@ def flowaux(
 
     for q in v_c:
         N = search_neighbor(q, edges)
-        p_set = N & (nodes - output)
+        p_set = N & (nodes - oset)
         if len(p_set) == 1:
             p = list(p_set)[0]
             f[p] = {q}
@@ -339,16 +339,16 @@ def flowaux(
             c_prime = c_prime | {q}
     # determine whether there exists flow
     if not v_out_prime:
-        if output == nodes:
+        if oset == nodes:
             return f, l_k
         else:
             return None, None
     return flowaux(
         nodes,
         edges,
-        input,
-        output | v_out_prime,
-        (v_c - c_prime) | (v_out_prime & (nodes - input)),
+        iset,
+        oset | v_out_prime,
+        (v_c - c_prime) | (v_out_prime & (nodes - iset)),
         f,
         l_k,
         k + 1,
@@ -357,8 +357,8 @@ def flowaux(
 
 def find_pauliflow(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     meas_planes: dict[int, graphix.pauli.Plane],
     meas_angles: dict[int, float],
     mode: str = "single",
@@ -381,9 +381,9 @@ def find_pauliflow(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
@@ -413,16 +413,16 @@ def find_pauliflow(
     p = dict()
     Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
     for node in graph.nodes:
-        if node in output:
+        if node in oset:
             l_k[node] = 0
 
-    return pauliflowaux(graph, input, output, meas_planes, 0, set(), output, l_k, p, (Lx, Ly, Lz), mode)
+    return pauliflowaux(graph, iset, oset, meas_planes, 0, set(), oset, l_k, p, (Lx, Ly, Lz), mode)
 
 
 def pauliflowaux(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     meas_planes: dict[int, graphix.pauli.Plane],
     k: int,
     correction_candidate: set[int],
@@ -440,9 +440,9 @@ def pauliflowaux(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
@@ -475,7 +475,7 @@ def pauliflowaux(
     Lx, Ly, Lz = L
     solved_update = set()
     nodes = set(graph.nodes)
-    if output == nodes:
+    if oset == nodes:
         return p, l_k
     unsolved_nodes = nodes - solved_nodes
 
@@ -487,7 +487,7 @@ def pauliflowaux(
 
     Pbar = correction_candidate | Ly | Lz
     P = nodes - Pbar
-    K = (correction_candidate | Lx | Ly) & (nodes - input)
+    K = (correction_candidate | Lx | Ly) & (nodes - iset)
     Y = Ly - correction_candidate
 
     for node in unsolved_nodes:
@@ -641,7 +641,7 @@ def pauliflowaux(
             return None, None
     else:
         B = solved_nodes | solved_update
-        return pauliflowaux(graph, input, output, meas_planes, k + 1, B, B, l_k, p, (Lx, Ly, Lz), mode)
+        return pauliflowaux(graph, iset, oset, meas_planes, k + 1, B, B, l_k, p, (Lx, Ly, Lz), mode)
 
 
 def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -1086,7 +1086,7 @@ def get_dependence_flow(
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
     try:  # if inputs is not empty
-        dependence_flow = {input: set() for input in inputs}
+        dependence_flow = {u: set() for u in inputs}
     except Exception:
         dependence_flow = dict()
     # concatenate flow and odd_flow
@@ -1126,7 +1126,7 @@ def get_dependence_pauliflow(
         dependence flow function. dependence_pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
     Lx, Ly, Lz = L
-    dependence_pauliflow = {input: set() for input in inputs}
+    dependence_pauliflow = {u: set() for u in inputs}
     # concatenate p and odd_p
     combined_flow = dict()
     for node, corrections in flow.items():
@@ -1229,8 +1229,8 @@ def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
 
 def verify_flow(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     flow: dict[int, set],
     meas_planes: dict[int, graphix.pauli.Plane] | None = None,
 ) -> bool:
@@ -1255,7 +1255,7 @@ def verify_flow(
         meas_planes = {}
     check_meas_planes(meas_planes)
     valid_flow = True
-    non_outputs = set(graph.nodes) - output
+    non_outputs = set(graph.nodes) - oset
     # if meas_planes is given, check whether all measurement planes are "XY"
     for node, plane in meas_planes.items():
         if plane != graphix.pauli.Plane.XY or node not in non_outputs:
@@ -1265,7 +1265,7 @@ def verify_flow(
     odd_flow = {node: find_odd_neighbor(graph, corrections) for node, corrections in flow.items()}
 
     try:
-        _, _ = get_layers_from_flow(flow, odd_flow, input, output)
+        _, _ = get_layers_from_flow(flow, odd_flow, iset, oset)
     except ValueError:
         valid_flow = False
         return valid_flow
@@ -1284,8 +1284,8 @@ def verify_flow(
 
 def verify_gflow(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     gflow: dict[int, set],
     meas_planes: dict[int, graphix.pauli.Plane],
 ) -> bool:
@@ -1295,9 +1295,9 @@ def verify_gflow(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     gflow: dict[int, set]
         gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
@@ -1312,7 +1312,7 @@ def verify_gflow(
     """
     check_meas_planes(meas_planes)
     valid_gflow = True
-    non_outputs = set(graph.nodes) - output
+    non_outputs = set(graph.nodes) - oset
     odd_flow = dict()
     for non_output in non_outputs:
         if non_output not in gflow:
@@ -1322,7 +1322,7 @@ def verify_gflow(
             odd_flow[non_output] = find_odd_neighbor(graph, gflow[non_output])
 
     try:
-        _, _ = get_layers_from_flow(gflow, odd_flow, input, output)
+        _, _ = get_layers_from_flow(gflow, odd_flow, iset, oset)
     except ValueError:
         valid_flow = False
         return valid_flow
@@ -1342,8 +1342,8 @@ def verify_gflow(
 
 def verify_pauliflow(
     graph: nx.Graph,
-    input: set[int],
-    output: set[int],
+    iset: set[int],
+    oset: set[int],
     pauliflow: dict[int, set[int]],
     meas_planes: dict[int, graphix.pauli.Plane],
     meas_angles: dict[int, float],
@@ -1354,9 +1354,9 @@ def verify_pauliflow(
     ----------
     graph: nx.Graph
         graph (incl. in and out)
-    input: set
+    iset: set
         set of node labels for input
-    output: set
+    oset: set
         set of node labels for output
     pauliflow: dict[int, set]
         Pauli flow function. pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
@@ -1374,7 +1374,7 @@ def verify_pauliflow(
     Lx, Ly, Lz = get_pauli_nodes(meas_planes, meas_angles)
 
     valid_pauliflow = True
-    non_outputs = set(graph.nodes) - output
+    non_outputs = set(graph.nodes) - oset
     odd_flow = dict()
     for non_output in non_outputs:
         if non_output not in pauliflow.keys():
@@ -1384,7 +1384,7 @@ def verify_pauliflow(
             odd_flow[non_output] = find_odd_neighbor(graph, pauliflow[non_output])
 
     try:
-        layers, depth = get_layers_from_flow(pauliflow, odd_flow, input, output, (Lx, Ly, Lz))
+        layers, depth = get_layers_from_flow(pauliflow, odd_flow, iset, oset, (Lx, Ly, Lz))
     except ValueError:
         valid_flow = False
         return valid_flow

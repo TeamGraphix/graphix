@@ -25,15 +25,15 @@ class ResourceGraph:
 
     Parameters
     ----------
-    type : :class:`ResourceType` object
+    cltype : :class:`ResourceType` object
         Type of the cluster.
     graph : :class:`~graphix.graphsim.GraphState` object
         Graph state of the cluster.
     """
 
-    def __init__(self, type: ResourceType, graph: GraphState | None = None):
+    def __init__(self, cltype: ResourceType, graph: GraphState | None = None):
         self.graph = graph
-        self.type = type
+        self.type = cltype
 
     def __str__(self) -> str:
         return str(self.type) + str(self.graph.nodes)
@@ -169,7 +169,7 @@ def create_resource_graph(node_ids: list[int], root: int | None = None, use_rust
     tmp_graph = GraphState(use_rustworkx=use_rustworkx)
     tmp_graph.add_nodes_from(node_ids)
     tmp_graph.add_edges_from(edges)
-    return ResourceGraph(type=cluster_type, graph=tmp_graph)
+    return ResourceGraph(cltype=cluster_type, graph=tmp_graph)
 
 
 def get_fusion_nodes(c1: ResourceGraph, c2: ResourceGraph) -> list[int]:
