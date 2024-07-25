@@ -7,11 +7,24 @@ import numpy as np
 import pytest
 
 import graphix.pauli
-from graphix.sim.statevec import Statevec, StatevectorBackend, meas_op
+from graphix.sim.statevec import Statevec, StatevectorBackend, _validate_max_qubit_num, meas_op
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
     from numpy.random import Generator
+
+
+class TestStatevectorBackend:
+    @pytest.mark.parametrize("max_qubit_num, max_space", [(1.0, 2), (1.1, 2), (0, 2), (1, 2), ("2", 1)])
+    def test_validate_max_qubit_num_fail(self, max_qubit_num: float | int, max_space: int):
+        with pytest.raises(ValueError):
+            _validate_max_qubit_num(max_qubit_num, max_space)
+
+    @pytest.mark.parametrize(
+        "max_qubit_num, max_space, expect", [(None, 2, None), (None, 3, None), (1, 1, 1), (10, 1, 10), (10, 2, 10)]
+    )
+    def test_validate_max_qubit_num_pass(self, max_qubit_num: int | None, max_space: int, expect: int | None):
+        assert _validate_max_qubit_num(max_qubit_num, max_space) == expect
 
 
 class TestStatevec:

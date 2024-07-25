@@ -40,6 +40,9 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         pr_calc : bool
             whether or not to compute the probability distribution before choosing the measurement result.
             if False, measurements yield results 0/1 with 50% probabilities each.
+        max_qubit_num : int, optional
+            optional argument specifying the maximum number of qubits
+            to be stored in the statevector at a time.
         """
         # check that pattern has output nodes configured
         # assert len(pattern.output_nodes) > 0
@@ -54,9 +57,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.Nqubit = 0
         self.to_trace = []
         self.to_trace_loc = []
-        self.max_qubit_num = max_qubit_num
-        if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
+        self.max_qubit_num = _validate_max_qubit_num(max_qubit_num, pattern.max_space())
         super().__init__(pr_calc)
 
         # initialize input qubits to desired init_state
@@ -308,8 +309,13 @@ class Statevec:
             target qubits' indices
         """
         op_dim = int(np.log2(len(op)))
-        # TODO shape = (2,)* 2 * op_dim
-        shape = [2 for _ in range(2 * op_dim)]
+        shape = (
+            [
+                2,
+            ]
+            * 2
+            * op_dim
+        )
         op_tensor = op.reshape(shape)
         self.psi = np.tensordot(
             op_tensor,
@@ -495,7 +501,7 @@ class Statevec:
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
 
-def _get_statevec_norm(psi):
+def _get_statevec_norm(psi) -> float:
     """returns norm of the state"""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
@@ -513,3 +519,15 @@ else:
         Iterable[graphix.states.State],
         Iterable[numbers.Number],
     ]
+
+
+def _validate_max_qubit_num(max_qubit_num: int | None, max_space: int) -> int | None:
+    if max_qubit_num is None:
+        return
+    if not isinstance(max_qubit_num, int):
+        raise ValueError("max_qubit_num must be an integer")
+    if max_qubit_num < 1:
+        raise ValueError("max_qubit_num must be a positive integer")
+    if max_qubit_num < max_space:
+        raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again")
+    return max_qubit_num
