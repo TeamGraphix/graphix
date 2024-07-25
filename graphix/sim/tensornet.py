@@ -362,7 +362,7 @@ class MBQCTensorNet(TensorNetwork):
             else:
                 result = np.random.choice([0, 1])
             # Basis state to be projected
-            if type(basis) == np.ndarray:
+            if isinstance(basis, np.ndarray):
                 if outcome is not None:
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
