@@ -5,8 +5,10 @@ from copy import deepcopy
 
 import numpy as np
 import quimb.tensor as qtn
+import typing_extensions
 from quimb.tensor import Tensor, TensorNetwork
 
+import graphix.clifford
 from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -151,16 +153,32 @@ class TensorNetworkBackend:
             self.results[cmd.node] = result
             buffer = 2**0.5
 
-        # extract signals for adaptive angle
-        s_signal = np.sum(self.results[j] for j in cmd.s_domain)
-        t_signal = np.sum(self.results[j] for j in cmd.t_domain)
+        plane = Plane.XY
         angle = cmd.angle * np.pi
-        vop = cmd.vop
+        s_domain = cmd.s_domain
+        t_domain = cmd.t_domain
+        if cmd.plane == Plane.XY:
+            vop = 0
+        elif cmd.plane == Plane.YZ:
+            vop = graphix.clifford.H.index
+            angle = -angle
+            s_domain, t_domain = t_domain, s_domain
+        elif cmd.plane == Plane.XZ:
+            vop = (graphix.clifford.H @ graphix.clifford.S).index
+            angle = -angle
+            t_domain = t_domain + s_domain
+            s_domain, t_domain = t_domain, s_domain
+        else:
+            typing_extensions.assert_never(cmd.plane)
+
+        # extract signals for adaptive angle
+        s_signal = sum(self.results[j] for j in s_domain)
+        t_signal = sum(self.results[j] for j in t_domain)
         if int(s_signal % 2) == 1:
             vop = CLIFFORD_MUL[1, vop]
         if int(t_signal % 2) == 1:
             vop = CLIFFORD_MUL[3, vop]
-        proj_vec = proj_basis(angle, vop=vop, plane=cmd.plane, choice=result)
+        proj_vec = proj_basis(angle, vop=vop, plane=plane, choice=result)
 
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
