@@ -19,7 +19,6 @@ from graphix import command, instruction
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.sim.statevec import Statevec
 
 
 @dataclasses.dataclass

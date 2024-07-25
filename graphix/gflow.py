@@ -1087,7 +1087,7 @@ def get_dependence_flow(
     """
     try:  # if inputs is not empty
         dependence_flow = {input: set() for input in inputs}
-    except:
+    except Exception:
         dependence_flow = dict()
     # concatenate flow and odd_flow
     combined_flow = dict()

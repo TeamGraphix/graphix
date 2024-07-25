@@ -165,6 +165,6 @@ import importlib.metadata  # noqa: E402
 
 # print package versions.
 [
-    print("{} - {}".format(pkg, importlib.metadata.version(pkg)))
+    print(f"{pkg} - {importlib.metadata.version(pkg)}")
     for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]
 ]
