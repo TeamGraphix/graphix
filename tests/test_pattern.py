@@ -45,7 +45,7 @@ class IterGenerator:
     def __init__(self, it: typing.Iterator[Outcome]) -> None:
         self.__it = it
 
-    def choice(self, _outcomes) -> Outcome:
+    def choice(self, _outcomes: list[Outcome]) -> Outcome:
         return next(self.__it)
 
 
