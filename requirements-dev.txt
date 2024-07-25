@@ -4,8 +4,8 @@ isort==5.13.2
 
 # Tests
 pytest
-pytest-mock
 pytest-cov
+pytest-mock
 tox
 
 # Optional dependencies
