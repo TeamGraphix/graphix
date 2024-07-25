@@ -456,7 +456,7 @@ class MBQCTensorNet(TensorNetwork):
         coef : complex
             coefficient
         """
-        if indices == None:
+        if indices is None:
             indices = self.default_output_nodes
         if isinstance(basis, str):
             basis = int(basis, 2)
@@ -518,7 +518,7 @@ class MBQCTensorNet(TensorNetwork):
         numpy.ndarray :
             statevector
         """
-        if indices == None:
+        if indices is None:
             n_qubit = len(self.default_output_nodes)
         else:
             n_qubit = len(indices)
@@ -560,8 +560,8 @@ class MBQCTensorNet(TensorNetwork):
         float :
             Expectation value
         """
-        if output_node_indices == None:
-            if self.default_output_nodes == None:
+        if output_node_indices is None:
+            if self.default_output_nodes is None:
                 raise ValueError("output_nodes is not set.")
             else:
                 target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
