@@ -985,7 +985,6 @@ class Pattern:
             list of planes representing measurement plane for each node.
         """
         meas_plane = dict()
-        order = [graphix.pauli.Axis.X, graphix.pauli.Axis.Y, graphix.pauli.Axis.Z]
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
                 mplane = cmd.plane
