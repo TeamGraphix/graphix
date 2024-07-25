@@ -62,10 +62,12 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes=[]):
+    def __init__(self, input_nodes: list[int] | None = None) -> None:
         """
         :param input_nodes:  optional, list of input qubits
         """
+        if input_nodes is None:
+            input_nodes = []
         self.results = {}  # measurement results from the graph state simulator
         self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
         self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
@@ -204,22 +206,22 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
-    def print_pattern(self, lim=40, filter: list[command.CommandKind] = None):
+    def print_pattern(self, lim=40, target: list[command.CommandKind] | None = None) -> None:
         """print the pattern sequence (Pattern.seq).
 
         Parameters
         ----------
         lim: int, optional
             maximum number of commands to show
-        filter : list of command.CommandKind, optional
+        target : list of command.CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
         if len(self.__seq) < lim:
             nmax = len(self.__seq)
         else:
             nmax = lim
-        if filter is None:
-            filter = [
+        if target is None:
+            target = [
                 command.CommandKind.N,
                 command.CommandKind.E,
                 command.CommandKind.M,
@@ -234,19 +236,19 @@ class Pattern:
             if i == len(self.__seq):
                 break
             cmd = self.__seq[i]
-            if cmd.kind == command.CommandKind.N and (command.CommandKind.N in filter):
+            if cmd.kind == command.CommandKind.N and (command.CommandKind.N in target):
                 count += 1
                 print(f"N, node = {cmd.node}")
-            elif cmd.kind == command.CommandKind.E and (command.CommandKind.E in filter):
+            elif cmd.kind == command.CommandKind.E and (command.CommandKind.E in target):
                 count += 1
                 print(f"E, nodes = {cmd.nodes}")
-            elif cmd.kind == command.CommandKind.M and (command.CommandKind.M in filter):
+            elif cmd.kind == command.CommandKind.M and (command.CommandKind.M in target):
                 count += 1
                 print(
                     f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
                     + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}, Clifford index = {cmd.vop}"
                 )
-            elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in filter):
+            elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in target):
                 count += 1
                 # remove duplicates
                 _domain = np.array(cmd.domain)
@@ -256,7 +258,7 @@ class Pattern:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
                 print(f"X byproduct, node = {cmd.node}, domain = {unique_domain}")
-            elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in filter):
+            elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in target):
                 count += 1
                 # remove duplicates
                 _domain = np.array(cmd.domain)
@@ -266,7 +268,7 @@ class Pattern:
                     if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
                         unique_domain.append(ind)
                 print(f"Z byproduct, node = {cmd.node}, domain = {unique_domain}")
-            elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in filter):
+            elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in target):
                 count += 1
                 print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
 
@@ -290,11 +292,11 @@ class Pattern:
                 "Xsignal": [],
                 "Xsignals": [],
                 "Zsignal": [],
-                "input": False,
-                "output": False,
+                "is_input": False,
+                "is_output": False,
             }
 
-        node_prop = {input: fresh_node() for input in self.__input_nodes}
+        node_prop = {u: fresh_node() for u in self.__input_nodes}
         morder = []
         for cmd in self.__seq:
             kind = cmd.kind
@@ -327,9 +329,9 @@ class Pattern:
         nodes = dict()
         for index in node_prop.keys():
             if index in self.output_nodes:
-                node_prop[index]["output"] = True
+                node_prop[index]["is_output"] = True
             if index in self.input_nodes:
-                node_prop[index]["input"] = True
+                node_prop[index]["is_input"] = True
             node = CommandNode(index, **node_prop[index])
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
@@ -983,7 +985,6 @@ class Pattern:
             list of planes representing measurement plane for each node.
         """
         meas_plane = dict()
-        order = [graphix.pauli.Axis.X, graphix.pauli.Axis.Y, graphix.pauli.Axis.Z]
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
                 mplane = cmd.plane
@@ -1412,13 +1413,13 @@ class Pattern:
             file.write('include "stdgates.inc";\n')
             file.write("\n")
             if self.results != {}:
-                for id in self.results:
-                    res = self.results[id]
-                    file.write("// measurement result of qubit q" + str(id) + "\n")
-                    file.write("bit c" + str(id) + " = " + str(res) + ";\n")
+                for i in self.results:
+                    res = self.results[i]
+                    file.write("// measurement result of qubit q" + str(i) + "\n")
+                    file.write("bit c" + str(i) + " = " + str(res) + ";\n")
                     file.write("\n")
-            for command in self.__seq:
-                for line in cmd_to_qasm3(command):
+            for cmd in self.__seq:
+                for line in cmd_to_qasm3(cmd):
                     file.write(line)
 
 
@@ -1455,7 +1456,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]):
+    def __init__(self, node_index, seq, Mprop, Zsignal, is_input, is_output, Xsignal=None, Xsignals=None):
         """
         Parameters
         ----------
@@ -1478,12 +1479,16 @@ class CommandNode:
         Zsignal : list
             signal domain for Z byproduct correction
 
-        input : bool
+        is_input : bool
             whether the node is an input or not
 
-        output : bool
+        is_output : bool
             whether the node is an output or not
         """
+        if Xsignals is None:
+            Xsignals = []
+        if Xsignal is None:
+            Xsignal = []
         self.index = node_index
         self.seq = seq  # composed of [E, M, X, Z, C]
         self.Mprop = Mprop
@@ -1492,8 +1497,8 @@ class CommandNode:
         self.Xsignals = Xsignals
         self.Zsignal = Zsignal  # appeared at most e + 1
         self.vop = Mprop[4] if len(Mprop) == 5 else 0
-        self.input = input
-        self.output = output
+        self.input = is_input
+        self.output = is_output
 
     def is_standard(self):
         """Check whether the local command sequence is standardized.
@@ -1680,7 +1685,7 @@ class LocalPattern:
     stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
-    def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
+    def __init__(self, nodes=None, input_nodes=None, output_nodes=None, morder=None):
         """
         Parameters
         ----------
@@ -1691,6 +1696,14 @@ class LocalPattern:
         morder : list, optional
             list of node indices in a measurement order. defaults to [].
         """
+        if morder is None:
+            morder = []
+        if output_nodes is None:
+            output_nodes = []
+        if input_nodes is None:
+            input_nodes = []
+        if nodes is None:
+            nodes = dict()
         self.nodes = nodes  # dict of Pattern.CommandNode
         self.input_nodes = input_nodes
         self.output_nodes = output_nodes
@@ -2168,7 +2181,7 @@ def cmd_to_qasm3(cmd):
         yield "\n"
 
     else:
-        raise ValueError("invalid command {}".format(name))
+        raise ValueError(f"invalid command {name}")
 
 
 def assert_permutation(original, user):
@@ -2178,4 +2191,4 @@ def assert_permutation(original, user):
         if node in node_set:
             node_set.remove(node)
         else:
-            assert False, f"{node} appears twice"
+            raise ValueError(f"{node} appears twice")

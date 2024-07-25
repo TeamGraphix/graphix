@@ -20,9 +20,6 @@ import quimb.tensor as qtn
 from scipy.optimize import minimize
 
 from graphix import Circuit
-from graphix.gflow import find_gflow
-from graphix.pauli import Plane
-from graphix.visualization import GraphVisualizer
 
 # %%
 # This application will be for the QAOA (Quantum Approximate Optimization Algorithm),
@@ -142,7 +139,7 @@ plt.show()
 # Let's calculate the measuring probability corresponding to the first basis state.
 
 value = mbqc_tn.get_basis_amplitude(0)
-print("Probability for {} is {}".format(0, value))
+print(f"Probability for {0} is {value}")
 
 # %%
 # It is also possible to change the path contraction algorithm.

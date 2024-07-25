@@ -101,7 +101,7 @@ def check_data_values_type(data: list | tuple | np.ndarray) -> bool:
         raise TypeError("All operators don't have the same type and must be np.ndarray.")
 
     for i in data:
-        if not i["operator"].dtype in (int, float, complex, np.float64, np.complex128):
+        if i["operator"].dtype not in (int, float, complex, np.float64, np.complex128):
             raise TypeError(f"All operators dtype must be scalar and not {i['operator'].dtype}.")
 
     if not all(isinstance(i["coef"], (int, float, complex, np.float64, np.complex128)) for i in data):
@@ -114,7 +114,7 @@ def check_rank(data: list | tuple | np.ndarray) -> bool:
     # already checked that the data is list of square matrices
     if len(data) > data[0]["operator"].shape[0] ** 2:
         raise ValueError(
-            f"Incorrect number of Kraus operators in the expansion. This number must be an integer between 1 and the dimension squared."
+            "Incorrect number of Kraus operators in the expansion. This number must be an integer between 1 and the dimension squared."
         )
 
     return True

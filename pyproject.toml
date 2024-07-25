@@ -53,6 +53,27 @@ wrap_length = 120
 
 [tool.ruff]
 line-length = 120
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+extend-select = ["UP", "NPY", "A", "B"]
+ignore = [
+  # TODO: Resolve this immediately
+  "NPY002", # Use np.random.Generator
+  "E74",    # Ambiguous name
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = [
+  "F401", # Unused import
+]
+"examples/*.py" = [
+  "E402", # Import not at top of file
+  "B018", # Useless expression
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.pytest.ini_options]
 # Silence cotengra warning

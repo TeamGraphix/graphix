@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from graphix import gflow
+from graphix.pauli import Plane
 
 
 class GraphVisualizer:
@@ -66,7 +67,7 @@ class GraphVisualizer:
         self.v_in = v_in
         self.v_out = v_out
         if meas_plane is None:
-            self.meas_planes = {i: graphix.pauli.Plane.XY for i in iter(G.nodes)}
+            self.meas_planes = {i: Plane.XY for i in iter(G.nodes)}
         else:
             self.meas_planes = meas_plane
         self.meas_angles = meas_angles
@@ -1250,9 +1251,9 @@ class GraphVisualizer:
         path = np.array(path)
         acute = True
         max_iter = 100
-        iter = 0
+        it = 0
         while acute:
-            if iter > max_iter:
+            if it > max_iter:
                 break
             for i in range(len(path) - 2):
                 v1 = path[i + 1] - path[i]
@@ -1270,7 +1271,7 @@ class GraphVisualizer:
                         path = np.delete(path, i + 1, 0)
                         path = np.insert(path, i + 1, mean, 0)
                         break
-                iter += 1
+                it += 1
             else:
                 acute = False
         new_path = path.tolist()

@@ -203,7 +203,7 @@ class MBQCTensorNet(TensorNetwork):
         graph_nodes=None,
         graph_edges=None,
         default_output_nodes=None,
-        ts=[],
+        ts=None,
         **kwargs,
     ):
         """
@@ -220,6 +220,8 @@ class MBQCTensorNet(TensorNetwork):
         ts (optional): quimb.tensor.core.TensorNetwork or empty list
             optional initial state.
         """
+        if ts is None:
+            ts = []
         if isinstance(ts, MBQCTensorNet):
             super().__init__(ts=ts, **kwargs)
             self._dangling = ts._dangling
@@ -325,7 +327,7 @@ class MBQCTensorNet(TensorNetwork):
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
             list of the above, to specify the initial state of each qubit.
         """
-        if type(states) != list:
+        if not isinstance(states, list):
             states = [states] * len(indices)
         for i, ind in enumerate(indices):
             self.add_qubit(ind, state=states[i])
@@ -360,7 +362,7 @@ class MBQCTensorNet(TensorNetwork):
             else:
                 result = np.random.choice([0, 1])
             # Basis state to be projected
-            if type(basis) == np.ndarray:
+            if isinstance(basis, np.ndarray):
                 if outcome is not None:
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
@@ -454,7 +456,7 @@ class MBQCTensorNet(TensorNetwork):
         coef : complex
             coefficient
         """
-        if indices == None:
+        if indices is None:
             indices = self.default_output_nodes
         if isinstance(basis, str):
             basis = int(basis, 2)
@@ -516,7 +518,7 @@ class MBQCTensorNet(TensorNetwork):
         numpy.ndarray :
             statevector
         """
-        if indices == None:
+        if indices is None:
             n_qubit = len(self.default_output_nodes)
         else:
             n_qubit = len(indices)
@@ -558,8 +560,8 @@ class MBQCTensorNet(TensorNetwork):
         float :
             Expectation value
         """
-        if output_node_indices == None:
-            if self.default_output_nodes == None:
+        if output_node_indices is None:
+            if self.default_output_nodes is None:
                 raise ValueError("output_nodes is not set.")
             else:
                 target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
@@ -725,7 +727,7 @@ def proj_basis(angle, vop, plane, choice):
         vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
     elif plane == Plane.XZ:
-        vec = States.VEC[0 + choice].get_statevector()
+        vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
