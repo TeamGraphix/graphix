@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections.abc
 import copy
 import itertools
 import sys
@@ -42,7 +43,7 @@ Outcome = typing.Literal[0, 1]
 
 
 class IterGenerator:
-    def __init__(self, it: typing.Iterable[Outcome]) -> None:
+    def __init__(self, it: collections.abc.Iterable[Outcome]) -> None:
         self.__it = iter(it)
 
     def choice(self, _outcomes: list[Outcome]) -> Outcome:
