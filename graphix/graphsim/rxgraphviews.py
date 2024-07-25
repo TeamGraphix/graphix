@@ -8,7 +8,18 @@ class NodeList:
     This class defines a node list with node_num as key.
     """
 
-    def __init__(self, node_nums: list[int] = [], node_datas: list[dict] = [], node_indices: list[int] = []):
+    def __init__(
+        self,
+        node_nums: list[int] | None = None,
+        node_datas: list[dict] | None = None,
+        node_indices: list[int] | None = None,
+    ):
+        if node_indices is None:
+            node_indices = []
+        if node_datas is None:
+            node_datas = []
+        if node_nums is None:
+            node_nums = []
         if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
             raise ValueError("node_nums, node_datas and node_indices must have the same length")
         self.nodes = set(node_nums)
@@ -70,8 +81,14 @@ class EdgeList:
     """
 
     def __init__(
-        self, edge_nums: list[tuple[int, int]] = [], edge_datas: list[dict] = [], edge_indices: list[int] = []
+        self, edge_nums: list[tuple[int, int]] = None, edge_datas: list[dict] = None, edge_indices: list[int] = None
     ):
+        if edge_indices is None:
+            edge_indices = []
+        if edge_datas is None:
+            edge_datas = []
+        if edge_nums is None:
+            edge_nums = []
         if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
             raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
         self.edges = set(edge_nums)

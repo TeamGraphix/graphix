@@ -62,10 +62,12 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes=[]):
+    def __init__(self, input_nodes=None):
         """
         :param input_nodes:  optional, list of input qubits
         """
+        if input_nodes is None:
+            input_nodes = []
         self.results = {}  # measurement results from the graph state simulator
         self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
         self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
@@ -1455,7 +1457,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=[], Xsignals=[]):
+    def __init__(self, node_index, seq, Mprop, Zsignal, input, output, Xsignal=None, Xsignals=None):
         """
         Parameters
         ----------
@@ -1484,6 +1486,10 @@ class CommandNode:
         output : bool
             whether the node is an output or not
         """
+        if Xsignals is None:
+            Xsignals = []
+        if Xsignal is None:
+            Xsignal = []
         self.index = node_index
         self.seq = seq  # composed of [E, M, X, Z, C]
         self.Mprop = Mprop
@@ -1680,7 +1686,7 @@ class LocalPattern:
     stored separately for each nodes, and for each kind of signal(Ms, Mt, X, Z).
     """
 
-    def __init__(self, nodes=dict(), input_nodes=[], output_nodes=[], morder=[]):
+    def __init__(self, nodes=None, input_nodes=None, output_nodes=None, morder=None):
         """
         Parameters
         ----------
@@ -1691,6 +1697,14 @@ class LocalPattern:
         morder : list, optional
             list of node indices in a measurement order. defaults to [].
         """
+        if morder is None:
+            morder = []
+        if output_nodes is None:
+            output_nodes = []
+        if input_nodes is None:
+            input_nodes = []
+        if nodes is None:
+            nodes = dict()
         self.nodes = nodes  # dict of Pattern.CommandNode
         self.input_nodes = input_nodes
         self.output_nodes = output_nodes

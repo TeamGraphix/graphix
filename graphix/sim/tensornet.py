@@ -203,7 +203,7 @@ class MBQCTensorNet(TensorNetwork):
         graph_nodes=None,
         graph_edges=None,
         default_output_nodes=None,
-        ts=[],
+        ts=None,
         **kwargs,
     ):
         """
@@ -220,6 +220,8 @@ class MBQCTensorNet(TensorNetwork):
         ts (optional): quimb.tensor.core.TensorNetwork or empty list
             optional initial state.
         """
+        if ts is None:
+            ts = []
         if isinstance(ts, MBQCTensorNet):
             super().__init__(ts=ts, **kwargs)
             self._dangling = ts._dangling

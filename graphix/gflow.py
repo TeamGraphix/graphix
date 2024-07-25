@@ -1232,7 +1232,7 @@ def verify_flow(
     input: set[int],
     output: set[int],
     flow: dict[int, set],
-    meas_planes: dict[int, graphix.pauli.Plane] = {},
+    meas_planes: dict[int, graphix.pauli.Plane] | None = None,
 ) -> bool:
     """Check whether the flow is valid.
 
@@ -1251,6 +1251,8 @@ def verify_flow(
     valid_flow: bool
         True if the flow is valid. False otherwise.
     """
+    if meas_planes is None:
+        meas_planes = {}
     check_meas_planes(meas_planes)
     valid_flow = True
     non_outputs = set(graph.nodes) - output
