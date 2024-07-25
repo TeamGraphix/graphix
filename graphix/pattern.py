@@ -62,7 +62,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes=None):
+    def __init__(self, input_nodes: list[int] | None = None) -> None:
         """
         :param input_nodes:  optional, list of input qubits
         """
