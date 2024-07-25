@@ -17,7 +17,6 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 First, let us import relevant modules:
 """
 
-
 # %%
 import numpy as np
 

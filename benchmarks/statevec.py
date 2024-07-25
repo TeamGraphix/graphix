@@ -164,7 +164,4 @@ fig.show()
 import importlib.metadata  # noqa: E402
 
 # print package versions.
-[
-    print(f"{pkg} - {importlib.metadata.version(pkg)}")
-    for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]
-]
+[print(f"{pkg} - {importlib.metadata.version(pkg)}") for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]]
