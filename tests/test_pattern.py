@@ -42,8 +42,8 @@ Outcome = typing.Literal[0, 1]
 
 
 class IterGenerator:
-    def __init__(self, it: typing.Iterator[Outcome]) -> None:
-        self.__it = it
+    def __init__(self, it: typing.Iterable[Outcome]) -> None:
+        self.__it = iter(it)
 
     def choice(self, _outcomes: list[Outcome]) -> Outcome:
         return next(self.__it)
