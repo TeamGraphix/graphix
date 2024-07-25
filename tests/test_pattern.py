@@ -4,6 +4,7 @@ import copy
 import itertools
 import sys
 import typing
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -22,7 +23,7 @@ from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from numpy.random import PCG64, Generator
