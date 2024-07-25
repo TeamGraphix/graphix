@@ -327,7 +327,7 @@ class MBQCTensorNet(TensorNetwork):
             "plus", "minus", "zero", "one", "iplus", "iminus", or 1*2 np.ndarray (arbitrary state).
             list of the above, to specify the initial state of each qubit.
         """
-        if type(states) != list:
+        if not isinstance(states, list):
             states = [states] * len(indices)
         for i, ind in enumerate(indices):
             self.add_qubit(ind, state=states[i])
@@ -727,7 +727,7 @@ def proj_basis(angle, vop, plane, choice):
         vec = BasicStates.VEC[4 + choice].get_statevector()
         rotU = Ops.Rx(angle)
     elif plane == Plane.XZ:
-        vec = States.VEC[0 + choice].get_statevector()
+        vec = BasicStates.VEC[0 + choice].get_statevector()
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
