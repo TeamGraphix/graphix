@@ -48,7 +48,7 @@ for n_qubit in n_qubit_list:
     pattern.standardize()
     pat_original = deepcopy(pattern)
 
-    # statevector simulation: sv
+    # statevector simulation
     if n_qubit > 17:
         sv_sim.append(-1)
     else:
@@ -78,9 +78,7 @@ for n_qubit in n_qubit_list:
 with open("results.txt", "w") as f:
     f.write("n_qubit, sv_sim\n")
     for i in range(len(n_qubit_list)):
-        f.write(
-            f"{n_qubit_list[i]}, {sv_sim[i]}, {eco_sim[i]}\n"
-        )
+        f.write(f"{n_qubit_list[i]}, {sv_sim[i]}, {eco_sim[i]}\n")
 
 # %%
 # We can now plot the simulation time results.
