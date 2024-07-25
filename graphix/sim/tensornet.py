@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 import quimb.tensor as qtn
+import typing_extensions
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
@@ -168,7 +169,7 @@ class TensorNetworkBackend:
             t_domain = t_domain + s_domain
             s_domain, t_domain = t_domain, s_domain
         else:
-            assert False
+            typing_extensions.assert_never(cmd.plane)
 
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in s_domain)
