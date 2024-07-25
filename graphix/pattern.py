@@ -253,24 +253,10 @@ class Pattern:
                 )
             elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in target):
                 count += 1
-                # remove duplicates
-                _domain = np.array(cmd.domain)
-                uind = np.unique(_domain)
-                unique_domain = []
-                for ind in uind:
-                    if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
-                        unique_domain.append(ind)
-                print(f"X byproduct, node = {cmd.node}, domain = {unique_domain}")
+                print(f"X byproduct, node = {cmd.node}, domain = {cmd.domain}")
             elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in target):
                 count += 1
-                # remove duplicates
-                _domain = np.array(cmd.domain)
-                uind = np.unique(_domain)
-                unique_domain = []
-                for ind in uind:
-                    if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
-                        unique_domain.append(ind)
-                print(f"Z byproduct, node = {cmd.node}, domain = {unique_domain}")
+                print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
             elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in target):
                 count += 1
                 print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
@@ -291,10 +277,10 @@ class Pattern:
         def fresh_node():
             return {
                 "seq": [],
-                "Mprop": [None, None, [], []],
-                "Xsignal": [],
+                "Mprop": [None, None, set(), set()],
+                "Xsignal": set(),
                 "Xsignals": [],
-                "Zsignal": [],
+                "Zsignal": set(),
                 "is_input": False,
                 "is_output": False,
             }
@@ -314,13 +300,13 @@ class Pattern:
                 morder.append(cmd.node)
             elif kind == command.CommandKind.X:
                 if standardized:
-                    node_prop[cmd.node]["Xsignal"] += cmd.domain
+                    node_prop[cmd.node]["Xsignal"] ^= cmd.domain
                     node_prop[cmd.node]["Xsignals"] += [cmd.domain]
                 else:
                     node_prop[cmd.node]["Xsignals"].append(cmd.domain)
                 node_prop[cmd.node]["seq"].append(-2)
             elif kind == command.CommandKind.Z:
-                node_prop[cmd.node]["Zsignal"] += cmd.domain
+                node_prop[cmd.node]["Zsignal"] ^= cmd.domain
                 node_prop[cmd.node]["seq"].append(-3)
             elif kind == command.CommandKind.C:
                 node_prop[cmd.node]["vop"] = cmd.cliff_index
@@ -508,7 +494,7 @@ class Pattern:
         X = self.__seq[target]
         M = self.__seq[target + 1]
         if X.node == M.node:
-            M.s_domain.extend(X.domain)
+            M.s_domain ^= X.domain
             self.__seq.pop(target)  # del X
             return True
         else:
@@ -529,7 +515,7 @@ class Pattern:
         Z = self.__seq[target]
         M = self.__seq[target + 1]
         if Z.node == M.node:
-            M.t_domain.extend(Z.domain)
+            M.t_domain ^= Z.domain
             self.__seq.pop(target)  # del Z
             return True
         else:
@@ -549,8 +535,8 @@ class Pattern:
         assert self.__seq[target + 1].kind == command.CommandKind.X
         S = self.__seq[target]
         X = self.__seq[target + 1]
-        if np.mod(X.domain.count(S.node), 2):
-            X.domain.extend(S.domain)
+        if S.node in X.domain:
+            X.domain ^= S.domain
         self._commute_with_following(target)
 
     def _commute_ZS(self, target):
@@ -566,8 +552,8 @@ class Pattern:
         assert self.__seq[target + 1].kind == command.CommandKind.Z
         S = self.__seq[target]
         Z = self.__seq[target + 1]
-        if np.mod(Z.domain.count(S.node), 2):
-            Z.domain.extend(S.domain)
+        if S.node in Z.domain:
+            Z.domain ^= S.domain
         self._commute_with_following(target)
 
     def _commute_MS(self, target):
@@ -583,10 +569,10 @@ class Pattern:
         assert self.__seq[target + 1].kind == command.CommandKind.M
         S = self.__seq[target]
         M = self.__seq[target + 1]
-        if np.mod(M.s_domain.count(S.node), 2):
-            M.s_domain.extend(S.domain)
-        if np.mod(M.t_domain.count(S.node), 2):
-            M.t_domain.extend(S.domain)
+        if S.node in M.s_domain:
+            M.s_domain ^= S.domain
+        if S.node in M.t_domain:
+            M.t_domain ^= S.domain
         self._commute_with_following(target)
 
     def _commute_SS(self, target):
@@ -601,8 +587,8 @@ class Pattern:
         assert self.__seq[target + 1].kind == command.CommandKind.S
         S1 = self.__seq[target]
         S2 = self.__seq[target + 1]
-        if np.mod(S2.domain.count(S1.node), 2):
-            S2.domain.extend(S1.domain)
+        if S1.node in S2.domain:
+            S2.domain ^= S1.domain
         self._commute_with_following(target)
 
     def _commute_with_following(self, target):
@@ -746,11 +732,11 @@ class Pattern:
         dependency = {i: set() for i in nodes}
         for cmd in self.__seq:
             if cmd.kind == command.CommandKind.M:
-                dependency[cmd.node] = dependency[cmd.node] | set(cmd.s_domain) | set(cmd.t_domain)
+                dependency[cmd.node] = dependency[cmd.node] | cmd.s_domain | cmd.t_domain
             elif cmd.kind == command.CommandKind.X:
-                dependency[cmd.node] = dependency[cmd.node] | set(cmd.domain)
+                dependency[cmd.node] = dependency[cmd.node] | cmd.domain
             elif cmd.kind == command.CommandKind.Z:
-                dependency[cmd.node] = dependency[cmd.node] | set(cmd.domain)
+                dependency[cmd.node] = dependency[cmd.node] | cmd.domain
         return dependency
 
     def update_dependency(self, measured, dependency):
@@ -1492,7 +1478,7 @@ class CommandNode:
         if Xsignals is None:
             Xsignals = []
         if Xsignal is None:
-            Xsignal = []
+            Xsignal = set()
         self.index = node_index
         self.seq = seq  # composed of [E, M, X, Z, C]
         self.Mprop = Mprop
@@ -1536,23 +1522,23 @@ class CommandNode:
             when X commutes with E, Z correction is added on the pair node. This dict specifies target nodes where Zs will be added.
         """
         EXcommutated_nodes = dict()
-        combined_Xsignal = []
+        combined_Xsignal = set()
         for Xsignal in self.Xsignals:
             Xpos = self.seq.index(-2)
             for i in range(Xpos, len(self.seq)):
                 if self.seq[i] >= 0:
                     try:
-                        EXcommutated_nodes[self.seq[i]] += Xsignal
+                        EXcommutated_nodes[self.seq[i]] ^= Xsignal
                     except KeyError:
                         EXcommutated_nodes[self.seq[i]] = Xsignal
             self.seq.remove(-2)
-            combined_Xsignal += Xsignal
+            combined_Xsignal ^= Xsignal
         if self.output:
             self.seq.append(-2)  # put X on the end of the pattern
             self.Xsignal = combined_Xsignal
             self.Xsignals = [combined_Xsignal]
         else:
-            self.Mprop[2] = xor_combination_list(combined_Xsignal, self.Mprop[2])
+            self.Mprop[2] ^= combined_Xsignal
             self.Xsignal = []
             self.Xsignals = []
         return EXcommutated_nodes
@@ -1566,7 +1552,7 @@ class CommandNode:
         if self.output and z_in_seq:
             self.seq.append(-3)
         else:
-            self.Mprop[3] = xor_combination_list(self.Zsignal, self.Mprop[3])
+            self.Mprop[3] ^= self.Zsignal
             self.Zsignal = []
 
     def _add_Z(self, pair, signal):
@@ -1580,7 +1566,7 @@ class CommandNode:
             signal domain for the additional Z correction
         """
         # caused by EX commutation.
-        self.Zsignal = xor_combination_list(signal, self.Zsignal)
+        self.Zsignal ^= signal
         Epos = self.seq.index(pair)
         self.seq.insert(Epos + 1, -3)
 
@@ -1636,7 +1622,7 @@ class CommandNode:
         signal_destination : set
             Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
         """
-        signal_destination = set(self.Mprop[2]) | set(self.Mprop[3]) | set(self.Xsignal) | set(self.Zsignal)
+        signal_destination = self.Mprop[2] | self.Mprop[3] | self.Xsignal | self.Zsignal
         return signal_destination
 
     def get_signal_destination_dict(self):
@@ -1766,13 +1752,13 @@ class LocalPattern:
                 for destinated_node in destinated_nodes:
                     node = self.nodes[destinated_node]
                     if signal_label == "Ms":
-                        node.Mprop[2] += signal
+                        node.Mprop[2] ^= signal
                     elif signal_label == "Mt":
-                        node.Mprop[3] += signal
+                        node.Mprop[3] ^= signal
                     elif signal_label == "X":
-                        node.Xsignal += signal
+                        node.Xsignal ^= signal
                     elif signal_label == "Z":
-                        node.Zsignal += signal
+                        node.Zsignal ^= signal
                     else:
                         raise ValueError(f"Invalid signal label: {signal_label}")
         return signal_dict
@@ -1907,15 +1893,15 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
             "+X",
             "-X",
         ]:  # X meaurement is not affected by s_signal
-            t_signal = np.sum([results[j] for j in pattern_cmd.t_domain])
+            t_signal = sum([results[j] for j in pattern_cmd.t_domain])
         elif measurement_basis in ["+Y", "-Y"]:
-            s_signal = np.sum([results[j] for j in pattern_cmd.s_domain])
-            t_signal = np.sum([results[j] for j in pattern_cmd.t_domain])
+            s_signal = sum([results[j] for j in pattern_cmd.s_domain])
+            t_signal = sum([results[j] for j in pattern_cmd.t_domain])
         elif measurement_basis in [
             "+Z",
             "-Z",
         ]:  # Z meaurement is not affected by t_signal
-            s_signal = np.sum([results[j] for j in pattern_cmd.s_domain])
+            s_signal = sum([results[j] for j in pattern_cmd.s_domain])
         else:
             raise ValueError("unknown Pauli measurement basis", measurement_basis)
 
@@ -2002,34 +1988,30 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     m_commands = pattern.get_measurement_commands()
     pauli_node: list[tuple[command.M, str]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
-    non_pauli_node: list[int] = []
+    non_pauli_node: set[int] = set()
     for cmd in m_commands:
         pm = is_pauli_measurement(cmd, ignore_vop=True)
         if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm in ["+X", "-X"]:
-                t_cond = np.any(np.isin(cmd.t_domain, np.array(non_pauli_node)))
-                if t_cond:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.append(cmd.node)
+                if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.add(cmd.node)
                 else:
                     pauli_node.append((cmd, pm))
             elif pm in ["+Y", "-Y"]:
-                s_cond = np.any(np.isin(cmd.s_domain, np.array(non_pauli_node)))
-                t_cond = np.any(np.isin(cmd.t_domain, np.array(non_pauli_node)))
-                if t_cond or s_cond:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.append(cmd.node)
+                if (cmd.s_domain | cmd.t_domain) & non_pauli_node:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.add(cmd.node)
                 else:
                     pauli_node.append((cmd, pm))
             elif pm in ["+Z", "-Z"]:
-                s_cond = np.any(np.isin(cmd.s_domain, np.array(non_pauli_node)))
-                if s_cond:  # cmd depend on non-Pauli measurement
-                    non_pauli_node.append(cmd.node)
+                if cmd.s_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
+                    non_pauli_node.add(cmd.node)
                 else:
                     pauli_node.append((cmd, pm))
             else:
                 raise ValueError("Unknown Pauli measurement basis")
         else:
-            non_pauli_node.append(cmd.node)
+            non_pauli_node.add(cmd.node)
     return pauli_node, non_pauli_node
 
 
@@ -2142,12 +2124,12 @@ def cmd_to_qasm3(cmd):
         yield "bit c" + str(qubit) + ";\n"
         yield "float theta" + str(qubit) + " = 0;\n"
         if plane == graphix.pauli.Plane.XY:
-            if sdomain != []:
+            if sdomain:
                 yield "int s" + str(qubit) + " = 0;\n"
                 for sid in sdomain:
                     yield "s" + str(qubit) + " += c" + str(sid) + ";\n"
                 yield "theta" + str(qubit) + " += (-1)**(s" + str(qubit) + " % 2) * (" + str(alpha) + " * pi);\n"
-            if tdomain != []:
+            if tdomain:
                 yield "int t" + str(qubit) + " = 0;\n"
                 for tid in tdomain:
                     yield "t" + str(qubit) + " += c" + str(tid) + ";\n"
@@ -2201,21 +2183,21 @@ class ExtractedSignal:
     Return data structure for `extract_signal`.
     """
 
-    s_domain: list[int]
+    s_domain: set[int]
     "New `s_domain` for the measure command."
 
-    t_domain: list[int]
+    t_domain: set[int]
     "New `t_domain` for the measure command."
 
-    signal: list[int]
+    signal: set[int]
     "Domain for the shift command."
 
 
-def extract_signal(plane: Plane, s_domain: list[int], t_domain: list[int]) -> ExtractedSignal:
+def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> ExtractedSignal:
     if plane == Plane.XY:
-        return ExtractedSignal(s_domain=s_domain, t_domain=[], signal=t_domain)
+        return ExtractedSignal(s_domain=s_domain, t_domain=set(), signal=t_domain)
     if plane == Plane.XZ:
-        return ExtractedSignal(s_domain=[], t_domain=s_domain + t_domain, signal=s_domain)
+        return ExtractedSignal(s_domain=set(), t_domain=s_domain ^ t_domain, signal=s_domain)
     if plane == Plane.YZ:
-        return ExtractedSignal(s_domain=[], t_domain=t_domain, signal=s_domain)
+        return ExtractedSignal(s_domain=set(), t_domain=t_domain, signal=s_domain)
     typing_extensions.assert_never(plane)
