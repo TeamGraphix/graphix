@@ -2184,9 +2184,18 @@ def assert_permutation(original, user):
 
 @dataclass
 class ExtractedSignal:
+    """
+    Return data structure for `extract_signal`.
+    """
+
     s_domain: list[int]
+    "New `s_domain` for the measure command."
+
     t_domain: list[int]
+    "New `t_domain` for the measure command."
+
     signal: list[int]
+    "Domain for the shift command."
 
 
 def extract_signal(plane: Plane, s_domain: list[int], t_domain: list[int]) -> ExtractedSignal:
