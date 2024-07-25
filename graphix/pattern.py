@@ -1418,7 +1418,7 @@ class Pattern:
                 for line in cmd_to_qasm3(cmd):
                     file.write(line)
 
-    def copy(self):
+    def copy(self) -> Pattern:
         result = self.__new__(self.__class__)
         result.__seq = [cmd.model_copy() for cmd in self.__seq]
         result.__input_nodes = self.__input_nodes.copy()
