@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections.abc
-import copy
 import itertools
 import sys
 import typing
@@ -16,7 +15,7 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
-from graphix.command import CommandKind, E, M, N
+from graphix.command import E, M, N
 from graphix.pattern import CommandNode, Pattern
 from graphix.pauli import Plane
 from graphix.sim.density_matrix import DensityMatrix
