@@ -10,14 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: chartboost/ruff-action@v1
-
-  isort:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
         with:
-          args: "check --select I"
+          args: "check --output-format=github"
 
   format:
     runs-on: ubuntu-latest
