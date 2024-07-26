@@ -28,9 +28,10 @@ Before comitting the code, make sure to format with `ruff`.
 To format a python file, just run in the top level of the repository:
 
 ```bash
-# sort imports
+# Be sure to use the latest version of ruff
+pip install -U ruff
+# Sort imports and format
 ruff check --select I --fix .
-# format
 ruff format .
 ```
 
