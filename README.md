@@ -41,6 +41,7 @@ this will install `graphix` and inteface for [IBMQ](https://github.com/TeamGraph
 
 ```python
 from graphix import Circuit
+
 circuit = Circuit(4)
 circuit.h(0)
 ...
@@ -66,7 +67,7 @@ pattern.draw_graph()
 ### simulating the pattern
 
 ```python
-state_out = pattern.simulate_pattern(backend='statevector')
+state_out = pattern.simulate_pattern(backend="statevector")
 ```
 
 ### and more
