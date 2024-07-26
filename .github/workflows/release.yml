@@ -1,4 +1,4 @@
-name: Publish Python distributions to PyPI
+name: publish
 
 on:
   release:
