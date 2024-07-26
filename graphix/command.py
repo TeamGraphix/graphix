@@ -5,8 +5,11 @@ from __future__ import annotations
 import abc
 import enum
 
+import numpy as np
 from pydantic import BaseModel
 
+import graphix.clifford
+from graphix.clifford import Clifford
 from graphix.parameter import ExpressionOrFloat
 from graphix.pauli import Plane
 
@@ -52,7 +55,29 @@ class M(Command):
     angle: ExpressionOrFloat = 0.0
     s_domain: list[Node] = []
     t_domain: list[Node] = []
-    vop: int = 0
+
+    def clifford(self, clifford: Clifford) -> M:
+        s_domain = self.s_domain
+        t_domain = self.t_domain
+        for gate in clifford.hsz:
+            if gate == graphix.clifford.I:
+                pass
+            elif gate == graphix.clifford.H:
+                t_domain, s_domain = s_domain, t_domain
+            elif gate == graphix.clifford.S:
+                t_domain = s_domain + t_domain
+            elif gate == graphix.clifford.Z:
+                pass
+            else:
+                raise RuntimeError(f"{gate} should be either I, H, S or Z.")
+        update = graphix.pauli.MeasureUpdate.compute(self.plane, False, False, clifford)
+        return M(
+            node=self.node,
+            plane=update.new_plane,
+            angle=self.angle * update.coeff + update.add_term / np.pi,
+            s_domain=s_domain,
+            t_domain=t_domain,
+        )
 
 
 class E(Command):

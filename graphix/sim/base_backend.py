@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numbers
-import typing
 
 import numpy as np
 
@@ -51,23 +50,22 @@ class Backend:
                 if False, measurements yield results 0/1 with 50% probabilities each.
         """
         # whether to compute the probability
-        self.pr_calc = pr_calc
         if rng is None:
-            self.rng = np.random.default_rng()
+            self.__rng = np.random.default_rng()
         else:
-            self.rng = rng
+            self.__rng = rng
+        self.pr_calc = pr_calc
 
     def _perform_measure(self, cmd: graphix.command.M):
         s_signal = np.sum([self.results[j] for j in cmd.s_domain])
         t_signal = np.sum([self.results[j] for j in cmd.t_domain])
         angle = cmd.angle * np.pi
-        vop = cmd.vop
         measure_update = graphix.pauli.MeasureUpdate.compute(
-            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[vop]
+            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         loc = self.node_index.index(cmd.node)
-        result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.rng, self.pr_calc)
+        result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.__rng, self.pr_calc)
         self.results[cmd.node] = result
         self.node_index.remove(cmd.node)
         return loc

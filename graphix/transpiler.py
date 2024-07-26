@@ -17,9 +17,12 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.sim.statevec
 from graphix import command, instruction
+from graphix.clifford import H
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
 from graphix.pattern import Pattern
+from graphix.pauli import Plane
+from graphix.sim.statevec import Statevec
 
 
 @dataclasses.dataclass
@@ -40,11 +43,11 @@ class SimulateResult:
     """
     The result of a simulation.
 
-    statevec : :class:`graphix.sim.statevec.Statevec` object
+    statevec : :class:`Statevec` object
     classical_measures : tuple[int,...], classical measures
     """
 
-    statevec: graphix.sim.statevec.Statevec
+    statevec: Statevec
     classical_measures: tuple[int, ...]
 
 
@@ -251,7 +254,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.I(target=qubit))
 
-    def m(self, qubit: int, plane: graphix.pauli.Plane, angle: Angle):
+    def m(self, qubit: int, plane: Plane, angle: Angle):
         """measure a quantum qubit
 
         The measured qubit cannot be used afterwards.
@@ -260,7 +263,7 @@ class Circuit:
         ---------
         qubit : int
             target qubit
-        plane : graphix.pauli.Plane
+        plane : Plane
         angle : Angle
         """
         assert qubit in self.active_qubits
@@ -820,7 +823,7 @@ class Circuit:
         if correction_instr.target == rx_instr.target:
             if correction_instr.kind == instruction.InstructionKind.ZC:
                 # add to the s-domain
-                self._M[rx_instr.meas_index].s_domain.extend(correction_instr.domain)
+                extend_domain(self._M[rx_instr.meas_index], correction_instr.domain)
                 self._commute_with_following(target)
             else:
                 self._commute_with_following(target)
@@ -837,7 +840,7 @@ class Circuit:
         assert ry_instr.kind == instruction.InstructionKind.RY
         if correction_instr.target == ry_instr.target:
             # add to the s-domain
-            self._M[ry_instr.meas_index].s_domain.extend(correction_instr.domain)
+            extend_domain(self._M[ry_instr.meas_index], correction_instr.domain)
             self._commute_with_following(target)
         else:
             self._commute_with_following(target)
@@ -853,7 +856,7 @@ class Circuit:
         if correction_instr.target == rz_instr.target:
             if correction_instr.kind == instruction.InstructionKind.XC:
                 # add to the s-domain
-                self._M[rz_instr.meas_index].s_domain.extend(correction_instr.domain)
+                extend_domain(self._M[rz_instr.meas_index], correction_instr.domain)
                 self._commute_with_following(target)
             else:
                 self._commute_with_following(target)
@@ -873,7 +876,7 @@ class Circuit:
             cond2 = correction_instr.target == rzz_instr.target
             if cond or cond2:
                 # add to the s-domain
-                self._M[rzz_instr.meas_index].s_domain.extend(correction_instr.domain)
+                extend_domain(self._M[rzz_instr.meas_index], correction_instr.domain)
         self._commute_with_following(target)
 
     def _commute_with_following(self, target: int):
@@ -992,14 +995,14 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _m_command(self, input_node: int, plane: graphix.pauli.Plane, angle: float):
+    def _m_command(self, input_node: int, plane: Plane, angle: float):
         """MBQC commands for measuring qubit
 
         Parameters
         ---------
         input_node : int
             target node on graph
-        plane : graphix.pauli.Plane
+        plane : Plane
             plane of the measure
         angle : float
             angle of the measure (unit: pi radian)
@@ -1270,7 +1273,7 @@ class Circuit:
         """
         seq = [N(node=ancilla)]
         seq.append(E(nodes=(input_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi, vop=6))
+        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(H))
         seq.append(Z(node=input_node, domain=[ancilla]))
         return input_node, seq
 
@@ -1301,7 +1304,7 @@ class Circuit:
         seq = [N(node=ancilla)]
         seq.append(E(nodes=(control_node, ancilla)))
         seq.append(E(nodes=(target_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi, vop=6))
+        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(H))
         seq.append(Z(node=control_node, domain=[ancilla]))
         seq.append(Z(node=target_node, domain=[ancilla]))
         return control_node, target_node, seq
@@ -1541,13 +1544,13 @@ class Circuit:
         seq.append(E(nodes=(ancilla[8], ancilla[10])))
         seq.append(M(node=target_node))
         seq.append(M(node=control_node1))
-        seq.append(M(node=ancilla[0], angle=-1.75, s_domain=[target_node], vop=6))
+        seq.append(M(node=ancilla[0], angle=-1.75, s_domain=[target_node]).clifford(H))
         seq.append(M(node=ancilla[8], s_domain=[control_node1]))
-        seq.append(M(node=ancilla[2], angle=-0.25, s_domain=[target_node, ancilla[8]], vop=6))
+        seq.append(M(node=ancilla[2], angle=-0.25, s_domain=[target_node, ancilla[8]]).clifford(H))
         seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(M(node=ancilla[3], angle=-1.75, s_domain=[ancilla[8], target_node], vop=6))
-        seq.append(M(node=ancilla[4], angle=-1.75, s_domain=[ancilla[8]], vop=6))
-        seq.append(M(node=ancilla[1], angle=-0.25, s_domain=[ancilla[8]], vop=6))
+        seq.append(M(node=ancilla[3], angle=-1.75, s_domain=[ancilla[8], target_node]).clifford(H))
+        seq.append(M(node=ancilla[4], angle=-1.75, s_domain=[ancilla[8]]).clifford(H))
+        seq.append(M(node=ancilla[1], angle=-0.25, s_domain=[ancilla[8]]).clifford(H))
         seq.append(
             M(
                 node=ancilla[5],
@@ -1620,9 +1623,9 @@ class Circuit:
         """
 
         if input_state is None:
-            state = graphix.sim.statevec.Statevec(nqubit=self.width)
+            state = Statevec(nqubit=self.width)
         else:
-            state = graphix.sim.statevec.Statevec(nqubit=self.width, data=input_state)
+            state = Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
 
@@ -1675,3 +1678,10 @@ class Circuit:
                 new_instr = instr.model_copy(update={"angle": graphix.parameter.subs(angle, variable, substitute)})
                 result.instruction.append(new_instr)
         return result
+
+
+def extend_domain(measure: M, domain: list[int]) -> None:
+    if measure.plane == Plane.XY:
+        measure.s_domain.extend(domain)
+    else:
+        measure.t_domain.extend(domain)
