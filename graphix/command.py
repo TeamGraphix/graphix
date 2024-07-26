@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import abc
 import enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel
 
 import graphix.clifford
 from graphix.pauli import Plane
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
