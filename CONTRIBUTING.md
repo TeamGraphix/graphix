@@ -14,14 +14,14 @@ Once created, you'll need to clone the repository, and you can follow below to s
 ```bash
 git clone git@github.com:<username>/graphix.git
 cd graphix
-pip install -r requirements.txt
-python setup.py develop
+pip install -e .[dev]
 ```
 
-You may want to install additional packages for plotting, testing and code formatting. Specifically, `matplotlib` is necessary to run codes in the `example` folder.
+You may want to install additional packages.
+Specifically, `matplotlib` is necessary to run codes in the `example` folder.
 
 ```bash
-pip install ruff pytest matplotlib
+pip install matplotlib
 ```
 
 Before comitting the code, make sure to format with `ruff`.
@@ -35,7 +35,6 @@ ruff format .
 ```
 
 and you are ready to commit the changes.
-Note that formatter configurations are listed in pyproject.toml.
 
 ## Creating pull request
 
