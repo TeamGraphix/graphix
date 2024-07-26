@@ -70,7 +70,7 @@ pattern.draw_graph()
 state_out = pattern.simulate_pattern(backend="statevector")
 ```
 
-### and more
+### and more..
 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
 - You can try demos on browser with mybinder.org: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD)

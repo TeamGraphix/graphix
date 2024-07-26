@@ -42,6 +42,6 @@ and you are ready to commit the changes.
 When creating a pull request, you'll see default text already filled in to the PR comment box. Please read them and fill in the missing parts, so the motivation and the changes of the PR are clear.
 Please link to the issue by mentioning the issue number (#10, for example)
 
-## Last but not least
+## Last but not least..
 
 Please consider giving the repository a star, as well as citing in your work!
