@@ -209,7 +209,7 @@ class MatGF2:
     def forward_eliminate(self, b=None, copy=False):
         """forward eliminate the matrix
 
-        |A B| --\ |I X|
+        |A B| --\\ |I X|
         |C D| --/ |0 0|
         where X is an arbitrary matrix
 

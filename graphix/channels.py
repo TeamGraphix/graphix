@@ -9,8 +9,8 @@ from graphix.ops import Ops
 class KrausChannel:
     """quantum channel class in the Kraus representation.
     Defined by Kraus operators :math:`K_i` with scalar prefactors :code:`coef`) :math:`c_i`,
-    where the channel act on density matrix as :math:`\\rho'  = \sum_i K_i^\dagger \\rho K_i`.
-    The data should satisfy :math:`\sum K_i^\dagger K_i = I`
+    where the channel act on density matrix as :math:`\\rho'  = \\sum_i K_i^\\dagger \\rho K_i`.
+    The data should satisfy :math:`\\sum K_i^\\dagger K_i = I`
 
     Attributes
     ----------
@@ -139,7 +139,7 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
     """two-qubit depolarising channel.
 
     .. math::
-        \mathcal{E} (\\rho) = (1-p) \\rho + \\frac{p}{15}  \sum_{P_i \in \{id, X, Y ,Z\}^{\otimes 2}/(id \otimes id)}P_i \\rho P_i
+        \\mathcal{E} (\\rho) = (1-p) \\rho + \\frac{p}{15}  \\sum_{P_i \\in \\{id, X, Y ,Z\\}^{\\otimes 2}/(id \\otimes id)}P_i \\rho P_i
 
     Parameters
     ----------
@@ -179,7 +179,7 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
     Kraus operators:
 
     .. math::
-        \Big\{ \sqrt{(1-p)} id, \sqrt{(p/3)} X, \sqrt{(p/3)} Y , \sqrt{(p/3)} Z \Big\} \otimes \Big\{ \sqrt{(1-p)} id, \sqrt{(p/3)} X, \sqrt{(p/3)} Y , \sqrt{(p/3)} Z \Big\}
+        \\Big\\{ \\sqrt{(1-p)} id, \\sqrt{(p/3)} X, \\sqrt{(p/3)} Y , \\sqrt{(p/3)} Z \\Big\\} \\otimes \\Big\\{ \\sqrt{(1-p)} id, \\sqrt{(p/3)} X, \\sqrt{(p/3)} Y , \\sqrt{(p/3)} Z \\Big\\}
 
     Parameters
     ----------
