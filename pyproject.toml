@@ -56,7 +56,19 @@ line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-extend-select = ["UP", "NPY", "A", "B", "W", "PLE", "PLW", "FA", "RUF", "PERF"]
+extend-select = [
+  "UP",
+  "NPY",
+  "A",
+  "B",
+  "W",
+  "PLE",
+  "PLW",
+  "FA",
+  "RUF",
+  "PERF",
+  "TCH",
+]
 ignore = [
   # TODO: Resolve this immediately
   "NPY002", # Use np.random.Generator
