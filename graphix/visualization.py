@@ -1015,8 +1015,7 @@ class GraphVisualizer:
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             while k in f.keys():
-                k = list(f[k])[0]
-                pos[k][1] = i
+                pos[list(f[k])[0]][1] = i
 
         lmax = max(l_k.values())
         # Change the x coordinates of the nodes based on their layer, sort in descending order

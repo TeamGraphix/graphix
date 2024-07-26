@@ -1163,11 +1163,11 @@ def verify_flow(
         return valid_flow
     # check if v ~ f(v) for each node
     edges = set(graph.edges)
-    for node, correction in flow.items():
-        if len(correction) > 1:
+    for node, corrections in flow.items():
+        if len(corrections) > 1:
             valid_flow = False
             return valid_flow
-        correction = list(correction)[0]
+        correction = list(corrections)[0]
         if (node, correction) not in edges and (correction, node) not in edges:
             valid_flow = False
             return valid_flow
