@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 
 import networkx as nx
-from networkx.classes.reportviews import EdgeView, NodeView
 
 from .basegraphstate import BaseGraphState
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from networkx.classes.reportviews import EdgeView, NodeView
+    from collections.abc import Iterator
 
 
 class NXGraphState(BaseGraphState):

@@ -7,7 +7,6 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Sequence
 from copy import deepcopy
 
 import numpy as np
@@ -22,6 +21,10 @@ from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.pauli import Plane
 from graphix.sim.statevec import Statevec
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclasses.dataclass

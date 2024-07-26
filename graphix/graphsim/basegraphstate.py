@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sys
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
 
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
@@ -12,6 +11,10 @@ from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
 from .rxgraphviews import EdgeList, NodeList
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 RUSTWORKX_INSTALLED = False
 try:

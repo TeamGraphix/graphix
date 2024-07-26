@@ -12,14 +12,9 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 from __future__ import annotations
 
-import numbers
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
-
 from copy import deepcopy
 from itertools import product
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -28,6 +23,11 @@ import sympy as sp
 import graphix.pauli
 from graphix.command import CommandKind
 from graphix.linalg import MatGF2
+
+if TYPE_CHECKING:
+    import numbers
+
+    from graphix.pattern import Pattern
 
 
 def check_meas_planes(meas_planes: dict[int, graphix.pauli.Plane]) -> None:

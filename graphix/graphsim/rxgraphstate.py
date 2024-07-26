@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 
 from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 if RUSTWORKX_INSTALLED:
     import rustworkx as rx

@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
-
 import math
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -14,6 +10,9 @@ from matplotlib import pyplot as plt
 
 from graphix import gflow
 from graphix.pauli import Plane
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 
 class GraphVisualizer:
