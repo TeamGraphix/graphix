@@ -4,6 +4,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import itertools
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -256,10 +257,7 @@ class Pattern:
                 # remove duplicates
                 _domain = np.array(cmd.domain)
                 uind = np.unique(_domain)
-                unique_domain = []
-                for ind in uind:
-                    if np.mod(np.count_nonzero(_domain == ind), 2) == 1:
-                        unique_domain.append(ind)
+                unique_domain = [ind for ind in uind if np.count_nonzero(_domain == ind) % 2 == 1]
                 print(f"X byproduct, node = {cmd.node}, domain = {unique_domain}")
             elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in target):
                 count += 1
@@ -815,11 +813,7 @@ class Pattern:
             optimal measurement order for parallel computing
         """
         d, l_k = self.get_layers()
-        meas_order = []
-        for i in range(d):
-            for node in l_k[i]:
-                meas_order.append(node)
-        return meas_order
+        return list(itertools.chain.from_iterable(l_k[i] for i in range(d)))
 
     def connected_edges(self, node, edges):
         """Search not activated edges connected to the specified node
@@ -927,8 +921,7 @@ class Pattern:
         k, layers = get_layers(l_k)
         meas_order = []
         while k > 0:
-            for node in layers[k]:
-                meas_order.append(node)
+            meas_order.extend(layers[k])
             k -= 1
         return meas_order
 
@@ -1156,11 +1149,7 @@ class Pattern:
     def correction_commands(self):
         """Returns the list of byproduct correction commands"""
         assert self.is_standard()
-        Clist = []
-        for i in range(len(self.__seq)):
-            if self.__seq[i].kind in (command.CommandKind.X, command.CommandKind.Z):
-                Clist.append(self.__seq[i])
-        return Clist
+        return [seqi for seqi in self.__seq if seqi.kind in (command.CommandKind.X, command.CommandKind.Z)]
 
     def parallelize_pattern(self):
         """Optimize the pattern to reduce the depth of the computation
@@ -1953,21 +1942,15 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     # update command sequence
     vops = graph_state.get_vops()
     new_seq = []
-    for index in set(graph_state.nodes) - set(new_inputs):
-        new_seq.append(command.N(node=index))
-    for edge in graph_state.edges:
-        new_seq.append(command.E(nodes=edge))
-    for cmd in pattern:
-        if cmd.kind == command.CommandKind.M:
-            if cmd.node in graph_state.nodes:
-                new_seq.append(cmd.clifford(graphix.clifford.get(vops[cmd.node])))
-    for index in pattern.output_nodes:
-        new_clifford_ = vops[index]
-        if new_clifford_ != 0:
-            new_seq.append(command.C(node=index, cliff_index=new_clifford_))
-    for cmd in pattern:
-        if cmd.kind == command.CommandKind.X or (cmd.kind == command.CommandKind.Z):
-            new_seq.append(cmd)
+    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
+    new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
+    new_seq.extend(
+        cmd.clifford(graphix.clifford.get(vops[cmd.node]))
+        for cmd in pattern
+        if cmd.kind == command.CommandKind.M and cmd.node in graph_state.nodes
+    )
+    new_seq.extend(command.C(node=index, cliff_index=vops[index]) for index in pattern.output_nodes if vops[index] != 0)
+    new_seq.extend(cmd for cmd in pattern if cmd.kind in (command.CommandKind.X, command.CommandKind.Z))
 
     if copy:
         pat = Pattern()
