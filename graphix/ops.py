@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
+from typing import ClassVar
 
 import numpy as np
 
@@ -33,7 +34,7 @@ class Ops:
             [0, 0, 0, 0, 0, 0, 1, 0],
         ]
     )
-    Pauli_ops = [np.eye(2), x, y, z]
+    Pauli_ops: ClassVar = [np.eye(2), x, y, z]
 
     @staticmethod
     def Rx(theta):

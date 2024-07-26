@@ -332,7 +332,7 @@ def flowaux(
         N = search_neighbor(q, edges)
         p_set = N & (nodes - oset)
         if len(p_set) == 1:
-            p = list(p_set)[0]
+            p = next(iter(p_set))
             f[p] = {q}
             l_k[p] = k
             v_out_prime = v_out_prime | {p}
@@ -1167,7 +1167,7 @@ def verify_flow(
         if len(corrections) > 1:
             valid_flow = False
             return valid_flow
-        correction = list(corrections)[0]
+        correction = next(iter(corrections))
         if (node, correction) not in edges and (correction, node) not in edges:
             valid_flow = False
             return valid_flow

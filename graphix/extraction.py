@@ -131,7 +131,7 @@ def get_fusion_network_from_graph(
         for v in adjdict.keys():
             if len(adjdict[v]) == 2:
                 neighbors = list(adjdict[v].keys())
-                nodes = [v] + neighbors
+                nodes = [v, *neighbors]
                 del adjdict[neighbors[0]][v]
                 del adjdict[neighbors[1]][v]
                 del adjdict[v][neighbors[0]]
