@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Measure commands do no longer carry vertex operators (`vop`): Clifford gates can still be applied to measures with the method `M.clifford`, which returns a new measure commands where plane, angle and domains has been updated.
 - X- and Z-domains for measures and domain for correction commands are now set of nodes (instead of lists).
 
-
 ## [0.2.15] - 2024-06-21
 
 ### Added
