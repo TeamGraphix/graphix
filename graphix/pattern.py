@@ -802,7 +802,10 @@ class Pattern:
             optimal measurement order for parallel computing
         """
         d, l_k = self.get_layers()
-        return list(itertools.chain.from_iterable(l_k[i] for i in range(d)))
+        meas_order = []
+        for i in range(d):
+            meas_order.extend(l_k[i])
+        return meas_order
 
     def connected_edges(self, node, edges):
         """Search not activated edges connected to the specified node
