@@ -52,8 +52,8 @@ class M(Command):
     node: Node
     plane: Plane = Plane.XY
     angle: float = 0.0
-    s_domain: list[Node] = []
-    t_domain: list[Node] = []
+    s_domain: set[Node] = set()
+    t_domain: set[Node] = set()
 
     def clifford(self, clifford: Clifford) -> M:
         s_domain = self.s_domain
@@ -64,7 +64,7 @@ class M(Command):
             elif gate == graphix.clifford.H:
                 t_domain, s_domain = s_domain, t_domain
             elif gate == graphix.clifford.S:
-                t_domain = s_domain + t_domain
+                t_domain ^= s_domain
             elif gate == graphix.clifford.Z:
                 pass
             else:
@@ -105,7 +105,7 @@ class Correction(Command):
     """
 
     node: Node
-    domain: list[Node] = []
+    domain: set[Node] = set()
 
 
 class X(Correction):
@@ -131,7 +131,7 @@ class S(Command):
 
     kind: CommandKind = CommandKind.S
     node: Node
-    domain: list[Node] = []
+    domain: set[Node] = set()
 
 
 class T(Command):

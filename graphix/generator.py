@@ -80,8 +80,8 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
                     neighbors = neighbors | set(graph.neighbors(k))
                 for k in neighbors - set([j]):
                     # if k not in measured:
-                    pattern.add(Z(node=k, domain=[j]))
-                pattern.add(X(node=f[j].pop(), domain=[j]))
+                    pattern.add(Z(node=k, domain={j}))
+                pattern.add(X(node=f[j].pop(), domain={j}))
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -99,9 +99,9 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
                     pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
                     odd_neighbors = find_odd_neighbor(graph, g[j])
                     for k in odd_neighbors - set([j]):
-                        pattern.add(Z(node=k, domain=[j]))
+                        pattern.add(Z(node=k, domain={j}))
                     for k in g[j] - set([j]):
-                        pattern.add(X(node=k, domain=[j]))
+                        pattern.add(X(node=k, domain={j}))
         else:
             raise ValueError("no flow or gflow found")
 
