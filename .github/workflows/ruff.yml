@@ -5,8 +5,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  ruff:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: chartboost/ruff-action@v1
+        with:
+          args: "check --output-format=github"
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chartboost/ruff-action@v1
+        with:
+          args: "format --check"

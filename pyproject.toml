@@ -41,27 +41,20 @@ dependencies = { file = ["requirements.txt"] }
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 
-[tool.black]
-line-length = 120
-target-version = ["py38"]
-
-[tool.isort]
-profile = "black"
-py_version = 38
-line_length = 120
-wrap_length = 120
-
 [tool.ruff]
 line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-extend-select = ["UP", "NPY", "A", "B"]
+extend-select = ["UP", "NPY", "A", "B", "I"]
 ignore = [
   # TODO: Resolve this immediately
   "NPY002", # Use np.random.Generator
   "E74",    # Ambiguous name
 ]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = [
