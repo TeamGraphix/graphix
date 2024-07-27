@@ -166,7 +166,7 @@ class TensorNetworkBackend:
         elif cmd.plane == Plane.XZ:
             vop = (graphix.clifford.H @ graphix.clifford.S).index
             angle = -angle
-            t_domain = t_domain + s_domain
+            t_domain ^= s_domain
             s_domain, t_domain = t_domain, s_domain
         else:
             typing_extensions.assert_never(cmd.plane)

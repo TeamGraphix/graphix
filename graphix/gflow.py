@@ -845,8 +845,8 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     for cmd in pattern:
         if cmd.kind == CommandKind.M:
             target = cmd.node
-            xflow_source = {x for x in cmd.s_domain if cmd.s_domain.count(x) % 2 != 0} & nodes
-            zflow_source = {x for x in cmd.t_domain if cmd.t_domain.count(x) % 2 != 0} & nodes
+            xflow_source = cmd.s_domain & nodes
+            zflow_source = cmd.t_domain & nodes
             for node in xflow_source:
                 if node not in xflow.keys():
                     xflow[node] = set()
@@ -857,14 +857,14 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
                 zflow[node] |= {target}
         if cmd.kind == CommandKind.X:
             target = cmd.node
-            xflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
+            xflow_source = cmd.domain & nodes
             for node in xflow_source:
                 if node not in xflow.keys():
                     xflow[node] = set()
                 xflow[node] |= {target}
         if cmd.kind == CommandKind.Z:
             target = cmd.node
-            zflow_source = {x for x in cmd.domain if cmd.domain.count(x) % 2 != 0} & nodes
+            zflow_source = cmd.domain & nodes
             for node in zflow_source:
                 if node not in zflow.keys():
                     zflow[node] = set()
