@@ -4,7 +4,6 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
-import itertools
 from copy import deepcopy
 from dataclasses import dataclass
 
