@@ -50,7 +50,7 @@ class CorrectionInstruction(OneQubitInstruction):
     Correction instruction base class model.
     """
 
-    domain: list[int]
+    domain: set[int]
 
 
 class RotationInstruction(OneQubitInstruction):
