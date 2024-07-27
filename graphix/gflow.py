@@ -332,7 +332,7 @@ def flowaux(
         N = search_neighbor(q, edges)
         p_set = N & (nodes - oset)
         if len(p_set) == 1:
-            p, = p_set
+            (p,) = p_set
             f[p] = {q}
             l_k[p] = k
             v_out_prime = v_out_prime | {p}

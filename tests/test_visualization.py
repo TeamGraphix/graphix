@@ -1,5 +1,7 @@
 import networkx as nx
+
 import graphix
+
 
 def test_get_pos_from_flow():
     circuit = graphix.transpiler.Circuit(1)
