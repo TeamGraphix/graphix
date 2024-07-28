@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
-
 import math
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -14,6 +10,9 @@ from matplotlib import pyplot as plt
 
 from graphix import gflow
 from graphix.pauli import Plane
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 
 class GraphVisualizer:
@@ -1014,9 +1013,10 @@ class GraphVisualizer:
         pos = {node: [0, 0] for node in self.G.nodes()}
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
-            while k in f.keys():
-                k = list(f[k])[0]
-                pos[k][1] = i
+            node = k
+            while node in f.keys():
+                node = next(iter(f[node]))
+                pos[node][1] = i
 
         lmax = max(l_k.values())
         # Change the x coordinates of the nodes based on their layer, sort in descending order
@@ -1045,8 +1045,7 @@ class GraphVisualizer:
         g_edges = []
 
         for node, node_list in g.items():
-            for n in node_list:
-                g_edges.append((node, n))
+            g_edges.extend((node, n) for n in node_list)
 
         G_prime = self.G.copy()
         G_prime.add_nodes_from(self.G.nodes())
@@ -1095,8 +1094,7 @@ class GraphVisualizer:
                 pos = nx.spring_layout(subgraph)
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
-                for k, node in enumerate(order[::-1]):
-                    layers[node] = k
+                layers.update((node, k) for k, node in enumerate(order[::-1]))
 
             elif len(set(self.v_out) & set(component)) > 0 and len(set(self.v_in) & set(component)) == 0:
                 fixed_nodes = list(set(self.v_out) & set(component))

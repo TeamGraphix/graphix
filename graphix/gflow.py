@@ -12,14 +12,9 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 from __future__ import annotations
 
-import numbers
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
-
 from copy import deepcopy
 from itertools import product
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -28,6 +23,11 @@ import sympy as sp
 import graphix.pauli
 from graphix.command import CommandKind
 from graphix.linalg import MatGF2
+
+if TYPE_CHECKING:
+    import numbers
+
+    from graphix.pattern import Pattern
 
 
 def check_meas_planes(meas_planes: dict[int, graphix.pauli.Plane]) -> None:
@@ -332,7 +332,8 @@ def flowaux(
         N = search_neighbor(q, edges)
         p_set = N & (nodes - oset)
         if len(p_set) == 1:
-            p = list(p_set)[0]
+            # Iterate over p_set assuming there is only one element p
+            (p,) = p_set
             f[p] = {q}
             l_k[p] = k
             v_out_prime = v_out_prime | {p}
@@ -1163,11 +1164,11 @@ def verify_flow(
         return valid_flow
     # check if v ~ f(v) for each node
     edges = set(graph.edges)
-    for node, correction in flow.items():
-        if len(correction) > 1:
+    for node, corrections in flow.items():
+        if len(corrections) > 1:
             valid_flow = False
             return valid_flow
-        correction = list(correction)[0]
+        correction = next(iter(corrections))
         if (node, correction) not in edges and (correction, node) not in edges:
             valid_flow = False
             return valid_flow

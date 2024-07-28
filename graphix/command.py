@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import abc
 import enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel
 
 import graphix.clifford
-from graphix.clifford import Clifford
 from graphix.pauli import Plane
+
+if TYPE_CHECKING:
+    from graphix.clifford import Clifford
 
 Node = int
 

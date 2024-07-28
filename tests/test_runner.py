@@ -1,18 +1,11 @@
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
 import pytest
-
-try:
-    import qiskit
-    from qiskit_aer import Aer
-except ModuleNotFoundError:
-    pass
-
-from typing import TYPE_CHECKING
 
 import graphix
 from graphix.device_interface import PatternRunner
@@ -21,6 +14,13 @@ if TYPE_CHECKING:
     from collections.abc import Collection
 
     from pytest_mock import MockerFixture
+
+
+try:
+    import qiskit
+    from qiskit_aer import Aer
+except ModuleNotFoundError:
+    pass
 
 
 def modify_statevector(statevector: npt.ArrayLike, output_qubit: Collection[int]) -> npt.NDArray:

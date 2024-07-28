@@ -7,8 +7,8 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Sequence
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -22,6 +22,9 @@ from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.pauli import Plane
 from graphix.sim.statevec import Statevec
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclasses.dataclass
@@ -676,13 +679,7 @@ class Circuit:
         self._move_byproduct_to_right()
 
         # create command sequence
-        command_seq = []
-        for cmd in self._N:
-            command_seq.append(cmd)
-        for cmd in reversed(self._E):
-            command_seq.append(cmd)
-        for cmd in self._M:
-            command_seq.append(cmd)
+        command_seq = [*self._N, *reversed(self._E), *self._M]
         bpx_added = dict()
         bpz_added = dict()
         # byproduct command buffer
@@ -703,10 +700,8 @@ class Circuit:
                     bpz_added[instr.target] = len(z_cmds)
                     z_cmds.append(Z(node=out[instr.target], domain=deepcopy(instr.domain)))
         # append z commands first (X and Z commute up to global phase)
-        for cmd in z_cmds:
-            command_seq.append(cmd)
-        for cmd in x_cmds:
-            command_seq.append(cmd)
+        command_seq.extend(z_cmds)
+        command_seq.extend(x_cmds)
         pattern = Pattern(input_nodes=inputs)
         pattern.extend(command_seq)
         out = filter(lambda node: node is not None, out)
