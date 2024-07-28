@@ -61,7 +61,7 @@ class M(Command):
 
     def is_pauli(self, precision: float = 1e-6) -> tuple[Axis, Sign] | None:
         angle_double = 2 * self.angle
-        angle_double_int = int(angle_double)
+        angle_double_int = round(angle_double)
         if abs(angle_double - angle_double_int) > precision:
             return None
         angle_double_mod_4 = angle_double_int % 4
