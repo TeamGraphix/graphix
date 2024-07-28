@@ -57,7 +57,7 @@ class NodeList:
         self.num_to_idx[nnum] = nidx
 
     def add_nodes_from(self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]) -> None:
-        if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
+        if not (len(node_nums) == len(node_datas) == len(node_indices)):
             raise ValueError("node_nums, node_datas and node_indices must have the same length")
         for nnum, ndata, nidx in zip(node_nums, node_datas, node_indices):
             if nnum in self.nodes:
