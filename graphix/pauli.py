@@ -20,6 +20,7 @@ class IXYZ(enum.Enum):
     Y = 1
     Z = 2
 
+
 class Sign(enum.Enum):
     Plus = 1
     Minus = -1
@@ -45,12 +46,10 @@ class Sign(enum.Enum):
         return Sign.minus_if(self == Sign.Plus)
 
     @typing.overload
-    def __mul__(self, other: Sign) -> Sign:
-        ...
+    def __mul__(self, other: Sign) -> Sign: ...
 
     @typing.overload
-    def __mul__(self, other: Number) -> Number:
-        ...
+    def __mul__(self, other: Number) -> Number: ...
 
     def __mul__(self, other):
         if isinstance(other, Sign):

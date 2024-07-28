@@ -172,7 +172,7 @@ class TestPattern:
         assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("plane", Plane)
-    @pytest.mark.parametrize("angle", [0., 0.5, 1., 1.5])
+    @pytest.mark.parametrize("angle", [0.0, 0.5, 1.0, 1.5])
     def test_pauli_measurement_single(self, plane: Plane, angle: float, use_rustworkx: bool = True) -> None:
         pattern = Pattern(input_nodes=[0, 1])
         pattern.add(E(nodes=[0, 1]))
