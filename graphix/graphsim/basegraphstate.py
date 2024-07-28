@@ -574,7 +574,7 @@ class BaseGraphState(ABC):
         self.remove_node(node)
         return result
 
-    def draw(self, fill_color: str = "C0", **kwargs):
+    def draw(self, fill_color: str = "C0", **kwargs) -> None:
         """Draw decorated graph state.
         Negative nodes are indicated by negative sign of node labels.
 

@@ -18,7 +18,7 @@ class NXGraphState(BaseGraphState):
         nodes: list[int] | None = None,
         edges: list[tuple[int, int]] | None = None,
         vops: dict[int, int] | None = None,
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -54,10 +54,10 @@ class NXGraphState(BaseGraphState):
     def degree(self) -> Iterator[tuple[int, int]]:
         return iter(self._graph.degree())
 
-    def add_nodes_from(self, nodes):
+    def add_nodes_from(self, nodes) -> None:
         self._graph.add_nodes_from(nodes, loop=False, sign=False, hollow=False)
 
-    def add_edges_from(self, edges):
+    def add_edges_from(self, edges) -> None:
         self._graph.add_edges_from(edges)
         # adding edges may add new nodes
         for u, v in edges:
@@ -98,7 +98,7 @@ class NXGraphState(BaseGraphState):
     def adjacency(self) -> Iterator:
         return self._graph.adjacency()
 
-    def local_complement(self, node):
+    def local_complement(self, node) -> None:
         g = self.subgraph(list(self.neighbors(node)))
         g_new = nx.complement(g)
         self.remove_edges_from(g.edges)

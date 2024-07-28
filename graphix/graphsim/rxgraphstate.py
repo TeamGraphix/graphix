@@ -25,7 +25,7 @@ class RXGraphState(BaseGraphState):
         nodes: list[int] | None = None,
         edges: list[tuple[int, int]] | None = None,
         vops: dict[int, int] | None = None,
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -116,12 +116,12 @@ class RXGraphState(BaseGraphState):
         for e in edges:
             self.remove_edge(e[0], e[1])
 
-    def add_nodes_from(self, nodes: list[int]):
+    def add_nodes_from(self, nodes: list[int]) -> None:
         node_indices = self._graph.add_nodes_from([(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes])
         for nidx in node_indices:
             self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
 
-    def add_edges_from(self, edges):
+    def add_edges_from(self, edges) -> None:
         for u, v in edges:
             # adding edges may add new nodes
             if u not in self.nodes:
@@ -135,7 +135,7 @@ class RXGraphState(BaseGraphState):
             eidx = self._graph.add_edge(uidx, vidx, None)
             self.edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
 
-    def local_complement(self, node):
+    def local_complement(self, node) -> None:
         g = self.subgraph(list(self.neighbors(node)))
         g_new = rx.complement(g)
         g_edge_list = []

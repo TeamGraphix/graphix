@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 
 class NodeList:
     """Node list class for RXGraphState
@@ -13,7 +15,7 @@ class NodeList:
         node_nums: list[int] | None = None,
         node_datas: list[dict] | None = None,
         node_indices: list[int] | None = None,
-    ):
+    ) -> None:
         if node_indices is None:
             node_indices = []
         if node_datas is None:
@@ -26,32 +28,32 @@ class NodeList:
         self.num_to_data = {nnum: node_datas[nidx] for nidx, nnum in zip(node_indices, node_nums)}
         self.num_to_idx = {nnum: nidx for nidx, nnum in zip(node_indices, node_nums)}
 
-    def __contains__(self, nnum: int):
+    def __contains__(self, nnum: int) -> bool:
         return nnum in self.nodes
 
-    def __getitem__(self, nnum: int):
+    def __getitem__(self, nnum: int) -> dict:
         return self.num_to_data[nnum]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.nodes)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[int]:
         return iter(self.nodes)
 
     def __repr__(self) -> str:
         return "NodeList" + str(list(self.nodes))
 
-    def get_node_index(self, nnum: int):
+    def get_node_index(self, nnum: int) -> int:
         return self.num_to_idx[nnum]
 
-    def add_node(self, nnum: int, ndata: dict, nidx: int):
+    def add_node(self, nnum: int, ndata: dict, nidx: int) -> None:
         if nnum in self.num_to_data:
             raise ValueError(f"Node {nnum} already exists")
         self.nodes.add(nnum)
         self.num_to_data[nnum] = ndata
         self.num_to_idx[nnum] = nidx
 
-    def add_nodes_from(self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]):
+    def add_nodes_from(self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]) -> None:
         if not (len(node_nums) == len(node_datas) and len(node_nums) == len(node_indices)):
             raise ValueError("node_nums, node_datas and node_indices must have the same length")
         for nnum, ndata, nidx in zip(node_nums, node_datas, node_indices):
@@ -59,14 +61,14 @@ class NodeList:
                 continue
             self.add_node(nnum, ndata, nidx)
 
-    def remove_node(self, nnum: int):
+    def remove_node(self, nnum: int) -> None:
         if nnum not in self.num_to_data:
             raise ValueError(f"Node {nnum} does not exist")
         self.nodes.remove(nnum)
         del self.num_to_data[nnum]
         del self.num_to_idx[nnum]
 
-    def remove_nodes_from(self, node_nums: list[int]):
+    def remove_nodes_from(self, node_nums: list[int]) -> None:
         for nnum in node_nums:
             if nnum not in self.nodes:
                 continue
@@ -85,7 +87,7 @@ class EdgeList:
         edge_nums: list[tuple[int, int]] | None = None,
         edge_datas: list[dict] | None = None,
         edge_indices: list[int] | None = None,
-    ):
+    ) -> None:
         if edge_indices is None:
             edge_indices = []
         if edge_datas is None:
@@ -106,25 +108,25 @@ class EdgeList:
             self.nnum_to_edges[enum[0]].add(enum)
             self.nnum_to_edges[enum[1]].add(enum)
 
-    def __contains__(self, enum: tuple[int, int]):
+    def __contains__(self, enum: tuple[int, int]) -> bool:
         return enum in self.edges
 
-    def __getitem__(self, enum: tuple[int, int]):
+    def __getitem__(self, enum: tuple[int, int]) -> dict:
         return self.num_to_data[enum]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.edges)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[tuple[int, int]]:
         return iter(self.edges)
 
     def __repr__(self) -> str:
         return "EdgeList" + str(list(self.edges))
 
-    def get_edge_index(self, enum: tuple[int, int]):
+    def get_edge_index(self, enum: tuple[int, int]) -> int:
         return self.num_to_idx[enum]
 
-    def add_edge(self, enum: tuple[int, int], edata: dict, eidx: int):
+    def add_edge(self, enum: tuple[int, int], edata: dict, eidx: int) -> None:
         if enum in self.num_to_data:
             raise ValueError(f"Edge {enum} already exists")
         self.edges.add(enum)
@@ -137,7 +139,7 @@ class EdgeList:
         self.nnum_to_edges[enum[0]].add(enum)
         self.nnum_to_edges[enum[1]].add(enum)
 
-    def add_edges_from(self, edge_nums: list[tuple[int, int]], edge_datas: list[dict], edge_indices: list[int]):
+    def add_edges_from(self, edge_nums: list[tuple[int, int]], edge_datas: list[dict], edge_indices: list[int]) -> None:
         if not (len(edge_nums) == len(edge_datas) and len(edge_nums) == len(edge_indices)):
             raise ValueError("edge_nums, edge_datas and edge_indices must have the same length")
         for enum, edata, eidx in zip(edge_nums, edge_datas, edge_indices):
@@ -145,7 +147,7 @@ class EdgeList:
                 continue
             self.add_edge(enum, edata, eidx)
 
-    def remove_edge(self, enum: tuple[int, int]):
+    def remove_edge(self, enum: tuple[int, int]) -> None:
         if enum not in self.num_to_data:
             raise ValueError(f"Edge {enum} does not exist")
         self.edges.remove(enum)
@@ -158,13 +160,13 @@ class EdgeList:
         self.nnum_to_edges[enum[0]].remove(enum)
         self.nnum_to_edges[enum[1]].remove(enum)
 
-    def remove_edges_from(self, edge_nums: list[tuple[int, int]]):
+    def remove_edges_from(self, edge_nums: list[tuple[int, int]]) -> None:
         for enum in edge_nums:
             if enum not in self.edges:
                 continue
             self.remove_edge(enum)
 
-    def remove_edges_by_node(self, nnum: int):
+    def remove_edges_by_node(self, nnum: int) -> None:
         if nnum in self.nnum_to_edges:
             for enum in self.nnum_to_edges[nnum]:
                 self.edges.remove(enum)
