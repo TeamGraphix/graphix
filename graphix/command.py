@@ -10,7 +10,8 @@ import numpy as np
 from pydantic import BaseModel
 
 import graphix.clifford
-from graphix.pauli import Plane
+from graphix.clifford import Clifford
+from graphix.pauli import Axis, Plane, Sign
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
@@ -57,6 +58,19 @@ class M(Command):
     angle: float = 0.0
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
+
+    def is_pauli(self, precision: float = 1e-6) -> tuple[Axis, Sign] | None:
+        angle_double = 2 * self.angle
+        angle_double_int = int(angle_double)
+        if abs(angle_double - angle_double_int) > precision:
+            return None
+        angle_double_mod_4 = angle_double_int % 4
+        if angle_double_mod_4 % 2 == 0:
+            axis = self.plane.cos
+        else:
+            axis = self.plane.sin
+        sign = Sign.minus_if(angle_double_mod_4 >= 2)
+        return (axis, sign)
 
     def clifford(self, clifford: Clifford) -> M:
         s_domain = self.s_domain

@@ -8,13 +8,12 @@ from copy import deepcopy
 from dataclasses import dataclass
 
 import networkx as nx
-import numpy as np
 import typing_extensions
 
 import graphix.clifford
 import graphix.pauli
 from graphix import command
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
@@ -2024,54 +2023,11 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
         if the measurement is not in Pauli basis, returns None.
     """
     assert cmd.kind == command.CommandKind.M
-    basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
-    # first item: 0, 1 or 2. correspond to choice of X, Y and Z
-    # second item: 0 or 1. correspond to sign (+, -)
-    basis_index = (0, 0)
-    if np.mod(cmd.angle, 2) == 0:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (0, 0)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (1, 0)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (0, 0)
-        else:
-            raise ValueError("Unknown measurement plane")
-    elif np.mod(cmd.angle, 2) == 1:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (0, 1)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (1, 1)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (0, 1)
-        else:
-            raise ValueError("Unknown measurement plane")
-    elif np.mod(cmd.angle, 2) == 0.5:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (1, 0)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (2, 0)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (2, 0)
-        else:
-            raise ValueError("Unknown measurement plane")
-    elif np.mod(cmd.angle, 2) == 1.5:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (1, 1)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (2, 1)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (2, 1)
-        else:
-            raise ValueError("Unknown measurement plane")
-    else:
+    pauli = cmd.is_pauli()
+    if pauli is None:
         return None
-    if not ignore_vop:
-        basis_index = (
-            CLIFFORD_MEASURE[cmd.vop][basis_index[0]][0],
-            int(np.abs(basis_index[1] - CLIFFORD_MEASURE[cmd.vop][basis_index[0]][1])),
-        )
-    return basis_str[basis_index[0]][basis_index[1]]
+    axis, sign = pauli
+    return f"{sign}{axis.name}"
 
 
 def cmd_to_qasm3(cmd):

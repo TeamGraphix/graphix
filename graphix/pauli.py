@@ -5,6 +5,8 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 from __future__ import annotations
 
 import enum
+import typing
+from numbers import Number
 
 import numpy as np
 import pydantic
@@ -18,6 +20,59 @@ class IXYZ(enum.Enum):
     Y = 1
     Z = 2
 
+class Sign(enum.Enum):
+    Plus = 1
+    Minus = -1
+
+    def __str__(self) -> str:
+        if self == Sign.Plus:
+            return "+"
+        return "-"
+
+    @staticmethod
+    def plus_if(b: bool) -> Sign:
+        if b:
+            return Sign.Plus
+        return Sign.Minus
+
+    @staticmethod
+    def minus_if(b: bool) -> Sign:
+        if b:
+            return Sign.Minus
+        return Sign.Plus
+
+    def __neg__(self) -> Sign:
+        return Sign.minus_if(self == Sign.Plus)
+
+    @typing.overload
+    def __mul__(self, other: Sign) -> Sign:
+        ...
+
+    @typing.overload
+    def __mul__(self, other: Number) -> Number:
+        ...
+
+    def __mul__(self, other):
+        if isinstance(other, Sign):
+            return Sign.plus_if(self == other)
+        if isinstance(other, Number):
+            return self.value * other
+        return NotImplemented
+
+    def __rmul__(self, other) -> Number | type(NotImplemented):
+        if isinstance(other, Number):
+            return self.value * other
+        return NotImplemented
+
+    def __int__(self) -> int:
+        return self.value
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __complex__(self) -> complex:
+        return complex(self.value)
+
 
 class ComplexUnit:
     """
@@ -27,7 +82,7 @@ class ComplexUnit:
     with Python constants 1, -1, 1j, -1j, and can be negated.
     """
 
-    def __init__(self, sign: bool, im: bool):
+    def __init__(self, sign: Sign, im: bool):
         self.__sign = sign
         self.__im = im
 
@@ -36,27 +91,24 @@ class ComplexUnit:
         return self.__sign
 
     @property
-    def im(self):
+    def im(self) -> bool:
         return self.__im
 
-    @property
-    def complex(self) -> complex:
+    def __complex__(self) -> complex:
         """
         Return the unit as complex number
         """
-        result: complex = 1
-        if self.__sign:
-            result *= -1
+        result: complex = complex(self.__sign)
         if self.__im:
             result *= 1j
         return result
 
-    def __repr__(self):
+    def __str__(self) -> str:
         if self.__im:
             result = "1j"
         else:
             result = "1"
-        if self.__sign:
+        if self.__sign == Sign.Minus:
             result = "-" + result
         return result
 
@@ -69,32 +121,32 @@ class ComplexUnit:
             result = "1j*" + s
         else:
             result = s
-        if self.__sign:
+        if self.__sign == Sign.Minus:
             result = "-" + result
         return result
 
     def __mul__(self, other):
         if isinstance(other, ComplexUnit):
             im = self.__im != other.__im
-            sign = (self.__sign != other.__sign) != (self.__im and other.__im)
-            return COMPLEX_UNITS[sign][im]
+            sign = self.__sign * other.__sign * Sign.minus_if(self.__im and other.__im)
+            return COMPLEX_UNITS[sign == Sign.Minus][im]
         return NotImplemented
 
     def __rmul__(self, other):
         if other == 1:
             return self
         elif other == -1:
-            return COMPLEX_UNITS[not self.__sign][self.__im]
+            return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__im]
         elif other == 1j:
-            return COMPLEX_UNITS[self.__sign != self.__im][not self.__im]
+            return COMPLEX_UNITS[self.__sign == Sign.plus_if(self.__im)][not self.__im]
         elif other == -1j:
-            return COMPLEX_UNITS[self.__sign == self.__im][not self.__im]
+            return COMPLEX_UNITS[self.__sign == Sign.minus_if(self.__im)][not self.__im]
 
     def __neg__(self):
-        return COMPLEX_UNITS[not self.__sign][self.__im]
+        return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__im]
 
 
-COMPLEX_UNITS = [[ComplexUnit(sign, im) for im in (False, True)] for sign in (False, True)]
+COMPLEX_UNITS = [[ComplexUnit(sign, im) for im in (False, True)] for sign in (Sign.Plus, Sign.Minus)]
 
 
 UNIT = COMPLEX_UNITS[False][False]
@@ -225,7 +277,7 @@ class Pauli:
         """
         Return the matrix of the Pauli gate.
         """
-        return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
+        return complex(self.__unit) * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
     def __repr__(self):
         return self.__unit.prefix(self.__symbol.name)
@@ -268,7 +320,7 @@ LIST = [pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in
 
 def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
     """Return the Pauli gate with given symbol and unit."""
-    return TABLE[symbol.value + 1][unit.sign][unit.im]
+    return TABLE[symbol.value + 1][unit.sign == Sign.Minus][unit.im]
 
 
 I = get(IXYZ.I, UNIT)
@@ -306,7 +358,7 @@ class MeasureUpdate(pydantic.BaseModel):
         else:
             coeff = 1
         add_term = 0
-        if cos_pauli.unit.sign:
+        if cos_pauli.unit.sign == Sign.Minus:
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term

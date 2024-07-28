@@ -171,6 +171,18 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern(backend)
         assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
+    @pytest.mark.parametrize("plane", Plane)
+    @pytest.mark.parametrize("angle", [0., 0.5, 1., 1.5])
+    def test_pauli_measurement_single(self, plane: Plane, angle: float, use_rustworkx: bool = True) -> None:
+        pattern = Pattern(input_nodes=[0, 1])
+        pattern.add(E(nodes=[0, 1]))
+        pattern.add(M(node=0, plane=plane, angle=angle))
+        pattern_ref = pattern.copy()
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        state = pattern.simulate_pattern()
+        state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator([0]))
+        assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_pauli_measurement_leave_input_random_circuit(
         self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True
