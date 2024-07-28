@@ -120,7 +120,7 @@ class EdgeList:
     def __len__(self) -> int:
         return len(self.edges)
 
-    def __iter__(self) -> Iterable[tuple[int, int]]:
+    def __iter__(self) -> Iterator[tuple[int, int]]:
         return iter(self.edges)
 
     def __repr__(self) -> str:
