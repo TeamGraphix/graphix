@@ -8,8 +8,12 @@ M. Elliot, B. Eastin & C. Caves,
 
 from __future__ import annotations
 
-from .basegraphstate import BaseGraphState
+from typing import TYPE_CHECKING
+
 from .nxgraphstate import NXGraphState
+
+if TYPE_CHECKING:
+    from .basegraphstate import BaseGraphState
 
 
 class GraphState:

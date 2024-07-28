@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-import networkx as nx
+from typing import TYPE_CHECKING
+
 from networkx.utils import graphs_equal
 
-from .basegraphstate import BaseGraphState
 from .nxgraphstate import NXGraphState
+
+if TYPE_CHECKING:
+    import networkx as nx
+
+    from .basegraphstate import BaseGraphState
 
 
 def try_to_networkx(g: BaseGraphState) -> nx.Graph:

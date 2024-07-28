@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import networkx as nx
 
 from .basegraphstate import BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 try:
     import rustworkx as rx
