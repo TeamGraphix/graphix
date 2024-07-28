@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
+import networkx as nx
+
+from .basegraphstate import BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
 
-if RUSTWORKX_INSTALLED:
+try:
     import rustworkx as rx
-else:
-    rx = None
+    from rustworkx import PyGraph
+except ModuleNotFoundError as e:
+    msg = "Cannot find rustworkx (optional dependency)."
+    raise RuntimeError(msg) from e
 
 
 class RXGraphState(BaseGraphState):

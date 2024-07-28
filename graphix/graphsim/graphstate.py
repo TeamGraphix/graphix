@@ -8,20 +8,22 @@ M. Elliot, B. Eastin & C. Caves,
 
 from __future__ import annotations
 
-import warnings
-
-from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
+from .basegraphstate import BaseGraphState
 from .nxgraphstate import NXGraphState
-from .rxgraphstate import RXGraphState
 
 
 class GraphState:
     """Factory class for graph state simulator."""
 
-    def __new__(self, nodes=None, edges=None, vops=None, use_rustworkx: bool = False) -> BaseGraphState:
+    def __new__(
+        cls,
+        nodes: list[int] | None = None,
+        edges: list[tuple[int, int]] | None = None,
+        vops: dict[int, int] | None = None,
+        use_rustworkx: bool = False,
+    ) -> BaseGraphState:
         if use_rustworkx:
-            if RUSTWORKX_INSTALLED:
-                return RXGraphState(nodes=nodes, edges=edges, vops=vops)
-            else:
-                warnings.warn("rustworkx is not installed. Using networkx instead.", stacklevel=1)
+            from graphix.graphsim.rxgraphstate import RXGraphState
+
+            return RXGraphState(nodes=nodes, edges=edges, vops=vops)
         return NXGraphState(nodes=nodes, edges=edges, vops=vops)
