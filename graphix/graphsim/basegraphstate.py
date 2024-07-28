@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 
 from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class BaseGraphState(ABC):

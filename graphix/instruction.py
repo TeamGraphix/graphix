@@ -5,7 +5,8 @@ import enum
 
 from pydantic import BaseModel
 
-from graphix.pauli import Plane
+# MEMO: Cannot use TYPE_CHECKING here for pydantic
+from graphix.pauli import Plane  # noqa: TCH001
 
 
 class InstructionKind(enum.Enum):

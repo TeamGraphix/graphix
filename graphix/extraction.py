@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import is_graphs_equal
+
+if TYPE_CHECKING:
+    from graphix.graphsim.basegraphstate import BaseGraphState
 
 
 class ResourceType(Enum):
@@ -136,7 +139,7 @@ def get_fusion_network_from_graph(
         for v in adjdict.keys():
             if len(adjdict[v]) == 2:
                 neighbors = list(adjdict[v].keys())
-                nodes = [v] + neighbors
+                nodes = [v, *neighbors]
                 del adjdict[neighbors[0]][v]
                 del adjdict[neighbors[1]][v]
                 del adjdict[v][neighbors[0]]

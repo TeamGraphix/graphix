@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections.abc
 import itertools
 import sys
 import typing
@@ -9,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.random import PCG64, Generator
 
 import graphix.clifford
 import graphix.ops
@@ -20,14 +20,14 @@ from graphix.command import E, M, N
 from graphix.pattern import CommandNode, Pattern
 from graphix.pauli import Plane
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
+    import collections.abc
     from collections.abc import Sequence
 
-from numpy.random import PCG64, Generator
+    from graphix.sim.statevec import Statevec
 
 
 def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:

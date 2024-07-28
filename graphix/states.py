@@ -5,6 +5,7 @@ quantum states and operators
 from __future__ import annotations
 
 import abc
+from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
@@ -75,4 +76,4 @@ class BasicStates:
     MINUS_I = PlanarState(plane=graphix.pauli.Plane.XY, angle=-np.pi / 2)
     # remove that in the end
     # need in TN backend
-    VEC = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
+    VEC: ClassVar = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
