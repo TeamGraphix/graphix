@@ -1,41 +1,16 @@
 from __future__ import annotations
 
-import sys
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
-import networkx.classes.reportviews as nx_reportviews
 
 from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
-from .rxgraphviews import EdgeList, NodeList
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-RUSTWORKX_INSTALLED = False
-try:
-    import rustworkx as rx
-    from rustworkx import PyGraph
-
-    RUSTWORKX_INSTALLED = True
-except ModuleNotFoundError:
-    rx = None
-    PyGraph = None
-
-if sys.version_info >= (3, 10):
-    NodesObject = nx_reportviews.NodeView | NodeList
-    EdgesObject = nx_reportviews.EdgeView | EdgeList
-    GraphObject = nx.Graph | PyGraph
-else:
-    from typing import Union
-
-    NodesObject = Union[nx_reportviews.NodeView, NodeList]
-    EdgesObject = Union[nx_reportviews.EdgeView, EdgeList]
-    GraphObject = Union[nx.Graph, PyGraph]
 
 
 class BaseGraphState(ABC):
@@ -54,22 +29,19 @@ class BaseGraphState(ABC):
         :`loop`: True if node has loop (local S operator)
     """
 
-    def __init__(self):
-        super().__init__()
-
     @property
     @abstractmethod
-    def nodes(self) -> NodesObject:
+    def nodes(self) -> Any:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def edges(self) -> EdgesObject:
+    def edges(self) -> Any:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def graph(self) -> GraphObject:
+    def graph(self) -> Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -96,7 +68,7 @@ class BaseGraphState(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def subgraph(self, nodes: list) -> GraphObject:
+    def subgraph(self, nodes: list) -> Any:
         """Returns a subgraph of the graph.
 
         Parameters
@@ -106,8 +78,7 @@ class BaseGraphState(ABC):
 
         Returns
         ----------
-        GraphObject
-            A subgraph of the graph.
+        A subgraph of the graph.
         """
         raise NotImplementedError
 
@@ -605,7 +576,7 @@ class BaseGraphState(ABC):
         self.remove_node(node)
         return result
 
-    def draw(self, fill_color: str = "C0", **kwargs):
+    def draw(self, fill_color: str = "C0", **kwargs) -> None:
         """Draw decorated graph state.
         Negative nodes are indicated by negative sign of node labels.
 

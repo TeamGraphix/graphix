@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from graphix.graphsim.graphstate import GraphState
-from graphix.graphsim.rxgraphstate import RXGraphState
 from graphix.graphsim.utils import is_graphs_equal
 
 if TYPE_CHECKING:
@@ -77,7 +76,13 @@ def get_fusion_network_from_graph(
     list
         List of :class:`ResourceGraph` objects.
     """
-    use_rustworkx = isinstance(graph, RXGraphState)
+
+    try:
+        from graphix.graphsim.rxgraphstate import RXGraphState
+
+        use_rustworkx = isinstance(graph, RXGraphState)
+    except Exception:
+        use_rustworkx = False
 
     adjdict = deepcopy({n: adj for n, adj in graph.adjacency()})
 

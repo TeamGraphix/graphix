@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
+import networkx as nx
+
+from .basegraphstate import BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-if RUSTWORKX_INSTALLED:
+try:
     import rustworkx as rx
-else:
-    rx = None
+    from rustworkx import PyGraph
+except ModuleNotFoundError as e:
+    msg = "Cannot find rustworkx (optional dependency)."
+    raise RuntimeError(msg) from e
 
 
 class RXGraphState(BaseGraphState):
@@ -24,7 +28,7 @@ class RXGraphState(BaseGraphState):
         nodes: list[int] | None = None,
         edges: list[tuple[int, int]] | None = None,
         vops: dict[int, int] | None = None,
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -115,12 +119,12 @@ class RXGraphState(BaseGraphState):
         for e in edges:
             self.remove_edge(e[0], e[1])
 
-    def add_nodes_from(self, nodes: list[int]):
+    def add_nodes_from(self, nodes: list[int]) -> None:
         node_indices = self._graph.add_nodes_from([(n, {"loop": False, "sign": False, "hollow": False}) for n in nodes])
         for nidx in node_indices:
             self.nodes.add_node(self._graph[nidx][0], self._graph[nidx][1], nidx)
 
-    def add_edges_from(self, edges):
+    def add_edges_from(self, edges) -> None:
         for u, v in edges:
             # adding edges may add new nodes
             if u not in self.nodes:
@@ -134,7 +138,7 @@ class RXGraphState(BaseGraphState):
             eidx = self._graph.add_edge(uidx, vidx, None)
             self.edges.add_edge((self._graph[uidx][0], self._graph[vidx][0]), None, eidx)
 
-    def local_complement(self, node):
+    def local_complement(self, node) -> None:
         g = self.subgraph(list(self.neighbors(node)))
         g_new = rx.complement(g)
         g_edge_list = []
@@ -153,3 +157,29 @@ class RXGraphState(BaseGraphState):
     def get_isolates(self) -> list[int]:
         # return list(rx.isolates(self.graph))  # will work with rustworkx>=0.14.0
         return [nnum for nnum, deg in self.degree() if deg == 0]
+
+
+def convert_rustworkx_to_networkx(graph: PyGraph) -> nx.Graph:
+    """Convert a rustworkx PyGraph to a networkx graph.
+
+    .. caution::
+        The node in the rustworkx graph must be a tuple of the form (node_num, node_data),
+        where node_num is an integer and node_data is a dictionary of node data.
+    """
+    if not isinstance(graph, PyGraph):
+        raise TypeError("graph must be a rustworkx PyGraph")
+    node_list = graph.nodes()
+    if not all(
+        isinstance(node, tuple) and len(node) == 2 and (int(node[0]) == node[0]) and isinstance(node[1], dict)
+        for node in node_list
+    ):
+        raise TypeError("All the nodes in the graph must be tuple[int, dict]")
+    edge_list = list(graph.edge_list())
+    g = nx.Graph()
+    for node in node_list:
+        g.add_node(node[0])
+        for k, v in node[1].items():
+            g.nodes[node[0]][k] = v
+    for uidx, vidx in edge_list:
+        g.add_edge(node_list[uidx][0], node_list[vidx][0])
+    return g

@@ -13,7 +13,7 @@ with contextlib.suppress(ModuleNotFoundError):
 
 import graphix.pauli
 from graphix.graphsim.graphstate import GraphState
-from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
+from graphix.graphsim.utils import is_graphs_equal
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec, meas_op
 
@@ -165,6 +165,10 @@ class TestGraphSimUtils:
         assert is_graphs_equal(g1, g2)
 
     def test_convert_rustworkx_to_networkx(self) -> None:
+        try:
+            from graphix.graphsim.rxgraphstate import convert_rustworkx_to_networkx
+        except Exception as e:
+            pytest.skip(f"Cannot import rustworkx: {e}")
         nnode = 6
         data = {"dummy": 1}
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
@@ -178,6 +182,10 @@ class TestGraphSimUtils:
         assert graphs_equal(g_nx, g_rx)
 
     def test_convert_rustworkx_to_networkx_throw_error(self) -> None:
+        try:
+            from graphix.graphsim.rxgraphstate import convert_rustworkx_to_networkx
+        except Exception as e:
+            pytest.skip(f"Cannot import rustworkx: {e}")
         nnode = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g_rx = PyGraph()
