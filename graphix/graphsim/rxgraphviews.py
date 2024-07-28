@@ -40,7 +40,7 @@ class NodeList:
     def __len__(self) -> int:
         return len(self.nodes)
 
-    def __iter__(self) -> Iterable[int]:
+    def __iter__(self) -> Iterator[int]:
         return iter(self.nodes)
 
     def __repr__(self) -> str:
