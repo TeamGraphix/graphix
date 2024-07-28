@@ -1977,7 +1977,7 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in m_commands:
-        pm = is_pauli_measurement(cmd, ignore_vop=True)
+        pm = is_pauli_measurement(cmd)
         if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm in ["+X", "-X"]:
@@ -2002,7 +2002,7 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     return pauli_node, non_pauli_node
 
 
-def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
+def is_pauli_measurement(cmd: command.Command):
     """Determines whether or not the measurement command is a Pauli measurement,
     and if so returns the measurement basis.
 
@@ -2014,8 +2014,6 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
 
         e.g. `['M', 2, 'XY', 0.25, [], [], 6]`
         for measurement of node 2, in 4/pi angle in XY plane, with local Clifford index 6 (Hadamard).
-    ignore_vop : bool
-        whether or not to ignore local Clifford to detemrine the measurement basis.
 
     Returns
     -------
