@@ -3,6 +3,7 @@ eval_type_backport
 galois>=0.3.0
 matplotlib
 networkx>3.0
+numba
 numpy>=1.22,<2
 opt_einsum>=3.2
 pydantic
