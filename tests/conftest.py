@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import os
+
+# Prevent quimb from changing the number of threads
+# 2 is the minimum for github-hosted runners
+os.environ["NUMBA_NUM_THREADS"] = "2"
+
+
 import pytest
 from numpy.random import PCG64, Generator
 
