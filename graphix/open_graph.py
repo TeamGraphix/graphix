@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import dataclass
 
 import networkx as nx
@@ -21,7 +20,7 @@ class Measurement:
     angle: float
     plane: str
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Compares if two measurements are equal
 
         Example
@@ -34,6 +33,9 @@ class Measurement:
         >>> Measurement(0.1, "XY") == Measurement(0.0, "XY")
         False
         """
+        if not isinstance(other, Measurement):
+            return NotImplemented
+
         return np.allclose(self.angle, other.angle) and self.plane == other.plane
 
     def is_z_measurement(self) -> bool:
@@ -50,48 +52,6 @@ class Measurement:
         False
         """
         return np.allclose(self.angle, 0.0) and self.plane == "XY"
-
-
-@dataclass
-class Fusion:
-    """A fusion between two nodes
-
-    :param node1: ID of one of the nodes in the fusion
-    :param node2: ID of the other node in the fusion
-    :param fusion_type: The type of fusion. Currently either: "X", "Y"
-
-    Example
-    -------
-    >>> from graphix.open_graph import Fusion
-    >>> Fusion(0, 1, "X") == Fusion(0, 1, "X")
-    True
-    >>> Fusion(0, 1, "X") == Fusion(0, 1, "Y")
-    False
-    >>> Fusion(0, 1, "X") == Fusion(1, 0, "X")
-    True
-    >>> Fusion(0, 1, "X") == Fusion(0, 2, "X")
-    False
-    """
-
-    node1: int
-    node2: int
-    fusion_type: str
-
-    def __eq__(self, other) -> bool:
-        if self.fusion_type != other.fusion_type:
-            return False
-
-        if self.node1 == other.node1 and self.node2 == other.node2:
-            return True
-
-        if self.node1 == other.node2 and self.node2 == other.node1:
-            return True
-
-        return False
-
-    def contains(self, node_id: int) -> bool:
-        """Indicates whether the node is part of the fusion"""
-        return node_id in (self.node1, self.node2)
 
 
 class OpenGraph:
@@ -137,21 +97,18 @@ class OpenGraph:
     # * "is_output"    - The value is always True
     # * "output_order" - A zero-indexed integer used to preserve the ordering of
     #                    the outputs
-    inside: nx.Graph
+    _inside: nx.Graph
 
     def __eq__(self, other):
         """Checks the two open graphs are equal
 
         This doesn't check they are equal up to an isomorphism"""
 
-        g1 = self.perform_z_deletions()
-        g2 = other.perform_z_deletions()
-
         return (
-            g1.inputs == g2.inputs
-            and g1.outputs == g2.outputs
-            and nx.utils.graphs_equal(g1.inside, g2.inside)
-            and g1.measurements == g2.measurements
+            self.inputs == other.inputs
+            and self.outputs == other.outputs
+            and nx.utils.graphs_equal(self._inside, other._inside)
+            and self.measurements == other.measurements
         )
 
     def __init__(
@@ -166,21 +123,21 @@ class OpenGraph:
         The inputs() and outputs() methods will preserve the order that was
         original given in to this methods.
         """
-        self.inside = inside
+        self._inside = inside
 
         if any(node in outputs for node in measurements):
             raise ValueError("output node can not be measured")
 
         for node_id, measurement in measurements.items():
-            self.inside.nodes[node_id]["measurement"] = measurement
+            self._inside.nodes[node_id]["measurement"] = measurement
 
         for i, node_id in enumerate(inputs):
-            self.inside.nodes[node_id]["is_input"] = True
-            self.inside.nodes[node_id]["input_order"] = i
+            self._inside.nodes[node_id]["is_input"] = True
+            self._inside.nodes[node_id]["input_order"] = i
 
         for i, node_id in enumerate(outputs):
-            self.inside.nodes[node_id]["is_output"] = True
-            self.inside.nodes[node_id]["output_order"] = i
+            self._inside.nodes[node_id]["is_output"] = True
+            self._inside.nodes[node_id]["output_order"] = i
 
     def to_pyzx_graph(self) -> zx.graph.base.BaseGraph:
         """Return a PyZX graph corresponding to the the open graph.
@@ -210,7 +167,7 @@ class OpenGraph:
         g.set_inputs(in_verts)
 
         # Add nodes for internal Z spiders - not including the phase gadgets
-        body_verts = add_vertices(len(self.inside), zx.VertexType.Z)
+        body_verts = add_vertices(len(self._inside), zx.VertexType.Z)
 
         # Add nodes for the phase gadgets. In OpenGraph we don't store the
         # effect as a seperate node, it is instead just stored in the
@@ -223,7 +180,7 @@ class OpenGraph:
 
         # Maps a node's ID in the Open Graph to it's corresponding node ID in
         # the PyZX graph and vice versa.
-        map_to_og = dict(zip(body_verts, self.inside.nodes()))
+        map_to_og = dict(zip(body_verts, self._inside.nodes()))
         map_to_pyzx = {v: i for i, v in map_to_og.items()}
 
         # Open Graph's don't have boundary nodes, so we need to connect the
@@ -234,7 +191,7 @@ class OpenGraph:
         for pyzx_index, og_index in zip(out_verts, self.outputs):
             g.add_edge((pyzx_index, map_to_pyzx[og_index]))
 
-        og_edges = self.inside.edges()
+        og_edges = self._inside.edges()
         pyzx_edges = [(map_to_pyzx[a], map_to_pyzx[b]) for a, b in og_edges]
         g.add_edges(pyzx_edges, zx.EdgeType.HADAMARD)
 
@@ -269,7 +226,6 @@ class OpenGraph:
         >>> og = OpenGraph.from_pyzx_graph(g)
         """
         zx.simplify.to_graph_like(g)
-        zx.simplify.full_reduce(g)
 
         measurements = {}
         inputs = g.inputs()
@@ -305,7 +261,7 @@ class OpenGraph:
 
             nbrs = list(g.neighbors(v))
             if len(nbrs) == 1:
-                measurements[nbrs[0]] = Measurement(g.phase(v), "YZ")
+                measurements[nbrs[0]] = Measurement(float(g.phase(v)), "YZ")
                 g_nx.remove_node(v)
 
         next_id = max(g_nx.nodes) + 1
@@ -327,7 +283,9 @@ class OpenGraph:
             if v in outputs or v in measurements:
                 continue
 
-            measurements[v] = Measurement(g.phase(v), "XY")
+            # g.phase() may be a fractions.Fraction object, but Measurement
+            # expects a float
+            measurements[v] = Measurement(float(g.phase(v)), "XY")
 
         return cls(g_nx, measurements, inputs, outputs)
 
@@ -349,10 +307,11 @@ class OpenGraph:
         >>> og.inputs == inputs
         True
         """
-        inputs = [i for i in self.inside.nodes(data=True) if "is_input" in i[1]]
+        inputs = [i for i in self._inside.nodes(data=True) if "is_input" in i[1]]
         sorted_inputs = sorted(inputs, key=lambda x: x[1]["input_order"])
-        input_node_ids = [i[0] for i in sorted_inputs]
-        return input_node_ids
+
+        # Returns only the input ids
+        return [i[0] for i in sorted_inputs]
 
     @property
     def outputs(self) -> list[int]:
@@ -372,7 +331,7 @@ class OpenGraph:
         >>> og.outputs == outputs
         True
         """
-        outputs = [i for i in self.inside.nodes(data=True) if "is_output" in i[1]]
+        outputs = [i for i in self._inside.nodes(data=True) if "is_output" in i[1]]
         sorted_outputs = sorted(outputs, key=lambda x: x[1]["output_order"])
         output_node_ids = [i[0] for i in sorted_outputs]
         return output_node_ids
@@ -399,26 +358,4 @@ class OpenGraph:
         ... }
         True
         """
-        return {
-            n[0]: n[1]["measurement"]
-            for n in self.inside.nodes(data=True)
-            if "measurement" in n[1]
-        }
-
-    def perform_z_deletions_in_place(self):
-        """Removes the Z-deleted nodes from the graph in place"""
-        z_measured_nodes = [
-            node
-            for node in self.inside.nodes
-            if "measurement" in self.inside.nodes[node]
-            and self.inside.nodes[node]["measurement"].is_z_measurement()
-        ]
-
-        for node in z_measured_nodes:
-            self.inside.remove_node(node)
-
-    def perform_z_deletions(self) -> OpenGraph:
-        """Removes the Z-deleted nodes from the graph"""
-        g = deepcopy(self)
-        g.perform_z_deletions_in_place()
-        return g
+        return {n[0]: n[1]["measurement"] for n in self._inside.nodes(data=True) if "measurement" in n[1]}
