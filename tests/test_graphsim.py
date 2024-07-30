@@ -38,24 +38,6 @@ def get_state(g) -> Statevec:
     return gstate
 
 
-def test_simple():
-    import networkx as nx
-
-    g = nx.Graph([(0, 1), (1, 2)])
-    angles = {0: -0.5, 1: 0.0}
-    inputs = {0}
-    outputs = {2}
-    meas_planes = {0: "XY", 1: "XY"}
-
-    from graphix.generator import generate_from_graph
-
-    pat = generate_from_graph(g, angles, inputs, outputs, meas_planes)
-
-    sv = pat.simulate_pattern()
-    t = sv.flatten()
-    print(t)
-
-
 @pytest.mark.parametrize(
     "use_rustworkx",
     [

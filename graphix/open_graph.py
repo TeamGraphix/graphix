@@ -22,10 +22,33 @@ class Measurement:
     plane: str
 
     def __eq__(self, other):
+        """Compares if two measurements are equal
+
+        Example
+        -------
+        >>> from graphix.open_graph import Measurement
+        >>> Measurement(0.0, "XY") == Measurement(0.0, "XY")
+        True
+        >>> Measurement(0.0, "XY") == Measurement(0.0, "YZ")
+        False
+        >>> Measurement(0.1, "XY") == Measurement(0.0, "XY")
+        False
+        """
         return np.allclose(self.angle, other.angle) and self.plane == other.plane
 
     def is_z_measurement(self) -> bool:
-        """Indicates whether it is a Z measurement"""
+        """Indicates whether it is a Z measurement
+
+        Example
+        -------
+        >>> from graphix.open_graph import Measurement
+        >>> Measurement(0.0, "XY").is_z_measurement()
+        True
+        >>> Measurement(0.0, "YZ").is_z_measurement()
+        False
+        >>> Measurement(0.1, "XY").is_z_measurement()
+        False
+        """
         return np.allclose(self.angle, 0.0) and self.plane == "XY"
 
 
@@ -376,14 +399,19 @@ class OpenGraph:
         ... }
         True
         """
-        return {n[0]: n[1]["measurement"] for n in self.inside.nodes(data=True) if "measurement" in n[1]}
+        return {
+            n[0]: n[1]["measurement"]
+            for n in self.inside.nodes(data=True)
+            if "measurement" in n[1]
+        }
 
     def perform_z_deletions_in_place(self):
         """Removes the Z-deleted nodes from the graph in place"""
         z_measured_nodes = [
             node
             for node in self.inside.nodes
-            if "measurement" in self.inside.nodes[node] and self.inside.nodes[node]["measurement"].is_z_measurement()
+            if "measurement" in self.inside.nodes[node]
+            and self.inside.nodes[node]["measurement"].is_z_measurement()
         ]
 
         for node in z_measured_nodes:
