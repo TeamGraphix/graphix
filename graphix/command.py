@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 from pydantic import BaseModel
 
+# TCH001: ExpressionOrFloat is used in pydantic models
 import graphix.clifford
+from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
 from graphix.pauli import Plane
 
 if TYPE_CHECKING:
@@ -54,7 +56,7 @@ class M(Command):
     kind: CommandKind = CommandKind.M
     node: Node
     plane: Plane = Plane.XY
-    angle: float = 0.0
+    angle: ExpressionOrFloat = 0.0
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
 

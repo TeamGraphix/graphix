@@ -5,7 +5,8 @@ import enum
 
 from pydantic import BaseModel
 
-# MEMO: Cannot use TYPE_CHECKING here for pydantic
+# TCH001: ExpressionOrFloat and Plane are used in pydantic models
+from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
 from graphix.pauli import Plane  # noqa: TCH001
 
 
@@ -59,7 +60,7 @@ class RotationInstruction(OneQubitInstruction):
     Rotation instruction base class model.
     """
 
-    angle: float
+    angle: ExpressionOrFloat
 
 
 class OneControlInstruction(OneQubitInstruction):
@@ -182,7 +183,7 @@ class M(OneQubitInstruction):
 
     kind: InstructionKind = InstructionKind.M
     plane: Plane
-    angle: float
+    angle: ExpressionOrFloat
 
 
 class RX(RotationInstruction):

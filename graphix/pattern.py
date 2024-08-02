@@ -4,14 +4,17 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import numbers
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
 import typing_extensions
 
 import graphix.clifford
+import graphix.parameter
 import graphix.pauli
 from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
@@ -21,6 +24,9 @@ from graphix.graphsim.graphstate import GraphState
 from graphix.pauli import Plane
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
+
+if TYPE_CHECKING:
+    from graphix.parameter import ExpressionOrNumber, Parameter
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1397,6 +1403,37 @@ class Pattern:
             for cmd in self.__seq:
                 for line in cmd_to_qasm3(cmd):
                     file.write(line)
+
+    def is_parameterized(self) -> bool:
+        """Return True if there is at least one measurement angle that
+        is not just an instance of `numbers.Number`. A parameterized
+        pattern is a pattern where at least one measurement angle is an
+        expression that is not a number, typically an instance of `sympy.Expr`
+        (but we don't force to choose `sympy` here).
+        """
+        return any(not isinstance(cmd.angle, numbers.Number) for cmd in self if cmd.kind == command.CommandKind.M)
+
+    def subs(self, variable: Parameter, substitute: ExpressionOrNumber) -> Pattern:
+        """Return a copy of the pattern where all occurrences of the
+        given variable in measurement angles are substituted by the
+        given value.
+
+        Substitution is performed by calling the method `subs` on
+        measurement angles, if the method exists, which is the case in
+        particular for `sympy.Expr`. If the substitution returns a
+        number, this number is coerced to `float`, to get numbers that
+        implement the full number protocol (in particular, sympy
+        numbers don't implement `cos`).
+
+        """
+        result = Pattern(input_nodes=self.input_nodes)
+        for cmd in self:
+            if cmd.kind == command.CommandKind.M:
+                new_cmd = cmd.model_copy(update={"angle": graphix.parameter.subs(cmd.angle, variable, substitute)})
+                result.add(new_cmd)
+            else:
+                result.add(cmd)
+        return result
 
     def copy(self) -> Pattern:
         result = self.__new__(self.__class__)

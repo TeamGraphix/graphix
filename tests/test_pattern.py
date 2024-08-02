@@ -11,6 +11,7 @@ from numpy.random import PCG64, Generator
 
 import graphix.clifford
 import graphix.ops
+import graphix.parameter
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states

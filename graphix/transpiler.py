@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import graphix.parameter
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.sim.statevec
@@ -51,6 +52,9 @@ class SimulateResult:
 
     statevec: Statevec
     classical_measures: tuple[int, ...]
+
+
+Angle = graphix.parameter.ExpressionOrFloat
 
 
 class Circuit:
@@ -162,46 +166,46 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Z(target=qubit))
 
-    def rx(self, qubit: int, angle: float):
+    def rx(self, qubit: int, angle: Angle):
         """X rotation gate
 
         Parameters
         ---------
         qubit : int
             target qubit
-        angle : float
+        angle : Angle
             rotation angle in radian
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
-    def ry(self, qubit: int, angle: float):
+    def ry(self, qubit: int, angle: Angle):
         """Y rotation gate
 
         Parameters
         ---------
         qubit : int
             target qubit
-        angle : float
+        angle : Angle
             angle in radian
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
-    def rz(self, qubit: int, angle: float):
+    def rz(self, qubit: int, angle: Angle):
         """Z rotation gate
 
         Parameters
         ---------
         qubit : int
             target qubit
-        angle : float
+        angle : Angle
             rotation angle in radian
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
-    def rzz(self, control: int, target: int, angle: float):
+    def rzz(self, control: int, target: int, angle: Angle):
         r"""ZZ-rotation gate.
         Equivalent to the sequence
         CNOT(control, target),
@@ -217,7 +221,7 @@ class Circuit:
             control qubit
         target : int
             target qubit
-        angle : float
+        angle : Angle
             rotation angle in radian
         """
         assert control in self.active_qubits
@@ -253,7 +257,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.I(target=qubit))
 
-    def m(self, qubit: int, plane: Plane, angle: float):
+    def m(self, qubit: int, plane: Plane, angle: Angle):
         """measure a quantum qubit
 
         The measured qubit cannot be used afterwards.
@@ -263,7 +267,7 @@ class Circuit:
         qubit : int
             target qubit
         plane : Plane
-        angle : float
+        angle : Angle
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.M(target=qubit, plane=plane, angle=angle))
@@ -1633,6 +1637,17 @@ class Circuit:
                 raise ValueError(f"Unknown instruction: {instr}")
 
         return SimulateResult(state, classical_measures)
+
+    def subs(self, variable, substitute) -> Circuit:
+        result = Circuit(self.width)
+        for instr in self.instruction:
+            angle = getattr(instr, "angle", None)
+            if angle is None:
+                result.instruction.append(instr)
+            else:
+                new_instr = instr.model_copy(update={"angle": graphix.parameter.subs(angle, variable, substitute)})
+                result.instruction.append(new_instr)
+        return result
 
 
 def extend_domain(measure: M, domain: set[int]) -> None:
