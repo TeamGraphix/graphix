@@ -207,7 +207,7 @@ class MatGF2:
         return len(nonzero_index[0])
 
     def forward_eliminate(self, b=None, copy=False):
-        """forward eliminate the matrix
+        r"""forward eliminate the matrix
 
         |A B| --\ |I X|
         |C D| --/ |0 0|

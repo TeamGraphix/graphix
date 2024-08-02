@@ -12,9 +12,12 @@ import numbers
 import sys
 import typing
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-import pydantic
 import pydantic_core
+
+if TYPE_CHECKING:
+    import pydantic
 
 
 class Expression(ABC):

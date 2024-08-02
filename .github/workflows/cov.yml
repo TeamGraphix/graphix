@@ -4,7 +4,7 @@ name: pytest-cov
 on: [push, pull_request]
 
 jobs:
-  build:
+  cov:
     runs-on: ubuntu-latest
 
     steps:

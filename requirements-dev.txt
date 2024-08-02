@@ -1,6 +1,4 @@
 # Style
-black==24.4.0
-isort==5.13.2
 ruff
 
 # Tests

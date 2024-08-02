@@ -5,8 +5,9 @@ import enum
 
 from pydantic import BaseModel
 
-from graphix.parameter import ExpressionOrFloat
-from graphix.pauli import Plane
+# TCH001: ExpressionOrFloat and Plane are used in pydantic models
+from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
+from graphix.pauli import Plane  # noqa: TCH001
 
 
 class InstructionKind(enum.Enum):
@@ -19,7 +20,7 @@ class InstructionKind(enum.Enum):
     X = "X"
     Y = "Y"
     Z = "Z"
-    I = "I"  # noqa: E741
+    I = "I"
     M = "M"
     RX = "RX"
     RY = "RY"
@@ -167,7 +168,7 @@ class Z(OneQubitInstruction):
     kind: InstructionKind = InstructionKind.Z
 
 
-class I(OneQubitInstruction):  # noqa: E742
+class I(OneQubitInstruction):
     """
     I circuit instruction.
     """

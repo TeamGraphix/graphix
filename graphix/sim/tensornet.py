@@ -269,7 +269,7 @@ class MBQCTensorNet(TensorNetwork):
             index = str(index)
         assert isinstance(index, str)
         tags = [index, "Open"]
-        tid = list(self._get_tids_from_tags(tags, which="all"))[0]
+        tid = next(iter(self._get_tids_from_tags(tags, which="all")))
         tensor = self.tensor_map[tid]
         return tensor.data
 
@@ -491,7 +491,7 @@ class MBQCTensorNet(TensorNetwork):
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
-            tid = list(tn._get_tids_from_inds(old_ind))[0]
+            tid = next(iter(tn._get_tids_from_inds(old_ind)))
             tn.tensor_map[tid].retag({"Open": "Close"})
             tn.add_tensor(tensor)
 
@@ -598,8 +598,8 @@ class MBQCTensorNet(TensorNetwork):
         # reindex & retag
         for node in out_inds:
             old_ind = tn_cp_left._dangling[str(node)]
-            tid_left = list(tn_cp_left._get_tids_from_inds(old_ind))[0]
-            tid_right = list(tn_cp_right._get_tids_from_inds(old_ind))[0]
+            tid_left = next(iter(tn_cp_left._get_tids_from_inds(old_ind)))
+            tid_right = next(iter(tn_cp_right._get_tids_from_inds(old_ind)))
             if node in target_nodes:
                 tn_cp_left.tensor_map[tid_left].reindex({old_ind: new_ind_left[target_nodes.index(node)]}, inplace=True)
                 tn_cp_right.tensor_map[tid_right].reindex(

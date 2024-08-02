@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import abc
 import enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel
 
+# TCH001: ExpressionOrFloat is used in pydantic models
 import graphix.clifford
-from graphix.clifford import Clifford
-from graphix.parameter import ExpressionOrFloat
+from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
 from graphix.pauli import Plane
+
+if TYPE_CHECKING:
+    from graphix.clifford import Clifford
 
 Node = int
 
