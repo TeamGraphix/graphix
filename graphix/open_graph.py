@@ -8,17 +8,19 @@ import networkx as nx
 import numpy as np
 import pyzx as zx
 
+from graphix.pauli import Plane
+
 
 @dataclass
 class Measurement:
     """An MBQC measurement.
 
     :param angle: the angle of the measurement. Should be between [0, 2pi)
-    :param plane: the measurement plane: 'XY', 'XZ', 'YZ'
+    :param plane: the measurement plane
     """
 
     angle: float
-    plane: str
+    plane: Plane
 
     def __eq__(self, other: object) -> bool:
         """Compares if two measurements are equal
@@ -26,11 +28,12 @@ class Measurement:
         Example
         -------
         >>> from graphix.open_graph import Measurement
-        >>> Measurement(0.0, "XY") == Measurement(0.0, "XY")
+        >>> from graphix.pauli import Plane
+        >>> Measurement(0.0, Plane.XY) == Measurement(0.0, Plane.XY)
         True
-        >>> Measurement(0.0, "XY") == Measurement(0.0, "YZ")
+        >>> Measurement(0.0, Plane.XY) == Measurement(0.0, Plane.YZ)
         False
-        >>> Measurement(0.1, "XY") == Measurement(0.0, "XY")
+        >>> Measurement(0.1, Plane.XY) == Measurement(0.0, Plane.XY)
         False
         """
         if not isinstance(other, Measurement):
@@ -44,14 +47,14 @@ class Measurement:
         Example
         -------
         >>> from graphix.open_graph import Measurement
-        >>> Measurement(0.0, "XY").is_z_measurement()
+        >>> Measurement(0.0, Plane.XY).is_z_measurement()
         True
-        >>> Measurement(0.0, "YZ").is_z_measurement()
+        >>> Measurement(0.0, Plane.YZ).is_z_measurement()
         False
-        >>> Measurement(0.1, "XY").is_z_measurement()
+        >>> Measurement(0.1, Plane.XY).is_z_measurement()
         False
         """
-        return np.allclose(self.angle, 0.0) and self.plane == "XY"
+        return np.allclose(self.angle, 0.0) and self.plane == Plane.XY
 
 
 class OpenGraph:
@@ -71,7 +74,7 @@ class OpenGraph:
     >>>
     >>> inside_graph = nx.Graph([(0, 1), (1, 2), (2, 0)])
     >>>
-    >>> measurements = {i: Measurement(0.5 * i, "XY") for i in range(2)}
+    >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
     >>> inputs = [0]
     >>> outputs = [2]
     >>> og = OpenGraph(inside_graph, measurements, inputs, outputs)
@@ -148,7 +151,7 @@ class OpenGraph:
         >>> g = nx.Graph([(0, 1), (1, 2)])
         >>> inputs = [0]
         >>> outputs = [2]
-        >>> measurements = {0: Measurement(0, "XY"), 1: Measurement(1, "ZY")}
+        >>> measurements = {0: Measurement(0, Plane.XY), 1: Measurement(1, Plane.YZ)}
         >>> og = OpenGraph(g, measurements, inputs, outputs)
         >>> reconstructed_pyzx_graph = og.to_pyzx_graph()
         """
@@ -172,7 +175,7 @@ class OpenGraph:
         # Add nodes for the phase gadgets. In OpenGraph we don't store the
         # effect as a seperate node, it is instead just stored in the
         # "measurement" attribute of the node it measures.
-        x_meas = [i for i, m in self.measurements.items() if m.plane == "YZ"]
+        x_meas = [i for i, m in self.measurements.items() if m.plane == Plane.YZ]
         x_meas_verts = add_vertices(len(x_meas), zx.VertexType.Z)
 
         out_verts = add_vertices(len(self.outputs), zx.VertexType.BOUNDARY)
@@ -198,7 +201,7 @@ class OpenGraph:
         # Add the edges between the Z spiders in the graph body
         for og_index, meas in self.measurements.items():
             # If it's an X measured node, then we handle it in the next loop
-            if meas.plane == "XY":
+            if meas.plane == Plane.XY:
                 g.set_phase(map_to_pyzx[og_index], meas.angle)
 
         # Connect the X measured vertices
@@ -261,7 +264,7 @@ class OpenGraph:
 
             nbrs = list(g.neighbors(v))
             if len(nbrs) == 1:
-                measurements[nbrs[0]] = Measurement(float(g.phase(v)), "YZ")
+                measurements[nbrs[0]] = Measurement(float(g.phase(v)), Plane.YZ)
                 g_nx.remove_node(v)
 
         next_id = max(g_nx.nodes) + 1
@@ -273,7 +276,7 @@ class OpenGraph:
                 continue
 
             g_nx.add_edges_from([(out, next_id), (next_id, next_id + 1)])
-            measurements[next_id] = Measurement(0, "XY")
+            measurements[next_id] = Measurement(0, Plane.XY)
 
             outputs = [o if o != out else next_id + 1 for o in outputs]
             next_id += 2
@@ -285,7 +288,7 @@ class OpenGraph:
 
             # g.phase() may be a fractions.Fraction object, but Measurement
             # expects a float
-            measurements[v] = Measurement(float(g.phase(v)), "XY")
+            measurements[v] = Measurement(float(g.phase(v)), Plane.XY)
 
         return cls(g_nx, measurements, inputs, outputs)
 
@@ -299,7 +302,7 @@ class OpenGraph:
         >>> from graphix.open_graph import OpenGraph, Measurement
         >>>
         >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
-        >>> measurements = {i: Measurement(0.5 * i, "XY") for i in range(2)}
+        >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
         >>> inputs = [0]
         >>> outputs = [2]
         >>>
@@ -323,7 +326,7 @@ class OpenGraph:
         >>> from graphix.open_graph import OpenGraph, Measurement
         >>>
         >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
-        >>> measurements = {i: Measurement(0.5 * i, "XY") for i in range(2)}
+        >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
         >>> inputs = [0]
         >>> outputs = [2]
         >>>
@@ -347,14 +350,14 @@ class OpenGraph:
         >>> from graphix.open_graph import OpenGraph, Measurement
         >>>
         >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
-        >>> measurements = {i: Measurement(0.5 * i, "XY") for i in range(2)}
+        >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
         >>> inputs = [0]
         >>> outputs = [2]
         >>>
         >>> og = OpenGraph(g, measurements, inputs, outputs)
         >>> og.measurements == {
-        ...     0: Measurement(0.0, "XY"),
-        ...     1: Measurement(0.5, "XY"),
+        ...     0: Measurement(0.0, Plane.XY),
+        ...     1: Measurement(0.5, Plane.XY),
         ... }
         True
         """

@@ -7,11 +7,12 @@ import pytest
 import pyzx as zx
 
 from graphix.open_graph import Measurement, OpenGraph
+from graphix.pauli import Plane
 
 
 def test_graph_no_output_measurements() -> None:
     g = nx.Graph([(0, 1)])
-    meas = {0: Measurement(0, "XY"), 1: Measurement(0, "XY")}
+    meas = {0: Measurement(0, Plane.XY), 1: Measurement(0, Plane.XY)}
     inputs = [0]
     outputs = [1]
 
