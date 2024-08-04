@@ -351,7 +351,7 @@ class Pattern:
         else:
             raise ValueError("Invalid method")
 
-    def standardize_direct(self):
+    def standardize_direct(self) -> None:
         N_list = []
         E_list = []
         M_list = []
