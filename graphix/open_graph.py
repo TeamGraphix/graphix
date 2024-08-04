@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
 import pyzx as zx
 
+from graphix.generator import generate_from_graph
 from graphix.pauli import Plane
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 
 @dataclass
@@ -362,3 +367,33 @@ class OpenGraph:
         True
         """
         return {n[0]: n[1]["measurement"] for n in self._inside.nodes(data=True) if "measurement" in n[1]}
+
+    @classmethod
+    def from_pattern(cls, pattern: Pattern) -> OpenGraph:
+        """Initialises an OpenGraph based on a measurement pattern"""
+        g = nx.Graph()
+        nodes, edges = pattern.get_graph()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+
+        inputs = pattern.input_nodes
+        outputs = pattern.output_nodes
+
+        meas_planes = pattern.get_meas_plane()
+        meas_angles = pattern.get_angles()
+        meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
+
+        return cls(g, meas, inputs, outputs)
+
+    def to_pattern(self) -> Pattern:
+        """Converts the Open graph into a pattern."""
+
+        g = self._inside.copy()
+        inputs = self.inputs
+        outputs = self.outputs
+        meas = self.measurements
+
+        angles = {node: m.angle for node, m in meas.items()}
+        planes = {node: m.plane for node, m in meas.items()}
+
+        return generate_from_graph(g, angles, inputs, outputs, planes)

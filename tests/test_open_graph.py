@@ -5,10 +5,24 @@ import sys
 
 import networkx as nx
 import pytest
-import pyzx as zx
 
 from graphix.open_graph import Measurement, OpenGraph
 from graphix.pauli import Plane
+
+
+# Tests whether an open graph can be converted to and from a pattern and be
+# successfully reconstructed.
+def test_open_graph_to_pattern() -> None:
+    g = nx.Graph([(0, 1), (1, 2)])
+    inputs = [0]
+    outputs = [2]
+    meas = {0: Measurement(0, Plane.XY), 1: Measurement(0, Plane.XY)}
+    og = OpenGraph(g, meas, inputs, outputs)
+
+    pattern = og.to_pattern()
+    og_reconstructed = OpenGraph.from_pattern(pattern)
+
+    assert og == og_reconstructed
 
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
@@ -25,6 +39,8 @@ def test_graph_no_output_measurements() -> None:
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_equality() -> None:
+    import pyzx as zx
+
     file = "./tests/circuits/adder_n4.qasm"
     circ = zx.Circuit.load(file)
 
@@ -40,7 +56,9 @@ def test_graph_equality() -> None:
 # Converts a graph to and from an Open graph and then checks the resulting
 # pyzx graph is equal to the original.
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
-def assert_reconstructed_pyzx_graph_equal(circ: zx.Circuit) -> None:
+def assert_reconstructed_pyzx_graph_equal(circ) -> None:
+    import pyzx as zx
+
     g = circ.to_graph()
     zx.simplify.to_graph_like(g)
 
@@ -58,7 +76,9 @@ def assert_reconstructed_pyzx_graph_equal(circ: zx.Circuit) -> None:
 
 
 @pytest.fixture
-def all_small_circuits() -> list[zx.Circuit]:
+def all_small_circuits():
+    import pyzx as zx
+
     direc = "./tests/circuits/"
     directory = os.fsencode(direc)
 
