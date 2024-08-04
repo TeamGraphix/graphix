@@ -326,7 +326,7 @@ class Pattern:
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 
-    def standardize(self, method="local"):
+    def standardize(self, method="direct"):
         """Executes standardization of the pattern.
         'standard' pattern is one where commands are sorted in the order of
         'N', 'E', 'M' and then byproduct commands ('X' and 'Z').
@@ -412,7 +412,7 @@ class Pattern:
         except StopIteration:
             return True
 
-    def shift_signals(self, method="local") -> dict[int, list[int]]:
+    def shift_signals(self, method="direct") -> dict[int, list[int]]:
         """Performs signal shifting procedure
         Extract the t-dependence of the measurement into 'S' commands
         and commute them to the end of the command sequence where it can be removed.
