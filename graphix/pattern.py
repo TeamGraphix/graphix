@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import networkx as nx
 import numpy as np
 import typing_extensions
+import warnings
 
 import graphix.clifford
 import graphix.pauli
@@ -338,6 +339,12 @@ class Pattern:
             'local' standardization is executed on LocalPattern class. In all cases, local pattern standardization is significantly faster than conventional one.
             defaults to 'local'
         """
+        if method == "direct":
+            self.standardize_direct()
+            return
+        if method not in {"local", "global"}:
+            raise ValueError("Invalid method")
+        warnings.warn(f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
@@ -346,10 +353,6 @@ class Pattern:
             self._move_N_to_left()
             self._move_byproduct_to_right()
             self._move_E_after_N()
-        elif method == "direct":
-            self.standardize_direct()
-        else:
-            raise ValueError("Invalid method")
 
     def standardize_direct(self) -> None:
         N_list = []
@@ -436,6 +439,11 @@ class Pattern:
             for each node, the signal that have been shifted if the outcome is
             swapped by the shift.
         """
+        if method == "direct":
+            return self.shift_signals_direct()
+        if method not in {"local", "global"}:
+            raise ValueError("Invalid method")
+        warnings.warn(f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
         if method == "local":
             localpattern = self.get_local_pattern()
             swapped_dict = localpattern.shift_signals()
@@ -461,10 +469,6 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
-        elif method == "direct":
-            swapped_dict = self.shift_signals_direct()
-        else:
-            raise ValueError("Invalid method")
         return swapped_dict
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
@@ -1199,6 +1203,7 @@ class Pattern:
             'local' standardization is executed on LocalPattern class.
             defaults to 'local'
         """
+        warnings.warn(f"`Pattern.standardize_and_shift_signals` is deprecated. Please use `Pattern.standardize` and `Pattern.shift_signals` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()

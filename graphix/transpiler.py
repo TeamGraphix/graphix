@@ -9,6 +9,7 @@ from __future__ import annotations
 import dataclasses
 from copy import deepcopy
 from typing import TYPE_CHECKING
+import warnings
 
 import numpy as np
 
@@ -421,6 +422,7 @@ class Circuit:
         --------
         pattern : :class:`graphix.pattern.Pattern` object
         """
+        warnings.warn(f"`Circuit.standardize_and_transpile` is deprecated. Please use `Circuit.transpile` and `Pattern.standardize` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
         self._N: list[N] = []
         # for i in range(self.width):
         #    self._N.append(["N", i])
