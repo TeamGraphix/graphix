@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import abc
 import enum
+import math
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -47,6 +48,17 @@ class N(Command):
     node: Node
 
 
+class Pauli(BaseModel):
+    """
+    Pauli measurement.
+
+    Pauli measurement is not a pattern command in itself, but can be obtained from a general `M` measurement with `is_close_to_pauli`.
+    """
+
+    axis: Axis
+    sign: Sign
+
+
 class M(Command):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
@@ -59,10 +71,11 @@ class M(Command):
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
 
-    def is_pauli(self, precision: float = 1e-6) -> tuple[Axis, Sign] | None:
+    def is_close_to_pauli(self, *, rel_tol: float | None = None, abs_tol: float | None = None) -> Pauli | None:
         angle_double = 2 * self.angle
         angle_double_int = round(angle_double)
-        if abs(angle_double - angle_double_int) > precision:
+        kwargs = {k: v for k, v in [("rel_tol", rel_tol), ("abs_tol", abs_tol)] if v is not None}
+        if not math.isclose(angle_double, angle_double_int, **kwargs):
             return None
         angle_double_mod_4 = angle_double_int % 4
         if angle_double_mod_4 % 2 == 0:
@@ -70,7 +83,7 @@ class M(Command):
         else:
             axis = self.plane.sin
         sign = Sign.minus_if(angle_double_mod_4 >= 2)
-        return (axis, sign)
+        return Pauli(axis=axis, sign=sign)
 
     def clifford(self, clifford: Clifford) -> M:
         s_domain = self.s_domain

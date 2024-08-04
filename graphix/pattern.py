@@ -2021,11 +2021,10 @@ def is_pauli_measurement(cmd: command.Command):
         if the measurement is not in Pauli basis, returns None.
     """
     assert cmd.kind == command.CommandKind.M
-    pauli = cmd.is_pauli()
+    pauli = cmd.is_close_to_pauli()
     if pauli is None:
         return None
-    axis, sign = pauli
-    return f"{sign}{axis.name}"
+    return f"{pauli.sign}{pauli.axis.name}"
 
 
 def cmd_to_qasm3(cmd):
