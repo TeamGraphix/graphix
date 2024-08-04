@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 import networkx as nx
 import pytest
@@ -10,6 +11,7 @@ from graphix.open_graph import Measurement, OpenGraph
 from graphix.pauli import Plane
 
 
+@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_no_output_measurements() -> None:
     g = nx.Graph([(0, 1)])
     meas = {0: Measurement(0, Plane.XY), 1: Measurement(0, Plane.XY)}
@@ -21,6 +23,7 @@ def test_graph_no_output_measurements() -> None:
         OpenGraph(g, meas, inputs, outputs)
 
 
+@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_equality() -> None:
     file = "./tests/circuits/adder_n4.qasm"
     circ = zx.Circuit.load(file)
@@ -36,6 +39,7 @@ def test_graph_equality() -> None:
 
 # Converts a graph to and from an Open graph and then checks the resulting
 # pyzx graph is equal to the original.
+@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def assert_reconstructed_pyzx_graph_equal(circ: zx.Circuit) -> None:
     g = circ.to_graph()
     zx.simplify.to_graph_like(g)
@@ -73,6 +77,7 @@ def all_small_circuits() -> list[zx.Circuit]:
 # Tests that compiling from a pyzx graph to an OpenGraph returns the same
 # graph. Only works with small circuits up to 4 qubits since PyZX's `tensorfy`
 # function seems to consume huge amount of memory for larger qubit
+@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_all_small_circuits(all_small_circuits) -> None:
     for circ in all_small_circuits:
         assert_reconstructed_pyzx_graph_equal(circ)
