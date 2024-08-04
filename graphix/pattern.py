@@ -346,7 +346,7 @@ class Pattern:
             raise ValueError("Invalid method")
         warnings.warn(
             f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1
+            stacklevel=1,
         )
         if method == "local":
             localpattern = self.get_local_pattern()
@@ -448,7 +448,7 @@ class Pattern:
             raise ValueError("Invalid method")
         warnings.warn(
             f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1
+            stacklevel=1,
         )
         if method == "local":
             localpattern = self.get_local_pattern()
@@ -1211,7 +1211,7 @@ class Pattern:
         """
         warnings.warn(
             "`Pattern.standardize_and_shift_signals` is deprecated. Please use `Pattern.standardize` and `Pattern.shift_signals` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1
+            stacklevel=1,
         )
         if method == "local":
             localpattern = self.get_local_pattern()

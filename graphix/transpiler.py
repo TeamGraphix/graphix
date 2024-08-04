@@ -424,7 +424,7 @@ class Circuit:
         """
         warnings.warn(
             "`Circuit.standardize_and_transpile` is deprecated. Please use `Circuit.transpile` and `Pattern.standardize` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1
+            stacklevel=1,
         )
         self._N: list[N] = []
         # for i in range(self.width):
