@@ -4,13 +4,13 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 
 import networkx as nx
 import numpy as np
 import typing_extensions
-import warnings
 
 import graphix.clifford
 import graphix.pauli
@@ -344,7 +344,10 @@ class Pattern:
             return
         if method not in {"local", "global"}:
             raise ValueError("Invalid method")
-        warnings.warn(f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
+        warnings.warn(
+            f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
@@ -443,7 +446,10 @@ class Pattern:
             return self.shift_signals_direct()
         if method not in {"local", "global"}:
             raise ValueError("Invalid method")
-        warnings.warn(f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
+        warnings.warn(
+            f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             swapped_dict = localpattern.shift_signals()
@@ -1203,7 +1209,10 @@ class Pattern:
             'local' standardization is executed on LocalPattern class.
             defaults to 'local'
         """
-        warnings.warn(f"`Pattern.standardize_and_shift_signals` is deprecated. Please use `Pattern.standardize` and `Pattern.shift_signals` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.")
+        warnings.warn(
+            "`Pattern.standardize_and_shift_signals` is deprecated. Please use `Pattern.standardize` and `Pattern.shift_signals` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
