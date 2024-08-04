@@ -358,7 +358,7 @@ class Pattern:
         Z_dict = {}
         X_dict = {}
 
-        def add_correction_command(cmd_dict, cmd):
+        def add_correction_command(cmd_dict: dict[command.Node, command.Command], cmd: command.Command) -> None:
             previous_cmd = cmd_dict.get(cmd.node)
             if previous_cmd is None:
                 cmd_dict[cmd.node] = cmd
@@ -470,7 +470,7 @@ class Pattern:
     def shift_signals_direct(self) -> dict[int, set[int]]:
         signal_dict = {}
 
-        def expand_domain(domain):
+        def expand_domain(domain: set[command.Node]) -> None:
             for node in domain & signal_dict.keys():
                 domain ^= signal_dict[node]
 
