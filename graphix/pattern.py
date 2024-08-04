@@ -483,16 +483,16 @@ class Pattern:
                 plane = cmd.plane
                 if plane == Plane.XY:
                     if t_domain:
-                        cmd.t_domain = {}
+                        cmd.t_domain = set()
                         signal_dict[cmd.node] = t_domain
                 elif plane == Plane.XZ:
                     if s_domain:
-                        cmd.s_domain = {}
+                        cmd.s_domain = set()
                         t_domain ^= s_domain
                         signal_dict[cmd.node] = s_domain
                 elif plane == Plane.YZ:
                     if s_domain:
-                        cmd.s_domain = {}
+                        cmd.s_domain = set()
                         signal_dict[cmd.node] = s_domain
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
                 expand_domain(cmd.domain)
