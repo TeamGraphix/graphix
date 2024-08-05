@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class Measurement:
     """An MBQC measurement.
 
-    :param angle: the angle of the measurement. Should be between [0, 2pi)
+    :param angle: the angle of the measurement. Should be between [0, 2)
     :param plane: the measurement plane
     """
 
