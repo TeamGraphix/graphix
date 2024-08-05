@@ -219,7 +219,8 @@ class OpenGraph:
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:
-        """Initialises an `OpenGraph` object based on the resource-state graph associated with the measurement pattern. """
+        """Initialises an `OpenGraph` object based on the resource-state graph
+        associated with the measurement pattern. """
         g = nx.Graph()
         nodes, edges = pattern.get_graph()
         g.add_nodes_from(nodes)
@@ -235,7 +236,12 @@ class OpenGraph:
         return cls(g, meas, inputs, outputs)
 
     def to_pattern(self) -> Pattern:
-        """Converts the Open graph into a pattern."""
+        """Converts the `OpenGraph` into a `Pattern`.
+
+        Will raise an exception if the open graph does not have flow, gflow, or
+        Pauli flow.
+        The pattern will be generated using maximally-delayed flow.
+        """
 
         g = self._inside.copy()
         inputs = self.inputs
