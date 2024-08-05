@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import networkx as nx
 
-from graphix.open_graph import Measurement, OpenGraph
+from graphix.opengraph import Measurement, OpenGraph
 from graphix.pauli import Plane
 
 

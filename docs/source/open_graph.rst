@@ -1,12 +1,12 @@
 Open Graph
 ======================
 
-:mod:`graphix.open_graph` module
+:mod:`graphix.opengraph` module
 +++++++++++++++++++++++++++++
 
 This module defines classes for defining MBQC patterns as Open Graphs.
 
-.. currentmodule:: graphix.open_graph
+.. currentmodule:: graphix.opengraph
 
 .. autoclass:: OpenGraph
 

@@ -31,7 +31,7 @@ class Measurement:
 
         Example
         -------
-        >>> from graphix.open_graph import Measurement
+        >>> from graphix.opengraph import Measurement
         >>> from graphix.pauli import Plane
         >>> Measurement(0.0, Plane.XY) == Measurement(0.0, Plane.XY)
         True
@@ -50,7 +50,7 @@ class Measurement:
 
         Example
         -------
-        >>> from graphix.open_graph import Measurement
+        >>> from graphix.opengraph import Measurement
         >>> Measurement(0.0, Plane.XY).is_z_measurement()
         True
         >>> Measurement(0.0, Plane.YZ).is_z_measurement()
@@ -74,7 +74,7 @@ class OpenGraph:
     Example
     -------
     >>> import networkx as nx
-    >>> from graphix.open_graph import OpenGraph, Measurement
+    >>> from graphix.opengraph import OpenGraph, Measurement
     >>>
     >>> inside_graph = nx.Graph([(0, 1), (1, 2), (2, 0)])
     >>>
@@ -153,7 +153,7 @@ class OpenGraph:
         Example
         ------
         >>> import networkx as nx
-        >>> from graphix.open_graph import OpenGraph, Measurement
+        >>> from graphix.opengraph import OpenGraph, Measurement
         >>>
         >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
         >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
@@ -177,7 +177,7 @@ class OpenGraph:
         Example
         ------
         >>> import networkx as nx
-        >>> from graphix.open_graph import OpenGraph, Measurement
+        >>> from graphix.opengraph import OpenGraph, Measurement
         >>>
         >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
         >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
@@ -201,7 +201,7 @@ class OpenGraph:
         Example
         ------
         >>> import networkx as nx
-        >>> from graphix.open_graph import OpenGraph, Measurement
+        >>> from graphix.opengraph import OpenGraph, Measurement
         >>>
         >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
         >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}

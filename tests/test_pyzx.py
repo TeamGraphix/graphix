@@ -6,7 +6,7 @@ import sys
 import networkx as nx
 import pytest
 
-from graphix.open_graph import Measurement, OpenGraph
+from graphix.opengraph import Measurement, OpenGraph
 from graphix.pauli import Plane
 
 if sys.modules.get("pyzx"):

@@ -9,7 +9,7 @@ from __future__ import annotations
 import networkx as nx
 import pyzx as zx
 
-from graphix.open_graph import Measurement, OpenGraph
+from graphix.opengraph import Measurement, OpenGraph
 from graphix.pauli import Plane
 
 
@@ -94,7 +94,7 @@ def from_pyzx_graph(g: zx.graph.base.BaseGraph) -> OpenGraph:
     Example
     -------
     >>> import pyzx as zx
-    >>> from graphix.open_graph import OpenGraph
+    >>> from graphix.opengraph import OpenGraph
     >>> circ = zx.qasm("qreg q[2]; h q[1]; cx q[0], q[1]; h q[1];")
     >>> g = circ.to_graph()
     >>> og = OpenGraph.from_pyzx_graph(g)
