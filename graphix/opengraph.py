@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import networkx as nx
-import numpy as np
+import math
 
 from graphix.generator import generate_from_graph
 from graphix.pauli import Plane
@@ -26,39 +26,28 @@ class Measurement:
     angle: float
     plane: Plane
 
-    def __eq__(self, other: object) -> bool:
-        """Compares if two measurements are equal
+    def isclose(self, other: Measurement, rel_tol=1e-09, abs_tol=0.0) -> bool:
+        """Compares if two measurements have the same plane and their angles
+        are close.
 
         Example
         -------
         >>> from graphix.opengraph import Measurement
         >>> from graphix.pauli import Plane
-        >>> Measurement(0.0, Plane.XY) == Measurement(0.0, Plane.XY)
+        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         True
-        >>> Measurement(0.0, Plane.XY) == Measurement(0.0, Plane.YZ)
+        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.YZ))
         False
-        >>> Measurement(0.1, Plane.XY) == Measurement(0.0, Plane.XY)
+        >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         False
         """
         if not isinstance(other, Measurement):
             return NotImplemented
 
-        return np.allclose(self.angle, other.angle) and self.plane == other.plane
-
-    def is_z_measurement(self) -> bool:
-        """Indicates whether it is a Z measurement
-
-        Example
-        -------
-        >>> from graphix.opengraph import Measurement
-        >>> Measurement(0.0, Plane.XY).is_z_measurement()
-        True
-        >>> Measurement(0.0, Plane.YZ).is_z_measurement()
-        False
-        >>> Measurement(0.1, Plane.XY).is_z_measurement()
-        False
-        """
-        return np.allclose(self.angle, 0.0) and self.plane == Plane.XY
+        return (
+            math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
+            and self.plane == other.plane
+        )
 
 
 class OpenGraph:
@@ -215,12 +204,16 @@ class OpenGraph:
         ... }
         True
         """
-        return {n[0]: n[1]["measurement"] for n in self._inside.nodes(data=True) if "measurement" in n[1]}
+        return {
+            n[0]: n[1]["measurement"]
+            for n in self._inside.nodes(data=True)
+            if "measurement" in n[1]
+        }
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:
         """Initialises an `OpenGraph` object based on the resource-state graph
-        associated with the measurement pattern. """
+        associated with the measurement pattern."""
         g = nx.Graph()
         nodes, edges = pattern.get_graph()
         g.add_nodes_from(nodes)
@@ -231,7 +224,10 @@ class OpenGraph:
 
         meas_planes = pattern.get_meas_plane()
         meas_angles = pattern.get_angles()
-        meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
+        meas = {
+            node: Measurement(meas_angles[node], meas_planes[node])
+            for node in meas_angles
+        }
 
         return cls(g, meas, inputs, outputs)
 
