@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.rxgraphstate import RXGraphState
 from graphix.graphsim.utils import is_graphs_equal
+
+if TYPE_CHECKING:
+    from graphix.graphsim.basegraphstate import BaseGraphState
 
 
 class ResourceType(Enum):
@@ -25,15 +28,15 @@ class ResourceGraph:
 
     Parameters
     ----------
-    type : :class:`ResourceType` object
+    cltype : :class:`ResourceType` object
         Type of the cluster.
     graph : :class:`~graphix.graphsim.GraphState` object
         Graph state of the cluster.
     """
 
-    def __init__(self, type: ResourceType, graph: GraphState | None = None):
+    def __init__(self, cltype: ResourceType, graph: GraphState | None = None):
         self.graph = graph
-        self.type = type
+        self.type = cltype
 
     def __str__(self) -> str:
         return str(self.type) + str(self.graph.nodes)
@@ -131,7 +134,7 @@ def get_fusion_network_from_graph(
         for v in adjdict.keys():
             if len(adjdict[v]) == 2:
                 neighbors = list(adjdict[v].keys())
-                nodes = [v] + neighbors
+                nodes = [v, *neighbors]
                 del adjdict[neighbors[0]][v]
                 del adjdict[neighbors[1]][v]
                 del adjdict[v][neighbors[0]]
@@ -169,7 +172,7 @@ def create_resource_graph(node_ids: list[int], root: int | None = None, use_rust
     tmp_graph = GraphState(use_rustworkx=use_rustworkx)
     tmp_graph.add_nodes_from(node_ids)
     tmp_graph.add_edges_from(edges)
-    return ResourceGraph(type=cluster_type, graph=tmp_graph)
+    return ResourceGraph(cltype=cluster_type, graph=tmp_graph)
 
 
 def get_fusion_nodes(c1: ResourceGraph, c2: ResourceGraph) -> list[int]:

@@ -90,7 +90,7 @@ def perform_measure(
             op_mat = op_mat_from_result(vec, True)
     else:
         # choose the measurement result randomly
-        result = rng.choice([False, True])
+        result = rng.choice([0, 1])
         op_mat = op_mat_from_result(vec, result)
     state.evolve_single(op_mat, qubit)
     return result

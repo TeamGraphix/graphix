@@ -9,13 +9,11 @@ import pytest
 from numpy.random import Generator
 
 import graphix.pauli
-from graphix.command import M, X, Z
 from graphix.gflow import (
     find_flow,
     find_gflow,
     find_pauliflow,
     get_corrections_from_pattern,
-    get_input_from_flow,
     verify_flow,
     verify_gflow,
     verify_pauliflow,

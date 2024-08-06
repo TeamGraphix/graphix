@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
 from .rxgraphviews import EdgeList, NodeList
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 if RUSTWORKX_INSTALLED:
     import rustworkx as rx
@@ -87,7 +90,7 @@ class RXGraphState(BaseGraphState):
             nidx = self.nodes.get_node_index(n)
             adjacency_dict = self._graph.adj(nidx)
             new_adjacency_dict = {}
-            for nidx, _ in adjacency_dict.items():
+            for nidx in adjacency_dict.keys():
                 new_adjacency_dict[self.nodes.get_node_index(nidx)] = {}  # replace None with {}
             ret.append((n, new_adjacency_dict))
         return iter(ret)

@@ -1,27 +1,32 @@
 from __future__ import annotations
 
+import itertools
 import sys
-from typing import TYPE_CHECKING, Literal
+import typing
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.random import PCG64, Generator
 
+import graphix.clifford
 import graphix.ops
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
-from graphix.command import M, N
+from graphix.command import E, M, N
 from graphix.pattern import CommandNode, Pattern
+from graphix.pauli import Plane
 from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
+    import collections.abc
     from collections.abc import Sequence
 
-from numpy.random import PCG64, Generator
+    from graphix.sim.statevec import Statevec
 
 
 def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
@@ -31,6 +36,17 @@ def compare_backend_result_with_statevec(backend: str, backend_state, statevec: 
         return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
     else:
         raise NotImplementedError(backend)
+
+
+Outcome = typing.Literal[0, 1]
+
+
+class IterGenerator:
+    def __init__(self, it: collections.abc.Iterable[Outcome]) -> None:
+        self.__it = iter(it)
+
+    def choice(self, _outcomes: list[Outcome]) -> Outcome:
+        return next(self.__it)
 
 
 class TestPattern:
@@ -81,7 +97,7 @@ class TestPattern:
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(self, backend_type: Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
+    def test_empty_output_nodes(self, backend_type: typing.Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(node=0, angle=0.5))
 
@@ -311,7 +327,7 @@ class TestPattern:
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):
-            pattern.add(M(node=i, plane=preset_meas_plane[i], vop=vop_list[i % 3]))
+            pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(graphix.clifford.get(vop_list[i % 3])))
         ref_meas_plane = {
             0: graphix.pauli.Plane.XY,
             1: graphix.pauli.Plane.XY,
@@ -325,6 +341,29 @@ class TestPattern:
         }
         meas_plane = pattern.get_meas_plane()
         assert meas_plane == ref_meas_plane
+
+    @pytest.mark.parametrize("plane", Plane)
+    @pytest.mark.parametrize("method", ["local", "global"])
+    def test_shift_signals_plane(self, plane: Plane, method: str) -> None:
+        pattern = Pattern(input_nodes=[0])
+        for i in (1, 2, 3):
+            pattern.add(N(node=i))
+            pattern.add(E(nodes=[0, i]))
+        pattern.add(M(node=0, angle=0.5))
+        pattern.add(M(node=1, angle=0.5))
+        pattern.add(M(node=2, angle=0.5, plane=plane, s_domain=[0], t_domain=[1]))
+        pattern_ref = pattern.copy()
+        pattern.standardize(method="global")
+        signal_dict = pattern.shift_signals(method=method)
+        # Test for every possible outcome of each measure
+        for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
+            state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
+            outcomes_p = [
+                1 - outcome if sum(outcomes_ref[i] for i in swapped) % 2 == 1 else outcome
+                for outcome, swapped in zip(outcomes_ref, signal_dict.values())
+            ]
+            state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_p)))
+            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:

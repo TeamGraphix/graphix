@@ -51,10 +51,12 @@ class DefaultMeasureMethod(MeasureMethod):
         s_signal = sum(self.results[j] for j in cmd.s_domain)
         t_signal = sum(self.results[j] for j in cmd.t_domain)
         measure_update = MeasureUpdate.compute(
-            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.TABLE[cmd.vop]
+            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         return MeasurementDescription(measure_update.new_plane, angle)
+    
+
 
     def get_measure_result(self, node: int) -> bool:
         return self.results[node]
@@ -100,7 +102,8 @@ class PatternSimulator:
                 self.noise_model = None
                 self.backend = DensityMatrixBackend(**kwargs)
                 warnings.warn(
-                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument."
+                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
+                    stacklevel=1,
                 )
             else:
                 self.backend = DensityMatrixBackend(pr_calc=True, **kwargs)

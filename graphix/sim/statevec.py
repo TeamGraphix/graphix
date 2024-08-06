@@ -17,8 +17,8 @@ from graphix.sim.base_backend import Backend, State
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pr_calc=True):
-        super().__init__(Statevec(nqubit=0), pr_calc=pr_calc)
+    def __init__(self, pr_calc=True, rng: np.random.Generator | None = None):
+        super().__init__(Statevec(nqubit=0), pr_calc=pr_calc, rng=rng)
 
 
 CZ_TENSOR = np.array(

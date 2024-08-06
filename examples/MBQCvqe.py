@@ -19,7 +19,6 @@ We will build a parameterized quantum circuit and optimize its parameters to min
 the expectation value of the Hamiltonian, effectively finding the ground state energy.
 """
 
-import networkx as nx
 import numpy as np
 from scipy.optimize import minimize
 

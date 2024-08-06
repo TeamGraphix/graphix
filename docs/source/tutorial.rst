@@ -9,7 +9,7 @@ We will explain the basics here along with the code, and you can go to :doc:`int
 Generating measurement patterns
 -------------------------------
 
-Graphix is centered around the measurement `pattern`, which is a sequence of commands such as qubit preparattion, entanglement and single-qubit measurement commands.
+Graphix is centered around the measurement `pattern`, which is a sequence of commands such as qubit preparation, entanglement and single-qubit measurement commands.
 The most basic measurement pattern is that for realizing Hadamard gate, which we will use to see how `graphix` works.
 
 First, install ``graphix`` by
@@ -27,7 +27,7 @@ For any gate network, we can use the :class:`~graphix.transpiler.Circuit` class 
     circuit.h(0)
     pattern = circuit.transpile().pattern
 
-the :class:`~graphix.pattern.Pattern` object contains the sequence of commands according to the measurement calculus framework [1].
+the :class:`~graphix.pattern.Pattern` object contains the sequence of commands according to the measurement calculus framework [#Danos2007]_.
 Let us print the pattern (command sequence) that we generated, 
 
 >>> pattern.print_pattern() # show the command sequence (pattern)
@@ -44,7 +44,7 @@ The command sequence represents the following sequence:
     * If the measurement outcome is :math:`s_0 = 1` (i.e. if the qubit is projected to :math:`|-\rangle`, the Pauli X eigenstate with eigenvalue of :math:`(-1)^{s_0} = -1`), the 'X' command is applied to qubit 1 to 'correct' the measurement byproduct (see :doc:`intro`) that ensure deterministic computation.
     * Tracing out the qubit 0 (since the measurement is destructive), we have :math:`H|\psi_{in}\rangle_1` - the input qubit has teleported to qubit 1, while being transformed by Hadamard gate.
 
-This MBQC pattern seqeunce uses a resource state as shown below:
+This MBQC pattern sequence uses a resource state as shown below:
 
 .. figure:: ./../imgs/graphH.png
    :scale: 100 %
@@ -72,7 +72,7 @@ We can use the in-built visualization tool to view the pattern,
     :alt: pattern visualization
 
 
-Universal gatesets
+Universal gate sets
 ------------------
 
 As a more complex example than above, we show measurement patterns and graph states for CNOT and single-qubit general rotation which makes MBQC universal:
@@ -183,7 +183,7 @@ Standardization and signal shifting
 +++++++++++++++++++++++++++++++++++
 
 The `standard` pattern is a pattern where the commands are sorted in the order of N, E, M, (X, Z, C) where X, Z and C commands in bracket can be in any order but must apply only to output nodes.
-Any command sequence has a standard form, which can be obtained by the `standarziation` algorithm in [1] that runs in polynomial time on the number of commands.
+Any command sequence has a standard form, which can be obtained by the `standardization` algorithm in [#Danos2007]_ that runs in polynomial time on the number of commands.
 
 An additional `signal shifting` procedure simplifies the dependence structure of the pattern to minimize the feedforward operations.
 These can be called with :meth:`~graphix.pattern.Pattern.standardize` and :meth:`~graphix.pattern.Pattern.shift_signals` and result in a simpler pattern sequence.
@@ -217,7 +217,7 @@ Z byproduct, node = 7, domain = [1, 5]
 
 .. figure:: ./../imgs/pattern_visualization_3.png
     :scale: 60 %
-    :alt: pattern visualization after standarziation
+    :alt: pattern visualization after standardization
 
 The command sequence is now simpler and note that the most byproduct commands now apply to output nodes (3, 7).
 This reveals the graph structure of the resource state which we can inspect:
@@ -264,7 +264,7 @@ Z byproduct, node = 3, domain = [0, 1, 5]
 Z byproduct, node = 7, domain = [1, 5]
 
 
-Notice that all measurements with angle=0 (Pauli X measurements) dissapeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
+Notice that all measurements with angle=0 (Pauli X measurements) disappeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
 The additional Clifford commands, along with byproduct operations, can be dealt with by simply rotating the final readout measurements from the standard Z basis, so there is no downside in doing this preprocessing.
 
 As you can see below, the resource state has shrank significantly (factor of two reduction in the number of nodes), but again we know that they both serve as the quantum resource state for the same quantum computation task as defined above.
@@ -283,7 +283,7 @@ As we mention in :doc:`intro`, all Clifford gates translates into MBQC only cons
 Minimizing 'space' of a pattern
 +++++++++++++++++++++++++++++++
 
-The `space` of a pettern is the largest number of qubits that must be present in the graph state during the execution of the pattern.
+The `space` of a pattern is the largest number of qubits that must be present in the graph state during the execution of the pattern.
 For standard patterns, this is exactly the size of the resource graph state, since we prepare all ancilla qubits at the start of the computation.
 However, we do not always need to prepare all qubits at the start; in fact preparing all the adjacent (connected) qubits of the ones that you are about measure, is sufficient to run MBQC.
 We exploit this fact to minimize the `space` of the pattern, which is crucial for running statevector simulation of MBQC since they are typically limited by the available computer memory.
@@ -513,6 +513,6 @@ Now check the generated qasm file:
 References
 ----------
 
-[1] `V. Danos, E Kashefi and P. Panangaden, "The Measurement Calculus", Journal of the ACM 54, 2 (2007) <https://doi.org/10.48550/arXiv.0704.1263>`_
+.. [#Danos2007] `V. Danos, E Kashefi and P. Panangaden, "The Measurement Calculus", Journal of the ACM 54, 2 (2007) <https://doi.org/10.48550/arXiv.0704.1263>`_
 
 
