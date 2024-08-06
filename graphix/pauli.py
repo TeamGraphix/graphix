@@ -5,11 +5,17 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 from __future__ import annotations
 
 import enum
+from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import pydantic
 
 import graphix.clifford
+import graphix.ops
+
+if TYPE_CHECKING:
+    from graphix.states import BasicStates
 
 
 class IXYZ(enum.Enum):
@@ -108,6 +114,15 @@ class Axis(enum.Enum):
     Y = 1
     Z = 2
 
+    @property
+    def op(self) -> npt.NDArray:
+        if self == Axis.X:
+            return graphix.ops.Ops.x
+        elif self == Axis.Y:
+            return graphix.ops.Ops.y
+        elif self == Axis.Z:
+            return graphix.ops.Ops.z
+
 
 class Plane(enum.Enum):
     XY = 0
@@ -116,6 +131,7 @@ class Plane(enum.Enum):
 
     @property
     def axes(self) -> list[Axis]:
+        """Return the pair of axes that carry the plane."""
         # match self:
         #     case Plane.XY:
         #         return [Axis.X, Axis.Y]
@@ -131,7 +147,18 @@ class Plane(enum.Enum):
             return [Axis.X, Axis.Z]
 
     @property
+    def orth(self) -> Axis:
+        """Return the axis orthogonal to the plane."""
+        if self == Plane.XY:
+            return Axis.Z
+        elif self == Plane.YZ:
+            return Axis.X
+        elif self == Plane.XZ:
+            return Axis.Y
+
+    @property
     def cos(self) -> Axis:
+        """Return the axis of the plane that conventionally carries the cos."""
         # match self:
         #     case Plane.XY:
         #         return Axis.X
@@ -148,6 +175,7 @@ class Plane(enum.Enum):
 
     @property
     def sin(self) -> Axis:
+        """Return the axis of the plane that conventionally carries the sin."""
         # match self:
         #     case Plane.XY:
         #         return Axis.Y
@@ -163,6 +191,8 @@ class Plane(enum.Enum):
             return Axis.X  # former convention was Z
 
     def polar(self, angle: float) -> tuple[float, float, float]:
+        """Return the Cartesian coordinates of the point of module 1 at the
+        given angle, following the conventional orientation for cos and sin."""
         result = [0, 0, 0]
         result[self.cos.value] = np.cos(angle)
         result[self.sin.value] = np.sin(angle)
@@ -170,6 +200,7 @@ class Plane(enum.Enum):
 
     @staticmethod
     def from_axes(a: Axis, b: Axis) -> Plane:
+        """Return the plane carried by the given axes."""
         if b.value < a.value:
             a, b = b, a
         # match a, b:
@@ -213,11 +244,11 @@ class Pauli:
         return Axis[self.__symbol.name]
 
     @property
-    def symbol(self):
+    def symbol(self) -> IXYZ:
         return self.__symbol
 
     @property
-    def unit(self):
+    def unit(self) -> ComplexUnit:
         return self.__unit
 
     @property
@@ -227,7 +258,20 @@ class Pauli:
         """
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
-    def __repr__(self):
+    def get_eigenstate(self, eigenvalue=0) -> BasicStates:
+        from graphix.states import BasicStates
+
+        if self.symbol == IXYZ.X:
+            return BasicStates.PLUS if eigenvalue == 0 else BasicStates.MINUS
+        elif self.symbol == IXYZ.Y:
+            return BasicStates.PLUS_I if eigenvalue == 0 else BasicStates.MINUS_I
+        elif self.symbol == IXYZ.Z:
+            return BasicStates.ZERO if eigenvalue == 0 else BasicStates.ONE
+        # Any state is eigenstate of the identity
+        elif self.symbol == IXYZ.I:
+            return BasicStates.PLUS
+
+    def __repr__(self) -> str:
         return self.__unit.prefix(self.__symbol.name)
 
     def __matmul__(self, other):
@@ -250,10 +294,12 @@ class Pauli:
             return get(symbol, unit * self.__unit * other.__unit)
         return NotImplemented
 
-    def __rmul__(self, other):
-        return get(self.__symbol, other * self.__unit)
+    def __rmul__(self, other) -> Pauli:
+        if isinstance(other, ComplexUnit):
+            return get(self.__symbol, other * self.__unit)
+        return NotImplemented
 
-    def __neg__(self):
+    def __neg__(self) -> Pauli:
         return get(self.__symbol, -self.__unit)
 
 

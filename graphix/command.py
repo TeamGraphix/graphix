@@ -11,9 +11,9 @@ from pydantic import BaseModel
 
 import graphix.clifford
 from graphix.pauli import Plane
+from graphix.states import BasicStates, State
 
-if TYPE_CHECKING:
-    from graphix.clifford import Clifford
+from graphix.clifford import Clifford
 
 Node = int
 
@@ -44,15 +44,19 @@ class N(Command):
 
     kind: CommandKind = CommandKind.N
     node: Node
+    state: State = BasicStates.PLUS
 
 
-class M(Command):
+class BaseM(Command):
+    kind: CommandKind = CommandKind.M
+    node: Node
+
+
+class M(BaseM):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
 
-    kind: CommandKind = CommandKind.M
-    node: Node
     plane: Plane = Plane.XY
     angle: float = 0.0
     s_domain: set[Node] = set()
@@ -98,7 +102,7 @@ class C(Command):
 
     kind: CommandKind = CommandKind.C
     node: Node
-    cliff_index: int
+    clifford: Clifford
 
 
 class Correction(Command):

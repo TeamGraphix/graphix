@@ -15,11 +15,13 @@ import graphix.clifford
 import graphix.pauli
 from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
 from graphix.pauli import Plane
 from graphix.simulator import PatternSimulator
+from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 
@@ -76,11 +78,11 @@ class Pattern:
         self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
-        self.__seq: list[command.Command] = []
+        self.__seq: list[Command] = []
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
 
-    def add(self, cmd: command.Command):
+    def add(self, cmd: Command):
         """add command to the end of the pattern.
         an MBQC command is specified by a list of [type, node, attr], where
 
@@ -110,16 +112,16 @@ class Pattern:
         cmd : list
             MBQC command.
         """
-        if cmd.kind == command.CommandKind.N:
+        if cmd.kind == CommandKind.N:
             if cmd.node in self.__output_nodes:
                 raise NodeAlreadyPrepared(cmd.node)
             self.__Nnode += 1
             self.__output_nodes.append(cmd.node)
-        elif cmd.kind == command.CommandKind.M:
+        elif cmd.kind == CommandKind.M:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: list[command.Command]):
+    def extend(self, cmds: list[Command]):
         """Add a list of commands.
 
         :param cmds: list of commands
@@ -133,7 +135,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: list[command.Command], input_nodes=None):
+    def replace(self, cmds: list[Command], input_nodes=None):
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -289,16 +291,16 @@ class Pattern:
         morder = []
         for cmd in self.__seq:
             kind = cmd.kind
-            if kind == command.CommandKind.N:
+            if kind == CommandKind.N:
                 node_prop[cmd.node] = fresh_node()
-            elif kind == command.CommandKind.E:
+            elif kind == CommandKind.E:
                 node_prop[cmd.nodes[1]]["seq"].append(cmd.nodes[0])
                 node_prop[cmd.nodes[0]]["seq"].append(cmd.nodes[1])
             elif kind == command.CommandKind.M:
                 node_prop[cmd.node]["Mprop"] = [cmd.plane, cmd.angle, cmd.s_domain, cmd.t_domain]
                 node_prop[cmd.node]["seq"].append(-1)
                 morder.append(cmd.node)
-            elif kind == command.CommandKind.X:
+            elif kind == CommandKind.X:
                 if standardized:
                     node_prop[cmd.node]["Xsignal"] ^= cmd.domain
                     node_prop[cmd.node]["Xsignals"] += [cmd.domain]
@@ -308,10 +310,10 @@ class Pattern:
             elif kind == command.CommandKind.Z:
                 node_prop[cmd.node]["Zsignal"] ^= cmd.domain
                 node_prop[cmd.node]["seq"].append(-3)
-            elif kind == command.CommandKind.C:
+            elif kind == CommandKind.C:
                 node_prop[cmd.node]["vop"] = cmd.cliff_index
                 node_prop[cmd.node]["seq"].append(-4)
-            elif kind == command.CommandKind.S:
+            elif kind == CommandKind.S:
                 raise NotImplementedError()
             else:
                 raise ValueError(f"command {cmd} is invalid!")
@@ -359,13 +361,13 @@ class Pattern:
         it = iter(self)
         try:
             kind = next(it).kind
-            while kind == command.CommandKind.N:
+            while kind == CommandKind.N:
                 kind = next(it).kind
-            while kind == command.CommandKind.E:
+            while kind == CommandKind.E:
                 kind = next(it).kind
-            while kind == command.CommandKind.M:
+            while kind == CommandKind.M:
                 kind = next(it).kind
-            xzc = {command.CommandKind.X, command.CommandKind.Z, command.CommandKind.C}
+            xzc = {CommandKind.X, CommandKind.Z, CommandKind.C}
             while kind in xzc:
                 kind = next(it).kind
             return False
@@ -406,17 +408,17 @@ class Pattern:
             while target is not None:
                 if target == len(self.__seq) - 1:
                     self.__seq.pop(target)
-                    target = self._find_op_to_be_moved(command.CommandKind.S, rev=True)
+                    target = self._find_op_to_be_moved(CommandKind.S, rev=True)
                     continue
                 cmd = self.__seq[target + 1]
                 kind = cmd.kind
-                if kind == command.CommandKind.X:
+                if kind == CommandKind.X:
                     self._commute_XS(target)
-                elif kind == command.CommandKind.Z:
+                elif kind == CommandKind.Z:
                     self._commute_ZS(target)
-                elif kind == command.CommandKind.M:
+                elif kind == CommandKind.M:
                     self._commute_MS(target)
-                elif kind == command.CommandKind.S:
+                elif kind == CommandKind.S:
                     self._commute_SS(target)
                 else:
                     self._commute_with_following(target)
@@ -425,12 +427,12 @@ class Pattern:
             raise ValueError("Invalid method")
         return swapped_dict
 
-    def _find_op_to_be_moved(self, op: command.CommandKind, rev=False, skipnum=0):
+    def _find_op_to_be_moved(self, op: CommandKind, rev=False, skipnum=0):
         """Internal method for pattern modification.
 
         Parameters
         ----------
-        op : command.CommandKind, N, E, M, X, Z, S
+        op : CommandKind, N, E, M, X, Z, S
             command types to be searched
         rev : bool
             search from the end (true) or start (false) of seq
@@ -460,8 +462,8 @@ class Pattern:
             target command index. this must point to
             a X command followed by E command
         """
-        assert self.__seq[target].kind == command.CommandKind.X
-        assert self.__seq[target + 1].kind == command.CommandKind.E
+        assert self.__seq[target].kind == CommandKind.X
+        assert self.__seq[target + 1].kind == CommandKind.E
         X = self.__seq[target]
         E = self.__seq[target + 1]
         if E.nodes[0] == X.node:
@@ -489,8 +491,8 @@ class Pattern:
             target command index. this must point to
             a X command followed by M command
         """
-        assert self.__seq[target].kind == command.CommandKind.X
-        assert self.__seq[target + 1].kind == command.CommandKind.M
+        assert self.__seq[target].kind == CommandKind.X
+        assert self.__seq[target + 1].kind == CommandKind.M
         X = self.__seq[target]
         M = self.__seq[target + 1]
         if X.node == M.node:
@@ -510,8 +512,8 @@ class Pattern:
             target command index. this must point to
             a Z command followed by M command
         """
-        assert self.__seq[target].kind == command.CommandKind.Z
-        assert self.__seq[target + 1].kind == command.CommandKind.M
+        assert self.__seq[target].kind == CommandKind.Z
+        assert self.__seq[target + 1].kind == CommandKind.M
         Z = self.__seq[target]
         M = self.__seq[target + 1]
         if Z.node == M.node:
@@ -531,8 +533,8 @@ class Pattern:
             target command index. this must point to
             a S command followed by X command
         """
-        assert self.__seq[target].kind == command.CommandKind.S
-        assert self.__seq[target + 1].kind == command.CommandKind.X
+        assert self.__seq[target].kind == CommandKind.S
+        assert self.__seq[target + 1].kind == CommandKind.X
         S = self.__seq[target]
         X = self.__seq[target + 1]
         if S.node in X.domain:
@@ -548,8 +550,8 @@ class Pattern:
             target command index. this must point to
             a S command followed by Z command
         """
-        assert self.__seq[target].kind == command.CommandKind.S
-        assert self.__seq[target + 1].kind == command.CommandKind.Z
+        assert self.__seq[target].kind == CommandKind.S
+        assert self.__seq[target + 1].kind == CommandKind.Z
         S = self.__seq[target]
         Z = self.__seq[target + 1]
         if S.node in Z.domain:
@@ -565,8 +567,8 @@ class Pattern:
             target command index. this must point to
             a S command followed by M command
         """
-        assert self.__seq[target].kind == command.CommandKind.S
-        assert self.__seq[target + 1].kind == command.CommandKind.M
+        assert self.__seq[target].kind == CommandKind.S
+        assert self.__seq[target + 1].kind == CommandKind.M
         S = self.__seq[target]
         M = self.__seq[target + 1]
         if S.node in M.s_domain:
@@ -583,8 +585,8 @@ class Pattern:
             target command index. this must point to
             a S command followed by S command
         """
-        assert self.__seq[target].kind == command.CommandKind.S
-        assert self.__seq[target + 1].kind == command.CommandKind.S
+        assert self.__seq[target].kind == CommandKind.S
+        assert self.__seq[target + 1].kind == CommandKind.S
         S1 = self.__seq[target]
         S2 = self.__seq[target + 1]
         if S1.node in S2.domain:
@@ -627,7 +629,7 @@ class Pattern:
         new_seq = []
         Nlist = []
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N:
+            if cmd.kind == CommandKind.N:
                 Nlist.append(cmd)
             else:
                 new_seq.append(cmd)
@@ -642,17 +644,17 @@ class Pattern:
         index = len(self.__seq) - 1
         X_limit = len(self.__seq) - 1
         while index > 0:
-            if self.__seq[index].kind == command.CommandKind.X:
+            if self.__seq[index].kind == CommandKind.X:
                 index_X = index
                 while index_X < X_limit:
                     cmd = self.__seq[index_X + 1]
                     kind = cmd.kind
-                    if kind == command.CommandKind.E:
+                    if kind == CommandKind.E:
                         move = self._commute_EX(index_X)
                         if move:
                             X_limit += 1  # addition of extra Z means target must be increased
                             index_X += 1
-                    elif kind == command.CommandKind.M:
+                    elif kind == CommandKind.M:
                         search = self._commute_MX(index_X)
                         if search:
                             X_limit -= 1  # XM commutation rule removes X command
@@ -667,11 +669,11 @@ class Pattern:
         index = X_limit
         Z_limit = X_limit
         while index > 0:
-            if self.__seq[index].kind == command.CommandKind.Z:
+            if self.__seq[index].kind == CommandKind.Z:
                 index_Z = index
                 while index_Z < Z_limit:
                     cmd = self.__seq[index_Z + 1]
-                    if cmd.kind == command.CommandKind.M:
+                    if cmd.kind == CommandKind.M:
                         search = self._commute_MZ(index_Z)
                         if search:
                             Z_limit -= 1  # ZM commutation rule removes Z command
@@ -686,14 +688,13 @@ class Pattern:
         before all N commands. assumes that _move_N_to_left() method was called.
         """
         moved_E = 0
-        target = self._find_op_to_be_moved(command.CommandKind.E, skipnum=moved_E)
+        target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_E)
         while target is not None:
             if (target == 0) or (
-                self.__seq[target - 1].kind == command.CommandKind.N
-                or self.__seq[target - 1].kind == command.CommandKind.E
+                self.__seq[target - 1].kind == CommandKind.N or self.__seq[target - 1].kind == CommandKind.E
             ):
                 moved_E += 1
-                target = self._find_op_to_be_moved(command.CommandKind.E, skipnum=moved_E)
+                target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_E)
                 continue
             self._commute_with_preceding(target)
             target -= 1
@@ -706,7 +707,7 @@ class Pattern:
         signal_dict = {}
         pos = 0
         while pos < len(self.__seq):
-            if self.__seq[pos].kind == command.CommandKind.M:
+            if self.__seq[pos].kind == CommandKind.M:
                 cmd: command.M = self.__seq[pos]
                 extracted_signal = extract_signal(cmd.plane, cmd.s_domain, cmd.t_domain)
                 if extracted_signal.signal:
@@ -775,7 +776,7 @@ class Pattern:
         dependency = self.update_dependency(measured, dependency)
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N:
+            if cmd.kind == CommandKind.N:
                 if cmd.node not in self.output_nodes:
                     not_measured = not_measured | {cmd.node}
         depth = 0
@@ -933,7 +934,7 @@ class Pattern:
         for i in meas_order:
             target = 0
             while True:
-                if self.__seq[target].kind == command.CommandKind.M and (self.__seq[target].node == i):
+                if self.__seq[target].kind == CommandKind.M and (self.__seq[target].node == i):
                     meas_cmds.append(self.__seq[target])
                     break
                 target += 1
@@ -951,7 +952,7 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_cmds = []
-        ind = self._find_op_to_be_moved(command.CommandKind.M)
+        ind = self._find_op_to_be_moved(CommandKind.M)
         if ind is None:
             return []
         while True:
@@ -959,7 +960,7 @@ class Pattern:
                 cmd = self.__seq[ind]
             except IndexError:
                 break
-            if cmd.kind != command.CommandKind.M:
+            if cmd.kind != CommandKind.M:
                 break
             meas_cmds.append(cmd)
             ind += 1
@@ -989,7 +990,7 @@ class Pattern:
         """
         angles = {}
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.M:
+            if cmd.kind == CommandKind.M:
                 angles[cmd.node] = cmd.angle
         return angles
 
@@ -1024,10 +1025,10 @@ class Pattern:
         # self.input_nodes is equivalent to list(self.__input_nodes)
         node_list, edge_list = self.input_nodes, []
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N:
+            if cmd.kind == CommandKind.N:
                 assert cmd.node not in node_list
                 node_list.append(cmd.node)
-            elif cmd.kind == command.CommandKind.E:
+            elif cmd.kind == CommandKind.E:
                 edge_list.append(cmd.nodes)
         return node_list, edge_list
 
@@ -1102,10 +1103,10 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         node_list = []
-        ind = self._find_op_to_be_moved(command.CommandKind.E)
+        ind = self._find_op_to_be_moved(CommandKind.E)
         if ind is not None:  # end -> 'node' is isolated
             cmd = self.__seq[ind]
-            while cmd.kind == command.CommandKind.E:
+            while cmd.kind == CommandKind.E:
                 if cmd.nodes[0] == node:
                     if cmd.nodes[1] not in prepared:
                         node_list.append(cmd.nodes[1])
@@ -1197,13 +1198,13 @@ class Pattern:
 
         # add isolated nodes
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N and cmd.node not in prepared:
+            if cmd.kind == CommandKind.N and cmd.node not in prepared:
                 new.append(command.N(node=cmd.node))
-            elif cmd.kind == command.CommandKind.E and all(node in self.output_nodes for node in cmd.nodes):
+            elif cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes):
                 new.append(cmd)
-            elif cmd.kind == command.CommandKind.C:  # Add Clifford nodes
+            elif cmd.kind == CommandKind.C:  # Add Clifford nodes
                 new.append(cmd)
-            elif cmd.kind in {command.CommandKind.Z, command.CommandKind.X}:  # Add corrections
+            elif cmd.kind in {CommandKind.Z, CommandKind.X}:  # Add corrections
                 c_list.append(cmd)
 
         # c_list = self.correction_commands()
@@ -1223,9 +1224,9 @@ class Pattern:
         nodes = len(self.input_nodes)
         max_nodes = nodes
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N:
+            if cmd.kind == CommandKind.N:
                 nodes += 1
-            elif cmd.kind == command.CommandKind.M:
+            elif cmd.kind == CommandKind.M:
                 nodes -= 1
             if nodes > max_nodes:
                 max_nodes = nodes
@@ -1243,15 +1244,15 @@ class Pattern:
         nodes = 0
         N_list = []
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.N:
+            if cmd.kind == CommandKind.N:
                 nodes += 1
                 N_list.append(nodes)
-            elif cmd.kind == command.CommandKind.M:
+            elif cmd.kind == CommandKind.M:
                 nodes -= 1
                 N_list.append(nodes)
         return N_list
 
-    def simulate_pattern(self, backend="statevector", **kwargs):
+    def simulate_pattern(self, backend="statevector", input_state=BasicStates.PLUS, **kwargs):
         """Simulate the execution of the pattern by using
         :class:`graphix.simulator.PatternSimulator`.
 
@@ -1271,8 +1272,8 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        state = sim.run()
-        return state
+        sim.run(input_state)
+        return sim.backend.state
 
     def run_pattern(self, backend, **kwargs):
         """run the pattern on cloud-based quantum devices and their simulators.
@@ -1878,7 +1879,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     else:
         new_inputs = pattern.input_nodes
     for cmd in to_measure:
-        pattern_cmd: command.Command = cmd[0]
+        pattern_cmd: Command = cmd[0]
         measurement_basis: str = cmd[1]
         # extract signals for adaptive angle.
         s_signal = 0
@@ -1940,7 +1941,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         for cmd in pattern
         if cmd.kind == command.CommandKind.M and cmd.node in graph_state.nodes
     )
-    new_seq.extend(command.C(node=index, cliff_index=vops[index]) for index in pattern.output_nodes if vops[index] != 0)
+    new_seq.extend(command.C(node=index, clifford= graphix.clifford.get(vops[index])) for index in pattern.output_nodes if vops[index] != 0)
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (command.CommandKind.X, command.CommandKind.Z))
 
     if copy:
@@ -2003,7 +2004,7 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     return pauli_node, non_pauli_node
 
 
-def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
+def is_pauli_measurement(cmd: Command, ignore_vop=True):
     """Determines whether or not the measurement command is a Pauli measurement,
     and if so returns the measurement basis.
 
@@ -2023,7 +2024,7 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
         str, one of '+X', '-X', '+Y', '-Y', '+Z', '-Z'
         if the measurement is not in Pauli basis, returns None.
     """
-    assert cmd.kind == command.CommandKind.M
+    assert cmd.kind == CommandKind.M
     basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
     # first item: 0, 1 or 2. correspond to choice of X, Y and Z
     # second item: 0 or 1. correspond to sign (+, -)
