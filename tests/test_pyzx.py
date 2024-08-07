@@ -9,10 +9,12 @@ import pytest
 from graphix.opengraph import Measurement, OpenGraph
 from graphix.pauli import Plane
 
-if sys.modules.get("pyzx"):
+try:
     import pyzx as zx
 
     from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
+except ModuleNotFoundError:
+    pass
 
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")

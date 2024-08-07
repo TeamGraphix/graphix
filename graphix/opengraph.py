@@ -70,27 +70,10 @@ class OpenGraph:
     >>> og = OpenGraph(inside_graph, measurements, inputs, outputs)
     """
 
-    # All the measurement, inputs and outputs information is stored in this
-    # graph. This is to simplify certain operations such as composition of
-    # graphs and checking equality.
-    # These attributes shouldn't be accessed directly by the user, instead,
-    # they should use the inputs(), outputs(), and measurements() properties.
-    #
-    # The following attributes are stored in the nodes:
-    #
-    # Non-output nodes:
-    # * "measurement" - The Measurement object for the node
-    #
-    # Input nodes:
-    # * "is_input"    - The value is always True
-    # * "input_order" - A zero-indexed integer used to preserve the ordering of
-    #                   the inputs
-    #
-    # Output nodes:
-    # * "is_output"    - The value is always True
-    # * "output_order" - A zero-indexed integer used to preserve the ordering of
-    #                    the outputs
     _inside: nx.Graph
+    _inputs: list[int]
+    _outputs: list[int]
+    _meas: dict[int, Measurement]
 
     def __eq__(self, other):
         """Checks the two open graphs are equal
@@ -98,6 +81,9 @@ class OpenGraph:
         This doesn't check they are equal up to an isomorphism"""
 
         if not nx.utils.graphs_equal(self._inside, other._inside):
+            return False
+
+        if self.inputs != other.inputs or self.outputs != other.outputs:
             return False
 
         if set(self.measurements.keys()) != set(other.measurements.keys()):
@@ -122,87 +108,25 @@ class OpenGraph:
         if any(node in outputs for node in measurements):
             raise ValueError("output node can not be measured")
 
-        for node_id, measurement in measurements.items():
-            self._inside.nodes[node_id]["measurement"] = measurement
-
-        for i, node_id in enumerate(inputs):
-            self._inside.nodes[node_id]["is_input"] = True
-            self._inside.nodes[node_id]["input_order"] = i
-
-        for i, node_id in enumerate(outputs):
-            self._inside.nodes[node_id]["is_output"] = True
-            self._inside.nodes[node_id]["output_order"] = i
+        self._inputs = inputs
+        self._outputs = outputs
+        self._meas = measurements
 
     @property
     def inputs(self) -> list[int]:
-        """Returns the inputs of the graph sorted by their position.
-
-        Example
-        ------
-        >>> import networkx as nx
-        >>> from graphix.opengraph import OpenGraph, Measurement
-        >>>
-        >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
-        >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
-        >>> inputs = [0]
-        >>> outputs = [2]
-        >>>
-        >>> og = OpenGraph(g, measurements, inputs, outputs)
-        >>> og.inputs == inputs
-        True
-        """
-        inputs = [i for i in self._inside.nodes(data=True) if "is_input" in i[1]]
-        sorted_inputs = sorted(inputs, key=lambda x: x[1]["input_order"])
-
-        # Returns only the input ids
-        return [i[0] for i in sorted_inputs]
+        """Returns the inputs of the graph sorted by their position."""
+        return self._inputs
 
     @property
     def outputs(self) -> list[int]:
-        """Returns the outputs of the graph sorted by their position.
-
-        Example
-        ------
-        >>> import networkx as nx
-        >>> from graphix.opengraph import OpenGraph, Measurement
-        >>>
-        >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
-        >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
-        >>> inputs = [0]
-        >>> outputs = [2]
-        >>>
-        >>> og = OpenGraph(g, measurements, inputs, outputs)
-        >>> og.outputs == outputs
-        True
-        """
-        outputs = [i for i in self._inside.nodes(data=True) if "is_output" in i[1]]
-        sorted_outputs = sorted(outputs, key=lambda x: x[1]["output_order"])
-        output_node_ids = [i[0] for i in sorted_outputs]
-        return output_node_ids
+        """Returns the outputs of the graph sorted by their position."""
+        return self._outputs
 
     @property
     def measurements(self) -> dict[int, Measurement]:
         """Returns a dictionary which maps each node to its measurement. Output
-        nodes are not measured and hence are not included in the dictionary.
-
-        Example
-        ------
-        >>> import networkx as nx
-        >>> from graphix.opengraph import OpenGraph, Measurement
-        >>>
-        >>> g = nx.Graph([(0, 1), (1, 2), (2, 0)])
-        >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
-        >>> inputs = [0]
-        >>> outputs = [2]
-        >>>
-        >>> og = OpenGraph(g, measurements, inputs, outputs)
-        >>> og.measurements == {
-        ...     0: Measurement(0.0, Plane.XY),
-        ...     1: Measurement(0.5, Plane.XY),
-        ... }
-        True
-        """
-        return {n[0]: n[1]["measurement"] for n in self._inside.nodes(data=True) if "measurement" in n[1]}
+        nodes are not measured and hence are not included in the dictionary."""
+        return self._meas
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:
