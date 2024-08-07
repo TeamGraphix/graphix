@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import networkx as nx
-import math
 
 from graphix.generator import generate_from_graph
-from graphix.pauli import Plane
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
+    from graphix.pauli import Plane
 
 
 @dataclass
@@ -44,10 +44,7 @@ class Measurement:
         if not isinstance(other, Measurement):
             return NotImplemented
 
-        return (
-            math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
-            and self.plane == other.plane
-        )
+        return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
 
 
 class OpenGraph:
@@ -100,12 +97,13 @@ class OpenGraph:
 
         This doesn't check they are equal up to an isomorphism"""
 
-        return (
-            self.inputs == other.inputs
-            and self.outputs == other.outputs
-            and nx.utils.graphs_equal(self._inside, other._inside)
-            and self.measurements == other.measurements
-        )
+        if not nx.utils.graphs_equal(self._inside, other._inside):
+            return False
+
+        if set(self.measurements.keys()) != set(other.measurements.keys()):
+            return False
+
+        return all(m.isclose(other.measurements[node]) for node, m in self.measurements.items())
 
     def __init__(
         self,
@@ -204,11 +202,7 @@ class OpenGraph:
         ... }
         True
         """
-        return {
-            n[0]: n[1]["measurement"]
-            for n in self._inside.nodes(data=True)
-            if "measurement" in n[1]
-        }
+        return {n[0]: n[1]["measurement"] for n in self._inside.nodes(data=True) if "measurement" in n[1]}
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:
@@ -224,10 +218,7 @@ class OpenGraph:
 
         meas_planes = pattern.get_meas_plane()
         meas_angles = pattern.get_angles()
-        meas = {
-            node: Measurement(meas_angles[node], meas_planes[node])
-            for node in meas_angles
-        }
+        meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
 
         return cls(g, meas, inputs, outputs)
 
