@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 
@@ -15,8 +14,7 @@ if TYPE_CHECKING:
     from graphix.pauli import Plane
 
 
-@dataclass
-class Measurement:
+class Measurement(NamedTuple):
     """An MBQC measurement.
 
     :param angle: the angle of the measurement. Should be between [0, 2)
@@ -41,9 +39,6 @@ class Measurement:
         >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         False
         """
-        if not isinstance(other, Measurement):
-            return NotImplemented
-
         return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
 
 
@@ -70,12 +65,12 @@ class OpenGraph:
     >>> og = OpenGraph(inside_graph, measurements, inputs, outputs)
     """
 
-    _inside: nx.Graph
-    _inputs: list[int]
-    _outputs: list[int]
-    _meas: dict[int, Measurement]
+    __inside: nx.Graph
+    __inputs: list[int]
+    __outputs: list[int]
+    __meas: dict[int, Measurement]
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Checks the two open graphs are equal
 
         This doesn't check they are equal up to an isomorphism"""
@@ -97,7 +92,7 @@ class OpenGraph:
         measurements: dict[int, Measurement],
         inputs: list[int],
         outputs: list[int],
-    ):
+    ) -> None:
         """Constructs a new OpenGraph instance
 
         The inputs() and outputs() methods will preserve the order that was
