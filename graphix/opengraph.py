@@ -10,6 +10,8 @@ import networkx as nx
 from graphix.generator import generate_from_graph
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from graphix.pattern import Pattern
     from graphix.pauli import Plane
 
@@ -68,7 +70,7 @@ class OpenGraph:
     __inside: nx.Graph
     __inputs: list[int]
     __outputs: list[int]
-    __meas: dict[int, Measurement]
+    __meas: Mapping[int, Measurement]
 
     def __eq__(self, other) -> bool:
         """Checks the two open graphs are equal
@@ -89,7 +91,7 @@ class OpenGraph:
     def __init__(
         self,
         inside: nx.Graph,
-        measurements: dict[int, Measurement],
+        measurements: Mapping[int, Measurement],
         inputs: list[int],
         outputs: list[int],
     ) -> None:
@@ -118,7 +120,7 @@ class OpenGraph:
         return self._outputs
 
     @property
-    def measurements(self) -> dict[int, Measurement]:
+    def measurements(self) -> Mapping[int, Measurement]:
         """Returns a dictionary which maps each node to its measurement. Output
         nodes are not measured and hence are not included in the dictionary."""
         return self._meas
