@@ -23,7 +23,7 @@ class TestPauli:
         ),
     )
     def test_unit_mul(self, u: ComplexUnit, p: Pauli) -> None:
-        assert np.allclose((u * p).matrix, u.complex * p.matrix)
+        assert np.allclose((u * p).matrix, complex(u) * p.matrix)
 
     @pytest.mark.parametrize(
         ("a", "b"),
