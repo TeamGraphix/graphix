@@ -4,6 +4,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -15,6 +16,7 @@ import graphix.clifford
 import graphix.pauli
 from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.command import CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
@@ -325,7 +327,7 @@ class Pattern:
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 
-    def standardize(self, method="local"):
+    def standardize(self, method="direct"):
         """Executes standardization of the pattern.
         'standard' pattern is one where commands are sorted in the order of
         'N', 'E', 'M' and then byproduct commands ('X' and 'Z').
@@ -337,6 +339,15 @@ class Pattern:
             'local' standardization is executed on LocalPattern class. In all cases, local pattern standardization is significantly faster than conventional one.
             defaults to 'local'
         """
+        if method == "direct":
+            self.standardize_direct()
+            return
+        if method not in {"local", "global"}:
+            raise ValueError("Invalid method")
+        warnings.warn(
+            f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1,
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
@@ -345,8 +356,40 @@ class Pattern:
             self._move_N_to_left()
             self._move_byproduct_to_right()
             self._move_E_after_N()
-        else:
-            raise ValueError("Invalid method")
+
+    def standardize_direct(self) -> None:
+        n_list = []
+        e_list = []
+        m_list = []
+        z_dict = {}
+        x_dict = {}
+
+        def add_correction_command(cmd_dict: dict[command.Node, command.Command], cmd: command.Command) -> None:
+            previous_cmd = cmd_dict.get(cmd.node)
+            if previous_cmd is None:
+                cmd_dict[cmd.node] = cmd
+            else:
+                previous_cmd.domain ^= cmd.domain
+
+        for cmd in self:
+            if cmd.kind == CommandKind.N:
+                n_list.append(cmd)
+            elif cmd.kind == CommandKind.E:
+                for side in (0, 1):
+                    if x_cmd := x_dict.get(cmd.nodes[side], None):
+                        add_correction_command(z_dict, command.Z(node=cmd.nodes[1 - side], domain=x_cmd.domain))
+                e_list.append(cmd)
+            elif cmd.kind == CommandKind.M:
+                if z_cmd := z_dict.pop(cmd.node, None):
+                    cmd.t_domain ^= z_cmd.domain
+                if x_cmd := x_dict.pop(cmd.node, None):
+                    cmd.s_domain ^= x_cmd.domain
+                m_list.append(cmd)
+            elif cmd.kind == CommandKind.Z:
+                add_correction_command(z_dict, cmd)
+            elif cmd.kind == CommandKind.X:
+                add_correction_command(x_dict, cmd)
+        self.__seq = [*n_list, *e_list, *m_list, *z_dict.values(), *x_dict.values()]
 
     def is_standard(self):
         """determines whether the command sequence is standard
@@ -372,7 +415,7 @@ class Pattern:
         except StopIteration:
             return True
 
-    def shift_signals(self, method="local") -> dict[int, list[int]]:
+    def shift_signals(self, method="direct") -> dict[int, list[int]]:
         """Performs signal shifting procedure
         Extract the t-dependence of the measurement into 'S' commands
         and commute them to the end of the command sequence where it can be removed.
@@ -396,6 +439,14 @@ class Pattern:
             for each node, the signal that have been shifted if the outcome is
             swapped by the shift.
         """
+        if method == "direct":
+            return self.shift_signals_direct()
+        if method not in {"local", "global"}:
+            raise ValueError("Invalid method")
+        warnings.warn(
+            f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1,
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             swapped_dict = localpattern.shift_signals()
@@ -421,9 +472,38 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
-        else:
-            raise ValueError("Invalid method")
         return swapped_dict
+
+    def shift_signals_direct(self) -> dict[int, set[int]]:
+        signal_dict = {}
+
+        def expand_domain(domain: set[command.Node]) -> None:
+            for node in domain & signal_dict.keys():
+                domain ^= signal_dict[node]
+
+        for cmd in self:
+            if cmd.kind == CommandKind.M:
+                s_domain = cmd.s_domain
+                t_domain = cmd.t_domain
+                expand_domain(s_domain)
+                expand_domain(t_domain)
+                plane = cmd.plane
+                if plane == Plane.XY:
+                    if t_domain:
+                        cmd.t_domain = set()
+                        signal_dict[cmd.node] = t_domain
+                elif plane == Plane.XZ:
+                    if s_domain:
+                        cmd.s_domain = set()
+                        t_domain ^= s_domain
+                        signal_dict[cmd.node] = s_domain
+                elif plane == Plane.YZ:
+                    if s_domain:
+                        cmd.s_domain = set()
+                        signal_dict[cmd.node] = s_domain
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
+                expand_domain(cmd.domain)
+        return signal_dict
 
     def _find_op_to_be_moved(self, op: command.CommandKind, rev=False, skipnum=0):
         """Internal method for pattern modification.
@@ -1126,14 +1206,18 @@ class Pattern:
             'local' standardization is executed on LocalPattern class.
             defaults to 'local'
         """
+        warnings.warn(
+            "`Pattern.standardize_and_shift_signals` is deprecated. Please use `Pattern.standardize` and `Pattern.shift_signals` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1,
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
             localpattern.shift_signals()
             self.__seq = localpattern.get_pattern().__seq
-        elif method == "global":
-            self.standardize()
-            self.shift_signals()
+        elif method == "global" or method == "direct":
+            self.standardize(method)
+            self.shift_signals(method)
         else:
             raise ValueError("Invalid method")
 
