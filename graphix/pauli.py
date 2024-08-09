@@ -145,13 +145,13 @@ class ComplexUnit:
         return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__is_imag]
 
 
-COMPLEX_UNITS = [[ComplexUnit(sign, is_imag) for is_imag in (False, True)] for sign in (Sign.Plus, Sign.Minus)]
+COMPLEX_UNITS = tuple(tuple(ComplexUnit(sign, is_imag) for is_imag in (False, True)) for sign in (Sign.Plus, Sign.Minus))
 
 
 UNIT = COMPLEX_UNITS[False][False]
 
 
-UNITS = [UNIT, -UNIT, 1j * UNIT, -1j * UNIT]
+UNITS = (UNIT, -UNIT, 1j * UNIT, -1j * UNIT)
 
 
 class Axis(enum.Enum):
@@ -308,13 +308,13 @@ class Pauli:
         return get(self.__symbol, -self.__unit)
 
 
-TABLE = [
-    [[Pauli(symbol, COMPLEX_UNITS[sign][is_imag]) for is_imag in (False, True)] for sign in (False, True)]
+TABLE = tuple(
+    tuple(tuple(Pauli(symbol, COMPLEX_UNITS[sign][is_imag]) for is_imag in (False, True)) for sign in (False, True))
     for symbol in (IXYZ.I, IXYZ.X, IXYZ.Y, IXYZ.Z)
-]
+)
 
 
-LIST = [pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in im_list]
+LIST = tuple(pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in im_list)
 
 
 def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
