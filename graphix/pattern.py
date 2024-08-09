@@ -376,16 +376,13 @@ class Pattern:
                 n_list.append(cmd)
             elif cmd.kind == CommandKind.E:
                 for side in (0, 1):
-                    x_cmd = x_dict.get(cmd.nodes[side], None)
-                    if x_cmd is not None:
+                    if x_cmd := x_dict.get(cmd.nodes[side], None):
                         add_correction_command(z_dict, command.Z(node=cmd.nodes[1 - side], domain=x_cmd.domain))
                 e_list.append(cmd)
             elif cmd.kind == CommandKind.M:
-                z_cmd = z_dict.pop(cmd.node, None)
-                if z_cmd is not None:
+                if z_cmd := z_dict.pop(cmd.node, None):
                     cmd.t_domain ^= z_cmd.domain
-                x_cmd = x_dict.pop(cmd.node, None)
-                if x_cmd is not None:
+                if x_cmd := x_dict.pop(cmd.node, None):
                     cmd.s_domain ^= x_cmd.domain
                 m_list.append(cmd)
             elif cmd.kind == CommandKind.Z:
