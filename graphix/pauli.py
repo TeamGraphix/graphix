@@ -58,7 +58,7 @@ class Sign(enum.Enum):
             return self.value * other
         return NotImplemented
 
-    def __rmul__(self, other) -> Number | type(NotImplemented):
+    def __rmul__(self, other) -> Number:
         if isinstance(other, Number):
             return self.value * other
         return NotImplemented
