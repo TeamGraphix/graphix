@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import typing_extensions
@@ -14,13 +15,15 @@ import graphix.clifford
 import graphix.pauli
 from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
-from graphix.command import Pauli
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
 from graphix.pauli import Axis, Plane, Sign
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
+
+if TYPE_CHECKING:
+    from graphix.command import Pauli
 
 
 class NodeAlreadyPrepared(Exception):
