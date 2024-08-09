@@ -81,29 +81,29 @@ class ComplexUnit:
     with Python constants 1, -1, 1j, -1j, and can be negated.
     """
 
-    def __init__(self, sign: Sign, im: bool):
+    def __init__(self, sign: Sign, is_imag: bool):
         self.__sign = sign
-        self.__im = im
+        self.__is_imag = is_imag
 
     @property
     def sign(self):
         return self.__sign
 
     @property
-    def im(self) -> bool:
-        return self.__im
+    def is_imag(self) -> bool:
+        return self.__is_imag
 
     def __complex__(self) -> complex:
         """
         Return the unit as complex number
         """
         result: complex = complex(self.__sign)
-        if self.__im:
+        if self.__is_imag:
             result *= 1j
         return result
 
     def __str__(self) -> str:
-        if self.__im:
+        if self.__is_imag:
             result = "1j"
         else:
             result = "1"
@@ -116,7 +116,7 @@ class ComplexUnit:
         Prefix the given string by the complex unit as coefficient,
         1 leaving the string unchanged.
         """
-        if self.__im:
+        if self.__is_imag:
             result = "1j*" + s
         else:
             result = s
@@ -126,26 +126,26 @@ class ComplexUnit:
 
     def __mul__(self, other):
         if isinstance(other, ComplexUnit):
-            im = self.__im != other.__im
-            sign = self.__sign * other.__sign * Sign.minus_if(self.__im and other.__im)
-            return COMPLEX_UNITS[sign == Sign.Minus][im]
+            is_imag = self.__is_imag != other.__is_imag
+            sign = self.__sign * other.__sign * Sign.minus_if(self.__is_imag and other.__is_imag)
+            return COMPLEX_UNITS[sign == Sign.Minus][is_imag]
         return NotImplemented
 
     def __rmul__(self, other):
         if other == 1:
             return self
         elif other == -1:
-            return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__im]
+            return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__is_imag]
         elif other == 1j:
-            return COMPLEX_UNITS[self.__sign == Sign.plus_if(self.__im)][not self.__im]
+            return COMPLEX_UNITS[self.__sign == Sign.plus_if(self.__is_imag)][not self.__is_imag]
         elif other == -1j:
-            return COMPLEX_UNITS[self.__sign == Sign.minus_if(self.__im)][not self.__im]
+            return COMPLEX_UNITS[self.__sign == Sign.minus_if(self.__is_imag)][not self.__is_imag]
 
     def __neg__(self):
-        return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__im]
+        return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__is_imag]
 
 
-COMPLEX_UNITS = [[ComplexUnit(sign, im) for im in (False, True)] for sign in (Sign.Plus, Sign.Minus)]
+COMPLEX_UNITS = [[ComplexUnit(sign, is_imag) for is_imag in (False, True)] for sign in (Sign.Plus, Sign.Minus)]
 
 
 UNIT = COMPLEX_UNITS[False][False]
@@ -309,7 +309,7 @@ class Pauli:
 
 
 TABLE = [
-    [[Pauli(symbol, COMPLEX_UNITS[sign][im]) for im in (False, True)] for sign in (False, True)]
+    [[Pauli(symbol, COMPLEX_UNITS[sign][is_imag]) for is_imag in (False, True)] for sign in (False, True)]
     for symbol in (IXYZ.I, IXYZ.X, IXYZ.Y, IXYZ.Z)
 ]
 
@@ -319,7 +319,7 @@ LIST = [pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in
 
 def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
     """Return the Pauli gate with given symbol and unit."""
-    return TABLE[symbol.value + 1][unit.sign == Sign.Minus][unit.im]
+    return TABLE[symbol.value + 1][unit.sign == Sign.Minus][unit.is_imag]
 
 
 I = get(IXYZ.I, UNIT)
