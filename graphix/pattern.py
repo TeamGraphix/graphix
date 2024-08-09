@@ -358,11 +358,11 @@ class Pattern:
             self._move_E_after_N()
 
     def standardize_direct(self) -> None:
-        N_list = []
-        E_list = []
-        M_list = []
-        Z_dict = {}
-        X_dict = {}
+        n_list = []
+        e_list = []
+        m_list = []
+        z_dict = {}
+        x_dict = {}
 
         def add_correction_command(cmd_dict: dict[command.Node, command.Command], cmd: command.Command) -> None:
             previous_cmd = cmd_dict.get(cmd.node)
@@ -373,26 +373,26 @@ class Pattern:
 
         for cmd in self:
             if cmd.kind == CommandKind.N:
-                N_list.append(cmd)
+                n_list.append(cmd)
             elif cmd.kind == CommandKind.E:
                 for side in (0, 1):
-                    x_cmd = X_dict.get(cmd.nodes[side], None)
+                    x_cmd = x_dict.get(cmd.nodes[side], None)
                     if x_cmd is not None:
-                        add_correction_command(Z_dict, command.Z(node=cmd.nodes[1 - side], domain=x_cmd.domain))
-                E_list.append(cmd)
+                        add_correction_command(z_dict, command.Z(node=cmd.nodes[1 - side], domain=x_cmd.domain))
+                e_list.append(cmd)
             elif cmd.kind == CommandKind.M:
-                z_cmd = Z_dict.pop(cmd.node, None)
+                z_cmd = z_dict.pop(cmd.node, None)
                 if z_cmd is not None:
                     cmd.t_domain ^= z_cmd.domain
-                x_cmd = X_dict.pop(cmd.node, None)
+                x_cmd = x_dict.pop(cmd.node, None)
                 if x_cmd is not None:
                     cmd.s_domain ^= x_cmd.domain
-                M_list.append(cmd)
+                m_list.append(cmd)
             elif cmd.kind == CommandKind.Z:
-                add_correction_command(Z_dict, cmd)
+                add_correction_command(z_dict, cmd)
             elif cmd.kind == CommandKind.X:
-                add_correction_command(X_dict, cmd)
-        self.__seq = [*N_list, *E_list, *M_list, *Z_dict.values(), *X_dict.values()]
+                add_correction_command(x_dict, cmd)
+        self.__seq = [*n_list, *e_list, *m_list, *z_dict.values(), *x_dict.values()]
 
     def is_standard(self):
         """determines whether the command sequence is standard
