@@ -8,11 +8,10 @@ import numpy as np
 import graphix.clifford
 import graphix.pauli
 import graphix.states
-from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
 
-if typing.TYPE_CHECKING :
+if typing.TYPE_CHECKING:
     import collections
 
     from graphix.pauli import Plane
@@ -192,7 +191,7 @@ class Backend:
         index = self.node_index.index(node)
         self.state.evolve_single(op=op, i=index)
 
-    def apply_clifford(self, node: int, clifford: Clifford) -> None:
+    def apply_clifford(self, node: int, clifford: graphix.clifford.Clifford) -> None:
         """Apply single-qubit Clifford gate,
         specified by vop index specified in graphix.clifford.CLIFFORD
         """

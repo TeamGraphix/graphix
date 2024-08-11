@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import string
+import typing
 from copy import deepcopy
 
 import numpy as np
@@ -8,7 +9,11 @@ import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.command
-from graphix.clifford import Clifford
+
+if typing.TYPE_CHECKING:
+    from graphix.clifford import Clifford
+
+
 from graphix.ops import Ops
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.states import BasicStates

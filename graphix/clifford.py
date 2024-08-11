@@ -10,7 +10,7 @@ import typing
 
 import numpy as np
 
-if typing.TYPE_CHECKING :
+if typing.TYPE_CHECKING:
     import pydantic
 import pydantic_core
 

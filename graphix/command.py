@@ -9,7 +9,6 @@ import numpy as np
 from pydantic import BaseModel
 
 import graphix.clifford
-from graphix.clifford import Clifford
 from graphix.pauli import Plane
 from graphix.states import BasicStates, State
 
@@ -60,7 +59,7 @@ class M(BaseM):
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
 
-    def clifford(self, clifford: Clifford) -> M:
+    def clifford(self, clifford: graphix.clifford.Clifford) -> M:
         s_domain = self.s_domain
         t_domain = self.t_domain
         for gate in clifford.hsz:
@@ -100,7 +99,7 @@ class C(Command):
 
     kind: CommandKind = CommandKind.C
     node: Node
-    clifford: Clifford
+    clifford: graphix.clifford.Clifford
 
 
 class Correction(Command):
