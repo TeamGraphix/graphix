@@ -97,7 +97,9 @@ class TestPattern:
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(self, backend_type: typing.Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
+    def test_empty_output_nodes(
+        self, backend_type: typing.Literal["statevector", "densitymatrix", "tensornetwork"]
+    ) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(node=0, angle=0.5))
 

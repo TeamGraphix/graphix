@@ -13,7 +13,7 @@ import numpy as np
 
 import graphix.clifford
 from graphix.command import BaseM, CommandKind, M
-from graphix.pauli import MeasureUpdate, Plane
+from graphix.pauli import MeasureUpdate
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
@@ -50,13 +50,9 @@ class DefaultMeasureMethod(MeasureMethod):
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
         t_signal = sum(self.results[j] for j in cmd.t_domain)
-        measure_update = MeasureUpdate.compute(
-            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I
-        )
+        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I)
         angle = angle * measure_update.coeff + measure_update.add_term
         return MeasurementDescription(measure_update.new_plane, angle)
-    
-
 
     def get_measure_result(self, node: int) -> bool:
         return self.results[node]
@@ -130,7 +126,7 @@ class PatternSimulator:
     def set_noise_model(self, model):
         if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
             self.noise_model = None  # if not initialized yet
-            raise ValueError(f"The backend {backend} doesn't support noise but noisemodel was provided.")
+            raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
     def run(self, input_state=graphix.states.BasicStates.PLUS) -> None:

@@ -8,7 +8,6 @@ from __future__ import annotations
 import collections
 import numbers
 import sys
-from copy import deepcopy
 
 import numpy as np
 
@@ -305,7 +304,6 @@ class DensityMatrix(State):
         """
 
         result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
-        tmp_dm = deepcopy(self)
 
         if not isinstance(channel, KrausChannel):
             raise TypeError("Can't apply a channel that is not a Channel object.")

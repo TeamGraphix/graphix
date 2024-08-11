@@ -5,14 +5,12 @@ from copy import deepcopy
 
 import numpy as np
 import quimb.tensor as qtn
-import typing_extensions
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.command
 from graphix.clifford import Clifford
 from graphix.ops import Ops
-from graphix.pauli import Plane
-from graphix.sim.base_backend import Backend
+from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.states import BasicStates
 
 
@@ -159,7 +157,7 @@ class TensorNetworkBackend(Backend):
         self.state.measure_single(node, basis=proj_vec)
         return result
 
-    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
+    def correct_byproduct(self, cmd: graphix.command.X | graphix.command.Z, measure_method) -> None:
         """Perform byproduct correction.
 
         Parameters

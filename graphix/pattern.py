@@ -1941,7 +1941,11 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         for cmd in pattern
         if cmd.kind == command.CommandKind.M and cmd.node in graph_state.nodes
     )
-    new_seq.extend(command.C(node=index, clifford= graphix.clifford.get(vops[index])) for index in pattern.output_nodes if vops[index] != 0)
+    new_seq.extend(
+        command.C(node=index, clifford=graphix.clifford.get(vops[index]))
+        for index in pattern.output_nodes
+        if vops[index] != 0
+    )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (command.CommandKind.X, command.CommandKind.Z))
 
     if copy:

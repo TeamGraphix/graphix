@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -10,7 +11,11 @@ import graphix.states
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
-from graphix.pauli import Plane
+
+if typing.TYPE_CHECKING :
+    import collections
+
+    from graphix.pauli import Plane
 
 
 @dataclass

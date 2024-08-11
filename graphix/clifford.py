@@ -6,8 +6,12 @@ multiplications, conjugations and Pauli conjugations.
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
-import pydantic
+
+if typing.TYPE_CHECKING :
+    import pydantic
 import pydantic_core
 
 import graphix.pauli
