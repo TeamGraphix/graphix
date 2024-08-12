@@ -5,6 +5,7 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 from __future__ import annotations
 
 import enum
+import sys
 import typing
 from numbers import Number
 
@@ -68,9 +69,9 @@ class Sign(enum.Enum):
 
 
 if sys.version_info >= (3, 10):
-    SignOrNumber = typing.TypeVar("SignOrNumber", bound = Sign | Number)
+    SignOrNumber = typing.TypeVar("SignOrNumber", bound=Sign | Number)
 else:
-    SignOrNumber = typing.TypeVar("SignOrNumber", bound = typing.Union[Sign, Number])
+    SignOrNumber = typing.TypeVar("SignOrNumber", bound=typing.Union[Sign, Number])
 
 
 class ComplexUnit:
