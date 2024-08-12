@@ -45,13 +45,7 @@ class Sign(enum.Enum):
     def __neg__(self) -> Sign:
         return Sign.minus_if(self == Sign.Plus)
 
-    @typing.overload
-    def __mul__(self, other: Sign) -> Sign: ...
-
-    @typing.overload
-    def __mul__(self, other: Number) -> Number: ...
-
-    def __mul__(self, other):
+    def __mul__(self, other: SignOrNumber) -> SignOrNumber:
         if isinstance(other, Sign):
             return Sign.plus_if(self == other)
         if isinstance(other, Number):
@@ -71,6 +65,9 @@ class Sign(enum.Enum):
 
     def __complex__(self) -> complex:
         return complex(self.value)
+
+
+SignOrNumber = typing.TypeVar("SignOrNumber", bound = Sign | Number)
 
 
 class ComplexUnit:
