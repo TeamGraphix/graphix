@@ -67,7 +67,10 @@ class Sign(enum.Enum):
         return complex(self.value)
 
 
-SignOrNumber = typing.TypeVar("SignOrNumber", bound = Sign | Number)
+if sys.version_info >= (3, 10):
+    SignOrNumber = typing.TypeVar("SignOrNumber", bound = Sign | Number)
+else:
+    SignOrNumber = typing.TypeVar("SignOrNumber", bound = typing.Union[Sign, Number])
 
 
 class ComplexUnit:
