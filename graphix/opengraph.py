@@ -10,7 +10,6 @@ import networkx as nx
 from graphix.generator import generate_from_graph
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
 
     from graphix.pattern import Pattern
     from graphix.pauli import Plane
@@ -44,7 +43,7 @@ class Measurement(NamedTuple):
         return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
 
 
-class OpenGraph:
+class OpenGraph(NamedTuple):
     """Open graph contains the graph, measurement, and input and output
     nodes. This is the graph we wish to implement deterministically
 
@@ -67,17 +66,17 @@ class OpenGraph:
     >>> og = OpenGraph(inside_graph, measurements, inputs, outputs)
     """
 
-    __inside: nx.Graph
-    __inputs: list[int]
-    __outputs: list[int]
-    __meas: Mapping[int, Measurement]
+    inside: nx.Graph
+    measurements: dict[int, Measurement]
+    inputs: list[int]
+    outputs: list[int]
 
     def __eq__(self, other) -> bool:
         """Checks the two open graphs are equal
 
         This doesn't check they are equal up to an isomorphism"""
 
-        if not nx.utils.graphs_equal(self._inside, other._inside):
+        if not nx.utils.graphs_equal(self.inside, other.inside):
             return False
 
         if self.inputs != other.inputs or self.outputs != other.outputs:
@@ -87,43 +86,6 @@ class OpenGraph:
             return False
 
         return all(m.isclose(other.measurements[node]) for node, m in self.measurements.items())
-
-    def __init__(
-        self,
-        inside: nx.Graph,
-        measurements: Mapping[int, Measurement],
-        inputs: list[int],
-        outputs: list[int],
-    ) -> None:
-        """Constructs a new OpenGraph instance
-
-        The inputs() and outputs() methods will preserve the order that was
-        original given in to this methods.
-        """
-        self._inside = inside
-
-        if any(node in outputs for node in measurements):
-            raise ValueError("output node can not be measured")
-
-        self._inputs = inputs
-        self._outputs = outputs
-        self._meas = measurements
-
-    @property
-    def inputs(self) -> list[int]:
-        """Returns the inputs of the graph sorted by their position."""
-        return self._inputs
-
-    @property
-    def outputs(self) -> list[int]:
-        """Returns the outputs of the graph sorted by their position."""
-        return self._outputs
-
-    @property
-    def measurements(self) -> Mapping[int, Measurement]:
-        """Returns a dictionary which maps each node to its measurement. Output
-        nodes are not measured and hence are not included in the dictionary."""
-        return self._meas
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:
@@ -151,7 +113,7 @@ class OpenGraph:
         The pattern will be generated using maximally-delayed flow.
         """
 
-        g = self._inside.copy()
+        g = self.inside.copy()
         inputs = self.inputs
         outputs = self.outputs
         meas = self.measurements

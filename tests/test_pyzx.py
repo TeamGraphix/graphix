@@ -3,11 +3,7 @@ from __future__ import annotations
 import os
 import sys
 
-import networkx as nx
 import pytest
-
-from graphix.opengraph import Measurement, OpenGraph
-from graphix.pauli import Plane
 
 try:
     import pyzx as zx
@@ -15,18 +11,6 @@ try:
     from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
 except ModuleNotFoundError:
     pass
-
-
-@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
-def test_graph_no_output_measurements() -> None:
-    g = nx.Graph([(0, 1)])
-    meas = {0: Measurement(0, Plane.XY), 1: Measurement(0, Plane.XY)}
-    inputs = [0]
-    outputs = [1]
-
-    # Output node can not be measurement
-    with pytest.raises(ValueError):
-        OpenGraph(g, meas, inputs, outputs)
 
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")

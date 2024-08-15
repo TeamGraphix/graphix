@@ -41,7 +41,7 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
     g.set_inputs(in_verts)
 
     # Add nodes for internal Z spiders - not including the phase gadgets
-    body_verts = add_vertices(len(og._inside), zx.VertexType.Z)
+    body_verts = add_vertices(len(og.inside), zx.VertexType.Z)
 
     # Add nodes for the phase gadgets. In OpenGraph we don't store the
     # effect as a seperate node, it is instead just stored in the
@@ -54,7 +54,7 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
 
     # Maps a node's ID in the Open Graph to it's corresponding node ID in
     # the PyZX graph and vice versa.
-    map_to_og = dict(zip(body_verts, og._inside.nodes()))
+    map_to_og = dict(zip(body_verts, og.inside.nodes()))
     map_to_pyzx = {v: i for i, v in map_to_og.items()}
 
     # Open Graph's don't have boundary nodes, so we need to connect the
@@ -65,7 +65,7 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
     for pyzx_index, og_index in zip(out_verts, og.outputs):
         g.add_edge((pyzx_index, map_to_pyzx[og_index]))
 
-    og_edges = og._inside.edges()
+    og_edges = og.inside.edges()
     pyzx_edges = [(map_to_pyzx[a], map_to_pyzx[b]) for a, b in og_edges]
     g.add_edges(pyzx_edges, zx.EdgeType.HADAMARD)
 
