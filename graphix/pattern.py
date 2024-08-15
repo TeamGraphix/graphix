@@ -17,7 +17,7 @@ from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
-from graphix.pauli import Axis, Plane, Sign
+from graphix.pauli import Axis, PauliMeasure, Plane, Sign
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 
@@ -1878,7 +1878,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         new_inputs = pattern.input_nodes
     for cmd in to_measure:
         pattern_cmd: command.Command = cmd[0]
-        measurement_basis: graphix.pauli.Measure = cmd[1]
+        measurement_basis: PauliMeasure = cmd[1]
         # extract signals for adaptive angle.
         s_signal = 0
         t_signal = 0
@@ -1948,7 +1948,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     return pat
 
 
-def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, graphix.pauli.Measure]]:
+def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, PauliMeasure]]:
     """returns the list of measurement commands that are in Pauli bases
     and that are not dependent on any non-Pauli measurements
 
@@ -1965,11 +1965,11 @@ def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, gr
     if not pattern.is_standard():
         pattern.standardize()
     m_commands = pattern.get_measurement_commands()
-    pauli_node: list[tuple[command.M, graphix.pauli.Measure]] = []
+    pauli_node: list[tuple[command.M, PauliMeasure]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in m_commands:
-        pm = graphix.pauli.Measure.try_from(cmd.plane, cmd.angle)
+        pm = PauliMeasure.try_from(cmd.plane, cmd.angle)
         if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm.axis == Axis.X:

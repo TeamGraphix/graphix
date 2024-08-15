@@ -342,7 +342,7 @@ def is_int(value: Number) -> bool:
     return value == int(value)
 
 
-class Measure(typing.NamedTuple):
+class PauliMeasure(typing.NamedTuple):
     """
     Pauli measurement.
     """
@@ -351,7 +351,7 @@ class Measure(typing.NamedTuple):
     sign: Sign
 
     @staticmethod
-    def try_from(plane: Plane, angle: float) -> Measure | None:
+    def try_from(plane: Plane, angle: float) -> PauliMeasure | None:
         angle_double = 2 * angle
         if not is_int(angle_double):
             return None
@@ -361,7 +361,7 @@ class Measure(typing.NamedTuple):
         else:
             axis = plane.sin
         sign = Sign.minus_if(angle_double_mod_4 >= 2)
-        return Measure(axis, sign)
+        return PauliMeasure(axis, sign)
 
 
 class MeasureUpdate(pydantic.BaseModel):
