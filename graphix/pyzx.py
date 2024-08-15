@@ -6,6 +6,8 @@ OpenGraph class because we want PyZX to be an optional dependency.
 
 from __future__ import annotations
 
+import warnings
+
 import networkx as nx
 import pyzx as zx
 
@@ -34,7 +36,8 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
         raise RuntimeError(msg) from e
     if zx.__version__ != "0.8.0":
         warnings.warn(
-            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.8.0 due to possible breaking changes in `pyzx`."
+            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.8.0 due to possible breaking changes in `pyzx`.",
+            stacklevel=1,
         )
     g = zx.Graph()
 

@@ -10,7 +10,6 @@ import networkx as nx
 from graphix.generator import generate_from_graph
 
 if TYPE_CHECKING:
-
     from graphix.pattern import Pattern
     from graphix.pauli import Plane
 
