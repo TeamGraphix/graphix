@@ -90,7 +90,8 @@ def from_pyzx_graph(g: zx.graph.base.BaseGraph) -> OpenGraph:
     with the definition of an OpenGraph. For instance, if the final node on
     a qubit is measured, it will add two nodes behind it so that no output
     nodes are measured to satisfy the requirements of an open graph.
-
+        .. warning::
+            works with `pyzx==0.8.0` (see `requirements-dev.txt`). Other versions may not be compatible due to breaking changes in `pyzx`
     Example
     -------
     >>> import pyzx as zx
