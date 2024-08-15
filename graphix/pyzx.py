@@ -26,6 +26,16 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
     >>> og = OpenGraph(g, measurements, inputs, outputs)
     >>> reconstructed_pyzx_graph = og.to_pyzx_graph()
     """
+    # check pyzx availability and version
+    try:
+        import pyzx as zx
+    except ModuleNotFoundError as e:
+        msg = "Cannot find pyzx (optional dependency)."
+        raise RuntimeError(msg) from e
+    if zx.__version__ != "0.8.0":
+        warnings.warn(
+            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.8.0 due to possible breaking changes in `pyzx`."
+        )
     g = zx.Graph()
 
     # Add vertices into the graph and set their type
