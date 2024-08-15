@@ -343,7 +343,7 @@ class TestPattern:
         assert meas_plane == ref_meas_plane
 
     @pytest.mark.parametrize("plane", Plane)
-    @pytest.mark.parametrize("method", ["local", "global"])
+    @pytest.mark.parametrize("method", ["local", "global", "direct"])
     def test_shift_signals_plane(self, plane: Plane, method: str) -> None:
         pattern = Pattern(input_nodes=[0])
         for i in (1, 2, 3):
@@ -359,8 +359,8 @@ class TestPattern:
         for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
             state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
             outcomes_p = [
-                1 - outcome if sum(outcomes_ref[i] for i in swapped) % 2 == 1 else outcome
-                for outcome, swapped in zip(outcomes_ref, signal_dict.values())
+                1 - outcome if sum(outcomes_ref[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
+                for node, outcome in enumerate(outcomes_ref)
             ]
             state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_p)))
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)

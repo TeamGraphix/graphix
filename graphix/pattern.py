@@ -513,10 +513,10 @@ class Pattern:
             for node in domain & signal_dict.keys():
                 domain ^= signal_dict[node]
 
-        for cmd in self:
+        for i, cmd in enumerate(self):
             if cmd.kind == CommandKind.M:
-                s_domain = cmd.s_domain
-                t_domain = cmd.t_domain
+                s_domain = set(cmd.s_domain)
+                t_domain = set(cmd.t_domain)
                 expand_domain(s_domain)
                 expand_domain(t_domain)
                 plane = cmd.plane
@@ -525,8 +525,8 @@ class Pattern:
                     #                  = S^t M^{XY,(-1)^s·α}
                     #                  = S^t M^{XY,α} X^s
                     if t_domain:
-                        cmd.t_domain = set()
                         signal_dict[cmd.node] = t_domain
+                        t_domain = set()
                 elif plane == Plane.XZ:
                     # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
                     #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
@@ -534,18 +534,23 @@ class Pattern:
                     #                  = S^s M^{XZ,(-1)^{s+t}·α}
                     #                  = S^s M^{XZ,α} Z^{s+t}
                     if s_domain:
-                        cmd.s_domain = set()
-                        t_domain ^= s_domain
                         signal_dict[cmd.node] = s_domain
+                        t_domain ^= s_domain
+                        s_domain = set()
                 elif plane == Plane.YZ:
                     # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
                     #                  = S^s M^{YZ,(-1)^t·α}
                     #                  = S^s M^{YZ,α} Z^t
                     if s_domain:
-                        cmd.s_domain = set()
                         signal_dict[cmd.node] = s_domain
+                        s_domain = set()
+                if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
+                    self.__seq[i] = cmd.model_copy(update={"s_domain": s_domain, "t_domain": t_domain})
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
-                expand_domain(cmd.domain)
+                domain = set(cmd.domain)
+                expand_domain(domain)
+                if domain != cmd.domain:
+                    self.__seq[i] = cmd.model_copy(update={"domain": domain})
         return signal_dict
 
     def _find_op_to_be_moved(self, op: command.CommandKind, rev=False, skipnum=0):
