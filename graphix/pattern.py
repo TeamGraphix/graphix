@@ -15,7 +15,7 @@ import typing_extensions
 import graphix.clifford
 import graphix.pauli
 from graphix import command
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_MUL, CLIFFORD_TO_QASM3
 from graphix.command import CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -358,38 +358,70 @@ class Pattern:
             self._move_E_after_N()
 
     def standardize_direct(self) -> None:
+        """
+        This algorithm sort the commands in the following order:
+        `N`, `E`, `M`, `C`, `Z`, `X`.
+        """
         n_list = []
         e_list = []
         m_list = []
+        c_dict = {}
         z_dict = {}
         x_dict = {}
 
-        def add_correction_command(cmd_dict: dict[command.Node, command.Command], cmd: command.Command) -> None:
-            previous_cmd = cmd_dict.get(cmd.node)
-            if previous_cmd is None:
-                cmd_dict[cmd.node] = cmd
+        def add_correction_domain(
+            domain_dict: dict[command.Node, command.Command], node: command.Node, domain: set[command.Node]
+        ) -> None:
+            if previous_domain := domain_dict.get(node):
+                previous_domain ^= domain
             else:
-                previous_cmd.domain ^= cmd.domain
+                domain_dict[node] = domain.copy()
 
         for cmd in self:
             if cmd.kind == CommandKind.N:
                 n_list.append(cmd)
             elif cmd.kind == CommandKind.E:
                 for side in (0, 1):
-                    if x_cmd := x_dict.get(cmd.nodes[side], None):
-                        add_correction_command(z_dict, command.Z(node=cmd.nodes[1 - side], domain=x_cmd.domain))
+                    if s_domain := x_dict.get(cmd.nodes[side], None):
+                        add_correction_domain(z_dict, cmd.nodes[1 - side], s_domain)
                 e_list.append(cmd)
             elif cmd.kind == CommandKind.M:
-                if z_cmd := z_dict.pop(cmd.node, None):
-                    cmd.t_domain ^= z_cmd.domain
-                if x_cmd := x_dict.pop(cmd.node, None):
-                    cmd.s_domain ^= x_cmd.domain
+                if cliff_index := c_dict.pop(cmd.node, None):
+                    cmd = cmd.clifford(graphix.clifford.TABLE[cliff_index])
+                if t_domain := z_dict.pop(cmd.node, None):
+                    cmd.t_domain ^= t_domain
+                if s_domain := x_dict.pop(cmd.node, None):
+                    cmd.s_domain ^= s_domain
                 m_list.append(cmd)
             elif cmd.kind == CommandKind.Z:
-                add_correction_command(z_dict, cmd)
+                add_correction_domain(z_dict, cmd.node, cmd.domain)
             elif cmd.kind == CommandKind.X:
-                add_correction_command(x_dict, cmd)
-        self.__seq = [*n_list, *e_list, *m_list, *z_dict.values(), *x_dict.values()]
+                add_correction_domain(x_dict, cmd.node, cmd.domain)
+            elif cmd.kind == CommandKind.C:
+                # If some `X^sZ^t` have been applied to the node, compute `X^s'Z^t'`
+                # such that `CX^sZ^t = X^s'Z^t'C` since the Clifford command will
+                # be applied first (i.e., in right-most position).
+                t_domain = z_dict.pop(cmd.node, set())
+                s_domain = x_dict.pop(cmd.node, set())
+                domains = graphix.clifford.TABLE[cmd.cliff_index].conj.commute_domains(
+                    graphix.clifford.Domains(s_domain, t_domain)
+                )
+                if domains.t_domain:
+                    z_dict[cmd.node] = domains.t_domain
+                if domains.s_domain:
+                    x_dict[cmd.node] = domains.s_domain
+                # Each pattern command is applied by left multiplication: if a clifford `C`
+                # has been already applied to a node, applying a clifford `C'` to the same
+                # node is equivalent to apply `C'C` to a fresh node.
+                c_dict[cmd.node] = CLIFFORD_MUL[cmd.cliff_index][c_dict.get(cmd.node, 0)]
+        self.__seq = [
+            *n_list,
+            *e_list,
+            *m_list,
+            *(command.C(node=node, cliff_index=cliff_index) for node, cliff_index in c_dict.items()),
+            *(command.Z(node=node, domain=domain) for node, domain in z_dict.items()),
+            *(command.X(node=node, domain=domain) for node, domain in x_dict.items()),
+        ]
 
     def is_standard(self):
         """determines whether the command sequence is standard

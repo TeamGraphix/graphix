@@ -15,7 +15,7 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
-from graphix.command import E, M, N
+from graphix.command import C, E, M, N, X, Z
 from graphix.pattern import CommandNode, Pattern
 from graphix.pauli import Plane
 from graphix.sim.density_matrix import DensityMatrix
@@ -391,6 +391,53 @@ class TestPattern:
         pattern.minimize_space()
         state_p = pattern.simulate_pattern()
         state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("method", ["global", "direct"])
+    def test_pauli_measurement_then_standardize(
+        self, fx_bg: PCG64, jumps: int, method: str, use_rustworkx: bool = True
+    ) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 3
+        depth = 3
+        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.standardize(method=method)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert compare_backend_result_with_statevec("statevector", state_mbqc, state) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int):
+        rng = Generator(fx_bg.jumped(jumps))
+        c0, c1 = rng.integers(len(graphix.clifford.TABLE), size=2)
+        pattern = Pattern(input_nodes=[0])
+        pattern.add(C(node=0, cliff_index=c0))
+        pattern.add(C(node=0, cliff_index=c1))
+        pattern_ref = pattern.copy()
+        pattern.standardize(method="direct")
+        state_ref = pattern_ref.simulate_pattern()
+        state_p = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 48))
+    def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int):
+        rng = Generator(fx_bg.jumped(jumps))
+        x, z = rng.integers(2, size=2)
+        c = rng.integers(len(graphix.clifford.TABLE))
+        pattern = Pattern(input_nodes=[0])
+        pattern.results[1] = x
+        pattern.add(X(node=0, domain={1}))
+        pattern.results[2] = z
+        pattern.add(Z(node=0, domain={2}))
+        pattern.add(C(node=0, cliff_index=c))
+        pattern_ref = pattern.copy()
+        pattern.standardize(method="direct")
+        state_ref = pattern_ref.simulate_pattern()
+        state_p = pattern.simulate_pattern()
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
 
