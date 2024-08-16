@@ -527,7 +527,7 @@ class Pattern:
                     M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
                                      = S^t M^{XY,(-1)^s·α}
                                      = S^t M^{XY,α} X^s
-                    """ # noqa: RUF001
+                    """  # noqa: RUF001
                     if t_domain:
                         signal_dict[cmd.node] = t_domain
                         t_domain = set()
@@ -538,7 +538,7 @@ class Pattern:
                                      = M^{XZ,(-1)^{s+t}·α+sπ         (since (-1)^t·π ≡ π (mod 2π))
                                      = S^s M^{XZ,(-1)^{s+t}·α}
                                      = S^s M^{XZ,α} Z^{s+t}
-                    """ # noqa: RUF001
+                    """  # noqa: RUF001
                     if s_domain:
                         signal_dict[cmd.node] = s_domain
                         t_domain ^= s_domain
@@ -548,7 +548,7 @@ class Pattern:
                     M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
                                      = S^s M^{YZ,(-1)^t·α}
                                      = S^s M^{YZ,α} Z^t
-                    """ # noqa: RUF001
+                    """  # noqa: RUF001
                     if s_domain:
                         signal_dict[cmd.node] = s_domain
                         s_domain = set()
