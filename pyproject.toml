@@ -65,6 +65,8 @@ ignore = [
   "NPY002", # Use np.random.Generator
   "E74",    # Ambiguous name
 ]
+# Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
+allowed-confusables = ["α"]
 
 [tool.ruff.format]
 docstring-code-format = true

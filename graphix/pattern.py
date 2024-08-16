@@ -523,32 +523,26 @@ class Pattern:
                 expand_domain(t_domain)
                 plane = cmd.plane
                 if plane == Plane.XY:
-                    """
-                    M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
-                                     = S^t M^{XY,(-1)^s·α}
-                                     = S^t M^{XY,α} X^s
-                    """  # noqa: RUF001
+                    # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
+                    #                  = S^t M^{XY,(-1)^s·α}
+                    #                  = S^t M^{XY,α} X^s
                     if t_domain:
                         signal_dict[cmd.node] = t_domain
                         t_domain = set()
                 elif plane == Plane.XZ:
-                    """
-                    M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
-                                     = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
-                                     = M^{XZ,(-1)^{s+t}·α+sπ         (since (-1)^t·π ≡ π (mod 2π))
-                                     = S^s M^{XZ,(-1)^{s+t}·α}
-                                     = S^s M^{XZ,α} Z^{s+t}
-                    """  # noqa: RUF001
+                    # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
+                    #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
+                    #                  = M^{XZ,(-1)^{s+t}·α+sπ         (since (-1)^t·π ≡ π (mod 2π))
+                    #                  = S^s M^{XZ,(-1)^{s+t}·α}
+                    #                  = S^s M^{XZ,α} Z^{s+t}
                     if s_domain:
                         signal_dict[cmd.node] = s_domain
                         t_domain ^= s_domain
                         s_domain = set()
                 elif plane == Plane.YZ:
-                    """
-                    M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
-                                     = S^s M^{YZ,(-1)^t·α}
-                                     = S^s M^{YZ,α} Z^t
-                    """  # noqa: RUF001
+                    # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
+                    #                  = S^s M^{YZ,(-1)^t·α}
+                    #                  = S^s M^{YZ,α} Z^t
                     if s_domain:
                         signal_dict[cmd.node] = s_domain
                         s_domain = set()
