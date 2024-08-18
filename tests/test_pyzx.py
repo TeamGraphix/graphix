@@ -5,16 +5,17 @@ import sys
 from copy import deepcopy
 
 import pytest
-from pyzx.generate import cliffordT
 
 try:
     import pyzx as zx
+    from pyzx.generate import cliffordT
 
     from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
 except ModuleNotFoundError:
     pass
 
 SEED = 123
+
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_equality() -> None:
@@ -55,6 +56,6 @@ def assert_reconstructed_pyzx_graph_equal(g) -> None:
 # function seems to consume huge amount of memory for larger qubit
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_random_cliffordT() -> None:
-    for i in range(15):
+    for _ in range(15):
         g = cliffordT(4, 10, 0.1)
         assert_reconstructed_pyzx_graph_equal(g)
