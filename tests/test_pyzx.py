@@ -43,6 +43,8 @@ def assert_reconstructed_pyzx_graph_equal(g) -> None:
     for v in reconstructed_pyzx_graph.vertices():
         reconstructed_pyzx_graph.set_row(v, 2)
 
+    for v in g.vertices():
+        g.set_row(v, 2)
     ten = zx.tensorfy(g)
     ten_graph = zx.tensorfy(reconstructed_pyzx_graph)
     assert zx.compare_tensors(ten, ten_graph)
