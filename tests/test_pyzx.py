@@ -48,23 +48,6 @@ def assert_reconstructed_pyzx_graph_equal(g) -> None:
     assert zx.compare_tensors(ten, ten_graph)
 
 
-@pytest.fixture
-def all_small_circuits():
-    direc = "./tests/circuits/"
-    directory = os.fsencode(direc)
-
-    circuits = []
-    for file in os.listdir(directory):
-        filename = os.fsdecode(file)
-        if not filename.endswith(".qasm"):
-            raise Exception(f"only '.qasm' files allowed: not {filename}")
-
-        circ = zx.Circuit.load(direc + filename)
-        circuits.append(circ)
-
-    return circuits
-
-
 # Tests that compiling from a pyzx graph to an OpenGraph returns the same
 # graph. Only works with small circuits up to 4 qubits since PyZX's `tensorfy`
 # function seems to consume huge amount of memory for larger qubit
