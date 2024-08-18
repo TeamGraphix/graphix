@@ -69,6 +69,8 @@ def all_small_circuits():
 # graph. Only works with small circuits up to 4 qubits since PyZX's `tensorfy`
 # function seems to consume huge amount of memory for larger qubit
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
-def test_all_small_circuits(all_small_circuits) -> None:
-    for circ in all_small_circuits:
-        assert_reconstructed_pyzx_graph_equal(circ)
+def test_random_cliffordT() -> None:
+    for i in range(15):
+        random.seed(SEED+i)
+        g = cliffordT(4, 10, 0.1)
+        assert_reconstructed_pyzx_graph_equal(g)
