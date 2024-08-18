@@ -56,6 +56,5 @@ def assert_reconstructed_pyzx_graph_equal(g) -> None:
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_random_cliffordT() -> None:
     for i in range(15):
-        random.seed(SEED+i)
         g = cliffordT(4, 10, 0.1)
         assert_reconstructed_pyzx_graph_equal(g)
