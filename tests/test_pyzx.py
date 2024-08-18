@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import os
+import random
 import sys
+from copy import deepcopy
 
 import pytest
+from pyzx.generate import cliffordT
 
 try:
     import pyzx as zx
