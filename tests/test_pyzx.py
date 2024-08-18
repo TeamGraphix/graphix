@@ -17,13 +17,12 @@ except ModuleNotFoundError:
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_equality() -> None:
-    file = "./tests/circuits/adder_n4.qasm"
-    circ = zx.Circuit.load(file)
+    random.seed(SEED)
+    g = cliffordT(4, 10, 0.1)
 
-    g = circ.to_graph()
     og1 = from_pyzx_graph(g)
 
-    g_copy = circ.to_graph()
+    g_copy = deepcopy(g)
     og2 = from_pyzx_graph(g_copy)
 
     assert og1 == og2
