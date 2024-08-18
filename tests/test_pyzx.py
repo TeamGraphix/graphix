@@ -14,6 +14,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+SEED = 123
 
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_equality() -> None:
