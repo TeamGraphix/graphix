@@ -82,8 +82,8 @@ with open("results.txt", "w") as f:
 
 # %%
 # We can now plot the simulation time results.
-import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 
 data = np.loadtxt("results.txt", delimiter=",", skiprows=1)
 n_qubits = data[:, 0].astype(int)
