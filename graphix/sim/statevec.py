@@ -508,6 +508,8 @@ class Statevec:
         the given variable in measurement angles are substituted by
         the given value.
 
+        See https://github.com/TeamGraphix/graphix-symbolic for
+        a symbolic parameter implementation that supports simulation.
         """
         result = Statevec()
         result.psi = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.psi)
