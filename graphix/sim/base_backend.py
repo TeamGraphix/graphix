@@ -141,7 +141,7 @@ class Backend:
             node_index : NodeIndex
                 mapping between node numbers and qubit indices in the internal state of the backend.
             state : State
-                internal state of the backend.
+                internal state of the backend: instance of Statevec, DensityMatrix, or MBQCTensorNet.
 
         """
         self.__state = state

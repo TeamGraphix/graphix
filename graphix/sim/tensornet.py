@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 
 
 from graphix.ops import Ops
-from graphix.sim.base_backend import Backend, MeasurementDescription
+from graphix.sim.base_backend import Backend, MeasurementDescription, State
 from graphix.states import BasicStates
 
 
@@ -190,7 +190,7 @@ class TensorNetworkBackend(Backend):
         pass
 
 
-class MBQCTensorNet(TensorNetwork):
+class MBQCTensorNet(State, TensorNetwork):
     """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.core.TensorNetwork."""
 
     def __init__(

@@ -48,6 +48,7 @@ class DefaultMeasureMethod(MeasureMethod):
     Default measurement method implementing standard measurement plane/angle update for MBQC.
     To be overwritten by custom measurement methods in the case of delegated QC protocols.
     """
+
     def __init__(self, results=None):
         if results is None:
             results = dict()
