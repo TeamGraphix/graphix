@@ -1,6 +1,23 @@
+import numpy as np
+import pytest
+from numpy.random import Generator
+
 import graphix.command
+import tests.random_circuit as rc
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
+
+
+def test_pattern_affine_operations() -> None:
+    alpha = Placeholder("alpha")
+    assert alpha + 1 + 1 == alpha + 2
+    assert alpha + alpha == 2 * alpha
+    assert alpha - alpha == 0
+    assert alpha / 2 == 0.5 * alpha
+    assert -alpha + alpha == 0
+    beta = Placeholder("beta")
+    with pytest.raises(graphix.parameter.PlaceholderOperationError):
+        alpha + beta
 
 
 def test_pattern_without_parameter_is_not_parameterized() -> None:
@@ -65,3 +82,22 @@ def test_multiple_parameters() -> None:
         graphix.command.M(node=2, angle=3),
     ]
     pattern23.simulate_pattern()
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_rustworkx: bool = True) -> None:
+    nqubits = 5
+    depth = 5
+    alpha = Placeholder("alpha")
+    beta = Placeholder("beta")
+    circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, parameters=[alpha, beta])
+    pattern = circuit.transpile().pattern
+    pattern.standardize()
+    pattern.shift_signals(method="global")
+    pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+    pattern.minimize_space()
+    alpha_value = 2 * fx_rng.random()  # [0, 2π) / π
+    beta_value = 2 * fx_rng.random()
+    state = circuit.subs(alpha, alpha_value).subs(beta, beta_value).simulate_statevector().statevec
+    state_mbqc = pattern.subs(alpha, alpha_value).subs(beta, beta_value).simulate_pattern()
+    assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)

@@ -4,9 +4,9 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
-import numbers
 from copy import deepcopy
 from dataclasses import dataclass
+from numbers import Number
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -1406,12 +1406,12 @@ class Pattern:
 
     def is_parameterized(self) -> bool:
         """Return True if there is at least one measurement angle that
-        is not just an instance of `numbers.Number`. A parameterized
+        is not just an instance of `Number`. A parameterized
         pattern is a pattern where at least one measurement angle is an
         expression that is not a number, typically an instance of `sympy.Expr`
         (but we don't force to choose `sympy` here).
         """
-        return any(not isinstance(cmd.angle, numbers.Number) for cmd in self if cmd.kind == command.CommandKind.M)
+        return any(not isinstance(cmd.angle, Number) for cmd in self if cmd.kind == command.CommandKind.M)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrNumber) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
@@ -1426,13 +1426,10 @@ class Pattern:
         numbers don't implement `cos`).
 
         """
-        result = Pattern(input_nodes=self.input_nodes)
-        for cmd in self:
+        result = self.copy()
+        for cmd in result:
             if cmd.kind == command.CommandKind.M:
-                new_cmd = cmd.model_copy(update={"angle": graphix.parameter.subs(cmd.angle, variable, substitute)})
-                result.add(new_cmd)
-            else:
-                result.add(cmd)
+                cmd.angle = graphix.parameter.subs(cmd.angle, variable, substitute)
         return result
 
     def copy(self) -> Pattern:
@@ -2061,6 +2058,8 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
         if the measurement is not in Pauli basis, returns None.
     """
     assert cmd.kind == command.CommandKind.M
+    if not isinstance(cmd.angle, Number):
+        return None
     basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
     # first item: 0, 1 or 2. correspond to choice of X, Y and Z
     # second item: 0 or 1. correspond to sign (+, -)

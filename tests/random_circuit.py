@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.parameter import Parameter
+
 
 def first_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
@@ -83,8 +85,14 @@ def get_rand_circuit(
     *,
     use_rzz: bool = False,
     use_ccx: bool = False,
+    parameters: list[Parameter] | None = None,
 ) -> Circuit:
     circuit = Circuit(nqubits)
+    parametric_gate_choice = (
+        functools.partial(rotation, angle=parameter)
+        for rotation in (circuit.rx, circuit.ry, circuit.rz)
+        for parameter in parameters or []
+    )
     gate_choice = (
         functools.partial(circuit.ry, angle=np.pi / 4),
         functools.partial(circuit.rz, angle=-np.pi / 4),
@@ -94,6 +102,7 @@ def get_rand_circuit(
         circuit.x,
         circuit.z,
         circuit.y,
+        *parametric_gate_choice,
     )
     for _ in range(depth):
         for j, k in genpair(nqubits, 2, rng):
