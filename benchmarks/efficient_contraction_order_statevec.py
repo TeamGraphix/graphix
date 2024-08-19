@@ -25,6 +25,7 @@ import cotengra as ctg
 import quimb as qu
 from numpy.random import PCG64, Generator
 
+import graphix
 from graphix.random_objects import get_rand_circuit
 
 # %%
@@ -38,32 +39,33 @@ qu.core._NUM_THREAD_WORKERS = 1
 
 n_qubit_list = list(range(2, 25))
 
-sv_sim = []
-eco_sim = []
 
-for n_qubit in n_qubit_list:
+def prepare_pattern(n_qubit: int) -> tuple[graphix.pattern.Pattern, graphix.pattern.Pattern]:
     rng = Generator(PCG64(GLOBAL_SEED))
     circuit = get_rand_circuit(n_qubit, n_qubit, rng)
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pat_original = deepcopy(pattern)
+    pattern.standardize()
+    pat_original = deepcopy(pattern)
+    return pattern, pat_original
 
-    # statevector simulation
+
+def statevector_sim(n_qubit: int, sv_sim: list, pat_original: graphix.pattern.Pattern) -> None:
     if n_qubit > 17:
         sv_sim.append(-1)
     else:
         start = perf_counter()
         pat_original.minimize_space()
         max_sp = pat_original.max_space()
-        sv = pat_original.simulate_pattern(max_qubit_num=max_sp)
+        sv = pat_original.simulate_pattern(max_qubit_num=max_sp)  # noqa: F841
         end = perf_counter()
         sv_sim.append(end - start)
         del sv
 
-    # efficient contraction order simulation (eco-sim)
-    tn = pattern.simulate_pattern("tensornetwork")
-    output_inds = [tn._dangling[str(index)] for index in tn.default_output_nodes]
 
+def efficient_contraction_order_sim(eco_sim: list, pattern: graphix.pattern.Pattern) -> None:
+    tn = pattern.simulate_pattern("tensornetwork")
     start = perf_counter()
     tn_sv = tn.to_statevector(
         backend="numpy",
@@ -73,10 +75,28 @@ for n_qubit in n_qubit_list:
     eco_sim.append(end - start)
     del tn_sv, tn
 
+
+def single_iter(n_qubit: int, sv_sim: list, eco_sim: list) -> None:
+    pattern, pat_original = prepare_pattern(n_qubit)
+    statevector_sim(n_qubit, sv_sim, pat_original)
+    efficient_contraction_order_sim(eco_sim, pattern)
+
+
+def benchmark(n_qubit_list: list) -> tuple[list, list]:
+    sv_sim = []
+    eco_sim = []
+    for n_qubit in n_qubit_list:
+        single_iter(n_qubit, sv_sim, eco_sim)
+    return sv_sim, eco_sim
+
+
+sv_sim, eco_sim = benchmark(n_qubit_list)
+
+
 # %%
 # Finally, we save the results to a text file.
 with open("results.txt", "w") as f:
-    f.write("n_qubit, sv_sim\n")
+    f.write("n_qubit, sv_sim, eco_sim\n")
     for i in range(len(n_qubit_list)):
         f.write(f"{n_qubit_list[i]}, {sv_sim[i]}, {eco_sim[i]}\n")
 
