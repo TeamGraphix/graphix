@@ -4,9 +4,9 @@ import string
 from copy import deepcopy
 
 import numpy as np
+import numpy.typing as npt
 import quimb.tensor as qtn
 import typing_extensions
-from numpy.typing import NDArray
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
@@ -524,7 +524,7 @@ class MBQCTensorNet(TensorNetwork):
         coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, **kwagrs) -> NDArray:
+    def to_statevector(self, **kwagrs) -> npt.NDArray:
         """Take outer product of the tensors in the network and return the statevector.
         This method uses the contract method and full_simplify method of quimb.tensor.TensorNetwork,
         which enables the efficient contraction order search and simplification of the tensor network.
