@@ -137,6 +137,12 @@ class Backend:
             pr_calc : bool
                 whether or not to compute the probability distribution before choosing the measurement result.
                 if False, measurements yield results 0/1 with 50% probabilities each.
+
+            node_index : NodeIndex
+                mapping between node numbers and qubit indices in the internal state of the backend.
+            state : State
+                internal state of the backend.
+
         """
         self.__state = state
         if node_index is None:
