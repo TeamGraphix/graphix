@@ -5,10 +5,12 @@ quantum states and operators
 from __future__ import annotations
 
 import abc
+from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
 import pydantic
+import typing_extensions
 
 import graphix.pauli
 
@@ -61,7 +63,7 @@ class PlanarState(pydantic.BaseModel, State):
         if self.plane == graphix.pauli.Plane.XZ:
             return np.array([np.cos(self.angle / 2), np.sin(self.angle / 2)])
         # other case never happens since exhaustive
-        assert False
+        typing_extensions.assert_never(self.plane)
 
 
 # States namespace for input initialization.
@@ -74,4 +76,4 @@ class BasicStates:
     MINUS_I = PlanarState(plane=graphix.pauli.Plane.XY, angle=-np.pi / 2)
     # remove that in the end
     # need in TN backend
-    VEC = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
+    VEC: ClassVar = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]

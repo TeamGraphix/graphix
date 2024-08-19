@@ -5,7 +5,8 @@ import enum
 
 from pydantic import BaseModel
 
-from graphix.pauli import Plane
+# MEMO: Cannot use TYPE_CHECKING here for pydantic
+from graphix.pauli import Plane  # noqa: TCH001
 
 
 class InstructionKind(enum.Enum):
@@ -50,7 +51,7 @@ class CorrectionInstruction(OneQubitInstruction):
     Correction instruction base class model.
     """
 
-    domain: list[int]
+    domain: set[int]
 
 
 class RotationInstruction(OneQubitInstruction):

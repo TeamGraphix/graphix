@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
+from typing import ClassVar
 
 import numpy as np
 
@@ -33,7 +34,7 @@ class Ops:
             [0, 0, 0, 0, 0, 0, 1, 0],
         ]
     )
-    Pauli_ops = [np.eye(2), x, y, z]
+    Pauli_ops: ClassVar = [np.eye(2), x, y, z]
 
     @staticmethod
     def Rx(theta):
@@ -102,7 +103,7 @@ class Ops:
 
     @staticmethod
     def build_tensor_Pauli_ops(n_qubits: int):
-        """Method to build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}
+        """Method to build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\\otimes n}
 
         :param n_qubits: number of copies (qubits) to consider
         :type n_qubits: int

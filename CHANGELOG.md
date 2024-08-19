@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable. 
+- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable.
 - The following changes were made (#155):
   - Added `class Command` and all its child classes that represent all the pattern commands.
   - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
@@ -18,12 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Entire package was udpated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
-
-
+- Entire package was updated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
+- Measure commands do no longer carry vertex operators (`vop`): Clifford gates can still be applied to measures with the method `M.clifford`, which returns a new measure commands where plane, angle and domains has been updated.
+- X- and Z-domains for measures and domain for correction commands are now set of nodes (instead of lists).
 
 ## [0.2.15] - 2024-06-21
+
 ### Added
+
 - python 3.12 support
 - Arbitrary states now allowed for initializing input nodes in state vector
   and density matrix backends. use `input_state` optional argument in `Statevector` and `DensityMatrix` backends.
@@ -32,9 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Changed
+
 - Basic states such as |0>, |+> states are now defined in `states.BasicStates` and no longer
   in `ops.States`.
-
 
 ## [0.2.14] - 2024-05-11
 
@@ -48,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - workflow for isort, codecov (#148, #147)
 
 ### Fixed
+
 - Fix output node order sorting bug in Pauli preprocessing `measure_pauli` (#145)
 
 ### Changed
@@ -74,11 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
 - Added `gflow.flow_from_pattern` method.
 - Added noisy MBQC simulation backend.
-    - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
-    - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
-    - `channels` module, defining `KrausChannel` class.
-    - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
-
+  - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
+  - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
+  - `channels` module, defining `KrausChannel` class.
+  - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
 
 ### Fixed
 

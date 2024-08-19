@@ -27,6 +27,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         input_state: Data = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
+        rng=None,
     ):
         """
         Parameters
@@ -58,7 +59,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.to_trace = []
         self.to_trace_loc = []
         self.max_qubit_num = _validate_max_qubit_num(max_qubit_num, pattern.max_space())
-        super().__init__(pr_calc)
+        super().__init__(pr_calc, rng)
 
         # initialize input qubits to desired init_state
         self.add_nodes(pattern.input_nodes, input_state)

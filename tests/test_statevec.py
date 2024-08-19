@@ -50,7 +50,7 @@ class TestStatevec:
         nqb = fx_rng.integers(2, 5)
         print(f"nqb is {nqb}")
         vec = Statevec(nqubit=nqb)
-        assert np.allclose(vec.psi, np.ones(((2,) * nqb)) / (np.sqrt(2)) ** nqb)
+        assert np.allclose(vec.psi, np.ones((2,) * nqb) / (np.sqrt(2)) ** nqb)
         assert len(vec.dims()) == nqb
 
         vec = Statevec(nqubit=nqb, data=BasicStates.MINUS_I)

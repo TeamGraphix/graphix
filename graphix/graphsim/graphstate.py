@@ -23,5 +23,5 @@ class GraphState:
             if RUSTWORKX_INSTALLED:
                 return RXGraphState(nodes=nodes, edges=edges, vops=vops)
             else:
-                warnings.warn("rustworkx is not installed. Using networkx instead.")
+                warnings.warn("rustworkx is not installed. Using networkx instead.", stacklevel=1)
         return NXGraphState(nodes=nodes, edges=edges, vops=vops)

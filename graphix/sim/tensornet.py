@@ -5,9 +5,11 @@ from copy import deepcopy
 
 import numpy as np
 import quimb.tensor as qtn
+import typing_extensions
 from numpy.typing import NDArray
 from quimb.tensor import Tensor, TensorNetwork
 
+import graphix.clifford
 from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
@@ -152,16 +154,32 @@ class TensorNetworkBackend:
             self.results[cmd.node] = result
             buffer = 2**0.5
 
-        # extract signals for adaptive angle
-        s_signal = np.sum(self.results[j] for j in cmd.s_domain)
-        t_signal = np.sum(self.results[j] for j in cmd.t_domain)
+        plane = Plane.XY
         angle = cmd.angle * np.pi
-        vop = cmd.vop
+        s_domain = cmd.s_domain
+        t_domain = cmd.t_domain
+        if cmd.plane == Plane.XY:
+            vop = 0
+        elif cmd.plane == Plane.YZ:
+            vop = graphix.clifford.H.index
+            angle = -angle
+            s_domain, t_domain = t_domain, s_domain
+        elif cmd.plane == Plane.XZ:
+            vop = (graphix.clifford.H @ graphix.clifford.S).index
+            angle = -angle
+            t_domain ^= s_domain
+            s_domain, t_domain = t_domain, s_domain
+        else:
+            typing_extensions.assert_never(cmd.plane)
+
+        # extract signals for adaptive angle
+        s_signal = sum(self.results[j] for j in s_domain)
+        t_signal = sum(self.results[j] for j in t_domain)
         if int(s_signal % 2) == 1:
             vop = CLIFFORD_MUL[1, vop]
         if int(t_signal % 2) == 1:
             vop = CLIFFORD_MUL[3, vop]
-        proj_vec = proj_basis(angle, vop=vop, plane=cmd.plane, choice=result)
+        proj_vec = proj_basis(angle, vop=vop, plane=plane, choice=result)
 
         # buffer is necessary for maintaing the norm invariant
         proj_vec = proj_vec * buffer
@@ -204,7 +222,7 @@ class MBQCTensorNet(TensorNetwork):
         graph_nodes=None,
         graph_edges=None,
         default_output_nodes=None,
-        ts=[],
+        ts=None,
         **kwargs,
     ):
         """
@@ -221,6 +239,8 @@ class MBQCTensorNet(TensorNetwork):
         ts (optional): quimb.tensor.core.TensorNetwork or empty list
             optional initial state.
         """
+        if ts is None:
+            ts = []
         if isinstance(ts, MBQCTensorNet):
             super().__init__(ts=ts, **kwargs)
             self._dangling = ts._dangling
@@ -250,7 +270,7 @@ class MBQCTensorNet(TensorNetwork):
             index = str(index)
         assert isinstance(index, str)
         tags = [index, "Open"]
-        tid = list(self._get_tids_from_tags(tags, which="all"))[0]
+        tid = next(iter(self._get_tids_from_tags(tags, which="all")))
         tensor = self.tensor_map[tid]
         return tensor.data
 
@@ -473,7 +493,7 @@ class MBQCTensorNet(TensorNetwork):
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
-            tid = list(tn._get_tids_from_inds(old_ind))[0]
+            tid = next(iter(tn._get_tids_from_inds(old_ind)))
             tn.tensor_map[tid].retag({"Open": "Close"})
             tn.add_tensor(tensor)
 
@@ -583,8 +603,8 @@ class MBQCTensorNet(TensorNetwork):
         # reindex & retag
         for node in out_inds:
             old_ind = tn_cp_left._dangling[str(node)]
-            tid_left = list(tn_cp_left._get_tids_from_inds(old_ind))[0]
-            tid_right = list(tn_cp_right._get_tids_from_inds(old_ind))[0]
+            tid_left = next(iter(tn_cp_left._get_tids_from_inds(old_ind)))
+            tid_right = next(iter(tn_cp_right._get_tids_from_inds(old_ind)))
             if node in target_nodes:
                 tn_cp_left.tensor_map[tid_left].reindex({old_ind: new_ind_left[target_nodes.index(node)]}, inplace=True)
                 tn_cp_right.tensor_map[tid_right].reindex(
