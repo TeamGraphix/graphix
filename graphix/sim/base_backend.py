@@ -24,11 +24,25 @@ class MeasurementDescription:
 
 
 class NodeIndex:
+    """
+    A class for managing the mapping between node numbers and qubit indices in the internal state
+    of the backend. This allows for efficient access and manipulation of qubit orderings
+    throughout the execution of a pattern.
+
+    Attributes:
+        __list (list): A private list of the current active node (labelled with integers).
+        __dict (dict): A private dictionary mapping current node labels (integers) to their corresponding qubit indices
+                       in the backend's internal quantum state.
+    """
+
     def __init__(self) -> None:
         self.__dict = dict()
         self.__list = []
 
     def copy(self) -> NodeIndex:
+        """
+        Creates a shallow copy of the NodeIndex instance, copying both the list and dictionary.
+        """
         result = self.__new__(self.__class__)
         result.__dict = self.__dict.copy()
         result.__list = self.__list.copy()
@@ -38,15 +52,24 @@ class NodeIndex:
         return self.__list[index]
 
     def index(self, node: int) -> int:
+        """
+        Returns the qubit index associated with the specified node label.
+        """
         return self.__dict[node]
 
     def __iter__(self) -> collections.abc.Iterator[int]:
         return iter(self.__list)
 
     def __len__(self) -> int:
+        """
+        Returns the number of currently active nodes.
+        """
         return len(self.__list)
 
     def extend(self, nodes: collections.abc.Iterable[int]) -> None:
+        """
+        Extends the list with a sequence of node labels, updating the dictionary by assigning them sequential qubit indices.
+        """
         base = len(self)
         self.__list.extend(nodes)
         # The following loop iterates over `self.__list[base:]` instead of `nodes`
@@ -56,6 +79,10 @@ class NodeIndex:
             self.__dict[node] = base + index
 
     def remove(self, node: int) -> None:
+        """
+        Removes the specified node label from the list and dictionary, and re-attributes qubit indices for the
+        remaining nodes.
+        """
         index = self.__dict[node]
         del self.__list[index]
         for new_index, node in enumerate(self.__list[index:], start=index):

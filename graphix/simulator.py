@@ -21,6 +21,11 @@ from graphix.sim.tensornet import TensorNetworkBackend
 
 
 class MeasureMethod(abc.ABC):
+    """
+    Simulators are now parametrized by MeasureMethod, with default measurement method that implements MBQC.
+    It allows customized measurement methods, for instance for delegated QC protocols.
+    """
+
     def measure(self, backend: Backend, cmd, noise_model=None) -> None:
         description = self.get_measurement_description(cmd)
         result = backend.measure(cmd.node, description)
@@ -39,6 +44,10 @@ class MeasureMethod(abc.ABC):
 
 
 class DefaultMeasureMethod(MeasureMethod):
+    """
+    Default measurement method implementing standard measurement plane/angle update for MBQC.
+    To be overwritten by custom measurement methods in the case of delegated QC protocols.
+    """
     def __init__(self, results=None):
         if results is None:
             results = dict()
