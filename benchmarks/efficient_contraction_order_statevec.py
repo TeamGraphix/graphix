@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from time import perf_counter
+from typing import TYPE_CHECKING
 
 import cotengra as ctg
 import numpy as np
@@ -28,8 +29,10 @@ import numpy.typing as npt
 import quimb as qu
 from numpy.random import PCG64, Generator
 
-import graphix
 from graphix.random_objects import get_rand_circuit
+
+if TYPE_CHECKING:
+    import graphix
 
 # %%
 # Next, set global seed and number of thread workers
@@ -59,7 +62,7 @@ def statevector_sim(n_qubit: int, sv_sim: list, pat_original: graphix.pattern.Pa
         start = perf_counter()
         pat_original.minimize_space()
         max_sp = pat_original.max_space()
-        sv = pat_original.simulate_pattern(max_qubit_num=max_sp)  # noqa: F841
+        sv = pat_original.simulate_pattern(max_qubit_num=max_sp)
         end = perf_counter()
         sv_sim.append(end - start)
         del sv
