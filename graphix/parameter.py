@@ -113,7 +113,7 @@ class Expression(ABC):
 class PlaceholderOperationError(ValueError):
     def __init__(self):
         super().__init__(
-            "Placeholder angles do not support any form of computation before substitution. Either use `subs` with an actual value before the computation, or use a symbolic parameter implementation, such that https://github.com/TeamGraphix/graphix-symbolic ."
+            "Placeholder angles do not support any form of computation before substitution. Either use `subs` with an actual value before the computation, or use a symbolic parameter implementation, such as https://github.com/TeamGraphix/graphix-symbolic ."
         )
 
 
