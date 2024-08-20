@@ -2325,17 +2325,16 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
 
 
 def shift_outcomes(outcomes: dict[int, int], signal_dict: dict[int, set[int]]) -> dict[int, int]:
-    """
-    Update outcomes with shifted signal.
+    """Update outcomes with shifted signals.
 
-    A shifted signal (as returned by the method
-    :func:`Pattern.shift_signal`) affects classical outputs
+    Shifted signals (as returned by the method
+    :func:`Pattern.shift_signals`) affect classical outputs
     (measurements) while leaving the quantum state invariant.
 
-    This method updates the given `outcomes` by swapping the measurements
-    affected by the signal. This can be used either to transform the
-    value of :data:`Pattern.results` into measurements observed in the
-    unshifted pattern, or vice versa.
+    This method updates the given `outcomes` by swapping the
+    measurements affected by signals. This can be used either to
+    transform the value of :data:`Pattern.results` into measurements
+    observed in the unshifted pattern, or vice versa.
 
     Parameters
     ----------
@@ -2343,12 +2342,13 @@ def shift_outcomes(outcomes: dict[int, int], signal_dict: dict[int, set[int]]) -
         Classical outputs.
     signal_dict : dict[int, set[int]]
         For each node, the signal that has been shifted
-        (as returned by :func:`Pattern.shift_signal`).
+        (as returned by :func:`Pattern.shift_signals`).
 
     Returns
     -------
     shifted_outcomes : dict[int, int]
-        Classical outputs updated with the shifted signal.
+        Classical outputs updated with shifted signals.
+
     """
     return {
         node: 1 - outcome if sum(outcomes[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
