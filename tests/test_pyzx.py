@@ -33,7 +33,7 @@ def test_graph_equality() -> None:
 # Converts a graph to and from an Open graph and then checks the resulting
 # pyzx graph is equal to the original.
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
-def assert_reconstructed_pyzx_graph_equal(g) -> None:
+def assert_reconstructed_pyzx_graph_equal(g: zx.Graph) -> None:
     zx.simplify.to_graph_like(g)
 
     g_copy = deepcopy(g)

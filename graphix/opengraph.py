@@ -24,7 +24,7 @@ class Measurement(NamedTuple):
     angle: float
     plane: Plane
 
-    def isclose(self, other: Measurement, rel_tol: float=1e-09, abs_tol: float=0.0) -> bool:
+    def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
         """Compares if two measurements have the same plane and their angles
         are close.
 
