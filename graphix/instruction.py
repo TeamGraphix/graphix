@@ -59,6 +59,7 @@ class RotationInstruction(OneQubitInstruction):
     """
     Rotation instruction base class model.
     """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     angle: ExpressionOrFloat

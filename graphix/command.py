@@ -52,6 +52,7 @@ class M(Command):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     kind: CommandKind = CommandKind.M
