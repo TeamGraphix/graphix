@@ -22,6 +22,7 @@ from matplotlib import cm
 from scipy.optimize import minimize
 from sklearn.datasets import make_circles
 
+from graphix.parameter import Placeholder
 from graphix.transpiler import Circuit
 
 np.random.seed(0)
@@ -164,25 +165,23 @@ class QNN:
         exp_val = np.dot(sv.conj(), exp_val)
         return exp_val.real
 
-    def compute_expectation(self, data_point, params):
+    def compute_expectation(self, pattern, data_point_placeholders, data_point):
         """
         Computes the expectation value of a quantum circuit given a data point and
         parameters.
 
         Args:
+          pattern: Data re-uploading MBQC pattern parameterized by data-point placeholders
+          data_point_placeholders: Data-point placeholders
           data_point: Input to the quantum circuit represented as a 1D numpy array.
-          params: The `params` parameter is a set of parameters that are used to
-        construct a quantum circuit. The specific details of what these parameters
-        represent is described in  `data_reuploading_circuit` method.
 
         Returns:
           the expectation value of a quantum circuit, which is computed using the
         statevector of the output state of the circuit.
         """
-        circuit = self.data_reuploading_circuit(data_point, params)
-        pattern = circuit.transpile().pattern
-        pattern.standardize()
-        pattern.shift_signals()
+        pattern = pattern.xreplace(
+            {placeholder: data for placeholder, data in zip(data_point_placeholders, data_point)}
+        )
         out_state = pattern.simulate_pattern("tensornetwork")
         sv = out_state.to_statevector().flatten()
         return self.get_expectation_value(sv)
@@ -207,7 +206,12 @@ class QNN:
         Returns:
           the cost value
         """
-        y_pred = [self.compute_expectation(data_point, params) for data_point in x]
+        data_point_placeholders = tuple(Placeholder(f"d[{f}]") for f in range(n_features))
+        circuit = self.data_reuploading_circuit(data_point_placeholders, params)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
+        y_pred = [self.compute_expectation(pattern, data_point_placeholders, data_point) for data_point in x]
         cost_val = np.mean(np.abs(y - y_pred))
         self.cost_values.append(cost_val)
         return cost_val

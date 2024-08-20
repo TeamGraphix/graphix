@@ -232,7 +232,8 @@ class AffineExpression(Expression):
         return self
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrFloat:
-        if value := assignment.get(self.x):
+        # `value` can be 0, so checking with `is not None` is mandatory here.
+        if (value := assignment.get(self.x)) is not None:
             return self.evaluate(value)
         return self
 
@@ -270,6 +271,9 @@ class Placeholder(AffineExpression, Parameter):
     @property
     def name(self) -> str:
         return self.__name
+
+    def __repr__(self) -> str:
+        return f"Placeholder({self.__name!r})"
 
     def __str__(self) -> str:
         return self.__name
