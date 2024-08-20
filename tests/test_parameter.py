@@ -1,3 +1,4 @@
+import matplotlib
 import numpy as np
 import pytest
 from numpy.random import Generator
@@ -101,3 +102,12 @@ def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_rustw
     state = circuit.subs(alpha, alpha_value).subs(beta, beta_value).simulate_statevector().statevec
     state_mbqc = pattern.subs(alpha, alpha_value).subs(beta, beta_value).simulate_pattern()
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+
+
+def test_visualization() -> None:
+    matplotlib.use("Agg")  # Use a non-interactive backend
+    pattern = Pattern(input_nodes=[0, 1])
+    pattern.add(graphix.command.M(node=0))
+    alpha = Placeholder("alpha")
+    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.draw_graph()
