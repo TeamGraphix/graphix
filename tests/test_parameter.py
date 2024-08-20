@@ -111,3 +111,12 @@ def test_visualization() -> None:
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(node=1, angle=alpha))
     pattern.draw_graph()
+
+
+def test_simulation_exception() -> None:
+    pattern = Pattern(input_nodes=[0, 1])
+    pattern.add(graphix.command.M(node=0))
+    alpha = Placeholder("alpha")
+    pattern.add(graphix.command.M(node=1, angle=alpha))
+    with pytest.raises(graphix.parameter.PlaceholderOperationError):
+        pattern.simulate_pattern()
