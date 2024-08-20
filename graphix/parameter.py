@@ -12,7 +12,7 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import SupportsComplex, SupportsFloat
+from typing import Mapping, SupportsComplex, SupportsFloat, TypeVar
 
 
 class Expression(ABC):
@@ -86,6 +86,9 @@ class Expression(ABC):
 
     @abstractmethod
     def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat: ...
+
+    @abstractmethod
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrFloat: ...
 
 
 class Parameter(Expression):
@@ -220,9 +223,17 @@ class AffineExpression(Expression):
             return self.a == other.a and self.x == other.x and self.b == other.b
         return False
 
+    def evaluate(self, value: ExpressionOrFloat) -> ExpressionOrFloat:
+        return self.a * value + self.b
+
     def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat:
         if variable == self.x:
-            return self.a * value + self.b
+            return self.evaluate(value)
+        return self
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrFloat:
+        if value := assignment.get(self.x):
+            return self.evaluate(value)
         return self
 
 
@@ -268,6 +279,9 @@ class Placeholder(AffineExpression, Parameter):
             return self is other
         return super().__eq__(other)
 
+    def __hash__(self) -> int:
+        return id(self)
+
 
 if sys.version_info >= (3, 10):
     ExpressionOrFloat = Expression | float
@@ -275,7 +289,10 @@ else:
     ExpressionOrFloat = typing.Union[Expression, float]
 
 
-def subs(value, variable: Parameter, substitute: ExpressionOrFloat):
+T = TypeVar("T")
+
+
+def subs(value: T, variable: Parameter, substitute: ExpressionOrFloat) -> T | complex:
     """Generic substitution in `value`: if `value` implements the
     method `subs`, then return `value.subs(variable, substitute)`
     (coerced into a complex if the result is a number).  If `value`
@@ -289,6 +306,26 @@ def subs(value, variable: Parameter, substitute: ExpressionOrFloat):
     subs = getattr(value, "subs", None)
     if subs:
         new_value = subs(variable, substitute)
+        if isinstance(new_value, SupportsComplex):
+            return complex(new_value)
+        return new_value
+    return value
+
+
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrFloat]) -> T | complex:
+    """Generic parallel substitution in `value`: if `value` implements
+    the method `xreplace`, then return `value.xreplace(assignment)`
+    (coerced into a complex if the result is a number).  If `value`
+    does not implement `xreplace`, `value` is returned unchanged.
+
+    This function is used to apply parallel substitutions to
+    collections where some elements are Expression and other elements
+    are just plain numbers.
+
+    """
+    xreplace = getattr(value, "xreplace", None)
+    if xreplace:
+        new_value = xreplace(assignment)
         if isinstance(new_value, SupportsComplex):
             return complex(new_value)
         return new_value

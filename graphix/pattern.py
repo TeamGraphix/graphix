@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, Mapping, SupportsFloat
 
 import networkx as nx
 import numpy as np
@@ -1419,16 +1419,39 @@ class Pattern:
 
         Substitution is performed by calling the method `subs` on
         measurement angles, if the method exists, which is the case in
-        particular for `sympy.Expr`. If the substitution returns a
-        number, this number is coerced to `float`, to get numbers that
-        implement the full number protocol (in particular, sympy
-        numbers don't implement `cos`).
+        particular for :class:`graphix.parameter.Placeholder`
+        and :class:`graphix_symbolic.SympyParameter`
+        (see https://github.com/TeamGraphix/graphix-symbolic ).
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
 
         """
         result = self.copy()
         for cmd in result:
             if cmd.kind == command.CommandKind.M:
                 cmd.angle = graphix.parameter.subs(cmd.angle, variable, substitute)
+        return result
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> Pattern:
+        """Return a copy of the pattern where all occurrences of the
+        given keys in measurement angles are substituted by the given
+        values in parallel.
+
+        Substitution is performed by calling the method `xreplace` on
+        measurement angles, if the method exists, which is the case in
+        particular for :class:`graphix.parameter.Placeholder`
+        and :class:`graphix_symbolic.SympyParameter`
+        (see https://github.com/TeamGraphix/graphix-symbolic ).
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
+        """
+        result = self.copy()
+        for cmd in result:
+            if cmd.kind == command.CommandKind.M:
+                cmd.angle = graphix.parameter.xreplace(cmd.angle, assignment)
         return result
 
     def copy(self) -> Pattern:
