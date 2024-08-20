@@ -49,8 +49,8 @@ class OpenGraph(NamedTuple):
     :param inside: the underlying graph state
     :param measurements: a dictionary whose key is the ID of a node and the
         value is the measurement at that node
-    :param inputs: a set of IDs of the nodes that are inputs to the graph
-    :param outputs: a set of IDs of the nodes that are outputs of the graph
+    :param inputs: an ordered list of node IDs that are inputs to the graph
+    :param outputs: an ordered list of node IDs that are outputs of the graph
 
     Example
     -------
@@ -67,8 +67,8 @@ class OpenGraph(NamedTuple):
 
     inside: nx.Graph
     measurements: dict[int, Measurement]
-    inputs: list[int]
-    outputs: list[int]
+    inputs: list[int]  # Inputs are ordered
+    outputs: list[int]  # Outputs are ordered
 
     def __eq__(self, other) -> bool:
         """Checks the two open graphs are equal
