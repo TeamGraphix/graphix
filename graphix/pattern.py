@@ -26,7 +26,7 @@ from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from graphix.parameter import ExpressionOrNumber, Parameter
+    from graphix.parameter import ExpressionOrFloat, Parameter
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1413,7 +1413,7 @@ class Pattern:
         """
         return any(not isinstance(cmd.angle, Number) for cmd in self if cmd.kind == command.CommandKind.M)
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrNumber) -> Pattern:
+    def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
         given variable in measurement angles are substituted by the
         given value.

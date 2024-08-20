@@ -12,8 +12,7 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from numbers import Number
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import pydantic_core
 
@@ -25,73 +24,73 @@ class Expression(ABC):
     """Expression with parameters."""
 
     @abstractmethod
-    def __mul__(self, other) -> ExpressionOrNumber: ...
+    def __mul__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rmul__(self, other) -> ExpressionOrNumber: ...
+    def __rmul__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __add__(self, other) -> ExpressionOrNumber: ...
+    def __add__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __radd__(self, other) -> ExpressionOrNumber: ...
+    def __radd__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __sub__(self, other) -> ExpressionOrNumber: ...
+    def __sub__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rsub__(self, other) -> ExpressionOrNumber: ...
+    def __rsub__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __pow__(self, other) -> ExpressionOrNumber: ...
+    def __pow__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rpow__(self, other) -> ExpressionOrNumber: ...
+    def __rpow__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __neg__(self) -> ExpressionOrNumber: ...
+    def __neg__(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __truediv__(self, other) -> ExpressionOrNumber: ...
+    def __truediv__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rtruediv__(self, other) -> ExpressionOrNumber: ...
+    def __rtruediv__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __mod__(self, other) -> ExpressionOrNumber: ...
+    def __mod__(self, other) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def sin(self) -> ExpressionOrNumber: ...
+    def sin(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def cos(self) -> ExpressionOrNumber: ...
+    def cos(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def tan(self) -> ExpressionOrNumber: ...
+    def tan(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def arcsin(self) -> ExpressionOrNumber: ...
+    def arcsin(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def arccos(self) -> ExpressionOrNumber: ...
+    def arccos(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def arctan(self) -> ExpressionOrNumber: ...
+    def arctan(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def exp(self) -> ExpressionOrNumber: ...
+    def exp(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def log(self) -> ExpressionOrNumber: ...
+    def log(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def conjugate(self) -> ExpressionOrNumber: ...
+    def conjugate(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def sqrt(self) -> ExpressionOrNumber: ...
+    def sqrt(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def subs(self, variable: Parameter, value: ExpressionOrNumber) -> ExpressionOrNumber: ...
+    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat: ...
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -125,31 +124,34 @@ class AffineExpression(Expression):
     An affine expression is of the form `a*x+b` where `a` and `b` are numbers and `x` is a parameter.
     """
 
-    a: Number
+    a: float
     x: Parameter
-    b: Number
+    b: float
 
-    def offset(self, d: Number) -> AffineExpression:
+    def offset(self, d: float) -> AffineExpression:
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
-    def scale(self, k: Number) -> ExpressionOrNumber:
-        if k == 0:
-            return 0
+    def __scale_non_null(self, k: float) -> AffineExpression:
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
-    def __mul__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, Number):
-            return self.scale(other)
+    def scale(self, k: float) -> ExpressionOrFloat:
+        if k == 0:
+            return 0
+        return self.__scale_non_null(k)
+
+    def __mul__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, SupportsFloat):
+            return self.scale(float(other))
         return NotImplemented
 
-    def __rmul__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, Number):
-            return self.scale(other)
+    def __rmul__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, SupportsFloat):
+            return self.scale(float(other))
         return NotImplemented
 
-    def __add__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, Number):
-            return self.offset(other)
+    def __add__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, SupportsFloat):
+            return self.offset(float(other))
         if isinstance(other, AffineExpression):
             if other.x != self.x:
                 raise PlaceholderOperationError()
@@ -159,69 +161,71 @@ class AffineExpression(Expression):
             return AffineExpression(a=a, x=self.x, b=self.b + other.b)
         return NotImplemented
 
-    def __radd__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, Number):
-            return self.offset(other)
+    def __radd__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, SupportsFloat):
+            return self.offset(float(other))
         return NotImplemented
 
-    def __sub__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, (AffineExpression, Number)):
+    def __sub__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, AffineExpression):
             return self + -other
+        if isinstance(other, SupportsFloat):
+            return self + -float(other)
         return NotImplemented
 
-    def __rsub__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, Number):
-            return self.scale(-1).offset(other)
+    def __rsub__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, SupportsFloat):
+            return self.__scale_non_null(-1).offset(float(other))
         return NotImplemented
 
-    def __pow__(self, other) -> ExpressionOrNumber:
+    def __pow__(self, other) -> ExpressionOrFloat:
         return NotImplemented
 
-    def __rpow__(self, other) -> ExpressionOrNumber:
+    def __rpow__(self, other) -> ExpressionOrFloat:
         return NotImplemented
 
-    def __neg__(self) -> ExpressionOrNumber:
-        return self.scale(-1)
+    def __neg__(self) -> ExpressionOrFloat:
+        return self.__scale_non_null(-1)
 
-    def __truediv__(self, other) -> ExpressionOrNumber:
-        if isinstance(other, Number):
-            return self.scale(1 / other)
+    def __truediv__(self, other) -> ExpressionOrFloat:
+        if isinstance(other, SupportsFloat):
+            return self.scale(1 / float(other))
         return NotImplemented
 
-    def __rtruediv__(self, other) -> ExpressionOrNumber:
+    def __rtruediv__(self, other) -> ExpressionOrFloat:
         return NotImplemented
 
-    def __mod__(self, other) -> ExpressionOrNumber:
+    def __mod__(self, other) -> ExpressionOrFloat:
         return NotImplemented
 
-    def sin(self) -> ExpressionOrNumber:
+    def sin(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def cos(self) -> ExpressionOrNumber:
+    def cos(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def tan(self) -> ExpressionOrNumber:
+    def tan(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def arcsin(self) -> ExpressionOrNumber:
+    def arcsin(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def arccos(self) -> ExpressionOrNumber:
+    def arccos(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def arctan(self) -> ExpressionOrNumber:
+    def arctan(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def exp(self) -> ExpressionOrNumber:
+    def exp(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def log(self) -> ExpressionOrNumber:
+    def log(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def conjugate(self) -> ExpressionOrNumber:
+    def conjugate(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
-    def sqrt(self) -> ExpressionOrNumber:
+    def sqrt(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
     def __str__(self) -> str:
@@ -232,7 +236,7 @@ class AffineExpression(Expression):
             return self.a == other.a and self.x == other.x and self.b == other.b
         return False
 
-    def subs(self, variable: Parameter, value: ExpressionOrNumber) -> ExpressionOrNumber:
+    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat:
         if variable == self.x:
             return self.a * value + self.b
         return self
@@ -283,15 +287,11 @@ class Placeholder(AffineExpression, Parameter):
 
 if sys.version_info >= (3, 10):
     ExpressionOrFloat = Expression | float
-
-    ExpressionOrNumber = Expression | Number
 else:
     ExpressionOrFloat = typing.Union[Expression, float]
 
-    ExpressionOrNumber = typing.Union[Expression, Number]
 
-
-def subs(value, variable: Parameter, substitute: ExpressionOrNumber):
+def subs(value, variable: Parameter, substitute: ExpressionOrFloat):
     """Generic substitution in `value`: if `value` implements the
     method `subs`, then return `value.subs(variable, substitute)`
     (coerced into a complex if the result is a number).  If `value`
@@ -305,7 +305,7 @@ def subs(value, variable: Parameter, substitute: ExpressionOrNumber):
     subs = getattr(value, "subs", None)
     if subs:
         new_value = subs(variable, substitute)
-        if isinstance(new_value, Number):
+        if isinstance(new_value, SupportsComplex):
             return complex(new_value)
         return new_value
     return value
