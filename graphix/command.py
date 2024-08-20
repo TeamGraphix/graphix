@@ -6,7 +6,7 @@ import abc
 import enum
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import graphix.clifford
 from graphix.pauli import Plane
@@ -96,6 +96,8 @@ class C(Command):
     """
     Clifford command.
     """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # for the `clifford` field
 
     kind: CommandKind = CommandKind.C
     node: Node

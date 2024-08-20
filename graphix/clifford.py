@@ -6,13 +6,7 @@ multiplications, conjugations and Pauli conjugations.
 
 from __future__ import annotations
 
-import typing
-
 import numpy as np
-
-if typing.TYPE_CHECKING:
-    import pydantic
-import pydantic_core
 
 import graphix.pauli
 
@@ -292,17 +286,6 @@ class Clifford:
         table = CLIFFORD_MEASURE[self.__index]
         symbol, sign = table[pauli.symbol.value]
         return pauli.unit * graphix.pauli.TABLE[symbol + 1][sign][False]
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
-    ) -> pydantic_core.CoreSchema:
-        def check_clifford(obj) -> Clifford:
-            if not isinstance(obj, Clifford):
-                raise ValueError("Clifford expected")
-            return obj
-
-        return pydantic_core.core_schema.no_info_plain_validator_function(function=check_clifford)
 
 
 TABLE = tuple(map(Clifford, range(len(CLIFFORD))))
