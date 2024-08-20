@@ -70,10 +70,12 @@ class OpenGraph(NamedTuple):
     inputs: list[int]  # Inputs are ordered
     outputs: list[int]  # Outputs are ordered
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Checks the two open graphs are equal
 
         This doesn't check they are equal up to an isomorphism"""
+        if not isinstance(other, OpenGraph):
+            return NotImplemented
 
         if not nx.utils.graphs_equal(self.inside, other.inside):
             return False
