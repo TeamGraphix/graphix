@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from numbers import Number
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
 import numpy as np
@@ -1406,12 +1405,12 @@ class Pattern:
 
     def is_parameterized(self) -> bool:
         """Return True if there is at least one measurement angle that
-        is not just an instance of `Number`. A parameterized
+        is not just an instance of `SupportsFloat`. A parameterized
         pattern is a pattern where at least one measurement angle is an
         expression that is not a number, typically an instance of `sympy.Expr`
         (but we don't force to choose `sympy` here).
         """
-        return any(not isinstance(cmd.angle, Number) for cmd in self if cmd.kind == command.CommandKind.M)
+        return any(not isinstance(cmd.angle, SupportsFloat) for cmd in self if cmd.kind == command.CommandKind.M)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
@@ -2058,7 +2057,7 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
         if the measurement is not in Pauli basis, returns None.
     """
     assert cmd.kind == command.CommandKind.M
-    if not isinstance(cmd.angle, Number):
+    if not isinstance(cmd.angle, SupportsFloat):
         return None
     basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
     # first item: 0, 1 or 2. correspond to choice of X, Y and Z
