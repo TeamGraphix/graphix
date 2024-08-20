@@ -469,9 +469,8 @@ class Pattern:
 
         Returns
         -------
-        swapped_dict : dict[int, list[int]]
-            for each node, the signal that have been shifted if the outcome is
-            swapped by the shift.
+        signal_dict : dict[int, list[int]]
+            For each node, the signal that have been shifted.
         """
         if method == "direct":
             return self.shift_signals_direct()
@@ -483,10 +482,10 @@ class Pattern:
         )
         if method == "local":
             localpattern = self.get_local_pattern()
-            swapped_dict = localpattern.shift_signals()
+            signal_dict = localpattern.shift_signals()
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
-            swapped_dict = self.extract_signals()
+            signal_dict = self.extract_signals()
             target = self._find_op_to_be_moved(command.CommandKind.S, rev=True)
             while target is not None:
                 if target == len(self.__seq) - 1:
@@ -506,7 +505,7 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
-        return swapped_dict
+        return signal_dict
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         signal_dict = {}
@@ -2323,3 +2322,35 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
     if plane == Plane.YZ:
         return ExtractedSignal(s_domain=set(), t_domain=t_domain, signal=s_domain)
     typing_extensions.assert_never(plane)
+
+
+def shift_outcomes(outcomes: dict[int, int], signal_dict: dict[int, set[int]]) -> dict[int, int]:
+    """
+    Update outcomes with shifted signal.
+
+    A shifted signal (as returned by the method
+    :func:`Pattern.shift_signal`) affects classical outputs
+    (measurements) while leaving the quantum state invariant.
+
+    This method updates the given `outcomes` by swapping the measurements
+    affected by the signal. This can be used either to transform the
+    value of :data:`Pattern.results` into measurements observed in the
+    unshifted pattern, or vice versa.
+
+    Parameters
+    ----------
+    outcomes : dict[int, int]
+        Classical outputs.
+    signal_dict : dict[int, set[int]]
+        For each node, the signal that has been shifted
+        (as returned by :func:`Pattern.shift_signal`).
+
+    Returns
+    -------
+    shifted_outcomes : dict[int, int]
+        Classical outputs updated with the shifted signal.
+    """
+    return {
+        node: 1 - outcome if sum(outcomes[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
+        for node, outcome in outcomes.items()
+    }

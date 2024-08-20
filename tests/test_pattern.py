@@ -16,7 +16,7 @@ import graphix.sim.base_backend
 import graphix.states
 import tests.random_circuit as rc
 from graphix.command import C, E, M, N, X, Z
-from graphix.pattern import CommandNode, Pattern
+from graphix.pattern import CommandNode, Pattern, shift_outcomes
 from graphix.pauli import Plane
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import PatternSimulator
@@ -358,11 +358,10 @@ class TestPattern:
         # Test for every possible outcome of each measure
         for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
             state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
-            outcomes_p = [
-                1 - outcome if sum(outcomes_ref[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
-                for node, outcome in enumerate(outcomes_ref)
-            ]
-            state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_p)))
+            outcomes_p = shift_outcomes(dict(enumerate(outcomes_ref)), signal_dict)
+            state_p = pattern.simulate_pattern(
+                pr_calc=False, rng=IterGenerator(outcomes_p[i] for i in range(len(outcomes_p)))
+            )
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
