@@ -124,20 +124,20 @@ def from_pyzx_graph(g: zx.graph.base.BaseGraph) -> OpenGraph:
     # We need to do this since the full reduce simplification can
     # leave either hadamard or plain wires on the inputs and outputs
     for inp in g.inputs():
-        nbrs = list(g.neighbors(inp))
-        et = g.edge_type((nbrs[0], inp))
+        first_nbr = next(iter(g.neighbors(inp)))
+        et = g.edge_type((first_nbr, inp))
 
         if et == zx.EdgeType.SIMPLE:
             g_nx.remove_node(inp)
-            inputs = [i if i != inp else nbrs[0] for i in inputs]
+            inputs = [i if i != inp else first_nbr for i in inputs]
 
     for out in g.outputs():
-        nbrs = list(g.neighbors(out))
-        et = g.edge_type((nbrs[0], out))
+        first_nbr = next(iter(g.neighbors(out)))
+        et = g.edge_type((first_nbr, out))
 
         if et == zx.EdgeType.SIMPLE:
             g_nx.remove_node(out)
-            outputs = [o if o != out else nbrs[0] for o in outputs]
+            outputs = [o if o != out else first_nbr for o in outputs]
 
     # Turn all phase gadgets into measurements
     # Since we did a full reduce, any node that isn't an input or output
