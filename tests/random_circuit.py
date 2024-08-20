@@ -85,7 +85,7 @@ def get_rand_circuit(
     *,
     use_rzz: bool = False,
     use_ccx: bool = False,
-    parameters: list[Parameter] | None = None,
+    parameters: Iterable[Parameter] | None = None,
 ) -> Circuit:
     circuit = Circuit(nqubits)
     parametric_gate_choice = (
