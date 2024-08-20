@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # TCH001: ExpressionOrFloat and Plane are used in pydantic models
 from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
@@ -59,6 +59,7 @@ class RotationInstruction(OneQubitInstruction):
     """
     Rotation instruction base class model.
     """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     angle: ExpressionOrFloat
 
@@ -180,6 +181,8 @@ class M(OneQubitInstruction):
     """
     M circuit instruction.
     """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     kind: InstructionKind = InstructionKind.M
     plane: Plane

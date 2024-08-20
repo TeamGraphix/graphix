@@ -7,7 +7,7 @@ import enum
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # TCH001: ExpressionOrFloat is used in pydantic models
 import graphix.clifford
@@ -52,6 +52,7 @@ class M(Command):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     kind: CommandKind = CommandKind.M
     node: Node

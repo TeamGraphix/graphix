@@ -12,12 +12,7 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
-
-import pydantic_core
-
-if TYPE_CHECKING:
-    import pydantic
+from typing import SupportsComplex, SupportsFloat
 
 
 class Expression(ABC):
@@ -91,17 +86,6 @@ class Expression(ABC):
 
     @abstractmethod
     def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat: ...
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
-    ) -> pydantic_core.CoreSchema:
-        def check_expression(obj) -> Expression:
-            if not isinstance(obj, Expression):
-                raise ValueError("Expression expected")
-            return obj
-
-        return pydantic_core.core_schema.no_info_plain_validator_function(function=check_expression)
 
 
 class Parameter(Expression):
