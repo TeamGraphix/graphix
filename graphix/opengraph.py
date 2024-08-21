@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, NamedTuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import networkx as nx
 
@@ -14,7 +15,8 @@ if TYPE_CHECKING:
     from graphix.pauli import Plane
 
 
-class Measurement(NamedTuple):
+@dataclass(frozen=True)
+class Measurement:
     """An MBQC measurement.
 
     :param angle: the angle of the measurement. Should be between [0, 2)
@@ -42,7 +44,8 @@ class Measurement(NamedTuple):
         return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
 
 
-class OpenGraph(NamedTuple):
+@dataclass(frozen=True)
+class OpenGraph:
     """Open graph contains the graph, measurement, and input and output
     nodes. This is the graph we wish to implement deterministically
 
@@ -70,12 +73,24 @@ class OpenGraph(NamedTuple):
     inputs: list[int]  # Inputs are ordered
     outputs: list[int]  # Outputs are ordered
 
-    def __eq__(self, other: object) -> bool:
+    def __post_init__(self) -> None:
+        if not all(node in self.inside.nodes for node in self.measurements):
+            raise ValueError("All measured nodes must be part of the graph's nodes.")
+        if not all(node in self.inside.nodes for node in self.inputs):
+            raise ValueError("All input nodes must be part of the graph's nodes.")
+        if not all(node in self.inside.nodes for node in self.outputs):
+            raise ValueError("All output nodes must be part of the graph's nodes.")
+        if any(node in self.outputs for node in self.measurements):
+            raise ValueError("Output node cannot be measured.")
+        if len(set(self.inputs)) != len(self.inputs):
+            raise ValueError("Input nodes contain duplicates.")
+        if len(set(self.outputs)) != len(self.outputs):
+            raise ValueError("Output nodes contain duplicates.")
+
+    def __eq__(self, other) -> bool:
         """Checks the two open graphs are equal
 
         This doesn't check they are equal up to an isomorphism"""
-        if not isinstance(other, OpenGraph):
-            return NotImplemented
 
         if not nx.utils.graphs_equal(self.inside, other.inside):
             return False
