@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import copy
 import functools
 import numbers
 import sys
@@ -17,7 +18,7 @@ from graphix.sim.base_backend import Backend, State
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pr_calc=True, rng: np.random.Generator | None = None):
+    def __init__(self, pr_calc=True, rng: np.random.Generator | None = None) -> None:
         super().__init__(Statevec(nqubit=0), pr_calc=pr_calc, rng=rng)
 
 
@@ -121,9 +122,7 @@ class Statevec(State):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
     def copy(self) -> Statevec:
-        result = self.__new__(self.__class__)
-        result.psi = self.psi
-        return result
+        return copy.copy(self)
 
     def add_nodes(self, nqubit, data) -> None:
         sv_to_add = Statevec(nqubit=nqubit, data=data)
@@ -161,7 +160,7 @@ class Statevec(State):
             self.psi,
             (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)),
         )
-        self.psi = np.moveaxis(psi, [i for i in range(len(qargs))], qargs)
+        self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
 
     def dims(self):
         return self.psi.shape

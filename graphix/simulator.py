@@ -28,6 +28,8 @@ class MeasureMethod(abc.ABC):
     """
     Simulators are now parametrized by MeasureMethod, with default measurement method that implements MBQC.
     It allows customized measurement methods, for instance for delegated QC protocols.
+
+    Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
     def measure(self, backend: Backend, cmd, noise_model=None) -> None:

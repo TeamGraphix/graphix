@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import typing
+import copy
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -11,8 +12,8 @@ import graphix.states
 from graphix.command import CommandKind
 from graphix.ops import Ops
 
-if typing.TYPE_CHECKING:
-    import collections
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
 
     from graphix.pauli import Plane
 
@@ -43,7 +44,7 @@ class NodeIndex:
         """
         Creates a shallow copy of the NodeIndex instance, copying both the list and dictionary.
         """
-        result = self.__new__(self.__class__)
+        result = copy.copy(self)
         result.__dict = self.__dict.copy()
         result.__list = self.__list.copy()
         return result
@@ -57,7 +58,7 @@ class NodeIndex:
         """
         return self.__dict[node]
 
-    def __iter__(self) -> collections.abc.Iterator[int]:
+    def __iter__(self) -> Iterator[int]:
         return iter(self.__list)
 
     def __len__(self) -> int:
@@ -66,7 +67,7 @@ class NodeIndex:
         """
         return len(self.__list)
 
-    def extend(self, nodes: collections.abc.Iterable[int]) -> None:
+    def extend(self, nodes: Iterable[int]) -> None:
         """
         Extends the list with a sequence of node labels, updating the dictionary by assigning them sequential qubit indices.
         """
@@ -129,7 +130,11 @@ def perform_measure(
 
 class Backend:
     def __init__(
-        self, state: State, node_index: NodeIndex | None = None, pr_calc: bool = True, rng: np.random.Generator = None
+        self,
+        state: State,
+        node_index: NodeIndex | None = None,
+        pr_calc: bool = True,
+        rng: np.random.Generator | None = None,
     ):
         """
         Parameters
@@ -244,5 +249,5 @@ class Backend:
         self.sort_qubits(output_nodes)
 
     @property
-    def Nqubit(self) -> int:
-        return self.state.Nqubit
+    def nqubit(self) -> int:
+        return self.state.nqubit

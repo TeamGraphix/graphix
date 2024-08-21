@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import string
-import typing
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import numpy as np
 import quimb.tensor as qtn
@@ -10,7 +10,7 @@ from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.command
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from graphix.clifford import Clifford
 
 
@@ -88,7 +88,7 @@ class TensorNetworkBackend(Backend):
         """
         if data != BasicStates.PLUS:
             raise NotImplementedError(
-                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167 )."
+                "TensorNetworkBackend currently only supports |+> input state (see https://github.com/TeamGraphix/graphix/issues/167)."
             )
         if self.graph_prep == "sequential":
             self.state.add_qubits(nodes)

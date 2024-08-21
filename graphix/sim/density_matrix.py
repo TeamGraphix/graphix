@@ -6,6 +6,7 @@ Simulate MBQC with density matrix representation.
 from __future__ import annotations
 
 import collections
+import copy
 import numbers
 import sys
 
@@ -16,7 +17,7 @@ import graphix.types
 from graphix.channels import KrausChannel
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.sim.base_backend import Backend, State
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import CNOT_TENSOR, Statevec
 
 
 class DensityMatrix(State):
@@ -81,16 +82,14 @@ class DensityMatrix(State):
         self.rho = np.outer(statevec.psi, statevec.psi.conj())
 
     @property
-    def Nqubit(self) -> int:
+    def nqubit(self) -> int:
         return self.rho.shape[0].bit_length() - 1
 
     def copy(self) -> DensityMatrix:
-        result = self.__new__(self.__class__)
-        result.rho = self.rho
-        return result
+        return copy.copy(self)
 
-    def __repr__(self):
-        return f"DensityMatrix object, with density matrix {self.rho} and shape{self.dims()}."
+    def __str__(self) -> str:
+        return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
     def add_nodes(self, nqubit, data) -> None:
         dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
@@ -106,14 +105,14 @@ class DensityMatrix(State):
             i : int
                 Index of qubit to apply operator.
         """
-        assert i >= 0 and i < self.Nqubit
+        assert i >= 0 and i < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
-        rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.Nqubit, 0))
-        rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
-        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+        rho_tensor = self.rho.reshape((2,) * self.nqubit * 2)
+        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.nqubit, 0))
+        rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.nqubit))
+        self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
     def evolve(self, op, qargs) -> None:
         """Multi-qubit operation
@@ -142,26 +141,26 @@ class DensityMatrix(State):
         if nqb_op != len(qargs):
             raise ValueError("The dimension of the operator doesn't match the number of targets.")
 
-        if not all(0 <= i < self.Nqubit for i in qargs):
+        if not all(0 <= i < self.nqubit for i in qargs):
             raise ValueError("Incorrect target indices.")
         if len(set(qargs)) != nqb_op:
             raise ValueError("A repeated target qubit index is not possible.")
 
         op_tensor = op.reshape((2,) * 2 * nqb_op)
 
-        rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
+        rho_tensor = self.rho.reshape((2,) * self.nqubit * 2)
 
         rho_tensor = np.tensordot(
             np.tensordot(op_tensor, rho_tensor, axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)]),
             op.conj().T.reshape((2,) * 2 * nqb_op),
-            axes=[tuple(i + self.Nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
+            axes=[tuple(i + self.nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
             [i for i in range(len(qargs))] + [-i for i in range(1, len(qargs) + 1)],
-            [i for i in qargs] + [i + self.Nqubit for i in reversed(list(qargs))],
+            [i for i in qargs] + [i + self.nqubit for i in reversed(list(qargs))],
         )
-        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+        self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
     def expectation_single(self, op, i) -> complex:
         """Expectation value of single-qubit operator.
@@ -173,8 +172,8 @@ class DensityMatrix(State):
             complex: expectation value (real for hermitian ops!).
         """
 
-        if not (0 <= i < self.Nqubit):
-            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.Nqubit-1}.")
+        if not (0 <= i < self.nqubit):
+            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.nqubit-1}.")
 
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
@@ -182,11 +181,11 @@ class DensityMatrix(State):
         st1 = self.copy()
         st1.normalize()
 
-        rho_tensor = st1.rho.reshape((2,) * st1.Nqubit * 2)
+        rho_tensor = st1.rho.reshape((2,) * st1.nqubit * 2)
         rho_tensor = np.tensordot(op, rho_tensor, axes=[1, i])
         rho_tensor = np.moveaxis(rho_tensor, 0, i)
 
-        return np.trace(rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit)))
+        return np.trace(rho_tensor.reshape((2**self.nqubit, 2**self.nqubit)))
 
     def dims(self):
         return self.rho.shape
@@ -213,7 +212,7 @@ class DensityMatrix(State):
                 Edge to apply CNOT gate.
         """
 
-        self.evolve(graphix.sim.statevec.CNOT_TENSOR.reshape(4, 4), edge)
+        self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
 
     def swap(self, edge) -> None:
         """swap qubits
@@ -303,7 +302,7 @@ class DensityMatrix(State):
         ....
         """
 
-        result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
+        result_array = np.zeros((2**self.nqubit, 2**self.nqubit), dtype=np.complex128)
 
         if not isinstance(channel, KrausChannel):
             raise TypeError("Can't apply a channel that is not a Channel object.")
@@ -323,7 +322,7 @@ class DensityMatrix(State):
 class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pr_calc=True):
+    def __init__(self, pr_calc=True) -> None:
         super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc)
 
     def apply_channel(self, channel: KrausChannel, qargs) -> None:

@@ -80,14 +80,14 @@ class TestDensityMatrix:
     def test_init_without_data_success(self, n: int) -> None:
         dm = DensityMatrix(nqubit=n)
         expected_density_matrix = np.outer(np.ones((2,) * n), np.ones((2,) * n)) / 2**n
-        assert dm.Nqubit == n
+        assert dm.nqubit == n
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
         dm = DensityMatrix(data=graphix.states.BasicStates.ZERO, nqubit=n)
         expected_density_matrix = np.zeros((2**n, 2**n))
         expected_density_matrix[0, 0] = 1
-        assert dm.Nqubit == n
+        assert dm.nqubit == n
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
@@ -262,7 +262,7 @@ class TestDensityMatrix:
         dm_a = DensityMatrix(nqubit=n)
         dm_b = DensityMatrix(nqubit=n + 1)
         dm_a.tensor(dm_b)
-        assert dm_a.Nqubit == 2 * n + 1
+        assert dm_a.nqubit == 2 * n + 1
         assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
 
     # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_dm
@@ -274,7 +274,7 @@ class TestDensityMatrix:
             data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
-            assert dm_a.Nqubit == 2 * n + 1
+            assert dm_a.nqubit == 2 * n + 1
             assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
             assert np.allclose(dm_a.rho, np.kron(data_a, data_b))
 
@@ -869,7 +869,7 @@ class TestDensityMatrixBackend:
         backend.add_nodes(hadamardpattern.input_nodes)
         dm = DensityMatrix(nqubit=1)
         assert np.allclose(dm.rho, backend.state.rho)
-        # assert backend.state.Nqubit == 1
+        # assert backend.state.nqubit == 1
         assert backend.state.dims() == (2, 2)
 
         # minus state
@@ -877,7 +877,7 @@ class TestDensityMatrixBackend:
         backend.add_nodes(randpattern.input_nodes, data=graphix.states.BasicStates.MINUS)
         dm = DensityMatrix(nqubit=nqb, data=graphix.states.BasicStates.MINUS)
         assert np.allclose(dm.rho, backend.state.rho)
-        # assert backend.state.Nqubit == 1
+        # assert backend.state.nqubit == 1
         assert backend.state.dims() == (2**nqb, 2**nqb)
 
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
@@ -892,7 +892,7 @@ class TestDensityMatrixBackend:
 
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
-        assert backend.Nqubit == nqb
+        assert backend.nqubit == nqb
 
     def test_init_fail(self, fx_rng: Generator, nqb, randpattern) -> None:
         rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
@@ -911,7 +911,7 @@ class TestDensityMatrixBackend:
         backend = DensityMatrixBackend()
         backend.add_nodes(pattern.input_nodes)
         assert list(backend.node_index) == [0]
-        assert backend.Nqubit == 1
+        assert backend.nqubit == 1
 
     def test_add_nodes(self) -> None:
         circ = Circuit(1)

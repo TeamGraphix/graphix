@@ -129,13 +129,13 @@ class Pattern:
         for cmd in cmds:
             self.add(cmd)
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the sequence of pattern commands."""
         self.__Nnode = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: list[Command], input_nodes=None):
+    def replace(self, cmds: list[Command], input_nodes=None) -> None:
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands

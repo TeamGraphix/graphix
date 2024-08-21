@@ -84,7 +84,7 @@ class TestStatevecNew:
         backend.add_nodes(hadamardpattern.input_nodes, data=state)
         vec = Statevec(nqubit=1, data=state)
         assert np.allclose(vec.psi, backend.state.psi)
-        # assert backend.state.Nqubit == 1
+        # assert backend.state.nqubit == 1
         assert len(backend.state.dims()) == 1
 
         # data input and Statevec input
@@ -98,7 +98,7 @@ class TestStatevecNew:
         with pytest.raises(ValueError):
             StatevectorBackend().add_nodes(hadamardpattern.input_nodes, data=[state, state2])
 
-    def test_clifford(self):
+    def test_clifford(self) -> None:
         for clifford in graphix.clifford.TABLE:
             state = BasicStates.PLUS
             vec = Statevec(nqubit=1, data=state)

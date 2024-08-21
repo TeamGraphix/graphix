@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
@@ -40,7 +44,7 @@ def get_state(g) -> Statevec:
     return gstate
 
 
-def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0):
+def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0) -> npt.NDArray:
     """Returns the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`

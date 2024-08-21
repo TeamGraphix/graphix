@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 import pydantic
+import typing_extensions
 
 import graphix.clifford
 import graphix.ops
 
 if TYPE_CHECKING:
-    from graphix.states import BasicStates
+    from graphix.states import PlanarState
 
 
 class IXYZ(enum.Enum):
@@ -118,10 +119,12 @@ class Axis(enum.Enum):
     def op(self) -> npt.NDArray:
         if self == Axis.X:
             return graphix.ops.Ops.x
-        elif self == Axis.Y:
+        if self == Axis.Y:
             return graphix.ops.Ops.y
-        elif self == Axis.Z:
+        if self == Axis.Z:
             return graphix.ops.Ops.z
+
+        typing_extensions.assert_never(self)
 
 
 class Plane(enum.Enum):
@@ -259,7 +262,7 @@ class Pauli:
         """
         return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
 
-    def get_eigenstate(self, eigenvalue=0) -> BasicStates:
+    def get_eigenstate(self, eigenvalue=0) -> PlanarState:
         from graphix.states import BasicStates
 
         if self.symbol == IXYZ.X:
