@@ -121,7 +121,7 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: list[Command]):
+    def extend(self, cmds: list[Command]) -> None:
         """Add a list of commands.
 
         :param cmds: list of commands
