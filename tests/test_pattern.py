@@ -14,10 +14,10 @@ import graphix.ops
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
-import tests.random_circuit as rc
 from graphix.command import E, M, N
 from graphix.pattern import CommandNode, Pattern
 from graphix.pauli import Plane
+from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import PatternSimulator
 from graphix.transpiler import Circuit
@@ -60,7 +60,7 @@ class TestPattern:
     def test_standardize(self, fx_rng: Generator) -> None:
         nqubits = 2
         depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
+        circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         assert pattern.is_standard()
@@ -71,7 +71,7 @@ class TestPattern:
     def test_minimize_space(self, fx_rng: Generator) -> None:
         nqubits = 5
         depth = 5
-        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
+        circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.minimize_space()
@@ -85,7 +85,7 @@ class TestPattern:
         nqubits = 3
         depth = 3
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, rng)
+        circuit = rand_gate(nqubits, depth, pairs, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -121,7 +121,7 @@ class TestPattern:
         for nqubits in range(2, max_qubits):
             depth = 5
             pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-            circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
+            circuit = rand_gate(nqubits, depth, pairs, fx_rng)
             pattern = circuit.transpile().pattern
             pattern.standardize(method="global")
             pattern.minimize_space()
@@ -130,7 +130,7 @@ class TestPattern:
     def test_parallelize_pattern(self, fx_rng: Generator) -> None:
         nqubits = 2
         depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth, fx_rng)
+        circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.parallelize_pattern()
@@ -143,7 +143,7 @@ class TestPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 2
         depth = 1
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -161,7 +161,7 @@ class TestPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -178,7 +178,7 @@ class TestPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -193,7 +193,7 @@ class TestPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_rzz=True)
+        circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
         pattern = circuit.transpile(opt=True).pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -208,7 +208,7 @@ class TestPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_rzz=True)
+        circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
         pattern = circuit.standardize_and_transpile(opt=True).pattern
         pattern.standardize(method="global")
         pattern.shift_signals(method="global")
@@ -228,7 +228,7 @@ class TestPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
-        circuit = rc.get_rand_circuit(nqubits, depth, rng, use_rzz=True)
+        circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
         pattern = circuit.standardize_and_transpile(opt=True).pattern
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
@@ -408,7 +408,7 @@ class TestLocalPattern:
         nqubits = 5
         depth = 4
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
+        circuit = rand_gate(nqubits, depth, pairs, fx_rng)
         pattern = circuit.transpile().pattern
         nodes_ref, edges_ref = pattern.get_graph()
 
@@ -450,7 +450,7 @@ class TestLocalPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         localpattern = pattern.get_local_pattern()
         localpattern.standardize()
@@ -466,7 +466,7 @@ class TestLocalPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         localpattern = pattern.get_local_pattern()
         localpattern.standardize()
@@ -483,7 +483,7 @@ class TestLocalPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize_and_shift_signals()
         assert pattern.is_standard()
@@ -507,7 +507,7 @@ class TestLocalPattern:
         ]
         nqubits = 3
         depth = 2
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         state_ref = circuit.simulate_statevector().statevec
         for process in processes:
             pattern = circuit.transpile().pattern
@@ -526,7 +526,7 @@ class TestLocalPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile(opt=True).pattern
         pattern.standardize(method="local")
         assert pattern.is_standard()
@@ -540,7 +540,7 @@ class TestLocalPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile(opt=True).pattern
         pattern.standardize(method="local")
         pattern.shift_signals(method="local")
@@ -570,7 +570,7 @@ class TestLocalPattern:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 5
         depth = 4
-        circuit = rc.get_rand_circuit(nqubits, depth, rng)
+        circuit = rand_circuit(nqubits, depth, rng)
         localpattern = circuit.transpile().pattern.get_local_pattern()
         result1 = localpattern.is_standard()
         localpattern.standardize()

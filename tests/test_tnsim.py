@@ -8,10 +8,10 @@ import pytest
 from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
-import tests.random_circuit as rc
 from graphix.clifford import CLIFFORD
 from graphix.command import C, E, X, Z
 from graphix.ops import Ops
+from graphix.random_objects import rand_circuit
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
@@ -302,7 +302,7 @@ class TestTN:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_ccx(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         circuit.ccx(0, 1, 2)
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
@@ -316,7 +316,7 @@ class TestTN:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_with_graphtrans(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
@@ -333,7 +333,7 @@ class TestTN:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_with_graphtrans_sequential(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         pattern = circuit.transpile().pattern
         pattern = circuit.transpile().pattern
         pattern.standardize()
@@ -351,7 +351,7 @@ class TestTN:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_coef_state(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 2, rng)
+        circuit = rand_circuit(4, 2, rng)
 
         pattern = circuit.standardize_and_transpile().pattern
 
@@ -367,7 +367,7 @@ class TestTN:
     @pytest.mark.parametrize(("nqubits", "jumps"), itertools.product(range(2, 6), range(1, 6)))
     def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(nqubits, 3, rng)
+        circuit = rand_circuit(nqubits, 3, rng)
         pattern = circuit.standardize_and_transpile().pattern
         statevec_ref = circuit.simulate_statevector().statevec
 
@@ -380,7 +380,7 @@ class TestTN:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_evolve(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
