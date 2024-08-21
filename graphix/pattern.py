@@ -82,7 +82,7 @@ class Pattern:
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
 
-    def add(self, cmd: Command):
+    def add(self, cmd: Command) -> None:
         """add command to the end of the pattern.
         an MBQC command is specified by a list of [type, node, attr], where
 
