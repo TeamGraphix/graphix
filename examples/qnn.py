@@ -157,7 +157,7 @@ class QNN:
         Calculates the expectation value of an PauliZ obeservable given a state vector.
 
         Args:
-          sv: sSate vector represented as a numpy array.
+          sv: State vector represented as a numpy array.
 
         Returns:
           the expectation value of a quantum observable.
