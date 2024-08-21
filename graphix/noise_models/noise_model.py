@@ -33,7 +33,6 @@ class NoiseModel(abc.ABC):
     @abc.abstractmethod
     def confuse_result(self, result: bool) -> bool:
         """assign wrong measurement result"""
-        ...
 
     @abc.abstractmethod
     def byproduct_x(self):

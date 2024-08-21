@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import abc
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import graphix.clifford
 from graphix.command import BaseM, CommandKind, M
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 from graphix.pauli import MeasureUpdate
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
@@ -78,8 +82,8 @@ class PatternSimulator:
     """
 
     def __init__(
-        self, pattern, backend="statevector", measure_method: MeasureMethod = None, noise_model=None, **kwargs
-    ):
+        self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, **kwargs
+    ) -> None:
         """
         Parameters
         -----------
@@ -126,7 +130,7 @@ class PatternSimulator:
         self.__measure_method = measure_method
 
     @property
-    def pattern(self):
+    def pattern(self) -> Pattern:
         return self.__pattern
 
     @property
