@@ -79,7 +79,7 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
         g.add_edge((pyzx_index, map_to_pyzx[og_index]))
 
     og_edges = og.inside.edges()
-    pyzx_edges = [(map_to_pyzx[a], map_to_pyzx[b]) for a, b in og_edges]
+    pyzx_edges = ((map_to_pyzx[a], map_to_pyzx[b]) for a, b in og_edges)
     g.add_edges(pyzx_edges, zx.EdgeType.HADAMARD)
 
     # Add the edges between the Z spiders in the graph body
