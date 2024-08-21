@@ -53,7 +53,7 @@ class TestDensityMatrix:
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
-            DensityMatrix(data=randobj.rand_herm(2 ** fx_rng.integers(2, 5)))
+            DensityMatrix(data=randobj.rand_herm(2 ** fx_rng.integers(2, 5), fx_rng))
         # check with non hermitian dm but unit trace
         tmp = _randdm_raw(fx_rng.integers(2, 5), fx_rng)
         with pytest.raises(ValueError):
@@ -69,7 +69,7 @@ class TestDensityMatrix:
         with pytest.raises(TypeError):
             DensityMatrix(data=fx_rng.uniform(size=(2, 2, 3)))
         # check square and hermitian but with incorrect dimension (non-qubit type)
-        data = randobj.rand_herm(5)
+        data = randobj.rand_herm(5, fx_rng)
         data /= np.trace(data)
         with pytest.raises(ValueError):
             # not really a dm since not PSD but ok.
@@ -91,10 +91,10 @@ class TestDensityMatrix:
         assert np.allclose(dm.rho, expected_density_matrix)
 
     # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_herm
-    def test_init_with_data_success(self) -> None:
+    def test_init_with_data_success(self, fx_rng: Generator) -> None:
         # don't use rand_dm here since want to check
         for n in range(3):
-            _data = randobj.rand_herm(2**n)
+            _data = randobj.rand_herm(2**n, fx_rng)
 
     def test_init_with_state_sucess(self, fx_rng: Generator) -> None:
         # both "numerical" statevec and Statevec object
@@ -180,19 +180,19 @@ class TestDensityMatrix:
         assert np.allclose(dm2.rho, expected_dm)
         assert np.allclose(dm2.rho, dm.rho)
 
-    def test_evolve_single_fail(self) -> None:
+    def test_evolve_single_fail(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
         # generate random 4 x 4 unitary matrix
-        op = randobj.rand_unit(4)
+        op = randobj.rand_unit(4, fx_rng)
 
         with pytest.raises(AssertionError):
             dm.evolve_single(op, 2)
         with pytest.raises(ValueError):
             dm.evolve_single(op, 1)
 
-    def test_evolve_single_success(self) -> None:
+    def test_evolve_single_success(self, fx_rng: Generator) -> None:
         # generate random 2 x 2 unitary matrix
-        op = randobj.rand_unit(2)
+        op = randobj.rand_unit(2, fx_rng)
 
         n = 10
         for i in range(n):
@@ -203,13 +203,13 @@ class TestDensityMatrix:
             dm.evolve_single(op, i)
             assert np.allclose(dm.rho, expected_density_matrix)
 
-    def test_expectation_single_fail(self) -> None:
+    def test_expectation_single_fail(self, fx_rng: Generator) -> None:
         nqb = 3
         dm = DensityMatrix(nqubit=nqb)
 
         # wrong dimensions
         # generate random 4 x 4 unitary matrix
-        op = randobj.rand_unit(4)
+        op = randobj.rand_unit(4, fx_rng)
 
         with pytest.raises(ValueError):
             dm.expectation_single(op, 2)
@@ -217,7 +217,7 @@ class TestDensityMatrix:
             dm.expectation_single(op, 1)
 
         # wrong qubit indices
-        op = randobj.rand_unit(2)
+        op = randobj.rand_unit(2, fx_rng)
         with pytest.raises(ValueError):
             dm.expectation_single(op, -3)
         with pytest.raises(ValueError):
@@ -236,7 +236,7 @@ class TestDensityMatrix:
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
 
-        op = randobj.rand_unit(2)
+        op = randobj.rand_unit(2, fx_rng)
 
         dm.expectation_single(op, target_qubit)
 
@@ -265,12 +265,12 @@ class TestDensityMatrix:
         assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
 
     # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_dm
-    def test_tensor_with_data_success(self) -> None:
+    def test_tensor_with_data_success(self, fx_rng: Generator) -> None:
         for n in range(3):
-            data_a = randobj.rand_dm(2**n, dm_dtype=False)
+            data_a = randobj.rand_dm(2**n, dm_dtype=False, rng=fx_rng)
             dm_a = DensityMatrix(data=data_a)
 
-            data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False)
+            data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False, rng=fx_rng)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
             assert dm_a.Nqubit == 2 * n + 1
@@ -420,7 +420,7 @@ class TestDensityMatrix:
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         dm_single = deepcopy(dm)
 
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
         i = fx_rng.integers(0, nqubits)
 
         # need a list format for a single target
@@ -435,7 +435,7 @@ class TestDensityMatrix:
         nqubits_op = 2
 
         # random unitary
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
 
         # random pair of indices
         edge = tuple(random.sample(range(nqubits), 2))
@@ -460,7 +460,7 @@ class TestDensityMatrix:
         nqubits_op = 3
 
         # random unitary
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
 
         # 3 random indices
         targets = tuple(random.sample(range(nqubits), 3))
@@ -486,7 +486,7 @@ class TestDensityMatrix:
         nqubits_op = 3
 
         # random unitary
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
         # 3 random indices
         dm = DensityMatrix(nqubit=nqubits)
 
@@ -517,7 +517,7 @@ class TestDensityMatrix:
     # TODO: the test for normalization is done at initialization with data.
     # Now check that all operations conserve the norm.
     def test_normalize(self, fx_rng: Generator) -> None:
-        data = randobj.rand_dm(2 ** fx_rng.integers(2, 4), dm_dtype=False)
+        data = randobj.rand_dm(2 ** fx_rng.integers(2, 4), dm_dtype=False, rng=fx_rng)
 
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
@@ -572,7 +572,7 @@ class TestDensityMatrix:
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
-        dm = randobj.rand_dm(2)
+        dm = randobj.rand_dm(2, fx_rng)
 
         # copy of initial dm
         rho_test = deepcopy(dm.rho)
@@ -654,7 +654,7 @@ class TestDensityMatrix:
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
-        dm = randobj.rand_dm(2)
+        dm = randobj.rand_dm(2, fx_rng)
 
         # copy of initial dm
         rho_test = deepcopy(dm.rho)
@@ -780,7 +780,7 @@ class TestDensityMatrix:
         nqb = 1
         dim = 2**nqb
         rk = int(fx_rng.integers(1, dim**2 + 1))
-        channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
+        channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -826,7 +826,7 @@ class TestDensityMatrix:
         nqb = 2
         dim = 2**nqb
         rk = int(fx_rng.integers(1, dim**2 + 1))
-        channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
+        channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
 
         dm.apply_channel(channel, qubits)
 

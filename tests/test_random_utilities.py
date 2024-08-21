@@ -17,14 +17,14 @@ if TYPE_CHECKING:
 
 class TestUtilities:
     def test_rand_herm(self, fx_rng: Generator) -> None:
-        tmp = randobj.rand_herm(fx_rng.integers(2, 20))
+        tmp = randobj.rand_herm(fx_rng.integers(2, 20), fx_rng)
         assert np.allclose(tmp, tmp.conj().T)
 
     # TODO : work on that. Verify an a random vector and not at the operator level...
 
     def test_rand_unit(self, fx_rng: Generator) -> None:
         d = fx_rng.integers(2, 20)
-        tmp = randobj.rand_unit(d)
+        tmp = randobj.rand_unit(d, fx_rng)
         print(type(tmp), tmp.dtype)
 
         # different default values for testing.assert_allclose and all_close!
@@ -36,7 +36,7 @@ class TestUtilities:
         dim = 2**nqb  # fx_rng.integers(2, 8)
 
         # no rank feature
-        channel = randobj.rand_channel_kraus(dim=dim)
+        channel = randobj.rand_channel_kraus(dim=dim, rng=fx_rng)
 
         assert isinstance(channel, KrausChannel)
         assert check_data_dims(channel.kraus_ops)
@@ -46,7 +46,7 @@ class TestUtilities:
         assert channel.is_normalized
 
         rk = int(fx_rng.integers(1, dim**2 + 1))
-        channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
+        channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
 
         assert isinstance(channel, KrausChannel)
         assert check_data_dims(channel.kraus_ops)
@@ -55,20 +55,20 @@ class TestUtilities:
         assert channel.size == rk
         assert channel.is_normalized
 
-    def test_random_channel_fail(self) -> None:
+    def test_random_channel_fail(self, fx_rng: Generator) -> None:
         # incorrect rank type
         with pytest.raises(TypeError):
-            _ = randobj.rand_channel_kraus(dim=2**2, rank=3.0)
+            _ = randobj.rand_channel_kraus(dim=2**2, rank=3.0, rng=fx_rng)
 
         # null rank
         with pytest.raises(ValueError):
-            _ = randobj.rand_channel_kraus(dim=2**2, rank=0)
+            _ = randobj.rand_channel_kraus(dim=2**2, rank=0, rng=fx_rng)
 
     def test_rand_gauss_cpx(self, fx_rng: Generator) -> None:
         nsample = int(1e4)
 
         dim = fx_rng.integers(2, 20)
-        tmp = [randobj.rand_gauss_cpx_mat(dim=dim) for _ in range(nsample)]
+        tmp = [randobj.rand_gauss_cpx_mat(dim=dim, rng=fx_rng) for _ in range(nsample)]
 
         dimset = {i.shape for i in tmp}
         assert len(dimset) == 1
@@ -108,14 +108,14 @@ class TestUtilities:
             check_psd(mat)
 
         # hermitian but not positive eigenvalues
-        mat = randobj.rand_herm(lst)
+        mat = randobj.rand_herm(lst, rng=fx_rng)
 
         with pytest.raises(ValueError):
             check_psd(mat)
 
     def test_rand_dm(self, fx_rng: Generator) -> None:
         # needs to be power of 2 dimension since builds a DM object
-        dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5))
+        dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rng=fx_rng)
 
         assert isinstance(dm, DensityMatrix)
         assert check_square(dm.rho)
@@ -126,11 +126,11 @@ class TestUtilities:
     # try with incorrect dimension
     def test_rand_dm_fail(self, fx_rng: Generator) -> None:
         with pytest.raises(ValueError):
-            _ = randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1)
+            _ = randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1, rng=fx_rng)
 
     def test_rand_dm_rank(self, fx_rng: Generator) -> None:
         rk = 3
-        dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk)
+        dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk, rng=fx_rng)
 
         assert isinstance(dm, DensityMatrix)
         assert check_square(dm.rho)
@@ -165,24 +165,24 @@ class TestUtilities:
     def test_random_pauli_channel_success(self, fx_rng: Generator) -> None:
         nqb = int(fx_rng.integers(2, 6))
         rk = int(fx_rng.integers(1, 2**nqb + 1))
-        pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
+        pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk, rng=fx_rng)  # default is full rank
 
         assert isinstance(pauli_channel, KrausChannel)
         assert pauli_channel.nqubit == nqb
         assert pauli_channel.size == rk
         assert pauli_channel.is_normalized
 
-    def test_random_pauli_channel_fail(self) -> None:
+    def test_random_pauli_channel_fail(self, fx_rng: Generator) -> None:
         nqb = 3
         rk = 2
         with pytest.raises(TypeError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5, rng=fx_rng)
 
         with pytest.raises(ValueError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk, rng=fx_rng)
 
         with pytest.raises(ValueError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3, rng=fx_rng)
 
         with pytest.raises(ValueError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk)
+            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk, rng=fx_rng)

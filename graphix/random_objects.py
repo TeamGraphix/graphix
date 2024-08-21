@@ -18,28 +18,28 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
 
-def rand_herm(sz: int):
+def rand_herm(sz: int, rng: Generator):
     """
     generate random hermitian matrix of size sz*sz
     """
-    tmp = np.random.rand(sz, sz) + 1j * np.random.rand(sz, sz)
+    tmp = rng.random(size=(sz, sz)) + 1j * rng.random(size=(sz, sz))
     return tmp + tmp.conj().T
 
 
-def rand_unit(sz: int):
+def rand_unit(sz: int, rng: Generator):
     """
     generate haar random unitary matrix of size sz*sz
     """
     if sz == 1:
-        return np.array([np.exp(1j * np.random.rand(1) * 2 * np.pi)])
+        return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
     else:
-        return unitary_group.rvs(sz)
+        return unitary_group.rvs(sz, random_state=rng)
 
 
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rank: int | None = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
+def rand_dm(dim: int, rng: Generator, rank: int | None = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
     """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 
@@ -61,14 +61,14 @@ def rand_dm(dim: int, rank: int | None = None, dm_dtype=True) -> DensityMatrix |
     if rank is None:
         rank = dim
 
-    evals = np.random.rand(rank)
+    evals = rng.random(size=rank)
 
     padded_evals = np.zeros(dim)
     padded_evals[: len(evals)] = evals
 
     dm = np.diag(padded_evals / np.sum(padded_evals))
 
-    randU = rand_unit(dim)
+    randU = rand_unit(dim, rng)
     dm = randU @ dm @ randU.transpose().conj()
 
     if dm_dtype:
@@ -78,7 +78,7 @@ def rand_dm(dim: int, rank: int | None = None, dm_dtype=True) -> DensityMatrix |
         return dm
 
 
-def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
+def rand_gauss_cpx_mat(dim: int, rng: Generator, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
     """
     Returns a square array of standard normal complex random variates.
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
@@ -96,10 +96,10 @@ def rand_gauss_cpx_mat(dim: int, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
     if sig == "ginibre":
         sig = 1.0 / np.sqrt(2 * dim)
 
-    return np.sum(np.random.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
+    return np.sum(rng.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
 
 
-def rand_channel_kraus(dim: int, rank: int | None = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
+def rand_channel_kraus(dim: int, rng: Generator, rank: int | None = None, sig: float = 1 / np.sqrt(2)) -> KrausChannel:
     """
     Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
@@ -129,7 +129,7 @@ def rand_channel_kraus(dim: int, rank: int | None = None, sig: float = 1 / np.sq
     if not 1 <= rank:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
-    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
+    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig, rng=rng) for _ in range(rank)]
     Hmat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
     kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(Hmat))
 
@@ -138,7 +138,7 @@ def rand_channel_kraus(dim: int, rank: int | None = None, sig: float = 1 / np.sq
 
 # or merge with previous with a "pauli" kwarg?
 ### continue here
-def rand_Pauli_channel_kraus(dim: int, rank: int | None = None) -> KrausChannel:
+def rand_Pauli_channel_kraus(dim: int, rng: Generator, rank: int | None = None) -> KrausChannel:
     if not isinstance(dim, int):
         raise ValueError(f"The dimension must be an integer and not {dim}.")
 
@@ -160,12 +160,12 @@ def rand_Pauli_channel_kraus(dim: int, rank: int | None = None) -> KrausChannel:
     # full probability has to have dim**2 operators.
     prob_list = np.zeros(dim**2)
     # generate rank random numbers and normalize
-    tmp_list = np.random.uniform(size=rank)
+    tmp_list = rng.uniform(size=rank)
     tmp_list /= tmp_list.sum()
 
     # fill the list and shuffle
     prob_list[:rank] = tmp_list
-    np.random.shuffle(prob_list)
+    rng.shuffle(prob_list)
 
     tensor_Pauli_ops = Ops.build_tensor_Pauli_ops(nqb)
     target_indices = np.nonzero(prob_list)

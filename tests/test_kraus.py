@@ -126,7 +126,7 @@ class TestChannel:
         # incorrect rank (number of kraus_operators)
         # use a random channel to do that.
         with pytest.raises(ValueError):
-            randobj.rand_channel_kraus(dim=2**2, rank=20)
+            randobj.rand_channel_kraus(dim=2**2, rank=20, rng=fx_rng)
 
     def test_dephasing_channel(self, fx_rng: Generator) -> None:
         prob = fx_rng.uniform()
