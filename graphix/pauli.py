@@ -263,13 +263,14 @@ class Pauli:
 
         if self.symbol == IXYZ.X:
             return BasicStates.PLUS if eigenvalue == 0 else BasicStates.MINUS
-        elif self.symbol == IXYZ.Y:
+        if self.symbol == IXYZ.Y:
             return BasicStates.PLUS_I if eigenvalue == 0 else BasicStates.MINUS_I
-        elif self.symbol == IXYZ.Z:
+        if self.symbol == IXYZ.Z:
             return BasicStates.ZERO if eigenvalue == 0 else BasicStates.ONE
         # Any state is eigenstate of the identity
-        elif self.symbol == IXYZ.I:
+        if self.symbol == IXYZ.I:
             return BasicStates.PLUS
+        typing_extensions.assert_never(self.symbol)
 
     def __repr__(self) -> str:
         return self.__unit.prefix(self.__symbol.name)
