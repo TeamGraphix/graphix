@@ -79,14 +79,14 @@ class TestDensityMatrix:
     def test_init_without_data_success(self, n: int) -> None:
         dm = DensityMatrix(nqubit=n)
         expected_density_matrix = np.outer(np.ones((2,) * n), np.ones((2,) * n)) / 2**n
-        assert dm.Nqubit == n
+        assert dm.n_qubit == n
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
         dm = DensityMatrix(data=graphix.states.BasicStates.ZERO, nqubit=n)
         expected_density_matrix = np.zeros((2**n, 2**n))
         expected_density_matrix[0, 0] = 1
-        assert dm.Nqubit == n
+        assert dm.n_qubit == n
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
@@ -261,7 +261,7 @@ class TestDensityMatrix:
         dm_a = DensityMatrix(nqubit=n)
         dm_b = DensityMatrix(nqubit=n + 1)
         dm_a.tensor(dm_b)
-        assert dm_a.Nqubit == 2 * n + 1
+        assert dm_a.n_qubit == 2 * n + 1
         assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
 
     # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_dm
@@ -273,7 +273,7 @@ class TestDensityMatrix:
             data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
-            assert dm_a.Nqubit == 2 * n + 1
+            assert dm_a.n_qubit == 2 * n + 1
             assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
             assert np.allclose(dm_a.rho, np.kron(data_a, data_b))
 
@@ -892,7 +892,7 @@ class TestDensityMatrixBackend:
 
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
-        assert backend.Nqubit == nqb
+        assert backend.n_qubit == nqb
 
     def test_init_fail(self, fx_rng: Generator, nqb, randpattern) -> None:
         rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
@@ -915,7 +915,7 @@ class TestDensityMatrixBackend:
         assert backend.pattern == pattern
         assert backend.results == pattern.results
         assert backend.node_index == [0]
-        assert backend.Nqubit == 1
+        assert backend.n_qubit == 1
         assert backend.max_qubit_num == 12
 
     def test_add_nodes(self) -> None:

@@ -52,7 +52,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
-        self.Nqubit = 0
+        self.n_qubit = 0
         self.to_trace = []
         self.to_trace_loc = []
         self.max_qubit_num = max_qubit_num
@@ -87,7 +87,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         sv_to_add = Statevec(nqubit=n, data=input_state)
         self.state.tensor(sv_to_add)
         self.node_index.extend(nodes)
-        self.Nqubit += n
+        self.n_qubit += n
 
     def entangle_nodes(self, edge: tuple[int]):
         """Apply CZ gate to two connected nodes
@@ -111,7 +111,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         """
         loc = self._perform_measure(cmd)
         self.state.remove_qubit(loc)
-        self.Nqubit -= 1
+        self.n_qubit -= 1
 
     def correct_byproduct(self, cmd: list[command.X, command.Z]):
         """Byproduct correction
@@ -420,7 +420,7 @@ class Statevec:
         total_num = len(self.dims()) + len(other.dims())
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
-    def CNOT(self, qubits):
+    def cnot(self, qubits):
         """apply CNOT
 
         Parameters

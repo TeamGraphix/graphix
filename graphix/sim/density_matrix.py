@@ -62,7 +62,7 @@ class DensityMatrix:
             check_size_consistency(data)
             # safe: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.copy.html
             self.rho = data.rho.copy()
-            self.Nqubit = data.Nqubit
+            self.n_qubit = data.n_qubit
             return
         if isinstance(data, collections.abc.Iterable):
             input_list = list(data)
@@ -77,14 +77,14 @@ class DensityMatrix:
                         check_size_consistency(self.rho)
                         assert check_unit_trace(self.rho)
                         assert check_psd(self.rho)
-                        self.Nqubit = self.rho.shape[0].bit_length() - 1
+                        self.n_qubit = self.rho.shape[0].bit_length() - 1
                         return
                 except TypeError:
                     pass
         statevec = Statevec(data, nqubit)
         # NOTE this works since np.outer flattens the inputs!
         self.rho = np.outer(statevec.psi, statevec.psi.conj())
-        self.Nqubit = len(statevec.dims())
+        self.n_qubit = len(statevec.dims())
 
     def __repr__(self):
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
@@ -99,14 +99,14 @@ class DensityMatrix:
             i : int
                 Index of qubit to apply operator.
         """
-        assert i >= 0 and i < self.Nqubit
+        assert i >= 0 and i < self.n_qubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
-        rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
-        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.Nqubit, 0))
-        rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.Nqubit))
-        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+        rho_tensor = self.rho.reshape((2,) * self.n_qubit * 2)
+        rho_tensor = np.tensordot(np.tensordot(op, rho_tensor, axes=(1, i)), op.conj().T, axes=(i + self.n_qubit, 0))
+        rho_tensor = np.moveaxis(rho_tensor, (0, -1), (i, i + self.n_qubit))
+        self.rho = rho_tensor.reshape((2**self.n_qubit, 2**self.n_qubit))
 
     def evolve(self, op, qargs):
         """Multi-qubit operation
@@ -135,26 +135,26 @@ class DensityMatrix:
         if nqb_op != len(qargs):
             raise ValueError("The dimension of the operator doesn't match the number of targets.")
 
-        if not all(0 <= i < self.Nqubit for i in qargs):
+        if not all(0 <= i < self.n_qubit for i in qargs):
             raise ValueError("Incorrect target indices.")
         if len(set(qargs)) != nqb_op:
             raise ValueError("A repeated target qubit index is not possible.")
 
         op_tensor = op.reshape((2,) * 2 * nqb_op)
 
-        rho_tensor = self.rho.reshape((2,) * self.Nqubit * 2)
+        rho_tensor = self.rho.reshape((2,) * self.n_qubit * 2)
 
         rho_tensor = np.tensordot(
             np.tensordot(op_tensor, rho_tensor, axes=[tuple(nqb_op + i for i in range(len(qargs))), tuple(qargs)]),
             op.conj().T.reshape((2,) * 2 * nqb_op),
-            axes=[tuple(i + self.Nqubit for i in qargs), tuple(i for i in range(len(qargs)))],
+            axes=[tuple(i + self.n_qubit for i in qargs), tuple(i for i in range(len(qargs)))],
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
             [i for i in range(len(qargs))] + [-i for i in range(1, len(qargs) + 1)],
-            [i for i in qargs] + [i + self.Nqubit for i in reversed(list(qargs))],
+            [i for i in qargs] + [i + self.n_qubit for i in reversed(list(qargs))],
         )
-        self.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+        self.rho = rho_tensor.reshape((2**self.n_qubit, 2**self.n_qubit))
 
     def expectation_single(self, op, i):
         """Expectation value of single-qubit operator.
@@ -166,8 +166,8 @@ class DensityMatrix:
             complex: expectation value (real for hermitian ops!).
         """
 
-        if not (0 <= i < self.Nqubit):
-            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.Nqubit-1}.")
+        if not (0 <= i < self.n_qubit):
+            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.n_qubit-1}.")
 
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
@@ -175,10 +175,10 @@ class DensityMatrix:
         st1 = deepcopy(self)
         st1.normalize()
 
-        rho_tensor = st1.rho.reshape((2,) * st1.Nqubit * 2)
+        rho_tensor = st1.rho.reshape((2,) * st1.n_qubit * 2)
         rho_tensor = np.tensordot(op, rho_tensor, axes=[1, i])
         rho_tensor = np.moveaxis(rho_tensor, 0, i)
-        st1.rho = rho_tensor.reshape((2**self.Nqubit, 2**self.Nqubit))
+        st1.rho = rho_tensor.reshape((2**self.n_qubit, 2**self.n_qubit))
 
         return np.trace(st1.rho)
 
@@ -197,7 +197,7 @@ class DensityMatrix:
         if not isinstance(other, DensityMatrix):
             other = DensityMatrix(other)
         self.rho = np.kron(self.rho, other.rho)
-        self.Nqubit += other.Nqubit
+        self.n_qubit += other.n_qubit
 
     def cnot(self, edge):
         """Apply CNOT gate to density matrix.
@@ -261,7 +261,7 @@ class DensityMatrix:
         )
 
         self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
-        self.Nqubit = nqubit_after
+        self.n_qubit = nqubit_after
 
     def fidelity(self, statevec):
         """calculate the fidelity against reference statevector.
@@ -295,7 +295,7 @@ class DensityMatrix:
         ....
         """
 
-        result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
+        result_array = np.zeros((2**self.n_qubit, 2**self.n_qubit), dtype=np.complex128)
         tmp_dm = deepcopy(self)
 
         if not isinstance(channel, KrausChannel):
@@ -337,7 +337,7 @@ class DensityMatrixBackend(Backend):
         self.results = deepcopy(pattern.results)
         self.state = None
         self.node_index = []
-        self.Nqubit = 0
+        self.n_qubit = 0
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
@@ -363,7 +363,7 @@ class DensityMatrixBackend(Backend):
         dm_to_add = DensityMatrix(nqubit=n, data=input_state)
         self.state.tensor(dm_to_add)
         self.node_index.extend(nodes)
-        self.Nqubit += n
+        self.n_qubit += n
 
     def entangle_nodes(self, edge):
         """Apply CZ gate to the two connected nodes.

@@ -35,7 +35,7 @@ class TestStatevec:
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )
-    def test_measurement_into_each_XYZ_basis(self, state: BasicStates) -> None:
+    def test_measurement_into_each_xyz_basis(self, state: BasicStates) -> None:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)

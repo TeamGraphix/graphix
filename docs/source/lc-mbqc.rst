@@ -80,18 +80,18 @@ Furthermore, we can toggle through `equivalent graphs`, graph states with differ
    :align: center
    :alt: equivalent graphs
 
-These graphs were generatetd using :class:`~graphix.graphsim.GraphState`, which has two methods to generate equivalent graphs, :meth:`~graphix.graphsim.GraphState.equivalent_graph_E1` and :meth:`~graphix.graphsim.GraphState.equivalent_graph_E2`, which have different conditions for applying them. For this graph, we can use :meth:`~graphix.graphsim.GraphState.equivalent_graph_E2` to any connected nodes since the graph is loopless.
+These graphs were generatetd using :class:`~graphix.graphsim.GraphState`, which has two methods to generate equivalent graphs, :meth:`~graphix.graphsim.GraphState.equivalent_graph_e1` and :meth:`~graphix.graphsim.GraphState.equivalent_graph_e2`, which have different conditions for applying them. For this graph, we can use :meth:`~graphix.graphsim.GraphState.equivalent_graph_e2` to any connected nodes since the graph is loopless.
 
 .. code-block:: python
 
     # series of equivalent graph transformations
     g = GraphState(nodes=[0,1,2,3],edges=[(0,1),(1,2),(2,3),(3,1)]) # leftmost graph
     state1 = g.to_statevector()
-    g.equivalent_graph_E2(0, 1) # second graph
+    g.equivalent_graph_e2(0, 1) # second graph
     state2 = g.to_statevector()
-    g.equivalent_graph_E2(2, 0) # third graph
+    g.equivalent_graph_e2(2, 0) # third graph
     state3 = g.to_statevector()
-    g.equivalent_graph_E2(0, 3) # rightmost graph
+    g.equivalent_graph_e2(0, 3) # rightmost graph
     state4 = g.to_statevector()
 
 checking that states 1-4 all are the same up to global phase:
@@ -144,5 +144,3 @@ References and notes
 .. [#graph] In fact, it is known that all stabilizer state can be represented by graph states up to local (single-qubit) Clifford operations.
 
 .. [#el]  Elliot `et al`., `J. Phys. A 43, 025301 (2010) <https://iopscience.iop.org/article/10.1088/1751-8113/43/2/025301/meta>`_  and `PRA 77, 042307 (2008) <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.77.042307>`_. We note that there are numerous stabilizer simulators available, but this graph simulator formulation by Elliot `et al.` is suitable for optimizing MBQC for three reasons: 1. this is a direct simulator of graph states, 2. the local-Clifford decoration is expressed by up to one H, S and Z gates, which are easier to handle than all 24 possible single-qubit Clifford gates, and 3. this has a method to toggle through all possible equivalent graphs (LC decorated graphs representing exactly the same stabilizer state), to minimize the connectivity of the graph state (to minimize the complexity of MBQC operation and classical simulation).
-
-
