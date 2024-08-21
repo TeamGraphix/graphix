@@ -151,10 +151,11 @@ class Plane(enum.Enum):
         """Return the axis orthogonal to the plane."""
         if self == Plane.XY:
             return Axis.Z
-        elif self == Plane.YZ:
+        if self == Plane.YZ:
             return Axis.X
-        elif self == Plane.XZ:
+        if self == Plane.XZ:
             return Axis.Y
+        typing_extensions.assert_never(self)
 
     @property
     def cos(self) -> Axis:
