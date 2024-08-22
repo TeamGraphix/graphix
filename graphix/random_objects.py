@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
 
-def rand_herm(sz: int, rng: Generator):
+def rand_herm(sz: int, rng: Generator) -> npt.NDArray:
     """
     generate random hermitian matrix of size sz*sz
     """
