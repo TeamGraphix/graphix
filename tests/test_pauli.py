@@ -8,6 +8,7 @@ import pytest
 
 import graphix.clifford
 import graphix.pauli
+from graphix.command import MeasureUpdate
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
@@ -66,7 +67,7 @@ class TestPauli:
             op_mat_ref += (-1) ** (choice) * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
         clifford_mat = graphix.clifford.CLIFFORD[vop]
         op_mat_ref = clifford_mat.conj().T @ op_mat_ref @ clifford_mat
-        measure_update = graphix.pauli.MeasureUpdate.compute(plane, s, t, clifford)
+        measure_update = MeasureUpdate.compute(plane, s, t, clifford)
         new_angle = angle * measure_update.coeff + measure_update.add_term
         vec = measure_update.new_plane.polar(new_angle)
         op_mat = np.eye(2, dtype=np.complex128) / 2

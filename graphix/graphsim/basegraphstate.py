@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
 
-from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
+from graphix._db import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 

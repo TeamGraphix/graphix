@@ -7,9 +7,8 @@ from __future__ import annotations
 import enum
 
 import numpy as np
-import pydantic
 
-import graphix.clifford
+from graphix._db import CLIFFORD
 
 
 class IXYZ(enum.Enum):
@@ -225,7 +224,7 @@ class Pauli:
         """
         Return the matrix of the Pauli gate.
         """
-        return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
+        return self.__unit.complex * CLIFFORD[self.__symbol.value + 1]
 
     def __repr__(self):
         return self.__unit.prefix(self.__symbol.name)
@@ -282,32 +281,3 @@ def parse(name: str) -> Pauli:
     Return the Pauli gate with the given name (limited to "I", "X", "Y" and "Z").
     """
     return get(IXYZ[name], UNIT)
-
-
-class MeasureUpdate(pydantic.BaseModel):
-    new_plane: Plane
-    coeff: int
-    add_term: float
-
-    @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford: graphix.clifford.Clifford) -> MeasureUpdate:
-        gates = list(map(Pauli.from_axis, plane.axes))
-        if s:
-            clifford = graphix.clifford.X @ clifford
-        if t:
-            clifford = graphix.clifford.Z @ clifford
-        gates = list(map(clifford.measure, gates))
-        new_plane = Plane.from_axes(*(gate.axis for gate in gates))
-        cos_pauli = clifford.measure(Pauli.from_axis(plane.cos))
-        sin_pauli = clifford.measure(Pauli.from_axis(plane.sin))
-        exchange = cos_pauli.axis != new_plane.cos
-        if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
-            coeff = -1
-        else:
-            coeff = 1
-        add_term = 0
-        if cos_pauli.unit.sign:
-            add_term += np.pi
-        if exchange:
-            add_term = np.pi / 2 - add_term
-        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)

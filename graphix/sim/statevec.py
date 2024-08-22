@@ -14,7 +14,7 @@ import graphix.sim.base_backend
 import graphix.states
 import graphix.types
 from graphix import command
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
+from graphix._db import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 
 

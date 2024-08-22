@@ -10,7 +10,7 @@ from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
 from graphix import command
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix._db import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.pauli import Plane
 from graphix.states import BasicStates

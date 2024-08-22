@@ -14,8 +14,8 @@ import numpy as np
 
 import graphix.states
 import graphix.types
+from graphix._db import CLIFFORD
 from graphix.channels import KrausChannel
-from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
 from graphix.sim.base_backend import Backend
