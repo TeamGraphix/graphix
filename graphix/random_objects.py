@@ -26,7 +26,7 @@ def rand_herm(sz: int, rng: Generator) -> npt.NDArray:
     return tmp + tmp.conj().T
 
 
-def rand_unit(sz: int, rng: Generator):
+def rand_unit(sz: int, rng: Generator) -> npt.NDArray:
     """
     generate haar random unitary matrix of size sz*sz
     """
