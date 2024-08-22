@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.random import Generator
 
 import graphix.clifford
 import graphix.command
 import graphix.pauli
+from graphix.rng import ensure_rng
 
 
 def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
@@ -34,7 +36,7 @@ def perform_measure(
 
 
 class Backend:
-    def __init__(self, pr_calc: bool = True, rng: np.random.Generator | None = None):
+    def __init__(self, pr_calc: bool = True, rng: Generator | None = None):
         """
         Parameters
         ----------
@@ -42,11 +44,8 @@ class Backend:
                 whether or not to compute the probability distribution before choosing the measurement result.
                 if False, measurements yield results 0/1 with 50% probabilities each.
         """
+        self.__rng = ensure_rng(rng)
         # whether to compute the probability
-        if rng is None:
-            self.__rng = np.random.default_rng()
-        else:
-            self.__rng = rng
         self.pr_calc = pr_calc
 
     @property

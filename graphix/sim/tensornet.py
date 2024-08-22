@@ -14,6 +14,7 @@ from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.pauli import Plane
+from graphix.rng import ensure_rng
 from graphix.states import BasicStates
 
 
@@ -66,8 +67,7 @@ class TensorNetworkBackend:
         else:
             raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
 
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = ensure_rng(rng)
         self.__rng = rng
         if self.graph_prep == "parallel":
             if not pattern.is_standard():
@@ -225,13 +225,13 @@ class MBQCTensorNet(TensorNetwork):
 
     def __init__(
         self,
-        rng,
+        rng: Generator | None = None,
         graph_nodes=None,
         graph_edges=None,
         default_output_nodes=None,
         ts=None,
         **kwargs,
-    ):
+    ) -> None:
         """
         Initialize MBQCTensorNet.
 
@@ -259,7 +259,7 @@ class MBQCTensorNet(TensorNetwork):
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
             self.set_graph_state(graph_nodes, graph_edges)
-        self.__rng = rng
+        self.__rng = ensure_rng(rng)
 
     def get_open_tensor_from_index(self, index):
         """Get tensor specified by node index. The tensor has a dangling edge.

@@ -6,6 +6,7 @@ import numpy as np
 
 from graphix.channels import KrausChannel
 from graphix.noise_models.noise_model import NoiseModel
+from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -19,8 +20,8 @@ class NoiselessNoiseModel(NoiseModel):
     :type NoiseModel: class
     """
 
-    def __init__(self, rng: Generator) -> None:
-        self.__rng = rng
+    def __init__(self, rng: Generator | None = None) -> None:
+        self.__rng = ensure_rng(rng)
 
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""

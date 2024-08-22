@@ -39,7 +39,7 @@ def nqb(fx_rng: Generator) -> int:
 
 @pytest.fixture
 def rand_circ(nqb, fx_rng: Generator) -> Circuit:
-    return rand_circuit(nqb, DEPTH, fx_rng)
+    return rand_circuit(nqb, DEPTH, rng=fx_rng)
 
 
 @pytest.fixture

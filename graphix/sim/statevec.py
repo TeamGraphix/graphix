@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import numpy as np
 import numpy.typing as npt
+from numpy.random import Generator
 
 import graphix.pauli
 import graphix.sim.base_backend
@@ -27,7 +28,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         input_state: Data = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
         pr_calc=True,
-        rng=None,
+        rng: Generator | None = None,
     ):
         """
         Parameters
