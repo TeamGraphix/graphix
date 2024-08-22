@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 
+import psutil
+
 if os.environ.get("NUMBA_NUM_THREADS") is None:
     # Prevent quimb from overwriting
     #  Need to set as soon as possible
-    os.environ["NUMBA_NUM_THREADS"] = "2"
+    os.environ["NUMBA_NUM_THREADS"] = f"{psutil.cpu_count(logical=False)}"
 
 import pytest
 from numpy.random import PCG64, Generator
