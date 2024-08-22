@@ -2,6 +2,7 @@
 ruff
 
 # Tests
+psutil
 pytest
 pytest-cov
 pytest-mock
