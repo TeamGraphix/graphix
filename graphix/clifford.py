@@ -67,7 +67,7 @@ class Clifford:
         Multiplication within the Clifford group (modulo unit factor).
         """
         if isinstance(other, Clifford):
-            return get(CLIFFORD_MUL[self.__index, other.__index])
+            return get(CLIFFORD_MUL[self.__index][other.__index])
         return NotImplemented
 
     def measure(self, pauli: graphix.pauli.Pauli) -> graphix.pauli.Pauli:
@@ -81,7 +81,7 @@ class Clifford:
         return pauli.unit * graphix.pauli.TABLE[symbol + 1][sign][False]
 
 
-TABLE = tuple(map(Clifford, range(len(CLIFFORD))))
+TABLE = tuple(Clifford(i) for i in range(len(CLIFFORD)))
 
 
 def get(index: int) -> Clifford:

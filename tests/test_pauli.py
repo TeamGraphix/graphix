@@ -58,9 +58,9 @@ class TestPauli:
     ) -> None:
         vop = clifford.index
         if s:
-            vop = graphix.clifford.CLIFFORD_MUL[1, vop]
+            vop = graphix.clifford.CLIFFORD_MUL[1][vop]
         if t:
-            vop = graphix.clifford.CLIFFORD_MUL[3, vop]
+            vop = graphix.clifford.CLIFFORD_MUL[3][vop]
         vec = plane.polar(angle)
         op_mat_ref = np.eye(2, dtype=np.complex128) / 2
         for i in range(3):

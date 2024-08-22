@@ -279,11 +279,11 @@ class BaseGraphState(ABC):
         for i in self.nodes:
             vop = 0
             if self.nodes[i]["sign"]:
-                vop = CLIFFORD_MUL[3, vop]
+                vop = CLIFFORD_MUL[3][vop]
             if self.nodes[i]["loop"]:
-                vop = CLIFFORD_MUL[4, vop]
+                vop = CLIFFORD_MUL[4][vop]
             if self.nodes[i]["hollow"]:
-                vop = CLIFFORD_MUL[6, vop]
+                vop = CLIFFORD_MUL[6][vop]
             vops[i] = vop
         return vops
 

@@ -79,7 +79,7 @@ class TestClifford:
     @pytest.mark.parametrize(("i", "j"), itertools.product(range(24), range(24)))
     def test_multiplication(self, i: int, j: int) -> None:
         arr = np.matmul(CLIFFORD[i], CLIFFORD[j])
-        assert CLIFFORD_MUL[i, j] == self.clifford_index(arr)
+        assert CLIFFORD_MUL[i][j] == self.clifford_index(arr)
 
     @pytest.mark.parametrize("i", range(24))
     def test_conjugation(self, i: int) -> None:
