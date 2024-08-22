@@ -39,7 +39,7 @@ def rand_unit(sz: int, rng: Generator) -> npt.NDArray:
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rng: Generator, rank: int | None = None, dm_dtype=True) -> DensityMatrix | np.ndarray:
+def rand_dm(dim: int, rng: Generator, rank: int | None = None, dm_dtype=True) -> DensityMatrix | npt.NDArray:
     """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 
