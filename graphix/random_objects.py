@@ -4,6 +4,7 @@ import functools
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import scipy.linalg
 from scipy.stats import unitary_group
 
