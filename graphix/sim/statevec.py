@@ -5,10 +5,13 @@ import functools
 import numbers
 import sys
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
-from numpy.random import Generator
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 import graphix.pauli
 import graphix.sim.base_backend

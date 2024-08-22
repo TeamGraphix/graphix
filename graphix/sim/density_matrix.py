@@ -5,6 +5,11 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
+
 import collections
 import numbers
 import sys

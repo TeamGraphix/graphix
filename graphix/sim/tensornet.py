@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import string
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import numpy as np
 import quimb.tensor as qtn
 import typing_extensions
-from numpy.random import Generator
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
