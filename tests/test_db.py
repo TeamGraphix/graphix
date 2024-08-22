@@ -92,3 +92,22 @@ class TestClifford:
         for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
             op = op @ CLIFFORD[j]
         assert i == self.clifford_index(op)
+
+
+class TestDB:
+    @pytest.mark.parametrize("i", range(24))
+    def test_safety(self, i: int) -> None:
+        with pytest.raises(TypeError):
+            # Cannot replace
+            CLIFFORD[i] = np.eye(2)  # type: ignore[index]
+        m = CLIFFORD[i]
+        with pytest.raises(ValueError):
+            # Cannot modify
+            m[0, 0] = 42
+        with pytest.raises(ValueError):
+            # Cannot make it writeable
+            m.flags.writeable = True
+        v = m.view()
+        with pytest.raises(ValueError):
+            # Cannot create writeable view
+            v.flags.writeable = True
