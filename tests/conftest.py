@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import os
+
+if os.environ.get("NUMBA_NUM_THREADS") is None:
+    # Prevent quimb from overwriting
+    #  Need to set as soon as possible
+    os.environ["NUMBA_NUM_THREADS"] = "2"
+
 import pytest
 from numpy.random import PCG64, Generator
 
