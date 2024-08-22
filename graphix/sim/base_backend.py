@@ -49,6 +49,10 @@ class Backend:
             self.__rng = rng
         self.pr_calc = pr_calc
 
+    @property
+    def rng(self) -> Generator:
+        return self.__rng
+
     def _perform_measure(self, cmd: graphix.command.M):
         s_signal = np.sum([self.results[j] for j in cmd.s_domain])
         t_signal = np.sum([self.results[j] for j in cmd.t_domain])

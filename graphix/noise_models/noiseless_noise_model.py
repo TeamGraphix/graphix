@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from graphix.channels import KrausChannel
 from graphix.noise_models.noise_model import NoiseModel
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 class NoiselessNoiseModel(NoiseModel):
@@ -14,8 +19,8 @@ class NoiselessNoiseModel(NoiseModel):
     :type NoiseModel: class
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, rng: Generator) -> None:
+        self.__rng = rng
 
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""
@@ -32,7 +37,7 @@ class NoiselessNoiseModel(NoiseModel):
     def confuse_result(self, cmd):
         """assign wrong measurement result"""
         p = 0.0
-        if np.random.rand() < p:
+        if self.__rng.random() < p:
             self.simulator.results[cmd[1]] = 1 - self.simulator.results[cmd[1]]
 
     def byproduct_x(self):

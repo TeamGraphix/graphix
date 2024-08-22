@@ -317,7 +317,14 @@ class DensityMatrix:
 class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pattern, max_qubit_num=12, pr_calc=True, input_state: Data = graphix.states.BasicStates.PLUS):
+    def __init__(
+        self,
+        pattern,
+        max_qubit_num=12,
+        pr_calc=True,
+        input_state: Data = graphix.states.BasicStates.PLUS,
+        rng: Generator | None = None,
+    ):
         """
         Parameters
         ----------
@@ -341,7 +348,7 @@ class DensityMatrixBackend(Backend):
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-        super().__init__(pr_calc)
+        super().__init__(pr_calc, rng)
 
         # initialize input qubits to desired init_state
         self.add_nodes(pattern.input_nodes, input_state)

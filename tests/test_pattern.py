@@ -65,7 +65,7 @@ class TestPattern:
         pattern.standardize(method="global")
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_minimize_space(self, fx_rng: Generator) -> None:
@@ -76,7 +76,7 @@ class TestPattern:
         pattern.standardize(method="global")
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -92,7 +92,7 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
@@ -135,7 +135,7 @@ class TestPattern:
         pattern.standardize(method="global")
         pattern.parallelize_pattern()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -149,7 +149,7 @@ class TestPattern:
         pattern.shift_signals(method="global")
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -168,7 +168,7 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(backend)
+        state_mbqc = pattern.simulate_pattern(backend, rng=rng)
         assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -185,7 +185,7 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -200,7 +200,7 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -215,7 +215,7 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -233,7 +233,7 @@ class TestPattern:
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern()
+        state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize(
@@ -457,7 +457,7 @@ class TestLocalPattern:
         pattern = localpattern.get_pattern()
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
@@ -474,7 +474,7 @@ class TestLocalPattern:
         pattern = localpattern.get_pattern()
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
@@ -488,7 +488,7 @@ class TestLocalPattern:
         pattern.standardize_and_shift_signals()
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
@@ -518,7 +518,7 @@ class TestLocalPattern:
                     pattern.shift_signals(method=operation[1])
             assert pattern.is_standard()
             pattern.minimize_space()
-            state_p = pattern.simulate_pattern()
+            state_p = pattern.simulate_pattern(rng=rng)
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -531,7 +531,7 @@ class TestLocalPattern:
         pattern.standardize(method="local")
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
@@ -546,7 +546,7 @@ class TestLocalPattern:
         pattern.shift_signals(method="local")
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern()
+        state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
@@ -591,7 +591,7 @@ class TestLocalPattern:
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
-        out = randpattern.simulate_pattern(backend=backend, input_state=states)
+        out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
         assert compare_backend_result_with_statevec(backend, out, out_circ) == pytest.approx(1)
 
@@ -601,7 +601,9 @@ class TestLocalPattern:
         states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):
-            randpattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", input_state=states)
+            randpattern.simulate_pattern(
+                backend="tensornetwork", graph_prep="sequential", input_state=states, rng=fx_rng
+            )
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:

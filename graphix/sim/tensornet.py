@@ -6,6 +6,7 @@ from copy import deepcopy
 import numpy as np
 import quimb.tensor as qtn
 import typing_extensions
+from numpy.random import Generator
 from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
@@ -22,7 +23,9 @@ class TensorNetworkBackend:
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, **kwargs):
+    def __init__(
+        self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, rng: Generator | None = None, **kwargs
+    ):
         """
 
         Parameters
@@ -63,18 +66,22 @@ class TensorNetworkBackend:
         else:
             raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
 
+        if rng is None:
+            rng = np.random.default_rng()
+        self.__rng = rng
         if self.graph_prep == "parallel":
             if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
             nodes, edges = pattern.get_graph()
             self.state = MBQCTensorNet(
+                rng=rng,
                 graph_nodes=nodes,
                 graph_edges=edges,
                 default_output_nodes=pattern.output_nodes,
                 **kwargs,
             )
         elif self.graph_prep == "sequential":
-            self.state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
+            self.state = MBQCTensorNet(rng=rng, default_output_nodes=pattern.output_nodes, **kwargs)
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
 
@@ -144,12 +151,12 @@ class TensorNetworkBackend:
             vector = self.state.get_open_tensor_from_index(cmd.node)
             probs = np.abs(vector) ** 2
             probs = probs / (np.sum(probs))
-            result = np.random.choice([0, 1], p=probs)
+            result = self.__rng.choice([0, 1], p=probs)
             self.results[cmd.node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
             # choose the measurement result randomly
-            result = np.random.choice([0, 1])
+            result = self.__rng.choice([0, 1])
             self.results[cmd.node] = result
             buffer = 2**0.5
 
@@ -218,6 +225,7 @@ class MBQCTensorNet(TensorNetwork):
 
     def __init__(
         self,
+        rng,
         graph_nodes=None,
         graph_edges=None,
         default_output_nodes=None,
@@ -251,6 +259,7 @@ class MBQCTensorNet(TensorNetwork):
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
             self.set_graph_state(graph_nodes, graph_edges)
+        self.__rng = rng
 
     def get_open_tensor_from_index(self, index):
         """Get tensor specified by node index. The tensor has a dangling edge.
@@ -378,7 +387,7 @@ class MBQCTensorNet(TensorNetwork):
             if outcome is not None:
                 result = outcome
             else:
-                result = np.random.choice([0, 1])
+                result = self.__rng.choice([0, 1])
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -677,7 +686,7 @@ class MBQCTensorNet(TensorNetwork):
         if deep:
             return deepcopy(self)
         else:
-            return self.__class__(ts=self)
+            return self.__class__(rng=self.__rng, ts=self)
 
 
 def _get_decomposed_cz():
