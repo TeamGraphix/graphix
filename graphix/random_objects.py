@@ -78,7 +78,7 @@ def rand_dm(dim: int, rng: Generator, rank: int | None = None, dm_dtype=True) ->
         return dm
 
 
-def rand_gauss_cpx_mat(dim: int, rng: Generator, sig: float = 1 / np.sqrt(2)) -> np.ndarray:
+def rand_gauss_cpx_mat(dim: int, rng: Generator, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
     """
     Returns a square array of standard normal complex random variates.
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
