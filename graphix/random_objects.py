@@ -279,5 +279,6 @@ def rand_circuit(
         for j, k in genpair(nqubits, 4, rng):
             circuit.swap(j, k)
         for j in range(nqubits):
-            rng.choice(gate_choice)(j)
+            ind = rng.integers(len(gate_choice))
+            gate_choice[ind](j)
     return circuit
