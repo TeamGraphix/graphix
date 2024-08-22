@@ -6,7 +6,7 @@ multiplications, conjugations and Pauli conjugations.
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
 import graphix.pauli
 from graphix._db import (
@@ -18,6 +18,9 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class Clifford:

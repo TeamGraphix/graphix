@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections
 import functools
 import numbers
 import sys
@@ -242,7 +241,7 @@ class Statevec:
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
-        elif isinstance(data, collections.abc.Iterable):
+        elif isinstance(data, Iterable):
             input_list = list(data)
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}")

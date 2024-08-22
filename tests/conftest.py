@@ -10,6 +10,7 @@ if os.environ.get("NUMBA_NUM_THREADS") is None:
 import pytest
 from numpy.random import PCG64, Generator
 
+import graphix.pattern
 import graphix.transpiler
 import tests.random_circuit
 
