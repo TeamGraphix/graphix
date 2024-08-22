@@ -87,8 +87,10 @@ class OpenGraph:
         if len(set(self.outputs)) != len(self.outputs):
             raise ValueError("Output nodes contain duplicates.")
 
-    def __eq__(self, other) -> bool:
-        """Checks the two open graphs are equal
+    def isclose(self, other: OpenGraph, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+        """Compared two open graphs implement approximately the same unitary
+        operator by ensuring the structure of the graphs are the same and all
+        measurement angles are sufficiently close.
 
         This doesn't check they are equal up to an isomorphism"""
 

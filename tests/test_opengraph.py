@@ -18,7 +18,7 @@ def test_open_graph_to_pattern() -> None:
     pattern = og.to_pattern()
     og_reconstructed = OpenGraph.from_pattern(pattern)
 
-    assert og == og_reconstructed
+    assert og.isclose(og_reconstructed)
 
     # 0 -- 1 -- 2
     #      |
@@ -38,4 +38,4 @@ def test_open_graph_to_pattern() -> None:
     pattern = og.to_pattern()
     og_reconstructed = OpenGraph.from_pattern(pattern)
 
-    assert og == og_reconstructed
+    assert og.isclose(og_reconstructed)

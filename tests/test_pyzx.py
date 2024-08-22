@@ -27,7 +27,7 @@ def test_graph_equality() -> None:
     g_copy = deepcopy(g)
     og2 = from_pyzx_graph(g_copy)
 
-    assert og1 == og2
+    assert og1.isclose(og2)
 
 
 # Converts a graph to and from an Open graph and then checks the resulting
