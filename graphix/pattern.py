@@ -1969,7 +1969,7 @@ def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, Pa
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in m_commands:
-        pm = PauliMeasure.try_from(cmd.plane, cmd.angle)
+        pm = PauliMeasure.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
         if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
