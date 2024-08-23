@@ -111,7 +111,7 @@ class MBQCVQE:
         return energy
 
 
-class MBQCVQE_WithPlaceholders(MBQCVQE):
+class MBQCVQEWithPlaceholders(MBQCVQE):
     def __init__(self, n_qubits: int, hamiltonian) -> None:
         super().__init__(n_qubits, hamiltonian)
         self.placeholders = tuple(Placeholder(f"{r}[{q}]") for q in range(n_qubits) for r in ("X", "Y", "Z"))
@@ -128,7 +128,7 @@ hamiltonian = create_hamiltonian()
 
 # %%
 # Instantiate the MBQCVQE class
-mbqc_vqe = MBQCVQE_WithPlaceholders(n_qubits, hamiltonian)
+mbqc_vqe = MBQCVQEWithPlaceholders(n_qubits, hamiltonian)
 
 
 # %%
@@ -161,7 +161,7 @@ print(f"Analytical solution: {analytical_solution}")
 # %%
 # Compare performances between using parameterized circuits (with placeholders) or not
 
-mbqc_vqe = MBQCVQE_WithPlaceholders(n_qubits, hamiltonian)
+mbqc_vqe = MBQCVQEWithPlaceholders(n_qubits, hamiltonian)
 time_with_placeholders = timeit(compute, number=2)
 print(f"Time with placeholders: {time_with_placeholders}")
 
