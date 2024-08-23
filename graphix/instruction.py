@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import abc
+import dataclasses
 import enum
 
-from pydantic import BaseModel
-
-# MEMO: Cannot use TYPE_CHECKING here for pydantic
-from graphix.pauli import Plane  # noqa: TCH001
+from graphix import utils
+from graphix.pauli import Plane
 
 
 class InstructionKind(enum.Enum):
@@ -29,181 +27,172 @@ class InstructionKind(enum.Enum):
     ZC = "ZC"
 
 
-class Instruction(BaseModel, abc.ABC):
+@utils.disable_init
+class Instruction:
     """
-    Circuit instruction base class model.
+    Circuit instruction.
     """
 
-    kind: InstructionKind = None
-    meas_index: int = None
+    meas_index: int
 
 
+@utils.disable_init
 class OneQubitInstruction(Instruction):
     """
-    One qubit circuit instruction base class model.
+    One qubit circuit instruction.
     """
 
     target: int
 
 
+@utils.disable_init
 class CorrectionInstruction(OneQubitInstruction):
     """
-    Correction instruction base class model.
+    Correction instruction.
     """
 
     domain: set[int]
 
 
+@utils.disable_init
 class RotationInstruction(OneQubitInstruction):
     """
-    Rotation instruction base class model.
+    Rotation instruction.
     """
 
     angle: float
 
 
+@utils.disable_init
 class OneControlInstruction(OneQubitInstruction):
     """
-    One control instruction base class model.
+    One control instruction.
     """
 
     control: int
 
 
+@utils.disable_init
 class TwoControlsInstruction(OneQubitInstruction):
     """
-    Two controls instruction base class model.
+    Two controls instruction.
     """
 
     controls: tuple[int, int]
 
 
+@dataclasses.dataclass
 class XC(CorrectionInstruction):
     """
     X correction circuit instruction. Used internally by the transpiler.
     """
 
-    kind: InstructionKind = InstructionKind.XC
 
-
+@dataclasses.dataclass
 class ZC(CorrectionInstruction):
     """
     Z correction circuit instruction. Used internally by the transpiler.
     """
 
-    kind: InstructionKind = InstructionKind.ZC
 
-
+@dataclasses.dataclass
 class CCX(TwoControlsInstruction):
     """
     Toffoli circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.CCX
 
-
+@dataclasses.dataclass
 class RZZ(OneControlInstruction, RotationInstruction):
     """
     RZZ circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RZZ
 
-
+@dataclasses.dataclass
 class CNOT(OneControlInstruction):
     """
     CNOT circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.CNOT
 
-
+@dataclasses.dataclass
 class SWAP(Instruction):
     """
     SWAP circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.SWAP
     targets: tuple[int, int]
 
 
+@dataclasses.dataclass
 class H(OneQubitInstruction):
     """
     H circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.H
 
-
+@dataclasses.dataclass
 class S(OneQubitInstruction):
     """
     S circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.S
 
-
+@dataclasses.dataclass
 class X(OneQubitInstruction):
     """
     X circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.X
 
-
+@dataclasses.dataclass
 class Y(OneQubitInstruction):
     """
     Y circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.Y
 
-
+@dataclasses.dataclass
 class Z(OneQubitInstruction):
     """
     Z circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.Z
 
-
+@dataclasses.dataclass
 class I(OneQubitInstruction):
     """
     I circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.I
 
-
+@dataclasses.dataclass
 class M(OneQubitInstruction):
     """
     M circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.M
     plane: Plane
     angle: float
 
 
+@dataclasses.dataclass
 class RX(RotationInstruction):
     """
     X rotation circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RX
 
-
+@dataclasses.dataclass
 class RY(RotationInstruction):
     """
     Y rotation circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RY
 
-
+@dataclasses.dataclass
 class RZ(RotationInstruction):
     """
     Z rotation circuit instruction.
     """
-
-    kind: InstructionKind = InstructionKind.RZ
