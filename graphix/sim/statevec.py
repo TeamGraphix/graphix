@@ -121,9 +121,6 @@ class Statevec(State):
     def __repr__(self):
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
-    def copy(self) -> Statevec:
-        return copy.copy(self)
-
     def add_nodes(self, nqubit, data) -> None:
         sv_to_add = Statevec(nqubit=nqubit, data=data)
         self.tensor(sv_to_add)
@@ -312,9 +309,9 @@ class Statevec(State):
         -------
         complex : expectation value.
         """
-        st1 = self.copy()
+        st1 = copy.copy(self)
         st1.normalize()
-        st2 = st1.copy()
+        st2 = copy.copy(st1)
         st1.evolve_single(op, loc)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
@@ -332,9 +329,9 @@ class Statevec(State):
         -------
         complex : expectation value
         """
-        st2 = self.copy()
+        st2 = copy.copy(self)
         st2.normalize()
-        st1 = st2.copy()
+        st1 = copy.copy(st2)
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 

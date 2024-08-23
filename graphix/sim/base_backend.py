@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -39,15 +38,6 @@ class NodeIndex:
     def __init__(self) -> None:
         self.__dict = dict()
         self.__list = []
-
-    def copy(self) -> NodeIndex:
-        """
-        Creates a shallow copy of the NodeIndex instance, copying both the list and dictionary.
-        """
-        result = copy.copy(self)
-        result.__dict = self.__dict.copy()
-        result.__list = self.__list.copy()
-        return result
 
     def __getitem__(self, index: int) -> int:
         return self.__list[index]

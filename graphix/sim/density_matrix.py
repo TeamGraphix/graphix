@@ -85,9 +85,6 @@ class DensityMatrix(State):
     def nqubit(self) -> int:
         return self.rho.shape[0].bit_length() - 1
 
-    def copy(self) -> DensityMatrix:
-        return copy.copy(self)
-
     def __str__(self) -> str:
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
@@ -178,7 +175,7 @@ class DensityMatrix(State):
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
 
-        st1 = self.copy()
+        st1 = copy.copy(self)
         st1.normalize()
 
         rho_tensor = st1.rho.reshape((2,) * st1.nqubit * 2)
@@ -308,7 +305,7 @@ class DensityMatrix(State):
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
         for k_op in channel.kraus_ops:
-            dm = self.copy()
+            dm = copy.copy(self)
             dm.evolve(k_op["operator"], qargs)
             result_array += k_op["coef"] * np.conj(k_op["coef"]) * dm.rho
             # reinitialize to input density matrix

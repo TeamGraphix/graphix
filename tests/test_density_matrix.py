@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import copy
 import functools
 import random
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -293,7 +293,7 @@ class TestDensityMatrix:
 
     def test_cnot_success(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
-        dm_cnot = dm.copy()
+        dm_cnot = copy.copy(dm)
         dm_cnot.cnot((0, 1))
         expected_matrix = np.array([[1, 1, 1, 1] * 4]).reshape((4, 4)) / 4
         assert np.allclose(dm_cnot.rho, expected_matrix)
@@ -344,7 +344,7 @@ class TestDensityMatrix:
 
     def test_swap_success(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
-        dm_swap = dm.copy()
+        dm_swap = copy.copy(dm)
         dm_swap.swap((0, 1))
         expected_matrix = np.array([[1, 1, 1, 1] * 4]).reshape((4, 4)) / 4
         assert np.allclose(dm_swap.rho, expected_matrix)
@@ -374,7 +374,7 @@ class TestDensityMatrix:
 
     def test_entangle_success(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
-        dm_entangle = dm.copy()
+        dm_entangle = copy.copy(dm)
         dm_entangle.entangle((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
         assert np.allclose(dm_entangle.rho, expected_matrix)
@@ -419,9 +419,9 @@ class TestDensityMatrix:
         i = fx_rng.integers(0, nqubits)
 
         # need a list format for a single target
-        dm = init_dm.copy()
+        dm = copy.copy(init_dm)
         dm.evolve(op, [i])
-        dm_single = init_dm.copy()
+        dm_single = copy.copy(init_dm)
         dm_single.evolve_single(op, i)
 
         assert np.allclose(dm.rho, dm_single.rho)
@@ -572,7 +572,7 @@ class TestDensityMatrix:
         dm = randobj.rand_dm(2)
 
         # copy of initial dm
-        rho_test = deepcopy(dm.rho)
+        rho_test = dm.rho
 
         # create dephasing channel
         prob = fx_rng.uniform()
@@ -654,7 +654,7 @@ class TestDensityMatrix:
         dm = randobj.rand_dm(2)
 
         # copy of initial dm
-        rho_test = deepcopy(dm.rho)
+        rho_test = dm.rho
 
         # create dephasing channel
         prob = fx_rng.uniform()
