@@ -12,47 +12,47 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Mapping, SupportsComplex, SupportsFloat, TypeVar
+from typing import Any, Mapping, SupportsComplex, SupportsFloat, TypeVar
 
 
 class Expression(ABC):
     """Expression with parameters."""
 
     @abstractmethod
-    def __mul__(self, other) -> ExpressionOrFloat: ...
+    def __mul__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rmul__(self, other) -> ExpressionOrFloat: ...
+    def __rmul__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __add__(self, other) -> ExpressionOrFloat: ...
+    def __add__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __radd__(self, other) -> ExpressionOrFloat: ...
+    def __radd__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __sub__(self, other) -> ExpressionOrFloat: ...
+    def __sub__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rsub__(self, other) -> ExpressionOrFloat: ...
+    def __rsub__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __pow__(self, other) -> ExpressionOrFloat: ...
+    def __pow__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rpow__(self, other) -> ExpressionOrFloat: ...
+    def __rpow__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
     def __neg__(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __truediv__(self, other) -> ExpressionOrFloat: ...
+    def __truediv__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __rtruediv__(self, other) -> ExpressionOrFloat: ...
+    def __rtruediv__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __mod__(self, other) -> ExpressionOrFloat: ...
+    def __mod__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
     def sin(self) -> ExpressionOrFloat: ...
@@ -126,17 +126,17 @@ class AffineExpression(Expression):
             return 0
         return self.__scale_non_null(k)
 
-    def __mul__(self, other) -> ExpressionOrFloat:
+    def __mul__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
-    def __rmul__(self, other) -> ExpressionOrFloat:
+    def __rmul__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
-    def __add__(self, other) -> ExpressionOrFloat:
+    def __add__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
         if isinstance(other, AffineExpression):
@@ -148,41 +148,41 @@ class AffineExpression(Expression):
             return AffineExpression(a=a, x=self.x, b=self.b + other.b)
         return NotImplemented
 
-    def __radd__(self, other) -> ExpressionOrFloat:
+    def __radd__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
         return NotImplemented
 
-    def __sub__(self, other) -> ExpressionOrFloat:
+    def __sub__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, AffineExpression):
             return self + -other
         if isinstance(other, SupportsFloat):
             return self + -float(other)
         return NotImplemented
 
-    def __rsub__(self, other) -> ExpressionOrFloat:
+    def __rsub__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, SupportsFloat):
             return self.__scale_non_null(-1).offset(float(other))
         return NotImplemented
 
-    def __pow__(self, other) -> ExpressionOrFloat:
+    def __pow__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
 
-    def __rpow__(self, other) -> ExpressionOrFloat:
+    def __rpow__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
 
     def __neg__(self) -> ExpressionOrFloat:
         return self.__scale_non_null(-1)
 
-    def __truediv__(self, other) -> ExpressionOrFloat:
+    def __truediv__(self, other: Any) -> ExpressionOrFloat:
         if isinstance(other, SupportsFloat):
             return self.scale(1 / float(other))
         return NotImplemented
 
-    def __rtruediv__(self, other) -> ExpressionOrFloat:
+    def __rtruediv__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
 
-    def __mod__(self, other) -> ExpressionOrFloat:
+    def __mod__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
 
     def sin(self) -> ExpressionOrFloat:
@@ -218,7 +218,7 @@ class AffineExpression(Expression):
     def __str__(self) -> str:
         return f"{self.a} * {self.x} + {self.b}"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, AffineExpression):
             return self.a == other.a and self.x == other.x and self.b == other.b
         return False
@@ -277,7 +277,7 @@ class Placeholder(AffineExpression, Parameter):
     def __str__(self) -> str:
         return self.__name
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Parameter):
             return self is other
         return super().__eq__(other)
