@@ -89,6 +89,31 @@ def test_multiple_parameters() -> None:
     pattern23.simulate_pattern()
 
 
+def test_parallel_substitution() -> None:
+    pattern = Pattern(input_nodes=[0, 1])
+    pattern.add(graphix.command.M(node=0))
+    alpha = Placeholder("alpha")
+    pattern.add(graphix.command.M(node=1, angle=alpha))
+    beta = Placeholder("beta")
+    pattern.add(graphix.command.N(node=2))
+    pattern.add(graphix.command.M(node=2, angle=beta))
+    pattern23 = pattern.xreplace({alpha: 2, beta: 3})
+    assert not pattern23.is_parameterized()
+
+
+def test_parallel_substitution_with_zero() -> None:
+    # To catch potential 0 / None confusion
+    pattern = Pattern(input_nodes=[0, 1])
+    pattern.add(graphix.command.M(node=0))
+    alpha = Placeholder("alpha")
+    pattern.add(graphix.command.M(node=1, angle=alpha))
+    beta = Placeholder("beta")
+    pattern.add(graphix.command.N(node=2))
+    pattern.add(graphix.command.M(node=2, angle=beta))
+    pattern23 = pattern.xreplace({alpha: 0, beta: 0})
+    assert not pattern23.is_parameterized()
+
+
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_rustworkx: bool = True) -> None:
     nqubits = 5
