@@ -85,10 +85,10 @@ class Expression(ABC):
     def sqrt(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat: ...
+    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrComplex: ...
 
     @abstractmethod
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrFloat: ...
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrComplex: ...
 
 
 class Parameter(Expression):
@@ -223,15 +223,15 @@ class AffineExpression(Expression):
             return self.a == other.a and self.x == other.x and self.b == other.b
         return False
 
-    def evaluate(self, value: ExpressionOrFloat) -> ExpressionOrFloat:
-        return self.a * value + self.b
+    def evaluate(self, value: ExpressionOrSupportsFloat) -> ExpressionOrFloat:
+        return self.a * float(value) + self.b
 
-    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrFloat:
+    def subs(self, variable: Parameter, value: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
         if variable == self.x:
             return self.evaluate(value)
         return self
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrFloat:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
         # `value` can be 0, so checking with `is not None` is mandatory here.
         if (value := assignment.get(self.x)) is not None:
             return self.evaluate(value)
@@ -289,14 +289,26 @@ class Placeholder(AffineExpression, Parameter):
 
 if sys.version_info >= (3, 10):
     ExpressionOrFloat = Expression | float
+
+    ExpressionOrComplex = Expression | complex
+
+    ExpressionOrSupportsFloat = Expression | SupportsFloat
+
+    ExpressionOrSupportsComplex = Expression | SupportsComplex
 else:
     ExpressionOrFloat = typing.Union[Expression, float]
+
+    ExpressionOrComplex = typing.Union[Expression, complex]
+
+    ExpressionOrSupportsFloat = typing.Union[Expression, SupportsFloat]
+
+    ExpressionOrSupportsComplex = typing.Union[Expression, SupportsComplex]
 
 
 T = TypeVar("T")
 
 
-def subs(value: T, variable: Parameter, substitute: ExpressionOrFloat) -> T | complex:
+def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | complex:
     """Generic substitution in `value`: if `value` implements the
     method `subs`, then return `value.subs(variable, substitute)`
     (coerced into a complex if the result is a number).  If `value`
@@ -316,7 +328,7 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrFloat) -> T | co
     return value
 
 
-def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrFloat]) -> T | complex:
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | complex:
     """Generic parallel substitution in `value`: if `value` implements
     the method `xreplace`, then return `value.xreplace(assignment)`
     (coerced into a complex if the result is a number).  If `value`

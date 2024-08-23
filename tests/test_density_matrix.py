@@ -36,11 +36,11 @@ class TestDensityMatrix:
     """Test for DensityMatrix class."""
 
     def test_init_without_data_fail(self) -> None:
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             DensityMatrix(nqubit=-2)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             DensityMatrix(nqubit="hello")
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             DensityMatrix(nqubit=[])
 
     def test_init_with_invalid_data_fail(self, fx_rng: Generator) -> None:
@@ -66,7 +66,7 @@ class TestDensityMatrix:
             # l = 2 ** fx_rng.integers(2, 5) # fx_rng.integers(2, 20)
             DensityMatrix(data=fx_rng.uniform(size=(3, 2)))
         # check higher dimensional matrix
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             DensityMatrix(data=fx_rng.uniform(size=(2, 2, 3)))
         # check square and hermitian but with incorrect dimension (non-qubit type)
         data = randobj.rand_herm(5)

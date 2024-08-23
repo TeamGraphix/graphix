@@ -6,10 +6,8 @@ Simulate MBQC with density matrix representation.
 from __future__ import annotations
 
 import collections
-import numbers
-import sys
-from copy import deepcopy
-from typing import TYPE_CHECKING
+import copy
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 
@@ -21,15 +19,19 @@ from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
+from graphix.parameter import Expression
 from graphix.sim.base_backend import Backend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 
 if TYPE_CHECKING:
+    import sys
     from collections.abc import Collection
+    from typing import Mapping
 
     import numpy.typing as npt
 
     from graphix import command
+    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
 
 
 class DensityMatrix:
@@ -56,11 +58,14 @@ class DensityMatrix:
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[numbers.Number] | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]], optional
+        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[ExpressionOrSupportsComplex] | collections.abc.Iterable[collections.abc.Iterable[ExpressionOrSupportsComplex]], optional
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None:
+            nqubit = int(nqubit)
+            if nqubit < 0:
+                raise ValueError("nqubit should be positive or null")
 
         def check_size_consistency(mat) -> None:
             if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):
@@ -79,14 +84,17 @@ class DensityMatrix:
             if len(input_list) != 0:
                 # needed since Object is iterable but not subscribable!
                 try:
+                    # numpy.float64 is not an instance of SupportsComplex!
                     if isinstance(input_list[0], collections.abc.Iterable) and isinstance(
-                        input_list[0][0], numbers.Number
+                        input_list[0][0], (Expression, SupportsComplex, SupportsFloat)
                     ):
                         self.rho = np.array(input_list)
                         assert check_square(self.rho)
                         check_size_consistency(self.rho)
-                        assert check_unit_trace(self.rho)
-                        assert check_psd(self.rho)
+                        if self.rho.dtype != "O":
+                            # check only if the matrix is not symbolic
+                            assert check_unit_trace(self.rho)
+                            assert check_psd(self.rho)
                         self.Nqubit = self.rho.shape[0].bit_length() - 1
                         return
                 except TypeError:
@@ -182,7 +190,7 @@ class DensityMatrix:
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")
 
-        st1 = deepcopy(self)
+        st1 = copy.copy(self)
         st1.normalize()
 
         rho_tensor = st1.rho.reshape((2,) * st1.Nqubit * 2)
@@ -306,7 +314,7 @@ class DensityMatrix:
         """
 
         result_array = np.zeros((2**self.Nqubit, 2**self.Nqubit), dtype=np.complex128)
-        tmp_dm = deepcopy(self)
+        tmp_dm = copy.copy(self)
 
         if not isinstance(channel, KrausChannel):
             raise TypeError("Can't apply a channel that is not a Channel object.")
@@ -315,24 +323,50 @@ class DensityMatrix:
             tmp_dm.evolve(k_op["operator"], qargs)
             result_array += k_op["coef"] * np.conj(k_op["coef"]) * tmp_dm.rho
             # reinitialize to input density matrix
-            tmp_dm = deepcopy(self)
+            tmp_dm = copy.copy(self)
 
         # Performance?
-        self.rho = deepcopy(result_array)
+        self.rho = copy.copy(result_array)
 
         if not np.allclose(self.rho.trace(), 1.0):
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
-    def subs(self, variable, substitute) -> DensityMatrix:
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> DensityMatrix:
         """Return a copy of the density matrix where all occurrences
         of the given variable in measurement angles are substituted by
         the given value.
 
-        See https://github.com/TeamGraphix/graphix-symbolic for
-        a symbolic parameter implementation that supports simulation.
+        Substitution is performed by calling the method `subs` on
+        measurement angles, if the method exists, which is the case in
+        particular for :class:`graphix.parameter.Placeholder`
+        and :class:`graphix_symbolic.SympyParameter`
+        (see https://github.com/TeamGraphix/graphix-symbolic ).
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
         """
-        result = DensityMatrix(nqubit=self.Nqubit)
+        result = copy.copy(self)
         result.rho = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.rho)
+        return result
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> DensityMatrix:
+        """Return a copy of the density matrix where all occurrences of the
+        given keys in measurement angles are substituted by the given
+        values in parallel.
+
+        Substitution is performed by calling the method `xreplace` on
+        measurement angles, if the method exists, which is the case in
+        particular for :class:`graphix.parameter.Placeholder`
+        and :class:`graphix_symbolic.SympyParameter`
+        (see https://github.com/TeamGraphix/graphix-symbolic ).
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
+        """
+        result = copy.copy(self)
+        result.rho = np.vectorize(lambda value: graphix.parameter.xreplace(value, assignment))(self.rho)
         return result
 
 
@@ -363,7 +397,7 @@ class DensityMatrixBackend(Backend):
         self.pattern = pattern
         if pattern._pauli_preprocessed and input_state != graphix.states.BasicStates.PLUS:
             raise ValueError("Pauli preprocessing is currently only available when inputs are initialized in |+> state")
-        self.results = deepcopy(pattern.results)
+        self.results = copy.deepcopy(pattern.results)
         self.state = None
         self.node_index = []
         self.Nqubit = 0
@@ -468,25 +502,26 @@ class DensityMatrixBackend(Backend):
         self.state.normalize()
 
 
-if sys.version_info >= (3, 10):
-    from collections.abc import Iterable
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 10):
+        from collections.abc import Iterable
 
-    Data = (
-        graphix.states.State
-        | DensityMatrix
-        | Statevec
-        | Iterable[graphix.states.State]
-        | Iterable[numbers.Number]
-        | Iterable[Iterable[numbers.Number]]
-    )
-else:
-    from typing import Iterable, Union
+        Data = (
+            graphix.states.State
+            | DensityMatrix
+            | Statevec
+            | Iterable[graphix.states.State]
+            | Iterable[ExpressionOrSupportsComplex]
+            | Iterable[Iterable[ExpressionOrSupportsComplex]]
+        )
+    else:
+        from typing import Iterable, Union
 
-    Data = Union[
-        graphix.states.State,
-        DensityMatrix,
-        Statevec,
-        Iterable[graphix.states.State],
-        Iterable[numbers.Number],
-        Iterable[Iterable[numbers.Number]],
-    ]
+        Data = Union[
+            graphix.states.State,
+            DensityMatrix,
+            Statevec,
+            Iterable[graphix.states.State],
+            Iterable[ExpressionOrSupportsComplex],
+            Iterable[Iterable[ExpressionOrSupportsComplex]],
+        ]

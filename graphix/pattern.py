@@ -25,7 +25,7 @@ from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from graphix.parameter import ExpressionOrFloat, Parameter
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1412,7 +1412,7 @@ class Pattern:
         """
         return any(not isinstance(cmd.angle, SupportsFloat) for cmd in self if cmd.kind == command.CommandKind.M)
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Pattern:
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
         given variable in measurement angles are substituted by the
         given value.
@@ -1433,7 +1433,7 @@ class Pattern:
                 cmd.angle = graphix.parameter.subs(cmd.angle, variable, substitute)
         return result
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> Pattern:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
         """Return a copy of the pattern where all occurrences of the
         given keys in measurement angles are substituted by the given
         values in parallel.

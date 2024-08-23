@@ -11,6 +11,8 @@ import tests.random_circuit as rc
 from graphix.device_interface import PatternRunner
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
+from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
 
 
 def test_pattern_affine_operations() -> None:
@@ -114,8 +116,37 @@ def test_parallel_substitution_with_zero() -> None:
     assert not pattern23.is_parameterized()
 
 
+def test_statevec_subs() -> None:
+    alpha = Placeholder("alpha")
+    statevec = Statevec([alpha])
+    assert np.allclose(statevec.subs(alpha, 1).psi, np.array([1]))
+
+
+def test_statevec_xreplace() -> None:
+    alpha = Placeholder("alpha")
+    beta = Placeholder("beta")
+    statevec = Statevec([alpha, beta])
+    assert np.allclose(statevec.xreplace({alpha: 1, beta: 2}).psi, np.array([1, 2]))
+
+
+def test_density_matrix_subs() -> None:
+    alpha = Placeholder("alpha")
+    dm = DensityMatrix([[alpha]])
+    assert np.allclose(dm.subs(alpha, 1).rho, np.array([1]))
+
+
+def test_density_matrix_xreplace() -> None:
+    alpha = Placeholder("alpha")
+    beta = Placeholder("beta")
+    dm = DensityMatrix([[alpha, beta], [alpha, beta]])
+    assert np.allclose(dm.xreplace({alpha: 1, beta: 2}).rho, np.array([[1, 2], [1, 2]]))
+
+
 @pytest.mark.parametrize("jumps", range(1, 11))
-def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_rustworkx: bool = True) -> None:
+@pytest.mark.parametrize("use_xreplace", [False, True])
+def test_random_circuit_with_parameters(
+    fx_rng: Generator, jumps: int, use_xreplace: bool, use_rustworkx: bool = True
+) -> None:
     nqubits = 5
     depth = 5
     alpha = Placeholder("alpha")
@@ -126,10 +157,13 @@ def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_rustw
     pattern.shift_signals(method="global")
     pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
     pattern.minimize_space()
-    alpha_value = 2 * fx_rng.random()  # [0, 2π) / π
-    beta_value = 2 * fx_rng.random()
-    state = circuit.subs(alpha, alpha_value).subs(beta, beta_value).simulate_statevector().statevec
-    state_mbqc = pattern.subs(alpha, alpha_value).subs(beta, beta_value).simulate_pattern()
+    assignment = {alpha: fx_rng.uniform(high=2), beta: fx_rng.uniform(high=2)}
+    if use_xreplace:
+        state = circuit.xreplace(assignment).simulate_statevector().statevec
+        state_mbqc = pattern.xreplace(assignment).simulate_pattern()
+    else:
+        state = circuit.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_statevector().statevec
+        state_mbqc = pattern.subs(alpha, assignment[alpha]).subs(beta, assignment[beta]).simulate_pattern()
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
 

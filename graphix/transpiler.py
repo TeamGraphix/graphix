@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
@@ -20,12 +20,13 @@ from graphix import command, instruction
 from graphix.clifford import H
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
+from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 from graphix.pattern import Pattern
 from graphix.pauli import Plane
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 
 @dataclasses.dataclass
@@ -54,7 +55,7 @@ class SimulateResult:
     classical_measures: tuple[int, ...]
 
 
-Angle = graphix.parameter.ExpressionOrFloat
+Angle = ExpressionOrSupportsFloat
 
 
 class Circuit:
@@ -990,7 +991,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _m_command(self, input_node: int, plane: Plane, angle: float):
+    def _m_command(self, input_node: int, plane: Plane, angle: Angle):
         """MBQC commands for measuring qubit
 
         Parameters
@@ -999,7 +1000,7 @@ class Circuit:
             target node on graph
         plane : Plane
             plane of the measure
-        angle : float
+        angle : Angle
             angle of the measure (unit: pi radian)
 
         Returns
@@ -1152,7 +1153,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _rx_command(self, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
         """MBQC commands for X rotation gate
 
         Parameters
@@ -1161,7 +1162,7 @@ class Circuit:
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
-        angle : float
+        angle : Angle
             measurement angle in radian
 
         Returns
@@ -1182,7 +1183,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _ry_command(self, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
         """MBQC commands for Y rotation gate
 
         Parameters
@@ -1191,7 +1192,7 @@ class Circuit:
             input node index
         ancilla : list of four ints
             ancilla node indices to be added to graph
-        angle : float
+        angle : Angle
             rotation angle in radian
 
         Returns
@@ -1217,7 +1218,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _rz_command(self, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
         """MBQC commands for Z rotation gate
 
         Parameters
@@ -1226,7 +1227,7 @@ class Circuit:
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
-        angle : float
+        angle : Angle
             measurement angle in radian
 
         Returns
@@ -1247,7 +1248,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(self, input_node: int, ancilla: int, angle: float) -> tuple[int, list[command.Command]]:
+    def _rz_command_opt(self, input_node: int, ancilla: int, angle: Angle) -> tuple[int, list[command.Command]]:
         """optimized MBQC commands for Z rotation gate
 
         Parameters
@@ -1256,7 +1257,7 @@ class Circuit:
             input node index
         ancilla : int
             ancilla node index to be added to graph
-        angle : float
+        angle : Angle
             measurement angle in radian
 
         Returns
@@ -1274,7 +1275,7 @@ class Circuit:
 
     @classmethod
     def _rzz_command_opt(
-        self, control_node: int, target_node: int, ancilla: int, angle: float
+        self, control_node: int, target_node: int, ancilla: int, angle: Angle
     ) -> tuple[int, int, list[command.Command]]:
         """Optimized MBQC commands for ZZ-rotation gate
 
@@ -1284,7 +1285,7 @@ class Circuit:
             input node index
         ancilla : int
             ancilla node index
-        angle : float
+        angle : Angle
             measurement angle in radian
 
         Returns
@@ -1638,16 +1639,22 @@ class Circuit:
 
         return SimulateResult(state, classical_measures)
 
-    def subs(self, variable, substitute) -> Circuit:
+    def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:
         result = Circuit(self.width)
         for instr in self.instruction:
             angle = getattr(instr, "angle", None)
             if angle is None:
                 result.instruction.append(instr)
             else:
-                new_instr = instr.model_copy(update={"angle": graphix.parameter.subs(angle, variable, substitute)})
+                new_instr = instr.model_copy(update={"angle": f(angle)})
                 result.instruction.append(new_instr)
         return result
+
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Circuit:
+        return self.map_angle(lambda angle: graphix.parameter.subs(angle, variable, substitute))
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Circuit:
+        return self.map_angle(lambda angle: graphix.parameter.xreplace(angle, assignment))
 
 
 def extend_domain(measure: M, domain: set[int]) -> None:

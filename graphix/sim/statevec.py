@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import collections
 import functools
-import numbers
-import sys
 from copy import deepcopy
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 import numpy.typing as npt
@@ -17,6 +16,13 @@ import graphix.types
 from graphix import command
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
+from graphix.parameter import Expression
+
+if TYPE_CHECKING:
+    import sys
+    from typing import Mapping
+
+    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
 
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
@@ -228,7 +234,10 @@ class Statevec:
         :type nqubit: int, optional
         """
 
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None:
+            nqubit = int(nqubit)
+            if nqubit < 0:
+                raise ValueError("nqubit should be positive or null")
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
@@ -265,8 +274,9 @@ class Statevec:
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
-            elif isinstance(input_list[0], numbers.Number):
-                graphix.types.check_list_elements(input_list, numbers.Number)
+            # numpy.float64 is not an instance of SupportsComplex!
+            elif isinstance(input_list[0], (Expression, SupportsComplex, SupportsFloat)):
+                graphix.types.check_list_elements(input_list, (Expression, SupportsComplex, SupportsFloat))
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
@@ -275,7 +285,8 @@ class Statevec:
                 elif nqubit != len(input_list).bit_length() - 1:
                     raise ValueError("Mismatch between nqubit and length of input state")
                 psi = np.array(input_list)
-                if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
+                # check only if the matrix is not symbolic
+                if psi.dtype != "O" and not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
                     raise ValueError("Input state is not normalized")
                 self.psi = psi.reshape((2,) * nqubit)
             else:
@@ -389,13 +400,13 @@ class Statevec:
             qubit index
         """
         norm = _get_statevec_norm(self.psi)
-        if isinstance(norm, numbers.Number):
+        if isinstance(norm, SupportsFloat):
             assert not np.isclose(norm, 0)
         psi = self.psi.take(indices=0, axis=qarg)
         norm = _get_statevec_norm(psi)
         self.psi = (
             psi
-            if not isinstance(norm, numbers.Number) or not np.isclose(norm, 0)
+            if not isinstance(norm, SupportsFloat) or not np.isclose(norm, 0)
             else self.psi.take(indices=1, axis=qarg)
         )
         self.normalize()
@@ -503,16 +514,42 @@ class Statevec:
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
-    def subs(self, variable, substitute) -> Statevec:
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
         """Return a copy of the state vector where all occurrences of
         the given variable in measurement angles are substituted by
         the given value.
 
-        See https://github.com/TeamGraphix/graphix-symbolic for
-        a symbolic parameter implementation that supports simulation.
+        Substitution is performed by calling the method `subs` on
+        measurement angles, if the method exists, which is the case in
+        particular for :class:`graphix.parameter.Placeholder`
+        and :class:`graphix_symbolic.SympyParameter`
+        (see https://github.com/TeamGraphix/graphix-symbolic ).
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
         """
         result = Statevec()
         result.psi = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.psi)
+        return result
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
+        """Return a copy of the state vector where all occurrences of the
+        given keys in measurement angles are substituted by the given
+        values in parallel.
+
+        Substitution is performed by calling the method `xreplace` on
+        measurement angles, if the method exists, which is the case in
+        particular for :class:`graphix.parameter.Placeholder`
+        and :class:`graphix_symbolic.SympyParameter`
+        (see https://github.com/TeamGraphix/graphix-symbolic ).
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
+        """
+        result = Statevec()
+        result.psi = np.vectorize(lambda value: graphix.parameter.xreplace(value, assignment))(self.psi)
         return result
 
 
@@ -521,16 +558,17 @@ def _get_statevec_norm(psi):
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
-if sys.version_info >= (3, 10):
-    from collections.abc import Iterable
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 10):
+        from collections.abc import Iterable
 
-    Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[numbers.Number]
-else:
-    from typing import Iterable, Union
+        Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[ExpressionOrSupportsComplex]
+    else:
+        from typing import Iterable, Union
 
-    Data = Union[
-        graphix.states.State,
-        Statevec,
-        Iterable[graphix.states.State],
-        Iterable[numbers.Number],
-    ]
+        Data = Union[
+            graphix.states.State,
+            Statevec,
+            Iterable[graphix.states.State],
+            Iterable[ExpressionOrSupportsComplex],
+        ]
