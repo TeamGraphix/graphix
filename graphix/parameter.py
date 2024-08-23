@@ -308,40 +308,40 @@ T = TypeVar("T")
 
 
 def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | complex:
-    """Generic substitution in `value`: if `value` implements the
-    method `subs`, then return `value.subs(variable, substitute)`
-    (coerced into a complex if the result is a number).  If `value`
-    does not implement `subs`, `value` is returned unchanged.
+    """Generic substitution in `value`: if `value` is in instance of
+    :class:`Expression`, then return `value.subs(variable,
+    substitute)` (coerced into a complex if the result is a number).
+    If `value` does not implement `subs`, `value` is returned
+    unchanged.
 
     This function is used to apply substitution to collections where
-    some elements are Expression and other elements are just
+    some elements are `Expression` and other elements are just
     plain numbers.
 
     """
-    subs = getattr(value, "subs", None)
-    if subs:
-        new_value = subs(variable, substitute)
-        if isinstance(new_value, SupportsComplex):
-            return complex(new_value)
-        return new_value
-    return value
+    if not isinstance(value, Expression):
+        return value
+    new_value = value.subs(variable, substitute)
+    if isinstance(new_value, SupportsComplex):
+        return complex(new_value)
+    return new_value
 
 
 def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | complex:
-    """Generic parallel substitution in `value`: if `value` implements
-    the method `xreplace`, then return `value.xreplace(assignment)`
-    (coerced into a complex if the result is a number).  If `value`
-    does not implement `xreplace`, `value` is returned unchanged.
+    """Generic parallel substitution in `value`: if `value` is an an
+    instance of :class:`Expression`, then return
+    `value.xreplace(assignment)` (coerced into a complex if the result
+    is a number).  If `value` does not implement `xreplace`, `value`
+    is returned unchanged.
 
     This function is used to apply parallel substitutions to
     collections where some elements are Expression and other elements
     are just plain numbers.
 
     """
-    xreplace = getattr(value, "xreplace", None)
-    if xreplace:
-        new_value = xreplace(assignment)
-        if isinstance(new_value, SupportsComplex):
-            return complex(new_value)
-        return new_value
-    return value
+    if not isinstance(value, Expression):
+        return value
+    new_value = value.xreplace(assignment)
+    if isinstance(new_value, SupportsComplex):
+        return complex(new_value)
+    return new_value
