@@ -10,6 +10,7 @@ import numpy as np
 from pydantic import BaseModel
 
 import graphix.clifford
+from graphix.clifford import Clifford
 from graphix.pauli import Pauli, Plane
 
 if TYPE_CHECKING:
