@@ -104,7 +104,7 @@ class TestDensityMatrix:
         print(f"nqb is {nqb}")
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice([i for i in graphix.pauli.Plane], nqb)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [graphix.states.PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(data=states)
         # flattens input!
         expected_dm = np.outer(vec.psi, vec.psi.conj())
@@ -118,7 +118,7 @@ class TestDensityMatrix:
         nqb = 2
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [graphix.states.PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
 
         with pytest.raises(ValueError):
             _dm = DensityMatrix(nqubit=1, data=states)
@@ -133,7 +133,7 @@ class TestDensityMatrix:
         nqb = fx_rng.integers(2, 5)
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [graphix.states.PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(data=states)
         # flattens input!
         expected_dm = np.outer(vec.psi, vec.psi.conj())
@@ -143,7 +143,7 @@ class TestDensityMatrix:
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
 
-        sv_list = [state.get_statevector() for state in states]
+        sv_list = [state.statevector for state in states]
         sv = functools.reduce(np.kron, sv_list)
 
         # input with a statevector DATA (not Statevec object)
@@ -161,12 +161,12 @@ class TestDensityMatrix:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
         print("planes", rand_planes)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [graphix.states.PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(data=states)
         expected_dm = np.outer(vec.psi, vec.psi.conj())
 
         # input with a huge density matrix
-        dm_list = [state.get_densitymatrix() for state in states]
+        dm_list = [state.densitymatrix for state in states]
         num_dm = functools.reduce(np.kron, dm_list)
 
         dm = DensityMatrix(data=num_dm)
@@ -883,7 +883,7 @@ class TestDensityMatrixBackend:
 
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [graphix.states.PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
 
         expected_dm = DensityMatrix(data=states).rho
 
@@ -897,7 +897,7 @@ class TestDensityMatrixBackend:
     def test_init_fail(self, fx_rng: Generator, nqb, randpattern) -> None:
         rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb + 1)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [graphix.states.PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
 
         # test init from State Iterable with incorrect size
         with pytest.raises(ValueError):

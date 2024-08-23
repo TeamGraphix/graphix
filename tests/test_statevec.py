@@ -54,7 +54,7 @@ class TestStatevec:
         assert len(vec.dims()) == nqb
 
         vec = Statevec(nqubit=nqb, data=BasicStates.MINUS_I)
-        sv_list = [BasicStates.MINUS_I.get_statevector() for _ in range(nqb)]
+        sv_list = [BasicStates.MINUS_I.statevector for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -62,9 +62,9 @@ class TestStatevec:
         # tensor of same state
         rand_angle = fx_rng.random() * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]))
-        state = PlanarState(plane=rand_plane, angle=rand_angle)
+        state = PlanarState(rand_plane, rand_angle)
         vec = Statevec(nqubit=nqb, data=state)
-        sv_list = [state.get_statevector() for _ in range(nqb)]
+        sv_list = [state.statevector for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -72,9 +72,9 @@ class TestStatevec:
         # tensor of different states
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [PlanarState(i, j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(nqubit=nqb, data=states)
-        sv_list = [state.get_statevector() for state in states]
+        sv_list = [state.statevector for state in states]
         sv = functools.reduce(np.kron, sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb

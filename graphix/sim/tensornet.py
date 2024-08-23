@@ -287,17 +287,17 @@ class MBQCTensorNet(TensorNetwork):
         ind = gen_str()
         tag = str(index)
         if state == "plus":
-            vec = BasicStates.PLUS.get_statevector()
+            vec = BasicStates.PLUS.statevector
         elif state == "minus":
-            vec = BasicStates.MINUS.get_statevector()
+            vec = BasicStates.MINUS.statevector
         elif state == "zero":
-            vec = BasicStates.ZERO.get_statevector()
+            vec = BasicStates.ZERO.statevector
         elif state == "one":
-            vec = BasicStates.ONE.get_statevector()
+            vec = BasicStates.ONE.statevector
         elif state == "iplus":
-            vec = BasicStates.PLUS_I.get_statevector()
+            vec = BasicStates.PLUS_I.statevector
         elif state == "iminus":
-            vec = BasicStates.MINUS_I.get_statevector()
+            vec = BasicStates.MINUS_I.statevector
         else:
             assert state.shape == (2,), "state must be 2-element np.ndarray"
             assert np.isclose(np.linalg.norm(state), 1), "state must be normalized"
@@ -385,17 +385,17 @@ class MBQCTensorNet(TensorNetwork):
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
             elif basis == "Z" and result == 0:
-                proj_vec = BasicStates.ZERO.get_statevector()
+                proj_vec = BasicStates.ZERO.statevector()
             elif basis == "Z" and result == 1:
-                proj_vec = BasicStates.ONE.get_statevector()
+                proj_vec = BasicStates.ONE.statevector()
             elif basis == "X" and result == 0:
-                proj_vec = BasicStates.PLUS.get_statevector()
+                proj_vec = BasicStates.PLUS.statevector()
             elif basis == "X" and result == 1:
-                proj_vec = BasicStates.MINUS.get_statevector()
+                proj_vec = BasicStates.MINUS.statevector()
             elif basis == "Y" and result == 0:
-                proj_vec = BasicStates.PLUS_I.get_statevector()
+                proj_vec = BasicStates.PLUS_I.statevector()
             elif basis == "Y" and result == 1:
-                proj_vec = BasicStates.MINUS_I.get_statevector()
+                proj_vec = BasicStates.MINUS_I.statevector()
             else:
                 raise ValueError("Invalid measurement basis.")
         else:
@@ -442,17 +442,13 @@ class MBQCTensorNet(TensorNetwork):
             if node not in ind_dict.keys():
                 ind = gen_str()
                 self._dangling[str(node)] = ind
-                self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))
+                self.add_tensor(Tensor(BasicStates.PLUS.statevector, [ind], [str(node), "Open"]))
                 continue
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
                 [
-                    outer_product(
-                        [BasicStates.VEC[0 + 2 * vec_dict[node][i]].get_statevector() for i in range(dim_tensor)]
-                    ),
-                    outer_product(
-                        [BasicStates.VEC[1 + 2 * vec_dict[node][i]].get_statevector() for i in range(dim_tensor)]
-                    ),
+                    outer_product([BasicStates.VEC[0 + 2 * vec_dict[node][i]].statevector for i in range(dim_tensor)]),
+                    outer_product([BasicStates.VEC[1 + 2 * vec_dict[node][i]].statevector for i in range(dim_tensor)]),
                 ]
             ) * 2 ** (dim_tensor / 4 - 1.0 / 2)
             self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
@@ -484,10 +480,10 @@ class MBQCTensorNet(TensorNetwork):
             node = str(indices[i])
             exp = len(indices) - i - 1
             if (basis // 2**exp) == 1:
-                state_out = BasicStates.ONE.get_statevector()  # project onto |1>
+                state_out = BasicStates.ONE.statevector  # project onto |1>
                 basis -= 2**exp
             else:
-                state_out = BasicStates.ZERO.get_statevector()  # project onto |0>
+                state_out = BasicStates.ZERO.statevector  # project onto |0>
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
@@ -739,13 +735,13 @@ def proj_basis(angle, vop, plane, choice):
         projected state
     """
     if plane == Plane.XY:
-        vec = BasicStates.VEC[0 + choice].get_statevector()
+        vec = BasicStates.VEC[0 + choice].statevector
         rotU = Ops.Rz(angle)
     elif plane == Plane.YZ:
-        vec = BasicStates.VEC[4 + choice].get_statevector()
+        vec = BasicStates.VEC[4 + choice].statevector
         rotU = Ops.Rx(angle)
     elif plane == Plane.XZ:
-        vec = BasicStates.VEC[0 + choice].get_statevector()
+        vec = BasicStates.VEC[0 + choice].statevector
         rotU = Ops.Ry(-angle)
     vec = np.matmul(rotU, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)

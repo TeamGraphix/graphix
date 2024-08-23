@@ -260,7 +260,7 @@ class Statevec:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
                     raise ValueError("Mismatch between nqubit and length of input state.")
-                list_of_sv = [s.get_statevector() for s in input_list]
+                list_of_sv = [s.statevector for s in input_list]
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)

@@ -39,7 +39,7 @@ class TestStatevec:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
-        statevector = state.get_statevector()
+        statevector = state.statevector
         m_op = np.outer(statevector, statevector.T.conjugate())
         sv = Statevec(nqubit=n)
         sv.evolve(m_op, [k])
@@ -51,7 +51,7 @@ class TestStatevec:
     def test_measurement_into_minus_state(self) -> None:
         n = 3
         k = 0
-        m_op = np.outer(BasicStates.MINUS.get_statevector(), BasicStates.MINUS.get_statevector().T.conjugate())
+        m_op = np.outer(BasicStates.MINUS.statevector, BasicStates.MINUS.statevector.T.conjugate())
         sv = Statevec(nqubit=n)
         sv.evolve(m_op, [k])
         with pytest.raises(AssertionError):
@@ -78,7 +78,7 @@ class TestStatevecNew:
         # random planar state
         rand_angle = fx_rng.random() * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]))
-        state = PlanarState(plane=rand_plane, angle=rand_angle)
+        state = PlanarState(rand_plane, rand_angle)
         backend = StatevectorBackend(hadamardpattern, input_state=state)
         vec = Statevec(nqubit=1, data=state)
         assert np.allclose(vec.psi, backend.state.psi)
@@ -91,7 +91,7 @@ class TestStatevecNew:
         rand_angle = fx_rng.random(2) * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), 2)
 
-        state = PlanarState(plane=rand_plane[0], angle=rand_angle[0])
-        state2 = PlanarState(plane=rand_plane[1], angle=rand_angle[1])
+        state = PlanarState(rand_plane[0], rand_angle[0])
+        state2 = PlanarState(rand_plane[1], rand_angle[1])
         with pytest.raises(ValueError):
             StatevectorBackend(hadamardpattern, input_state=[state, state2])
