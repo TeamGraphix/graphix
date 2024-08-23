@@ -158,6 +158,12 @@ class AffineExpression(Expression):
     def __mod__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
 
+    def sin(self) -> ExpressionOrFloat:
+        raise PlaceholderOperationError()
+
+    def cos(self) -> ExpressionOrFloat:
+        raise PlaceholderOperationError()
+
     def exp(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
