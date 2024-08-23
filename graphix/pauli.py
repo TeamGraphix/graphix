@@ -4,10 +4,10 @@ Pauli gates ± {1,j} × {I, X, Y, Z}
 
 from __future__ import annotations
 
+import dataclasses
 import enum
 
 import numpy as np
-import pydantic
 
 import graphix.clifford
 
@@ -284,7 +284,8 @@ def parse(name: str) -> Pauli:
     return get(IXYZ[name], UNIT)
 
 
-class MeasureUpdate(pydantic.BaseModel):
+@dataclasses.dataclass
+class MeasureUpdate:
     new_plane: Plane
     coeff: int
     add_term: float
@@ -310,4 +311,4 @@ class MeasureUpdate(pydantic.BaseModel):
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term
-        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)
+        return MeasureUpdate(new_plane, coeff, add_term)
