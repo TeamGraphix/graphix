@@ -7,9 +7,11 @@ import enum
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+# TCH001: ExpressionOrFloat is used in pydantic models
 import graphix.clifford
+from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
 from graphix.pauli import Plane
 
 if TYPE_CHECKING:
@@ -51,10 +53,12 @@ class M(Command):
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     kind: CommandKind = CommandKind.M
     node: Node
     plane: Plane = Plane.XY
-    angle: float = 0.0
+    angle: ExpressionOrFloat = 0.0
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
 

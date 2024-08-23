@@ -6,12 +6,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Mapping, SupportsFloat
 
 import networkx as nx
 import numpy as np
 import typing_extensions
 
 import graphix.clifford
+import graphix.parameter
 import graphix.pauli
 from graphix import command
 from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
@@ -21,6 +23,9 @@ from graphix.graphsim.graphstate import GraphState
 from graphix.pauli import Plane
 from graphix.simulator import PatternSimulator
 from graphix.visualization import GraphVisualizer
+
+if TYPE_CHECKING:
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
 class NodeAlreadyPrepared(Exception):
@@ -1398,6 +1403,45 @@ class Pattern:
                 for line in cmd_to_qasm3(cmd):
                     file.write(line)
 
+    def is_parameterized(self) -> bool:
+        """Return True if there is at least one measurement angle that
+        is not just an instance of `SupportsFloat`. A parameterized
+        pattern is a pattern where at least one measurement angle is an
+        expression that is not a number, typically an instance of `sympy.Expr`
+        (but we don't force to choose `sympy` here).
+        """
+        return any(not isinstance(cmd.angle, SupportsFloat) for cmd in self if cmd.kind == command.CommandKind.M)
+
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
+        """Return a copy of the pattern where all occurrences of the
+        given variable in measurement angles are substituted by the
+        given value.
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
+        """
+        result = self.copy()
+        for cmd in result:
+            if cmd.kind == command.CommandKind.M:
+                cmd.angle = graphix.parameter.subs(cmd.angle, variable, substitute)
+        return result
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
+        """Return a copy of the pattern where all occurrences of the
+        given keys in measurement angles are substituted by the given
+        values in parallel.
+
+        If the substitution returns a number, this number is coerced
+        to `complex`.
+
+        """
+        result = self.copy()
+        for cmd in result:
+            if cmd.kind == command.CommandKind.M:
+                cmd.angle = graphix.parameter.xreplace(cmd.angle, assignment)
+        return result
+
     def copy(self) -> Pattern:
         result = self.__new__(self.__class__)
         result.__seq = [cmd.model_copy() for cmd in self.__seq]
@@ -2024,6 +2068,8 @@ def is_pauli_measurement(cmd: command.Command, ignore_vop=True):
         if the measurement is not in Pauli basis, returns None.
     """
     assert cmd.kind == command.CommandKind.M
+    if not isinstance(cmd.angle, SupportsFloat):
+        return None
     basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
     # first item: 0, 1 or 2. correspond to choice of X, Y and Z
     # second item: 0 or 1. correspond to sign (+, -)

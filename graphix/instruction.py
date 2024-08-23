@@ -3,9 +3,10 @@ from __future__ import annotations
 import abc
 import enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-# MEMO: Cannot use TYPE_CHECKING here for pydantic
+# TCH001: ExpressionOrFloat and Plane are used in pydantic models
+from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
 from graphix.pauli import Plane  # noqa: TCH001
 
 
@@ -59,7 +60,9 @@ class RotationInstruction(OneQubitInstruction):
     Rotation instruction base class model.
     """
 
-    angle: float
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    angle: ExpressionOrFloat
 
 
 class OneControlInstruction(OneQubitInstruction):
@@ -180,9 +183,11 @@ class M(OneQubitInstruction):
     M circuit instruction.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     kind: InstructionKind = InstructionKind.M
     plane: Plane
-    angle: float
+    angle: ExpressionOrFloat
 
 
 class RX(RotationInstruction):
