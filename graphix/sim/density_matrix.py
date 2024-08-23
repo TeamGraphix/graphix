@@ -13,13 +13,13 @@ from copy import deepcopy
 import numpy as np
 
 import graphix.states
-import graphix.types
 from graphix.channels import KrausChannel
 from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
 from graphix.sim.base_backend import Backend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.utils import PositiveOrNullInt
 
 
 class DensityMatrix:
@@ -28,7 +28,7 @@ class DensityMatrix:
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        nqubit: PositiveOrNullInt | None = None,
     ):
         """Initialize density matrix objects. The behaviour builds on theo ne of `graphix.statevec.Statevec`.
         `data` can be:

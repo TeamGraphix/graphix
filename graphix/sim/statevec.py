@@ -12,10 +12,10 @@ import numpy.typing as npt
 import graphix.pauli
 import graphix.sim.base_backend
 import graphix.states
-import graphix.types
-from graphix import command
+from graphix import command, utils
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
+from graphix.utils import PositiveOrNullInt
 
 
 class StatevectorBackend(graphix.sim.base_backend.Backend):
@@ -206,7 +206,7 @@ class Statevec:
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        nqubit: PositiveOrNullInt | None = None,
     ):
         """Initialize statevector objects. The behaviour is as follows. `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
@@ -255,7 +255,7 @@ class Statevec:
 
         else:
             if isinstance(input_list[0], graphix.states.State):
-                graphix.types.check_list_elements(input_list, graphix.states.State)
+                utils.check_list_elements(input_list, graphix.states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -265,7 +265,7 @@ class Statevec:
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
             elif isinstance(input_list[0], numbers.Number):
-                graphix.types.check_list_elements(input_list, numbers.Number)
+                utils.check_list_elements(input_list, numbers.Number)
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
