@@ -37,12 +37,6 @@ class Expression(ABC):
     def __rsub__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def __pow__(self, other: Any) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def __rpow__(self, other: Any) -> ExpressionOrFloat: ...
-
-    @abstractmethod
     def __neg__(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
@@ -61,22 +55,7 @@ class Expression(ABC):
     def cos(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def tan(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def arcsin(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def arccos(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def arctan(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
     def exp(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def log(self) -> ExpressionOrFloat: ...
 
     @abstractmethod
     def conjugate(self) -> ExpressionOrFloat: ...
@@ -165,12 +144,6 @@ class AffineExpression(Expression):
             return self.__scale_non_null(-1).offset(float(other))
         return NotImplemented
 
-    def __pow__(self, other: Any) -> ExpressionOrFloat:
-        return NotImplemented
-
-    def __rpow__(self, other: Any) -> ExpressionOrFloat:
-        return NotImplemented
-
     def __neg__(self) -> ExpressionOrFloat:
         return self.__scale_non_null(-1)
 
@@ -185,28 +158,7 @@ class AffineExpression(Expression):
     def __mod__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
 
-    def sin(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def cos(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def tan(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def arcsin(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def arccos(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def arctan(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
     def exp(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def log(self) -> ExpressionOrFloat:
         raise PlaceholderOperationError()
 
     def conjugate(self) -> ExpressionOrFloat:
