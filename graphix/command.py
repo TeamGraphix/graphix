@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 import graphix.clifford
 from graphix.clifford import Clifford
-from graphix.pauli import Pauli, Plane
+from graphix.pauli import Pauli, Plane, Sign
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
@@ -167,8 +167,8 @@ class MeasureUpdate(BaseModel):
             coeff = -1
         else:
             coeff = 1
-        add_term = 0
-        if cos_pauli.unit.sign:
+        add_term: float = 0
+        if cos_pauli.unit.sign == Sign.Minus:
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term
