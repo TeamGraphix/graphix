@@ -100,7 +100,7 @@ class Parameter(Expression):
 class PlaceholderOperationError(ValueError):
     def __init__(self):
         super().__init__(
-            "Placeholder angles do not support any form of computation before substitution except affine operation. Either use `subs` with an actual value before the computation, or use a symbolic parameter implementation, such as https://github.com/TeamGraphix/graphix-symbolic ."
+            "Placeholder angles do not support any form of computation before substitution except affine operation. You may use `subs` with an actual value before the computation."
         )
 
 
@@ -249,11 +249,9 @@ class Placeholder(AffineExpression, Parameter):
     applied to patterns with placeholders.
 
     These placeholders and affine expressions do not support arbitrary
-    computation and are not suitable for simulation.  Either use
+    computation and are not suitable for simulation.  You may use
     :func:`Circuit.subs` or :func:`Pattern.subs` with an actual value
-    before the computation, or use a symbolic parameter
-    implementation, such as
-    https://github.com/TeamGraphix/graphix-symbolic .
+    before the computation.
 
     """
 

@@ -1417,12 +1417,6 @@ class Pattern:
         given variable in measurement angles are substituted by the
         given value.
 
-        Substitution is performed by calling the method `subs` on
-        measurement angles, if the method exists, which is the case in
-        particular for :class:`graphix.parameter.Placeholder`
-        and :class:`graphix_symbolic.SympyParameter`
-        (see https://github.com/TeamGraphix/graphix-symbolic ).
-
         If the substitution returns a number, this number is coerced
         to `complex`.
 
@@ -1437,12 +1431,6 @@ class Pattern:
         """Return a copy of the pattern where all occurrences of the
         given keys in measurement angles are substituted by the given
         values in parallel.
-
-        Substitution is performed by calling the method `xreplace` on
-        measurement angles, if the method exists, which is the case in
-        particular for :class:`graphix.parameter.Placeholder`
-        and :class:`graphix_symbolic.SympyParameter`
-        (see https://github.com/TeamGraphix/graphix-symbolic ).
 
         If the substitution returns a number, this number is coerced
         to `complex`.
