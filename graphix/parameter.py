@@ -232,8 +232,9 @@ class AffineExpression(Expression):
         return self
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
+        value = assignment.get(self.x)
         # `value` can be 0, so checking with `is not None` is mandatory here.
-        if (value := assignment.get(self.x)) is not None:
+        if value is not None:
             return self.evaluate(value)
         return self
 
