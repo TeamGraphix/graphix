@@ -277,7 +277,7 @@ class Pauli:
         typing_extensions.assert_never(self.symbol)
 
     def __repr__(self) -> str:
-        return self.__unit.prefix(self.__symbol.name)
+        return self.__unit.prefix(f"graphix.pauli.{self.__symbol.name}")
 
     def __matmul__(self, other):
         if isinstance(other, Pauli):
