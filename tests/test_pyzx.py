@@ -8,7 +8,9 @@ import pytest
 
 try:
     import pyzx as zx
-    from pyzx.generate import cliffordT
+
+    # MEMO: PEP8 violation in pyzx
+    from pyzx.generate import cliffordT as clifford_t  # noqa: N813
 
     from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
 except ModuleNotFoundError:
@@ -20,7 +22,7 @@ SEED = 123
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 def test_graph_equality() -> None:
     random.seed(SEED)
-    g = cliffordT(4, 10, 0.1)
+    g = clifford_t(4, 10, 0.1)
 
     og1 = from_pyzx_graph(g)
 
@@ -55,7 +57,7 @@ def assert_reconstructed_pyzx_graph_equal(g: zx.Graph) -> None:
 # graph. Only works with small circuits up to 4 qubits since PyZX's `tensorfy`
 # function seems to consume huge amount of memory for larger qubit
 @pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
-def test_random_cliffordT() -> None:
+def test_random_clifford_t() -> None:
     for _ in range(15):
-        g = cliffordT(4, 10, 0.1)
+        g = clifford_t(4, 10, 0.1)
         assert_reconstructed_pyzx_graph_equal(g)
