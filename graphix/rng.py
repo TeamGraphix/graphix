@@ -17,5 +17,6 @@ def ensure_rng(rng: Generator | None = None) -> Generator:
     if rng := getattr(_rng_local, "rng", None):
         return rng
     rng = np.random.default_rng()
-    _rng_local.rng = rng
+    # MEMO: Cannot perform type check
+    setattr(_rng_local, "rng", rng)  # noqa: B010
     return rng
