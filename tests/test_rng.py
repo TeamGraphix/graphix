@@ -1,7 +1,14 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 
+import numpy as np
+
 from graphix.rng import ensure_rng
+
+
+def test_identity() -> None:
+    rng = np.random.default_rng()
+    assert ensure_rng(rng) is rng
 
 
 def test_new_thread() -> None:
