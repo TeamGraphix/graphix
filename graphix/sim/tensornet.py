@@ -4,6 +4,7 @@ import string
 from copy import deepcopy
 
 import numpy as np
+import numpy.typing as npt
 import quimb.tensor as qtn
 import typing_extensions
 from quimb.tensor import Tensor, TensorNetwork
@@ -467,7 +468,8 @@ class MBQCTensorNet(TensorNetwork):
         normalize (optional): bool
             if True, normalize the coefficient by the norm of the entire state.
         indices (optional): list of int
-            target qubit indices to compute the coefficients, default is the MBQC output nodes (self.default_output_nodes).
+            target qubit indices to compute the coefficients,
+            default is the MBQC output nodes (self.default_output_nodes).
 
         Returns
         -------
@@ -522,28 +524,26 @@ class MBQCTensorNet(TensorNetwork):
         coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, indices=None, **kwagrs):
-        """Retrieve the statevector from the tensornetwork.
-        This method tends to be slow however we plan to parallelize this.
-
-        Parameters
-        ----------
-        indices (optional): list of int
-            target qubit indices. Default is the MBQC output nodes (self.default_output_nodes).
+    def to_statevector(self, **kwagrs) -> npt.NDArray:
+        """Take outer product of the tensors in the network and return the statevector.
+        This method uses the contract method and full_simplify method of quimb.tensor.TensorNetwork,
+        which enables the efficient contraction order search and simplification of the tensor network.
+        This method maintains the same computational capabilities as the conventional statevector simulation,
+        as both calculate the same tensor network.
+        The difference is only in the contraction order.
+        This eco simulation is not always exactly optimal, but it is efficient enough for most cases.
+        The current implementation does NOT support intermediate measurements according to the probability distribution.
 
         Returns
         -------
-        numpy.ndarray :
+         : numpy.ndarray
             statevector
         """
-        if indices is None:
-            n_qubit = len(self.default_output_nodes)
-        else:
-            n_qubit = len(indices)
-        statevec = np.zeros(2**n_qubit, np.complex128)
-        for i in range(len(statevec)):
-            statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices, **kwagrs)
-        return statevec / np.linalg.norm(statevec)
+        tn = self.copy()
+        tn_simplified = tn.full_simplify("ADCR")
+        output_inds = [self._dangling[str(index)] for index in self.default_output_nodes]
+        psi = tn_simplified.contract(output_inds=output_inds, **kwagrs)
+        return np.array([psi]) if isinstance(psi, (np.complex128, np.float64)) else psi.data.reshape(-1)
 
     def get_norm(self, **kwagrs):
         """Calculate the norm of the state.
@@ -588,7 +588,12 @@ class MBQCTensorNet(TensorNetwork):
             target_nodes = [output_node_indices[ind] for ind in qubit_indices]
             out_inds = output_node_indices
         op_dim = len(qubit_indices)
-        op = op.reshape([2 for _ in range(2 * op_dim)])
+        op = op.reshape(
+            [
+                2,
+            ]
+            * (2 * op_dim)
+        )
         new_ind_left = [gen_str() for _ in range(op_dim)]
         new_ind_right = [gen_str() for _ in range(op_dim)]
         tn_cp_left = self.copy()
@@ -626,7 +631,8 @@ class MBQCTensorNet(TensorNetwork):
             Applied positions of **logical** qubits.
         decompose : bool, optional
             default True
-            whether a given operator will be decomposed or not. If True, operator is decomposed into Matrix Product Operator(MPO)
+            whether a given operator will be decomposed or not.
+            If True, operator is decomposed into Matrix Product Operator(MPO)
         """
         if len(operator.shape) != len(qubit_indices) * 2:
             shape = [2 for _ in range(2 * len(qubit_indices))]
