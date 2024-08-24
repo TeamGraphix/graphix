@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import itertools
 import sys
 import typing
@@ -352,7 +353,8 @@ class TestPattern:
         pattern.add(M(node=0, angle=0.5))
         pattern.add(M(node=1, angle=0.5))
         pattern.add(M(node=2, angle=0.5, plane=plane, s_domain=[0], t_domain=[1]))
-        pattern_ref = pattern.copy()
+        pattern.add(Z(node=3, domain=[2]))
+        pattern_ref = copy.deepcopy(pattern)
         pattern.standardize(method="global")
         signal_dict = pattern.shift_signals(method=method)
         # Test for every possible outcome of each measure
