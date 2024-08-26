@@ -8,24 +8,23 @@ from copy import deepcopy
 from dataclasses import dataclass
 
 import networkx as nx
-import numpy as np
 import typing_extensions
 
 import graphix.clifford
 import graphix.pauli
 from graphix import command
-from graphix.clifford import CLIFFORD_CONJ, CLIFFORD_MEASURE, CLIFFORD_TO_QASM3
+from graphix._db import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
-from graphix.pauli import Plane
+from graphix.pauli import Axis, PauliMeasurement, Plane, Sign
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 
-class NodeAlreadyPrepared(Exception):
+class NodeAlreadyPreparedError(Exception):
     def __init__(self, node: int):
         self.__node = node
 
@@ -63,7 +62,7 @@ class Pattern:
             attr for Z: signal_domain
             attr for S: signal_domain
             attr for C: clifford_index, as defined in :py:mod:`graphix.clifford`
-    Nnode : int
+    n_node : int
         total number of nodes in the resource state
     """
 
@@ -75,7 +74,7 @@ class Pattern:
             input_nodes = []
         self.results = {}  # measurement results from the graph state simulator
         self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
-        self.__Nnode = len(input_nodes)  # total number of nodes in the graph state
+        self.__n_node = len(input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq: list[Command] = []
@@ -114,8 +113,8 @@ class Pattern:
         """
         if cmd.kind == CommandKind.N:
             if cmd.node in self.__output_nodes:
-                raise NodeAlreadyPrepared(cmd.node)
-            self.__Nnode += 1
+                raise NodeAlreadyPreparedError(cmd.node)
+            self.__n_node += 1
             self.__output_nodes.append(cmd.node)
         elif cmd.kind == CommandKind.M:
             self.__output_nodes.remove(cmd.node)
@@ -131,7 +130,7 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
-        self.__Nnode = len(self.__input_nodes)
+        self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
@@ -172,9 +171,9 @@ class Pattern:
         return self.__seq[index]
 
     @property
-    def Nnode(self):
+    def n_node(self):
         """count of nodes that are either `input_nodes` or prepared with `N` commands"""
-        return self.__Nnode
+        return self.__n_node
 
     def reorder_output_nodes(self, output_nodes: list[int]):
         """arrange the order of output_nodes.
@@ -211,14 +210,14 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
-    def print_pattern(self, lim=40, target: list[command.CommandKind] | None = None) -> None:
+    def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """print the pattern sequence (Pattern.seq).
 
         Parameters
         ----------
         lim: int, optional
             maximum number of commands to show
-        target : list of command.CommandKind, optional
+        target : list of CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
         if len(self.__seq) < lim:
@@ -227,12 +226,12 @@ class Pattern:
             nmax = lim
         if target is None:
             target = [
-                command.CommandKind.N,
-                command.CommandKind.E,
-                command.CommandKind.M,
-                command.CommandKind.X,
-                command.CommandKind.Z,
-                command.CommandKind.C,
+                CommandKind.N,
+                CommandKind.E,
+                CommandKind.M,
+                CommandKind.X,
+                CommandKind.Z,
+                CommandKind.C,
             ]
         count = 0
         i = -1
@@ -241,25 +240,25 @@ class Pattern:
             if i == len(self.__seq):
                 break
             cmd = self.__seq[i]
-            if cmd.kind == command.CommandKind.N and (command.CommandKind.N in target):
+            if cmd.kind == CommandKind.N and (CommandKind.N in target):
                 count += 1
                 print(f"N, node = {cmd.node}")
-            elif cmd.kind == command.CommandKind.E and (command.CommandKind.E in target):
+            elif cmd.kind == CommandKind.E and (CommandKind.E in target):
                 count += 1
                 print(f"E, nodes = {cmd.nodes}")
-            elif cmd.kind == command.CommandKind.M and (command.CommandKind.M in target):
+            elif cmd.kind == CommandKind.M and (CommandKind.M in target):
                 count += 1
                 print(
                     f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
                     + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
                 )
-            elif cmd.kind == command.CommandKind.X and (command.CommandKind.X in target):
+            elif cmd.kind == CommandKind.X and (CommandKind.X in target):
                 count += 1
                 print(f"X byproduct, node = {cmd.node}, domain = {cmd.domain}")
-            elif cmd.kind == command.CommandKind.Z and (command.CommandKind.Z in target):
+            elif cmd.kind == CommandKind.Z and (CommandKind.Z in target):
                 count += 1
                 print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
-            elif cmd.kind == command.CommandKind.C and (command.CommandKind.C in target):
+            elif cmd.kind == CommandKind.C and (CommandKind.C in target):
                 count += 1
                 print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
 
@@ -279,10 +278,10 @@ class Pattern:
         def fresh_node():
             return {
                 "seq": [],
-                "Mprop": [None, None, set(), set()],
-                "Xsignal": set(),
-                "Xsignals": [],
-                "Zsignal": set(),
+                "m_prop": [None, None, set(), set()],
+                "x_signal": set(),
+                "x_signals": [],
+                "z_signal": set(),
                 "is_input": False,
                 "is_output": False,
             }
@@ -296,19 +295,19 @@ class Pattern:
             elif kind == CommandKind.E:
                 node_prop[cmd.nodes[1]]["seq"].append(cmd.nodes[0])
                 node_prop[cmd.nodes[0]]["seq"].append(cmd.nodes[1])
-            elif kind == command.CommandKind.M:
-                node_prop[cmd.node]["Mprop"] = [cmd.plane, cmd.angle, cmd.s_domain, cmd.t_domain]
+            elif kind == CommandKind.M:
+                node_prop[cmd.node]["m_prop"] = [cmd.plane, cmd.angle, cmd.s_domain, cmd.t_domain]
                 node_prop[cmd.node]["seq"].append(-1)
                 morder.append(cmd.node)
             elif kind == CommandKind.X:
                 if standardized:
-                    node_prop[cmd.node]["Xsignal"] ^= cmd.domain
-                    node_prop[cmd.node]["Xsignals"] += [cmd.domain]
+                    node_prop[cmd.node]["x_signal"] ^= cmd.domain
+                    node_prop[cmd.node]["x_signals"] += [cmd.domain]
                 else:
-                    node_prop[cmd.node]["Xsignals"].append(cmd.domain)
+                    node_prop[cmd.node]["x_signals"].append(cmd.domain)
                 node_prop[cmd.node]["seq"].append(-2)
-            elif kind == command.CommandKind.Z:
-                node_prop[cmd.node]["Zsignal"] ^= cmd.domain
+            elif kind == CommandKind.Z:
+                node_prop[cmd.node]["z_signal"] ^= cmd.domain
                 node_prop[cmd.node]["seq"].append(-3)
             elif kind == CommandKind.C:
                 node_prop[cmd.node]["vop"] = cmd.cliff_index
@@ -344,9 +343,9 @@ class Pattern:
             localpattern.standardize()
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
-            self._move_N_to_left()
+            self._move_n_to_left()
             self._move_byproduct_to_right()
-            self._move_E_after_N()
+            self._move_e_after_n()
         else:
             raise ValueError("Invalid method")
 
@@ -404,7 +403,7 @@ class Pattern:
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
             swapped_dict = self.extract_signals()
-            target = self._find_op_to_be_moved(command.CommandKind.S, rev=True)
+            target = self._find_op_to_be_moved(CommandKind.S, rev=True)
             while target is not None:
                 if target == len(self.__seq) - 1:
                     self.__seq.pop(target)
@@ -413,13 +412,13 @@ class Pattern:
                 cmd = self.__seq[target + 1]
                 kind = cmd.kind
                 if kind == CommandKind.X:
-                    self._commute_XS(target)
+                    self._commute_xs(target)
                 elif kind == CommandKind.Z:
-                    self._commute_ZS(target)
+                    self._commute_zs(target)
                 elif kind == CommandKind.M:
-                    self._commute_MS(target)
+                    self._commute_ms(target)
                 elif kind == CommandKind.S:
-                    self._commute_SS(target)
+                    self._commute_ss(target)
                 else:
                     self._commute_with_following(target)
                 target += 1
@@ -454,7 +453,7 @@ class Pattern:
         # If no target found
         return None
 
-    def _commute_EX(self, target):
+    def _commute_ex(self, target):
         """Internal method to perform the commutation of E and X.
         Parameters
         ----------
@@ -464,25 +463,25 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.X
         assert self.__seq[target + 1].kind == CommandKind.E
-        X = self.__seq[target]
-        E = self.__seq[target + 1]
-        if E.nodes[0] == X.node:
-            Z = command.Z(node=E.nodes[1], domain=X.domain)
+        x = self.__seq[target]
+        e = self.__seq[target + 1]
+        if e.nodes[0] == x.node:
+            z = command.Z(node=e.nodes[1], domain=x.domain)
             self.__seq.pop(target + 1)  # del E
-            self.__seq.insert(target, Z)  # add Z in front of X
-            self.__seq.insert(target, E)  # add E in front of Z
+            self.__seq.insert(target, z)  # add Z in front of X
+            self.__seq.insert(target, e)  # add E in front of Z
             return True
-        elif E.nodes[1] == X.node:
-            Z = command.Z(node=E.nodes[0], domain=X.domain)
+        elif e.nodes[1] == x.node:
+            z = command.Z(node=e.nodes[0], domain=x.domain)
             self.__seq.pop(target + 1)  # del E
-            self.__seq.insert(target, Z)  # add Z in front of X
-            self.__seq.insert(target, E)  # add E in front of Z
+            self.__seq.insert(target, z)  # add Z in front of X
+            self.__seq.insert(target, e)  # add E in front of Z
             return True
         else:
             self._commute_with_following(target)
             return False
 
-    def _commute_MX(self, target):
+    def _commute_mx(self, target):
         """Internal method to perform the commutation of M and X.
 
         Parameters
@@ -493,17 +492,17 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.X
         assert self.__seq[target + 1].kind == CommandKind.M
-        X = self.__seq[target]
-        M = self.__seq[target + 1]
-        if X.node == M.node:
-            M.s_domain ^= X.domain
+        x = self.__seq[target]
+        m = self.__seq[target + 1]
+        if x.node == m.node:
+            m.s_domain ^= x.domain
             self.__seq.pop(target)  # del X
             return True
         else:
             self._commute_with_following(target)
             return False
 
-    def _commute_MZ(self, target):
+    def _commute_mz(self, target):
         """Internal method to perform the commutation of M and Z.
 
         Parameters
@@ -514,17 +513,17 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.Z
         assert self.__seq[target + 1].kind == CommandKind.M
-        Z = self.__seq[target]
-        M = self.__seq[target + 1]
-        if Z.node == M.node:
-            M.t_domain ^= Z.domain
+        z = self.__seq[target]
+        m = self.__seq[target + 1]
+        if z.node == m.node:
+            m.t_domain ^= z.domain
             self.__seq.pop(target)  # del Z
             return True
         else:
             self._commute_with_following(target)
             return False
 
-    def _commute_XS(self, target):
+    def _commute_xs(self, target):
         """Internal method to perform the commutation of X and S.
 
         Parameters
@@ -535,13 +534,13 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.S
         assert self.__seq[target + 1].kind == CommandKind.X
-        S = self.__seq[target]
-        X = self.__seq[target + 1]
-        if S.node in X.domain:
-            X.domain ^= S.domain
+        s = self.__seq[target]
+        x = self.__seq[target + 1]
+        if s.node in x.domain:
+            x.domain ^= s.domain
         self._commute_with_following(target)
 
-    def _commute_ZS(self, target):
+    def _commute_zs(self, target):
         """Internal method to perform the commutation of Z and S.
 
         Parameters
@@ -552,13 +551,13 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.S
         assert self.__seq[target + 1].kind == CommandKind.Z
-        S = self.__seq[target]
-        Z = self.__seq[target + 1]
-        if S.node in Z.domain:
-            Z.domain ^= S.domain
+        s = self.__seq[target]
+        z = self.__seq[target + 1]
+        if s.node in z.domain:
+            z.domain ^= s.domain
         self._commute_with_following(target)
 
-    def _commute_MS(self, target):
+    def _commute_ms(self, target):
         """Internal method to perform the commutation of M and S.
 
         Parameters
@@ -569,15 +568,15 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.S
         assert self.__seq[target + 1].kind == CommandKind.M
-        S = self.__seq[target]
-        M = self.__seq[target + 1]
-        if S.node in M.s_domain:
-            M.s_domain ^= S.domain
-        if S.node in M.t_domain:
-            M.t_domain ^= S.domain
+        s = self.__seq[target]
+        m = self.__seq[target + 1]
+        if s.node in m.s_domain:
+            m.s_domain ^= s.domain
+        if s.node in m.t_domain:
+            m.t_domain ^= s.domain
         self._commute_with_following(target)
 
-    def _commute_SS(self, target):
+    def _commute_ss(self, target):
         """Internal method to perform the commutation of two S commands.
         Parameters
         ----------
@@ -587,10 +586,10 @@ class Pattern:
         """
         assert self.__seq[target].kind == CommandKind.S
         assert self.__seq[target + 1].kind == CommandKind.S
-        S1 = self.__seq[target]
-        S2 = self.__seq[target + 1]
-        if S1.node in S2.domain:
-            S2.domain ^= S1.domain
+        s1 = self.__seq[target]
+        s2 = self.__seq[target + 1]
+        if s1.node in s2.domain:
+            s2.domain ^= s1.domain
         self._commute_with_following(target)
 
     def _commute_with_following(self, target):
@@ -603,9 +602,9 @@ class Pattern:
         target : int
             target command index
         """
-        A = self.__seq[target + 1]
+        a = self.__seq[target + 1]
         self.__seq.pop(target + 1)
-        self.__seq.insert(target, A)
+        self.__seq.insert(target, a)
 
     def _commute_with_preceding(self, target):
         """Internal method to perform the commutation of
@@ -617,24 +616,24 @@ class Pattern:
         target : int
             target command index
         """
-        A = self.__seq[target - 1]
+        a = self.__seq[target - 1]
         self.__seq.pop(target - 1)
-        self.__seq.insert(target, A)
+        self.__seq.insert(target, a)
 
-    def _move_N_to_left(self):
+    def _move_n_to_left(self):
         """Internal method to move all 'N' commands to the start of the sequence.
         N can be moved to the start of sequence without the need of considering
         commutation relations.
         """
         new_seq = []
-        Nlist = []
+        n_list = []
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N:
-                Nlist.append(cmd)
+                n_list.append(cmd)
             else:
                 new_seq.append(cmd)
-        Nlist.sort(key=lambda N_cmd: N_cmd.node)
-        self.__seq = Nlist + new_seq
+        n_list.sort(key=lambda n_cmd: n_cmd.node)
+        self.__seq = n_list + new_seq
 
     def _move_byproduct_to_right(self):
         """Internal method to move the byproduct commands to the end of sequence,
@@ -642,59 +641,59 @@ class Pattern:
         """
         # First, we move all X commands to the end of sequence
         index = len(self.__seq) - 1
-        X_limit = len(self.__seq) - 1
+        x_limit = len(self.__seq) - 1
         while index > 0:
             if self.__seq[index].kind == CommandKind.X:
-                index_X = index
-                while index_X < X_limit:
-                    cmd = self.__seq[index_X + 1]
+                index_x = index
+                while index_x < x_limit:
+                    cmd = self.__seq[index_x + 1]
                     kind = cmd.kind
                     if kind == CommandKind.E:
-                        move = self._commute_EX(index_X)
+                        move = self._commute_ex(index_x)
                         if move:
-                            X_limit += 1  # addition of extra Z means target must be increased
-                            index_X += 1
+                            x_limit += 1  # addition of extra Z means target must be increased
+                            index_x += 1
                     elif kind == CommandKind.M:
-                        search = self._commute_MX(index_X)
+                        search = self._commute_mx(index_x)
                         if search:
-                            X_limit -= 1  # XM commutation rule removes X command
+                            x_limit -= 1  # XM commutation rule removes X command
                             break
                     else:
-                        self._commute_with_following(index_X)
-                    index_X += 1
+                        self._commute_with_following(index_x)
+                    index_x += 1
                 else:
-                    X_limit -= 1
+                    x_limit -= 1
             index -= 1
         # then, move Z to the end of sequence in front of X
-        index = X_limit
-        Z_limit = X_limit
+        index = x_limit
+        z_limit = x_limit
         while index > 0:
             if self.__seq[index].kind == CommandKind.Z:
-                index_Z = index
-                while index_Z < Z_limit:
-                    cmd = self.__seq[index_Z + 1]
+                index_z = index
+                while index_z < z_limit:
+                    cmd = self.__seq[index_z + 1]
                     if cmd.kind == CommandKind.M:
-                        search = self._commute_MZ(index_Z)
+                        search = self._commute_mz(index_z)
                         if search:
-                            Z_limit -= 1  # ZM commutation rule removes Z command
+                            z_limit -= 1  # ZM commutation rule removes Z command
                             break
                     else:
-                        self._commute_with_following(index_Z)
-                    index_Z += 1
+                        self._commute_with_following(index_z)
+                    index_z += 1
             index -= 1
 
-    def _move_E_after_N(self):
+    def _move_e_after_n(self):
         """Internal method to move all E commands to the start of sequence,
-        before all N commands. assumes that _move_N_to_left() method was called.
+        before all N commands. assumes that _move_n_to_left() method was called.
         """
-        moved_E = 0
-        target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_E)
+        moved_e = 0
+        target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_e)
         while target is not None:
             if (target == 0) or (
                 self.__seq[target - 1].kind == CommandKind.N or self.__seq[target - 1].kind == CommandKind.E
             ):
-                moved_E += 1
-                target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_E)
+                moved_e += 1
+                target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_e)
                 continue
             self._commute_with_preceding(target)
             target -= 1
@@ -732,11 +731,11 @@ class Pattern:
         nodes, _ = self.get_graph()
         dependency = {i: set() for i in nodes}
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.M:
+            if cmd.kind == CommandKind.M:
                 dependency[cmd.node] = dependency[cmd.node] | cmd.s_domain | cmd.t_domain
-            elif cmd.kind == command.CommandKind.X:
+            elif cmd.kind == CommandKind.X:
                 dependency[cmd.node] = dependency[cmd.node] | cmd.domain
-            elif cmd.kind == command.CommandKind.Z:
+            elif cmd.kind == CommandKind.Z:
                 dependency[cmd.node] = dependency[cmd.node] | cmd.domain
         return dependency
 
@@ -870,13 +869,13 @@ class Pattern:
         """
         # NOTE calling get_graph
         nodes, edges = self.get_graph()
-        G = nx.Graph()
-        G.add_nodes_from(nodes)
-        G.add_edges_from(edges)
+        g = nx.Graph()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(G, vin, vout, meas_planes=meas_planes)
+        f, l_k = find_flow(g, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
         depth, layer = get_layers(l_k)
@@ -898,16 +897,16 @@ class Pattern:
         """
         # NOTE calling get_graph
         nodes, edges = self.get_graph()
-        G = nx.Graph()
-        G.add_nodes_from(nodes)
-        G.add_edges_from(edges)
-        isolated = list(nx.isolates(G))
+        g = nx.Graph()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+        isolated = list(nx.isolates(g))
         if isolated:
             raise ValueError("The input graph must be connected")
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = find_gflow(G, vin, vout, meas_plane=meas_plane)
+        g, l_k = find_gflow(g, vin, vout, meas_plane=meas_plane)
         if not g:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
@@ -976,7 +975,7 @@ class Pattern:
         """
         meas_plane = dict()
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.M:
+            if cmd.kind == CommandKind.M:
                 meas_plane[cmd.node] = cmd.plane
         return meas_plane
 
@@ -1063,10 +1062,10 @@ class Pattern:
         """
         vops = dict()
         for cmd in self.__seq:
-            if cmd.kind == command.CommandKind.M:
+            if cmd.kind == CommandKind.M:
                 if include_identity:
                     vops[cmd.node] = cmd.vop
-            elif cmd.kind == command.CommandKind.C:
+            elif cmd.kind == CommandKind.C:
                 if cmd.cliff_index == 0:
                     if include_identity:
                         vops[cmd.node] = cmd.cliff_index
@@ -1141,7 +1140,7 @@ class Pattern:
     def correction_commands(self):
         """Returns the list of byproduct correction commands"""
         assert self.is_standard()
-        return [seqi for seqi in self.__seq if seqi.kind in (command.CommandKind.X, command.CommandKind.Z)]
+        return [seqi for seqi in self.__seq if seqi.kind in (CommandKind.X, CommandKind.Z)]
 
     def parallelize_pattern(self):
         """Optimize the pattern to reduce the depth of the computation
@@ -1242,15 +1241,15 @@ class Pattern:
             time evolution of 'space' at each 'N' and 'M' commands of pattern.
         """
         nodes = 0
-        N_list = []
+        n_list = []
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N:
                 nodes += 1
-                N_list.append(nodes)
+                n_list.append(nodes)
             elif cmd.kind == CommandKind.M:
                 nodes -= 1
-                N_list.append(nodes)
-        return N_list
+                n_list.append(nodes)
+        return n_list
 
     def simulate_pattern(self, backend="statevector", input_state=BasicStates.PLUS, **kwargs):
         """Simulate the execution of the pattern by using
@@ -1404,7 +1403,7 @@ class Pattern:
         result.__seq = [cmd.model_copy() for cmd in self.__seq]
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
-        result.__Nnode = self.__Nnode
+        result.__n_node = self.__n_node
         result._pauli_preprocessed = self._pauli_preprocessed
         result.results = self.results.copy()
         return result
@@ -1425,15 +1424,15 @@ class CommandNode:
         X: -2
         Z: -3
         C: -4
-    Mprop : list
+    m_prop : list
         attributes for a measurement command. consists of [meas_plane, angle, s_domain, t_domain]
     result : int
         measurement result of the node
-    Xsignal : list
+    x_signal : list
         signal domain
-    Xsignals : list
-        signal domain. Xsignals may contains lists. For standardization, this variable is used.
-    Zsignal : list
+    x_signals : list
+        signal domain. x_signals may contains lists. For standardization, this variable is used.
+    z_signal : list
         signal domain
     input : bool
         whether the node is an input or not
@@ -1441,7 +1440,7 @@ class CommandNode:
         whether the node is an output or not
     """
 
-    def __init__(self, node_index, seq, Mprop, Zsignal, is_input, is_output, Xsignal=None, Xsignals=None):
+    def __init__(self, node_index, seq, m_prop, z_signal, is_input, is_output, x_signal=None, x_signals=None):
         """
         Parameters
         ----------
@@ -1451,17 +1450,17 @@ class CommandNode:
         seq : list
             distributed command sequence
 
-        Mprop : list
+        m_prop : list
             attributes for measurement command
 
-        Xsignal : list
+        x_signal : list
             signal domain for X byproduct correction
 
-        Xsignals : list of list
+        x_signals : list of list
             signal domains for X byproduct correction
-            Xsignal or Xsignals must be specified
+            x_signal or x_signals must be specified
 
-        Zsignal : list
+        z_signal : list
             signal domain for Z byproduct correction
 
         is_input : bool
@@ -1470,19 +1469,19 @@ class CommandNode:
         is_output : bool
             whether the node is an output or not
         """
-        if Xsignals is None:
-            Xsignals = []
-        if Xsignal is None:
-            Xsignal = set()
+        if x_signals is None:
+            x_signals = []
+        if x_signal is None:
+            x_signal = set()
         self.index = node_index
         self.seq = seq  # composed of [E, M, X, Z, C]
-        self.Mprop = Mprop
+        self.m_prop = m_prop
         self.result = None
-        self.Xsignal = Xsignal
-        self.Xsignals = Xsignals
-        self.Zsignal = Zsignal  # appeared at most e + 1
-        self.input = is_input
-        self.output = is_output
+        self.x_signal = x_signal
+        self.x_signals = x_signals
+        self.z_signal = z_signal  # appeared at most e + 1
+        self.is_input = is_input
+        self.is_output = is_output
 
     def is_standard(self):
         """Check whether the local command sequence is standardized.
@@ -1508,7 +1507,7 @@ class CommandNode:
             cmd_ref = cmd
         return standardized
 
-    def commute_X(self):
+    def commute_x(self):
         """Move all X correction commands to the back.
 
         Returns
@@ -1516,41 +1515,41 @@ class CommandNode:
         EXcommutated_nodes : dict
             when X commutes with E, Z correction is added on the pair node. This dict specifies target nodes where Zs will be added.
         """
-        EXcommutated_nodes = dict()
-        combined_Xsignal = set()
-        for Xsignal in self.Xsignals:
-            Xpos = self.seq.index(-2)
-            for i in range(Xpos, len(self.seq)):
+        ex_commutated_nodes = dict()
+        combined_xsignal = set()
+        for x_signal in self.x_signals:
+            x_pos = self.seq.index(-2)
+            for i in range(x_pos, len(self.seq)):
                 if self.seq[i] >= 0:
                     try:
-                        EXcommutated_nodes[self.seq[i]] ^= Xsignal
+                        ex_commutated_nodes[self.seq[i]] ^= x_signal
                     except KeyError:
-                        EXcommutated_nodes[self.seq[i]] = Xsignal
+                        ex_commutated_nodes[self.seq[i]] = x_signal
             self.seq.remove(-2)
-            combined_Xsignal ^= Xsignal
-        if self.output:
+            combined_xsignal ^= x_signal
+        if self.is_output:
             self.seq.append(-2)  # put X on the end of the pattern
-            self.Xsignal = combined_Xsignal
-            self.Xsignals = [combined_Xsignal]
+            self.x_signal = combined_xsignal
+            self.x_signals = [combined_xsignal]
         else:
-            self.Mprop[2] ^= combined_Xsignal
-            self.Xsignal = []
-            self.Xsignals = []
-        return EXcommutated_nodes
+            self.m_prop[2] ^= combined_xsignal
+            self.x_signal = []
+            self.x_signals = []
+        return ex_commutated_nodes
 
-    def commute_Z(self):
+    def commute_z(self):
         """Move all Zs to the back. EZ commutation produces no additional command unlike EX commutation."""
         z_in_seq = False
         while -3 in self.seq:
             z_in_seq = True
             self.seq.remove(-3)
-        if self.output and z_in_seq:
+        if self.is_output and z_in_seq:
             self.seq.append(-3)
         else:
-            self.Mprop[3] ^= self.Zsignal
-            self.Zsignal = []
+            self.m_prop[3] ^= self.z_signal
+            self.z_signal = []
 
-    def _add_Z(self, pair, signal):
+    def _add_z(self, pair, signal):
         """Add Z correction into the node.
 
         Parameters
@@ -1561,9 +1560,9 @@ class CommandNode:
             signal domain for the additional Z correction
         """
         # caused by EX commutation.
-        self.Zsignal ^= signal
-        Epos = self.seq.index(pair)
-        self.seq.insert(Epos + 1, -3)
+        self.z_signal ^= signal
+        e_pos = self.seq.index(pair)
+        self.seq.insert(e_pos + 1, -3)
 
     def print_pattern(self):
         """Print the local command sequence"""
@@ -1593,19 +1592,19 @@ class CommandNode:
         elif cmd == -1:
             return command.M(
                 node=self.index,
-                plane=self.Mprop[0],
-                angle=self.Mprop[1],
-                s_domain=self.Mprop[2],
-                t_domain=self.Mprop[3],
+                plane=self.m_prop[0],
+                angle=self.m_prop[1],
+                s_domain=self.m_prop[2],
+                t_domain=self.m_prop[3],
             )
         elif cmd == -2:
             if self.seq.count(-2) > 1:
                 raise NotImplementedError("Patterns with more than one X corrections are not supported")
-            return command.X(node=self.index, domain=self.Xsignal)
+            return command.X(node=self.index, domain=self.x_signal)
         elif cmd == -3:
             if self.seq.count(-3) > 1:
                 raise NotImplementedError("Patterns with more than one Z corrections are not supported")
-            return command.Z(node=self.index, domain=self.Zsignal)
+            return command.Z(node=self.index, domain=self.z_signal)
         elif cmd == -4:
             return command.C(node=self.index, cliff_index=self.vop)
 
@@ -1617,7 +1616,7 @@ class CommandNode:
         signal_destination : set
             Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
         """
-        signal_destination = self.Mprop[2] | self.Mprop[3] | self.Xsignal | self.Zsignal
+        signal_destination = self.m_prop[2] | self.m_prop[3] | self.x_signal | self.z_signal
         return signal_destination
 
     def get_signal_destination_dict(self):
@@ -1629,10 +1628,10 @@ class CommandNode:
             Counterpart of 'dependent nodes'. Unlike 'get_signal_destination', types of domains are memorarized. measurement results of each node propagate to the nodes specified by 'signal_distination_dict'.
         """
         dependent_nodes_dict = dict()
-        dependent_nodes_dict["Ms"] = self.Mprop[2]
-        dependent_nodes_dict["Mt"] = self.Mprop[3]
-        dependent_nodes_dict["X"] = self.Xsignal
-        dependent_nodes_dict["Z"] = self.Zsignal
+        dependent_nodes_dict["Ms"] = self.m_prop[2]
+        dependent_nodes_dict["Mt"] = self.m_prop[3]
+        dependent_nodes_dict["X"] = self.x_signal
+        dependent_nodes_dict["Z"] = self.z_signal
         return dependent_nodes_dict
 
 
@@ -1700,22 +1699,22 @@ class LocalPattern:
             standardized &= node.is_standard()
         return standardized
 
-    def Xshift(self):
+    def x_shift(self):
         """Move X to the back of the pattern"""
         for index, node in self.nodes.items():
-            EXcomutation = node.commute_X()
-            for target_index, signal in EXcomutation.items():
-                self.nodes[target_index]._add_Z(index, signal)
+            ex_commutation = node.commute_x()
+            for target_index, signal in ex_commutation.items():
+                self.nodes[target_index]._add_z(index, signal)
 
-    def Zshift(self):
+    def z_shift(self):
         """Move Z to the back of the pattern. This method can be executed separately"""
         for node in self.nodes.values():
-            node.commute_Z()
+            node.commute_z()
 
     def standardize(self):
         """Standardize pattern. In this structure, it is enough to move all byproduct corrections to the back"""
-        self.Xshift()
-        self.Zshift()
+        self.x_shift()
+        self.z_shift()
 
     def collect_signal_destination(self):
         """Calculate signal destinations by considering dependencies of each node."""
@@ -1736,24 +1735,24 @@ class LocalPattern:
         signal_dict = {}
         for node_index in self.morder + self.output_nodes:
             node = self.nodes[node_index]
-            if node.Mprop[0] is None:
+            if node.m_prop[0] is None:
                 continue
-            extracted_signal = extract_signal(node.Mprop[0], node.Mprop[2], node.Mprop[3])
+            extracted_signal = extract_signal(node.m_prop[0], node.m_prop[2], node.m_prop[3])
             signal = extracted_signal.signal
             signal_dict[node_index] = signal
-            self.nodes[node_index].Mprop[2] = extracted_signal.s_domain
-            self.nodes[node_index].Mprop[3] = extracted_signal.t_domain
+            self.nodes[node_index].m_prop[2] = extracted_signal.s_domain
+            self.nodes[node_index].m_prop[3] = extracted_signal.t_domain
             for signal_label, destinated_nodes in self.signal_destination[node_index].items():
                 for destinated_node in destinated_nodes:
                     node = self.nodes[destinated_node]
                     if signal_label == "Ms":
-                        node.Mprop[2] ^= signal
+                        node.m_prop[2] ^= signal
                     elif signal_label == "Mt":
-                        node.Mprop[3] ^= signal
+                        node.m_prop[3] ^= signal
                     elif signal_label == "X":
-                        node.Xsignal ^= signal
+                        node.x_signal ^= signal
                     elif signal_label == "Z":
-                        node.Zsignal ^= signal
+                        node.z_signal ^= signal
                     else:
                         raise ValueError(f"Invalid signal label: {signal_label}")
         return signal_dict
@@ -1788,31 +1787,31 @@ class LocalPattern:
         """
         assert self.is_standard()
         pattern = Pattern(input_nodes=self.input_nodes)
-        Nseq = [command.N(node=i) for i in self.nodes.keys() - self.input_nodes]
-        Eseq = []
-        Mseq = []
-        Xseq = []
-        Zseq = []
-        Cseq = []
+        n_seq = [command.N(node=i) for i in self.nodes.keys() - self.input_nodes]
+        e_seq = []
+        m_seq = []
+        x_seq = []
+        z_seq = []
+        c_seq = []
         for node_index in self.morder + self.output_nodes:
             node = self.nodes[node_index]
             for cmd in node.seq:
                 if cmd >= 0:
-                    Eseq.append(node.get_command(cmd))
+                    e_seq.append(node.get_command(cmd))
                     self.nodes[cmd].seq.remove(node_index)
                 elif cmd == -1:
-                    Mseq.append(node.get_command(cmd))
+                    m_seq.append(node.get_command(cmd))
                 elif cmd == -2:
-                    Xseq.append(node.get_command(cmd))
+                    x_seq.append(node.get_command(cmd))
                 elif cmd == -3:
-                    Zseq.append(node.get_command(cmd))
+                    z_seq.append(node.get_command(cmd))
                 elif cmd == -4:
-                    Cseq.append(node.get_command(cmd))
+                    c_seq.append(node.get_command(cmd))
                 else:
                     raise ValueError(f"command {cmd} is invalid!")
             if node.result is not None:
                 pattern.results[node.index] = node.result
-        pattern.replace(Nseq + Eseq + Mseq + Xseq + Zseq + Cseq)
+        pattern.replace(n_seq + e_seq + m_seq + x_seq + z_seq + c_seq)
         return pattern
 
 
@@ -1880,25 +1879,19 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         new_inputs = pattern.input_nodes
     for cmd in to_measure:
         pattern_cmd: Command = cmd[0]
-        measurement_basis: str = cmd[1]
+        measurement_basis: PauliMeasurement = cmd[1]
         # extract signals for adaptive angle.
         s_signal = 0
         t_signal = 0
-        if measurement_basis in [
-            "+X",
-            "-X",
-        ]:  # X meaurement is not affected by s_signal
+        if measurement_basis.axis == Axis.X:  # X measurement is not affected by s_signal
             t_signal = sum([results[j] for j in pattern_cmd.t_domain])
-        elif measurement_basis in ["+Y", "-Y"]:
+        elif measurement_basis.axis == Axis.Y:
             s_signal = sum([results[j] for j in pattern_cmd.s_domain])
             t_signal = sum([results[j] for j in pattern_cmd.t_domain])
-        elif measurement_basis in [
-            "+Z",
-            "-Z",
-        ]:  # Z meaurement is not affected by t_signal
+        elif measurement_basis.axis == Axis.Z:  # Z measurement is not affected by t_signal
             s_signal = sum([results[j] for j in pattern_cmd.s_domain])
         else:
-            raise ValueError("unknown Pauli measurement basis", measurement_basis)
+            typing_extensions.assert_never(measurement_basis.axis)
 
         if int(s_signal % 2) == 1:  # equivalent to X byproduct
             graph_state.h(pattern_cmd.node)
@@ -1907,20 +1900,18 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         if int(t_signal % 2) == 1:  # equivalent to Z byproduct
             graph_state.z(pattern_cmd.node)
         basis = measurement_basis
-        if basis == "+X":
-            results[pattern_cmd.node] = graph_state.measure_x(pattern_cmd.node, choice=0)
-        elif basis == "-X":
-            results[pattern_cmd.node] = 1 - graph_state.measure_x(pattern_cmd.node, choice=1)
-        elif basis == "+Y":
-            results[pattern_cmd.node] = graph_state.measure_y(pattern_cmd.node, choice=0)
-        elif basis == "-Y":
-            results[pattern_cmd.node] = 1 - graph_state.measure_y(pattern_cmd.node, choice=1)
-        elif basis == "+Z":
-            results[pattern_cmd.node] = graph_state.measure_z(pattern_cmd.node, choice=0)
-        elif basis == "-Z":
-            results[pattern_cmd.node] = 1 - graph_state.measure_z(pattern_cmd.node, choice=1)
+        if basis.axis == Axis.X:
+            measure = graph_state.measure_x
+        elif basis.axis == Axis.Y:
+            measure = graph_state.measure_y
+        elif basis.axis == Axis.Z:
+            measure = graph_state.measure_z
         else:
-            raise ValueError("unknown Pauli measurement basis", measurement_basis)
+            typing_extensions.assert_never(basis.axis)
+        if basis.sign == Sign.Plus:
+            results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
+        else:
+            results[pattern_cmd.node] = 1 - measure(pattern_cmd.node, choice=1)
 
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
@@ -1939,14 +1930,14 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     new_seq.extend(
         cmd.clifford(graphix.clifford.get(vops[cmd.node]))
         for cmd in pattern
-        if cmd.kind == command.CommandKind.M and cmd.node in graph_state.nodes
+        if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
         command.C(node=index, clifford=graphix.clifford.get(vops[index]))
         for index in pattern.output_nodes
         if vops[index] != 0
     )
-    new_seq.extend(cmd for cmd in pattern if cmd.kind in (command.CommandKind.X, command.CommandKind.Z))
+    new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
 
     if copy:
         pat = Pattern()
@@ -1956,13 +1947,13 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
     pat.reorder_output_nodes(output_nodes)
-    assert pat.Nnode == len(graph_state.nodes)
+    assert pat.n_node == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True
     return pat
 
 
-def pauli_nodes(pattern: Pattern, leave_input: bool):
+def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, PauliMeasurement]]:
     """returns the list of measurement commands that are in Pauli bases
     and that are not dependent on any non-Pauli measurements
 
@@ -1979,24 +1970,24 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
     if not pattern.is_standard():
         pattern.standardize()
     m_commands = pattern.get_measurement_commands()
-    pauli_node: list[tuple[command.M, str]] = []
+    pauli_node: list[tuple[command.M, PauliMeasurement]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in m_commands:
-        pm = is_pauli_measurement(cmd, ignore_vop=True)
+        pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
         if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
-            if pm in ["+X", "-X"]:
+            if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
                     non_pauli_node.add(cmd.node)
                 else:
                     pauli_node.append((cmd, pm))
-            elif pm in ["+Y", "-Y"]:
+            elif pm.axis == Axis.Y:
                 if (cmd.s_domain | cmd.t_domain) & non_pauli_node:  # cmd depend on non-Pauli measurement
                     non_pauli_node.add(cmd.node)
                 else:
                     pauli_node.append((cmd, pm))
-            elif pm in ["+Z", "-Z"]:
+            elif pm.axis == Axis.Z:
                 if cmd.s_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
                     non_pauli_node.add(cmd.node)
                 else:
@@ -2006,77 +1997,6 @@ def pauli_nodes(pattern: Pattern, leave_input: bool):
         else:
             non_pauli_node.add(cmd.node)
     return pauli_node, non_pauli_node
-
-
-def is_pauli_measurement(cmd: Command, ignore_vop=True):
-    """Determines whether or not the measurement command is a Pauli measurement,
-    and if so returns the measurement basis.
-
-    Parameters
-    ----------
-    cmd : list
-        measurement command. list containing the information of the measurement,
-        "M", node index, measurement plane, angle (in unit of pi), s-signal, t-signal, clifford index.
-
-        e.g. `['M', 2, 'XY', 0.25, [], [], 6]`
-        for measurement of node 2, in 4/pi angle in XY plane, with local Clifford index 6 (Hadamard).
-    ignore_vop : bool
-        whether or not to ignore local Clifford to detemrine the measurement basis.
-
-    Returns
-    -------
-        str, one of '+X', '-X', '+Y', '-Y', '+Z', '-Z'
-        if the measurement is not in Pauli basis, returns None.
-    """
-    assert cmd.kind == CommandKind.M
-    basis_str = [("+X", "-X"), ("+Y", "-Y"), ("+Z", "-Z")]
-    # first item: 0, 1 or 2. correspond to choice of X, Y and Z
-    # second item: 0 or 1. correspond to sign (+, -)
-    basis_index = (0, 0)
-    if np.mod(cmd.angle, 2) == 0:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (0, 0)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (1, 0)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (0, 0)
-        else:
-            raise ValueError("Unknown measurement plane")
-    elif np.mod(cmd.angle, 2) == 1:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (0, 1)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (1, 1)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (0, 1)
-        else:
-            raise ValueError("Unknown measurement plane")
-    elif np.mod(cmd.angle, 2) == 0.5:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (1, 0)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (2, 0)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (2, 0)
-        else:
-            raise ValueError("Unknown measurement plane")
-    elif np.mod(cmd.angle, 2) == 1.5:
-        if cmd.plane == graphix.pauli.Plane.XY:
-            basis_index = (1, 1)
-        elif cmd.plane == graphix.pauli.Plane.YZ:
-            basis_index = (2, 1)
-        elif cmd.plane == graphix.pauli.Plane.XZ:
-            basis_index = (2, 1)
-        else:
-            raise ValueError("Unknown measurement plane")
-    else:
-        return None
-    if not ignore_vop:
-        basis_index = (
-            CLIFFORD_MEASURE[cmd.vop][basis_index[0]][0],
-            int(np.abs(basis_index[1] - CLIFFORD_MEASURE[cmd.vop][basis_index[0]][1])),
-        )
-    return basis_str[basis_index[0]][basis_index[1]]
 
 
 def cmd_to_qasm3(cmd):

@@ -36,7 +36,7 @@ class TestStatevec:
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )
-    def test_measurement_into_each_XYZ_basis(self, state: BasicStates) -> None:
+    def test_measurement_into_each_xyz_basis(self, state: BasicStates) -> None:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
@@ -135,18 +135,18 @@ class TestStatevecNew:
         for _ in range(10):
             # plus state (default)
             backend = StatevectorBackend()
-            N_neighbors = 10
-            states = [graphix.pauli.X.get_eigenstate()] + [graphix.pauli.Z.get_eigenstate() for i in range(N_neighbors)]
+            n_neighbors = 10
+            states = [graphix.pauli.X.get_eigenstate()] + [graphix.pauli.Z.get_eigenstate() for i in range(n_neighbors)]
             nodes = range(len(states))
             backend.add_nodes(nodes=nodes, data=states)
 
-            for i in range(1, N_neighbors + 1):
+            for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
             measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
             node_to_measure = backend.node_index[0]
             result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
             assert result == 0
-            assert list(backend.node_index) == list(range(1, N_neighbors + 1))
+            assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
     def test_deterministic_measure_many(self):
         """
@@ -155,31 +155,31 @@ class TestStatevecNew:
         for _ in range(10):
             # plus state (default)
             backend = StatevectorBackend()
-            N_traps = 5
-            N_neighbors = 5
-            N_whatever = 5
-            traps = [graphix.pauli.X.get_eigenstate() for _ in range(N_traps)]
-            dummies = [graphix.pauli.Z.get_eigenstate() for _ in range(N_neighbors)]
-            others = [graphix.pauli.I.get_eigenstate() for _ in range(N_whatever)]
+            n_traps = 5
+            n_neighbors = 5
+            n_whatever = 5
+            traps = [graphix.pauli.X.get_eigenstate() for _ in range(n_traps)]
+            dummies = [graphix.pauli.Z.get_eigenstate() for _ in range(n_neighbors)]
+            others = [graphix.pauli.I.get_eigenstate() for _ in range(n_whatever)]
             states = traps + dummies + others
             nodes = range(len(states))
             backend.add_nodes(nodes=nodes, data=states)
 
-            for dummy in nodes[N_traps : N_traps + N_neighbors]:
-                for trap in nodes[:N_traps]:
+            for dummy in nodes[n_traps : n_traps + n_neighbors]:
+                for trap in nodes[:n_traps]:
                     backend.entangle_nodes(edge=(trap, dummy))
-                for other in nodes[N_traps + N_neighbors :]:
+                for other in nodes[n_traps + n_neighbors :]:
                     backend.entangle_nodes(edge=(other, dummy))
 
             # Same measurement for all traps
             measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
 
-            for trap in nodes[:N_traps]:
+            for trap in nodes[:n_traps]:
                 node_to_measure = trap
                 result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
                 assert result == 0
 
-            assert list(backend.node_index) == list(range(N_traps, N_neighbors + N_traps + N_whatever))
+            assert list(backend.node_index) == list(range(n_traps, n_neighbors + n_traps + n_whatever))
 
     def test_deterministic_measure_with_coin(self, fx_rng: Generator):
         """
@@ -189,19 +189,19 @@ class TestStatevecNew:
         for _ in range(10):
             # plus state (default)
             backend = StatevectorBackend()
-            N_neighbors = 10
-            coins = [fx_rng.choice([0, 1])] + [fx_rng.choice([0, 1]) for _ in range(N_neighbors)]
+            n_neighbors = 10
+            coins = [fx_rng.choice([0, 1])] + [fx_rng.choice([0, 1]) for _ in range(n_neighbors)]
             expected_result = sum(coins) % 2
             states = [graphix.pauli.X.get_eigenstate(eigenvalue=coins[0])] + [
-                graphix.pauli.Z.get_eigenstate(eigenvalue=coins[i + 1]) for i in range(N_neighbors)
+                graphix.pauli.Z.get_eigenstate(eigenvalue=coins[i + 1]) for i in range(n_neighbors)
             ]
             nodes = range(len(states))
             backend.add_nodes(nodes=nodes, data=states)
 
-            for i in range(1, N_neighbors + 1):
+            for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
             measurement_description = graphix.simulator.MeasurementDescription(plane=graphix.pauli.Plane.XY, angle=0)
             node_to_measure = backend.node_index[0]
             result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
             assert result == expected_result
-            assert list(backend.node_index) == list(range(1, N_neighbors + 1))
+            assert list(backend.node_index) == list(range(1, n_neighbors + 1))

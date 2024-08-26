@@ -18,11 +18,13 @@ pip install -e .[dev]
 ```
 
 You may want to install additional packages.
-Specifically, `matplotlib` is necessary to run codes in the `example` folder.
+Specifically, `matplotlib` is necessary to run codes in the `example` folder. 
 
 ```bash
 pip install matplotlib
 ```
+
+For other depencencies for the docs build, see `docs/requirements.txt`. 
 
 Before comitting the code, make sure to format with `ruff`.
 To format a python file, just run in the top level of the repository:

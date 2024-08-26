@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import collections
 import copy
 import functools
 import numbers
 import sys
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -14,11 +14,26 @@ import graphix.states
 import graphix.types
 from graphix.sim.base_backend import Backend, State
 
+if TYPE_CHECKING:
+    import collections
+
 
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, pr_calc=True, rng: np.random.Generator | None = None) -> None:
+    def __init__(
+        self, input_state: Data = graphix.states.BasicStates.PLUS, pr_calc=True, rng: np.random.Generator | None = None
+    ) -> None:
+        """
+        Parameters
+        -----------
+        input_state: same syntax as `graphix.statevec.Statevec` constructor.
+        pr_calc: bool
+            whether or not to compute the probability distribution before choosing the measurement result.
+            if False, measurements yield results 0/1 with 50% probabilities each.
+        rng: Generator(default: None)
+            random number generator to use for measure
+        """
         super().__init__(Statevec(nqubit=0), pr_calc=pr_calc, rng=rng)
 
 
@@ -78,7 +93,7 @@ class Statevec(State):
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
-        elif isinstance(data, collections.abc.Iterable):
+        elif isinstance(data, Iterable):
             input_list = list(data)
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}")
@@ -260,7 +275,7 @@ class Statevec(State):
         total_num = len(self.dims()) + len(other.dims())
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
-    def CNOT(self, qubits: tuple[int, int]) -> None:
+    def cnot(self, qubits):
         """apply CNOT
 
         Parameters

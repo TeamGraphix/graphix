@@ -17,7 +17,7 @@ from graphix.command import BaseM, CommandKind, M
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
-from graphix.pauli import MeasureUpdate
+from graphix.command import MeasureUpdate
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend

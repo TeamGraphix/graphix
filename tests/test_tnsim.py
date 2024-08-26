@@ -8,8 +8,8 @@ import pytest
 from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
-import graphix.clifford
 import tests.random_circuit as rc
+from graphix import clifford
 from graphix.command import C, E, X, Z
 from graphix.ops import Ops
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
@@ -75,7 +75,7 @@ class TestTN:
         cmds = [
             X(node=0, domain=[15]),
             Z(node=0, domain=[15]),
-            C(node=0, clifford=fx_rng.choice(graphix.clifford.TABLE)),
+            C(node=0, clifford=fx_rng.choice(clifford.TABLE)),
         ]
         random_vec = fx_rng.normal(size=2)
 

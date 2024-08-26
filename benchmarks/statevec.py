@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
-from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
-from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
+from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC  # noqa: N811
+from paddle_quantum.mbqc.transpiler import transpile as paddle_transpile
 
 from graphix import Circuit
 
@@ -127,7 +127,7 @@ paddle_quantum_time = []
 for width in test_cases_for_paddle_quantum:
     graphix_circuit = graphix_circuits[width]
     paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit)
-    pat = PaddleTranspile(paddle_quantum_circuit)
+    pat = paddle_transpile(paddle_quantum_circuit)
     mbqc = PaddleMBQC()
     mbqc.set_pattern(pat)
     start = perf_counter()

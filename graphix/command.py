@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import abc
 import enum
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-import graphix.clifford
-from graphix.pauli import Plane
+from graphix import clifford
+from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
+
+if TYPE_CHECKING:
+    from graphix.clifford import Clifford
 
 Node = int
 
@@ -59,21 +63,21 @@ class M(BaseM):
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
 
-    def clifford(self, clifford: graphix.clifford.Clifford) -> M:
+    def clifford(self, clifford_gate: Clifford) -> M:
         s_domain = self.s_domain
         t_domain = self.t_domain
-        for gate in clifford.hsz:
-            if gate == graphix.clifford.I:
+        for gate in clifford_gate.hsz:
+            if gate == clifford.I:
                 pass
-            elif gate == graphix.clifford.H:
+            elif gate == clifford.H:
                 t_domain, s_domain = s_domain, t_domain
-            elif gate == graphix.clifford.S:
+            elif gate == clifford.S:
                 t_domain ^= s_domain
-            elif gate == graphix.clifford.Z:
+            elif gate == clifford.Z:
                 pass
             else:
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
-        update = graphix.pauli.MeasureUpdate.compute(self.plane, False, False, clifford)
+        update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
             node=self.node,
             plane=update.new_plane,
@@ -101,7 +105,7 @@ class C(Command):
 
     kind: CommandKind = CommandKind.C
     node: Node
-    clifford: graphix.clifford.Clifford
+    clifford: clifford.Clifford
 
 
 class Correction(Command):
@@ -146,3 +150,32 @@ class T(Command):
     """
 
     kind: CommandKind = CommandKind.T
+
+
+class MeasureUpdate(BaseModel):
+    new_plane: Plane
+    coeff: int
+    add_term: float
+
+    @staticmethod
+    def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
+        gates = list(map(Pauli.from_axis, plane.axes))
+        if s:
+            clifford_gate = clifford.X @ clifford_gate
+        if t:
+            clifford_gate = clifford.Z @ clifford_gate
+        gates = list(map(clifford_gate.measure, gates))
+        new_plane = Plane.from_axes(*(gate.axis for gate in gates))
+        cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
+        sin_pauli = clifford_gate.measure(Pauli.from_axis(plane.sin))
+        exchange = cos_pauli.axis != new_plane.cos
+        if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
+            coeff = -1
+        else:
+            coeff = 1
+        add_term: float = 0
+        if cos_pauli.unit.sign == Sign.Minus:
+            add_term += np.pi
+        if exchange:
+            add_term = np.pi / 2 - add_term
+        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)

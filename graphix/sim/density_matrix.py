@@ -5,7 +5,6 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
-import collections
 import copy
 import numbers
 import sys
@@ -61,14 +60,12 @@ class DensityMatrix(State):
             # safe: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.copy.html
             self.rho = data.rho.copy()
             return
-        if isinstance(data, collections.abc.Iterable):
+        if isinstance(data, Iterable):
             input_list = list(data)
             if len(input_list) != 0:
                 # needed since Object is iterable but not subscribable!
                 try:
-                    if isinstance(input_list[0], collections.abc.Iterable) and isinstance(
-                        input_list[0][0], numbers.Number
-                    ):
+                    if isinstance(input_list[0], Iterable) and isinstance(input_list[0][0], numbers.Number):
                         self.rho = np.array(input_list)
                         assert check_square(self.rho)
                         check_size_consistency(self.rho)
@@ -320,6 +317,15 @@ class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
     def __init__(self, pr_calc=True) -> None:
+        """
+        Parameters
+        ----------
+            pattern : :class:`graphix.pattern.Pattern` object
+                Pattern to be simulated.
+            pr_calc : bool
+                whether or not to compute the probability distribution before choosing the measurement result.
+                if False, measurements yield results 0/1 with 50% probabilities each.
+        """
         super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc)
 
     def apply_channel(self, channel: KrausChannel, qargs) -> None:

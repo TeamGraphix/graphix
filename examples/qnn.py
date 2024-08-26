@@ -18,13 +18,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from IPython.display import clear_output
-from matplotlib import cm
 from scipy.optimize import minimize
 from sklearn.datasets import make_circles
 
 from graphix.transpiler import Circuit
 
 np.random.seed(0)
+
+
+Z_OP = np.array([[1, 0], [0, -1]])
 
 # %%
 # Dataset
@@ -74,7 +76,6 @@ class QNN:
         assert n_features % 3 == 0, "n_features must be a multiple of 3"
 
         # Pauli Z operator on all qubits
-        Z_OP = np.array([[1, 0], [0, -1]])
         operator = [Z_OP] * self.n_qubits
         self.obs = reduce(np.kron, operator)
         self.cost_values = []  # to store cost values during optimization
@@ -155,7 +156,7 @@ class QNN:
         Calculates the expectation value of an PauliZ obeservable given a state vector.
 
         Args:
-          sv: sSate vector represented as a numpy array.
+          sv: State vector represented as a numpy array.
 
         Returns:
           the expectation value of a quantum observable.
@@ -310,8 +311,8 @@ sns.set_style("whitegrid")
 plt.title("Binary classification", fontsize=20)
 plt.xlabel("X", fontsize=15)
 plt.ylabel("Y", fontsize=15)
-plt.contourf(XX, YY, predictions.reshape(XX.shape), alpha=0.7, cmap=cm.Spectral)
-plt.scatter(x[:, 0], x[:, 1], c=y.ravel(), s=50, cmap=plt.cm.Spectral, edgecolors="black")
+plt.contourf(XX, YY, predictions.reshape(XX.shape), alpha=0.7, cmap="spectral")
+plt.scatter(x[:, 0], x[:, 1], c=y.ravel(), s=50, cmap="spectral", edgecolors="black")
 plt.colorbar()
 plt.show()
 

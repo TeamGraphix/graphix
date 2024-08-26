@@ -128,23 +128,23 @@ class TestGraphSim:
         g.h(3)
         gstate = get_state(g)
 
-        g.equivalent_graph_E2(3, 4)
+        g.equivalent_graph_e2(3, 4)
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(4, 0)
+        g.equivalent_graph_e2(4, 0)
         gstate3 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(4, 5)
+        g.equivalent_graph_e2(4, 5)
         gstate4 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate4.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(0, 3)
+        g.equivalent_graph_e2(0, 3)
         gstate5 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate5.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(0, 3)
+        g.equivalent_graph_e2(0, 3)
         gstate6 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate6.flatten())) == pytest.approx(1)
 
@@ -154,16 +154,16 @@ class TestGraphSim:
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
         g.nodes[3]["loop"] = True
         gstate = get_state(g)
-        g.equivalent_graph_E1(3)
+        g.equivalent_graph_e1(3)
 
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
         g.z(4)
         gstate = get_state(g)
-        g.equivalent_graph_E1(4)
+        g.equivalent_graph_e1(4)
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
-        g.equivalent_graph_E1(4)
+        g.equivalent_graph_e1(4)
         gstate3 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
 
