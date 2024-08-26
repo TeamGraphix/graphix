@@ -77,6 +77,9 @@ class RotationInstruction(OneQubitInstruction):
     """
 
     angle: float
+    # FIXME: Not good
+    # - `None` makes codes messy/type-unsafe
+    # - `= None` results in subtle MRO issues
     meas_index: int | None = None
 
 
