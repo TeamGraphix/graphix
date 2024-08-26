@@ -9,7 +9,7 @@ from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
 import tests.random_circuit as rc
-from graphix.clifford import CLIFFORD
+from graphix._db import CLIFFORD
 from graphix.command import C, E, X, Z
 from graphix.ops import Ops
 from graphix.sim.tensornet import MBQCTensorNet, gen_str

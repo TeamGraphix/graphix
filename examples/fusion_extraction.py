@@ -17,6 +17,7 @@ The decomposition algorithm is based on [1].
 import itertools
 
 import graphix
+from graphix import extraction
 from graphix.extraction import get_fusion_network_from_graph
 
 # %%
@@ -44,7 +45,7 @@ fused_graphs = get_fusion_network_from_graph(gs)
 for idx1, idx2 in itertools.combinations(range(len(fused_graphs)), 2):
     print(
         f"fusion nodes between resource state {idx1} and "
-        f"resource state {idx2}: {graphix.extraction.get_fusion_nodes(fused_graphs[idx1], fused_graphs[idx2])}"
+        f"resource state {idx2}: {extraction.get_fusion_nodes(fused_graphs[idx1], fused_graphs[idx2])}"
     )
 
 # %%

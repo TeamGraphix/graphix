@@ -12,6 +12,7 @@ from graphix import gflow
 from graphix.pauli import Plane
 
 if TYPE_CHECKING:
+    # MEMO: Potential circular import
     from graphix.pattern import Pattern
 
 

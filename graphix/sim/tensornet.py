@@ -10,7 +10,7 @@ from quimb.tensor import Tensor, TensorNetwork
 
 import graphix.clifford
 from graphix import command
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
+from graphix._db import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.pauli import Plane
 from graphix.states import BasicStates
@@ -175,9 +175,9 @@ class TensorNetworkBackend:
         s_signal = sum(self.results[j] for j in s_domain)
         t_signal = sum(self.results[j] for j in t_domain)
         if int(s_signal % 2) == 1:
-            vop = CLIFFORD_MUL[1, vop]
+            vop = CLIFFORD_MUL[1][vop]
         if int(t_signal % 2) == 1:
-            vop = CLIFFORD_MUL[3, vop]
+            vop = CLIFFORD_MUL[3][vop]
         proj_vec = proj_basis(angle, vop=vop, plane=plane, choice=result)
 
         # buffer is necessary for maintaing the norm invariant

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
 
-from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
+from graphix._db import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
@@ -279,11 +279,11 @@ class BaseGraphState(ABC):
         for i in self.nodes:
             vop = 0
             if self.nodes[i]["sign"]:
-                vop = CLIFFORD_MUL[3, vop]
+                vop = CLIFFORD_MUL[3][vop]
             if self.nodes[i]["loop"]:
-                vop = CLIFFORD_MUL[4, vop]
+                vop = CLIFFORD_MUL[4][vop]
             if self.nodes[i]["hollow"]:
-                vop = CLIFFORD_MUL[6, vop]
+                vop = CLIFFORD_MUL[6][vop]
             vops[i] = vop
         return vops
 

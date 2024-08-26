@@ -7,6 +7,7 @@ OpenGraph class because we want PyZX to be an optional dependency.
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import pyzx as zx
@@ -14,8 +15,11 @@ import pyzx as zx
 from graphix.opengraph import Measurement, OpenGraph
 from graphix.pauli import Plane
 
+if TYPE_CHECKING:
+    from pyzx.graph.base import BaseGraph
 
-def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
+
+def to_pyzx_graph(og: OpenGraph) -> BaseGraph:
     """Return a PyZX graph corresponding to the the open graph.
 
     Example
@@ -96,7 +100,7 @@ def to_pyzx_graph(og: OpenGraph) -> zx.graph.base.BaseGraph:
     return g
 
 
-def from_pyzx_graph(g: zx.graph.base.BaseGraph) -> OpenGraph:
+def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
     """Constructs an Optyx Open Graph from a PyZX graph.
 
     This method may add additional nodes to the graph so that it adheres

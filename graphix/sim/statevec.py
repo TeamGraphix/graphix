@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections
 import functools
 import numbers
 import sys
@@ -14,7 +13,7 @@ import graphix.sim.base_backend
 import graphix.states
 import graphix.types
 from graphix import command
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
+from graphix._db import CLIFFORD, CLIFFORD_CONJ
 from graphix.ops import Ops
 
 
@@ -242,7 +241,7 @@ class Statevec:
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
-        elif isinstance(data, collections.abc.Iterable):
+        elif isinstance(data, Iterable):
             input_list = list(data)
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}")
