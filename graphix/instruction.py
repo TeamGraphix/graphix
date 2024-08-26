@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import abc
-import enum
+import dataclasses
+from abc import ABC
+from enum import Enum
+from typing import Any, Literal
 
-from pydantic import BaseModel
+import typing_extensions
+from typing_extensions import Never
 
-# MEMO: Cannot use TYPE_CHECKING here for pydantic
-from graphix.pauli import Plane  # noqa: TCH001
+if typing_extensions.TYPE_CHECKING:
+    from graphix.pauli import Plane
 
 
-class InstructionKind(enum.Enum):
+class InstructionKind(Enum):
     CCX = "CCX"
     RZZ = "RZZ"
     CNOT = "CNOT"
@@ -29,181 +33,265 @@ class InstructionKind(enum.Enum):
     ZC = "ZC"
 
 
-class Instruction(BaseModel, abc.ABC):
+# Decorator required
+@dataclasses.dataclass
+class Instruction(ABC):
     """
-    Circuit instruction base class model.
+    Circuit instruction base class.
     """
 
-    kind: InstructionKind = None
-    meas_index: int = None
+    @property
+    @abc.abstractmethod
+    def kind(self) -> Any: ...
+
+    @kind.setter
+    def kind(self, _: InstructionKind) -> Never:
+        raise AttributeError("kind is read-only.")
 
 
+# Decorator required
+@dataclasses.dataclass
 class OneQubitInstruction(Instruction):
     """
-    One qubit circuit instruction base class model.
+    One qubit circuit instruction base class.
     """
 
     target: int
 
 
+# Decorator required
+@dataclasses.dataclass
 class CorrectionInstruction(OneQubitInstruction):
     """
-    Correction instruction base class model.
+    Correction instruction base class.
     """
 
     domain: set[int]
 
 
+# Decorator required
+@dataclasses.dataclass
 class RotationInstruction(OneQubitInstruction):
     """
-    Rotation instruction base class model.
+    Rotation instruction base class.
     """
 
     angle: float
+    meas_index: int | None = None
 
 
+# Decorator required
+@dataclasses.dataclass
 class OneControlInstruction(OneQubitInstruction):
     """
-    One control instruction base class model.
+    One control instruction base class.
     """
 
     control: int
 
 
+# Decorator required
+@dataclasses.dataclass
 class TwoControlsInstruction(OneQubitInstruction):
     """
-    Two controls instruction base class model.
+    Two controls instruction base class.
     """
 
     controls: tuple[int, int]
 
 
+@dataclasses.dataclass
 class XC(CorrectionInstruction):
     """
     X correction circuit instruction. Used internally by the transpiler.
     """
 
-    kind: InstructionKind = InstructionKind.XC
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.XC]:
+        return InstructionKind.XC
 
 
+@dataclasses.dataclass
 class ZC(CorrectionInstruction):
     """
     Z correction circuit instruction. Used internally by the transpiler.
     """
 
-    kind: InstructionKind = InstructionKind.ZC
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.ZC]:
+        return InstructionKind.ZC
 
 
+@dataclasses.dataclass
 class CCX(TwoControlsInstruction):
     """
     Toffoli circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.CCX
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.CCX]:
+        return InstructionKind.CCX
 
 
-class RZZ(OneControlInstruction, RotationInstruction):
+@dataclasses.dataclass
+class RZZ(RotationInstruction, OneControlInstruction):
     """
     RZZ circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RZZ
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.RZZ]:
+        return InstructionKind.RZZ
 
 
+@dataclasses.dataclass
 class CNOT(OneControlInstruction):
     """
     CNOT circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.CNOT
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.CNOT]:
+        return InstructionKind.CNOT
 
 
+@dataclasses.dataclass
 class SWAP(Instruction):
     """
     SWAP circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.SWAP
     targets: tuple[int, int]
 
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.SWAP]:
+        return InstructionKind.SWAP
 
+
+@dataclasses.dataclass
 class H(OneQubitInstruction):
     """
     H circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.H
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.H]:
+        return InstructionKind.H
 
 
+@dataclasses.dataclass
 class S(OneQubitInstruction):
     """
     S circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.S
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.S]:
+        return InstructionKind.S
 
 
+@dataclasses.dataclass
 class X(OneQubitInstruction):
     """
     X circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.X
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.X]:
+        return InstructionKind.X
 
 
+@dataclasses.dataclass
 class Y(OneQubitInstruction):
     """
     Y circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.Y
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.Y]:
+        return InstructionKind.Y
 
 
+@dataclasses.dataclass
 class Z(OneQubitInstruction):
     """
     Z circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.Z
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.Z]:
+        return InstructionKind.Z
 
 
+@dataclasses.dataclass
 class I(OneQubitInstruction):
     """
     I circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.I
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.I]:
+        return InstructionKind.I
 
 
+@dataclasses.dataclass
 class M(OneQubitInstruction):
     """
     M circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.M
     plane: Plane
     angle: float
 
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.M]:
+        return InstructionKind.M
 
+
+@dataclasses.dataclass
 class RX(RotationInstruction):
     """
     X rotation circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RX
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.RX]:
+        return InstructionKind.RX
 
 
+@dataclasses.dataclass
 class RY(RotationInstruction):
     """
     Y rotation circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RY
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.RY]:
+        return InstructionKind.RY
 
 
+@dataclasses.dataclass
 class RZ(RotationInstruction):
     """
     Z rotation circuit instruction.
     """
 
-    kind: InstructionKind = InstructionKind.RZ
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[InstructionKind.RZ]:
+        return InstructionKind.RZ
