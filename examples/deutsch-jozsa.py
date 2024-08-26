@@ -21,6 +21,7 @@ First, let us import relevant modules:
 import numpy as np
 
 from graphix import Circuit
+from graphix.command import CommandKind
 
 # %%
 # Now we implement the algorithm with quantum circuit, which we can transpile into MBQC.
@@ -77,7 +78,7 @@ pattern.print_pattern(lim=15)
 # Now we preprocess all Pauli measurements
 
 pattern.perform_pauli_measurements()
-pattern.print_pattern(lim=16, filter=["N", "M", "C"])
+pattern.print_pattern(lim=16, target=[CommandKind.N, CommandKind.M, CommandKind.C])
 pattern.draw_graph(flow_from_pattern=True)
 
 # %%
