@@ -9,10 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+
+## [0.2.16] - 2024-08-26
+
+This version introduces several important interface changes, aimed at secure expression and improved code maintainability. 
+
+### Added
+
 - Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable.
 - The following changes were made (#155):
   - Added `class Command` and all its child classes that represent all the pattern commands.
   - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
+- `class graphix.OpenGraph` to transpile between graphix patterns and pyzx graphs.
+- `class graphix.pauli.PauliMeasurement` as a new Pauli measurement checks (used in `pattern.perform_pauli_measurements`).
 
 ### Fixed
 
@@ -21,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Entire package was updated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
 - Measure commands do no longer carry vertex operators (`vop`): Clifford gates can still be applied to measures with the method `M.clifford`, which returns a new measure commands where plane, angle and domains has been updated.
 - X- and Z-domains for measures and domain for correction commands are now set of nodes (instead of lists).
+- Migrated style checks to `ruff`, and corresponding CI is set up.
+- Codecov is now set up for coverage report on each PR and CI is set up.
 
 ## [0.2.15] - 2024-06-21
 
