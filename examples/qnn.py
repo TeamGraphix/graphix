@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from IPython.display import clear_output
-from matplotlib import cm
 from scipy.optimize import minimize
 from sklearn.datasets import make_circles
 
@@ -310,8 +309,8 @@ sns.set_style("whitegrid")
 plt.title("Binary classification", fontsize=20)
 plt.xlabel("X", fontsize=15)
 plt.ylabel("Y", fontsize=15)
-plt.contourf(XX, YY, predictions.reshape(XX.shape), alpha=0.7, cmap=cm.Spectral)
-plt.scatter(x[:, 0], x[:, 1], c=y.ravel(), s=50, cmap=plt.cm.Spectral, edgecolors="black")
+plt.contourf(XX, YY, predictions.reshape(XX.shape), alpha=0.7, cmap="spectral")
+plt.scatter(x[:, 0], x[:, 1], c=y.ravel(), s=50, cmap="spectral", edgecolors="black")
 plt.colorbar()
 plt.show()
 

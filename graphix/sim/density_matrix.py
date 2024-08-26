@@ -5,7 +5,6 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
-import collections
 import numbers
 import sys
 from copy import deepcopy
@@ -14,8 +13,9 @@ import numpy as np
 
 import graphix.states
 import graphix.types
+from graphix import command
+from graphix._db import CLIFFORD
 from graphix.channels import KrausChannel
-from graphix.clifford import CLIFFORD
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.ops import Ops
 from graphix.sim.base_backend import Backend
@@ -64,14 +64,12 @@ class DensityMatrix:
             self.rho = data.rho.copy()
             self.Nqubit = data.Nqubit
             return
-        if isinstance(data, collections.abc.Iterable):
+        if isinstance(data, Iterable):
             input_list = list(data)
             if len(input_list) != 0:
                 # needed since Object is iterable but not subscribable!
                 try:
-                    if isinstance(input_list[0], collections.abc.Iterable) and isinstance(
-                        input_list[0][0], numbers.Number
-                    ):
+                    if isinstance(input_list[0], Iterable) and isinstance(input_list[0][0], numbers.Number):
                         self.rho = np.array(input_list)
                         assert check_square(self.rho)
                         check_size_consistency(self.rho)
@@ -397,9 +395,9 @@ class DensityMatrixBackend(Backend):
         """
         if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
             loc = self.node_index.index(cmd.node)
-            if isinstance(cmd, graphix.command.X):
+            if isinstance(cmd, command.X):
                 op = Ops.x
-            elif isinstance(cmd, graphix.command.Z):
+            elif isinstance(cmd, command.Z):
                 op = Ops.z
             self.state.evolve_single(op, loc)
 

@@ -5,6 +5,7 @@ import numpy as np
 import graphix.clifford
 import graphix.command
 import graphix.pauli
+from graphix.command import MeasureUpdate
 
 
 def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
@@ -53,9 +54,7 @@ class Backend:
         s_signal = np.sum([self.results[j] for j in cmd.s_domain])
         t_signal = np.sum([self.results[j] for j in cmd.t_domain])
         angle = cmd.angle * np.pi
-        measure_update = graphix.pauli.MeasureUpdate.compute(
-            cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I
-        )
+        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I)
         angle = angle * measure_update.coeff + measure_update.add_term
         loc = self.node_index.index(cmd.node)
         result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.__rng, self.pr_calc)
