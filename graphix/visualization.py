@@ -39,7 +39,7 @@ class GraphVisualizer:
 
     def __init__(
         self,
-        G: nx.Graph,
+        g: nx.Graph,
         v_in: list[int],
         v_out: list[int],
         meas_plane: dict[int, str] | None = None,
@@ -49,7 +49,7 @@ class GraphVisualizer:
         """
         Parameters
         ----------
-        G : :class:`networkx.graph.Graph` object
+        g : :class:`networkx.graph.Graph` object
             networkx graph
         v_in : list
             list of input nodes
@@ -63,11 +63,11 @@ class GraphVisualizer:
         local_clifford : dict
             dict specifying the local clifford for each node.
         """
-        self.G = G
+        self.graph = g
         self.v_in = v_in
         self.v_out = v_out
         if meas_plane is None:
-            self.meas_planes = {i: Plane.XY for i in iter(G.nodes)}
+            self.meas_planes = {i: Plane.XY for i in iter(g.nodes)}
         else:
             self.meas_planes = meas_plane
         self.meas_angles = meas_angles
@@ -111,7 +111,7 @@ class GraphVisualizer:
             Filename of the saved plot.
         """
 
-        f, l_k = gflow.find_flow(self.G, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
+        f, l_k = gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
         if f:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
@@ -126,7 +126,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.find_gflow(self.G, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
+            g, l_k = gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
             if g:
                 print("Gflow detected in the graph. (flow not detected)")
                 self.visualize_w_gflow(
@@ -292,7 +292,7 @@ class GraphVisualizer:
 
         for edge in edge_path.keys():
             if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
@@ -300,7 +300,9 @@ class GraphVisualizer:
 
         for arrow in arrow_path.keys():
             if len(arrow_path[arrow]) == 2:
-                nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True)
+                nx.draw_networkx_edges(
+                    self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
+                )
             else:
                 path = arrow_path[arrow]
                 last = np.array(path[-1])
@@ -320,7 +322,7 @@ class GraphVisualizer:
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             color = "black"  # default color for 'other' nodes
             inner_color = "white"
             if node in self.v_in:
@@ -340,25 +342,25 @@ class GraphVisualizer:
             )  # Draw the nodes manually with scatter()
 
         if show_local_clifford and self.local_clifford is not None:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.meas_planes.keys():
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
-        if max(self.G.nodes()) >= 100:
-            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
-        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
+        if max(self.graph.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
+        nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
-        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.G.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.G.nodes()])  # Get the maximum y coordinate
+        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.graph.nodes()])  # Get the maximum x coordinate
+        y_min = min([pos[node][1] for node in self.graph.nodes()])  # Get the minimum y coordinate
+        y_max = max([pos[node][1] for node in self.graph.nodes()])  # Get the maximum y coordinate
 
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
@@ -434,7 +436,7 @@ class GraphVisualizer:
 
         for edge in edge_path.keys():
             if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
@@ -453,7 +455,9 @@ class GraphVisualizer:
                         arrowprops=dict(arrowstyle="->", color="k", lw=1),
                     )
             elif len(arrow_path[arrow]) == 2:  # straight line
-                nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True)
+                nx.draw_networkx_edges(
+                    self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
+                )
             else:
                 path = arrow_path[arrow]
                 last = np.array(path[-1])
@@ -473,7 +477,7 @@ class GraphVisualizer:
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             color = "black"  # default color for 'other' nodes
             inner_color = "white"
             if node in self.v_in:
@@ -493,25 +497,25 @@ class GraphVisualizer:
             )  # Draw the nodes manually with scatter()
 
         if show_local_clifford and self.local_clifford is not None:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.meas_planes.keys():
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
-        if max(self.G.nodes()) >= 100:
-            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
-        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
+        if max(self.graph.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
+        nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
-        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.G.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.G.nodes()])  # Get the maximum y coordinate
+        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.graph.nodes()])  # Get the maximum x coordinate
+        y_min = min([pos[node][1] for node in self.graph.nodes()])  # Get the minimum y coordinate
+        y_max = max([pos[node][1] for node in self.graph.nodes()])  # Get the maximum y coordinate
 
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
@@ -577,14 +581,14 @@ class GraphVisualizer:
 
         for edge in edge_path.keys():
             if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             color = "black"  # default color for 'other' nodes
             inner_color = "white"
             if node in self.v_in:
@@ -604,25 +608,25 @@ class GraphVisualizer:
             )  # Draw the nodes manually with scatter()
 
         if show_local_clifford and self.local_clifford is not None:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.meas_planes.keys():
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
-        if max(self.G.nodes()) >= 100:
-            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
-        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
+        if max(self.graph.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
+        nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
-        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.G.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.G.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.G.nodes()])  # Get the maximum y coordinate
+        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.graph.nodes()])  # Get the maximum x coordinate
+        y_min = min([pos[node][1] for node in self.graph.nodes()])  # Get the minimum y coordinate
+        y_max = max([pos[node][1] for node in self.graph.nodes()])  # Get the maximum y coordinate
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
@@ -699,7 +703,7 @@ class GraphVisualizer:
 
         for edge in edge_path.keys():
             if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.G, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
@@ -712,7 +716,9 @@ class GraphVisualizer:
             else:
                 color = "tab:brown"
             if len(arrow_path[arrow]) == 2:  # straight line
-                nx.draw_networkx_edges(self.G, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True)
+                nx.draw_networkx_edges(
+                    self.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
+                )
             else:
                 path = arrow_path[arrow]
                 last = np.array(path[-1])
@@ -733,7 +739,7 @@ class GraphVisualizer:
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             color = "black"
             inner_color = "white"
             if node in self.v_in:
@@ -751,20 +757,20 @@ class GraphVisualizer:
             plt.scatter(*pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2)
 
         if show_local_clifford and self.local_clifford is not None:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.local_clifford.keys():
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
-            for node in self.G.nodes():
+            for node in self.graph.nodes():
                 if node in self.meas_planes.keys():
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
         fontsize = 12
-        if max(self.G.nodes()) >= 100:
-            fontsize = fontsize * 2 / len(str(max(self.G.nodes())))
-        nx.draw_networkx_labels(self.G, pos, font_size=fontsize)
+        if max(self.graph.nodes()) >= 100:
+            fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
+        nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
         # legend for arrow colors
         plt.plot([], [], "k--", alpha=0.7, label="graph edge")
@@ -772,10 +778,10 @@ class GraphVisualizer:
         plt.plot([], [], color="tab:green", label="zflow")
         plt.plot([], [], color="tab:brown", label="xflow and zflow")
 
-        x_min = min([pos[node][0] for node in self.G.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.G.nodes()])
-        y_min = min([pos[node][1] for node in self.G.nodes()])
-        y_max = max([pos[node][1] for node in self.G.nodes()])
+        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
+        x_max = max([pos[node][0] for node in self.graph.nodes()])
+        y_min = min([pos[node][1] for node in self.graph.nodes()])
+        y_max = max([pos[node][1] for node in self.graph.nodes()])
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 3.5 * node_distance[0]
@@ -812,11 +818,11 @@ class GraphVisualizer:
             figure size of the graph.
         """
         if l_k is None:
-            width = len(set([pos[node][0] for node in self.G.nodes()])) * 0.8
+            width = len(set([pos[node][0] for node in self.graph.nodes()])) * 0.8
         else:
             width = (max(l_k.values()) + 1) * 0.8
         if pos is not None:
-            height = len(set([pos[node][1] for node in self.G.nodes()]))
+            height = len(set([pos[node][1] for node in self.graph.nodes()]))
         else:
             height = len(self.v_out)
         figsize = (width * node_distance[0], height * node_distance[1])
@@ -844,14 +850,14 @@ class GraphVisualizer:
         max_iter = 5
         edge_path = {}
         arrow_path = {}
-        edge_set = set(self.G.edges())
+        edge_set = set(self.graph.edges())
         flow_arrows = {(k, v) for k, values in flow.items() for v in values}
         # set of mid-points of the edges
-        # mid_points = {(0.5 * (pos[k][0] + pos[v][0]), 0.5 * (pos[k][1] + pos[v][1])) for k, v in edge_set} - set(pos[node] for node in self.G.nodes())
+        # mid_points = {(0.5 * (pos[k][0] + pos[v][0]), 0.5 * (pos[k][1] + pos[v][1])) for k, v in edge_set} - set(pos[node] for node in self.g.nodes())
 
         for edge in edge_set:
             iteration = 0
-            nodes = self.G.nodes()
+            nodes = self.graph.nodes()
             bezier_path = [pos[edge[0]], pos[edge[1]]]
             while True:
                 iteration += 1
@@ -900,7 +906,7 @@ class GraphVisualizer:
                 ]
             else:
                 iteration = 0
-                nodes = self.G.nodes()
+                nodes = self.graph.nodes()
                 bezier_path = [pos[arrow[0]], pos[arrow[1]]]
                 if arrow in edge_set or (arrow[1], arrow[0]) in edge_set:
                     mid_point = (
@@ -958,10 +964,10 @@ class GraphVisualizer:
         """
         max_iter = 5
         edge_path = {}
-        edge_set = set(self.G.edges())
+        edge_set = set(self.graph.edges())
         for edge in edge_set:
             iteration = 0
-            nodes = self.G.nodes()
+            nodes = self.graph.nodes()
             bezier_path = [pos[edge[0]], pos[edge[1]]]
             while True:
                 iteration += 1
@@ -1010,8 +1016,8 @@ class GraphVisualizer:
             dictionary of node positions.
         """
         values_union = set().union(*f.values())
-        start_nodes = self.G.nodes() - values_union
-        pos = {node: [0, 0] for node in self.G.nodes()}
+        start_nodes = self.graph.nodes() - values_union
+        pos = {node: [0, 0] for node in self.graph.nodes()}
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             node = k
@@ -1048,23 +1054,23 @@ class GraphVisualizer:
         for node, node_list in g.items():
             g_edges.extend((node, n) for n in node_list)
 
-        G_prime = self.G.copy()
-        G_prime.add_nodes_from(self.G.nodes())
-        G_prime.add_edges_from(g_edges)
+        g_prime = self.graph.copy()
+        g_prime.add_nodes_from(self.graph.nodes())
+        g_prime.add_edges_from(g_edges)
 
         l_max = max(l_k.values())
         l_reverse = {v: l_max - l for v, l in l_k.items()}
 
-        nx.set_node_attributes(G_prime, l_reverse, "subset")
+        nx.set_node_attributes(g_prime, l_reverse, "subset")
 
-        pos = nx.multipartite_layout(G_prime)
+        pos = nx.multipartite_layout(g_prime)
 
         for node, layer in l_k.items():
             pos[node][0] = l_max - layer
 
-        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert = list(set([pos[node][1] for node in self.graph.nodes()]))
         vert.sort()
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             pos[node][1] = vert.index(pos[node][1])
 
         return pos
@@ -1085,10 +1091,10 @@ class GraphVisualizer:
         """
 
         layers = dict()
-        connected_components = list(nx.connected_components(self.G))
+        connected_components = list(nx.connected_components(self.graph))
 
         for component in connected_components:
-            subgraph = self.G.subgraph(component)
+            subgraph = self.graph.subgraph(component)
             initial_pos = {node: (0, 0) for node in component}
 
             if len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) == 0:
@@ -1106,9 +1112,9 @@ class GraphVisualizer:
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 order = [node for node in order if node not in fixed_nodes]
-                Nv = len(self.v_out)
+                nv = len(self.v_out)
                 for i, node in enumerate(order[::-1]):
-                    k = i // Nv + 1
+                    k = i // nv + 1
                     layers[node] = k
 
             elif len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) > 0:
@@ -1119,9 +1125,9 @@ class GraphVisualizer:
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 order = [node for node in order if node not in fixed_nodes]
-                Nv = len(self.v_in)
+                nv = len(self.v_in)
                 for i, node in enumerate(order[::-1]):
-                    k = i // Nv
+                    k = i // nv
                     layers[node] = k
                 if layers == dict():
                     layer_input = 0
@@ -1141,26 +1147,26 @@ class GraphVisualizer:
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 order = [node for node in order if node not in fixed_nodes]
-                Nv = len(self.v_out)
+                nv = len(self.v_out)
                 for i, node in enumerate(order[::-1]):
-                    k = i // Nv + 1
+                    k = i // nv + 1
                     layers[node] = k
                 layer_input = max(layers.values()) + 1
                 for node in set(self.v_in) & set(component) - set(self.v_out):
                     layers[node] = layer_input
 
-        G_prime = self.G.copy()
-        G_prime.add_nodes_from(self.G.nodes())
-        G_prime.add_edges_from(self.G.edges())
+        g_prime = self.graph.copy()
+        g_prime.add_nodes_from(self.graph.nodes())
+        g_prime.add_edges_from(self.graph.edges())
         l_max = max(layers.values())
         l_reverse = {v: l_max - l for v, l in layers.items()}
-        nx.set_node_attributes(G_prime, l_reverse, "subset")
-        pos = nx.multipartite_layout(G_prime)
+        nx.set_node_attributes(g_prime, l_reverse, "subset")
+        pos = nx.multipartite_layout(g_prime)
         for node, layer in layers.items():
             pos[node][0] = l_max - layer
-        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert = list(set([pos[node][1] for node in self.graph.nodes()]))
         vert.sort()
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             pos[node][1] = vert.index(pos[node][1])
         return pos
 
@@ -1179,16 +1185,16 @@ class GraphVisualizer:
             dictionary of node positions.
         """
 
-        G_prime = self.G.copy()
-        G_prime.add_nodes_from(self.G.nodes())
-        G_prime.add_edges_from(self.G.edges())
-        nx.set_node_attributes(G_prime, layers, "subset")
-        pos = nx.multipartite_layout(G_prime)
+        g_prime = self.graph.copy()
+        g_prime.add_nodes_from(self.graph.nodes())
+        g_prime.add_edges_from(self.graph.edges())
+        nx.set_node_attributes(g_prime, layers, "subset")
+        pos = nx.multipartite_layout(g_prime)
         for node, layer in layers.items():
             pos[node][0] = layer
-        vert = list(set([pos[node][1] for node in self.G.nodes()]))
+        vert = list(set([pos[node][1] for node in self.graph.nodes()]))
         vert.sort()
-        for node in self.G.nodes():
+        for node in self.graph.nodes():
             pos[node][1] = vert.index(pos[node][1])
         return pos
 

@@ -402,7 +402,7 @@ class BaseGraphState(ABC):
         else:  # solid
             self.flip_sign(node)
 
-    def equivalent_graph_E1(self, node: int) -> None:
+    def equivalent_graph_e1(self, node: int) -> None:
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to a node with loop.
@@ -427,7 +427,7 @@ class BaseGraphState(ABC):
             for i in self.neighbors(node):
                 self.flip_sign(i)
 
-    def equivalent_graph_E2(self, node1: int, node2: int) -> None:
+    def equivalent_graph_e2(self, node1: int, node2: int) -> None:
         """Tranform a graph state to a different graph state
         representing the same stabilizer state.
         This rule applies only to two connected nodes without loop.
@@ -498,19 +498,19 @@ class BaseGraphState(ABC):
         """
         if self.nodes[node]["hollow"]:
             if self.nodes[node]["loop"]:
-                self.equivalent_graph_E1(node)
+                self.equivalent_graph_e1(node)
                 return 0
             else:  # node = hollow and loopless
                 if len(list(self.neighbors(node))) == 0:
                     return 1
                 for i in self.neighbors(node):
                     if not self.nodes[i]["loop"]:
-                        self.equivalent_graph_E2(node, i)
+                        self.equivalent_graph_e2(node, i)
                         return 0
                 # if all neighbor has loop, pick one and apply E1, then E1 to the node.
                 i = next(self.neighbors(node))
-                self.equivalent_graph_E1(i)  # this gives loop to node.
-                self.equivalent_graph_E1(node)
+                self.equivalent_graph_e1(i)  # this gives loop to node.
+                self.equivalent_graph_e1(node)
                 return 0
         else:
             if len(list(self.neighbors(node))) == 0:

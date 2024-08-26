@@ -147,7 +147,7 @@ class TestUtilities:
     # TODO move that somewhere else?
     def test_pauli_tensor_ops(self, fx_rng: Generator) -> None:
         nqb = int(fx_rng.integers(2, 6))
-        pauli_tensor_ops = Ops.build_tensor_Pauli_ops(nqb)
+        pauli_tensor_ops = Ops.build_tensor_pauli_ops(nqb)
 
         assert len(pauli_tensor_ops) == 4**nqb
 
@@ -157,15 +157,15 @@ class TestUtilities:
 
     def test_pauli_tensor_ops_fail(self, fx_rng: Generator) -> None:
         with pytest.raises(TypeError):
-            _ = Ops.build_tensor_Pauli_ops(fx_rng.integers(2, 6) + 0.5)
+            _ = Ops.build_tensor_pauli_ops(fx_rng.integers(2, 6) + 0.5)
 
         with pytest.raises(ValueError):
-            _ = Ops.build_tensor_Pauli_ops(0)
+            _ = Ops.build_tensor_pauli_ops(0)
 
     def test_random_pauli_channel_success(self, fx_rng: Generator) -> None:
         nqb = int(fx_rng.integers(2, 6))
         rk = int(fx_rng.integers(1, 2**nqb + 1))
-        pauli_channel = randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
+        pauli_channel = randobj.rand_pauli_channel_kraus(dim=2**nqb, rank=rk)  # default is full rank
 
         assert isinstance(pauli_channel, KrausChannel)
         assert pauli_channel.nqubit == nqb
@@ -176,13 +176,13 @@ class TestUtilities:
         nqb = 3
         rk = 2
         with pytest.raises(TypeError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
+            randobj.rand_pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5)
 
         with pytest.raises(ValueError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
+            randobj.rand_pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk)
 
         with pytest.raises(ValueError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb, rank=-3)
+            randobj.rand_pauli_channel_kraus(dim=2**nqb, rank=-3)
 
         with pytest.raises(ValueError):
-            randobj.rand_Pauli_channel_kraus(dim=2**nqb + 1, rank=rk)
+            randobj.rand_pauli_channel_kraus(dim=2**nqb + 1, rank=rk)

@@ -112,7 +112,7 @@ class TensorNetworkBackend:
             for i in range(2):
                 tensors[i].retag({"Open": "Close"}, inplace=True)
                 self.state._dangling[str(edge[i])] = new_inds[i]
-            CZ_tn = TensorNetwork(
+            cz_tn = TensorNetwork(
                 [
                     qtn.Tensor(
                         self._decomposed_cz[0],
@@ -126,7 +126,7 @@ class TensorNetworkBackend:
                     ),
                 ]
             )
-            self.state.add_tensor_network(CZ_tn)
+            self.state.add_tensor_network(cz_tn)
         elif self.graph_prep == "opt":
             pass
 
@@ -740,14 +740,14 @@ def proj_basis(angle, vop, plane, choice):
     """
     if plane == Plane.XY:
         vec = BasicStates.VEC[0 + choice].get_statevector()
-        rotU = Ops.Rz(angle)
+        rot_u = Ops.rz(angle)
     elif plane == Plane.YZ:
         vec = BasicStates.VEC[4 + choice].get_statevector()
-        rotU = Ops.Rx(angle)
+        rot_u = Ops.rx(angle)
     elif plane == Plane.XZ:
         vec = BasicStates.VEC[0 + choice].get_statevector()
-        rotU = Ops.Ry(-angle)
-    vec = np.matmul(rotU, vec)
+        rot_u = Ops.ry(-angle)
+    vec = np.matmul(rot_u, vec)
     vec = np.matmul(CLIFFORD[CLIFFORD_CONJ[vop]], vec)
     return vec
 
