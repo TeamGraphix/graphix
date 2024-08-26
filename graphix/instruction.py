@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Any, Literal
 
 import typing_extensions
-from typing_extensions import Never
 
 if typing_extensions.TYPE_CHECKING:
     from graphix.pauli import Plane
@@ -43,10 +42,6 @@ class Instruction(ABC):
     @property
     @abc.abstractmethod
     def kind(self) -> Any: ...
-
-    @kind.setter
-    def kind(self, _: InstructionKind) -> Never:
-        raise AttributeError("kind is read-only.")
 
 
 # Decorator required

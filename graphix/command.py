@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import typing_extensions
 from pydantic import BaseModel, ConfigDict
-from typing_extensions import Never
 
 from graphix import clifford
 from graphix.pauli import Pauli, Plane, Sign
@@ -41,10 +40,6 @@ class Command(ABC):
     @property
     @abc.abstractmethod
     def kind(self) -> Any: ...
-
-    @kind.setter
-    def kind(self, _: CommandKind) -> Never:
-        raise AttributeError("kind is read-only.")
 
 
 # Decorator required
