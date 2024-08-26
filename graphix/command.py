@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import abc
-import enum
-from typing import TYPE_CHECKING
+import dataclasses
+from abc import ABC
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+import typing_extensions
 from pydantic import BaseModel, ConfigDict
+from typing_extensions import Never
 
 from graphix import clifford
 from graphix.pauli import Pauli, Plane, Sign
@@ -19,40 +23,64 @@ if TYPE_CHECKING:
 Node = int
 
 
-class CommandKind(enum.Enum):
+class CommandKind(Enum):
     N = "N"
     M = "M"
     E = "E"
     C = "C"
     X = "X"
     Z = "Z"
-    T = "T"
     S = "S"
 
 
-class Command(BaseModel, abc.ABC):
+class Command(ABC):
     """
     Base command class.
     """
 
-    kind: CommandKind = None
+    @property
+    @abc.abstractmethod
+    def kind(self) -> Any: ...
+
+    @kind.setter
+    def kind(self, _: CommandKind) -> Never:
+        raise AttributeError("kind is read-only.")
 
 
+# Decorator required
+@dataclasses.dataclass
+class Correction(Command):
+    """
+    Correction command.
+    Either X or Z.
+    """
+
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+
+
+@dataclasses.dataclass
 class N(Command):
     """
     Preparation command.
     """
 
-    kind: CommandKind = CommandKind.N
     node: Node
     state: State = BasicStates.PLUS
 
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.N]:
+        return CommandKind.N
 
+
+# Decorator required
+@dataclasses.dataclass
 class BaseM(Command):
-    kind: CommandKind = CommandKind.M
     node: Node
 
 
+@dataclasses.dataclass
 class M(BaseM):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
@@ -60,8 +88,13 @@ class M(BaseM):
 
     plane: Plane = Plane.XY
     angle: float = 0.0
-    s_domain: set[Node] = set()
-    t_domain: set[Node] = set()
+    s_domain: set[Node] = dataclasses.field(default_factory=set)
+    t_domain: set[Node] = dataclasses.field(default_factory=set)
+
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.M]:
+        return CommandKind.M
 
     def clifford(self, clifford_gate: Clifford) -> M:
         s_domain = self.s_domain
@@ -78,78 +111,76 @@ class M(BaseM):
             else:
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
-        return M(
-            node=self.node,
-            plane=update.new_plane,
-            angle=self.angle * update.coeff + update.add_term / np.pi,
-            s_domain=s_domain,
-            t_domain=t_domain,
-        )
+        return M(self.node, update.new_plane, self.angle * update.coeff + update.add_term / np.pi, s_domain, t_domain)
 
 
+@dataclasses.dataclass
 class E(Command):
     """
     Entanglement command.
     """
 
-    kind: CommandKind = CommandKind.E
     nodes: tuple[Node, Node]
 
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.E]:
+        return CommandKind.E
 
+
+@dataclasses.dataclass
 class C(Command):
     """
     Clifford command.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)  # for the `clifford` field
-
-    kind: CommandKind = CommandKind.C
     node: Node
     clifford: clifford.Clifford
 
-
-class Correction(Command):
-    """
-    Correction command.
-    Either X or Z.
-    """
-
-    node: Node
-    domain: set[Node] = set()
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.C]:
+        return CommandKind.C
 
 
+@dataclasses.dataclass
 class X(Correction):
     """
     X correction command.
     """
 
-    kind: CommandKind = CommandKind.X
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.X]:
+        return CommandKind.X
 
 
+@dataclasses.dataclass
 class Z(Correction):
     """
     Z correction command.
     """
 
-    kind: CommandKind = CommandKind.Z
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.Z]:
+        return CommandKind.Z
 
 
+@dataclasses.dataclass
 class S(Command):
     """
     S command
     """
 
-    kind: CommandKind = CommandKind.S
     node: Node
-    domain: set[Node] = set()
+    domain: set[Node] = dataclasses.field(default_factory=set)
 
-
-class T(Command):
-    """
-    T command
-    """
-
-    kind: CommandKind = CommandKind.T
+    @property
+    @typing_extensions.override
+    def kind(self) -> Literal[CommandKind.S]:
+        return CommandKind.S
 
 
 class MeasureUpdate(BaseModel):

@@ -601,12 +601,12 @@ class TestGflow:
             assert valid
 
     def test_corrections_from_pattern(self) -> None:
-        pattern = Pattern(input_nodes=range(5))
+        pattern = Pattern(input_nodes=list(range(5)))
         pattern.add(command.M(node=0))
         pattern.add(command.M(node=1))
-        pattern.add(command.M(node=2, s_domain=(0,), t_domain=(1,)))
-        pattern.add(command.X(node=3, domain=(2,)))
-        pattern.add(command.Z(node=4, domain=(3,)))
+        pattern.add(command.M(node=2, s_domain={0}, t_domain={1}))
+        pattern.add(command.X(node=3, domain={2}))
+        pattern.add(command.Z(node=4, domain={3}))
         xflow, zflow = get_corrections_from_pattern(pattern)
         assert xflow == {0: {2}, 2: {3}}
         assert zflow == {1: {2}, 3: {4}}

@@ -1400,7 +1400,7 @@ class Pattern:
 
     def copy(self) -> Pattern:
         result = self.__new__(self.__class__)
-        result.__seq = [cmd.model_copy() for cmd in self.__seq]
+        result.__seq = [deepcopy(cmd) for cmd in self.__seq]
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node

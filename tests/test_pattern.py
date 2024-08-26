@@ -362,10 +362,10 @@ class TestPattern:
         pattern = Pattern(input_nodes=[0])
         for i in (1, 2, 3):
             pattern.add(N(node=i))
-            pattern.add(E(nodes=[0, i]))
+            pattern.add(E(nodes=(0, i)))
         pattern.add(M(node=0, angle=0.5))
         pattern.add(M(node=1, angle=0.5))
-        pattern.add(M(node=2, angle=0.5, plane=plane, s_domain=[0], t_domain=[1]))
+        pattern.add(M(node=2, angle=0.5, plane=plane, s_domain={0}, t_domain={1}))
         pattern_ref = pattern.copy()
         pattern.standardize(method="global")
         signal_dict = pattern.shift_signals(method=method)
