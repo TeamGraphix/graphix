@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Now variables, functions, and classes are named based on PEP8.
+
 ## [0.2.16] - 2024-08-26
 
 This version introduces several important interface changes, aimed at secure expression and improved code maintainability.
@@ -35,7 +37,6 @@ This version introduces several important interface changes, aimed at secure exp
 - X- and Z-domains for measures and domain for correction commands are now set of nodes (instead of lists).
 - Migrated style checks to `ruff`, and corresponding CI is set up.
 - Codecov is now set up for coverage report on each PR and CI is set up.
-- Now variables, functions, and classes are named based on PEP8.
 
 ## [0.2.15] - 2024-06-21
 
