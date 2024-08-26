@@ -96,21 +96,23 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
-    @pytest.mark.parametrize("backend", ["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(self, backend: typing.Literal["statevector", "densitymatrix", "tensornetwork"]) -> None:
+    @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
+    def test_empty_output_nodes(
+        self, backend_type: typing.Literal["statevector", "densitymatrix", "tensornetwork"]
+    ) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(node=0, angle=0.5))
 
         def simulate_and_measure():
-            sim = PatternSimulator(pattern, backend)
+            sim = PatternSimulator(pattern, backend_type)
             sim.run()
-            if backend == "statevector":
-                assert sim.state.dims() == ()
-            elif backend == "densitymatrix":
-                assert sim.state.dims() == (1, 1)
-            elif backend == "tensornetwork":
-                assert sim.state.to_statevector().shape == (1,)
-            return sim.results[0]
+            if backend_type == "statevector":
+                assert sim.backend.state.dims() == ()
+            elif backend_type == "densitymatrix":
+                assert sim.backend.state.dims() == (1, 1)
+            elif backend_type == "tensornetwork":
+                assert sim.backend.state.to_statevector().shape == (1,)
+            return sim.measure_method.results[0]
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())

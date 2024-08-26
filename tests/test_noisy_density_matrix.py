@@ -56,13 +56,14 @@ class NoiseModelTester(NoiseModel):
         """apply noise to qubit to be measured."""
         return depolarising_channel(self.measure_channel_prob)
 
-    def confuse_result(self, cmd: str) -> None:
+    def confuse_result(self, result: bool) -> bool:
         """assign wrong measurement result
         cmd = "M"
         """
-
         if self.rng.uniform() < self.measure_error_prob:
-            self.simulator.results[cmd.node] = 1 - self.simulator.results[cmd.node]
+            return not result
+        else:
+            return result
 
     def byproduct_x(self) -> KrausChannel:
         """apply noise to qubits after X gate correction"""

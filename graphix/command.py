@@ -7,11 +7,11 @@ import enum
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-import graphix.clifford
-from graphix.clifford import Clifford
+from graphix import clifford
 from graphix.pauli import Pauli, Plane, Sign
+from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
@@ -45,35 +45,39 @@ class N(Command):
 
     kind: CommandKind = CommandKind.N
     node: Node
+    state: State = BasicStates.PLUS
 
 
-class M(Command):
+class BaseM(Command):
+    kind: CommandKind = CommandKind.M
+    node: Node
+
+
+class M(BaseM):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
 
-    kind: CommandKind = CommandKind.M
-    node: Node
     plane: Plane = Plane.XY
     angle: float = 0.0
     s_domain: set[Node] = set()
     t_domain: set[Node] = set()
 
-    def clifford(self, clifford: Clifford) -> M:
+    def clifford(self, clifford_gate: Clifford) -> M:
         s_domain = self.s_domain
         t_domain = self.t_domain
-        for gate in clifford.hsz:
-            if gate == graphix.clifford.I:
+        for gate in clifford_gate.hsz:
+            if gate == clifford.I:
                 pass
-            elif gate == graphix.clifford.H:
+            elif gate == clifford.H:
                 t_domain, s_domain = s_domain, t_domain
-            elif gate == graphix.clifford.S:
+            elif gate == clifford.S:
                 t_domain ^= s_domain
-            elif gate == graphix.clifford.Z:
+            elif gate == clifford.Z:
                 pass
             else:
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
-        update = MeasureUpdate.compute(self.plane, False, False, clifford)
+        update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
             node=self.node,
             plane=update.new_plane,
@@ -97,9 +101,11 @@ class C(Command):
     Clifford command.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # for the `clifford` field
+
     kind: CommandKind = CommandKind.C
     node: Node
-    cliff_index: int
+    clifford: clifford.Clifford
 
 
 class Correction(Command):
@@ -152,16 +158,16 @@ class MeasureUpdate(BaseModel):
     add_term: float
 
     @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford: graphix.clifford.Clifford) -> MeasureUpdate:
+    def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
-            clifford = graphix.clifford.X @ clifford
+            clifford_gate = clifford.X @ clifford_gate
         if t:
-            clifford = graphix.clifford.Z @ clifford
-        gates = list(map(clifford.measure, gates))
+            clifford_gate = clifford.Z @ clifford_gate
+        gates = list(map(clifford_gate.measure, gates))
         new_plane = Plane.from_axes(*(gate.axis for gate in gates))
-        cos_pauli = clifford.measure(Pauli.from_axis(plane.cos))
-        sin_pauli = clifford.measure(Pauli.from_axis(plane.sin))
+        cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
+        sin_pauli = clifford_gate.measure(Pauli.from_axis(plane.sin))
         exchange = cos_pauli.axis != new_plane.cos
         if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
             coeff = -1
