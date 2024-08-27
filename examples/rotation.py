@@ -20,6 +20,8 @@ from graphix import Circuit, Statevec
 from graphix.ops import Ops
 from graphix.states import BasicStates
 
+rng = np.random.default_rng()
+
 # %%
 # Here, :class:`~graphix.sim.statevec.Statevec` is our simple statevector simulator class.
 # Next, let us define the problem with a standard quantum circuit.
@@ -33,7 +35,7 @@ circuit.h(1)
 circuit.h(0)
 
 # apply rotation gates
-theta = np.random.rand(2)
+theta = rng.random(2)
 circuit.rx(0, theta[0])
 circuit.rx(1, theta[1])
 
@@ -83,7 +85,7 @@ print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_
 circuit = Circuit(2)
 
 # apply rotation gates
-theta = np.random.rand(4)
+theta = rng.random(4)
 circuit.rz(0, theta[0])
 circuit.rz(1, theta[1])
 circuit.cnot(0, 1)

@@ -21,6 +21,8 @@ from scipy.optimize import minimize
 
 from graphix import Circuit
 
+rng = np.random.default_rng()
+
 # %%
 # This application will be for the QAOA (Quantum Approximate Optimization Algorithm),
 # which is an algorithm that can be used for example to solve combinatorical optimization problems.
@@ -45,8 +47,8 @@ def ansatz(circuit, n, gamma, beta, iterations):
 
 n = 5  # This will result in a graph that would be too large for statevector simulation.
 iterations = 2  # Define the number of iterations in the quantum circuit.
-gamma = 2 * np.pi * np.random.rand(iterations)
-beta = 2 * np.pi * np.random.rand(iterations)
+gamma = 2 * np.pi * rng.random(iterations)
+beta = 2 * np.pi * rng.random(iterations)
 # Define the circuit.
 circuit = Circuit(n)
 ansatz(circuit, n, gamma, beta, iterations)
@@ -205,7 +207,7 @@ class MyOptimizer(oe.paths.PathOptimizer):
 
 opt = MyOptimizer()
 # Define initial parameters, which will be optimized through running the algorithm.
-params = 2 * np.pi * np.random.rand(len(gamma) + len(beta))
+params = 2 * np.pi * rng.random(len(gamma) + len(beta))
 # Run the classical optimizer and simulate the quantum circuit with TN backend.
 res = minimize(cost, params, args=(n, ham, iterations, len(gamma), opt), method="COBYLA")
 print(res.message)
