@@ -71,8 +71,8 @@ print(out_state.flatten())
 # Let us compare with statevector simulation of the original circuit:
 
 state = Statevec(nqubit=2, data=BasicStates.ZERO)  # starts with |0> states
-state.evolve_single(Ops.Rx(theta[0]), 0)
-state.evolve_single(Ops.Rx(theta[1]), 1)
+state.evolve_single(Ops.rx(theta[0]), 0)
+state.evolve_single(Ops.rx(theta[1]), 1)
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 
 # %%

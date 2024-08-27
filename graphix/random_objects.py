@@ -76,8 +76,8 @@ def rand_dm(
 
     dm = np.diag(padded_evals / np.sum(padded_evals))
 
-    randU = rand_unit(dim, rng)
-    dm = randU @ dm @ randU.transpose().conj()
+    rand_u = rand_unit(dim)
+    dm = rand_u @ dm @ rand_u.transpose().conj()
 
     if dm_dtype:
         from graphix.sim.density_matrix import DensityMatrix  # circumvent circular import
@@ -143,16 +143,16 @@ def rand_channel_kraus(
     if not 1 <= rank:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
-    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig, rng=rng) for _ in range(rank)]
-    Hmat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
-    kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(Hmat))
+    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
+    h_mat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
+    kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(h_mat))
 
     return KrausChannel([{"coef": 1.0 + 0.0 * 1j, "operator": kraus_list[i]} for i in range(rank)])
 
 
 # or merge with previous with a "pauli" kwarg?
 ### continue here
-def rand_Pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int | None = None) -> KrausChannel:
+def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int | None = None) -> KrausChannel:
     rng = ensure_rng(rng)
 
     if not isinstance(dim, int):
@@ -183,11 +183,11 @@ def rand_Pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     prob_list[:rank] = tmp_list
     rng.shuffle(prob_list)
 
-    tensor_Pauli_ops = Ops.build_tensor_Pauli_ops(nqb)
+    tensor_pauli_ops = Ops.build_tensor_pauli_ops(nqb)
     target_indices = np.nonzero(prob_list)
 
     params = prob_list[target_indices]
-    ops = tensor_Pauli_ops[target_indices]
+    ops = tensor_pauli_ops[target_indices]
 
     # TODO see how to use zip and dict to convert from tuple to dict
     # https://www.tutorialspoint.com/How-I-can-convert-a-Python-Tuple-into-Dictionary
