@@ -20,7 +20,7 @@ from graphix.gflow import (
     verify_pauliflow,
 )
 from graphix.pattern import Pattern
-from tests.random_circuit import get_rand_circuit
+from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -528,7 +528,7 @@ class TestGflow:
     def test_with_rand_circ(self, fx_rng: Generator) -> None:
         # test for large graph
         # graph transpiled from circuit always has a flow
-        circ = get_rand_circuit(10, 10, fx_rng)
+        circ = rand_circuit(10, 10, fx_rng)
         pattern = circ.transpile().pattern
         nodes, edges = pattern.get_graph()
         graph = nx.Graph()
@@ -547,7 +547,7 @@ class TestGflow:
     def test_rand_circ_gflow(self, fx_rng: Generator) -> None:
         # test for large graph
         # pauli-node measured graph always has gflow
-        circ = get_rand_circuit(5, 5, fx_rng)
+        circ = rand_circuit(5, 5, fx_rng)
         pattern = circ.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()

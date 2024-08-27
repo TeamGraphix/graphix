@@ -23,8 +23,7 @@ from sklearn.datasets import make_circles
 
 from graphix.transpiler import Circuit
 
-np.random.seed(0)
-
+rng = np.random.default_rng()
 
 Z_OP = np.array([[1, 0], [0, -1]])
 
@@ -251,7 +250,7 @@ class QNN:
           The function `fit` returns the result of the optimization process performed
         by the `minimize` function from the `scipy.optimize` module.
         """
-        params = np.random.rand(self.n_layers * self.n_qubits * self.n_features * 2)
+        params = rng.random(self.n_layers * self.n_qubits * self.n_features * 2)
         res = minimize(
             self.cost,
             params,
@@ -323,8 +322,8 @@ n_qubits = 2
 n_layers = 2
 n_features = 3
 
-params = np.random.rand(n_layers * n_qubits * n_features * 2)
-input_params = np.random.rand(n_features)
+params = rng.random(n_layers * n_qubits * n_features * 2)
+input_params = rng.random(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
@@ -350,13 +349,13 @@ pattern.draw_graph(flow_from_pattern=False)
 qubits = range(1, 10)
 n_layers = 2
 n_features = 3
-input_params = np.random.rand(n_features)
+input_params = rng.random(n_features)
 
 before_meas = []
 after_meas = []
 
 for n_qubits in qubits:
-    params = np.random.rand(n_layers * n_qubits * n_features * 2)
+    params = rng.random(n_layers * n_qubits * n_features * 2)
     qnn = QNN(n_qubits, n_layers, n_features)
     circuit = qnn.data_reuploading_circuit(input_params, params)
     pattern = circuit.transpile().pattern

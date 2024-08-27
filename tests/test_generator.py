@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 import graphix.pauli
-import tests.random_circuit as rc
 from graphix.generator import generate_from_graph
+from graphix.random_objects import rand_gate
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -27,7 +27,7 @@ class TestGenerator:
             pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
             pattern.minimize_space()
-            state = pattern.simulate_pattern()
+            state = pattern.simulate_pattern(rng=fx_rng)
             results.append(state)
         combinations = [(0, 1), (0, 2), (1, 2)]
         for i, j in combinations:
@@ -46,7 +46,7 @@ class TestGenerator:
             pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
             pattern.minimize_space()
-            state = pattern.simulate_pattern()
+            state = pattern.simulate_pattern(rng=fx_rng)
             results.append(state)
         combinations = [(0, 1), (0, 2), (1, 2)]
         for i, j in combinations:
@@ -57,7 +57,7 @@ class TestGenerator:
         nqubits = 3
         depth = 2
         pairs = [(0, 1), (1, 2)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
+        circuit = rand_gate(nqubits, depth, pairs, fx_rng)
         # transpile into graph
         pattern = circuit.transpile().pattern
         pattern.standardize()
@@ -78,5 +78,5 @@ class TestGenerator:
         pattern2.shift_signals()
         pattern2.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern2.simulate_pattern()
+        state_mbqc = pattern2.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)

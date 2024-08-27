@@ -14,9 +14,6 @@ class NoiselessNoiseModel(NoiseModel):
     :type NoiseModel: class
     """
 
-    def __init__(self):
-        pass
-
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])

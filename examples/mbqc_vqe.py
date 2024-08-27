@@ -107,7 +107,8 @@ def cost_function(params):
 
 # %%
 # Random initial parameters
-initial_params = np.random.rand(n_qubits * 3)
+rng = np.random.default_rng()
+initial_params = rng.random(n_qubits * 3)
 
 # %%
 # Perform the optimization using COBYLA

@@ -5,11 +5,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from numpy.random import Generator
+
 import graphix.clifford
 import graphix.pauli
 import graphix.states
 from graphix.command import CommandKind
 from graphix.ops import Ops
+from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -124,7 +128,7 @@ class Backend:
         state: State,
         node_index: NodeIndex | None = None,
         pr_calc: bool = True,
-        rng: np.random.Generator | None = None,
+        rng: Generator | None = None,
     ):
         """
         Parameters
@@ -147,12 +151,14 @@ class Backend:
             raise TypeError("`pr_calc` should be bool")
         # whether to compute the probability
         self.__pr_calc = pr_calc
-        if rng is None:
-            rng = np.random.default_rng()
-        self.__rng = rng
+        self.__rng = ensure_rng(rng)
 
     def copy(self) -> Backend:
         return Backend(self.__state, self.__node_index, self.__pr_calc, self.__rng)
+
+    @property
+    def rng(self) -> Generator:
+        return self.__rng
 
     @property
     def state(self) -> State:

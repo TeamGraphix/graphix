@@ -6,10 +6,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import quimb.tensor as qtn
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 from quimb.tensor import Tensor, TensorNetwork
 
 from graphix import command
 from graphix.ops import Ops
+from graphix.rng import ensure_rng
 from graphix.sim.base_backend import Backend, MeasurementDescription, State
 from graphix.states import BasicStates, PlanarState
 
@@ -24,7 +28,9 @@ class TensorNetworkBackend(Backend):
     Executes the measurement pattern using TN expression of graph states.
     """
 
-    def __init__(self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, **kwargs):
+    def __init__(
+        self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, rng: Generator | None = None, **kwargs
+    ):
         """
 
         Parameters
@@ -42,6 +48,8 @@ class TensorNetworkBackend(Backend):
             'auto'(default) :
                 Automatically select a preparation strategy based on the max degree of a graph
         input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
+        rng: :class:`np.random.Generator` (default: `None`)
+            random number generator to use for measurements
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
         self.pattern = pattern
@@ -61,6 +69,8 @@ class TensorNetworkBackend(Backend):
         else:
             raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
 
+        rng = ensure_rng(rng)
+        self.__rng = rng
         if self.graph_prep == "parallel":
             if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
@@ -69,10 +79,11 @@ class TensorNetworkBackend(Backend):
                 graph_nodes=nodes,
                 graph_edges=edges,
                 default_output_nodes=pattern.output_nodes,
+                rng=rng,
                 **kwargs,
             )
         elif self.graph_prep == "sequential":
-            state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, **kwargs)
+            state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, rng=rng, **kwargs)
             self._decomposed_cz = _get_decomposed_cz()
         self._isolated_nodes = pattern.get_isolated_nodes()
         super().__init__(state)
@@ -136,20 +147,21 @@ class TensorNetworkBackend(Backend):
 
         Parameters
         ----------
-        cmd : list
-            measurement command
-            i.e. ['M', node, plane angle, s_domain, t_domain]
+        node : int
+            index of the node to measure
+        measurement_description : MeasurementDescription
+            measure plane and angle
         """
         if node in self._isolated_nodes:
             vector = self.state.get_open_tensor_from_index(node)
             probs = np.abs(vector) ** 2
             probs = probs / (np.sum(probs))
-            result = np.random.choice([0, 1], p=probs)
+            result = self.__rng.choice([0, 1], p=probs)
             self.results[node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
             # choose the measurement result randomly
-            result = np.random.choice([0, 1])
+            result = self.__rng.choice([0, 1])
             self.results[node] = result
             buffer = 2**0.5
         vec = PlanarState(plane=measurement_description.plane, angle=measurement_description.angle).get_statevector()
@@ -194,12 +206,13 @@ class MBQCTensorNet(State, TensorNetwork):
 
     def __init__(
         self,
+        rng: Generator | None = None,
         graph_nodes=None,
         graph_edges=None,
         default_output_nodes=None,
         ts=None,
         **kwargs,
-    ):
+    ) -> None:
         """
         Initialize MBQCTensorNet.
 
@@ -227,6 +240,7 @@ class MBQCTensorNet(State, TensorNetwork):
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
             self.set_graph_state(graph_nodes, graph_edges)
+        self.__rng = ensure_rng(rng)
 
     def get_open_tensor_from_index(self, index):
         """Get tensor specified by node index. The tensor has a dangling edge.
@@ -354,7 +368,7 @@ class MBQCTensorNet(State, TensorNetwork):
             if outcome is not None:
                 result = outcome
             else:
-                result = np.random.choice([0, 1])
+                result = self.__rng.choice([0, 1])
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -653,7 +667,7 @@ class MBQCTensorNet(State, TensorNetwork):
         if deep:
             return deepcopy(self)
         else:
-            return self.__class__(ts=self)
+            return self.__class__(rng=self.__rng, ts=self)
 
 
 def _get_decomposed_cz():

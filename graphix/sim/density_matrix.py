@@ -5,6 +5,11 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
+
 import copy
 import numbers
 import sys
@@ -316,17 +321,19 @@ class DensityMatrix(State):
 class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
-    def __init__(self, pr_calc=True) -> None:
+    def __init__(self, pr_calc=True, rng: Generator | None = None) -> None:
         """
         Parameters
         ----------
-            pattern : :class:`graphix.pattern.Pattern` object
-                Pattern to be simulated.
-            pr_calc : bool
-                whether or not to compute the probability distribution before choosing the measurement result.
-                if False, measurements yield results 0/1 with 50% probabilities each.
+        pattern : :class:`graphix.pattern.Pattern` object
+            Pattern to be simulated.
+        pr_calc : bool
+            whether or not to compute the probability distribution before choosing the measurement result.
+            if False, measurements yield results 0/1 with 50% probabilities each.
+        rng: :class:`np.random.Generator` (default: `None`)
+            random number generator to use for measurements
         """
-        super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc)
+        super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc, rng=rng)
 
     def apply_channel(self, channel: KrausChannel, qargs) -> None:
         """backend version of apply_channel

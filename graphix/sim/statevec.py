@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 
+if TYPE_CHECKING:
+    from numpy.random import Generator
+
 import graphix.pauli
 import graphix.states
 import graphix.types
@@ -22,7 +25,7 @@ class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
     def __init__(
-        self, input_state: Data = graphix.states.BasicStates.PLUS, pr_calc=True, rng: np.random.Generator | None = None
+        self, input_state: Data = graphix.states.BasicStates.PLUS, pr_calc=True, rng: Generator | None = None
     ) -> None:
         """
         Parameters
@@ -31,8 +34,8 @@ class StatevectorBackend(Backend):
         pr_calc: bool
             whether or not to compute the probability distribution before choosing the measurement result.
             if False, measurements yield results 0/1 with 50% probabilities each.
-        rng: Generator(default: None)
-            random number generator to use for measure
+        rng: :class:`np.random.Generator` (default: `None`)
+            random number generator to use for measurements
         """
         super().__init__(Statevec(nqubit=0), pr_calc=pr_calc, rng=rng)
 

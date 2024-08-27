@@ -25,6 +25,8 @@ from paddle_quantum.mbqc.transpiler import transpile as paddle_transpile
 
 from graphix import Circuit
 
+rng = np.random.default_rng()
+
 # %%
 # Next, define a circuit to be transpiled into measurement pattern:
 
@@ -50,11 +52,11 @@ def simple_random_circuit(nqubit, depth):
     qubit_index = [i for i in range(nqubit)]
     circuit = Circuit(nqubit)
     for _ in range(depth):
-        np.random.shuffle(qubit_index)
+        rng.shuffle(qubit_index)
         for j in range(len(qubit_index) // 2):
             circuit.cnot(qubit_index[2 * j], qubit_index[2 * j + 1])
         for j in range(len(qubit_index)):
-            circuit.rz(qubit_index[j], 2 * np.pi * np.random.random())
+            circuit.rz(qubit_index[j], 2 * np.pi * rng.random())
     return circuit
 
 

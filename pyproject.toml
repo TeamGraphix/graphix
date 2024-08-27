@@ -63,8 +63,6 @@ extend-select = [
 ]
 ignore = [
   "E74", # Ambiguous name
-  # TODO: Resolve this immediately
-  "NPY002", # Use np.random.Generator
 ]
 
 [tool.ruff.format]
