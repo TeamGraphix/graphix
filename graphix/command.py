@@ -6,17 +6,17 @@ import abc
 import dataclasses
 from abc import ABC
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 import numpy as np
 import typing_extensions
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from graphix import clifford
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
 
-if TYPE_CHECKING:
+if typing_extensions.TYPE_CHECKING:
     from graphix.clifford import Clifford
 
 Node = int
@@ -61,7 +61,7 @@ class N(Command):
     """
 
     node: Node
-    state: State = BasicStates.PLUS
+    state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
 
     @property
     @typing_extensions.override
@@ -129,9 +129,8 @@ class C(Command):
     Clifford command.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)  # for the `clifford` field
     node: Node
-    clifford: clifford.Clifford
+    clifford: Clifford
 
     @property
     @typing_extensions.override
@@ -166,7 +165,7 @@ class Z(Correction):
 @dataclasses.dataclass
 class S(Command):
     """
-    S command
+    S command.
     """
 
     node: Node
