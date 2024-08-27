@@ -5,13 +5,11 @@ quantum states and operators
 from __future__ import annotations
 
 import abc
-import typing
 from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
 import pydantic
-import pydantic_core
 import typing_extensions
 
 from graphix.pauli import Plane
@@ -32,17 +30,6 @@ class State(abc.ABC):
     def get_densitymatrix(self) -> npt.NDArray:
         # return DM in 2**n x 2**n dim (2x2 here)
         return np.outer(self.get_statevector(), self.get_statevector().conj())
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
-    ) -> pydantic_core.CoreSchema:
-        def check_state(obj) -> State:
-            if not isinstance(obj, State):
-                raise ValueError("State expected")
-            return obj
-
-        return pydantic_core.core_schema.no_info_plain_validator_function(function=check_state)
 
 
 class PlanarState(pydantic.BaseModel, State):
@@ -81,12 +68,12 @@ class PlanarState(pydantic.BaseModel, State):
 
 # States namespace for input initialization.
 class BasicStates:
-    ZERO = PlanarState(plane=Plane.XZ, angle=0)
-    ONE = PlanarState(plane=Plane.XZ, angle=np.pi)
-    PLUS = PlanarState(plane=Plane.XY, angle=0)
-    MINUS = PlanarState(plane=Plane.XY, angle=np.pi)
-    PLUS_I = PlanarState(plane=Plane.XY, angle=np.pi / 2)
-    MINUS_I = PlanarState(plane=Plane.XY, angle=-np.pi / 2)
+    ZERO: ClassVar = PlanarState(plane=Plane.XZ, angle=0)
+    ONE: ClassVar = PlanarState(plane=Plane.XZ, angle=np.pi)
+    PLUS: ClassVar = PlanarState(plane=Plane.XY, angle=0)
+    MINUS: ClassVar = PlanarState(plane=Plane.XY, angle=np.pi)
+    PLUS_I: ClassVar = PlanarState(plane=Plane.XY, angle=np.pi / 2)
+    MINUS_I: ClassVar = PlanarState(plane=Plane.XY, angle=-np.pi / 2)
     # remove that in the end
     # need in TN backend
     VEC: ClassVar = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]

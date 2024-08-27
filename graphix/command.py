@@ -10,7 +10,6 @@ from typing import Any, Literal
 
 import numpy as np
 import typing_extensions
-from pydantic import BaseModel
 
 from graphix import clifford
 from graphix.pauli import Pauli, Plane, Sign
@@ -177,7 +176,8 @@ class S(Command):
         return CommandKind.S
 
 
-class MeasureUpdate(BaseModel):
+@dataclasses.dataclass
+class MeasureUpdate:
     new_plane: Plane
     coeff: int
     add_term: float
@@ -203,4 +203,4 @@ class MeasureUpdate(BaseModel):
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term
-        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)
+        return MeasureUpdate(new_plane, coeff, add_term)

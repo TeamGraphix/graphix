@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-import annotated_types
-import typing_extensions
-
-PositiveOrNullInt = typing_extensions.Annotated[int, annotated_types.Ge(0)]  # includes 0
-
 
 def check_list_elements(l, ty):
     for index, item in enumerate(l):

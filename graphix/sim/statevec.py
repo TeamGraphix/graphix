@@ -60,7 +60,7 @@ class Statevec(State):
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        nqubit: int | None = None,
     ):
         """Initialize statevector objects. The behaviour is as follows. `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
@@ -81,7 +81,8 @@ class Statevec(State):
         :type nqubit: int, optional
         """
 
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None and nqubit < 0:
+            raise ValueError("nqubit must be a non-negative integer.")
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit

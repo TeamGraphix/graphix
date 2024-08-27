@@ -37,12 +37,8 @@ class TestDensityMatrix:
     """Test for DensityMatrix class."""
 
     def test_init_without_data_fail(self) -> None:
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             DensityMatrix(nqubit=-2)
-        with pytest.raises(AssertionError):
-            DensityMatrix(nqubit="hello")
-        with pytest.raises(AssertionError):
-            DensityMatrix(nqubit=[])
 
     def test_init_with_invalid_data_fail(self, fx_rng: Generator) -> None:
         with pytest.raises(TypeError):
