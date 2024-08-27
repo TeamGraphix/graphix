@@ -34,8 +34,8 @@ class StatevectorBackend(Backend):
         pr_calc: bool
             whether or not to compute the probability distribution before choosing the measurement result.
             if False, measurements yield results 0/1 with 50% probabilities each.
-        rng: Generator(default: None)
-            random number generator to use for measure
+        rng: :class:`np.random.Generator` (default: `None`)
+            random number generator to use for measurements
         """
         super().__init__(Statevec(nqubit=0), pr_calc=pr_calc, rng=rng)
 

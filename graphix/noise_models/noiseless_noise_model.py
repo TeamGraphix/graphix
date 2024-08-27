@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 
 from graphix.channels import KrausChannel
 from graphix.noise_models.noise_model import NoiseModel
-from graphix.rng import ensure_rng
-
-if TYPE_CHECKING:
-    from numpy.random import Generator
 
 
 class NoiselessNoiseModel(NoiseModel):
@@ -19,9 +13,6 @@ class NoiselessNoiseModel(NoiseModel):
     :param NoiseModel: Parent abstract class class:`graphix.noise_model.NoiseModel`
     :type NoiseModel: class
     """
-
-    def __init__(self, rng: Generator | None = None) -> None:
-        self.__rng = ensure_rng(rng)
 
     def prepare_qubit(self):
         """return the channel to apply after clean single-qubit preparation. Here just identity."""

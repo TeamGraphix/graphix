@@ -111,7 +111,7 @@ class TestNoisyDensityMatrixBackend:
         # noiseless noise model
         noisynoiselessres = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
-            noise_model=NoiselessNoiseModel(fx_rng),
+            noise_model=NoiselessNoiseModel(),
             rng=fx_rng,
         )
         assert np.allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
