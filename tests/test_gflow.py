@@ -9,6 +9,7 @@ import pytest
 from numpy.random import Generator
 
 import graphix.pauli
+from graphix import command
 from graphix.gflow import (
     find_flow,
     find_gflow,
@@ -19,7 +20,7 @@ from graphix.gflow import (
     verify_pauliflow,
 )
 from graphix.pattern import Pattern
-from tests.random_circuit import get_rand_circuit
+from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -527,7 +528,7 @@ class TestGflow:
     def test_with_rand_circ(self, fx_rng: Generator) -> None:
         # test for large graph
         # graph transpiled from circuit always has a flow
-        circ = get_rand_circuit(10, 10, fx_rng)
+        circ = rand_circuit(10, 10, fx_rng)
         pattern = circ.transpile().pattern
         nodes, edges = pattern.get_graph()
         graph = nx.Graph()
@@ -546,7 +547,7 @@ class TestGflow:
     def test_rand_circ_gflow(self, fx_rng: Generator) -> None:
         # test for large graph
         # pauli-node measured graph always has gflow
-        circ = get_rand_circuit(5, 5, fx_rng)
+        circ = rand_circuit(5, 5, fx_rng)
         pattern = circ.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
@@ -601,11 +602,11 @@ class TestGflow:
 
     def test_corrections_from_pattern(self) -> None:
         pattern = Pattern(input_nodes=range(5))
-        pattern.add(graphix.command.M(node=0))
-        pattern.add(graphix.command.M(node=1))
-        pattern.add(graphix.command.M(node=2, s_domain=(0,), t_domain=(1,)))
-        pattern.add(graphix.command.X(node=3, domain=(2,)))
-        pattern.add(graphix.command.Z(node=4, domain=(3,)))
+        pattern.add(command.M(node=0))
+        pattern.add(command.M(node=1))
+        pattern.add(command.M(node=2, s_domain=(0,), t_domain=(1,)))
+        pattern.add(command.X(node=3, domain=(2,)))
+        pattern.add(command.Z(node=4, domain=(3,)))
         xflow, zflow = get_corrections_from_pattern(pattern)
         assert xflow == {0: {2}, 2: {3}}
         assert zflow == {1: {2}, 3: {4}}

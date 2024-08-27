@@ -17,7 +17,6 @@ Firstly, let us import relevant modules:
 
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
 
 from graphix import Circuit
 
@@ -46,7 +45,6 @@ g.add_nodes_from(nodes)
 g.add_edges_from(edges)
 print(f"Number of nodes: {len(nodes)}")
 print(f"Number of edges: {len(edges)}")
-np.random.seed(100)
 pos = nx.spring_layout(g)
 nx.draw(g, pos=pos, node_size=15)
 plt.show()

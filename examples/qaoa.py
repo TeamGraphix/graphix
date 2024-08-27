@@ -17,9 +17,11 @@ import numpy as np
 
 from graphix import Circuit
 
+rng = np.random.default_rng()
+
 n = 4
-xi = np.random.rand(6)
-theta = np.random.rand(4)
+xi = rng.random(6)
+theta = rng.random(4)
 g = nx.complete_graph(n)
 circuit = Circuit(n)
 for i, (u, v) in enumerate(g.edges):

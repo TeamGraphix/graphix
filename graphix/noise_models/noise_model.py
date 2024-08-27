@@ -6,11 +6,6 @@ import abc
 class NoiseModel(abc.ABC):
     """Abstract base class for all noise models."""
 
-    # define the noise model parameters in there
-    @abc.abstractmethod
-    def __init__(self):
-        pass
-
     # shared by all objects of the child class.
     def assign_simulator(self, simulator):
         self.simulator = simulator
@@ -31,9 +26,8 @@ class NoiseModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def confuse_result(self):
+    def confuse_result(self, result: bool) -> bool:
         """assign wrong measurement result"""
-        pass
 
     @abc.abstractmethod
     def byproduct_x(self):

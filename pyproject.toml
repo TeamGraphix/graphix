@@ -47,23 +47,22 @@ extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 extend-select = [
-  "UP",
-  "NPY",
   "A",
   "B",
-  "W",
+  "FA",
+  "I",
+  "NPY",
+  "N",
+  "PERF",
   "PLE",
   "PLW",
-  "FA",
   "RUF",
-  "PERF",
   "TCH",
-  "I",
+  "UP",
+  "W",
 ]
 ignore = [
-  # TODO: Resolve this immediately
-  "NPY002", # Use np.random.Generator
-  "E74",    # Ambiguous name
+  "E74", # Ambiguous name
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
 allowed-confusables = ["α"]
@@ -76,8 +75,8 @@ docstring-code-format = true
   "F401", # Unused import
 ]
 "examples/*.py" = [
-  "E402", # Import not at top of file
   "B018", # Useless expression
+  "E402", # Import not at top of file
 ]
 
 [tool.ruff.lint.pydocstyle]

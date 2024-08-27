@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import copy
 import functools
 import random
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -17,6 +17,7 @@ from graphix.channels import KrausChannel, dephasing_channel, depolarising_chann
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
+from graphix.simulator import DefaultMeasureMethod
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -53,7 +54,7 @@ class TestDensityMatrix:
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
-            DensityMatrix(data=randobj.rand_herm(2 ** fx_rng.integers(2, 5)))
+            DensityMatrix(data=randobj.rand_herm(2 ** fx_rng.integers(2, 5), fx_rng))
         # check with non hermitian dm but unit trace
         tmp = _randdm_raw(fx_rng.integers(2, 5), fx_rng)
         with pytest.raises(ValueError):
@@ -69,7 +70,7 @@ class TestDensityMatrix:
         with pytest.raises(TypeError):
             DensityMatrix(data=fx_rng.uniform(size=(2, 2, 3)))
         # check square and hermitian but with incorrect dimension (non-qubit type)
-        data = randobj.rand_herm(5)
+        data = randobj.rand_herm(5, fx_rng)
         data /= np.trace(data)
         with pytest.raises(ValueError):
             # not really a dm since not PSD but ok.
@@ -79,22 +80,22 @@ class TestDensityMatrix:
     def test_init_without_data_success(self, n: int) -> None:
         dm = DensityMatrix(nqubit=n)
         expected_density_matrix = np.outer(np.ones((2,) * n), np.ones((2,) * n)) / 2**n
-        assert dm.Nqubit == n
+        assert dm.nqubit == n
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
         dm = DensityMatrix(data=graphix.states.BasicStates.ZERO, nqubit=n)
         expected_density_matrix = np.zeros((2**n, 2**n))
         expected_density_matrix[0, 0] = 1
-        assert dm.Nqubit == n
+        assert dm.nqubit == n
         assert dm.rho.shape == (2**n, 2**n)
         assert np.allclose(dm.rho, expected_density_matrix)
 
     # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_herm
-    def test_init_with_data_success(self) -> None:
+    def test_init_with_data_success(self, fx_rng: Generator) -> None:
         # don't use rand_dm here since want to check
         for n in range(3):
-            _data = randobj.rand_herm(2**n)
+            _data = randobj.rand_herm(2**n, fx_rng)
 
     def test_init_with_state_sucess(self, fx_rng: Generator) -> None:
         # both "numerical" statevec and Statevec object
@@ -180,19 +181,19 @@ class TestDensityMatrix:
         assert np.allclose(dm2.rho, expected_dm)
         assert np.allclose(dm2.rho, dm.rho)
 
-    def test_evolve_single_fail(self) -> None:
+    def test_evolve_single_fail(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
         # generate random 4 x 4 unitary matrix
-        op = randobj.rand_unit(4)
+        op = randobj.rand_unit(4, fx_rng)
 
         with pytest.raises(AssertionError):
             dm.evolve_single(op, 2)
         with pytest.raises(ValueError):
             dm.evolve_single(op, 1)
 
-    def test_evolve_single_success(self) -> None:
+    def test_evolve_single_success(self, fx_rng: Generator) -> None:
         # generate random 2 x 2 unitary matrix
-        op = randobj.rand_unit(2)
+        op = randobj.rand_unit(2, fx_rng)
 
         n = 10
         for i in range(n):
@@ -203,13 +204,13 @@ class TestDensityMatrix:
             dm.evolve_single(op, i)
             assert np.allclose(dm.rho, expected_density_matrix)
 
-    def test_expectation_single_fail(self) -> None:
+    def test_expectation_single_fail(self, fx_rng: Generator) -> None:
         nqb = 3
         dm = DensityMatrix(nqubit=nqb)
 
         # wrong dimensions
         # generate random 4 x 4 unitary matrix
-        op = randobj.rand_unit(4)
+        op = randobj.rand_unit(4, fx_rng)
 
         with pytest.raises(ValueError):
             dm.expectation_single(op, 2)
@@ -217,7 +218,7 @@ class TestDensityMatrix:
             dm.expectation_single(op, 1)
 
         # wrong qubit indices
-        op = randobj.rand_unit(2)
+        op = randobj.rand_unit(2, fx_rng)
         with pytest.raises(ValueError):
             dm.expectation_single(op, -3)
         with pytest.raises(ValueError):
@@ -236,7 +237,7 @@ class TestDensityMatrix:
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
 
-        op = randobj.rand_unit(2)
+        op = randobj.rand_unit(2, fx_rng)
 
         dm.expectation_single(op, target_qubit)
 
@@ -261,19 +262,19 @@ class TestDensityMatrix:
         dm_a = DensityMatrix(nqubit=n)
         dm_b = DensityMatrix(nqubit=n + 1)
         dm_a.tensor(dm_b)
-        assert dm_a.Nqubit == 2 * n + 1
+        assert dm_a.nqubit == 2 * n + 1
         assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
 
     # TODO: Use pytest.mark.parametrize after refactoring randobj.rand_dm
-    def test_tensor_with_data_success(self) -> None:
+    def test_tensor_with_data_success(self, fx_rng: Generator) -> None:
         for n in range(3):
-            data_a = randobj.rand_dm(2**n, dm_dtype=False)
+            data_a = randobj.rand_dm(2**n, dm_dtype=False, rng=fx_rng)
             dm_a = DensityMatrix(data=data_a)
 
-            data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False)
+            data_b = randobj.rand_dm(2 ** (n + 1), dm_dtype=False, rng=fx_rng)
             dm_b = DensityMatrix(data=data_b)
             dm_a.tensor(dm_b)
-            assert dm_a.Nqubit == 2 * n + 1
+            assert dm_a.nqubit == 2 * n + 1
             assert dm_a.rho.shape == (2 ** (2 * n + 1), 2 ** (2 * n + 1))
             assert np.allclose(dm_a.rho, np.kron(data_a, data_b))
 
@@ -292,12 +293,12 @@ class TestDensityMatrix:
 
     def test_cnot_success(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
-        original_matrix = dm.rho.copy()
-        dm.cnot((0, 1))
+        dm_cnot = copy.copy(dm)
+        dm_cnot.cnot((0, 1))
         expected_matrix = np.array([[1, 1, 1, 1] * 4]).reshape((4, 4)) / 4
-        assert np.allclose(dm.rho, expected_matrix)
-        dm.cnot((0, 1))
-        assert np.allclose(dm.rho, original_matrix)
+        assert np.allclose(dm_cnot.rho, expected_matrix)
+        dm_cnot.cnot((0, 1))
+        assert np.allclose(dm_cnot.rho, dm.rho)
 
         # test on 2 qubits only
         psi = _randstate_raw(2, fx_rng)
@@ -305,12 +306,11 @@ class TestDensityMatrix:
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.cnot(edge)
-        rho = dm.rho.copy()
         psi = psi.reshape((2, 2))
         psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
-        assert np.allclose(rho, expected_matrix)
+        assert np.allclose(dm.rho, expected_matrix)
 
         # test on arbitrary number of qubits and random pair
         n = fx_rng.integers(2, 4)
@@ -323,12 +323,11 @@ class TestDensityMatrix:
 
         edge = tuple(random.sample(range(n), 2))
         dm.cnot(edge)
-        rho = dm.rho.copy()
         psi = psi.reshape((2,) * n)
         psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
-        assert np.allclose(rho, expected_matrix)
+        assert np.allclose(dm.rho, expected_matrix)
 
     def test_swap_fail(self) -> None:
         dm = DensityMatrix(nqubit=2)
@@ -345,12 +344,12 @@ class TestDensityMatrix:
 
     def test_swap_success(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
-        original_matrix = dm.rho.copy()
-        dm.swap((0, 1))
+        dm_swap = copy.copy(dm)
+        dm_swap.swap((0, 1))
         expected_matrix = np.array([[1, 1, 1, 1] * 4]).reshape((4, 4)) / 4
-        assert np.allclose(dm.rho, expected_matrix)
-        dm.swap((0, 1))
-        assert np.allclose(dm.rho, original_matrix)
+        assert np.allclose(dm_swap.rho, expected_matrix)
+        dm_swap.swap((0, 1))
+        assert np.allclose(dm_swap.rho, dm.rho)
 
         psi = _randstate_raw(2, fx_rng)
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
@@ -375,23 +374,20 @@ class TestDensityMatrix:
 
     def test_entangle_success(self, fx_rng: Generator) -> None:
         dm = DensityMatrix(nqubit=2)
-        original_matrix = dm.rho.copy()
-        dm.entangle((0, 1))
+        dm_entangle = copy.copy(dm)
+        dm_entangle.entangle((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
-        assert np.allclose(dm.rho, expected_matrix)
-        dm.entangle((0, 1))
-        assert np.allclose(dm.rho, original_matrix)
+        assert np.allclose(dm_entangle.rho, expected_matrix)
+        dm_entangle.entangle((0, 1))
+        assert np.allclose(dm_entangle.rho, dm.rho)
 
-        dm = DensityMatrix(nqubit=3)
-        dm.entangle((0, 1))
-        dm.entangle((2, 1))
-        dm1 = dm.rho.copy()
-
-        dm = DensityMatrix(nqubit=3)
-        dm.entangle((2, 1))
-        dm.entangle((0, 1))
-        dm2 = dm.rho
-        assert np.allclose(dm1, dm2)
+        dm1 = DensityMatrix(nqubit=3)
+        dm1.entangle((0, 1))
+        dm1.entangle((2, 1))
+        dm2 = DensityMatrix(nqubit=3)
+        dm2.entangle((2, 1))
+        dm2.entangle((0, 1))
+        assert np.allclose(dm1.rho, dm2.rho)
 
         psi = _randstate_raw(2, fx_rng)
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
@@ -417,14 +413,15 @@ class TestDensityMatrix:
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
 
         # density matrix calculation
-        dm = DensityMatrix(data=np.outer(psi, psi.conj()))
-        dm_single = deepcopy(dm)
+        init_dm = DensityMatrix(data=np.outer(psi, psi.conj()))
 
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
         i = fx_rng.integers(0, nqubits)
 
         # need a list format for a single target
+        dm = copy.copy(init_dm)
         dm.evolve(op, [i])
+        dm_single = copy.copy(init_dm)
         dm_single.evolve_single(op, i)
 
         assert np.allclose(dm.rho, dm_single.rho)
@@ -435,7 +432,7 @@ class TestDensityMatrix:
         nqubits_op = 2
 
         # random unitary
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
 
         # random pair of indices
         edge = tuple(random.sample(range(nqubits), 2))
@@ -460,7 +457,7 @@ class TestDensityMatrix:
         nqubits_op = 3
 
         # random unitary
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
 
         # 3 random indices
         targets = tuple(random.sample(range(nqubits), 3))
@@ -486,7 +483,7 @@ class TestDensityMatrix:
         nqubits_op = 3
 
         # random unitary
-        op = randobj.rand_unit(2**nqubits_op)
+        op = randobj.rand_unit(2**nqubits_op, fx_rng)
         # 3 random indices
         dm = DensityMatrix(nqubit=nqubits)
 
@@ -517,7 +514,7 @@ class TestDensityMatrix:
     # TODO: the test for normalization is done at initialization with data.
     # Now check that all operations conserve the norm.
     def test_normalize(self, fx_rng: Generator) -> None:
-        data = randobj.rand_dm(2 ** fx_rng.integers(2, 4), dm_dtype=False)
+        data = randobj.rand_dm(2 ** fx_rng.integers(2, 4), dm_dtype=False, rng=fx_rng)
 
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
@@ -572,10 +569,10 @@ class TestDensityMatrix:
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
-        dm = randobj.rand_dm(2)
+        dm = randobj.rand_dm(2, fx_rng)
 
         # copy of initial dm
-        rho_test = deepcopy(dm.rho)
+        rho_test = dm.rho
 
         # create dephasing channel
         prob = fx_rng.uniform()
@@ -654,10 +651,10 @@ class TestDensityMatrix:
         # check on single qubit first
         # # create random density matrix
         # data = randobj.rand_herm(2 ** fx_rng.integers(2, 4))
-        dm = randobj.rand_dm(2)
+        dm = randobj.rand_dm(2, fx_rng)
 
         # copy of initial dm
-        rho_test = deepcopy(dm.rho)
+        rho_test = dm.rho
 
         # create dephasing channel
         prob = fx_rng.uniform()
@@ -780,7 +777,7 @@ class TestDensityMatrix:
         nqb = 1
         dim = 2**nqb
         rk = int(fx_rng.integers(1, dim**2 + 1))
-        channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
+        channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -826,7 +823,7 @@ class TestDensityMatrix:
         nqb = 2
         dim = 2**nqb
         rk = int(fx_rng.integers(1, dim**2 + 1))
-        channel = randobj.rand_channel_kraus(dim=dim, rank=rk)
+        channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
 
         dm.apply_channel(channel, qubits)
 
@@ -868,17 +865,19 @@ class TestDensityMatrixBackend:
     # test initialization only
     def test_init_success(self, fx_rng: Generator, hadamardpattern, randpattern, nqb) -> None:
         # plus state (default)
-        backend = DensityMatrixBackend(hadamardpattern)
+        backend = DensityMatrixBackend()
+        backend.add_nodes(hadamardpattern.input_nodes)
         dm = DensityMatrix(nqubit=1)
         assert np.allclose(dm.rho, backend.state.rho)
-        # assert backend.state.Nqubit == 1
+        # assert backend.state.nqubit == 1
         assert backend.state.dims() == (2, 2)
 
         # minus state
-        backend = DensityMatrixBackend(randpattern, input_state=graphix.states.BasicStates.MINUS)
+        backend = DensityMatrixBackend()
+        backend.add_nodes(randpattern.input_nodes, data=graphix.states.BasicStates.MINUS)
         dm = DensityMatrix(nqubit=nqb, data=graphix.states.BasicStates.MINUS)
         assert np.allclose(dm.rho, backend.state.rho)
-        # assert backend.state.Nqubit == 1
+        # assert backend.state.nqubit == 1
         assert backend.state.dims() == (2**nqb, 2**nqb)
 
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
@@ -887,12 +886,13 @@ class TestDensityMatrixBackend:
 
         expected_dm = DensityMatrix(data=states).rho
 
-        backend = DensityMatrixBackend(randpattern, input_state=states)
+        backend = DensityMatrixBackend()
+        backend.add_nodes(randpattern.input_nodes, data=states)
         dm = backend.state
 
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
-        assert backend.Nqubit == nqb
+        assert backend.nqubit == nqb
 
     def test_init_fail(self, fx_rng: Generator, nqb, randpattern) -> None:
         rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
@@ -901,27 +901,23 @@ class TestDensityMatrixBackend:
 
         # test init from State Iterable with incorrect size
         with pytest.raises(ValueError):
-            _backend = DensityMatrixBackend(randpattern, input_state=states)
-
-        # don't provide required pattern argument
-        with pytest.raises(TypeError):
-            DensityMatrixBackend()
+            backend = DensityMatrixBackend()
+            backend.add_nodes(randpattern.input_nodes, data=states)
 
     def test_init_success_2(self) -> None:
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile().pattern
-        backend = DensityMatrixBackend(pattern)
-        assert backend.pattern == pattern
-        assert backend.results == pattern.results
-        assert backend.node_index == [0]
-        assert backend.Nqubit == 1
-        assert backend.max_qubit_num == 12
+        backend = DensityMatrixBackend()
+        backend.add_nodes(pattern.input_nodes)
+        assert list(backend.node_index) == [0]
+        assert backend.nqubit == 1
 
     def test_add_nodes(self) -> None:
         circ = Circuit(1)
         pattern = circ.transpile().pattern
-        backend = DensityMatrixBackend(pattern)
+        backend = DensityMatrixBackend()
+        backend.add_nodes(pattern.input_nodes)
         backend.add_nodes([1])
         expected_matrix = np.array([0.25] * 16).reshape(4, 4)
         assert np.allclose(backend.state.rho, expected_matrix)
@@ -929,7 +925,8 @@ class TestDensityMatrixBackend:
     def test_entangle_nodes(self) -> None:
         circ = Circuit(1)
         pattern = circ.transpile().pattern
-        backend = DensityMatrixBackend(pattern)
+        backend = DensityMatrixBackend()
+        backend.add_nodes(pattern.input_nodes)
         backend.add_nodes([1])
         backend.entangle_nodes((0, 1))
         expected_matrix = np.array([[1, 1, 1, -1], [1, 1, 1, -1], [1, 1, 1, -1], [-1, -1, -1, 1]]) / 4
@@ -938,66 +935,53 @@ class TestDensityMatrixBackend:
         backend.entangle_nodes((0, 1))
         assert np.allclose(backend.state.rho, np.array([0.25] * 16).reshape(4, 4))
 
-    def test_measure(self) -> None:
+    @pytest.mark.parametrize("pr_calc", [False, True])
+    def test_measure(self, pr_calc) -> None:
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile().pattern
 
-        backend = DensityMatrixBackend(pattern)
+        measure_method = DefaultMeasureMethod()
+        backend = DensityMatrixBackend(pr_calc=pr_calc)
+        backend.add_nodes(pattern.input_nodes)
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
+        measure_method.measure(backend, pattern[-4])
 
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
-        assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
-
-    def test_measure_pr_calc(self) -> None:
-        # circuit there just to provide a measurement command to try out. Weird.
-        circ = Circuit(1)
-        circ.rx(0, np.pi / 2)
-        pattern = circ.transpile().pattern
-
-        backend = DensityMatrixBackend(pattern, pr_calc=True)
-        backend.add_nodes([1, 2])
-        backend.entangle_nodes((0, 1))
-        backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
-
-        # 3-qubit linear graph state: |+0+> + |-1->
-        expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
-        expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
-
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
 
     def test_correct_byproduct(self) -> None:
         circ = Circuit(1)
         circ.rx(0, np.pi / 2)
         pattern = circ.transpile().pattern
-
-        backend = DensityMatrixBackend(pattern)
+        measure_method = DefaultMeasureMethod()
+        backend = DensityMatrixBackend()
+        backend.add_nodes(pattern.input_nodes)
         # node 0 initialized in Backend
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
-        backend.measure(backend.pattern[-3])
-        backend.correct_byproduct(backend.pattern[-2])
-        backend.correct_byproduct(backend.pattern[-1])
-        backend.finalize()
+        measure_method.measure(backend, pattern[-4])
+        measure_method.measure(backend, pattern[-3])
+        backend.correct_byproduct(pattern[-2], measure_method)
+        backend.correct_byproduct(pattern[-1], measure_method)
+        backend.finalize(pattern.output_nodes)
         rho = backend.state.rho
 
-        backend = StatevectorBackend(pattern)
+        backend = StatevectorBackend()
+        backend.add_nodes(pattern.input_nodes)
         # node 0 initialized in Backend
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        backend.measure(backend.pattern[-4])
-        backend.measure(backend.pattern[-3])
-        backend.correct_byproduct(backend.pattern[-2])
-        backend.correct_byproduct(backend.pattern[-1])
-        backend.finalize()
+        measure_method.measure(backend, pattern[-4])
+        measure_method.measure(backend, pattern[-3])
+        backend.correct_byproduct(pattern[-2], measure_method)
+        backend.correct_byproduct(pattern[-1], measure_method)
+        backend.finalize(pattern.output_nodes)
         psi = backend.state.psi
 
         assert np.allclose(rho, np.outer(psi, psi.conj()))

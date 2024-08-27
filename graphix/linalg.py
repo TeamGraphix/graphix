@@ -200,10 +200,10 @@ class MatGF2:
             rank of the matrix
         """
         if not self.is_canonical_form():
-            A = self.forward_eliminate(copy=True)[0]
+            mat_a = self.forward_eliminate(copy=True)[0]
         else:
-            A = self
-        nonzero_index = np.diag(A.data).nonzero()
+            mat_a = self
+        nonzero_index = np.diag(mat_a.data).nonzero()
         return len(nonzero_index[0])
 
     def forward_eliminate(self, b=None, copy=False):
@@ -222,7 +222,7 @@ class MatGF2:
 
         Returns
         -------
-        A: MatGF2
+        mat_a: MatGF2
             forward eliminated matrix
         b: MatGF2
             forward eliminated right hand side
@@ -232,26 +232,26 @@ class MatGF2:
             column permutation
         """
         if copy:
-            A = MatGF2(self.data)
+            mat_a = MatGF2(self.data)
         else:
-            A = self
+            mat_a = self
         if b is None:
-            b = np.zeros((A.data.shape[0], 1), dtype=int)
+            b = np.zeros((mat_a.data.shape[0], 1), dtype=int)
         b = MatGF2(b)
         # Remember the row and column order
-        row_permutation = [i for i in range(A.data.shape[0])]
-        col_permutation = [i for i in range(A.data.shape[1])]
+        row_permutation = [i for i in range(mat_a.data.shape[0])]
+        col_permutation = [i for i in range(mat_a.data.shape[1])]
 
         # Gauss-Jordan Elimination
-        max_rank = min(A.data.shape)
+        max_rank = min(mat_a.data.shape)
         for row in range(max_rank):
-            if A.data[row, row] == 0:
-                pivot = A.data[row:, row:].nonzero()
+            if mat_a.data[row, row] == 0:
+                pivot = mat_a.data[row:, row:].nonzero()
                 if len(pivot[0]) == 0:
                     break
                 pivot_row = pivot[0][0] + row
                 if pivot_row != row:
-                    A.swap_row(row, pivot_row)
+                    mat_a.swap_row(row, pivot_row)
                     b.swap_row(row, pivot_row)
                     former_row = row_permutation.index(row)
                     former_pivot_row = row_permutation.index(pivot_row)
@@ -259,17 +259,17 @@ class MatGF2:
                     row_permutation[former_pivot_row] = row
                 pivot_col = pivot[1][0] + row
                 if pivot_col != row:
-                    A.swap_col(row, pivot_col)
+                    mat_a.swap_col(row, pivot_col)
                     former_col = col_permutation.index(row)
                     former_pivot_col = col_permutation.index(pivot_col)
                     col_permutation[former_col] = pivot_col
                     col_permutation[former_pivot_col] = row
-                assert A.data[row, row] == 1
-            eliminate_rows = set(A.data[:, row].nonzero()[0]) - {row}
+                assert mat_a.data[row, row] == 1
+            eliminate_rows = set(mat_a.data[:, row].nonzero()[0]) - {row}
             for eliminate_row in eliminate_rows:
-                A.data[eliminate_row, :] += A.data[row, :]
+                mat_a.data[eliminate_row, :] += mat_a.data[row, :]
                 b.data[eliminate_row, :] += b.data[row, :]
-        return A, b, row_permutation, col_permutation
+        return mat_a, b, row_permutation, col_permutation
 
     def backward_substitute(self, b):
         """backward substitute the matrix
