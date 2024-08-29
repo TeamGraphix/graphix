@@ -67,7 +67,7 @@ def find_gflow(
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
-    mode: str(optional)
+    mode: str
         The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
 
         - "single": Returrns a single solution
@@ -77,7 +77,7 @@ def find_gflow(
         - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
           requiring user substitution to get a concrete answer.
 
-        Default is "single".
+        Optional. Default is "single".
 
     Returns
     -------
@@ -390,7 +390,7 @@ def find_pauliflow(
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     meas_angles: dict
         measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
-    mode: str(optional)
+    mode: str
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
 
         - "single": Returrns a single solution
@@ -400,7 +400,7 @@ def find_pauliflow(
         - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
           requiring user substitution to get a concrete answer.
 
-        Default is "single".
+        Optional. Default is "single".
 
     Returns
     -------
@@ -650,7 +650,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     Parameters
     ----------
-    pattern: graphix.Pattern object
+    pattern: Pattern
         pattern to be based on
 
     Returns
@@ -703,7 +703,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     Parameters
     ----------
-    pattern: graphix.Pattern object
+    pattern: Pattern
         pattern to be based on
 
     Returns
@@ -758,12 +758,14 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
 
     Parameters
     ----------
-    pattern: graphix.Pattern object
+    pattern: Pattern
         pattern to be based on
-    mode: str(optional)
+    mode: str
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are two options
-            - "single": Returrns a single solution
+            - "single": Returns a single solution
             - "all": Returns all possible solutions
+
+        Optional. Default is "single".
     Returns
     -------
     p: dict
@@ -918,7 +920,7 @@ def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
 
     Parameters
     ----------
-    graph : networkx.Graph
+    graph : nx.Graph
         underlying graph.
     vertices : set
         set of nodes indices to find odd neighbors
@@ -1135,8 +1137,8 @@ def verify_flow(
         graph (incl. in and out)
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
-    meas_planes: dict[int, str](optional)
-        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    meas_planes: dict[int, str]
+        optional: measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
 
     Returns
@@ -1194,7 +1196,7 @@ def verify_gflow(
         set of node labels for output
     gflow: dict[int, set]
         gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
-        .. seealso:: :func:`gflow.gflow`
+        .. seealso:: :func:`find_gflow`
     meas_planes: dict[int, str]
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 

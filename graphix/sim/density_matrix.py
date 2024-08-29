@@ -36,7 +36,7 @@ class DensityMatrix(State):
         `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
-        - an iterable of iterable of scalars (A 2**n x 2**n numerical density matrix)
+        - an iterable of iterable of scalars (A `2**n x 2**n` numerical density matrix)
         - a `graphix.statevec.DensityMatrix` object
         - a `graphix.statevec.Statevector` object
 
@@ -48,8 +48,8 @@ class DensityMatrix(State):
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[numbers.Number] | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]], optional
-        :param nqubit: number of qubits to prepare, defaults to None
+        :type data: Data
+        :param nqubit: number of qubits to prepare, defaults to `None`
         :type nqubit: int, optional
         """
         assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0

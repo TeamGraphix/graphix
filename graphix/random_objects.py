@@ -59,6 +59,7 @@ def rand_dm(
     :type dm_dtype: bool, optional
     :return: the density matrix in the specified format.
     :rtype: DensityMatrix | np.ndarray
+
     .. note::
         Thanks to Ulysse Chabaud.
     .. warning::
@@ -114,7 +115,7 @@ def rand_channel_kraus(
     dim: int, rng: Generator | None = None, rank: int | None = None, sig: float = 1 / np.sqrt(2)
 ) -> KrausChannel:
     """
-    Returns a random :class:`graphix.sim.channels.KrausChannel`object of given dimension and rank following the method of
+    Returns a random :class:`graphix.sim.channels.KrausChannel` object of given dimension and rank following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
 
     Parameters
@@ -123,8 +124,8 @@ def rand_channel_kraus(
         Linear dimension of the (square) matrix of each Kraus operator.
         Only square operators so far.
 
-    rank : int (default to full rank dimension**2)
-        Choi rank ie the number of Kraus operators. Must be between one and dim**2.
+    rank : int (default to full `rank dimension**2`)
+        Choi rank ie the number of Kraus operators. Must be between one and `dim**2`.
 
     sig : see rand_cpx
 

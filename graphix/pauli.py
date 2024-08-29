@@ -280,10 +280,10 @@ class Plane(enum.Enum):
 
 class Pauli:
     """
-    Pauli gate: u * {I, X, Y, Z} where u is a complex unit
+    Pauli gate: `u * {I, X, Y, Z}` where u is a complex unit
 
-    Pauli gates can be multiplied with other Pauli gates (with @),
-    with complex units and unit constants (with *),
+    Pauli gates can be multiplied with other Pauli gates (with `@`),
+    with complex units and unit constants (with `*`),
     and can be negated.
     """
 
@@ -310,7 +310,7 @@ class Pauli:
         return self.__unit
 
     @property
-    def matrix(self) -> np.ndarray:
+    def matrix(self) -> npt.NDArray:
         """
         Return the matrix of the Pauli gate.
         """

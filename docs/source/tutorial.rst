@@ -73,7 +73,7 @@ We can use the in-built visualization tool to view the pattern,
 
 
 Universal gate sets
-------------------
+-------------------
 
 As a more complex example than above, we show measurement patterns and graph states for CNOT and single-qubit general rotation which makes MBQC universal:
 
@@ -321,7 +321,7 @@ With this, we only need the memory space for three qubits.
 
 This procedure is more effective when the resource state size is large compared to the logical input qubit count;
 for example, the three-qubit `quantum Fourier transform (QFT)
-<https://en.wikipedia.org/wiki/Quantum_Fourier_transform>`_ circuit requires 12 qubits in the resource state after :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` (see the code in :ref:`QFT example <gallery:qft>`); with the proper reordering of the commands, the max_space reduces to 4.
+<https://en.wikipedia.org/wiki/Quantum_Fourier_transform>`_ circuit requires 12 qubits in the resource state after :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` (see the code in :ref:`QFT example <sphx_glr_gallery_qft_with_tn.py>`); with the proper reordering of the commands, the max_space reduces to 4.
 In fact, for patterns transpiled from gate network, the minimum `space` we can realize is typically :math:`n_w+1` where :math:`n_w` is the width of the circuit.
 
 

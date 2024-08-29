@@ -18,14 +18,9 @@ class KrausChannel:
         number of qubits acted on by the Kraus operators
     size : int
         number of Kraus operators (== Choi rank)
-    kraus_ops : array_like(dict())
+    kraus_ops : list(dict())
         the data in format
-        array_like(dict): [{coef: scalar, operator: array_like}, {coef: scalar, operator: array_like}, ...]
-
-    Returns
-    -------
-    Channel object
-        containing the corresponding Kraus operators
+        list(dict): [{coef: scalar, operator: list}, {coef: scalar, operator: list}, ...]
 
     """
 
@@ -33,15 +28,15 @@ class KrausChannel:
         """
         Parameters
         ----------
-        kraus_data : array_like
+        kraus_data : list
             array of Kraus operator data.
-            array_like(dict): [{coef: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
+            list(dict): [{coef: scalar, operator: list}, {parameter: scalar, operator: list}, ...]
             only works for square Kraus operators
 
         Raises
         ------
         ValueError
-            If empty array_like is provided.
+            If empty list is provided.
         """
 
         # check there is data
@@ -85,7 +80,7 @@ def dephasing_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    :class:`graphix.channel.KrausChannel` object
+    :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
     return KrausChannel(
@@ -148,7 +143,7 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    :class:`graphix.channel.KrausChannel` object
+    :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
 
@@ -188,7 +183,7 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    :class:`graphix.channel.KrausChannel` object
+    :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
 

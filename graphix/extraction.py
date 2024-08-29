@@ -158,8 +158,8 @@ def create_resource_graph(node_ids: list[int], root: int | None = None, use_rust
 
     Returns
     -------
-    :class:`Cluster` object
-        Cluster object.
+    :class:`ResourceGraph` object
+        `ResourceGraph` object.
     """
     cluster_type = None
     edges = []

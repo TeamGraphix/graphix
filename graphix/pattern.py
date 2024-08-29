@@ -12,7 +12,7 @@ import typing_extensions
 
 import graphix.clifford
 import graphix.pauli
-from graphix import command
+from graphix import clifford, command
 from graphix._db import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
@@ -83,32 +83,11 @@ class Pattern:
 
     def add(self, cmd: Command) -> None:
         """add command to the end of the pattern.
-        an MBQC command is specified by a list of [type, node, attr], where
-
-            type : 'N', 'M', 'E', 'X', 'Z', 'S' or 'C'
-            nodes : int for 'N', 'M', 'X', 'Z', 'S', 'C' commands
-            nodes : tuple (i, j) for 'E' command
-            attr for N (node preparation):
-                none
-            attr for E (entanglement):
-                none
-            attr for M (measurement):
-                meas_plane : 'XY','YZ' or 'XZ'
-                angle : float, in radian / pi
-                s_domain : list
-                t_domain : list
-            attr for X:
-                signal_domain : list
-            attr for Z:
-                signal_domain : list
-            attr for S:
-                signal_domain : list
-            attr for C:
-                clifford_index : int
+        An MBQC command is an instance of :class:`graphix.command.Command`.
 
         Parameters
         ----------
-        cmd : list
+        cmd : :class:`graphix.command.Command`
             MBQC command.
         """
         if cmd.kind == CommandKind.N:
@@ -139,8 +118,7 @@ class Pattern:
 
         :param cmds: list of commands
 
-        :param input_nodes:  optional, list of input qubits
-        (by default, keep the same input nodes as before)
+        :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
@@ -260,7 +238,7 @@ class Pattern:
                 print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
             elif cmd.kind == CommandKind.C and (CommandKind.C in target):
                 count += 1
-                print(f"Clifford, node = {cmd.node}, Clifford index = {cmd.cliff_index}")
+                print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
 
         if len(self.__seq) > i + 1:
             print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
@@ -1066,14 +1044,14 @@ class Pattern:
                 if include_identity:
                     vops[cmd.node] = cmd.vop
             elif cmd.kind == CommandKind.C:
-                if cmd.cliff_index == 0:
+                if cmd.clifford == clifford.I:
                     if include_identity:
-                        vops[cmd.node] = cmd.cliff_index
+                        vops[cmd.node] = cmd.clifford.index
                 else:
                     if conj:
-                        vops[cmd.node] = CLIFFORD_CONJ[cmd.cliff_index]
+                        vops[cmd.node] = CLIFFORD_CONJ[cmd.clifford.index]
                     else:
-                        vops[cmd.node] = cmd.cliff_index
+                        vops[cmd.node] = cmd.clifford.index
         for out in self.output_nodes:
             if out not in vops.keys():
                 if include_identity:

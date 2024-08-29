@@ -136,7 +136,7 @@ class BaseGraphState(ABC):
 
         Returns
         ----------
-        iter
+        Iterator
             An iterator over (node, adjacency dictionary) for all nodes in the graph.
         """
         raise NotImplementedError
@@ -611,10 +611,10 @@ class BaseGraphState(ABC):
 
         Parameters
         ----------
-        fill_color : str, optional
-            fill color of nodes
-        kwargs : keyword arguments, optional
-            additional arguments to supply networkx.draw().
+        fill_color : str
+            optional, fill color of nodes
+        kwargs :
+            optional, additional arguments to supply networkx.draw().
         """
         nqubit = len(self.nodes)
         nodes = list(self.nodes)

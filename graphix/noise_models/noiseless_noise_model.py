@@ -9,9 +9,6 @@ from graphix.noise_models.noise_model import NoiseModel
 class NoiselessNoiseModel(NoiseModel):
     """Noiseless noise model for testing.
     Only return the identity channel.
-
-    :param NoiseModel: Parent abstract class class:`graphix.noise_model.NoiseModel`
-    :type NoiseModel: class
     """
 
     def prepare_qubit(self):

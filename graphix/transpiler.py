@@ -45,7 +45,7 @@ class SimulateResult:
     """
     The result of a simulation.
 
-    statevec : :class:`Statevec` object
+    statevec : :class:`graphix.sim.statevec.Statevec` object
     classical_measures : tuple[int,...], classical measures
     """
 
@@ -1580,7 +1580,7 @@ class Circuit:
 
         Parameters
         ----------
-        input_state : :class:`graphix.Statevec`
+        input_state : :class:`graphix.sim.statevec.Statevec`
 
         Returns
         -------
