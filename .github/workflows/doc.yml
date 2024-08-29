@@ -12,6 +12,8 @@ env:
 
 jobs:
   check-doc:
+    name: "Check documentation"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
