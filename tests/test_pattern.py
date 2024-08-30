@@ -102,7 +102,7 @@ class TestPattern:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(node=0, angle=0.5))
 
-        def simulate_and_measure():
+        def simulate_and_measure() -> int:
             sim = PatternSimulator(pattern, backend_type)
             sim.run()
             if backend_type == "statevector":
@@ -424,7 +424,7 @@ class TestPattern:
         assert compare_backend_result_with_statevec("statevector", state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int):
+    def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         c0, c1 = rng.integers(len(clifford.TABLE), size=2)
         pattern = Pattern(input_nodes=[0])
@@ -437,7 +437,7 @@ class TestPattern:
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 48))
-    def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int):
+    def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         x, z = rng.integers(2, size=2)
         c = rng.integers(len(clifford.TABLE))
