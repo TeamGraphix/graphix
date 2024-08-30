@@ -6,7 +6,10 @@ multiplications, conjugations and Pauli conjugations.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 import graphix.pauli
 from graphix._db import (
@@ -21,6 +24,17 @@ from graphix._db import (
 
 if TYPE_CHECKING:
     import numpy as np
+
+
+@dataclass
+class Domains:
+    """
+    Represent `X^sZ^t` where s and t are XOR of results from given sets of indices.
+    This representation is used in `Clifford.commute_domains`.
+    """
+
+    s_domain: set[int]
+    t_domain: set[int]
 
 
 class Clifford:
@@ -82,6 +96,30 @@ class Clifford:
         table = CLIFFORD_MEASURE[self.__index]
         symbol, sign = table[pauli.symbol.value]
         return pauli.unit * graphix.pauli.TABLE[symbol + 1][sign][False]
+
+    def commute_domains(self, domains: Domains) -> Domains:
+        """
+        Commute `X^sZ^t` with `C`.
+
+        Given `X^sZ^t`, return `X^s'Z^t'` such that `X^sZ^tC = CX^s'Z^t'`.
+
+        Note that applying the method to `self.conj` computes the reverse commutation:
+        indeed, `C†X^sZ^t = (X^sZ^tC)† = (CX^s'Z^t')† = X^s'Z^t'C†`.
+        """
+        s_domain = domains.s_domain
+        t_domain = domains.t_domain
+        for gate in self.hsz:
+            if gate == graphix.clifford.I:
+                pass
+            elif gate == graphix.clifford.H:
+                t_domain, s_domain = s_domain, t_domain
+            elif gate == graphix.clifford.S:
+                t_domain ^= s_domain
+            elif gate == graphix.clifford.Z:
+                pass
+            else:
+                raise RuntimeError(f"{gate} should be either I, H, S or Z.")
+        return Domains(s_domain, t_domain)
 
 
 TABLE = tuple(Clifford(i) for i in range(len(CLIFFORD)))

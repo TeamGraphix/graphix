@@ -10,6 +10,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from graphix import clifford
+from graphix.clifford import Domains
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
 
@@ -64,26 +65,14 @@ class M(BaseM):
     t_domain: set[Node] = set()
 
     def clifford(self, clifford_gate: Clifford) -> M:
-        s_domain = self.s_domain
-        t_domain = self.t_domain
-        for gate in clifford_gate.hsz:
-            if gate == clifford.I:
-                pass
-            elif gate == clifford.H:
-                t_domain, s_domain = s_domain, t_domain
-            elif gate == clifford.S:
-                t_domain ^= s_domain
-            elif gate == clifford.Z:
-                pass
-            else:
-                raise RuntimeError(f"{gate} should be either I, H, S or Z.")
+        domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
             node=self.node,
             plane=update.new_plane,
             angle=self.angle * update.coeff + update.add_term / np.pi,
-            s_domain=s_domain,
-            t_domain=t_domain,
+            s_domain=domains.s_domain,
+            t_domain=domains.t_domain,
         )
 
 
