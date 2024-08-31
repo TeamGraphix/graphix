@@ -1,4 +1,4 @@
-"""Functions to extract clusters from a given graph state."""
+"""Functions to extract fusion network from a given graph state."""
 
 from __future__ import annotations
 
