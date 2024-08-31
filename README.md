@@ -51,7 +51,7 @@ pattern.draw_graph()
 
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/de17c663-f607-44e2-945b-835f4082a940" alt="graph_flow" width="750">
 
-<small>note: this graph is generated from QAOA circuit, see [our example code](examples/qaoa.py). Arrows indicate the [*causal flow*](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. the vertical dashed partitions and the labels 'l:n' below indicate the execution *layers* or the order in the graph (measurements should happen from left to right, and nodes in the same layer can be measured simultaneously), based on the partial order associated with the (maximally-delayed) flow. </small>
+<small>note: this graph is generated from QAOA circuit, see [our example code](examples/qaoa.py). Arrows indicate the [_causal flow_](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310) of MBQC and dashed lines are the other edges of the graph. the vertical dashed partitions and the labels 'l:n' below indicate the execution _layers_ or the order in the graph (measurements should happen from left to right, and nodes in the same layer can be measured simultaneously), based on the partial order associated with the (maximally-delayed) flow. </small>
 
 ### preprocessing Pauli measurements
 
@@ -62,7 +62,7 @@ pattern.draw_graph()
 
 <img src="https://github.com/TeamGraphix/graphix/assets/33350509/3c30a4c9-f912-4a36-925f-2ff446a07c68" alt="graph_gflow" width="140">
 
-<small>(here, the graph is visualized based on [*generalized flow*](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
+<small>(here, the graph is visualized based on [_generalized flow_](https://iopscience.iop.org/article/10.1088/1367-2630/9/8/250).)</small>
 
 ### simulating the pattern
 
@@ -84,6 +84,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 ## Citing
 
 > Shinichi Sunami and Masato Fukushima, Graphix. (2023) <https://doi.org/10.5281/zenodo.7861382>
+
 <!--
 Update on the [arXiv paper](https://arxiv.org/pdf/2212.11975.pdf): [^1]
 
