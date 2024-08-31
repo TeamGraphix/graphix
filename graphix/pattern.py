@@ -5,6 +5,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -12,10 +13,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import typing_extensions
 
-import graphix.clifford
-import graphix.pauli
 from graphix import clifford, command
-from graphix._db import CLIFFORD_CONJ, CLIFFORD_TO_QASM3
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -302,7 +300,7 @@ class Pattern:
                 node_prop[cmd.node]["z_signal"] ^= cmd.domain
                 node_prop[cmd.node]["seq"].append(-3)
             elif kind == CommandKind.C:
-                node_prop[cmd.node]["vop"] = cmd.cliff_index
+                node_prop[cmd.node]["vop"] = cmd.clifford.index
                 node_prop[cmd.node]["seq"].append(-4)
             elif kind == CommandKind.S:
                 raise NotImplementedError()
@@ -318,7 +316,7 @@ class Pattern:
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 
-    def standardize(self, method="local"):
+    def standardize(self, method="direct"):
         """Execute standardization of the pattern.
 
         'standard' pattern is one where commands are sorted in the order of
@@ -331,6 +329,15 @@ class Pattern:
             'local' standardization is executed on LocalPattern class. In all cases, local pattern standardization is significantly faster than conventional one.
             defaults to 'local'
         """
+        if method == "direct":
+            self.standardize_direct()
+            return
+        if method not in {"local", "global"}:
+            raise ValueError("Invalid method")
+        warnings.warn(
+            f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1,
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
@@ -339,8 +346,73 @@ class Pattern:
             self._move_n_to_left()
             self._move_byproduct_to_right()
             self._move_e_after_n()
-        else:
-            raise ValueError("Invalid method")
+
+    def standardize_direct(self) -> None:
+        """Execute standardization of the pattern.
+
+        This algorithm sort the commands in the following order:
+        `N`, `E`, `M`, `C`, `Z`, `X`.
+        """
+        n_list = []
+        e_list = []
+        m_list = []
+        c_dict = {}
+        z_dict = {}
+        x_dict = {}
+
+        def add_correction_domain(
+            domain_dict: dict[command.Node, command.Command], node: command.Node, domain: set[command.Node]
+        ) -> None:
+            if previous_domain := domain_dict.get(node):
+                previous_domain ^= domain
+            else:
+                domain_dict[node] = domain.copy()
+
+        for cmd in self:
+            if cmd.kind == CommandKind.N:
+                n_list.append(cmd)
+            elif cmd.kind == CommandKind.E:
+                for side in (0, 1):
+                    if s_domain := x_dict.get(cmd.nodes[side], None):
+                        add_correction_domain(z_dict, cmd.nodes[1 - side], s_domain)
+                e_list.append(cmd)
+            elif cmd.kind == CommandKind.M:
+                if clifford_gate := c_dict.pop(cmd.node, None):
+                    new_cmd = cmd.clifford(clifford_gate)
+                else:
+                    new_cmd = cmd.model_copy()
+                if t_domain := z_dict.pop(cmd.node, None):
+                    new_cmd.t_domain ^= t_domain
+                if s_domain := x_dict.pop(cmd.node, None):
+                    new_cmd.s_domain ^= s_domain
+                m_list.append(new_cmd)
+            elif cmd.kind == CommandKind.Z:
+                add_correction_domain(z_dict, cmd.node, cmd.domain)
+            elif cmd.kind == CommandKind.X:
+                add_correction_domain(x_dict, cmd.node, cmd.domain)
+            elif cmd.kind == CommandKind.C:
+                # If some `X^sZ^t` have been applied to the node, compute `X^s'Z^t'`
+                # such that `CX^sZ^t = X^s'Z^t'C` since the Clifford command will
+                # be applied first (i.e., in right-most position).
+                t_domain = z_dict.pop(cmd.node, set())
+                s_domain = x_dict.pop(cmd.node, set())
+                domains = cmd.clifford.conj.commute_domains(clifford.Domains(s_domain, t_domain))
+                if domains.t_domain:
+                    z_dict[cmd.node] = domains.t_domain
+                if domains.s_domain:
+                    x_dict[cmd.node] = domains.s_domain
+                # Each pattern command is applied by left multiplication: if a clifford `C`
+                # has been already applied to a node, applying a clifford `C'` to the same
+                # node is equivalent to apply `C'C` to a fresh node.
+                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, clifford.I)
+        self.__seq = [
+            *n_list,
+            *e_list,
+            *m_list,
+            *(command.C(node=node, clifford=clifford_gate) for node, clifford_gate in c_dict.items()),
+            *(command.Z(node=node, domain=domain) for node, domain in z_dict.items()),
+            *(command.X(node=node, domain=domain) for node, domain in x_dict.items()),
+        ]
 
     def is_standard(self):
         """Determine whether the command sequence is standard.
@@ -366,7 +438,7 @@ class Pattern:
         except StopIteration:
             return True
 
-    def shift_signals(self, method="local") -> dict[int, list[int]]:
+    def shift_signals(self, method="direct") -> dict[int, list[int]]:
         """Perform signal shifting procedure.
 
         Extract the t-dependence of the measurement into 'S' commands
@@ -387,16 +459,23 @@ class Pattern:
 
         Returns
         -------
-        swapped_dict : dict[int, list[int]]
-            for each node, the signal that have been shifted if the outcome is
-            swapped by the shift.
+        signal_dict : dict[int, list[int]]
+            For each node, the signal that have been shifted.
         """
+        if method == "direct":
+            return self.shift_signals_direct()
+        if method not in {"local", "global"}:
+            raise ValueError("Invalid method")
+        warnings.warn(
+            f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1,
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
-            swapped_dict = localpattern.shift_signals()
+            signal_dict = localpattern.shift_signals()
             self.__seq = localpattern.get_pattern().__seq
         elif method == "global":
-            swapped_dict = self.extract_signals()
+            signal_dict = self.extract_signals()
             target = self._find_op_to_be_moved(CommandKind.S, rev=True)
             while target is not None:
                 if target == len(self.__seq) - 1:
@@ -416,9 +495,55 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
-        else:
-            raise ValueError("Invalid method")
-        return swapped_dict
+        return signal_dict
+
+    def shift_signals_direct(self) -> dict[int, set[int]]:
+        """Perform signal shifting procedure."""
+        signal_dict = {}
+
+        def expand_domain(domain: set[command.Node]) -> None:
+            for node in domain & signal_dict.keys():
+                domain ^= signal_dict[node]
+
+        for i, cmd in enumerate(self):
+            if cmd.kind == CommandKind.M:
+                s_domain = set(cmd.s_domain)
+                t_domain = set(cmd.t_domain)
+                expand_domain(s_domain)
+                expand_domain(t_domain)
+                plane = cmd.plane
+                if plane == Plane.XY:
+                    # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
+                    #                  = S^t M^{XY,(-1)^s·α}
+                    #                  = S^t M^{XY,α} X^s
+                    if t_domain:
+                        signal_dict[cmd.node] = t_domain
+                        t_domain = set()
+                elif plane == Plane.XZ:
+                    # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
+                    #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
+                    #                  = M^{XZ,(-1)^{s+t}·α+sπ         (since (-1)^t·π ≡ π (mod 2π))
+                    #                  = S^s M^{XZ,(-1)^{s+t}·α}
+                    #                  = S^s M^{XZ,α} Z^{s+t}
+                    if s_domain:
+                        signal_dict[cmd.node] = s_domain
+                        t_domain ^= s_domain
+                        s_domain = set()
+                elif plane == Plane.YZ:
+                    # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
+                    #                  = S^s M^{YZ,(-1)^t·α}
+                    #                  = S^s M^{YZ,α} Z^t
+                    if s_domain:
+                        signal_dict[cmd.node] = s_domain
+                        s_domain = set()
+                if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
+                    self.__seq[i] = cmd.model_copy(update={"s_domain": s_domain, "t_domain": t_domain})
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
+                domain = set(cmd.domain)
+                expand_domain(domain)
+                if domain != cmd.domain:
+                    self.__seq[i] = cmd.model_copy(update={"domain": domain})
+        return signal_dict
 
     def _find_op_to_be_moved(self, op: CommandKind, rev=False, skipnum=0):
         """Find a command.
@@ -1055,16 +1180,16 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 if include_identity:
-                    vops[cmd.node] = cmd.vop
+                    vops[cmd.node] = clifford.I
             elif cmd.kind == CommandKind.C:
                 if cmd.clifford == clifford.I:
                     if include_identity:
-                        vops[cmd.node] = cmd.clifford.index
+                        vops[cmd.node] = cmd.clifford
                 else:
                     if conj:
-                        vops[cmd.node] = CLIFFORD_CONJ[cmd.clifford.index]
+                        vops[cmd.node] = cmd.clifford.conj
                     else:
-                        vops[cmd.node] = cmd.clifford.index
+                        vops[cmd.node] = cmd.clifford
         for out in self.output_nodes:
             if out not in vops.keys():
                 if include_identity:
@@ -1118,14 +1243,18 @@ class Pattern:
             'local' standardization is executed on LocalPattern class.
             defaults to 'local'
         """
+        warnings.warn(
+            "`Pattern.standardize_and_shift_signals` is deprecated. Please use `Pattern.standardize` and `Pattern.shift_signals` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
+            stacklevel=1,
+        )
         if method == "local":
             localpattern = self.get_local_pattern()
             localpattern.standardize()
             localpattern.shift_signals()
             self.__seq = localpattern.get_pattern().__seq
-        elif method == "global":
-            self.standardize()
-            self.shift_signals()
+        elif method == "global" or method == "direct":
+            self.standardize(method)
+            self.shift_signals(method)
         else:
             raise ValueError("Invalid method")
 
@@ -1600,7 +1729,7 @@ class CommandNode:
                 raise NotImplementedError("Patterns with more than one Z corrections are not supported")
             return command.Z(node=self.index, domain=self.z_signal)
         elif cmd == -4:
-            return command.C(node=self.index, cliff_index=self.vop)
+            return command.C(node=self.index, clifford=clifford.TABLE[self.vop])
 
     def get_signal_destination(self):
         """Get signal destination.
@@ -1931,14 +2060,12 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
-        cmd.clifford(graphix.clifford.get(vops[cmd.node]))
+        cmd.clifford(clifford.get(vops[cmd.node]))
         for cmd in pattern
         if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
-        command.C(node=index, clifford=graphix.clifford.get(vops[index]))
-        for index in pattern.output_nodes
-        if vops[index] != 0
+        command.C(node=index, clifford=clifford.get(vops[index])) for index in pattern.output_nodes if vops[index] != 0
     )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
 
@@ -2038,7 +2165,7 @@ def cmd_to_qasm3(cmd):
         yield "// measure qubit q" + str(qubit) + "\n"
         yield "bit c" + str(qubit) + ";\n"
         yield "float theta" + str(qubit) + " = 0;\n"
-        if plane == graphix.pauli.Plane.XY:
+        if plane == Plane.XY:
             if sdomain:
                 yield "int s" + str(qubit) + " = 0;\n"
                 for sid in sdomain:
@@ -2072,9 +2199,8 @@ def cmd_to_qasm3(cmd):
 
     elif name == "C":
         qubit = cmd.node
-        cid = cmd.cliff_index
         yield "// Clifford operations on qubit q" + str(qubit) + "\n"
-        for op in CLIFFORD_TO_QASM3[cid]:
+        for op in cmd.clifford.qasm3:
             yield str(op) + " q" + str(qubit) + ";\n"
         yield "\n"
 
@@ -2116,3 +2242,35 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
     if plane == Plane.YZ:
         return ExtractedSignal(s_domain=set(), t_domain=t_domain, signal=s_domain)
     typing_extensions.assert_never(plane)
+
+
+def shift_outcomes(outcomes: dict[int, int], signal_dict: dict[int, set[int]]) -> dict[int, int]:
+    """Update outcomes with shifted signals.
+
+    Shifted signals (as returned by the method
+    :func:`Pattern.shift_signals`) affect classical outputs
+    (measurements) while leaving the quantum state invariant.
+
+    This method updates the given `outcomes` by swapping the
+    measurements affected by signals. This can be used either to
+    transform the value of :data:`Pattern.results` into measurements
+    observed in the unshifted pattern, or vice versa.
+
+    Parameters
+    ----------
+    outcomes : dict[int, int]
+        Classical outputs.
+    signal_dict : dict[int, set[int]]
+        For each node, the signal that has been shifted
+        (as returned by :func:`Pattern.shift_signals`).
+
+    Returns
+    -------
+    shifted_outcomes : dict[int, int]
+        Classical outputs updated with shifted signals.
+
+    """
+    return {
+        node: 1 - outcome if sum(outcomes[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
+        for node, outcome in outcomes.items()
+    }
