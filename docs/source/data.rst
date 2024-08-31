@@ -89,7 +89,7 @@ This module defines standard data structure for gate seqence (circuit model) use
 
 
 :mod:`graphix.states` module
-+++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++
 
 .. automodule:: graphix.states
 
