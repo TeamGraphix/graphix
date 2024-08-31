@@ -28,7 +28,7 @@ class KrausChannel:
     """
 
     def __init__(self, kraus_data):
-        """Initialize `KraysChannel` given a Kraus operator.
+        """Initialize `KrausChannel` given a Kraus operator.
 
         Parameters
         ----------
