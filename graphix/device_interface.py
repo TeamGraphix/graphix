@@ -1,7 +1,6 @@
-"""Quantum hardware device interface
+"""Quantum hardware device interface.
 
 Runs MBQC command sequence on quantum hardware.
-
 """
 
 from __future__ import annotations
@@ -13,16 +12,16 @@ if TYPE_CHECKING:
 
 
 class PatternRunner:
-    """MBQC pattern runner
+    """MBQC pattern runner.
 
     Executes the measurement pattern.
     """
 
     def __init__(self, pattern: Pattern, backend: str = "ibmq", **kwargs) -> None:
-        """
+        """Instantiate a pattern runner.
 
         Parameters
-        -----------
+        ----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be executed.
         backend: str

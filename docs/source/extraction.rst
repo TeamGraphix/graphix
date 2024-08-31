@@ -4,7 +4,7 @@ Graph state generation
 :mod:`graphix.extraction` module
 ++++++++++++++++++++++++++++++++
 
-This provides functions to extract clusters from a given the graph state.
+This module provides functions to extract clusters from a given graph state.
 
 .. automodule:: graphix.extraction
 

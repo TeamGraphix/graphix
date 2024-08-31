@@ -103,7 +103,8 @@ class QNN:
           circuit: The quantum circuit object that the entangling layer will be added to.
           n_qubits: The number of qubits in the quantum circuit.
 
-        Returns:
+        Returns
+        -------
           If `n_qubits` is less than 2, nothing is returned. Otherwise, the function
         performs a linear entanglement operation on the `n_qubits` qubits in the
         given `circuit` using CNOT gates and does not return anything.
@@ -131,7 +132,8 @@ class QNN:
         the quantum circuit, `n_qubits` is the number of qubits in the quantum circuit,
         `n_features` is the number of features in the input data.
 
-        Returns:
+        Returns
+        -------
           a quantum circuit object that has been constructed using the input parameters
         and the parameters passed to the function.
         """
@@ -157,7 +159,8 @@ class QNN:
         Args:
           sv: State vector represented as a numpy array.
 
-        Returns:
+        Returns
+        -------
           the expectation value of a quantum observable.
         """
         exp_val = self.obs @ sv
@@ -175,7 +178,8 @@ class QNN:
         construct a quantum circuit. The specific details of what these parameters
         represent is described in  `data_reuploading_circuit` method.
 
-        Returns:
+        Returns
+        -------
           the expectation value of a quantum circuit, which is computed using the
         statevector of the output state of the circuit.
         """
@@ -204,7 +208,8 @@ class QNN:
           y: `y` is a numpy array containing the actual target values for the given
         input data `x`. Each value in `y` is either -1 or 1.
 
-        Returns:
+        Returns
+        -------
           the cost value
         """
         y_pred = [self.compute_expectation(data_point, params) for data_point in x]
@@ -246,7 +251,8 @@ class QNN:
           maxiter: Maximum number of iterations that the optimization algorithm will
         perform during the training process. Defaults to 5
 
-        Returns:
+        Returns
+        -------
           The function `fit` returns the result of the optimization process performed
         by the `minimize` function from the `scipy.optimize` module.
         """

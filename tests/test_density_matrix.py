@@ -225,10 +225,10 @@ class TestDensityMatrix:
             dm.expectation_single(op, nqb + 3)
 
     def test_expectation_single_success(self, fx_rng: Generator) -> None:
-        """compare to pure state case
+        """Compare to pure state case
         hence only pure states
-        but by linearity ok"""
-
+        but by linearity ok
+        """
         nqb = fx_rng.integers(1, 4)
         # NOTE a statevector object so can't use its methods
         target_qubit = fx_rng.integers(0, nqb)
@@ -752,7 +752,6 @@ class TestDensityMatrix:
         test random 1-qubit channel.
         Especially checks for complex parameters.
         """
-
         # check against statevector backend by hand for now.
         # create random density matrix
 
@@ -804,7 +803,6 @@ class TestDensityMatrix:
         test random 2-qubit channel on a rank 1 dm (pure state). Generalizes by linearity.
         Especially checks for complex parameters.
         """
-
         nqubits = fx_rng.integers(2, 5)
 
         # target qubits indices

@@ -1,4 +1,4 @@
-"""Functionality for converting between OpenGraphs and PyZX
+"""Functionality for converting between OpenGraphs and PyZX.
 
 These functions are held in their own file rather than including them in the
 OpenGraph class because we want PyZX to be an optional dependency.
@@ -101,7 +101,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph:
 
 
 def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
-    """Constructs an Optyx Open Graph from a PyZX graph.
+    """Construct an Optyx Open Graph from a PyZX graph.
 
     This method may add additional nodes to the graph so that it adheres
     with the definition of an OpenGraph. For instance, if the final node on

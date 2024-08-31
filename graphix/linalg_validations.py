@@ -1,13 +1,12 @@
+"""Validation functions for linear algebra."""
+
 from __future__ import annotations
 
 import numpy as np
 
 
 def check_square(matrix: np.ndarray) -> bool:
-    """
-    check if matrix is a square matrix with a power of 2 dimension.
-    """
-
+    """Check if matrix is a square matrix with a power of 2 dimension."""
     if len(matrix.shape) != 2:
         raise ValueError(f"The object has {len(matrix.shape)} axes but must have 2 to be a matrix.")
     if matrix.shape[0] != matrix.shape[1]:
@@ -19,7 +18,7 @@ def check_square(matrix: np.ndarray) -> bool:
 
 
 def truncate(s: str, max_length: int = 80, ellipsis: str = "...") -> str:
-    "Auxilliary function to truncate a long string for formatting error messages."
+    """Auxilliary function to truncate a long string for formatting error messages."""
     if len(s) <= max_length:
         return s
     return s[: max_length - len(ellipsis)] + ellipsis
@@ -27,7 +26,7 @@ def truncate(s: str, max_length: int = 80, ellipsis: str = "...") -> str:
 
 def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     """
-    check if a density matrix is positive semidefinite by diagonalizing.
+    Check if a density matrix is positive semidefinite by diagonalizing.
 
     Parameters
     ----------
@@ -36,7 +35,6 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     tol : float
         tolerance on the small negatives. Default 1e-15.
     """
-
     evals = np.linalg.eigvalsh(matrix)
 
     if not all(evals >= -tol):
@@ -46,26 +44,21 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
 
 
 def check_hermitian(matrix: np.ndarray) -> bool:
-    """
-    check if matrix is hermitian. After check_square.
-    """
-
+    """Check if matrix is hermitian. After :func:`check_square`."""
     if not np.allclose(matrix, matrix.transpose().conjugate()):
         raise ValueError("The matrix is not Hermitian.")
     return True
 
 
 def check_unit_trace(matrix: np.ndarray) -> bool:
-    """
-    check if matrix has trace 1. After check_square.
-    """
-
+    """Check if matrix has trace 1. After :func:`check_square`."""
     if not np.allclose(matrix.trace(), 1.0):
         raise ValueError("The matrix does not have unit trace.")
     return True
 
 
 def check_data_normalization(data: list | tuple | np.ndarray) -> bool:
+    """Check that data is normalized."""
     # NOTE use np.conjugate() instead of object.conj() to certify behaviour when using non-numpy float/complex types
     opsu = np.array([i["coef"] * np.conj(i["coef"]) * i["operator"].conj().T @ i["operator"] for i in data])
 
@@ -75,6 +68,7 @@ def check_data_normalization(data: list | tuple | np.ndarray) -> bool:
 
 
 def check_data_dims(data: list | tuple | np.ndarray) -> bool:
+    """Check that of Kraus operators have the same dimension."""
     # convert to set to remove duplicates
     dims = set([i["operator"].shape for i in data])
 
@@ -89,6 +83,7 @@ def check_data_dims(data: list | tuple | np.ndarray) -> bool:
 
 
 def check_data_values_type(data: list | tuple | np.ndarray) -> bool:
+    """Check the types of Kraus operators."""
     if not all(
         isinstance(i, dict) for i in data
     ):  # ni liste ni ensemble mais iterable (lazy) pas stocké, executé au besoin
@@ -111,6 +106,7 @@ def check_data_values_type(data: list | tuple | np.ndarray) -> bool:
 
 
 def check_rank(data: list | tuple | np.ndarray) -> bool:
+    """Check the rank of Kraus operators."""
     # already checked that the data is list of square matrices
     if len(data) > data[0]["operator"].shape[0] ** 2:
         raise ValueError(

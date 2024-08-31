@@ -1,4 +1,4 @@
-"""Gate-to-MBQC transpiler
+"""Gate-to-MBQC transpiler.
 
 accepts desired gate operations and transpile into MBQC measurement patterns.
 
@@ -68,6 +68,8 @@ class Circuit:
 
     def __init__(self, width: int):
         """
+        Construct a circuit.
+
         Parameters
         ----------
         width : int
@@ -78,10 +80,10 @@ class Circuit:
         self.active_qubits = set(range(width))
 
     def cnot(self, control: int, target: int):
-        """CNOT gate
+        """Apply a CNOT gate.
 
         Parameters
-        ---------
+        ----------
         control : int
             control qubit
         target : int
@@ -93,10 +95,10 @@ class Circuit:
         self.instruction.append(instruction.CNOT(control=control, target=target))
 
     def swap(self, qubit1: int, qubit2: int):
-        """SWAP gate
+        """Apply a SWAP gate.
 
         Parameters
-        ---------
+        ----------
         qubit1 : int
             first qubit to be swapped
         qubit2 : int
@@ -108,10 +110,10 @@ class Circuit:
         self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)))
 
     def h(self, qubit: int):
-        """Hadamard gate
+        """Apply a Hadamard gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         """
@@ -119,10 +121,10 @@ class Circuit:
         self.instruction.append(instruction.H(target=qubit))
 
     def s(self, qubit: int):
-        """S gate
+        """Apply an S gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         """
@@ -130,10 +132,10 @@ class Circuit:
         self.instruction.append(instruction.S(target=qubit))
 
     def x(self, qubit):
-        """Pauli X gate
+        """Apply a Pauli X gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         """
@@ -141,10 +143,10 @@ class Circuit:
         self.instruction.append(instruction.X(target=qubit))
 
     def y(self, qubit: int):
-        """Pauli Y gate
+        """Apply a Pauli Y gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         """
@@ -152,10 +154,10 @@ class Circuit:
         self.instruction.append(instruction.Y(target=qubit))
 
     def z(self, qubit: int):
-        """Pauli Z gate
+        """Apply a Pauli Z gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         """
@@ -163,10 +165,10 @@ class Circuit:
         self.instruction.append(instruction.Z(target=qubit))
 
     def rx(self, qubit: int, angle: float):
-        """X rotation gate
+        """Apply an X rotation gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         angle : float
@@ -176,10 +178,10 @@ class Circuit:
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
     def ry(self, qubit: int, angle: float):
-        """Y rotation gate
+        """Apply a Y rotation gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         angle : float
@@ -189,10 +191,10 @@ class Circuit:
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
     def rz(self, qubit: int, angle: float):
-        """Z rotation gate
+        """Apply a Z rotation gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         angle : float
@@ -202,7 +204,8 @@ class Circuit:
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
     def rzz(self, control: int, target: int, angle: float):
-        r"""ZZ-rotation gate.
+        r"""Apply a ZZ-rotation gate.
+
         Equivalent to the sequence
         CNOT(control, target),
         Rz(target, angle),
@@ -212,7 +215,7 @@ class Circuit:
         :math:`e^{-i \frac{\theta}{2} Z_c Z_t}`.
 
         Parameters
-        ---------
+        ----------
         control : int
             control qubit
         target : int
@@ -225,7 +228,7 @@ class Circuit:
         self.instruction.append(instruction.RZZ(control=control, target=target, angle=angle))
 
     def ccx(self, control1: int, control2: int, target: int):
-        r"""CCX (Toffoli) gate.
+        r"""Apply a CCX (Toffoli) gate.
 
         Prameters
         ---------
@@ -243,10 +246,10 @@ class Circuit:
         self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
 
     def i(self, qubit: int):
-        """identity (teleportation) gate
+        """Apply an identity (teleportation) gate.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         """
@@ -254,12 +257,12 @@ class Circuit:
         self.instruction.append(instruction.I(target=qubit))
 
     def m(self, qubit: int, plane: Plane, angle: float):
-        """measure a quantum qubit
+        """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
 
         Parameters
-        ---------
+        ----------
         qubit : int
             target qubit
         plane : Plane
@@ -270,7 +273,7 @@ class Circuit:
         self.active_qubits.remove(qubit)
 
     def transpile(self, opt: bool = False) -> TranspileResult:
-        """gate-to-MBQC transpile function.
+        """Transpile the circuit to a pattern.
 
         Parameters
         ----------
@@ -278,7 +281,7 @@ class Circuit:
             Whether or not to use pre-optimized gateset with local-Clifford decoration.
 
         Returns
-        --------
+        -------
         result : :class:`TranspileResult` object
         """
         n_node = self.width
@@ -408,7 +411,8 @@ class Circuit:
         return TranspileResult(pattern, tuple(classical_outputs))
 
     def standardize_and_transpile(self, opt: bool = True) -> TranspileResult:
-        """gate-to-MBQC transpile function.
+        """Transpile the circuit to a standardized pattern.
+
         Commutes all byproduct through gates, instead of through measurement
         commands, to generate standardized measurement pattern.
 
@@ -418,7 +422,7 @@ class Circuit:
             Whether or not to use pre-optimized gateset with local-Clifford decoration.
 
         Returns
-        --------
+        -------
         pattern : :class:`graphix.pattern.Pattern` object
         """
         self._n: list[N] = []
@@ -814,7 +818,7 @@ class Circuit:
         if correction_instr.target == rx_instr.target:
             if correction_instr.kind == instruction.InstructionKind.ZC:
                 # add to the s-domain
-                extend_domain(self._m[rx_instr.meas_index], correction_instr.domain)
+                _extend_domain(self._m[rx_instr.meas_index], correction_instr.domain)
                 self._commute_with_following(target)
             else:
                 self._commute_with_following(target)
@@ -831,7 +835,7 @@ class Circuit:
         assert ry_instr.kind == instruction.InstructionKind.RY
         if correction_instr.target == ry_instr.target:
             # add to the s-domain
-            extend_domain(self._m[ry_instr.meas_index], correction_instr.domain)
+            _extend_domain(self._m[ry_instr.meas_index], correction_instr.domain)
             self._commute_with_following(target)
         else:
             self._commute_with_following(target)
@@ -847,7 +851,7 @@ class Circuit:
         if correction_instr.target == rz_instr.target:
             if correction_instr.kind == instruction.InstructionKind.XC:
                 # add to the s-domain
-                extend_domain(self._m[rz_instr.meas_index], correction_instr.domain)
+                _extend_domain(self._m[rz_instr.meas_index], correction_instr.domain)
                 self._commute_with_following(target)
             else:
                 self._commute_with_following(target)
@@ -867,13 +871,13 @@ class Circuit:
             cond2 = correction_instr.target == rzz_instr.target
             if cond or cond2:
                 # add to the s-domain
-                extend_domain(self._m[rzz_instr.meas_index], correction_instr.domain)
+                _extend_domain(self._m[rzz_instr.meas_index], correction_instr.domain)
         self._commute_with_following(target)
 
     def _commute_with_following(self, target: int):
-        """Internal method to perform the commutation of
-        two consecutive commands that commutes.
-        commutes the target command with the following command.
+        """Perform the commutation of two consecutive commands that commutes.
+
+        Commutes the target command with the following command.
 
         Parameters
         ----------
@@ -885,7 +889,8 @@ class Circuit:
         self._instr.insert(target, a)
 
     def _find_byproduct_to_move(self, rev: bool = False, skipnum: int = 0):
-        """Internal method for reordering commands
+        """Find command to move.
+
         Parameters
         ----------
         rev : bool
@@ -915,7 +920,7 @@ class Circuit:
         return target
 
     def _move_byproduct_to_right(self):
-        """Internal method to move the byproduct 'gate' to the end of sequence, using the commutation relations"""
+        """Move the byproduct 'gate' to the end of sequence, using the commutation relations."""
         moved = 0  # number of moved op
         target = self._find_byproduct_to_move(rev=True, skipnum=moved)
         while target != "end":
@@ -953,10 +958,10 @@ class Circuit:
     def _cnot_command(
         cls, control_node: int, target_node: int, ancilla: Sequence[int]
     ) -> tuple[int, int, list[command.Command]]:
-        """MBQC commands for CNOT gate
+        """MBQC commands for CNOT gate.
 
         Parameters
-        ---------
+        ----------
         control_node : int
             control node on graph
         target : int
@@ -965,7 +970,7 @@ class Circuit:
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         control_out : int
             control node on graph after the gate
         target_out : int
@@ -987,10 +992,10 @@ class Circuit:
 
     @classmethod
     def _m_command(cls, input_node: int, plane: Plane, angle: float):
-        """MBQC commands for measuring qubit
+        """MBQC commands for measuring qubit.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             target node on graph
         plane : Plane
@@ -999,7 +1004,7 @@ class Circuit:
             angle of the measure (unit: pi radian)
 
         Returns
-        ---------
+        -------
         commands : list
             list of MBQC commands
         """
@@ -1008,17 +1013,17 @@ class Circuit:
 
     @classmethod
     def _h_command(cls, input_node: int, ancilla: int):
-        """MBQC commands for Hadamard gate
+        """MBQC commands for Hadamard gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             target node on graph
         ancilla : int
             ancilla node index to be added
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1032,17 +1037,17 @@ class Circuit:
 
     @classmethod
     def _s_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for S gate
+        """MBQC commands for S gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1060,17 +1065,17 @@ class Circuit:
 
     @classmethod
     def _x_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Pauli X gate
+        """MBQC commands for Pauli X gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1088,17 +1093,17 @@ class Circuit:
 
     @classmethod
     def _y_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Pauli Y gate
+        """MBQC commands for Pauli Y gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of four ints
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1121,17 +1126,17 @@ class Circuit:
 
     @classmethod
     def _z_command(cls, input_node: int, ancilla: Sequence[int]) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Pauli Z gate
+        """MBQC commands for Pauli Z gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1149,10 +1154,10 @@ class Circuit:
 
     @classmethod
     def _rx_command(cls, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
-        """MBQC commands for X rotation gate
+        """MBQC commands for X rotation gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of two ints
@@ -1161,7 +1166,7 @@ class Circuit:
             measurement angle in radian
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1179,10 +1184,10 @@ class Circuit:
 
     @classmethod
     def _ry_command(cls, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Y rotation gate
+        """MBQC commands for Y rotation gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of four ints
@@ -1191,7 +1196,7 @@ class Circuit:
             rotation angle in radian
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1214,10 +1219,10 @@ class Circuit:
 
     @classmethod
     def _rz_command(cls, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
-        """MBQC commands for Z rotation gate
+        """MBQC commands for Z rotation gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : list of two ints
@@ -1226,7 +1231,7 @@ class Circuit:
             measurement angle in radian
 
         Returns
-        ---------
+        -------
         out_node : int
             node on graph after the gate
         commands : list
@@ -1244,10 +1249,10 @@ class Circuit:
 
     @classmethod
     def _rz_command_opt(cls, input_node: int, ancilla: int, angle: float) -> tuple[int, list[command.Command]]:
-        """optimized MBQC commands for Z rotation gate
+        """Optimized MBQC commands for Z rotation gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : int
@@ -1256,7 +1261,7 @@ class Circuit:
             measurement angle in radian
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1272,10 +1277,10 @@ class Circuit:
     def _rzz_command_opt(
         cls, control_node: int, target_node: int, ancilla: int, angle: float
     ) -> tuple[int, int, list[command.Command]]:
-        """Optimized MBQC commands for ZZ-rotation gate
+        """Optimized MBQC commands for ZZ-rotation gate.
 
         Parameters
-        ---------
+        ----------
         input_node : int
             input node index
         ancilla : int
@@ -1284,7 +1289,7 @@ class Circuit:
             measurement angle in radian
 
         Returns
-        ---------
+        -------
         out_node_control : int
             control node on graph after the gate
         out_node_target : int
@@ -1308,10 +1313,10 @@ class Circuit:
         target_node: int,
         ancilla: Sequence[int],
     ) -> tuple[int, int, int, list[command.Command]]:
-        """MBQC commands for CCX gate
+        """MBQC commands for CCX gate.
 
         Parameters
-        ---------
+        ----------
         control_node1 : int
             first control node on graph
         control_node2 : int
@@ -1322,7 +1327,7 @@ class Circuit:
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         control_out1 : int
             first control node on graph after the gate
         control_out2 : int
@@ -1466,10 +1471,10 @@ class Circuit:
         target_node: int,
         ancilla: Sequence[int],
     ) -> tuple[int, int, int, list[command.Command]]:
-        """Optimized MBQC commands for CCX gate
+        """Optimized MBQC commands for CCX gate.
 
         Parameters
-        ---------
+        ----------
         control_node1 : int
             first control node on graph
         control_node2 : int
@@ -1480,7 +1485,7 @@ class Circuit:
             ancilla node indices to be added to graph
 
         Returns
-        ---------
+        -------
         control_out1 : int
             first control node on graph after the gate
         control_out2 : int
@@ -1548,14 +1553,14 @@ class Circuit:
         """Sort the node indices of ouput qubits.
 
         Parameters
-        ---------
+        ----------
         pattern : :meth:`~graphix.pattern.Pattern`
             pattern object
         output_nodes : list of int
             output node indices
 
         Returns
-        ---------
+        -------
         out_node : int
             control node on graph after the gate
         commands : list
@@ -1576,7 +1581,7 @@ class Circuit:
                 cmd.nodes = output_nodes[old_out.index(cmd.nodes)]
 
     def simulate_statevector(self, input_state: graphix.sim.statevec.Data | None = None) -> SimulateResult:
-        """Run statevector simulation of the gate sequence, using graphix.Statevec
+        """Run statevector simulation of the gate sequence.
 
         Parameters
         ----------
@@ -1587,7 +1592,6 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-
         if input_state is None:
             state = Statevec(nqubit=self.width)
         else:
@@ -1635,7 +1639,7 @@ class Circuit:
         return SimulateResult(state, classical_measures)
 
 
-def extend_domain(measure: M, domain: set[int]) -> None:
+def _extend_domain(measure: M, domain: set[int]) -> None:
     if measure.plane == Plane.XY:
         measure.s_domain ^= domain
     else:

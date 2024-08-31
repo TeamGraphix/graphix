@@ -390,7 +390,7 @@ def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
 
 
 def swap(circuit: Circuit, a: int, b: int) -> None:
-    """swap gate, decomposed"""
+    """Swap gate, decomposed"""
     circuit.cnot(a, b)
     circuit.cnot(b, a)
     circuit.cnot(a, b)

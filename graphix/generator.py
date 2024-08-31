@@ -1,7 +1,4 @@
-"""
-MBQC pattern generator
-
-"""
+"""MBQC pattern generator."""
 
 from __future__ import annotations
 

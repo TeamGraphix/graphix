@@ -23,8 +23,7 @@ class TestChannel:
     """Tests for Channel class"""
 
     def test_init_with_data_success(self, fx_rng: Generator) -> None:
-        "test for successful intialization"
-
+        """Test for successful intialization"""
         prob = fx_rng.uniform()
         mychannel = KrausChannel(
             [
@@ -39,8 +38,7 @@ class TestChannel:
         assert mychannel.is_normalized
 
     def test_init_with_data_fail(self, fx_rng: Generator) -> None:
-        "test for unsuccessful intialization"
-
+        """Test for unsuccessful intialization"""
         prob = fx_rng.uniform()
 
         # empty data

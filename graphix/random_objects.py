@@ -1,3 +1,5 @@
+"""Functions to generate various random objects."""
+
 from __future__ import annotations
 
 import functools
@@ -22,18 +24,14 @@ if TYPE_CHECKING:
 
 
 def rand_herm(sz: int, rng: Generator | None = None) -> npt.NDArray:
-    """
-    generate random hermitian matrix of size sz*sz
-    """
+    """Generate random hermitian matrix of size sz*sz."""
     rng = ensure_rng(rng)
     tmp = rng.random(size=(sz, sz)) + 1j * rng.random(size=(sz, sz))
     return tmp + tmp.conj().T
 
 
 def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray:
-    """
-    generate haar random unitary matrix of size sz*sz
-    """
+    """Generate haar random unitary matrix of size sz*sz."""
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
@@ -47,7 +45,8 @@ UNITS = np.array([1, 1j])
 def rand_dm(
     dim: int, rng: Generator | None = None, rank: int | None = None, dm_dtype=True
 ) -> DensityMatrix | npt.NDArray:
-    """Utility to generate random density matrices (positive semi-definite matrices with unit trace).
+    """Generate random density matrices (positive semi-definite matrices with unit trace).
+
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
 
     :param dim: Linear dimension of the (square) matrix
@@ -90,8 +89,8 @@ def rand_dm(
 
 
 def rand_gauss_cpx_mat(dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
-    """
-    Returns a square array of standard normal complex random variates.
+    """Return a square array of standard normal complex random variates.
+
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
 
     Parameters
@@ -114,8 +113,9 @@ def rand_gauss_cpx_mat(dim: int, rng: Generator | None = None, sig: float = 1 / 
 def rand_channel_kraus(
     dim: int, rng: Generator | None = None, rank: int | None = None, sig: float = 1 / np.sqrt(2)
 ) -> KrausChannel:
-    """
-    Returns a random :class:`graphix.sim.channels.KrausChannel` object of given dimension and rank following the method of
+    """Return a random :class:`graphix.sim.channels.KrausChannel` object of given dimension and rank.
+
+    Following the method of
     [KNPPZ21] Kukulski, Nechita, Pawela, Puchała, Życzkowsk https://arxiv.org/pdf/2011.02994.pdf
 
     Parameters
@@ -154,6 +154,7 @@ def rand_channel_kraus(
 # or merge with previous with a "pauli" kwarg?
 ### continue here
 def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int | None = None) -> KrausChannel:
+    """Return a random Kraus channel operator."""
     rng = ensure_rng(rng)
 
     if not isinstance(dim, int):
@@ -201,28 +202,28 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     return KrausChannel(data)
 
 
-def first_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
+def _first_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
 
 
-def mid_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
+def _mid_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
         circuit.rz(qubit, rng.random())
 
 
-def last_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
+def _last_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     for qubit in range(nqubits):
         circuit.rz(qubit, rng.random())
 
 
-def entangler(circuit: Circuit, pairs: Iterable[tuple[int, int]]) -> None:
+def _entangler(circuit: Circuit, pairs: Iterable[tuple[int, int]]) -> None:
     for a, b in pairs:
         circuit.cnot(a, b)
 
 
-def entangler_rzz(circuit: Circuit, pairs: Iterable[tuple[int, int]], rng: Generator) -> None:
+def _entangler_rzz(circuit: Circuit, pairs: Iterable[tuple[int, int]], rng: Generator) -> None:
     for a, b in pairs:
         circuit.rzz(a, b, rng.random())
 
@@ -235,21 +236,22 @@ def rand_gate(
     *,
     use_rzz: bool = False,
 ) -> Circuit:
+    """Return a random gate."""
     rng = ensure_rng(rng)
     circuit = Circuit(nqubits)
-    first_rotation(circuit, nqubits, rng)
-    entangler(circuit, pairs)
+    _first_rotation(circuit, nqubits, rng)
+    _entangler(circuit, pairs)
     for _ in range(depth - 1):
-        mid_rotation(circuit, nqubits, rng)
+        _mid_rotation(circuit, nqubits, rng)
         if use_rzz:
-            entangler_rzz(circuit, pairs, rng)
+            _entangler_rzz(circuit, pairs, rng)
         else:
-            entangler(circuit, pairs)
-    last_rotation(circuit, nqubits, rng)
+            _entangler(circuit, pairs)
+    _last_rotation(circuit, nqubits, rng)
     return circuit
 
 
-def genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int]]:
+def _genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int]]:
     choice = list(range(n_qubits))
     for _ in range(count):
         rng.shuffle(choice)
@@ -257,7 +259,7 @@ def genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, in
         yield (x, y)
 
 
-def gentriplet(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int, int]]:
+def _gentriplet(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int, int]]:
     choice = list(range(n_qubits))
     for _ in range(count):
         rng.shuffle(choice)
@@ -273,6 +275,7 @@ def rand_circuit(
     use_rzz: bool = False,
     use_ccx: bool = False,
 ) -> Circuit:
+    """Return a random circuit."""
     rng = ensure_rng(rng)
     circuit = Circuit(nqubits)
     gate_choice = (
@@ -286,15 +289,15 @@ def rand_circuit(
         circuit.y,
     )
     for _ in range(depth):
-        for j, k in genpair(nqubits, 2, rng):
+        for j, k in _genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
         if use_rzz:
-            for j, k in genpair(nqubits, 2, rng):
+            for j, k in _genpair(nqubits, 2, rng):
                 circuit.rzz(j, k, np.pi / 4)
         if use_ccx:
-            for j, k, l in gentriplet(nqubits, 2, rng):
+            for j, k, l in _gentriplet(nqubits, 2, rng):
                 circuit.ccx(j, k, l)
-        for j, k in genpair(nqubits, 4, rng):
+        for j, k in _genpair(nqubits, 4, rng):
             circuit.swap(j, k)
         for j in range(nqubits):
             ind = rng.integers(len(gate_choice))

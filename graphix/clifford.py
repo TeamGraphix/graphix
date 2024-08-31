@@ -1,8 +1,4 @@
-"""
-24 Unique single-qubit Clifford gates and their
-multiplications, conjugations and Pauli conjugations.
-
-"""
+"""24 Unique single-qubit Clifford gates and their multiplications, conjugations and Pauli conjugations."""
 
 from __future__ import annotations
 
@@ -24,59 +20,52 @@ if TYPE_CHECKING:
 
 
 class Clifford:
+    """Clifford gate."""
+
     def __init__(self, index: int):
         self.__index = index
 
     @property
     def index(self) -> int:
-        """
-        Return the index of the Clifford gate (inverse of clifford.get).
-        """
+        """Return the index of the Clifford gate (inverse of clifford.get)."""
         return self.__index
 
     @property
     def matrix(self) -> np.ndarray:
-        """
-        Return the matrix of the Clifford gate.
-        """
+        """Return the matrix of the Clifford gate."""
         return CLIFFORD[self.__index]
 
     def __repr__(self) -> str:
+        """Return the Clifford expression on the form of HSZ decomposition."""
+        return " @ ".join([f"graphix.clifford.{gate}" for gate in self.hsz])
+
+    def __str__(self) -> str:
+        """Return the name of the Clifford gate."""
         return CLIFFORD_LABEL[self.__index]
 
     @property
     def conj(self) -> Clifford:
-        """
-        Return the conjugate of the Clifford gate.
-        """
+        """Return the conjugate of the Clifford gate."""
         return get(CLIFFORD_CONJ[self.__index])
 
     @property
     def hsz(self) -> list[Clifford]:
-        """
-        Return a decomposition of the Clifford gate with the gates H, S, Z.
-        """
+        """Return a decomposition of the Clifford gate with the gates `H`, `S`, `Z`."""
         return list(map(get, CLIFFORD_HSZ_DECOMPOSITION[self.__index]))
 
     @property
     def qasm3(self) -> tuple[str, ...]:
-        """
-        Return a decomposition of the Clifford gate as qasm3 gates.
-        """
+        """Return a decomposition of the Clifford gate as qasm3 gates."""
         return CLIFFORD_TO_QASM3[self.__index]
 
     def __matmul__(self, other) -> Clifford:
-        """
-        Multiplication within the Clifford group (modulo unit factor).
-        """
+        """Multiplication within the Clifford group (modulo unit factor)."""
         if isinstance(other, Clifford):
             return get(CLIFFORD_MUL[self.__index][other.__index])
         return NotImplemented
 
     def measure(self, pauli: graphix.pauli.Pauli) -> graphix.pauli.Pauli:
-        """
-        Compute C† P C.
-        """
+        """Compute C† P C."""
         if pauli.symbol == graphix.pauli.IXYZ.I:
             return pauli
         table = CLIFFORD_MEASURE[self.__index]
@@ -88,7 +77,7 @@ TABLE = tuple(Clifford(i) for i in range(len(CLIFFORD)))
 
 
 def get(index: int) -> Clifford:
-    """Return the Clifford gate with given index"""
+    """Return the Clifford gate with given index."""
     return TABLE[index]
 
 
