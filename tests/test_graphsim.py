@@ -45,7 +45,7 @@ def get_state(g) -> Statevec:
 
 
 def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0) -> npt.NDArray:
-    """Returns the projection operator for given measurement angle and local Clifford op (VOP).
+    """Return the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`
 
@@ -93,9 +93,7 @@ def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0) -> npt.NDArray
 )
 class TestGraphSim:
     def test_fig2(self, use_rustworkx: bool) -> None:
-        """Example of three single-qubit measurements
-        presented in Fig.2 of M. Elliot et al (2010)
-        """
+        """Three single-qubit measurements presented in Fig.2 of M. Elliot et al (2010)."""
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)

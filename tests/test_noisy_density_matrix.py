@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 
 
 class NoiseModelTester(NoiseModel):
-    """Test noise model for testing.
+    """Noise model for testing.
+
     Only return the identity channel.
 
     :param NoiseModel: Parent abstract class class:`graphix.noise_model.NoiseModel`
@@ -48,7 +49,7 @@ class NoiseModelTester(NoiseModel):
         return depolarising_channel(self.prepare_error_prob)
 
     def entangle(self) -> KrausChannel:
-        """Return noise model to qubits that happens after the CZ gate"""
+        """Return noise model to qubits that happens after the CZ gate."""
         # return two_qubit_depolarising_tensor_channel(self.entanglement_error_prob)
         return two_qubit_depolarising_channel(self.entanglement_error_prob)
 
@@ -57,30 +58,29 @@ class NoiseModelTester(NoiseModel):
         return depolarising_channel(self.measure_channel_prob)
 
     def confuse_result(self, result: bool) -> bool:
-        """Assign wrong measurement result
-        cmd = "M"
-        """
+        """Assign wrong measurement result cmd = "M"."""
         if self.rng.uniform() < self.measure_error_prob:
             return not result
         else:
             return result
 
     def byproduct_x(self) -> KrausChannel:
-        """Apply noise to qubits after X gate correction"""
+        """Apply noise to qubits after X gate correction."""
         return depolarising_channel(self.x_error_prob)
 
     def byproduct_z(self) -> KrausChannel:
-        """Apply noise to qubits after Z gate correction"""
+        """Apply noise to qubits after Z gate correction."""
         return depolarising_channel(self.z_error_prob)
 
     def clifford(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the Clifford gate process"""
+        """Apply noise to qubits that happens in the Clifford gate process."""
         # TODO list separate different Cliffords to allow customization
         return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
 
     def tick_clock(self) -> None:
         """Notion of time in real devices - this is where we apply effect of T1 and T2.
-        we assume commands that lie between 'T' commands run simultaneously on the device.
+
+        We assume commands that lie between 'T' commands run simultaneously on the device.
         """
 
 
