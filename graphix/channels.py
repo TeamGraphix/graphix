@@ -117,7 +117,7 @@ def depolarising_channel(prob: float) -> KrausChannel:
 
 
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
-    r"""Single-qubit pauli channel.
+    r"""Single-qubit Pauli channel.
 
     .. math::
         (1-p_X-p_Y-p_Z) \rho + p_X X \rho X + p_Y Y \rho Y + p_Z Z \rho Z)
