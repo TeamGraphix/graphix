@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import itertools
 import sys
 import typing
@@ -9,23 +10,21 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-import graphix.clifford
-import graphix.ops
-import graphix.pauli
-import graphix.sim.base_backend
-import graphix.states
-from graphix.command import E, M, N
-from graphix.pattern import CommandNode, Pattern
+from graphix import clifford
+from graphix.command import C, E, M, N, X, Z
+from graphix.pattern import CommandNode, Pattern, shift_outcomes
 from graphix.pauli import Plane
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import PatternSimulator
+from graphix.states import PlanarState
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     import collections.abc
     from collections.abc import Sequence
 
+    from graphix.sim.base_backend import Backend
     from graphix.sim.statevec import Statevec
 
 
@@ -103,7 +102,7 @@ class TestPattern:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(node=0, angle=0.5))
 
-        def simulate_and_measure():
+        def simulate_and_measure() -> int:
             sim = PatternSimulator(pattern, backend_type)
             sim.run()
             if backend_type == "statevector":
@@ -158,7 +157,7 @@ class TestPattern:
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
     def test_pauli_measurement_random_circuit(
-        self, fx_bg: PCG64, jumps: int, backend: graphix.sim.base_backend.Backend, use_rustworkx: bool = True
+        self, fx_bg: PCG64, jumps: int, backend: Backend, use_rustworkx: bool = True
     ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
@@ -328,36 +327,36 @@ class TestPattern:
 
     def test_get_meas_plane(self) -> None:
         preset_meas_plane = [
-            graphix.pauli.Plane.XY,
-            graphix.pauli.Plane.XY,
-            graphix.pauli.Plane.XY,
-            graphix.pauli.Plane.YZ,
-            graphix.pauli.Plane.YZ,
-            graphix.pauli.Plane.YZ,
-            graphix.pauli.Plane.XZ,
-            graphix.pauli.Plane.XZ,
-            graphix.pauli.Plane.XZ,
+            Plane.XY,
+            Plane.XY,
+            Plane.XY,
+            Plane.YZ,
+            Plane.YZ,
+            Plane.YZ,
+            Plane.XZ,
+            Plane.XZ,
+            Plane.XZ,
         ]
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):
-            pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(graphix.clifford.get(vop_list[i % 3])))
+            pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(clifford.get(vop_list[i % 3])))
         ref_meas_plane = {
-            0: graphix.pauli.Plane.XY,
-            1: graphix.pauli.Plane.XY,
-            2: graphix.pauli.Plane.YZ,
-            3: graphix.pauli.Plane.YZ,
-            4: graphix.pauli.Plane.XZ,
-            5: graphix.pauli.Plane.XY,
-            6: graphix.pauli.Plane.XZ,
-            7: graphix.pauli.Plane.YZ,
-            8: graphix.pauli.Plane.XZ,
+            0: Plane.XY,
+            1: Plane.XY,
+            2: Plane.YZ,
+            3: Plane.YZ,
+            4: Plane.XZ,
+            5: Plane.XY,
+            6: Plane.XZ,
+            7: Plane.YZ,
+            8: Plane.XZ,
         }
         meas_plane = pattern.get_meas_plane()
         assert meas_plane == ref_meas_plane
 
     @pytest.mark.parametrize("plane", Plane)
-    @pytest.mark.parametrize("method", ["local", "global"])
+    @pytest.mark.parametrize("method", ["local", "global", "direct"])
     def test_shift_signals_plane(self, plane: Plane, method: str) -> None:
         pattern = Pattern(input_nodes=[0])
         for i in (1, 2, 3):
@@ -366,18 +365,93 @@ class TestPattern:
         pattern.add(M(node=0, angle=0.5))
         pattern.add(M(node=1, angle=0.5))
         pattern.add(M(node=2, angle=0.5, plane=plane, s_domain={0}, t_domain={1}))
-        pattern_ref = pattern.copy()
+        pattern.add(Z(node=3, domain={2}))
+        pattern_ref = copy.deepcopy(pattern)
         pattern.standardize(method="global")
         signal_dict = pattern.shift_signals(method=method)
         # Test for every possible outcome of each measure
         for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
             state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
-            outcomes_p = [
-                1 - outcome if sum(outcomes_ref[i] for i in swapped) % 2 == 1 else outcome
-                for outcome, swapped in zip(outcomes_ref, signal_dict.values())
-            ]
-            state_p = pattern.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_p)))
+            outcomes_p = shift_outcomes(dict(enumerate(outcomes_ref)), signal_dict)
+            state_p = pattern.simulate_pattern(
+                pr_calc=False, rng=IterGenerator(outcomes_p[i] for i in range(len(outcomes_p)))
+            )
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_standardize_direct(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 5
+        depth = 4
+        circuit = rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize(method="direct")
+        assert pattern.is_standard()
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_shift_signals_direct(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 5
+        depth = 4
+        circuit = rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals(method="direct")
+        pattern.minimize_space()
+        state_p = pattern.simulate_pattern()
+        state_ref = circuit.simulate_statevector().statevec
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("method", ["global", "direct"])
+    def test_pauli_measurement_then_standardize(
+        self, fx_bg: PCG64, jumps: int, method: str, use_rustworkx: bool = True
+    ) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 3
+        depth = 3
+        circuit = rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.standardize(method=method)
+        pattern.minimize_space()
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern()
+        assert compare_backend_result_with_statevec("statevector", state_mbqc, state) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        c0, c1 = rng.integers(len(clifford.TABLE), size=2)
+        pattern = Pattern(input_nodes=[0])
+        pattern.add(C(node=0, clifford=clifford.TABLE[c0]))
+        pattern.add(C(node=0, clifford=clifford.TABLE[c1]))
+        pattern_ref = pattern.copy()
+        pattern.standardize(method="direct")
+        state_ref = pattern_ref.simulate_pattern()
+        state_p = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 48))
+    def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        x, z = rng.integers(2, size=2)
+        c = rng.integers(len(clifford.TABLE))
+        pattern = Pattern(input_nodes=[0])
+        pattern.results[1] = x
+        pattern.add(X(node=0, domain={1}))
+        pattern.results[2] = z
+        pattern.add(Z(node=0, domain={2}))
+        pattern.add(C(node=0, clifford=clifford.TABLE[c]))
+        pattern_ref = pattern.copy()
+        pattern.standardize(method="direct")
+        state_ref = pattern_ref.simulate_pattern()
+        state_p = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
@@ -596,14 +670,14 @@ class TestLocalPattern:
         # https://github.com/TeamGraphix/graphix/issues/153
         p = Pattern(input_nodes=[0])
         p.add(N(node=1))
-        p.add(M(node=1, plane=graphix.pauli.Plane.XY))
+        p.add(M(node=1, plane=Plane.XY))
         p.perform_pauli_measurements()
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
@@ -611,8 +685,8 @@ class TestLocalPattern:
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
-        states = [graphix.states.PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):
             randpattern.simulate_pattern(
