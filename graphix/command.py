@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-import abc
 import dataclasses
-from abc import ABC
+import sys
 from enum import Enum
-from typing import Any, Literal
+from typing import ClassVar, Literal, Union
 
 import numpy as np
-import typing_extensions
 
-from graphix import clifford
+from graphix import clifford, types
+from graphix.clifford import Clifford
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
-
-if typing_extensions.TYPE_CHECKING:
-    from graphix.clifford import Clifford
 
 Node = int
 
@@ -29,66 +25,42 @@ class CommandKind(Enum):
     X = "X"
     Z = "Z"
     S = "S"
+    T = "T"
 
 
-class Command(ABC):
+class _KindChecker:
     """
-    Base command class.
-    """
-
-    @property
-    @abc.abstractmethod
-    def kind(self) -> Any: ...
-
-
-# Decorator required
-@dataclasses.dataclass
-class Correction(Command):
-    """
-    Correction command.
-    Either X or Z.
+    Enforce tag field declaration.
     """
 
-    node: Node
-    domain: set[Node] = dataclasses.field(default_factory=set)
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        types.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
 @dataclasses.dataclass
-class N(Command):
+class N(_KindChecker):
     """
     Preparation command.
     """
 
     node: Node
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.N]:
-        return CommandKind.N
-
-
-# Decorator required
-@dataclasses.dataclass
-class BaseM(Command):
-    node: Node
+    kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
 
 @dataclasses.dataclass
-class M(BaseM):
+class M(_KindChecker):
     """
     Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
     """
 
+    node: Node
     plane: Plane = Plane.XY
     angle: float = 0.0
     s_domain: set[Node] = dataclasses.field(default_factory=set)
     t_domain: set[Node] = dataclasses.field(default_factory=set)
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.M]:
-        return CommandKind.M
+    kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
     def clifford(self, clifford_gate: Clifford) -> M:
         s_domain = self.s_domain
@@ -109,71 +81,78 @@ class M(BaseM):
 
 
 @dataclasses.dataclass
-class E(Command):
+class E(_KindChecker):
     """
     Entanglement command.
     """
 
     nodes: tuple[Node, Node]
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.E]:
-        return CommandKind.E
+    kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
 
 @dataclasses.dataclass
-class C(Command):
+class C(_KindChecker):
     """
     Clifford command.
     """
 
     node: Node
     clifford: Clifford
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.C]:
-        return CommandKind.C
+    kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
 
 @dataclasses.dataclass
-class X(Correction):
+class X(_KindChecker):
     """
     X correction command.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.X]:
-        return CommandKind.X
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
 
 @dataclasses.dataclass
-class Z(Correction):
+class Z(_KindChecker):
     """
     Z correction command.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.Z]:
-        return CommandKind.Z
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
 
 @dataclasses.dataclass
-class S(Command):
+class S(_KindChecker):
     """
     S command.
     """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[CommandKind.S]:
-        return CommandKind.S
+
+@dataclasses.dataclass
+class T(_KindChecker):
+    """
+    T command.
+    """
+
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
+
+
+if sys.version_info >= (3, 10):
+    Command = N | M | E | C | X | Z | S | T
+    Correction = X | Z
+else:
+    Command = Union[N, M, E, C, X, Z, S, T]
+    Correction = Union[CommandKind.X, CommandKind.Z]
+
+BaseM = M
 
 
 @dataclasses.dataclass
