@@ -6,7 +6,7 @@ import sys
 from enum import Enum
 from typing import ClassVar, Literal, Union
 
-from graphix import types
+from graphix import type_utils
 from graphix.pauli import Plane
 
 
@@ -37,7 +37,7 @@ class _KindChecker:
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        types.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
+        type_utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
 @dataclasses.dataclass

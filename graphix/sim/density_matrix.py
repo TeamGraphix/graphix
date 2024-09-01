@@ -17,7 +17,6 @@ import sys
 import numpy as np
 
 import graphix.states
-import graphix.types
 from graphix.channels import KrausChannel
 from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.sim.base_backend import Backend, State

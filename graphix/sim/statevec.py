@@ -9,16 +9,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    from numpy.random import Generator
-
 import graphix.pauli
 import graphix.states
-import graphix.types
+from graphix import type_utils
 from graphix.sim.base_backend import Backend, State
 
 if TYPE_CHECKING:
     import collections
+
+    from numpy.random import Generator
 
 
 class StatevectorBackend(Backend):
@@ -110,7 +109,7 @@ class Statevec(State):
 
         else:
             if isinstance(input_list[0], graphix.states.State):
-                graphix.types.check_list_elements(input_list, graphix.states.State)
+                type_utils.check_list_elements(input_list, graphix.states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -120,7 +119,7 @@ class Statevec(State):
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
             elif isinstance(input_list[0], numbers.Number):
-                graphix.types.check_list_elements(input_list, numbers.Number)
+                type_utils.check_list_elements(input_list, numbers.Number)
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
