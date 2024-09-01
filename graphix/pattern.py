@@ -4,6 +4,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import dataclasses
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
@@ -386,7 +387,7 @@ class Pattern:
                 if clifford_gate := c_dict.pop(cmd.node, None):
                     new_cmd = cmd.clifford(clifford_gate)
                 else:
-                    new_cmd = cmd.model_copy()
+                    new_cmd = dataclasses.replace(cmd)
                 if t_domain := z_dict.pop(cmd.node, None):
                     new_cmd.t_domain ^= t_domain
                 if s_domain := x_dict.pop(cmd.node, None):
@@ -541,12 +542,12 @@ class Pattern:
                         signal_dict[cmd.node] = s_domain
                         s_domain = set()
                 if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
-                    self.__seq[i] = cmd.model_copy(update={"s_domain": s_domain, "t_domain": t_domain})
+                    self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
                 domain = set(cmd.domain)
                 expand_domain(domain)
                 if domain != cmd.domain:
-                    self.__seq[i] = cmd.model_copy(update={"domain": domain})
+                    self.__seq[i] = dataclasses.replace(cmd, domain=domain)
         return signal_dict
 
     def _find_op_to_be_moved(self, op: CommandKind, rev=False, skipnum=0):
