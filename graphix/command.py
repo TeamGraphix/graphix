@@ -151,7 +151,7 @@ if sys.version_info >= (3, 10):
     Correction = X | Z
 else:
     Command = Union[N, M, E, C, X, Z, S, T]
-    Correction = Union[CommandKind.X, CommandKind.Z]
+    Correction = Union[X, Z]
 
 BaseM = M
 
