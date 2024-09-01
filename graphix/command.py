@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import sys
 from enum import Enum
 from typing import ClassVar, Literal, Union
@@ -18,14 +19,14 @@ Node = int
 
 
 class CommandKind(Enum):
-    N = "N"
-    M = "M"
-    E = "E"
-    C = "C"
-    X = "X"
-    Z = "Z"
-    S = "S"
-    T = "T"
+    N = enum.auto()
+    M = enum.auto()
+    E = enum.auto()
+    C = enum.auto()
+    X = enum.auto()
+    Z = enum.auto()
+    S = enum.auto()
+    T = enum.auto()
 
 
 class _KindChecker:

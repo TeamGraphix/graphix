@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import sys
 from enum import Enum
 from typing import ClassVar, Literal, Union
@@ -10,23 +11,23 @@ from graphix.pauli import Plane
 
 
 class InstructionKind(Enum):
-    CCX = "CCX"
-    RZZ = "RZZ"
-    CNOT = "CNOT"
-    SWAP = "SWAP"
-    H = "H"
-    S = "S"
-    X = "X"
-    Y = "Y"
-    Z = "Z"
-    I = "I"
-    M = "M"
-    RX = "RX"
-    RY = "RY"
-    RZ = "RZ"
+    CCX = enum.auto()
+    RZZ = enum.auto()
+    CNOT = enum.auto()
+    SWAP = enum.auto()
+    H = enum.auto()
+    S = enum.auto()
+    X = enum.auto()
+    Y = enum.auto()
+    Z = enum.auto()
+    I = enum.auto()
+    M = enum.auto()
+    RX = enum.auto()
+    RY = enum.auto()
+    RZ = enum.auto()
     # The two following instructions are used internally by the transpiler
-    XC = "XC"
-    ZC = "ZC"
+    _XC = enum.auto()
+    _ZC = enum.auto()
 
 
 class _KindChecker:
@@ -61,7 +62,6 @@ class RZZ(_KindChecker):
     angle: float
     # FIXME: Remove `| None` from `meas_index`
     # - `None` makes codes messy/type-unsafe
-    # - `= None` results in subtle MRO issues
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZZ]] = dataclasses.field(default=InstructionKind.RZZ, init=False)
 
@@ -196,28 +196,28 @@ class RZ(_KindChecker):
 
 
 @dataclasses.dataclass
-class XC(_KindChecker):
+class _XC(_KindChecker):
     """
     X correction circuit instruction. Used internally by the transpiler.
     """
 
     target: int
     domain: set[int]
-    kind: ClassVar[Literal[InstructionKind.XC]] = dataclasses.field(default=InstructionKind.XC, init=False)
+    kind: ClassVar[Literal[InstructionKind._XC]] = dataclasses.field(default=InstructionKind._XC, init=False)
 
 
 @dataclasses.dataclass
-class ZC(_KindChecker):
+class _ZC(_KindChecker):
     """
     Z correction circuit instruction. Used internally by the transpiler.
     """
 
     target: int
     domain: set[int]
-    kind: ClassVar[Literal[InstructionKind.ZC]] = dataclasses.field(default=InstructionKind.ZC, init=False)
+    kind: ClassVar[Literal[InstructionKind._ZC]] = dataclasses.field(default=InstructionKind._ZC, init=False)
 
 
 if sys.version_info >= (3, 10):
-    Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | XC | ZC
+    Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC
 else:
-    Instruction = Union[CCX, RZZ, CNOT, SWAP, H, S, X, Y, Z, I, M, RX, RY, RZ, XC, ZC]
+    Instruction = Union[CCX, RZZ, CNOT, SWAP, H, S, X, Y, Z, I, M, RX, RY, RZ, _XC, _ZC]
