@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import abc
 import dataclasses
-from abc import ABC
+import sys
 from enum import Enum
-from typing import Any, Literal
+from typing import ClassVar, Literal, Union
 
-import typing_extensions
-
-if typing_extensions.TYPE_CHECKING:
-    from graphix.pauli import Plane
+from graphix import types
+from graphix.pauli import Plane
 
 
 class InstructionKind(Enum):
@@ -32,264 +29,195 @@ class InstructionKind(Enum):
     ZC = "ZC"
 
 
-# Decorator required
-@dataclasses.dataclass
-class Instruction(ABC):
+class _KindChecker:
     """
-    Circuit instruction base class.
+    Enforce tag field declaration.
     """
 
-    @property
-    @abc.abstractmethod
-    def kind(self) -> Any: ...
-
-
-# Decorator required
-@dataclasses.dataclass
-class OneQubitInstruction(Instruction):
-    """
-    One qubit circuit instruction base class.
-    """
-
-    target: int
-
-
-# Decorator required
-@dataclasses.dataclass
-class CorrectionInstruction(OneQubitInstruction):
-    """
-    Correction instruction base class.
-    """
-
-    domain: set[int]
-
-
-# Decorator required
-@dataclasses.dataclass
-class RotationInstruction(OneQubitInstruction):
-    """
-    Rotation instruction base class.
-    """
-
-    angle: float
-    # FIXME: Not good
-    # - `None` makes codes messy/type-unsafe
-    # - `= None` results in subtle MRO issues
-    meas_index: int | None = None
-
-
-# Decorator required
-@dataclasses.dataclass
-class OneControlInstruction(OneQubitInstruction):
-    """
-    One control instruction base class.
-    """
-
-    control: int
-
-
-# Decorator required
-@dataclasses.dataclass
-class TwoControlsInstruction(OneQubitInstruction):
-    """
-    Two controls instruction base class.
-    """
-
-    controls: tuple[int, int]
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        types.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
 @dataclasses.dataclass
-class XC(CorrectionInstruction):
-    """
-    X correction circuit instruction. Used internally by the transpiler.
-    """
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.XC]:
-        return InstructionKind.XC
-
-
-@dataclasses.dataclass
-class ZC(CorrectionInstruction):
-    """
-    Z correction circuit instruction. Used internally by the transpiler.
-    """
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.ZC]:
-        return InstructionKind.ZC
-
-
-@dataclasses.dataclass
-class CCX(TwoControlsInstruction):
+class CCX(_KindChecker):
     """
     Toffoli circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.CCX]:
-        return InstructionKind.CCX
+    target: int
+    controls: tuple[int, int]
+    kind: ClassVar[Literal[InstructionKind.CCX]] = dataclasses.field(default=InstructionKind.CCX, init=False)
 
 
 @dataclasses.dataclass
-class RZZ(RotationInstruction, OneControlInstruction):
+class RZZ(_KindChecker):
     """
     RZZ circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.RZZ]:
-        return InstructionKind.RZZ
+    target: int
+    control: int
+    angle: float
+    # FIXME: Remove `| None` from `meas_index`
+    # - `None` makes codes messy/type-unsafe
+    # - `= None` results in subtle MRO issues
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RZZ]] = dataclasses.field(default=InstructionKind.RZZ, init=False)
 
 
 @dataclasses.dataclass
-class CNOT(OneControlInstruction):
+class CNOT(_KindChecker):
     """
     CNOT circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.CNOT]:
-        return InstructionKind.CNOT
+    target: int
+    control: int
+    kind: ClassVar[Literal[InstructionKind.CNOT]] = dataclasses.field(default=InstructionKind.CNOT, init=False)
 
 
 @dataclasses.dataclass
-class SWAP(Instruction):
+class SWAP(_KindChecker):
     """
     SWAP circuit instruction.
     """
 
     targets: tuple[int, int]
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.SWAP]:
-        return InstructionKind.SWAP
+    kind: ClassVar[Literal[InstructionKind.SWAP]] = dataclasses.field(default=InstructionKind.SWAP, init=False)
 
 
 @dataclasses.dataclass
-class H(OneQubitInstruction):
+class H(_KindChecker):
     """
     H circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.H]:
-        return InstructionKind.H
+    target: int
+    kind: ClassVar[Literal[InstructionKind.H]] = dataclasses.field(default=InstructionKind.H, init=False)
 
 
 @dataclasses.dataclass
-class S(OneQubitInstruction):
+class S(_KindChecker):
     """
     S circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.S]:
-        return InstructionKind.S
+    target: int
+    kind: ClassVar[Literal[InstructionKind.S]] = dataclasses.field(default=InstructionKind.S, init=False)
 
 
 @dataclasses.dataclass
-class X(OneQubitInstruction):
+class X(_KindChecker):
     """
     X circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.X]:
-        return InstructionKind.X
+    target: int
+    kind: ClassVar[Literal[InstructionKind.X]] = dataclasses.field(default=InstructionKind.X, init=False)
 
 
 @dataclasses.dataclass
-class Y(OneQubitInstruction):
+class Y(_KindChecker):
     """
     Y circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.Y]:
-        return InstructionKind.Y
+    target: int
+    kind: ClassVar[Literal[InstructionKind.Y]] = dataclasses.field(default=InstructionKind.Y, init=False)
 
 
 @dataclasses.dataclass
-class Z(OneQubitInstruction):
+class Z(_KindChecker):
     """
     Z circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.Z]:
-        return InstructionKind.Z
+    target: int
+    kind: ClassVar[Literal[InstructionKind.Z]] = dataclasses.field(default=InstructionKind.Z, init=False)
 
 
 @dataclasses.dataclass
-class I(OneQubitInstruction):
+class I(_KindChecker):
     """
     I circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.I]:
-        return InstructionKind.I
+    target: int
+    kind: ClassVar[Literal[InstructionKind.I]] = dataclasses.field(default=InstructionKind.I, init=False)
 
 
 @dataclasses.dataclass
-class M(OneQubitInstruction):
+class M(_KindChecker):
     """
     M circuit instruction.
     """
 
+    target: int
     plane: Plane
     angle: float
-
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.M]:
-        return InstructionKind.M
+    kind: ClassVar[Literal[InstructionKind.M]] = dataclasses.field(default=InstructionKind.M, init=False)
 
 
 @dataclasses.dataclass
-class RX(RotationInstruction):
+class RX(_KindChecker):
     """
     X rotation circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.RX]:
-        return InstructionKind.RX
+    target: int
+    angle: float
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RX]] = dataclasses.field(default=InstructionKind.RX, init=False)
 
 
 @dataclasses.dataclass
-class RY(RotationInstruction):
+class RY(_KindChecker):
     """
     Y rotation circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.RY]:
-        return InstructionKind.RY
+    target: int
+    angle: float
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RY]] = dataclasses.field(default=InstructionKind.RY, init=False)
 
 
 @dataclasses.dataclass
-class RZ(RotationInstruction):
+class RZ(_KindChecker):
     """
     Z rotation circuit instruction.
     """
 
-    @property
-    @typing_extensions.override
-    def kind(self) -> Literal[InstructionKind.RZ]:
-        return InstructionKind.RZ
+    target: int
+    angle: float
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RZ]] = dataclasses.field(default=InstructionKind.RZ, init=False)
+
+
+@dataclasses.dataclass
+class XC(_KindChecker):
+    """
+    X correction circuit instruction. Used internally by the transpiler.
+    """
+
+    target: int
+    domain: set[int]
+    kind: ClassVar[Literal[InstructionKind.XC]] = dataclasses.field(default=InstructionKind.XC, init=False)
+
+
+@dataclasses.dataclass
+class ZC(_KindChecker):
+    """
+    Z correction circuit instruction. Used internally by the transpiler.
+    """
+
+    target: int
+    domain: set[int]
+    kind: ClassVar[Literal[InstructionKind.ZC]] = dataclasses.field(default=InstructionKind.ZC, init=False)
+
+
+if sys.version_info >= (3, 10):
+    Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | XC | ZC
+else:
+    Instruction = Union[CCX, RZZ, CNOT, SWAP, H, S, X, Y, Z, I, M, RX, RY, RZ, XC, ZC]
