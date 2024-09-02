@@ -31,7 +31,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autosectionlabel_prefix_document = True
 
 intersphinx_mapping = {
-    'networkx': ('https://networkx.github.io/documentation/stable/', None),
+    "networkx": ("https://networkx.github.io/documentation/stable/", None),
 }
 
 sys.path.insert(0, os.path.abspath("../../"))
