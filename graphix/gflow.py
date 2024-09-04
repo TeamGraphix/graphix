@@ -1,4 +1,4 @@
-"""flow finding algorithm
+"""Flow finding algorithm.
 
 For a given underlying graph (G, I, O, meas_plane), this method finds a (generalized) flow [NJP 9, 250 (2007)]
 in polynomincal time.
@@ -25,12 +25,12 @@ from graphix.command import CommandKind
 from graphix.linalg import MatGF2
 
 if TYPE_CHECKING:
-    import numbers
-
     from graphix.pattern import Pattern
 
 
+# TODO: This should be ensured by type-checking.
 def check_meas_planes(meas_planes: dict[int, graphix.pauli.Plane]) -> None:
+    """Check that all planes are valid planes."""
     for node, plane in meas_planes.items():
         if not isinstance(plane, graphix.pauli.Plane):
             raise ValueError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
@@ -43,7 +43,7 @@ def find_gflow(
     meas_planes: dict[int, graphix.pauli.Plane],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
-    """Maximally delayed gflow finding algorithm
+    """Maximally delayed gflow finding algorithm.
 
     For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
 
@@ -67,7 +67,7 @@ def find_gflow(
         set of node labels for output
     meas_planes: dict
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
-    mode: str(optional)
+    mode: str
         The gflow finding algorithm can yield multiple equivalent solutions. So there are three options
 
         - "single": Returrns a single solution
@@ -77,7 +77,7 @@ def find_gflow(
         - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
           requiring user substitution to get a concrete answer.
 
-        Default is "single".
+        Optional. Default is "single".
 
     Returns
     -------
@@ -104,7 +104,7 @@ def gflowaux(
     g: dict[int, set[int]],
     mode: str = "single",
 ):
-    """Function to find one layer of the gflow.
+    """Find one layer of the gflow.
 
     Ref: Backens et al., Quantum 5, 421 (2021).
 
@@ -138,7 +138,6 @@ def gflowaux(
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
-
     nodes = set(graph.nodes)
     if oset == nodes:
         return g, l_k
@@ -235,7 +234,7 @@ def find_flow(
     oset: set[int],
     meas_planes: dict[int, graphix.pauli.Plane] | None = None,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
-    """Causal flow finding algorithm
+    """Causal flow finding algorithm.
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
     For more detail of causal flow, see Danos and Kashefi, PRA 74, 052310 (2006).
@@ -292,7 +291,7 @@ def flowaux(
     l_k: dict[int, int],
     k: int,
 ):
-    """Function to find one layer of the flow.
+    """Find one layer of the flow.
 
     Ref: Mhalla and Perdrix, International Colloquium on Automata,
     Languages, and Programming (Springer, 2008), pp. 857-868.
@@ -364,7 +363,7 @@ def find_pauliflow(
     meas_angles: dict[int, float],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
-    """Maximally delayed Pauli flow finding algorithm
+    """Maximally delayed Pauli flow finding algorithm.
 
     For open graph g with input, output, measurement planes and measurement angles, this returns maximally delayed Pauli flow.
 
@@ -390,7 +389,7 @@ def find_pauliflow(
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     meas_angles: dict
         measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
-    mode: str(optional)
+    mode: str
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are three options
 
         - "single": Returrns a single solution
@@ -400,7 +399,7 @@ def find_pauliflow(
         - "abstract": Returns an abstract solution. Uncertainty is represented with sympy.Symbol objects,
           requiring user substitution to get a concrete answer.
 
-        Default is "single".
+        Optional. Default is "single".
 
     Returns
     -------
@@ -433,7 +432,7 @@ def pauliflowaux(
     ls: tuple[set[int], set[int], set[int]],
     mode: str = "single",
 ):
-    """Function to find one layer of the Pauli flow.
+    """Find one layer of the Pauli flow.
 
     Ref: Simmons et al., EPTCS 343, 2021, pp. 50-101 (arXiv:2109.05654).
 
@@ -650,7 +649,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     Parameters
     ----------
-    pattern: graphix.Pattern object
+    pattern: Pattern
         pattern to be based on
 
     Returns
@@ -703,7 +702,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     Parameters
     ----------
-    pattern: graphix.Pattern object
+    pattern: Pattern
         pattern to be based on
 
     Returns
@@ -758,12 +757,15 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
 
     Parameters
     ----------
-    pattern: graphix.Pattern object
+    pattern: Pattern
         pattern to be based on
-    mode: str(optional)
+    mode: str
         The Pauliflow finding algorithm can yield multiple equivalent solutions. So there are two options
-            - "single": Returrns a single solution
+            - "single": Returns a single solution
             - "all": Returns all possible solutions
+
+        Optional. Default is "single".
+
     Returns
     -------
     p: dict
@@ -825,7 +827,7 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
 
 
 def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
-    """Get x and z corrections from pattern
+    """Get x and z corrections from pattern.
 
     Parameters
     ----------
@@ -874,7 +876,7 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
 
 
 def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
-    """Function to find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
+    """Find neighborhood of node in edges. This is an ancillary method for `flowaux()`.
 
     Parameter
     -------
@@ -898,7 +900,7 @@ def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
 
 
 def get_min_depth(l_k: dict[int, int]) -> int:
-    """get minimum depth of graph.
+    """Get minimum depth of graph.
 
     Parameters
     ----------
@@ -914,11 +916,11 @@ def get_min_depth(l_k: dict[int, int]) -> int:
 
 
 def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
-    """Returns the set containing the odd neighbor of a set of vertices.
+    """Return the set containing the odd neighbor of a set of vertices.
 
     Parameters
     ----------
-    graph : networkx.Graph
+    graph : nx.Graph
         underlying graph.
     vertices : set
         set of nodes indices to find odd neighbors
@@ -936,9 +938,10 @@ def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
 
 
 def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
-    """get components of each layer.
+    """Get components of each layer.
+
     Parameters
-    -------
+    ----------
     l_k: dict
         layers obtained by flow or gflow algorithms
 
@@ -1103,7 +1106,7 @@ def get_layers_from_flow(
 
 
 def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
-    """Get adjacency matrix of the graph
+    """Get adjacency matrix of the graph.
 
     Returns
     -------
@@ -1135,8 +1138,8 @@ def verify_flow(
         graph (incl. in and out)
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
-    meas_planes: dict[int, str](optional)
-        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    meas_planes: dict[int, str]
+        optional: measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
 
     Returns
@@ -1194,7 +1197,7 @@ def verify_gflow(
         set of node labels for output
     gflow: dict[int, set]
         gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
-        .. seealso:: :func:`gflow.gflow`
+        .. seealso:: :func:`find_gflow`
     meas_planes: dict[int, str]
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
@@ -1343,10 +1346,6 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
     return outputs
 
 
-def is_int(value: numbers.Number) -> bool:
-    return value == int(value)
-
-
 def get_pauli_nodes(
     meas_planes: dict[int, graphix.pauli.Plane], meas_angles: dict[int, float]
 ) -> tuple[set[int], set[int], set[int]]:
@@ -1372,18 +1371,18 @@ def get_pauli_nodes(
     l_x, l_y, l_z = set(), set(), set()
     for node, plane in meas_planes.items():
         if plane == graphix.pauli.Plane.XY:
-            if is_int(meas_angles[node]):  # measurement angle is integer
+            if graphix.pauli.is_int(meas_angles[node]):  # measurement angle is integer
                 l_x |= {node}
-            elif is_int(2 * meas_angles[node]):  # measurement angle is half integer
+            elif graphix.pauli.is_int(2 * meas_angles[node]):  # measurement angle is half integer
                 l_y |= {node}
         elif plane == graphix.pauli.Plane.XZ:
-            if is_int(meas_angles[node]):
+            if graphix.pauli.is_int(meas_angles[node]):
                 l_z |= {node}
-            elif is_int(2 * meas_angles[node]):
+            elif graphix.pauli.is_int(2 * meas_angles[node]):
                 l_x |= {node}
         elif plane == graphix.pauli.Plane.YZ:
-            if is_int(meas_angles[node]):
+            if graphix.pauli.is_int(meas_angles[node]):
                 l_y |= {node}
-            elif is_int(2 * meas_angles[node]):
+            elif graphix.pauli.is_int(2 * meas_angles[node]):
                 l_z |= {node}
     return l_x, l_y, l_z

@@ -455,7 +455,7 @@ class TestPattern:
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
-    """Controlled rotation gate, decomposed"""
+    """Controlled rotation gate, decomposed."""  # noqa: D401
     circuit.rz(control, theta / 2)
     circuit.rz(target, theta / 2)
     circuit.cnot(control, target)
@@ -464,7 +464,7 @@ def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
 
 
 def swap(circuit: Circuit, a: int, b: int) -> None:
-    """swap gate, decomposed"""
+    """Swap gate, decomposed."""
     circuit.cnot(a, b)
     circuit.cnot(b, a)
     circuit.cnot(a, b)

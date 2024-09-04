@@ -1,15 +1,22 @@
+"""Algorithms for linear algebra."""
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import galois
 import numpy as np
 import sympy as sp
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
 
 class MatGF2:
-    """Matrix on GF2 field"""
+    """Matrix on GF2 field."""
 
     def __init__(self, data):
-        """constructor for matrix of GF2
+        """Construct a matrix of GF2.
 
         Parameters
         ----------
@@ -21,40 +28,48 @@ class MatGF2:
         else:
             self.data = galois.GF2(data)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the representation string of the matrix."""
+        return repr(self.data)
+
+    def __str__(self) -> str:
+        """Return the displayable string of the matrix."""
         return str(self.data)
 
-    def __str__(self):
-        return str(self.data)
-
-    def __eq__(self, other):
+    def __eq__(self, other: MatGF2) -> bool:
+        """Return `True` if two matrices are equal, `False` otherwise."""
         return np.all(self.data == other.data)
 
-    def __add__(self, other):
+    def __add__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Add two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data + other.data)
 
-    def __sub__(self, other):
+    def __sub__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Substract two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data - other.data)
 
-    def __mul__(self, other):
+    def __mul__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Compute the point-wise multiplication of two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data * other.data)
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Multiply two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data @ other.data)
 
-    def copy(self):
+    def copy(self) -> MatGF2:
+        """Return a copy of the matrix."""
         return MatGF2(self.data.copy())
 
-    def add_row(self, array_to_add=None, row=None):
-        """add a row to the matrix
+    def add_row(self, array_to_add=None, row=None) -> None:
+        """Add a row to the matrix.
 
         Parameters
         ----------
@@ -70,8 +85,8 @@ class MatGF2:
         array_to_add = array_to_add.reshape((1, self.data.shape[1]))
         self.data = np.insert(self.data, row, array_to_add, axis=0)
 
-    def add_col(self, array_to_add=None, col=None):
-        """add a column to the matrix
+    def add_col(self, array_to_add=None, col=None) -> None:
+        """Add a column to the matrix.
 
         Parameters
         ----------
@@ -87,8 +102,8 @@ class MatGF2:
         array_to_add = array_to_add.reshape((1, self.data.shape[0]))
         self.data = np.insert(self.data, col, array_to_add, axis=1)
 
-    def concatenate(self, other, axis=1):
-        """concatinate two matrices
+    def concatenate(self, other: MatGF2, axis: int = 1) -> None:
+        """Concatinate two matrices.
 
         Parameters
         ----------
@@ -99,8 +114,8 @@ class MatGF2:
         """
         self.data = np.concatenate((self.data, other.data), axis=axis)
 
-    def remove_row(self, row):
-        """remove a row from the matrix
+    def remove_row(self, row: int) -> None:
+        """Remove a row from the matrix.
 
         Parameters
         ----------
@@ -109,8 +124,8 @@ class MatGF2:
         """
         self.data = np.delete(self.data, row, axis=0)
 
-    def remove_col(self, col):
-        """remove a column from the matrix
+    def remove_col(self, col: int) -> None:
+        """Remove a column from the matrix.
 
         Parameters
         ----------
@@ -119,8 +134,8 @@ class MatGF2:
         """
         self.data = np.delete(self.data, col, axis=1)
 
-    def swap_row(self, row1, row2):
-        """swap two rows
+    def swap_row(self, row1: int, row2: int) -> None:
+        """Swap two rows.
 
         Parameters
         ----------
@@ -131,8 +146,8 @@ class MatGF2:
         """
         self.data[[row1, row2]] = self.data[[row2, row1]]
 
-    def swap_col(self, col1, col2):
-        """swap two columns
+    def swap_col(self, col1: int, col2: int) -> None:
+        """Swap two columns.
 
         Parameters
         ----------
@@ -143,8 +158,8 @@ class MatGF2:
         """
         self.data[:, [col1, col2]] = self.data[:, [col2, col1]]
 
-    def permute_row(self, row_permutation):
-        """permute rows
+    def permute_row(self, row_permutation) -> None:
+        """Permute rows.
 
         Parameters
         ----------
@@ -153,8 +168,8 @@ class MatGF2:
         """
         self.data = self.data[row_permutation, :]
 
-    def permute_col(self, col_permutation):
-        """permute columns
+    def permute_col(self, col_permutation) -> None:
+        """Permute columns.
 
         Parameters
         ----------
@@ -163,8 +178,8 @@ class MatGF2:
         """
         self.data = self.data[:, col_permutation]
 
-    def is_canonical_form(self):
-        """check if the matrix is in a canonical(Row reduced echelon form) form
+    def is_canonical_form(self) -> bool:
+        """Check if the matrix is in a canonical form (row reduced echelon form).
 
         Returns
         -------
@@ -191,8 +206,8 @@ class MatGF2:
 
         return True
 
-    def get_rank(self):
-        """get the rank of the matrix
+    def get_rank(self) -> int:
+        """Get the rank of the matrix.
 
         Returns
         -------
@@ -206,8 +221,8 @@ class MatGF2:
         nonzero_index = np.diag(mat_a.data).nonzero()
         return len(nonzero_index[0])
 
-    def forward_eliminate(self, b=None, copy=False):
-        r"""forward eliminate the matrix
+    def forward_eliminate(self, b=None, copy=False) -> tuple[MatGF2, MatGF2, list[int], list[int]]:
+        r"""Forward eliminate the matrix.
 
         |A B| --\ |I X|
         |C D| --/ |0 0|
@@ -271,8 +286,8 @@ class MatGF2:
                 b.data[eliminate_row, :] += b.data[row, :]
         return mat_a, b, row_permutation, col_permutation
 
-    def backward_substitute(self, b):
-        """backward substitute the matrix
+    def backward_substitute(self, b) -> tuple[npt.NDArray, list[sp.Symbol]]:
+        """Backward substitute the matrix.
 
         Parameters
         ----------

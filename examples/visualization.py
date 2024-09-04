@@ -44,7 +44,7 @@ pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_d
 
 # %%
 # Correction set ('xflow' and 'zflow' of pattern)
-# -------------------------------------------
+# -----------------------------------------------
 # next let us visualize the X and Z correction set in the pattern by :code:`flow_from_pattern=False` statement.
 #
 

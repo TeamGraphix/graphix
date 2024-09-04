@@ -16,3 +16,4 @@ Module reference
     visualization
     channels
     random_objects
+    open_graph

@@ -70,7 +70,8 @@ class MBQCVQE:
         pattern.perform_pauli_measurements()  # Perform Pauli measurements
         simulator = PatternSimulator(pattern, backend=backend)
         if backend == "tensornetwork":
-            tn = simulator.run()  # Simulate the MBQC circuit using tensor network
+            simulator.run()  # Simulate the MBQC circuit using tensor network
+            tn = simulator.backend.state
             tn.default_output_nodes = pattern.output_nodes  # Set the default_output_nodes attribute
             if tn.default_output_nodes is None:
                 raise ValueError("Output nodes are not set for tensor network simulation.")

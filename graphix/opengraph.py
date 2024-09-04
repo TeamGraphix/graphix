@@ -27,8 +27,7 @@ class Measurement:
     plane: Plane
 
     def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
-        """Compares if two measurements have the same plane and their angles
-        are close.
+        """Compare if two measurements have the same plane and their angles are close.
 
         Example
         -------
@@ -46,8 +45,9 @@ class Measurement:
 
 @dataclass(frozen=True)
 class OpenGraph:
-    """Open graph contains the graph, measurement, and input and output
-    nodes. This is the graph we wish to implement deterministically
+    """Open graph contains the graph, measurement, and input and output nodes.
+
+    This is the graph we wish to implement deterministically.
 
     :param inside: the underlying graph state
     :param measurements: a dictionary whose key is the ID of a node and the
@@ -74,6 +74,7 @@ class OpenGraph:
     outputs: list[int]  # Outputs are ordered
 
     def __post_init__(self) -> None:
+        """Validate the open graph."""
         if not all(node in self.inside.nodes for node in self.measurements):
             raise ValueError("All measured nodes must be part of the graph's nodes.")
         if not all(node in self.inside.nodes for node in self.inputs):
@@ -88,12 +89,14 @@ class OpenGraph:
             raise ValueError("Output nodes contain duplicates.")
 
     def isclose(self, other: OpenGraph, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
-        """Compared two open graphs implement approximately the same unitary
-        operator by ensuring the structure of the graphs are the same and all
+        """Return `True` if two open graphs implement approximately the same unitary operator.
+
+        Ensures the structure of the graphs are the same and all
         measurement angles are sufficiently close.
 
-        This doesn't check they are equal up to an isomorphism"""
+        This doesn't check they are equal up to an isomorphism.
 
+        """
         if not nx.utils.graphs_equal(self.inside, other.inside):
             return False
 
@@ -107,8 +110,7 @@ class OpenGraph:
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:
-        """Initialises an `OpenGraph` object based on the resource-state graph
-        associated with the measurement pattern."""
+        """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
         g = nx.Graph()
         nodes, edges = pattern.get_graph()
         g.add_nodes_from(nodes)
@@ -124,13 +126,12 @@ class OpenGraph:
         return cls(g, meas, inputs, outputs)
 
     def to_pattern(self) -> Pattern:
-        """Converts the `OpenGraph` into a `Pattern`.
+        """Convert the `OpenGraph` into a `Pattern`.
 
         Will raise an exception if the open graph does not have flow, gflow, or
         Pauli flow.
         The pattern will be generated using maximally-delayed flow.
         """
-
         g = self.inside.copy()
         inputs = self.inputs
         outputs = self.outputs

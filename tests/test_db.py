@@ -12,21 +12,20 @@ from graphix._db import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLI
 class TestClifford:
     @staticmethod
     def classify_pauli(arr: npt.NDArray) -> tuple[int, int]:
-        """returns the index of Pauli gate with sign for a given 2x2 matrix.
+        """Return the index of Pauli gate with sign for a given 2x2 matrix.
 
-        Compare the gate arr with Pauli gates
-        and return the tuple of (matching index, sign).
+        Compare the gate arr with Pauli gates and return the tuple of (matching index, sign).
 
         Parameters
         ----------
             arr: np.array
                 2x2 matrix.
+
         Returns
-        ----------
+        -------
             ind : tuple
                 tuple containing (pauli index, sign index)
         """
-
         if np.allclose(CLIFFORD[1], arr):
             return (0, 0)
         if np.allclose(-1 * CLIFFORD[1], arr):
@@ -44,20 +43,18 @@ class TestClifford:
 
     @staticmethod
     def clifford_index(g: npt.NDArray) -> int:
-        """returns the index of Clifford for a given 2x2 matrix.
+        """Return the index of Clifford for a given 2x2 matrix.
 
-        Compare the gate g with all Clifford gates (up to global phase)
-        and return the matching index.
+        Compare the gate g with all Clifford gates (up to global phase) and return the matching index.
 
         Parameters
         ----------
             g : 2x2 numpy array.
 
         Returns
-        ----------
+        -------
             i : index of Clifford gate
         """
-
         for i in range(24):
             ci = CLIFFORD[i]
             # normalise global phase

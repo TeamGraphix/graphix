@@ -32,11 +32,13 @@ class DensityMatrix(State):
         data: Data = graphix.states.BasicStates.PLUS,
         nqubit: graphix.types.PositiveOrNullInt | None = None,
     ):
-        """Initialize density matrix objects. The behaviour builds on theo ne of `graphix.statevec.Statevec`.
+        """Initialize density matrix objects.
+
+        The behaviour builds on the one of `graphix.statevec.Statevec`.
         `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
-        - an iterable of iterable of scalars (A 2**n x 2**n numerical density matrix)
+        - an iterable of iterable of scalars (A `2**n x 2**n` numerical density matrix)
         - a `graphix.statevec.DensityMatrix` object
         - a `graphix.statevec.Statevector` object
 
@@ -48,8 +50,8 @@ class DensityMatrix(State):
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
-        :type data: graphix.states.State | "DensityMatrix" | Statevec | collections.abc.Iterable[graphix.states.State] |collections.abc.Iterable[numbers.Number] | collections.abc.Iterable[collections.abc.Iterable[numbers.Number]], optional
-        :param nqubit: number of qubits to prepare, defaults to None
+        :type data: Data
+        :param nqubit: number of qubits to prepare, defaults to `None`
         :type nqubit: int, optional
         """
         assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
@@ -85,12 +87,15 @@ class DensityMatrix(State):
 
     @property
     def nqubit(self) -> int:
+        """Return the number of qubits."""
         return self.rho.shape[0].bit_length() - 1
 
     def __str__(self) -> str:
+        """Return a string description."""
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
     def add_nodes(self, nqubit, data) -> None:
+        """Add nodes to the density matrix."""
         dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
         self.tensor(dm_to_add)
 
@@ -114,13 +119,12 @@ class DensityMatrix(State):
         self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
     def evolve(self, op, qargs) -> None:
-        """Multi-qubit operation
+        """Multi-qubit operation.
 
         Args:
             op (np.array): 2^n*2^n matrix
             qargs (list of ints): target qubits' indexes
         """
-
         d = op.shape
         # check it is a matrix.
         if len(d) == 2:
@@ -162,15 +166,16 @@ class DensityMatrix(State):
         self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
     def expectation_single(self, op, i) -> complex:
-        """Expectation value of single-qubit operator.
+        """Return the expectation value of single-qubit operator.
 
         Args:
             op (np.array): 2*2 Hermite operator
             loc (int): Index of qubit on which to apply operator.
-        Returns:
+
+        Returns
+        -------
             complex: expectation value (real for hermitian ops!).
         """
-
         if not (0 <= i < self.nqubit):
             raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.nqubit-1}.")
 
@@ -187,10 +192,12 @@ class DensityMatrix(State):
         return np.trace(rho_tensor.reshape((2**self.nqubit, 2**self.nqubit)))
 
     def dims(self):
+        """Return the dimensions of the density matrix."""
         return self.rho.shape
 
     def tensor(self, other) -> None:
         r"""Tensor product state with other density matrix.
+
         Results in self :math:`\otimes` other.
 
         Parameters
@@ -210,41 +217,39 @@ class DensityMatrix(State):
             edge : (int, int) or [int, int]
                 Edge to apply CNOT gate.
         """
-
         self.evolve(CNOT_TENSOR.reshape(4, 4), edge)
 
     def swap(self, edge) -> None:
-        """swap qubits
+        """Swap qubits.
 
         Parameters
         ----------
             edge : (int, int) or [int, int]
                 (control, target) qubits indices.
         """
-
         self.evolve(graphix.sim.statevec.SWAP_TENSOR.reshape(4, 4), edge)
 
     def entangle(self, edge) -> None:
-        """connect graph nodes
+        """Connect graph nodes.
 
         Parameters
         ----------
             edge : (int, int) or [int, int]
                 (control, target) qubit indices.
         """
-
         self.evolve(graphix.sim.statevec.CZ_TENSOR.reshape(4, 4), edge)
 
     def normalize(self) -> None:
-        """normalize density matrix"""
+        """Normalize density matrix."""
         self.rho = self.rho / np.trace(self.rho)
 
     def remove_qubit(self, loc) -> None:
+        """Remove a qubit."""
         self.ptrace(loc)
         self.normalize()
 
     def ptrace(self, qargs) -> None:
-        """partial trace
+        """Partial trace.
 
         Parameters
         ----------
@@ -270,7 +275,7 @@ class DensityMatrix(State):
         self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
 
     def fidelity(self, statevec):
-        """calculate the fidelity against reference statevector.
+        """Calculate the fidelity against reference statevector.
 
         Parameters
         ----------
@@ -280,7 +285,7 @@ class DensityMatrix(State):
         return np.abs(statevec.transpose().conj() @ self.rho @ statevec)
 
     def apply_channel(self, channel: KrausChannel, qargs) -> None:
-        """Applies a channel to a density matrix.
+        """Apply a channel to a density matrix.
 
         Parameters
         ----------
@@ -300,7 +305,6 @@ class DensityMatrix(State):
             This shouldn't happen since :class:`graphix.channel.KrausChannel` objects are normalized by construction.
         ....
         """
-
         result_array = np.zeros((2**self.nqubit, 2**self.nqubit), dtype=np.complex128)
 
         if not isinstance(channel, KrausChannel):
@@ -322,7 +326,8 @@ class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
 
     def __init__(self, pr_calc=True, rng: Generator | None = None) -> None:
-        """
+        """Construct a density matrix backend.
+
         Parameters
         ----------
         pattern : :class:`graphix.pattern.Pattern` object
@@ -336,12 +341,12 @@ class DensityMatrixBackend(Backend):
         super().__init__(DensityMatrix(nqubit=0), pr_calc=pr_calc, rng=rng)
 
     def apply_channel(self, channel: KrausChannel, qargs) -> None:
-        """backend version of apply_channel
+        """Apply channel to the state.
+
         Parameters
         ----------
             qargs : list of ints. Target qubits
         """
-
         indices = [self.node_index.index(i) for i in qargs]
         self.state.apply_channel(channel, indices)
 

@@ -1,3 +1,5 @@
+"""Tensor Network Simulator for MBQC."""
+
 from __future__ import annotations
 
 import string
@@ -23,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class TensorNetworkBackend(Backend):
-    """Tensor Network Simulator for MBQC
+    """Tensor Network Simulator for MBQC.
 
     Executes the measurement pattern using TN expression of graph states.
     """
@@ -32,6 +34,7 @@ class TensorNetworkBackend(Backend):
         self, pattern, graph_prep="auto", input_state=BasicStates.PLUS, rng: Generator | None = None, **kwargs
     ):
         """
+        Construct a tensor network backend.
 
         Parameters
         ----------
@@ -89,7 +92,7 @@ class TensorNetworkBackend(Backend):
         super().__init__(state)
 
     def add_nodes(self, nodes, data=BasicStates.PLUS) -> None:
-        """Add nodes to the network
+        """Add nodes to the network.
 
         Parameters
         ----------
@@ -142,7 +145,9 @@ class TensorNetworkBackend(Backend):
             pass
 
     def measure(self, node: int, measurement_description: MeasurementDescription) -> tuple[Backend, int]:
-        """Perform measurement of the node. In the context of tensornetwork, performing measurement equals to
+        """Perform measurement of the node.
+
+        In the context of tensornetwork, performing measurement equals to
         applying measurement operator to the tensor. Here, directly contracted with the projected state.
 
         Parameters
@@ -187,7 +192,7 @@ class TensorNetworkBackend(Backend):
             self.state.evolve_single(cmd.node, op, cmd.kind)
 
     def apply_clifford(self, node: int, clifford: Clifford) -> None:
-        """Apply single-qubit Clifford gate
+        """Apply single-qubit Clifford gate.
 
         Parameters
         ----------
@@ -198,6 +203,7 @@ class TensorNetworkBackend(Backend):
         self.state.evolve_single(node, clifford.matrix)
 
     def finalize(self, output_nodes) -> None:
+        """Do nothing."""
         pass
 
 
@@ -324,7 +330,7 @@ class MBQCTensorNet(State, TensorNetwork):
         self.add_tensor(node_ts)
 
     def add_qubits(self, indices, states="plus"):
-        """Add qubits to the network
+        """Add qubits to the network.
 
         Parameters
         ----------
@@ -514,6 +520,7 @@ class MBQCTensorNet(State, TensorNetwork):
 
     def to_statevector(self, indices=None, **kwagrs):
         """Retrieve the statevector from the tensornetwork.
+
         This method tends to be slow however we plan to parallelize this.
 
         Parameters
@@ -551,7 +558,7 @@ class MBQCTensorNet(State, TensorNetwork):
         return norm
 
     def expectation_value(self, op, qubit_indices, output_node_indices=None, **kwagrs):
-        """Calculate expectation value of the given operator,
+        """Calculate expectation value of the given operator.
 
         Parameters
         ----------
@@ -651,7 +658,7 @@ class MBQCTensorNet(State, TensorNetwork):
         self.add(op_tensor)
 
     def copy(self, deep=False):
-        """Returns the copy of this object.
+        """Return the copy of this object.
 
         Parameters
         ----------
@@ -671,7 +678,9 @@ class MBQCTensorNet(State, TensorNetwork):
 
 
 def _get_decomposed_cz():
-    """Returns the decomposed cz tensors. This is an internal method.
+    """Return the decomposed cz tensors.
+
+    This is an internal method.
 
     CZ gate can be decomposed into two 3-rank tensors(Schmidt rank = 2).
     Decomposing into low-rank tensors is important preprocessing for
@@ -710,7 +719,7 @@ def gen_str():
 
 
 def outer_product(vectors):
-    """outer product of the given vectors
+    """Return the outer product of the given vectors.
 
     Parameters
     ----------

@@ -129,9 +129,7 @@ class TestStatevecNew:
             assert result == expected_result
 
     def test_deterministic_measure(self):
-        """
-        Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1.
-        """
+        """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1."""
         for _ in range(10):
             # plus state (default)
             backend = StatevectorBackend()
@@ -149,9 +147,7 @@ class TestStatevecNew:
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
     def test_deterministic_measure_many(self):
-        """
-        Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1.
-        """
+        """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1."""
         for _ in range(10):
             # plus state (default)
             backend = StatevectorBackend()
@@ -182,9 +178,9 @@ class TestStatevecNew:
             assert list(backend.node_index) == list(range(n_traps, n_neighbors + n_traps + n_whatever))
 
     def test_deterministic_measure_with_coin(self, fx_rng: Generator):
-        """
-        Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1.
-           We add coin toss to that
+        """Entangle |+> state with N |0> states, the (XY,0) measurement yields the outcome 0 with probability 1.
+
+        We add coin toss to that.
         """
         for _ in range(10):
             # plus state (default)

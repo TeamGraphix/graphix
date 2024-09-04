@@ -1,3 +1,5 @@
+"""Optimize and simulate measurement-based quantum computation."""
+
 from graphix.generator import generate_from_graph
 from graphix.graphsim import GraphState
 from graphix.pattern import Pattern

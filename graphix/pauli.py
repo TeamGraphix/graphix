@@ -1,6 +1,4 @@
-"""
-Pauli gates ± {1,j} × {I, X, Y, Z}
-"""  # noqa: RUF002
+"""Pauli gates ± {1,j} × {I, X, Y, Z}."""  # noqa: RUF002
 
 from __future__ import annotations
 
@@ -23,6 +21,8 @@ if TYPE_CHECKING:
 
 
 class IXYZ(enum.Enum):
+    """I, X, Y or Z."""
+
     I = -1
     X = 0
     Y = 1
@@ -30,30 +30,37 @@ class IXYZ(enum.Enum):
 
 
 class Sign(enum.Enum):
+    """Sign, plus or minus."""
+
     Plus = 1
     Minus = -1
 
     def __str__(self) -> str:
+        """Return `+` or `-`."""
         if self == Sign.Plus:
             return "+"
         return "-"
 
     @staticmethod
     def plus_if(b: bool) -> Sign:
+        """Return `+` if `b` is `True`, `-` otherwise."""
         if b:
             return Sign.Plus
         return Sign.Minus
 
     @staticmethod
     def minus_if(b: bool) -> Sign:
+        """Return `-` if `b` is `True`, `+` otherwise."""
         if b:
             return Sign.Minus
         return Sign.Plus
 
     def __neg__(self) -> Sign:
+        """Swap the sign."""
         return Sign.minus_if(self == Sign.Plus)
 
     def __mul__(self, other: SignOrNumber) -> SignOrNumber:
+        """Multiply the sign with another sign or a number."""
         if isinstance(other, Sign):
             return Sign.plus_if(self == other)
         if isinstance(other, Number):
@@ -61,17 +68,21 @@ class Sign(enum.Enum):
         return NotImplemented
 
     def __rmul__(self, other) -> Number:
+        """Multiply the sign with a number."""
         if isinstance(other, Number):
             return self.value * other
         return NotImplemented
 
     def __int__(self) -> int:
+        """Return `1` for `+` and `-1` for `-`."""
         return self.value
 
     def __float__(self) -> float:
+        """Return `1.0` for `+` and `-1.0` for `-`."""
         return float(self.value)
 
     def __complex__(self) -> complex:
+        """Return `1.0 + 0j` for `+` and `-1.0 + 0j` for `-`."""
         return complex(self.value)
 
 
@@ -94,23 +105,24 @@ class ComplexUnit:
         self.__is_imag = is_imag
 
     @property
-    def sign(self):
+    def sign(self) -> Sign:
+        """Return the sign."""
         return self.__sign
 
     @property
     def is_imag(self) -> bool:
+        """Return `True` if `j` or `-j`."""
         return self.__is_imag
 
     def __complex__(self) -> complex:
-        """
-        Return the unit as complex number
-        """
+        """Return the unit as complex number."""
         result: complex = complex(self.__sign)
         if self.__is_imag:
             result *= 1j
         return result
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
+        """Return a string representation of the unit."""
         if self.__is_imag:
             result = "1j"
         else:
@@ -120,10 +132,7 @@ class ComplexUnit:
         return result
 
     def prefix(self, s: str) -> str:
-        """
-        Prefix the given string by the complex unit as coefficient,
-        1 leaving the string unchanged.
-        """
+        """Prefix the given string by the complex unit as coefficient, 1 leaving the string unchanged."""
         if self.__is_imag:
             result = "1j*" + s
         else:
@@ -133,6 +142,7 @@ class ComplexUnit:
         return result
 
     def __mul__(self, other):
+        """Multiply the complex unit with another complex unit."""
         if isinstance(other, ComplexUnit):
             is_imag = self.__is_imag != other.__is_imag
             sign = self.__sign * other.__sign * Sign.minus_if(self.__is_imag and other.__is_imag)
@@ -140,6 +150,7 @@ class ComplexUnit:
         return NotImplemented
 
     def __rmul__(self, other):
+        """Multiply the complex unit with a number."""
         if other == 1:
             return self
         elif other == -1:
@@ -150,6 +161,7 @@ class ComplexUnit:
             return COMPLEX_UNITS[self.__sign == Sign.minus_if(self.__is_imag)][not self.__is_imag]
 
     def __neg__(self):
+        """Return the opposite of the complex unit."""
         return COMPLEX_UNITS[self.__sign == Sign.Plus][self.__is_imag]
 
 
@@ -165,12 +177,15 @@ UNITS = (UNIT, -UNIT, 1j * UNIT, -1j * UNIT)
 
 
 class Axis(enum.Enum):
+    """Axis: `X`, `Y` or `Z`."""
+
     X = 0
     Y = 1
     Z = 2
 
     @property
     def op(self) -> npt.NDArray:
+        """Return the single qubit operator associated to the axis."""
         if self == Axis.X:
             return Ops.x
         if self == Axis.Y:
@@ -182,6 +197,8 @@ class Axis(enum.Enum):
 
 
 class Plane(enum.Enum):
+    """Plane: `XY`, `YZ` or `XZ`."""
+
     XY = 0
     YZ = 1
     XZ = 2
@@ -249,8 +266,7 @@ class Plane(enum.Enum):
             return Axis.X  # former convention was Z
 
     def polar(self, angle: float) -> tuple[float, float, float]:
-        """Return the Cartesian coordinates of the point of module 1 at the
-        given angle, following the conventional orientation for cos and sin."""
+        """Return the Cartesian coordinates of the point of module 1 at the given angle, following the conventional orientation for cos and sin."""
         result = [0, 0, 0]
         result[self.cos.value] = np.cos(angle)
         result[self.sin.value] = np.sin(angle)
@@ -279,11 +295,10 @@ class Plane(enum.Enum):
 
 
 class Pauli:
-    """
-    Pauli gate: u * {I, X, Y, Z} where u is a complex unit
+    """Pauli gate: `u * {I, X, Y, Z}` where u is a complex unit.
 
-    Pauli gates can be multiplied with other Pauli gates (with @),
-    with complex units and unit constants (with *),
+    Pauli gates can be multiplied with other Pauli gates (with `@`),
+    with complex units and unit constants (with `*`),
     and can be negated.
     """
 
@@ -293,30 +308,36 @@ class Pauli:
 
     @staticmethod
     def from_axis(axis: Axis) -> Pauli:
+        """Return the Pauli associated to the given axis."""
         return Pauli(IXYZ[axis.name], UNIT)
 
     @property
     def axis(self) -> Axis:
+        """Return the axis associated to the Pauli.
+
+        Fails if the Pauli is identity.
+        """
         if self.__symbol == IXYZ.I:
             raise ValueError("I is not an axis.")
         return Axis[self.__symbol.name]
 
     @property
     def symbol(self) -> IXYZ:
+        """Return the symbol (without the complex unit)."""
         return self.__symbol
 
     @property
     def unit(self) -> ComplexUnit:
+        """Return the complex unit."""
         return self.__unit
 
     @property
-    def matrix(self) -> np.ndarray:
-        """
-        Return the matrix of the Pauli gate.
-        """
+    def matrix(self) -> npt.NDArray:
+        """Return the matrix of the Pauli gate."""
         return complex(self.__unit) * CLIFFORD[self.__symbol.value + 1]
 
     def get_eigenstate(self, eigenvalue=0) -> PlanarState:
+        """Return the eigenstate of the Pauli."""
         from graphix.states import BasicStates
 
         if self.symbol == IXYZ.X:
@@ -331,9 +352,15 @@ class Pauli:
         typing_extensions.assert_never(self.symbol)
 
     def __repr__(self) -> str:
+        """Return a fully qualified string representation of the Pauli."""
         return self.__unit.prefix(f"graphix.pauli.{self.__symbol.name}")
 
+    def __str__(self) -> str:
+        """Return a string representation of the Pauli (without module prefix)."""
+        return self.__unit.prefix(self.__symbol.name)
+
     def __matmul__(self, other):
+        """Return the product of two Paulis."""
         if isinstance(other, Pauli):
             if self.__symbol == IXYZ.I:
                 symbol = other.__symbol
@@ -354,11 +381,13 @@ class Pauli:
         return NotImplemented
 
     def __rmul__(self, other) -> Pauli:
+        """Return the product of two Paulis."""
         if isinstance(other, ComplexUnit):
             return get(self.__symbol, other * self.__unit)
         return NotImplemented
 
     def __neg__(self) -> Pauli:
+        """Return the opposite."""
         return get(self.__symbol, -self.__unit)
 
 
@@ -383,26 +412,24 @@ Z = get(IXYZ.Z, UNIT)
 
 
 def parse(name: str) -> Pauli:
-    """
-    Return the Pauli gate with the given name (limited to "I", "X", "Y" and "Z").
-    """
+    """Return the Pauli gate with the given name (limited to "I", "X", "Y" and "Z")."""
     return get(IXYZ[name], UNIT)
 
 
 def is_int(value: Number) -> bool:
+    """Return `True` if `value` is an integer, `False` otherwise."""
     return value == int(value)
 
 
 class PauliMeasurement(typing.NamedTuple):
-    """
-    Pauli measurement.
-    """
+    """Pauli measurement."""
 
     axis: Axis
     sign: Sign
 
     @staticmethod
     def try_from(plane: Plane, angle: float) -> PauliMeasurement | None:
+        """Return the Pauli measurement description if a given measure is Pauli."""
         angle_double = 2 * angle
         if not is_int(angle_double):
             return None
