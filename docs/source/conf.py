@@ -16,6 +16,7 @@ author = "Shinichi Sunami"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
@@ -29,8 +30,11 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autosectionlabel_prefix_document = True
 
+intersphinx_mapping = {
+    "networkx": ("https://networkx.github.io/documentation/stable/", None),
+}
 
-sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../../"))
 
 
 def skip(app, what, name, obj, would_skip, options):
@@ -74,3 +78,5 @@ sphinx_gallery_conf = {
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
 }
+
+suppress_warnings = ["config.cache"]

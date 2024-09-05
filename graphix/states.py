@@ -1,6 +1,4 @@
-"""
-quantum states and operators
-"""
+"""Quantum states and operators."""
 
 from __future__ import annotations
 
@@ -20,6 +18,7 @@ from graphix.pauli import Plane
 # generic class State for all States
 class State(abc.ABC):
     """Abstract base class for single qubit states objects.
+
     Only requirement for concrete classes is to have
     a get_statevector() method that returns the statevector
     representation of the state
@@ -27,9 +26,11 @@ class State(abc.ABC):
 
     @abc.abstractmethod
     def get_statevector(self) -> npt.NDArray:
-        pass
+        """Return the state vector."""
+        ...
 
     def get_densitymatrix(self) -> npt.NDArray:
+        """Return the density matrix."""
         # return DM in 2**n x 2**n dim (2x2 here)
         return np.outer(self.get_statevector(), self.get_statevector().conj())
 
@@ -37,6 +38,8 @@ class State(abc.ABC):
     def __get_pydantic_core_schema__(
         cls, source_type: typing.Any, handler: pydantic.GetCoreSchemaHandler
     ) -> pydantic_core.CoreSchema:
+        """Validate state."""
+
         def check_state(obj) -> State:
             if not isinstance(obj, State):
                 raise ValueError("State expected")
@@ -47,6 +50,7 @@ class State(abc.ABC):
 
 class PlanarState(pydantic.BaseModel, State):
     """Light object used to instantiate backends.
+
     doesn't cover all possible states but this is
     covered in :class:`graphix.sim.statevec.Statevec`
     and :class:`graphix.sim.densitymatrix.DensityMatrix`
@@ -64,9 +68,15 @@ class PlanarState(pydantic.BaseModel, State):
     angle: float
 
     def __repr__(self) -> str:
+        """Return a string representation of the planar state."""
+        return f"graphix.states.PlanarState(plane={self.plane}, angle={self.angle})"
+
+    def __str__(self) -> str:
+        """Return a string description of the planar state."""
         return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
     def get_statevector(self) -> npt.NDArray:
+        """Return the state vector."""
         if self.plane == Plane.XY:
             return np.array([1, np.exp(1j * self.angle)]) / np.sqrt(2)
 
@@ -81,6 +91,8 @@ class PlanarState(pydantic.BaseModel, State):
 
 # States namespace for input initialization.
 class BasicStates:
+    """Basic states."""
+
     ZERO = PlanarState(plane=Plane.XZ, angle=0)
     ONE = PlanarState(plane=Plane.XZ, angle=np.pi)
     PLUS = PlanarState(plane=Plane.XY, angle=0)

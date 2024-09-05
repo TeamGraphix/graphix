@@ -3,6 +3,9 @@ name: pytest-cov
 # Need to include "push"
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   cov:
     runs-on: ubuntu-latest

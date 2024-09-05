@@ -21,6 +21,8 @@ Node = int
 
 
 class CommandKind(enum.Enum):
+    """Tag for command kind."""
+
     N = "N"
     M = "M"
     E = "E"
@@ -32,17 +34,13 @@ class CommandKind(enum.Enum):
 
 
 class Command(BaseModel, abc.ABC):
-    """
-    Base command class.
-    """
+    """Base command class."""
 
     kind: CommandKind = None
 
 
 class N(Command):
-    """
-    Preparation command.
-    """
+    """Preparation command."""
 
     kind: CommandKind = CommandKind.N
     node: Node
@@ -50,13 +48,22 @@ class N(Command):
 
 
 class BaseM(Command):
+    """Base measurement command.
+
+    Represent a measurement of a node. In MBQC, a measure is an instance of `M`,
+    with given plane, angles, and domains. In the context of blind computations,
+    the server only knows which node is measured, and the parameters are given
+    by the :class:`graphix.simulator.MeasureMethod` provided by the client.
+    """
+
     kind: CommandKind = CommandKind.M
     node: Node
 
 
 class M(BaseM):
-    """
-    Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
+    """Measurement command.
+
+    By default the plane is set to 'XY', the angle to 0, empty domains.
     """
 
     plane: Plane = Plane.XY
@@ -65,6 +72,10 @@ class M(BaseM):
     t_domain: set[Node] = set()
 
     def clifford(self, clifford_gate: Clifford) -> M:
+        """Apply a Clifford gate to the measure command.
+
+        The returned `M` command is equivalent to the pattern `MC`.
+        """
         domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
@@ -77,18 +88,14 @@ class M(BaseM):
 
 
 class E(Command):
-    """
-    Entanglement command.
-    """
+    """Entanglement command."""
 
     kind: CommandKind = CommandKind.E
     nodes: tuple[Node, Node]
 
 
 class C(Command):
-    """
-    Clifford command.
-    """
+    """Clifford command."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)  # for the `clifford` field
 
@@ -98,35 +105,26 @@ class C(Command):
 
 
 class Correction(Command):
-    """
-    Correction command.
-    Either X or Z.
-    """
+    """Base class for correction command (either X or Z)."""
 
     node: Node
     domain: set[Node] = set()
 
 
 class X(Correction):
-    """
-    X correction command.
-    """
+    """X correction command."""
 
     kind: CommandKind = CommandKind.X
 
 
 class Z(Correction):
-    """
-    Z correction command.
-    """
+    """Z correction command."""
 
     kind: CommandKind = CommandKind.Z
 
 
 class S(Command):
-    """
-    S command
-    """
+    """S command."""
 
     kind: CommandKind = CommandKind.S
     node: Node
@@ -134,20 +132,21 @@ class S(Command):
 
 
 class T(Command):
-    """
-    T command
-    """
+    """T command."""
 
     kind: CommandKind = CommandKind.T
 
 
 class MeasureUpdate(BaseModel):
+    """Describe how a measure is changed by the signals and/or a vertex operator."""
+
     new_plane: Plane
     coeff: int
     add_term: float
 
     @staticmethod
     def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
+        """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford_gate = clifford.X @ clifford_gate

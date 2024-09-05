@@ -1,3 +1,5 @@
+"""Provide a default random-number generator if `None` is given."""
+
 from __future__ import annotations
 
 import threading
@@ -12,6 +14,7 @@ _rng_local = threading.local()
 
 
 def ensure_rng(rng: Generator | None = None) -> Generator:
+    """Return a default random-number generator if `None` is given."""
     if rng is not None:
         return rng
     if rng := getattr(_rng_local, "rng", None):

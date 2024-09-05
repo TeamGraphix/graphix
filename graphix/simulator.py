@@ -1,4 +1,4 @@
-"""MBQC simulator
+"""MBQC simulator.
 
 Simulates MBQC by executing the pattern.
 
@@ -25,14 +25,15 @@ from graphix.sim.tensornet import TensorNetworkBackend
 
 
 class MeasureMethod(abc.ABC):
-    """
-    Simulators are now parametrized by MeasureMethod, with default measurement method that implements MBQC.
-    It allows customized measurement methods, for instance for delegated QC protocols.
+    """Measure method used by the simulator, with default measurement method that implements MBQC.
+
+    To be overwritten by custom measurement methods in the case of delegated QC protocols.
 
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
     def measure(self, backend: Backend, cmd, noise_model=None) -> None:
+        """Perform a measure."""
         description = self.get_measurement_description(cmd)
         result = backend.measure(cmd.node, description)
         if noise_model is not None:
@@ -40,20 +41,23 @@ class MeasureMethod(abc.ABC):
         self.set_measure_result(cmd.node, result)
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription: ...
+    def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription:
+        """Return the description of the measurement performed by a given measure command (possibly blind)."""
+        ...
 
     @abc.abstractmethod
-    def get_measure_result(self, node: int) -> bool: ...
+    def get_measure_result(self, node: int) -> bool:
+        """Return the result of a previous measurement."""
+        ...
 
     @abc.abstractmethod
-    def set_measure_result(self, node: int, result: bool) -> None: ...
+    def set_measure_result(self, node: int, result: bool) -> None:
+        """Store the result of a previous measurement."""
+        ...
 
 
 class DefaultMeasureMethod(MeasureMethod):
-    """
-    Default measurement method implementing standard measurement plane/angle update for MBQC.
-    To be overwritten by custom measurement methods in the case of delegated QC protocols.
-    """
+    """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
     def __init__(self, results=None):
         if results is None:
@@ -61,6 +65,7 @@ class DefaultMeasureMethod(MeasureMethod):
         self.results = results
 
     def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription:
+        """Return the description of the measurement performed by a given measure command (cannot be blind in the case of DefaultMeasureMethod)."""
         assert isinstance(cmd, M)
         angle = cmd.angle * np.pi
         # extract signals for adaptive angle
@@ -71,14 +76,16 @@ class DefaultMeasureMethod(MeasureMethod):
         return MeasurementDescription(measure_update.new_plane, angle)
 
     def get_measure_result(self, node: int) -> bool:
+        """Return the result of a previous measurement."""
         return self.results[node]
 
     def set_measure_result(self, node: int, result: bool) -> None:
+        """Store the result of a previous measurement."""
         self.results[node] = result
 
 
 class PatternSimulator:
-    """MBQC simulator
+    """MBQC simulator.
 
     Executes the measurement pattern.
     """
@@ -87,8 +94,10 @@ class PatternSimulator:
         self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, **kwargs
     ) -> None:
         """
+        Construct a pattern simulator.
+
         Parameters
-        -----------
+        ----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be simulated.
         backend: :class:`graphix.sim.backend.Backend` object,
@@ -101,9 +110,6 @@ class PatternSimulator:
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
-        # check that pattern has output nodes configured
-        # assert len(pattern.output_nodes) > 0
-
         if isinstance(backend, Backend):
             assert kwargs == dict()
             self.backend = backend
@@ -133,13 +139,16 @@ class PatternSimulator:
 
     @property
     def pattern(self) -> Pattern:
+        """Return the pattern."""
         return self.__pattern
 
     @property
-    def measure_method(self):
+    def measure_method(self) -> MeasureMethod:
+        """Return the measure method."""
         return self.__measure_method
 
     def set_noise_model(self, model):
+        """Set a noise model."""
         if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
             self.noise_model = None  # if not initialized yet
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
