@@ -1444,7 +1444,7 @@ class Pattern:
         """
         if not ignore_pauli_with_deps:
             self.standardize()
-            pauli_nodes = self.__extract_pauli_nodes()
+            pauli_nodes = self._extract_pauli_nodes()
             first_measure_index = next((i for i, cmd in enumerate(self) if cmd.kind == CommandKind.M), len(self))
             self.__seq[first_measure_index:first_measure_index] = pauli_nodes.values()
         measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
@@ -1554,7 +1554,7 @@ class Pattern:
         result.results = self.results.copy()
         return result
 
-    def __extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, tuple[command.M]]:
+    def _extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, tuple[command.M]]:
         """Remove and return all the Pauli measurements of the sequence (except on nodes in `leave_nodes`).
 
         The return dictionary is indexed by node index. The returned
