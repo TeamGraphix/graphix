@@ -1444,9 +1444,24 @@ class Pattern:
         """
         if not ignore_pauli_with_deps:
             self.standardize()
-            pauli_nodes = self._extract_pauli_nodes()
-            first_measure_index = next((i for i, cmd in enumerate(self) if cmd.kind == CommandKind.M), len(self))
-            self.__seq[first_measure_index:first_measure_index] = pauli_nodes.values()
+            pauli_nodes = self.extract_pauli_nodes()
+            # Create a new sequence with all Pauli nodes to the front
+            new_seq = []
+            pauli_nodes_inserted = False
+            for cmd in self:
+                if cmd.kind == CommandKind.M:
+                    if cmd.node in pauli_nodes:
+                        pass
+                    else:
+                        if not pauli_nodes_inserted:
+                            new_seq.extend(pauli_nodes.values())
+                            pauli_nodes_inserted = True
+                        new_seq.append(cmd)
+                else:
+                    new_seq.append(cmd)
+            if not pauli_nodes_inserted:
+                new_seq.extend(pauli_nodes.values())
+            self.__seq = new_seq
         measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
 
     def draw_graph(
@@ -1554,32 +1569,25 @@ class Pattern:
         result.results = self.results.copy()
         return result
 
-    def _extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, command.M]:
-        """Remove and return all the Pauli measurements of the sequence (except on nodes in `leave_nodes`).
+    def extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, command.M]:
+        """Return all the Pauli measurements of the sequence (except on nodes in `leave_nodes`).
 
         The return dictionary is indexed by node index. The returned
         Pauli measurements are intended to be measured first
-        (typically, by Pauli presimulation). This is an internal
-        function since the sequence is left in a state that breaks the
-        pattern invariant: the Pauli measurement commands are removed
-        from the pattern but the nodes are still considered to be
-        measured (they are not output nodes and can appear in the
-        domains of other commands). These measurements are supposed to
-        be reinserted in the pattern and/or presimulated.
+        (typically, by Pauli presimulation). These measurements are
+        supposed to be reinserted in the pattern and/or presimulated.
 
         """
         if leave_nodes is None:
             leave_nodes = set()
         pauli_nodes = {}
         shift_domains = {}
-        index = 0
 
         def expand_domain(domain: set[int]) -> None:
             for node in domain & shift_domains.keys():
                 domain ^= shift_domains[node]
 
-        while index < len(self.__seq):
-            cmd = self.__seq[index]
+        for cmd in self:
             if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
                 expand_domain(cmd.domain)
             if cmd.kind == CommandKind.M:
@@ -1600,9 +1608,6 @@ class Pattern:
                     cmd.s_domain = set()
                     cmd.t_domain = set()
                     pauli_nodes[cmd.node] = cmd
-                    del self.__seq[index]
-                    index -= 1
-            index += 1
         return pauli_nodes
 
 
