@@ -449,8 +449,9 @@ class TestPattern:
         pattern.add(C(node=0, clifford=clifford.TABLE[c]))
         pattern_ref = pattern.copy()
         pattern.standardize(method="direct")
-        _state_ref = pattern_ref.simulate_pattern()
-        _state_p = pattern.simulate_pattern()
+        state_ref = pattern_ref.simulate_pattern()
+        state_p = pattern.simulate_pattern()
+        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
