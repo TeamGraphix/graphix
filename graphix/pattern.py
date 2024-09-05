@@ -1573,13 +1573,13 @@ class Pattern:
         pauli_nodes = {}
         shift_domains = {}
         index = 0
+
+        def expand_domain(domain: set[int]) -> None:
+            for node in domain & shift_domains.keys():
+                domain ^= shift_domains[node]
+
         while index < len(self.__seq):
             cmd = self.__seq[index]
-
-            def expand_domain(domain):
-                for node in domain & shift_domains.keys():
-                    domain ^= shift_domains[node]
-
             if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
                 expand_domain(cmd.domain)
             if cmd.kind == CommandKind.M:
