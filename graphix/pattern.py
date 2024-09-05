@@ -1554,7 +1554,7 @@ class Pattern:
         result.results = self.results.copy()
         return result
 
-    def _extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, tuple[command.M]]:
+    def _extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, command.M]:
         """Remove and return all the Pauli measurements of the sequence (except on nodes in `leave_nodes`).
 
         The return dictionary is indexed by node index. The returned
