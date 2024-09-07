@@ -1416,7 +1416,9 @@ class Pattern:
         result = exe.run()
         return result
 
-    def perform_pauli_measurements(self, leave_input=False, use_rustworkx=False, ignore_pauli_with_deps=False) -> None:
+    def perform_pauli_measurements(
+        self, leave_input: bool = False, use_rustworkx: bool = False, ignore_pauli_with_deps: bool = False
+    ) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
