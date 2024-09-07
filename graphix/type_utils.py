@@ -1,3 +1,5 @@
+"""Type utilities."""
+
 from __future__ import annotations
 
 import sys
@@ -13,6 +15,7 @@ def check_list_elements(l, ty):
 
 
 def check_kind(cls: type, scope: dict[str, Any]) -> None:
+    """Check that the class has a kind attribute."""
     if not hasattr(cls, "kind"):
         msg = f"{cls.__name__} must have a tag attribute named kind."
         raise TypeError(msg)
