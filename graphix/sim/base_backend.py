@@ -1,3 +1,5 @@
+"""Abstract base class for simulation backends."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,17 +25,19 @@ if TYPE_CHECKING:
 
 @dataclass
 class MeasurementDescription:
+    """An MBQC measurement."""
+
     plane: Plane
     angle: float
 
 
 class NodeIndex:
-    """
-    A class for managing the mapping between node numbers and qubit indices in the internal state
-    of the backend. This allows for efficient access and manipulation of qubit orderings
-    throughout the execution of a pattern.
+    """A class for managing the mapping between node numbers and qubit indices in the internal state of the backend.
 
-    Attributes:
+    This allows for efficient access and manipulation of qubit orderings throughout the execution of a pattern.
+
+    Attributes
+    ----------
         __list (list): A private list of the current active node (labelled with integers).
         __dict (dict): A private dictionary mapping current node labels (integers) to their corresponding qubit indices
                        in the backend's internal quantum state.
@@ -44,27 +48,23 @@ class NodeIndex:
         self.__list = []
 
     def __getitem__(self, index: int) -> int:
+        """Return the qubit node associated with the specified index."""
         return self.__list[index]
 
     def index(self, node: int) -> int:
-        """
-        Returns the qubit index associated with the specified node label.
-        """
+        """Return the qubit index associated with the specified node label."""
         return self.__dict[node]
 
     def __iter__(self) -> Iterator[int]:
+        """Return an iterator over indices."""
         return iter(self.__list)
 
     def __len__(self) -> int:
-        """
-        Returns the number of currently active nodes.
-        """
+        """Return the number of currently active nodes."""
         return len(self.__list)
 
     def extend(self, nodes: Iterable[int]) -> None:
-        """
-        Extends the list with a sequence of node labels, updating the dictionary by assigning them sequential qubit indices.
-        """
+        """Extend the list with a sequence of node labels, updating the dictionary by assigning them sequential qubit indices."""
         base = len(self)
         self.__list.extend(nodes)
         # The following loop iterates over `self.__list[base:]` instead of `nodes`
@@ -74,16 +74,14 @@ class NodeIndex:
             self.__dict[node] = base + index
 
     def remove(self, node: int) -> None:
-        """
-        Removes the specified node label from the list and dictionary, and re-attributes qubit indices for the
-        remaining nodes.
-        """
+        """Remove the specified node label from the list and dictionary, and re-attributes qubit indices for the remaining nodes."""
         index = self.__dict[node]
         del self.__list[index]
         for new_index, node in enumerate(self.__list[index:], start=index):
             self.__dict[node] = new_index
 
     def swap(self, i: int, j: int) -> None:
+        """Swap two nodes given their indices."""
         node_i = self.__list[i]
         node_j = self.__list[j]
         self.__list[i] = node_j
@@ -93,10 +91,12 @@ class NodeIndex:
 
 
 class State:
+    """Base class for backend state."""
+
     pass
 
 
-def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
+def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
@@ -107,22 +107,25 @@ def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndar
 def perform_measure(
     qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
 ) -> bool:
+    """Perform measurement of a qubit."""
     vec = plane.polar(angle)
     if pr_calc:
-        op_mat = op_mat_from_result(vec, False)
+        op_mat = _op_mat_from_result(vec, False)
         prob_0 = state.expectation_single(op_mat, qubit)
         result = rng.random() > prob_0
         if result:
-            op_mat = op_mat_from_result(vec, True)
+            op_mat = _op_mat_from_result(vec, True)
     else:
         # choose the measurement result randomly
         result = rng.choice([0, 1])
-        op_mat = op_mat_from_result(vec, result)
+        op_mat = _op_mat_from_result(vec, result)
     state.evolve_single(op_mat, qubit)
     return result
 
 
 class Backend:
+    """Base class for backends."""
+
     def __init__(
         self,
         state: State,
@@ -130,7 +133,8 @@ class Backend:
         pr_calc: bool = True,
         rng: Generator | None = None,
     ):
-        """
+        """Construct a backend.
+
         Parameters
         ----------
             pr_calc : bool
@@ -154,24 +158,26 @@ class Backend:
         self.__rng = ensure_rng(rng)
 
     def copy(self) -> Backend:
+        """Return a copy of the backend."""
         return Backend(self.__state, self.__node_index, self.__pr_calc, self.__rng)
 
     @property
     def rng(self) -> Generator:
+        """Return the associated random-number generator."""
         return self.__rng
 
     @property
     def state(self) -> State:
+        """Return the state of the backend."""
         return self.__state
 
     @property
     def node_index(self) -> NodeIndex:
+        """Return the node index table of the backend."""
         return self.__node_index
 
     def add_nodes(self, nodes, data=graphix.states.BasicStates.PLUS) -> None:
-        """add new qubit(s) to statevector in argument
-        and assign the corresponding node number
-        to list self.node_index.
+        """Add new qubit(s) to statevector in argument and assign the corresponding node number to list self.node_index.
 
         Parameters
         ----------
@@ -181,7 +187,7 @@ class Backend:
         self.node_index.extend(nodes)
 
     def entangle_nodes(self, edge: tuple[int, int]) -> None:
-        """Apply CZ gate to two connected nodes
+        """Apply CZ gate to two connected nodes.
 
         Parameters
         ----------
@@ -193,7 +199,7 @@ class Backend:
         self.state.entangle((target, control))
 
     def measure(self, node: int, measurement_description: MeasurementDescription) -> bool:
-        """Perform measurement of a node in the internal statevector and trace out the qubit
+        """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
@@ -209,10 +215,7 @@ class Backend:
         return result
 
     def correct_byproduct(self, cmd, measure_method) -> None:
-        """Byproduct correction
-        correct for the X or Z byproduct operators,
-        by applying the X or Z gate.
-        """
+        """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
         if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
             if cmd.kind == CommandKind.X:
                 op = Ops.x
@@ -221,18 +224,17 @@ class Backend:
             self.apply_single(node=cmd.node, op=op)
 
     def apply_single(self, node, op) -> None:
+        """Apply a single gate to the state."""
         index = self.node_index.index(node)
         self.state.evolve_single(op=op, i=index)
 
     def apply_clifford(self, node: int, clifford: graphix.clifford.Clifford) -> None:
-        """Apply single-qubit Clifford gate,
-        specified by vop index specified in graphix.clifford.CLIFFORD
-        """
+        """Apply single-qubit Clifford gate, specified by vop index specified in graphix.clifford.CLIFFORD."""
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
 
     def sort_qubits(self, output_nodes) -> None:
-        """sort the qubit order in internal statevector"""
+        """Sort the qubit order in internal statevector."""
         for i, ind in enumerate(output_nodes):
             if self.node_index.index(ind) != i:
                 move_from = self.node_index.index(ind)
@@ -240,9 +242,10 @@ class Backend:
                 self.node_index.swap(i, move_from)
 
     def finalize(self, output_nodes) -> None:
-        """to be run at the end of pattern simulation."""
+        """To be run at the end of pattern simulation."""
         self.sort_qubits(output_nodes)
 
     @property
     def nqubit(self) -> int:
+        """Return the number of qubits of the current state."""
         return self.state.nqubit

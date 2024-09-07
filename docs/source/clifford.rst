@@ -3,11 +3,15 @@ Miscellaneous modules
 =====================
 
 :mod:`graphix.clifford` module
-+++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++
+
+.. automodule:: graphix.clifford
 
 .. currentmodule:: graphix.clifford
 
-.. data:: graphix.clifford.CLIFFORD
+.. autoclass:: graphix.clifford.Clifford
+
+.. data:: graphix.cliffford.CLIFFORD
 
     list of 24 unique single-qubit Clifford operators as numpy array.
 

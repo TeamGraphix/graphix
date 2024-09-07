@@ -1,3 +1,5 @@
+"""Instruction classes."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -11,6 +13,8 @@ from graphix.pauli import Plane
 
 
 class InstructionKind(Enum):
+    """Tag for instruction kind."""
+
     CCX = enum.auto()
     RZZ = enum.auto()
     CNOT = enum.auto()
@@ -31,9 +35,7 @@ class InstructionKind(Enum):
 
 
 class _KindChecker:
-    """
-    Enforce tag field declaration.
-    """
+    """Enforce tag field declaration."""
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -42,9 +44,7 @@ class _KindChecker:
 
 @dataclasses.dataclass
 class CCX(_KindChecker):
-    """
-    Toffoli circuit instruction.
-    """
+    """Toffoli circuit instruction."""
 
     target: int
     controls: tuple[int, int]
@@ -53,9 +53,7 @@ class CCX(_KindChecker):
 
 @dataclasses.dataclass
 class RZZ(_KindChecker):
-    """
-    RZZ circuit instruction.
-    """
+    """RZZ circuit instruction."""
 
     target: int
     control: int
@@ -68,9 +66,7 @@ class RZZ(_KindChecker):
 
 @dataclasses.dataclass
 class CNOT(_KindChecker):
-    """
-    CNOT circuit instruction.
-    """
+    """CNOT circuit instruction."""
 
     target: int
     control: int
@@ -79,9 +75,7 @@ class CNOT(_KindChecker):
 
 @dataclasses.dataclass
 class SWAP(_KindChecker):
-    """
-    SWAP circuit instruction.
-    """
+    """SWAP circuit instruction."""
 
     targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.SWAP]] = dataclasses.field(default=InstructionKind.SWAP, init=False)
@@ -89,9 +83,7 @@ class SWAP(_KindChecker):
 
 @dataclasses.dataclass
 class H(_KindChecker):
-    """
-    H circuit instruction.
-    """
+    """H circuit instruction."""
 
     target: int
     kind: ClassVar[Literal[InstructionKind.H]] = dataclasses.field(default=InstructionKind.H, init=False)
@@ -99,9 +91,7 @@ class H(_KindChecker):
 
 @dataclasses.dataclass
 class S(_KindChecker):
-    """
-    S circuit instruction.
-    """
+    """S circuit instruction."""
 
     target: int
     kind: ClassVar[Literal[InstructionKind.S]] = dataclasses.field(default=InstructionKind.S, init=False)
@@ -109,9 +99,7 @@ class S(_KindChecker):
 
 @dataclasses.dataclass
 class X(_KindChecker):
-    """
-    X circuit instruction.
-    """
+    """X circuit instruction."""
 
     target: int
     kind: ClassVar[Literal[InstructionKind.X]] = dataclasses.field(default=InstructionKind.X, init=False)
@@ -119,9 +107,7 @@ class X(_KindChecker):
 
 @dataclasses.dataclass
 class Y(_KindChecker):
-    """
-    Y circuit instruction.
-    """
+    """Y circuit instruction."""
 
     target: int
     kind: ClassVar[Literal[InstructionKind.Y]] = dataclasses.field(default=InstructionKind.Y, init=False)
@@ -129,9 +115,7 @@ class Y(_KindChecker):
 
 @dataclasses.dataclass
 class Z(_KindChecker):
-    """
-    Z circuit instruction.
-    """
+    """Z circuit instruction."""
 
     target: int
     kind: ClassVar[Literal[InstructionKind.Z]] = dataclasses.field(default=InstructionKind.Z, init=False)
@@ -139,9 +123,7 @@ class Z(_KindChecker):
 
 @dataclasses.dataclass
 class I(_KindChecker):
-    """
-    I circuit instruction.
-    """
+    """I circuit instruction."""
 
     target: int
     kind: ClassVar[Literal[InstructionKind.I]] = dataclasses.field(default=InstructionKind.I, init=False)
@@ -149,9 +131,7 @@ class I(_KindChecker):
 
 @dataclasses.dataclass
 class M(_KindChecker):
-    """
-    M circuit instruction.
-    """
+    """M circuit instruction."""
 
     target: int
     plane: Plane
@@ -161,9 +141,7 @@ class M(_KindChecker):
 
 @dataclasses.dataclass
 class RX(_KindChecker):
-    """
-    X rotation circuit instruction.
-    """
+    """X rotation circuit instruction."""
 
     target: int
     angle: float
@@ -173,9 +151,7 @@ class RX(_KindChecker):
 
 @dataclasses.dataclass
 class RY(_KindChecker):
-    """
-    Y rotation circuit instruction.
-    """
+    """Y rotation circuit instruction."""
 
     target: int
     angle: float
@@ -185,9 +161,7 @@ class RY(_KindChecker):
 
 @dataclasses.dataclass
 class RZ(_KindChecker):
-    """
-    Z rotation circuit instruction.
-    """
+    """Z rotation circuit instruction."""
 
     target: int
     angle: float
@@ -197,9 +171,7 @@ class RZ(_KindChecker):
 
 @dataclasses.dataclass
 class _XC(_KindChecker):
-    """
-    X correction circuit instruction. Used internally by the transpiler.
-    """
+    """X correction circuit instruction. Used internally by the transpiler."""
 
     target: int
     domain: set[int]
@@ -208,9 +180,7 @@ class _XC(_KindChecker):
 
 @dataclasses.dataclass
 class _ZC(_KindChecker):
-    """
-    Z correction circuit instruction. Used internally by the transpiler.
-    """
+    """Z correction circuit instruction. Used internally by the transpiler."""
 
     target: int
     domain: set[int]

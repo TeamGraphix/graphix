@@ -1,3 +1,5 @@
+"""Functions to visualize the resource state of MBQC pattern."""
+
 from __future__ import annotations
 
 import math
@@ -17,8 +19,7 @@ if TYPE_CHECKING:
 
 
 class GraphVisualizer:
-    """
-    A class for visualizing MBQC graphs with flow or gflow structure.
+    """A class for visualizing MBQC graphs with flow or gflow structure.
 
     Attributes
     ----------
@@ -47,6 +48,8 @@ class GraphVisualizer:
         local_clifford: dict[int, int] | None = None,
     ):
         """
+        Construct a graph visualizer.
+
         Parameters
         ----------
         g : :class:`networkx.graph.Graph` object
@@ -85,7 +88,8 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        Visualizes the graph with flow or gflow structure.
+        Visualize the graph with flow or gflow structure.
+
         If there exists a flow structure, then the graph is visualized with the flow structure.
         If flow structure is not found and there exists a gflow structure, then the graph is visualized
         with the gflow structure.
@@ -110,7 +114,6 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-
         f, l_k = gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
         if f:
             print("Flow detected in the graph.")
@@ -166,7 +169,8 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        Visualizes the graph with flow or gflow structure found from the given pattern.
+        Visualize the graph with flow or gflow structure found from the given pattern.
+
         If pattern sequence is consistent with flow structure, then the graph is visualized with the flow structure.
         If it is not consistent with flow structure and consistent with gflow structure, then the graph is visualized
         with the gflow structure. If neither flow nor gflow structure is found, then the graph is visualized with all correction flows.
@@ -424,7 +428,6 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-
         pos = self.get_pos_from_gflow(g, l_k)
         pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}  # Scale the layout
 
@@ -801,7 +804,7 @@ class GraphVisualizer:
         node_distance: tuple[int, int] = (1, 1),
     ) -> tuple[int, int]:
         """
-        Returns the figure size of the graph.
+        Return the figure size of the graph.
 
         Parameters
         ----------
@@ -831,7 +834,7 @@ class GraphVisualizer:
 
     def get_edge_path(self, flow: dict[int, int | set[int]], pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
-        Returns the path of edges and gflow arrows.
+        Return the path of edges and gflow arrows.
 
         Parameters
         ----------
@@ -950,7 +953,7 @@ class GraphVisualizer:
 
     def get_edge_path_wo_structure(self, pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
-        Returns the path of edges.
+        Return the path of edges.
 
         Parameters
         ----------
@@ -1001,7 +1004,7 @@ class GraphVisualizer:
 
     def get_pos_from_flow(self, f: dict[int, int], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
-        Returns the position of nodes based on the flow.
+        Return the position of nodes based on the flow.
 
         Parameters
         ----------
@@ -1034,7 +1037,7 @@ class GraphVisualizer:
 
     def get_pos_from_gflow(self, g: dict[int, set[int]], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
-        Returns the position of nodes based on the gflow.
+        Return the position of nodes based on the gflow.
 
         Parameters
         ----------
@@ -1048,7 +1051,6 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-
         g_edges = []
 
         for node, node_list in g.items():
@@ -1077,7 +1079,7 @@ class GraphVisualizer:
 
     def get_pos_wo_structure(self) -> dict[int, tuple[float, float]]:
         """
-        Returns the position of nodes based on the graph.
+        Return the position of nodes based on the graph.
 
         Returns
         -------
@@ -1089,7 +1091,6 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-
         layers = dict()
         connected_components = list(nx.connected_components(self.graph))
 
@@ -1172,7 +1173,7 @@ class GraphVisualizer:
 
     def get_pos_all_correction(self, layers: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
-        Returns the position of nodes based on the pattern
+        Return the position of nodes based on the pattern.
 
         Parameters
         ----------
@@ -1184,7 +1185,6 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-
         g_prime = self.graph.copy()
         g_prime.add_nodes_from(self.graph.nodes())
         g_prime.add_edges_from(self.graph.edges())
@@ -1200,9 +1200,7 @@ class GraphVisualizer:
 
     @staticmethod
     def _edge_intersects_node(start, end, node_pos, buffer=0.2):
-        """
-        Determine if an edge intersects a node.
-        """
+        """Determine if an edge intersects a node."""
         start = np.array(start)
         end = np.array(end)
         if np.all(start == end):
@@ -1224,9 +1222,7 @@ class GraphVisualizer:
 
     @staticmethod
     def _control_point(start, end, node_pos, distance=0.6):
-        """
-        Generate a control point to bend the edge around a node.
-        """
+        """Generate a control point to bend the edge around a node."""
         edge_vector = np.array(end) - np.array(start)
         # Rotate the edge vector 90 degrees or -90 degrees according to the node position
         cross = np.cross(edge_vector, np.array(node_pos) - np.array(start))
@@ -1240,9 +1236,7 @@ class GraphVisualizer:
 
     @staticmethod
     def _bezier_curve(bezier_path, t):
-        """
-        Generate a bezier curve from a list of points.
-        """
+        """Generate a bezier curve from a list of points."""
         n = len(bezier_path) - 1  # order of the curve
         curve = np.zeros((len(t), 2))
         for i, point in enumerate(bezier_path):
@@ -1250,9 +1244,7 @@ class GraphVisualizer:
         return curve
 
     def _check_path(self, path, target_node_pos=None):
-        """
-        if there is an acute angle in the path, merge points
-        """
+        """If there is an acute angle in the path, merge points."""
         path = np.array(path)
         acute = True
         max_iter = 100
@@ -1288,7 +1280,5 @@ class GraphVisualizer:
 
 
 def comb(n, r):
-    """
-    returns the binomial coefficient of n and r.
-    """
+    """Return the binomial coefficient of n and r."""
     return math.factorial(n) // (math.factorial(n - r) * math.factorial(r))

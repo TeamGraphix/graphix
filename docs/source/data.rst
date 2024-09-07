@@ -6,6 +6,8 @@ Pattern data structure
 
 This module defines standard data structure for pattern commands.
 
+.. automodule:: graphix.command
+
 .. currentmodule:: graphix.command
 
 .. autoclass:: CommandKind
@@ -22,6 +24,7 @@ This module defines standard data structure for pattern commands.
 
 .. autoclass:: Z
 
+.. autoclass:: MeasureUpdate
 
 
 :mod:`graphix.pauli` module
@@ -29,20 +32,34 @@ This module defines standard data structure for pattern commands.
 
 This module defines standard data structure for Pauli operators, measurement planes and their transformations.
 
+.. automodule:: graphix.pauli
+
 .. currentmodule:: graphix.pauli
+
+.. autoclass:: Axis
+    :members:
+
+.. autoclass:: ComplexUnit
+    :members:
+
+.. autoclass:: Sign
+    :members:
+
+.. autoclass:: IXYZ
+    :members:
 
 .. autoclass:: Plane
     :members:
 
 .. autoclass:: Pauli
-    :members:
 
-.. autoclass:: MeasureUpdate
 
 :mod:`graphix.instruction` module
 +++++++++++++++++++++++++++++++++
 
 This module defines standard data structure for gate seqence (circuit model) used for :class:`graphix.transpiler.Circuit`.
+
+.. automodule:: graphix.instruction
 
 .. currentmodule:: graphix.instruction
 
@@ -69,6 +86,16 @@ This module defines standard data structure for gate seqence (circuit model) use
 .. autoclass:: SWAP
 
 .. autoclass:: CNOT
+
+
+:mod:`graphix.states` module
+++++++++++++++++++++++++++++
+
+.. automodule:: graphix.states
+
+.. currentmodule:: graphix.states
+
+.. autoclass:: State
 
 
 

@@ -1,7 +1,4 @@
-"""
-MBQC pattern generator
-
-"""
+"""MBQC pattern generator."""
 
 from __future__ import annotations
 
@@ -18,10 +15,10 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     specified by networks.Graph and two lists specifying input and output nodes.
     Currently we support XY-plane measurements.
 
-    Searches for the flow in the open graph using :func:`find_flow` and if found,
+    Searches for the flow in the open graph using :func:`graphix.gflow.find_flow` and if found,
     construct the measurement pattern according to the theorem 1 of [NJP 9, 250 (2007)].
 
-    Then, if no flow was found, searches for gflow using :func:`find_gflow`,
+    Then, if no flow was found, searches for gflow using :func:`graphix.gflow.find_gflow`,
     from which measurement pattern can be constructed from theorem 2 of [NJP 9, 250 (2007)].
 
     The constructed measurement pattern deterministically realize the unitary embedding
@@ -34,7 +31,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     angles :math:`\alpha_i` are applied to the measuring nodes,
     i.e. the randomness of the measurement is eliminated by the added byproduct commands.
 
-    .. seealso:: :func:`find_flow` :func:`find_gflow` :class:`graphix.pattern.Pattern`
+    .. seealso:: :func:`graphix.gflow.find_flow` :func:`graphix.gflow.find_gflow` :class:`graphix.pattern.Pattern`
 
     Parameters
     ----------
@@ -46,12 +43,12 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
         list of node indices for input nodes
     outputs : list
         list of node indices for output nodes
-    meas_planes : dict(optional)
-        measurement planes for each nodes on the graph, except output nodes
+    meas_planes : dict
+        optional: measurement planes for each nodes on the graph, except output nodes
 
     Returns
     -------
-    pattern : graphix.pattern.Pattern object
+    pattern : graphix.pattern.Pattern
         constructed pattern.
     """
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))

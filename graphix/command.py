@@ -19,6 +19,8 @@ Node = int
 
 
 class CommandKind(Enum):
+    """Tag for command kind."""
+
     N = enum.auto()
     M = enum.auto()
     E = enum.auto()
@@ -30,9 +32,7 @@ class CommandKind(Enum):
 
 
 class _KindChecker:
-    """
-    Enforce tag field declaration.
-    """
+    """Enforce tag field declaration."""
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -41,9 +41,7 @@ class _KindChecker:
 
 @dataclasses.dataclass
 class N(_KindChecker):
-    """
-    Preparation command.
-    """
+    """Preparation command."""
 
     node: Node
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
@@ -52,9 +50,7 @@ class N(_KindChecker):
 
 @dataclasses.dataclass
 class M(_KindChecker):
-    """
-    Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
-    """
+    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
 
     node: Node
     plane: Plane = Plane.XY
@@ -64,6 +60,10 @@ class M(_KindChecker):
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
     def clifford(self, clifford_gate: Clifford) -> M:
+        """Apply a Clifford gate to the measure command.
+
+        The returned `M` command is equivalent to the pattern `MC`.
+        """
         domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
@@ -77,9 +77,7 @@ class M(_KindChecker):
 
 @dataclasses.dataclass
 class E(_KindChecker):
-    """
-    Entanglement command.
-    """
+    """Entanglement command."""
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
@@ -87,9 +85,7 @@ class E(_KindChecker):
 
 @dataclasses.dataclass
 class C(_KindChecker):
-    """
-    Clifford command.
-    """
+    """Clifford command."""
 
     node: Node
     clifford: Clifford
@@ -98,9 +94,7 @@ class C(_KindChecker):
 
 @dataclasses.dataclass
 class X(_KindChecker):
-    """
-    X correction command.
-    """
+    """X correction command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -109,9 +103,7 @@ class X(_KindChecker):
 
 @dataclasses.dataclass
 class Z(_KindChecker):
-    """
-    Z correction command.
-    """
+    """Z correction command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -120,9 +112,7 @@ class Z(_KindChecker):
 
 @dataclasses.dataclass
 class S(_KindChecker):
-    """
-    S command.
-    """
+    """S command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -131,9 +121,7 @@ class S(_KindChecker):
 
 @dataclasses.dataclass
 class T(_KindChecker):
-    """
-    T command.
-    """
+    """T command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -152,12 +140,15 @@ BaseM = M
 
 @dataclasses.dataclass
 class MeasureUpdate:
+    """Describe how a measure is changed by the signals and/or a vertex operator."""
+
     new_plane: Plane
     coeff: int
     add_term: float
 
     @staticmethod
     def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
+        """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford_gate = clifford.X @ clifford_gate

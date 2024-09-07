@@ -221,10 +221,7 @@ class TestDensityMatrix:
             dm.expectation_single(op, nqb + 3)
 
     def test_expectation_single_success(self, fx_rng: Generator) -> None:
-        """compare to pure state case
-        hence only pure states
-        but by linearity ok"""
-
+        """Compare with pure states."""
         nqb = fx_rng.integers(1, 4)
         # NOTE a statevector object so can't use its methods
         target_qubit = fx_rng.integers(0, nqb)
@@ -744,11 +741,7 @@ class TestDensityMatrix:
         assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_random_channel_one_qubit(self, fx_rng: Generator) -> None:
-        """
-        test random 1-qubit channel.
-        Especially checks for complex parameters.
-        """
-
+        """Test using complex parameters."""
         # check against statevector backend by hand for now.
         # create random density matrix
 
@@ -796,11 +789,7 @@ class TestDensityMatrix:
         assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_random_channel_two_qubits(self, fx_rng: Generator) -> None:
-        """
-        test random 2-qubit channel on a rank 1 dm (pure state). Generalizes by linearity.
-        Especially checks for complex parameters.
-        """
-
+        """Test random 2-qubit channel on a rank 1 dm (pure state)."""
         nqubits = fx_rng.integers(2, 5)
 
         # target qubits indices
@@ -839,9 +828,7 @@ class TestDensityMatrix:
         assert np.allclose(dm.rho, expected_dm)
 
     def test_apply_channel_fail(self, fx_rng: Generator) -> None:
-        """
-        test apply a channel that is not a Channel object
-        """
+        """Test apply a channel that is not a Channel object."""
         nqubits = fx_rng.integers(2, 5)
         i = fx_rng.integers(0, nqubits)
 

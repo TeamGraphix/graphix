@@ -1,3 +1,5 @@
+"""Graph simulator."""
+
 from .basegraphstate import BaseGraphState
 from .graphstate import GraphState
 from .nxgraphstate import NXGraphState

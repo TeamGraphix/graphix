@@ -1,3 +1,5 @@
+"""MBQC state vector backend."""
+
 from __future__ import annotations
 
 import copy
@@ -27,8 +29,10 @@ class StatevectorBackend(Backend):
         self, input_state: Data = graphix.states.BasicStates.PLUS, pr_calc=True, rng: Generator | None = None
     ) -> None:
         """
+        Construct a state vector backend.
+
         Parameters
-        -----------
+        ----------
         input_state: same syntax as `graphix.statevec.Statevec` constructor.
         pr_calc: bool
             whether or not to compute the probability distribution before choosing the measurement result.
@@ -54,14 +58,16 @@ SWAP_TENSOR = np.array(
 
 
 class Statevec(State):
-    """Statevector object"""
+    """Statevector object."""
 
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
         nqubit: int | None = None,
     ):
-        """Initialize statevector objects. The behaviour is as follows. `data` can be:
+        """Initialize statevector objects.
+
+        `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
         - an iterable of scalars (A 2**n numerical statevector)
@@ -79,7 +85,6 @@ class Statevec(State):
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
-
         if nqubit is not None and nqubit < 0:
             raise ValueError("nqubit must be a non-negative integer.")
 
@@ -136,15 +141,17 @@ class Statevec(State):
                     f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
                 )
 
-    def __repr__(self):
+    def __str__(self) -> str:
+        """Return a string description."""
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
     def add_nodes(self, nqubit, data) -> None:
+        """Add nodes to the state vector."""
         sv_to_add = Statevec(nqubit=nqubit, data=data)
         self.tensor(sv_to_add)
 
     def evolve_single(self, op: npt.NDArray, i: int) -> None:
-        """Single-qubit operation
+        """Apply a single-qubit operation.
 
         Parameters
         ----------
@@ -157,7 +164,7 @@ class Statevec(State):
         self.psi = np.moveaxis(psi, 0, i)
 
     def evolve(self, op: np.ndarray, qargs: list[int]) -> None:
-        """Multi-qubit operation
+        """Apply a multi-qubit operation.
 
         Parameters
         ----------
@@ -178,6 +185,7 @@ class Statevec(State):
         self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
 
     def dims(self):
+        """Return the dimensions."""
         return self.psi.shape
 
     def ptrace(self, qargs) -> None:
@@ -206,6 +214,7 @@ class Statevec(State):
 
     def remove_qubit(self, qarg: int) -> None:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
+
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
         For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over
@@ -251,7 +260,7 @@ class Statevec(State):
         self.normalize()
 
     def entangle(self, edge: tuple[int, int]) -> None:
-        """connect graph nodes
+        """Connect graph nodes.
 
         Parameters
         ----------
@@ -265,6 +274,7 @@ class Statevec(State):
 
     def tensor(self, other: Statevec) -> None:
         r"""Tensor product state with other qubits.
+
         Results in self :math:`\otimes` other.
 
         Parameters
@@ -279,7 +289,7 @@ class Statevec(State):
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
     def cnot(self, qubits):
-        """apply CNOT
+        """Apply CNOT.
 
         Parameters
         ----------
@@ -292,7 +302,7 @@ class Statevec(State):
         self.psi = np.moveaxis(psi, (0, 1), qubits)
 
     def swap(self, qubits) -> None:
-        """swap qubits
+        """Swap qubits.
 
         Parameters
         ----------
@@ -305,16 +315,16 @@ class Statevec(State):
         self.psi = np.moveaxis(psi, (0, 1), qubits)
 
     def normalize(self) -> None:
-        """normalize the state in-place"""
+        """Normalize the state in-place."""
         norm = _get_statevec_norm(self.psi)
         self.psi = self.psi / norm
 
     def flatten(self):
-        """returns flattened statevector"""
+        """Return flattened statevector."""
         return self.psi.flatten()
 
     def expectation_single(self, op: np.NDArray, loc: int) -> complex:
-        """Expectation value of single-qubit operator.
+        """Return the expectation value of single-qubit operator.
 
         Parameters
         ----------
@@ -334,7 +344,7 @@ class Statevec(State):
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
     def expectation_value(self, op: np.NDArray, qargs: collections.abc.Iterable[int]) -> complex:
-        """Expectation value of multi-qubit operator.
+        """Return the expectation value of multi-qubit operator.
 
         Parameters
         ----------
@@ -355,7 +365,7 @@ class Statevec(State):
 
 
 def _get_statevec_norm(psi):
-    """returns norm of the state"""
+    """Return norm of the state."""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 

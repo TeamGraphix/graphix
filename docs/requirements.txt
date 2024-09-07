@@ -2,7 +2,7 @@ sphinx>=5.0
 sphinx-gallery==0.11.1
 furo
 sphinxawesome-theme==5.1.6
-numpy==1.23.5
+numpy
 graphix
 matplotlib
 scikit-learn

@@ -6,6 +6,7 @@ from typing import Any, ClassVar, Literal
 
 
 def check_list_elements(l, ty):
+    """Check that every element of the list has the given type."""
     for index, item in enumerate(l):
         if not isinstance(item, ty):
             raise TypeError(f"data[{index}] has type {type(item)} whereas {ty} is expected")
