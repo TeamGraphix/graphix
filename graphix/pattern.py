@@ -1444,9 +1444,7 @@ class Pattern:
             pauli_nodes_inserted = False
             for cmd in self:
                 if cmd.kind == CommandKind.M:
-                    if cmd.node in pauli_nodes:
-                        pass
-                    else:
+                    if cmd.node not in pauli_nodes:
                         if not pauli_nodes_inserted:
                             new_seq.extend(pauli_nodes.values())
                             pauli_nodes_inserted = True
