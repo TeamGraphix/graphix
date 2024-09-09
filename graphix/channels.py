@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import copy
 import itertools
+import sys
 import typing
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, SupportsIndex
 
 import numpy as np
@@ -13,6 +13,11 @@ import numpy.typing as npt
 
 from graphix import linalg_validations as lv
 from graphix.ops import Ops
+
+if sys.version_info >= (3, 9):
+    from collections.abc import Sequence
+else:
+    from typing import Sequence
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
