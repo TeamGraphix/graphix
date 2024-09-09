@@ -18,8 +18,8 @@ import numpy as np
 
 import graphix.states
 import graphix.types
+from graphix import linalg_validations as lv
 from graphix.channels import KrausChannel
-from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.sim.base_backend import Backend, State
 from graphix.sim.statevec import CNOT_TENSOR, Statevec
 
@@ -74,10 +74,15 @@ class DensityMatrix(State):
                 try:
                     if isinstance(input_list[0], Iterable) and isinstance(input_list[0][0], numbers.Number):
                         self.rho = np.array(input_list)
-                        assert check_square(self.rho)
+                        if not lv.is_square(self.rho):
+                            raise ValueError("Density matrix must be square.")
+                        if not lv.is_qubitop(self.rho):
+                            raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
                         check_size_consistency(self.rho)
-                        assert check_unit_trace(self.rho)
-                        assert check_psd(self.rho)
+                        if not lv.is_unit_trace(self.rho):
+                            raise ValueError("Density matrix must have unit trace.")
+                        if not lv.is_psd(self.rho):
+                            raise ValueError("Density matrix must be positive semi-definite.")
                         return
                 except TypeError:
                     pass

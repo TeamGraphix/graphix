@@ -2,29 +2,49 @@
 
 from __future__ import annotations
 
+import functools
+from typing import TYPE_CHECKING
+
 import numpy as np
+import numpy.typing as npt
+from typing_extensions import Concatenate, ParamSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
-def check_square(matrix: np.ndarray) -> bool:
+def is_square(matrix: npt.NDArray) -> bool:
+    """Check if matrix is square."""
+    if matrix.ndim != 2:
+        return False
+    rows, cols = matrix.shape
+    return rows == cols
+
+
+_P = ParamSpec("_P")
+
+
+def _is_square_deco(f: Callable[Concatenate[npt.NDArray, _P], bool]) -> Callable[Concatenate[npt.NDArray, _P], bool]:
+    """Check if matrix is square, and then call the function."""
+
+    @functools.wraps(f)
+    def _f(matrix: npt.NDArray, *args: _P.args, **kwargs: _P.kwargs) -> bool:
+        if not is_square(matrix):
+            raise ValueError("Need to ensure that matrix is square first.")
+        return f(matrix, *args, **kwargs)
+
+    return _f
+
+
+@_is_square_deco
+def is_qubitop(matrix: npt.NDArray) -> bool:
     """Check if matrix is a square matrix with a power of 2 dimension."""
-    if len(matrix.shape) != 2:
-        raise ValueError(f"The object has {len(matrix.shape)} axes but must have 2 to be a matrix.")
-    if matrix.shape[0] != matrix.shape[1]:
-        raise ValueError(f"Matrix must be square but has different dimensions {matrix.shape}.")
-    size = matrix.shape[0]
-    if size & (size - 1) != 0:
-        raise ValueError(f"Matrix size must be a power of two but is {size}.")
-    return True
+    size, _ = matrix.shape
+    return size > 0 and size & (size - 1) == 0
 
 
-def truncate(s: str, max_length: int = 80, ellipsis: str = "...") -> str:
-    """Auxilliary function to truncate a long string for formatting error messages."""
-    if len(s) <= max_length:
-        return s
-    return s[: max_length - len(ellipsis)] + ellipsis
-
-
-def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
+@_is_square_deco
+def is_psd(matrix: npt.NDArray, tol: float = 1e-15) -> bool:
     """
     Check if a density matrix is positive semidefinite by diagonalizing.
 
@@ -35,25 +55,23 @@ def check_psd(matrix: np.ndarray, tol: float = 1e-15) -> bool:
     tol : float
         tolerance on the small negatives. Default 1e-15.
     """
+    if tol < 0:
+        raise ValueError("tol must be non-negative.")
     evals = np.linalg.eigvalsh(matrix)
-
-    if not all(evals >= -tol):
-        raise ValueError("The matrix {truncate(str(matrix))} is not positive semi-definite.")
-
-    return True
+    return all(evals >= -tol)
 
 
-def check_hermitian(matrix: np.ndarray) -> bool:
-    """Check if matrix is hermitian. After :func:`check_square`."""
-    if not np.allclose(matrix, matrix.transpose().conjugate()):
-        raise ValueError("The matrix is not Hermitian.")
-    return True
+@_is_square_deco
+def is_hermitian(matrix: npt.NDArray) -> bool:
+    """Check if matrix is hermitian."""
+    return np.allclose(matrix, matrix.transpose().conjugate())
 
 
-def check_unit_trace(matrix: np.ndarray) -> bool:
-    """Check if matrix has trace 1. After :func:`check_square`."""
+@_is_square_deco
+def is_unit_trace(matrix: npt.NDArray) -> bool:
+    """Check if matrix has trace 1."""
     if not np.allclose(matrix.trace(), 1.0):
-        raise ValueError("The matrix does not have unit trace.")
+        return False
     return True
 
 
@@ -77,7 +95,7 @@ def check_data_dims(data: list | tuple | np.ndarray) -> bool:
     if len(dims) != 1:
         raise ValueError(f"All provided Kraus operators do not have the same dimension {dims}!")
 
-    assert check_square(data[0]["operator"])
+    assert is_square(data[0]["operator"])
 
     return True
 

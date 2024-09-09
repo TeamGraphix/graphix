@@ -6,8 +6,9 @@ import numpy as np
 import pytest
 
 import graphix.random_objects as randobj
+from graphix import linalg_validations as lv
 from graphix.channels import KrausChannel
-from graphix.linalg_validations import check_data_dims, check_hermitian, check_psd, check_square, check_unit_trace
+from graphix.linalg_validations import check_data_dims
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 
@@ -43,7 +44,7 @@ class TestUtilities:
         assert channel.kraus_ops[0]["operator"].shape == (dim, dim)
         assert channel.nqubit == nqb
         assert channel.size == dim**2
-        assert channel.is_normalized
+        assert channel.is_normalized()
 
         rk = int(fx_rng.integers(1, dim**2 + 1))
         channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
@@ -53,7 +54,7 @@ class TestUtilities:
         assert channel.kraus_ops[0]["operator"].shape == (dim, dim)
         assert channel.nqubit == nqb
         assert channel.size == rk
-        assert channel.is_normalized
+        assert channel.is_normalized()
 
     def test_random_channel_fail(self, fx_rng: Generator) -> None:
         # incorrect rank type
@@ -91,7 +92,7 @@ class TestUtilities:
             psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
             dm += np.outer(psi, psi.conj()) / m
 
-        assert check_psd(dm)
+        assert lv.is_psd(dm)
 
     def test_check_psd_fail(self, fx_rng: Generator) -> None:
         # not hermitian
@@ -104,24 +105,22 @@ class TestUtilities:
 
         # eigvalsh doesn't raise a LinAlgError since just use upper or lower part of the matrix.
         # instead Value error
-        with pytest.raises(ValueError):
-            check_psd(mat)
+        assert not lv.is_psd(mat)
 
         # hermitian but not positive eigenvalues
         mat = randobj.rand_herm(lst, rng=fx_rng)
 
-        with pytest.raises(ValueError):
-            check_psd(mat)
+        assert not lv.is_psd(mat)
 
     def test_rand_dm(self, fx_rng: Generator) -> None:
         # needs to be power of 2 dimension since builds a DM object
         dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rng=fx_rng)
 
         assert isinstance(dm, DensityMatrix)
-        assert check_square(dm.rho)
-        assert check_hermitian(dm.rho)
-        assert check_psd(dm.rho)
-        assert check_unit_trace(dm.rho)
+        assert lv.is_qubitop(dm.rho)
+        assert lv.is_hermitian(dm.rho)
+        assert lv.is_psd(dm.rho)
+        assert lv.is_unit_trace(dm.rho)
 
     # try with incorrect dimension
     def test_rand_dm_fail(self, fx_rng: Generator) -> None:
@@ -133,10 +132,10 @@ class TestUtilities:
         dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk, rng=fx_rng)
 
         assert isinstance(dm, DensityMatrix)
-        assert check_square(dm.rho)
-        assert check_hermitian(dm.rho)
-        assert check_psd(dm.rho)
-        assert check_unit_trace(dm.rho)
+        assert lv.is_qubitop(dm.rho)
+        assert lv.is_hermitian(dm.rho)
+        assert lv.is_psd(dm.rho)
+        assert lv.is_unit_trace(dm.rho)
 
         evals = np.linalg.eigvalsh(dm.rho)
 
@@ -170,7 +169,7 @@ class TestUtilities:
         assert isinstance(pauli_channel, KrausChannel)
         assert pauli_channel.nqubit == nqb
         assert pauli_channel.size == rk
-        assert pauli_channel.is_normalized
+        assert pauli_channel.is_normalized()
 
     def test_random_pauli_channel_fail(self, fx_rng: Generator) -> None:
         nqb = 3
