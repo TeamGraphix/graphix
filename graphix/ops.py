@@ -7,20 +7,22 @@ from itertools import product
 from typing import ClassVar
 
 import numpy as np
+import numpy.typing as npt
 
 
 class Ops:
     """Basic single- and two-qubits operators."""
 
-    x = np.array([[0, 1], [1, 0]])
-    y = np.array([[0, -1j], [1j, 0]])
-    z = np.array([[1, 0], [0, -1]])
-    s = np.array([[1, 0], [0, 1j]])
-    h = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
-    cz = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
-    cnot = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
-    swap = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-    ccx = np.array(
+    I: ClassVar = np.eye(2)
+    X: ClassVar = np.array([[0, 1], [1, 0]])
+    Y: ClassVar = np.array([[0, -1j], [1j, 0]])
+    Z: ClassVar = np.array([[1, 0], [0, -1]])
+    S: ClassVar = np.array([[1, 0], [0, 1j]])
+    H: ClassVar = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
+    CZ: ClassVar = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
+    CNOT: ClassVar = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
+    SWAP: ClassVar = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+    CCX: ClassVar = np.array(
         [
             [1, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 0, 0, 0, 0, 0, 0],
@@ -32,10 +34,9 @@ class Ops:
             [0, 0, 0, 0, 0, 0, 1, 0],
         ]
     )
-    Pauli_ops: ClassVar = [np.eye(2), x, y, z]
 
     @staticmethod
-    def rx(theta):
+    def rx(theta) -> npt.NDArray:
         """X rotation.
 
         Parameters
@@ -50,7 +51,7 @@ class Ops:
         return np.array([[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]])
 
     @staticmethod
-    def ry(theta):
+    def ry(theta) -> npt.NDArray:
         """Y rotation.
 
         Parameters
@@ -65,7 +66,7 @@ class Ops:
         return np.array([[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]])
 
     @staticmethod
-    def rz(theta):
+    def rz(theta) -> npt.NDArray:
         """Z rotation.
 
         Parameters
@@ -80,7 +81,7 @@ class Ops:
         return np.array([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]])
 
     @staticmethod
-    def rzz(theta):
+    def rzz(theta) -> npt.NDArray:
         """zz-rotation.
 
         Equivalent to the sequence
@@ -97,10 +98,10 @@ class Ops:
         -------
         operator : 4*4 np.array
         """
-        return Ops.cnot @ np.kron(np.eye(2), Ops.rz(theta)) @ Ops.cnot
+        return Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT
 
     @staticmethod
-    def build_tensor_pauli_ops(n_qubits: int):
+    def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray:
         r"""Build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}.
 
         :param n_qubits: number of copies (qubits) to consider
@@ -114,6 +115,8 @@ class Ops:
         else:
             raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
 
-        tensor_pauli_ops = [reduce(lambda x, y: np.kron(x, y), i) for i in product(Ops.Pauli_ops, repeat=n_qubits)]
+        tensor_pauli_ops = [
+            reduce(lambda x, y: np.kron(x, y), i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)
+        ]
 
         return np.array(tensor_pauli_ops)

@@ -89,7 +89,7 @@ class TestChannel:
         prob = fx_rng.uniform()
         data = [
             KrausData(np.sqrt(1 - prob), np.array([[1.0, 0.0], [0.0, 1.0]])),
-            KrausData(np.sqrt(prob), Ops.z),
+            KrausData(np.sqrt(prob), Ops.Z),
         ]
         dephase_channel = dephasing_channel(prob)
         assert isinstance(dephase_channel, KrausChannel)
@@ -103,10 +103,10 @@ class TestChannel:
     def test_depolarising_channel(self, fx_rng: Generator) -> None:
         prob = fx_rng.uniform()
         data = [
-            KrausData(np.sqrt(1 - prob), np.eye(2)),
-            KrausData(np.sqrt(prob / 3.0), Ops.x),
-            KrausData(np.sqrt(prob / 3.0), Ops.y),
-            KrausData(np.sqrt(prob / 3.0), Ops.z),
+            KrausData(np.sqrt(1 - prob), Ops.I),
+            KrausData(np.sqrt(prob / 3.0), Ops.X),
+            KrausData(np.sqrt(prob / 3.0), Ops.Y),
+            KrausData(np.sqrt(prob / 3.0), Ops.Z),
         ]
 
         depol_channel = depolarising_channel(prob)
@@ -122,22 +122,22 @@ class TestChannel:
     def test_2_qubit_depolarising_channel(self, fx_rng: Generator) -> None:
         prob = fx_rng.uniform()
         data = [
-            KrausData(np.sqrt(1 - prob), np.kron(np.eye(2), np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, Ops.x)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.x)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, Ops.x)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, Ops.x)),
+            KrausData(np.sqrt(1 - prob), np.kron(Ops.I, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.I, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.I, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.I, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.X)),
         ]
 
         depol_channel_2_qubit = two_qubit_depolarising_channel(prob)
@@ -153,22 +153,22 @@ class TestChannel:
     def test_2_qubit_depolarising_tensor_channel(self, fx_rng: Generator) -> None:
         prob = fx_rng.uniform()
         data = [
-            KrausData(1 - prob, np.kron(np.eye(2), np.eye(2))),
-            KrausData(prob / 3.0, np.kron(Ops.x, Ops.x)),
-            KrausData(prob / 3.0, np.kron(Ops.y, Ops.y)),
-            KrausData(prob / 3.0, np.kron(Ops.z, Ops.z)),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.x, np.eye(2))),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.y, np.eye(2))),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.z, np.eye(2))),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.x)),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.y)),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.z)),
-            KrausData(prob / 3.0, np.kron(Ops.x, Ops.y)),
-            KrausData(prob / 3.0, np.kron(Ops.x, Ops.z)),
-            KrausData(prob / 3.0, np.kron(Ops.y, Ops.x)),
-            KrausData(prob / 3.0, np.kron(Ops.y, Ops.z)),
-            KrausData(prob / 3.0, np.kron(Ops.z, Ops.x)),
-            KrausData(prob / 3.0, np.kron(Ops.z, Ops.y)),
+            KrausData(1 - prob, np.kron(Ops.I, Ops.I)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.Y)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Z)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.X, Ops.I)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.Y, Ops.I)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.Z, Ops.I)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.I, Ops.X)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.I, Ops.Y)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.I, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.Y)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Y)),
         ]
 
         depol_tensor_channel_2_qubit = two_qubit_depolarising_tensor_channel(prob)

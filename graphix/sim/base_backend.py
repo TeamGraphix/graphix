@@ -218,9 +218,9 @@ class Backend:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
         if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
             if cmd.kind == CommandKind.X:
-                op = Ops.x
+                op = Ops.X
             elif cmd.kind == CommandKind.Z:
-                op = Ops.z
+                op = Ops.Z
             self.apply_single(node=cmd.node, op=op)
 
     def apply_single(self, node, op) -> None:

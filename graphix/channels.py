@@ -148,7 +148,7 @@ def dephasing_channel(prob: float) -> KrausChannel:
     return KrausChannel(
         [
             KrausData(np.sqrt(1 - prob), np.eye(2)),
-            KrausData(np.sqrt(prob), Ops.z),
+            KrausData(np.sqrt(prob), Ops.Z),
         ]
     )
 
@@ -168,9 +168,9 @@ def depolarising_channel(prob: float) -> KrausChannel:
     return KrausChannel(
         [
             KrausData(np.sqrt(1 - prob), np.eye(2)),
-            KrausData(np.sqrt(prob / 3.0), Ops.x),
-            KrausData(np.sqrt(prob / 3.0), Ops.y),
-            KrausData(np.sqrt(prob / 3.0), Ops.z),
+            KrausData(np.sqrt(prob / 3.0), Ops.X),
+            KrausData(np.sqrt(prob / 3.0), Ops.Y),
+            KrausData(np.sqrt(prob / 3.0), Ops.Z),
         ]
     )
 
@@ -188,9 +188,9 @@ def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
     return KrausChannel(
         [
             KrausData(np.sqrt(1 - p_i), np.eye(2)),
-            KrausData(np.sqrt(px / 3.0), Ops.x),
-            KrausData(np.sqrt(py / 3.0), Ops.y),
-            KrausData(np.sqrt(pz / 3.0), Ops.z),
+            KrausData(np.sqrt(px / 3.0), Ops.X),
+            KrausData(np.sqrt(py / 3.0), Ops.Y),
+            KrausData(np.sqrt(pz / 3.0), Ops.Z),
         ]
     )
 
@@ -214,21 +214,21 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
     return KrausChannel(
         [
             KrausData(np.sqrt(1 - prob), np.kron(np.eye(2), np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, Ops.x)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, np.eye(2))),
-            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.x)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.x, Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, Ops.x)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.y, Ops.z)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, Ops.y)),
-            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.z, Ops.x)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, np.eye(2))),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, np.eye(2))),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, np.eye(2))),
+            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(np.eye(2), Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.X)),
         ]
     )
 
@@ -254,20 +254,20 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
     return KrausChannel(
         [
             KrausData(1 - prob, np.kron(np.eye(2), np.eye(2))),
-            KrausData(prob / 3.0, np.kron(Ops.x, Ops.x)),
-            KrausData(prob / 3.0, np.kron(Ops.y, Ops.y)),
-            KrausData(prob / 3.0, np.kron(Ops.z, Ops.z)),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.x, np.eye(2))),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.y, np.eye(2))),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.z, np.eye(2))),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.x)),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.y)),
-            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.z)),
-            KrausData(prob / 3.0, np.kron(Ops.x, Ops.y)),
-            KrausData(prob / 3.0, np.kron(Ops.x, Ops.z)),
-            KrausData(prob / 3.0, np.kron(Ops.y, Ops.x)),
-            KrausData(prob / 3.0, np.kron(Ops.y, Ops.z)),
-            KrausData(prob / 3.0, np.kron(Ops.z, Ops.x)),
-            KrausData(prob / 3.0, np.kron(Ops.z, Ops.y)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.Y)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Z)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.X, np.eye(2))),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.Y, np.eye(2))),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.Z, np.eye(2))),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.X)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.Y)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(np.eye(2), Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.Y)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Y)),
         ]
     )

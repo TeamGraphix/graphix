@@ -481,9 +481,9 @@ class TestNoisyDensityMatrixBackend:
         exact = self.rz_exact_res(alpha)
 
         assert (
-            np.allclose(res.rho, Ops.x @ exact @ Ops.x)
-            or np.allclose(res.rho, Ops.z @ exact @ Ops.z)
-            or np.allclose(res.rho, Ops.z @ Ops.x @ exact @ Ops.x @ Ops.z)
+            np.allclose(res.rho, Ops.X @ exact @ Ops.X)
+            or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
+            or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )
 
         # arbitrary probability
@@ -497,7 +497,7 @@ class TestNoisyDensityMatrixBackend:
         # just add the case without readout errors
         assert (
             np.allclose(res.rho, exact)
-            or np.allclose(res.rho, Ops.x @ exact @ Ops.x)
-            or np.allclose(res.rho, Ops.z @ exact @ Ops.z)
-            or np.allclose(res.rho, Ops.z @ Ops.x @ exact @ Ops.x @ Ops.z)
+            or np.allclose(res.rho, Ops.X @ exact @ Ops.X)
+            or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
+            or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )
