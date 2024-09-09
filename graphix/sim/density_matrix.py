@@ -315,10 +315,10 @@ class DensityMatrix(State):
         if not isinstance(channel, KrausChannel):
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
-        for k_op in channel.kraus_ops:
+        for k_op in channel:
             dm = copy.copy(self)
-            dm.evolve(k_op["operator"], qargs)
-            result_array += k_op["coef"] * np.conj(k_op["coef"]) * dm.rho
+            dm.evolve(k_op.operator, qargs)
+            result_array += k_op.coef * np.conj(k_op.coef) * dm.rho
             # reinitialize to input density matrix
 
         if not np.allclose(result_array.trace(), 1.0):
