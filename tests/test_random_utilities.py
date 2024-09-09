@@ -8,7 +8,6 @@ import pytest
 import graphix.random_objects as randobj
 from graphix import linalg_validations as lv
 from graphix.channels import KrausChannel
-from graphix.linalg_validations import check_data_dims
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 
@@ -40,21 +39,17 @@ class TestUtilities:
         channel = randobj.rand_channel_kraus(dim=dim, rng=fx_rng)
 
         assert isinstance(channel, KrausChannel)
-        assert check_data_dims(channel.kraus_ops)
-        assert channel.kraus_ops[0]["operator"].shape == (dim, dim)
+        assert channel[0].operator.shape == (dim, dim)
         assert channel.nqubit == nqb
-        assert channel.size == dim**2
-        assert channel.is_normalized()
+        assert len(channel) == dim**2
 
         rk = int(fx_rng.integers(1, dim**2 + 1))
         channel = randobj.rand_channel_kraus(dim=dim, rank=rk, rng=fx_rng)
 
         assert isinstance(channel, KrausChannel)
-        assert check_data_dims(channel.kraus_ops)
-        assert channel.kraus_ops[0]["operator"].shape == (dim, dim)
+        assert channel[0].operator.shape == (dim, dim)
         assert channel.nqubit == nqb
-        assert channel.size == rk
-        assert channel.is_normalized()
+        assert len(channel) == rk
 
     def test_random_channel_fail(self, fx_rng: Generator) -> None:
         # incorrect rank type
@@ -168,8 +163,7 @@ class TestUtilities:
 
         assert isinstance(pauli_channel, KrausChannel)
         assert pauli_channel.nqubit == nqb
-        assert pauli_channel.size == rk
-        assert pauli_channel.is_normalized()
+        assert len(pauli_channel) == rk
 
     def test_random_pauli_channel_fail(self, fx_rng: Generator) -> None:
         nqb = 3
