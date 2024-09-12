@@ -9,4 +9,6 @@ pydantic
 quimb>=1.4.0
 scipy
 sympy>=1.9
+types-networkx
+types-psutil
 typing_extensions
