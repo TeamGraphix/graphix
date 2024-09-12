@@ -95,10 +95,7 @@ convention = "numpy"
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
 
 [tool.mypy]
-disable_error_code = [
-  "type-arg",
-  "unused-ignore", # Necessary for pyright
-]
+disable_error_code = ["type-arg"]
 # Keep in sync with pyright
 files = [
   "graphix/rng.py",
