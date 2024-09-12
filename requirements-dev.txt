@@ -1,9 +1,9 @@
-# Style
+# Lint/format
+mypy
+pyright
 ruff
 
 # Tests
-mypy
-pyright
 psutil
 pytest
 pytest-cov
