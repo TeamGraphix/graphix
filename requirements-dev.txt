@@ -2,6 +2,8 @@
 ruff
 
 # Tests
+mypy
+pyright
 psutil
 pytest
 pytest-cov
