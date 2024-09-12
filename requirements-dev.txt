@@ -3,6 +3,10 @@ mypy
 pyright
 ruff
 
+# Stubs
+types-networkx
+types-psutil
+
 # Tests
 psutil
 pytest
