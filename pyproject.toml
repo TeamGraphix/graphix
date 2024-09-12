@@ -95,7 +95,6 @@ convention = "numpy"
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
 
 [tool.mypy]
-allow_redefinition = true
 disable_error_code = [
   "type-arg",
   "unused-ignore", # Necessary for pyright
