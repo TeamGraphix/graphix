@@ -4,61 +4,15 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
-from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
 
+from graphix._db import WellKnown
 
-class Ops:
+
+class Ops(WellKnown):
     """Basic single- and two-qubits operators."""
-
-    I: ClassVar = np.eye(2, dtype=np.complex128)
-    X: ClassVar = np.asarray([[0, 1], [1, 0]], dtype=np.complex128)
-    Y: ClassVar = np.asarray([[0, -1j], [1j, 0]], dtype=np.complex128)
-    Z: ClassVar = np.asarray([[1, 0], [0, -1]], dtype=np.complex128)
-    S: ClassVar = np.asarray([[1, 0], [0, 1j]], dtype=np.complex128)
-    H: ClassVar = np.asarray([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2)
-    CZ: ClassVar = np.asarray(
-        [
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, -1],
-        ],
-        dtype=np.complex128,
-    )
-    CNOT: ClassVar = np.asarray(
-        [
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 1, 0],
-        ],
-        dtype=np.complex128,
-    )
-    SWAP: ClassVar = np.asarray(
-        [
-            [1, 0, 0, 0],
-            [0, 0, 1, 0],
-            [0, 1, 0, 0],
-            [0, 0, 0, 1],
-        ],
-        dtype=np.complex128,
-    )
-    CCX: ClassVar = np.asarray(
-        [
-            [1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1],
-            [0, 0, 0, 0, 0, 0, 1, 0],
-        ],
-        dtype=np.complex128,
-    )
 
     @staticmethod
     def rx(theta: float) -> npt.NDArray[np.complex128]:
@@ -131,7 +85,7 @@ class Ops:
         return np.asarray(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, dtype=np.complex128)
 
     @staticmethod
-    def build_tensor_pauli_ops(n_qubits: int) -> list[npt.NDArray[np.complex128]]:
+    def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray[np.complex128]:
         r"""Build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}.
 
         :param n_qubits: number of copies (qubits) to consider
@@ -145,4 +99,5 @@ class Ops:
         else:
             raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
 
-        return [reduce(np.kron, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)]
+        # TODO: Refactor this
+        return np.array([reduce(np.kron, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)])
