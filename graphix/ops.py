@@ -13,16 +13,40 @@ import numpy.typing as npt
 class Ops:
     """Basic single- and two-qubits operators."""
 
-    I: ClassVar = np.eye(2)
-    X: ClassVar = np.array([[0, 1], [1, 0]])
-    Y: ClassVar = np.array([[0, -1j], [1j, 0]])
-    Z: ClassVar = np.array([[1, 0], [0, -1]])
-    S: ClassVar = np.array([[1, 0], [0, 1j]])
-    H: ClassVar = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
-    CZ: ClassVar = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
-    CNOT: ClassVar = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
-    SWAP: ClassVar = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-    CCX: ClassVar = np.array(
+    I: ClassVar = np.eye(2, dtype=np.complex128)
+    X: ClassVar = np.asarray([[0, 1], [1, 0]], dtype=np.complex128)
+    Y: ClassVar = np.asarray([[0, -1j], [1j, 0]], dtype=np.complex128)
+    Z: ClassVar = np.asarray([[1, 0], [0, -1]], dtype=np.complex128)
+    S: ClassVar = np.asarray([[1, 0], [0, 1j]], dtype=np.complex128)
+    H: ClassVar = np.asarray([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2)
+    CZ: ClassVar = np.asarray(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, -1],
+        ],
+        dtype=np.complex128,
+    )
+    CNOT: ClassVar = np.asarray(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, 1, 0],
+        ],
+        dtype=np.complex128,
+    )
+    SWAP: ClassVar = np.asarray(
+        [
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=np.complex128,
+    )
+    CCX: ClassVar = np.asarray(
         [
             [1, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 0, 0, 0, 0, 0, 0],
@@ -32,11 +56,12 @@ class Ops:
             [0, 0, 0, 0, 0, 1, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 1],
             [0, 0, 0, 0, 0, 0, 1, 0],
-        ]
+        ],
+        dtype=np.complex128,
     )
 
     @staticmethod
-    def rx(theta) -> npt.NDArray:
+    def rx(theta: float) -> npt.NDArray[np.complex128]:
         """X rotation.
 
         Parameters
@@ -46,12 +71,15 @@ class Ops:
 
         Returns
         -------
-        operator : 2*2 np.array
+        operator : 2*2 np.asarray
         """
-        return np.array([[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]])
+        return np.asarray(
+            [[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]],
+            dtype=np.complex128,
+        )
 
     @staticmethod
-    def ry(theta) -> npt.NDArray:
+    def ry(theta: float) -> npt.NDArray[np.complex128]:
         """Y rotation.
 
         Parameters
@@ -61,12 +89,14 @@ class Ops:
 
         Returns
         -------
-        operator : 2*2 np.array
+        operator : 2*2 np.asarray
         """
-        return np.array([[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]])
+        return np.asarray(
+            [[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]], dtype=np.complex128
+        )
 
     @staticmethod
-    def rz(theta) -> npt.NDArray:
+    def rz(theta: float) -> npt.NDArray[np.complex128]:
         """Z rotation.
 
         Parameters
@@ -76,12 +106,12 @@ class Ops:
 
         Returns
         -------
-        operator : 2*2 np.array
+        operator : 2*2 np.asarray
         """
-        return np.array([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]])
+        return np.asarray([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]], dtype=np.complex128)
 
     @staticmethod
-    def rzz(theta) -> npt.NDArray:
+    def rzz(theta: float) -> npt.NDArray[np.complex128]:
         """zz-rotation.
 
         Equivalent to the sequence
@@ -96,12 +126,12 @@ class Ops:
 
         Returns
         -------
-        operator : 4*4 np.array
+        operator : 4*4 np.asarray
         """
-        return Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT
+        return np.asarray(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, dtype=np.complex128)
 
     @staticmethod
-    def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray:
+    def build_tensor_pauli_ops(n_qubits: int) -> list[npt.NDArray[np.complex128]]:
         r"""Build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}.
 
         :param n_qubits: number of copies (qubits) to consider
@@ -115,8 +145,4 @@ class Ops:
         else:
             raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
 
-        tensor_pauli_ops = [
-            reduce(lambda x, y: np.kron(x, y), i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)
-        ]
-
-        return np.array(tensor_pauli_ops)
+        return [reduce(np.kron, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)]

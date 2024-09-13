@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import itertools
 import typing
-from typing import TYPE_CHECKING, SupportsIndex
+from typing import TYPE_CHECKING, SupportsIndex, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -26,6 +26,10 @@ def _ilog2(n: int) -> int:
     raise RuntimeError("Unreachable.")
 
 
+# MEMO: Too much?
+_T = TypeVar("_T", bound=np.generic)
+
+
 class KrausData:
     """Kraus operator data.
 
@@ -41,7 +45,7 @@ class KrausData:
     coef: complex
     operator: npt.NDArray[np.complex128]
 
-    def __init__(self, coef: complex, operator: npt.NDArray) -> None:
+    def __init__(self, coef: complex, operator: npt.NDArray[_T]) -> None:
         self.coef = coef
         self.operator = operator.astype(np.complex128, copy=True)
 
