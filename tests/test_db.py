@@ -11,7 +11,7 @@ from graphix._db import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLI
 
 class TestClifford:
     @staticmethod
-    def classify_pauli(arr: npt.NDArray) -> tuple[int, int]:
+    def classify_pauli(arr: npt.NDArray[np.complex128]) -> tuple[int, int]:
         """Return the index of Pauli gate with sign for a given 2x2 matrix.
 
         Compare the gate arr with Pauli gates and return the tuple of (matching index, sign).
@@ -42,7 +42,7 @@ class TestClifford:
         raise ValueError(msg)
 
     @staticmethod
-    def clifford_index(g: npt.NDArray) -> int:
+    def clifford_index(g: npt.NDArray[np.complex128]) -> int:
         """Return the index of Clifford for a given 2x2 matrix.
 
         Compare the gate g with all Clifford gates (up to global phase) and return the matching index.
@@ -85,7 +85,7 @@ class TestClifford:
 
     @pytest.mark.parametrize("i", range(1, 24))
     def test_decomposition(self, i: int) -> None:
-        op = np.eye(2)
+        op = np.eye(2, dtype=np.complex128)
         for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
             op = op @ CLIFFORD[j]
         assert i == self.clifford_index(op)

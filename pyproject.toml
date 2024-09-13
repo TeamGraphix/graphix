@@ -93,3 +93,27 @@ convention = "numpy"
 [tool.pytest.ini_options]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
+
+[tool.mypy]
+# Keep in sync with pyright
+files = [
+  "graphix/rng.py",
+  "graphix/types.py",
+  "graphix/_db.py",
+  "tests/conftest.py",
+  "tests/test_db.py",
+  "tests/test_rng.py",
+]
+follow_imports = "silent"
+strict = true
+
+[tool.pyright]
+# Keep in sync with mypy
+include = [
+  "graphix/rng.py",
+  "graphix/types.py",
+  "graphix/_db.py",
+  "tests/conftest.py",
+  "tests/test_db.py",
+  "tests/test_rng.py",
+]

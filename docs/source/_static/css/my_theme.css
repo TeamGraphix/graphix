@@ -1,11 +1,11 @@
 @import url("theme.css");
 
-
 .wy-nav-content {
   max-width: 100%;
 }
 
-.rst-content img:not([alt="https://mybinder.org/badge_logo.svg"]):not([alt="qft"]):not([alt="resource state"]):not([alt="resource state to perform computation"]):not([alt="simulation order"]):not([alt="simulation order after optimization"]):not([alt="translating from a circuit to a graph."]):not([alt="quantum and classical processing"]):not([alt="Pauli measurement of graph"]):not([alt="equivalent graphs"]):not([alt="gate-based and one-way qc"]) {
+.rst-content img:not([alt="https://mybinder.org/badge_logo.svg"]):not([alt="qft"]):not([alt="resource state"]):not([alt="resource state to perform computation"]):not([alt="simulation order"]):not([alt="simulation order after optimization"]):not([alt="translating from a circuit to a graph."]):not([alt="quantum and classical processing"]):not([alt="Pauli measurement of graph"]):not([alt="equivalent graphs"]):not([alt="gate-based and one-way qc"])
+{
   max-width: 100%;
   min-width: 220px;
   min-height: 240px;
