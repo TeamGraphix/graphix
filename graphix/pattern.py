@@ -1439,23 +1439,7 @@ class Pattern:
 
         """
         if not ignore_pauli_with_deps:
-            self.standardize()
-            pauli_nodes = self.extract_pauli_nodes()
-            # Create a new sequence with all Pauli nodes to the front
-            new_seq = []
-            pauli_nodes_inserted = False
-            for cmd in self:
-                if cmd.kind == CommandKind.M:
-                    if cmd.node not in pauli_nodes:
-                        if not pauli_nodes_inserted:
-                            new_seq.extend(pauli_nodes.values())
-                            pauli_nodes_inserted = True
-                        new_seq.append(cmd)
-                else:
-                    new_seq.append(cmd)
-            if not pauli_nodes_inserted:
-                new_seq.extend(pauli_nodes.values())
-            self.__seq = new_seq
+            self.move_pauli_measurements_to_the_front()
         measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
 
     def draw_graph(
@@ -1563,17 +1547,11 @@ class Pattern:
         result.results = self.results.copy()
         return result
 
-    def extract_pauli_nodes(self, leave_nodes: set[int] | None = None) -> dict[int, command.M]:
-        """Return all the Pauli measurements of the sequence (except on nodes in `leave_nodes`).
-
-        The return dictionary is indexed by node index. The returned
-        Pauli measurements are intended to be measured first
-        (typically, by Pauli presimulation). These measurements are
-        supposed to be reinserted in the pattern and/or presimulated.
-
-        """
+    def move_pauli_measurements_to_the_front(self, leave_nodes: set[int] | None = None) -> None:
+        """Move all the Pauli measurements to the front of the sequence (except nodes in `leave_nodes`)."""
         if leave_nodes is None:
             leave_nodes = set()
+        self.standardize()
         pauli_nodes = {}
         shift_domains = {}
 
@@ -1592,17 +1570,55 @@ class Pattern:
                 )  # None returned if the measurement is not in Pauli basis
                 if pm is not None and cmd.node not in leave_nodes:
                     if pm.axis == Axis.X:
+                        # M^X X^s Z^t = M^{XY,0} X^s Z^t
+                        #             = M^{XY,(-1)^s·0+tπ}
+                        #             = S^t M^X
+                        # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
+                        #                = M^{XY,(-1)^s·π+tπ}
+                        #                = S^t M^{-X}
                         shift_domains[cmd.node] = cmd.t_domain
                     elif pm.axis == Axis.Y:
+                        # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
+                        #             = M^{XY,(-1)^s·π/2+tπ}
+                        #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
+                        #             = S^{s+t} M^Y
+                        # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
+                        #                = M^{XY,(-1)^s·(-π/2)+tπ}
+                        #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
+                        #                = S^{s+t} M^{-Y}
                         shift_domains[cmd.node] = cmd.s_domain ^ cmd.t_domain
                     elif pm.axis == Axis.Z:
+                        # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
+                        #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
+                        #             = M^{XZ,(-1)^t·sπ}
+                        #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
+                        #             = S^s M^Z
+                        # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
+                        #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
+                        #                = M^{XZ,(s+1)π}
+                        #                = S^s M^{-Z}
                         shift_domains[cmd.node] = cmd.s_domain
                     else:
                         typing_extensions.assert_never(pm.axis)
                     cmd.s_domain = set()
                     cmd.t_domain = set()
                     pauli_nodes[cmd.node] = cmd
-        return pauli_nodes
+
+        # Create a new sequence with all Pauli nodes to the front
+        new_seq = []
+        pauli_nodes_inserted = False
+        for cmd in self:
+            if cmd.kind == CommandKind.M:
+                if cmd.node not in pauli_nodes:
+                    if not pauli_nodes_inserted:
+                        new_seq.extend(pauli_nodes.values())
+                        pauli_nodes_inserted = True
+                    new_seq.append(cmd)
+            else:
+                new_seq.append(cmd)
+        if not pauli_nodes_inserted:
+            new_seq.extend(pauli_nodes.values())
+        self.__seq = new_seq
 
 
 class CommandNode:
