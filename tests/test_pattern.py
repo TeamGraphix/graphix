@@ -11,9 +11,9 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import clifford
-from graphix.command import C, E, M, N, X, Z
+from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.pattern import CommandNode, Pattern, shift_outcomes
-from graphix.pauli import Plane
+from graphix.pauli import PauliMeasurement, Plane
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import PatternSimulator
@@ -171,6 +171,23 @@ class TestPattern:
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(backend, rng=rng)
         assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
+
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    @pytest.mark.parametrize("ignore_pauli_with_deps", (False, True))
+    def test_pauli_measurement_random_circuit_all_paulis(
+        self, fx_bg: PCG64, jumps: int, ignore_pauli_with_deps: bool, use_rustworkx: bool = True
+    ) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 3
+        depth = 3
+        circuit = rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize(method="global")
+        pattern.shift_signals(method="global")
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        assert ignore_pauli_with_deps or not any(
+            PauliMeasurement.try_from(cmd.plane, cmd.angle) for cmd in pattern if cmd.kind == CommandKind.M
+        )
 
     @pytest.mark.parametrize("plane", Plane)
     @pytest.mark.parametrize("angle", [0.0, 0.5, 1.0, 1.5])
