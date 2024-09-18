@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 
-def _lock(m: npt.NDArray) -> npt.NDArray:
+def _lock(m: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
     """Create a true immutable view."""
     m.flags.writeable = False
     v = m.view()
@@ -15,30 +15,30 @@ def _lock(m: npt.NDArray) -> npt.NDArray:
 
 
 # 24 Unique 1-qubit Clifford gates
-_C0 = _lock(np.array([[1, 0], [0, 1]]))  # identity
-_C1 = _lock(np.array([[0, 1], [1, 0]]))  # X
-_C2 = _lock(np.array([[0, -1j], [1j, 0]]))  # Y
-_C3 = _lock(np.array([[1, 0], [0, -1]]))  # Z
-_C4 = _lock(np.array([[1, 0], [0, 1j]]))  # S = \sqrt{Z}
-_C5 = _lock(np.array([[1, 0], [0, -1j]]))  # S dagger
-_C6 = _lock(np.array([[1, 1], [1, -1]]) / np.sqrt(2))  # Hadamard
-_C7 = _lock(np.array([[1, -1j], [-1j, 1]]) / np.sqrt(2))  # \sqrt{iX}
-_C8 = _lock(np.array([[1, -1], [1, 1]]) / np.sqrt(2))  # \sqrt{iY}
-_C9 = _lock(np.array([[0, 1 - 1j], [-1 - 1j, 0]]) / np.sqrt(2))  # sqrt{I}
-_C10 = _lock(np.array([[0, -1 - 1j], [1 - 1j, 0]]) / np.sqrt(2))  # sqrt{-I}
-_C11 = _lock(np.array([[1, -1], [-1, -1]]) / np.sqrt(2))  # sqrt{I}
-_C12 = _lock(np.array([[-1, -1], [1, -1]]) / np.sqrt(2))  # sqrt{-iY}
-_C13 = _lock(np.array([[1j, -1], [1, -1j]]) / np.sqrt(2))  # sqrt{-I}
-_C14 = _lock(np.array([[1j, 1], [-1, -1j]]) / np.sqrt(2))  # sqrt{-I}
-_C15 = _lock(np.array([[-1, -1j], [-1j, -1]]) / np.sqrt(2))  # sqrt{-iX}
-_C16 = _lock(np.array([[-1 + 1j, 1 + 1j], [-1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C17 = _lock(np.array([[-1 + 1j, -1 - 1j], [1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C18 = _lock(np.array([[1 + 1j, 1 - 1j], [-1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
-_C19 = _lock(np.array([[-1 - 1j, 1 - 1j], [-1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
-_C20 = _lock(np.array([[-1 - 1j, -1 - 1j], [1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
-_C21 = _lock(np.array([[-1 + 1j, -1 + 1j], [1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C22 = _lock(np.array([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
-_C23 = _lock(np.array([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
+_C0 = _lock(np.array([[1, 0], [0, 1]], dtype=np.complex128))  # identity
+_C1 = _lock(np.array([[0, 1], [1, 0]], dtype=np.complex128))  # X
+_C2 = _lock(np.array([[0, -1j], [1j, 0]], dtype=np.complex128))  # Y
+_C3 = _lock(np.array([[1, 0], [0, -1]], dtype=np.complex128))  # Z
+_C4 = _lock(np.array([[1, 0], [0, 1j]], dtype=np.complex128))  # S = \sqrt{Z}
+_C5 = _lock(np.array([[1, 0], [0, -1j]], dtype=np.complex128))  # S dagger
+_C6 = _lock(np.array([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2))  # Hadamard
+_C7 = _lock(np.array([[1, -1j], [-1j, 1]], dtype=np.complex128) / np.sqrt(2))  # \sqrt{iX}
+_C8 = _lock(np.array([[1, -1], [1, 1]], dtype=np.complex128) / np.sqrt(2))  # \sqrt{iY}
+_C9 = _lock(np.array([[0, 1 - 1j], [-1 - 1j, 0]], dtype=np.complex128) / np.sqrt(2))  # sqrt{I}
+_C10 = _lock(np.array([[0, -1 - 1j], [1 - 1j, 0]], dtype=np.complex128) / np.sqrt(2))  # sqrt{-I}
+_C11 = _lock(np.array([[1, -1], [-1, -1]], dtype=np.complex128) / np.sqrt(2))  # sqrt{I}
+_C12 = _lock(np.array([[-1, -1], [1, -1]], dtype=np.complex128) / np.sqrt(2))  # sqrt{-iY}
+_C13 = _lock(np.array([[1j, -1], [1, -1j]], dtype=np.complex128) / np.sqrt(2))  # sqrt{-I}
+_C14 = _lock(np.array([[1j, 1], [-1, -1j]], dtype=np.complex128) / np.sqrt(2))  # sqrt{-I}
+_C15 = _lock(np.array([[-1, -1j], [-1j, -1]], dtype=np.complex128) / np.sqrt(2))  # sqrt{-iX}
+_C16 = _lock(np.array([[-1 + 1j, 1 + 1j], [-1 + 1j, -1 - 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C17 = _lock(np.array([[-1 + 1j, -1 - 1j], [1 - 1j, -1 - 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C18 = _lock(np.array([[1 + 1j, 1 - 1j], [-1 - 1j, 1 - 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C19 = _lock(np.array([[-1 - 1j, 1 - 1j], [-1 - 1j, -1 + 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C20 = _lock(np.array([[-1 - 1j, -1 - 1j], [1 - 1j, -1 + 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C21 = _lock(np.array([[-1 + 1j, -1 + 1j], [1 + 1j, -1 - 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C22 = _lock(np.array([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]], dtype=np.complex128) / 2)  # I^(1/3)
+_C23 = _lock(np.array([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]], dtype=np.complex128) / 2)  # I^(1/3)
 
 
 # list of unique 1-qubit Clifford gates

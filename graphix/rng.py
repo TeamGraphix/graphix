@@ -17,8 +17,9 @@ def ensure_rng(rng: Generator | None = None) -> Generator:
     """Return a default random-number generator if `None` is given."""
     if rng is not None:
         return rng
-    if rng := getattr(_rng_local, "rng", None):
-        return rng
+    stored: Generator | None = getattr(_rng_local, "rng", None)
+    if stored is not None:
+        return stored
     rng = np.random.default_rng()
     # MEMO: Cannot perform type check
     setattr(_rng_local, "rng", rng)  # noqa: B010

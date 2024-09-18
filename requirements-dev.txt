@@ -1,5 +1,11 @@
-# Style
+# Lint/format
+mypy
+pyright
 ruff
+
+# Stubs
+types-networkx
+types-psutil
 
 # Tests
 psutil

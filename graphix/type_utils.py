@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import sys
 import typing
-from typing import Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+_T = TypeVar("_T")
 
 
-def check_list_elements(l, ty):
+def check_list_elements(l: Iterable[_T], ty: type[_T]) -> None:
     """Check that every element of the list has the given type."""
     for index, item in enumerate(l):
         if not isinstance(item, ty):
