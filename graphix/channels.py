@@ -76,7 +76,7 @@ class KrausChannel:
         try:
             nqubits = set(data.nqubit for data in kraus_data)
         except ValueError as e:
-            raise ValueError("Failed to intialize KrausChannel object.") from e
+            raise ValueError("Failed to initialize KrausChannel object.") from e
 
         if len(nqubits) != 1:
             raise ValueError("All operators must have the same shape.")
