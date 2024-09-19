@@ -8,10 +8,10 @@ from itertools import product
 import numpy as np
 import numpy.typing as npt
 
-from graphix._db import WellKnown
+from graphix._db import WellKnownMatrix
 
 
-class Ops(WellKnown):
+class Ops(WellKnownMatrix):
     """Basic single- and two-qubits operators."""
 
     @staticmethod

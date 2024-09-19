@@ -235,7 +235,7 @@ CLIFFORD_TO_QASM3 = (
 )
 
 
-class WellKnown:
+class WellKnownMatrix:
     """Collection of well-known matrices."""
 
     I: ClassVar = _C0
