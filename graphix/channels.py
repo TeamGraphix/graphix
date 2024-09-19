@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import itertools
 import typing
 from typing import TYPE_CHECKING, SupportsIndex, TypeVar
 
@@ -18,12 +17,9 @@ if TYPE_CHECKING:
 
 
 def _ilog2(n: int) -> int:
-    if n < 0:
-        raise ValueError("n must be non-negative.")
-    for p in itertools.count():
-        if n <= 2**p:
-            return p
-    raise RuntimeError("Unreachable.")
+    if n <= 0:
+        raise ValueError("n must be positive.")
+    return (n - 1).bit_length()
 
 
 # MEMO: Too much?
