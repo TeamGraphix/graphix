@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import warnings
 from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
@@ -33,7 +34,8 @@ def _is_square_deco(
     @functools.wraps(f)
     def _f(matrix: npt.NDArray[_T], *args: _P.args, **kwargs: _P.kwargs) -> bool:
         if not is_square(matrix):
-            raise ValueError("Need to ensure that matrix is square first.")
+            warnings.warn(f"is_square is not called before {f.__name__}.", stacklevel=2)
+            return False
         return f(matrix, *args, **kwargs)
 
     return _f  # type: ignore[return-value]
