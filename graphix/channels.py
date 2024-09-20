@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import copy
-import dataclasses
 import typing
-from typing import TYPE_CHECKING, SupportsIndex
+from typing import TYPE_CHECKING, SupportsIndex, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -17,13 +16,15 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
+_T = TypeVar("_T", bound=np.generic)
+
+
 def _ilog2(n: int) -> int:
     if n <= 0:
         raise ValueError("n must be positive.")
     return (n - 1).bit_length()
 
 
-@dataclasses.dataclass(frozen=True)
 class KrausData:
     """Kraus operator data.
 
@@ -36,21 +37,31 @@ class KrausData:
         Operator.
     """
 
-    coef: complex
-    operator: npt.NDArray[np.complex128]
+    __coef: complex
+    __operator: npt.NDArray[np.complex128]
 
-    def __post_init__(self) -> None:
-        if self.operator.dtype != np.complex128:
-            raise TypeError("Operator must be a complex matrix.")
-        if not lv.is_square(self.operator):
+    def __init__(self, coef: complex, operator: npt.NDArray[_T]) -> None:
+        self.__coef = coef
+        self.__operator = operator.astype(np.complex128)
+        if not lv.is_square(self.__operator):
             raise ValueError("Operator must be a square matrix.")
-        if not lv.is_qubitop(self.operator):
+        if not lv.is_qubitop(self.__operator):
             raise ValueError("Operator must be a qubit operator.")
+
+    @property
+    def coef(self) -> complex:
+        """Return the scalar prefactor."""
+        return self.__coef
+
+    @property
+    def operator(self) -> npt.NDArray[np.complex128]:
+        """Return the operator."""
+        return self.__operator
 
     @property
     def nqubit(self) -> int:
         """Validate the data."""
-        size, _ = self.operator.shape
+        size, _ = self.__operator.shape
         return _ilog2(size)
 
 
