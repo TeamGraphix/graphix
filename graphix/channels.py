@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import typing
 from typing import TYPE_CHECKING, SupportsIndex, TypeVar
 
@@ -22,10 +23,7 @@ def _ilog2(n: int) -> int:
     return (n - 1).bit_length()
 
 
-# MEMO: Too much?
-_T = TypeVar("_T", bound=np.generic)
-
-
+@dataclasses.dataclass(frozen=True)
 class KrausData:
     """Kraus operator data.
 
@@ -41,17 +39,17 @@ class KrausData:
     coef: complex
     operator: npt.NDArray[np.complex128]
 
-    def __init__(self, coef: complex, operator: npt.NDArray[_T]) -> None:
-        self.coef = coef
-        self.operator = operator.astype(np.complex128, copy=True)
-
-    @property
-    def nqubit(self) -> int:
-        """Validate the data."""
+    def __post_init__(self) -> None:
+        if self.operator.dtype != np.complex128:
+            raise TypeError("Operator must be a complex matrix.")
         if not lv.is_square(self.operator):
             raise ValueError("Operator must be a square matrix.")
         if not lv.is_qubitop(self.operator):
             raise ValueError("Operator must be a qubit operator.")
+
+    @property
+    def nqubit(self) -> int:
+        """Validate the data."""
         size, _ = self.operator.shape
         return _ilog2(size)
 
