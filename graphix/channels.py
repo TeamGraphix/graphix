@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import typing
-from typing import TYPE_CHECKING, SupportsIndex, TypeVar
+from typing import TYPE_CHECKING, SupportsIndex
 
 import numpy as np
 import numpy.typing as npt
@@ -91,11 +91,13 @@ class KrausChannel:
         ValueError
             If kraus_data is empty.
         """
+        kraus_data = list(kraus_data)
+
         if not kraus_data:
             raise ValueError("Cannot instantiate the channel with empty data.")
 
         self.__nqubit = self._nqubit(kraus_data)
-        self.__data = list(copy.deepcopy(data) for data in kraus_data)
+        self.__data = kraus_data
 
         if len(self.__data) > 4**self.__nqubit:
             raise ValueError("len(kraus_data) cannot exceed 4**nqubit.")
