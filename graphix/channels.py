@@ -67,14 +67,12 @@ class KrausChannel:
 
     @staticmethod
     def _nqubit(kraus_data: Iterable[KrausData]) -> int:
-        try:
-            nqubits = set(data.nqubit for data in kraus_data)
-        except ValueError as e:
-            raise ValueError("Failed to initialize KrausChannel object.") from e
+        # MEMO: kraus_data is not empty.
+        it = iter(kraus_data)
+        nqubit = next(it).nqubit
 
-        if len(nqubits) != 1:
+        if any(data.nqubit != nqubit for data in it):
             raise ValueError("All operators must have the same shape.")
-        (nqubit,) = nqubits
 
         return nqubit
 
