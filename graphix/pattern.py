@@ -14,6 +14,7 @@ import networkx as nx
 import typing_extensions
 
 from graphix import clifford, command
+from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -404,7 +405,7 @@ class Pattern:
                 # Each pattern command is applied by left multiplication: if a clifford `C`
                 # has been already applied to a node, applying a clifford `C'` to the same
                 # node is equivalent to apply `C'C` to a fresh node.
-                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, clifford.I)
+                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
         self.__seq = [
             *n_list,
             *e_list,
@@ -2151,12 +2152,12 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
-        cmd.clifford(clifford.get(vops[cmd.node]))
+        cmd.clifford(Clifford(vops[cmd.node]))
         for cmd in pattern
         if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
-        command.C(node=index, clifford=clifford.get(vops[index])) for index in pattern.output_nodes if vops[index] != 0
+        command.C(node=index, clifford=Clifford(vops[index])) for index in pattern.output_nodes if vops[index] != 0
     )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
 
