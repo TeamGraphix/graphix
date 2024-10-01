@@ -41,12 +41,13 @@ class KrausData:
     __operator: npt.NDArray[np.complex128]
 
     def __init__(self, coef: complex, operator: npt.NDArray[_T]) -> None:
-        self.__coef = coef
-        self.__operator = operator.astype(np.complex128)
-        if not lv.is_square(self.__operator):
+        if not lv.is_square(operator):
             raise ValueError("Operator must be a square matrix.")
-        if not lv.is_qubitop(self.__operator):
+        if not lv.is_qubitop(operator):
             raise ValueError("Operator must be a qubit operator.")
+        self.__coef = coef
+        self.__operator = operator.astype(np.complex128, copy=True)
+        self.__operator.flags.writeable = False
 
     @property
     def coef(self) -> complex:
@@ -56,7 +57,7 @@ class KrausData:
     @property
     def operator(self) -> npt.NDArray[np.complex128]:
         """Return the operator."""
-        return self.__operator
+        return self.__operator.view()
 
     @property
     def nqubit(self) -> int:
@@ -100,7 +101,7 @@ class KrausChannel:
         ValueError
             If kraus_data is empty.
         """
-        kraus_data = list(kraus_data)
+        kraus_data = list(copy.deepcopy(kdata) for kdata in kraus_data)
 
         if not kraus_data:
             raise ValueError("Cannot instantiate the channel with empty data.")
