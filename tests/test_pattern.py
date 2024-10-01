@@ -710,6 +710,13 @@ class TestLocalPattern:
                 backend="tensornetwork", graph_prep="sequential", input_state=states, rng=fx_rng
             )
 
+    def test_remove_qubit(self) -> None:
+        p = Pattern(input_nodes=[0, 1])
+        p.add(M(node=0))
+        p.add(C(node=0, clifford=clifford.X))
+        with pytest.raises(KeyError):
+            p.simulate_pattern()
+
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
     return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))
