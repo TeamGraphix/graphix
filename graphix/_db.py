@@ -13,7 +13,7 @@ _T = TypeVar("_T", bound=np.generic)
 def _lock(data: npt.NDArray[_T]) -> npt.NDArray[np.complex128]:
     """Create a true immutable view.
 
-    data must be a "temporary" array, i.e., should not be bound to a variable.
+    data must not have aliasing references, otherwise users can still turn on writeable flag of m.
     """
     m = data.astype(np.complex128)
     m.flags.writeable = False
