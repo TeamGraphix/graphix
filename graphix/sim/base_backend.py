@@ -77,6 +77,7 @@ class NodeIndex:
         """Remove the specified node label from the list and dictionary, and re-attributes qubit indices for the remaining nodes."""
         index = self.__dict[node]
         del self.__list[index]
+        del self.__dict[node]
         for new_index, node in enumerate(self.__list[index:], start=index):
             self.__dict[node] = new_index
 
