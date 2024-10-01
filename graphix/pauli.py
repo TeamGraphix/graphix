@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import typing_extensions
 
-from graphix.clifford import CLIFFORD
+from graphix._db import CLIFFORD
 from graphix.ops import Ops
 
 if TYPE_CHECKING:
@@ -141,7 +141,7 @@ class ComplexUnit:
             result = "-" + result
         return result
 
-    def __mul__(self, other):
+    def __mul__(self, other: ComplexUnit) -> ComplexUnit:
         """Multiply the complex unit with another complex unit."""
         if isinstance(other, ComplexUnit):
             is_imag = self.__is_imag != other.__is_imag
@@ -359,7 +359,7 @@ class Pauli:
         """Return a string representation of the Pauli (without module prefix)."""
         return self.__unit.prefix(self.__symbol.name)
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: Pauli) -> Pauli:
         """Return the product of two Paulis."""
         if isinstance(other, Pauli):
             if self.__symbol == IXYZ.I:
@@ -380,7 +380,7 @@ class Pauli:
             return get(symbol, unit * self.__unit * other.__unit)
         return NotImplemented
 
-    def __rmul__(self, other) -> Pauli:
+    def __rmul__(self, other: ComplexUnit) -> Pauli:
         """Return the product of two Paulis."""
         if isinstance(other, ComplexUnit):
             return get(self.__symbol, other * self.__unit)
