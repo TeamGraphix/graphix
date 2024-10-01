@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 import graphix.pauli
+from graphix.clifford import Clifford
 from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.states import BasicStates, PlanarState
 from tests.test_graphsim import meas_op
@@ -99,7 +100,7 @@ class TestStatevecNew:
             StatevectorBackend().add_nodes(hadamardpattern.input_nodes, data=[state, state2])
 
     def test_clifford(self) -> None:
-        for clifford in graphix.clifford.TABLE:
+        for clifford in Clifford.cliffords():
             state = BasicStates.PLUS
             vec = Statevec(nqubit=1, data=state)
             backend = StatevectorBackend()

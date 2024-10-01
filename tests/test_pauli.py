@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-import graphix.clifford
 import graphix.pauli
+from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
 
 if TYPE_CHECKING:
-    from graphix.clifford import Clifford
     from graphix.pauli import ComplexUnit, Pauli, Plane
 
 
@@ -42,7 +41,7 @@ class TestPauli:
             graphix.pauli.Plane,
             (False, True),
             (False, True),
-            graphix.clifford.TABLE,
+            Clifford.cliffords(),
             (0, np.pi),
             (False, True),
         ),
