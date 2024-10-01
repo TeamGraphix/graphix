@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
-import graphix.pauli
 from graphix._db import (
     CLIFFORD,
     CLIFFORD_CONJ,
@@ -17,9 +16,13 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
+from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     import numpy as np
+    import numpy.typing as npt
 
 
 @dataclass
@@ -37,7 +40,18 @@ class Domains:
 class Clifford:
     """Clifford gate."""
 
-    def __init__(self, index: int):
+    __index: int
+
+    I: ClassVar[Clifford]
+    X: ClassVar[Clifford]
+    Y: ClassVar[Clifford]
+    Z: ClassVar[Clifford]
+    S: ClassVar[Clifford]
+    H: ClassVar[Clifford]
+
+    def __init__(self, index: int) -> None:
+        if not (0 <= index < len(CLIFFORD)):
+            raise ValueError("Clifford index out of range.")
         self.__index = index
 
     @property
@@ -46,9 +60,19 @@ class Clifford:
         return self.__index
 
     @property
-    def matrix(self) -> np.ndarray:
+    def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Clifford gate."""
         return CLIFFORD[self.__index]
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two Clifford gates."""
+        if isinstance(other, Clifford):
+            return self.__index == other.__index
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        """Hash the Clifford gate using its index."""
+        return hash(self.__index)
 
     def __repr__(self) -> str:
         """Return the Clifford expression on the form of HSZ decomposition."""
@@ -61,31 +85,31 @@ class Clifford:
     @property
     def conj(self) -> Clifford:
         """Return the conjugate of the Clifford gate."""
-        return get(CLIFFORD_CONJ[self.__index])
+        return Clifford(CLIFFORD_CONJ[self.__index])
 
     @property
     def hsz(self) -> list[Clifford]:
         """Return a decomposition of the Clifford gate with the gates `H`, `S`, `Z`."""
-        return list(map(get, CLIFFORD_HSZ_DECOMPOSITION[self.__index]))
+        return [Clifford(i) for i in CLIFFORD_HSZ_DECOMPOSITION[self.__index]]
 
     @property
     def qasm3(self) -> tuple[str, ...]:
         """Return a decomposition of the Clifford gate as qasm3 gates."""
         return CLIFFORD_TO_QASM3[self.__index]
 
-    def __matmul__(self, other) -> Clifford:
+    def __matmul__(self, other: Clifford) -> Clifford:
         """Multiplication within the Clifford group (modulo unit factor)."""
         if isinstance(other, Clifford):
-            return get(CLIFFORD_MUL[self.__index][other.__index])
+            return Clifford(CLIFFORD_MUL[self.__index][other.__index])
         return NotImplemented
 
-    def measure(self, pauli: graphix.pauli.Pauli) -> graphix.pauli.Pauli:
+    def measure(self, pauli: Pauli) -> Pauli:
         """Compute C† P C."""
-        if pauli.symbol == graphix.pauli.IXYZ.I:
+        if pauli.symbol == IXYZ.I:
             return pauli
         table = CLIFFORD_MEASURE[self.__index]
         symbol, sign = table[pauli.symbol.value]
-        return pauli.unit * graphix.pauli.TABLE[symbol + 1][sign][False]
+        return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit(Sign(sign), False))
 
     def commute_domains(self, domains: Domains) -> Domains:
         """
@@ -99,30 +123,28 @@ class Clifford:
         s_domain = domains.s_domain
         t_domain = domains.t_domain
         for gate in self.hsz:
-            if gate == graphix.clifford.I:
+            if gate == Clifford.I:
                 pass
-            elif gate == graphix.clifford.H:
+            elif gate == Clifford.H:
                 t_domain, s_domain = s_domain, t_domain
-            elif gate == graphix.clifford.S:
+            elif gate == Clifford.S:
                 t_domain ^= s_domain
-            elif gate == graphix.clifford.Z:
+            elif gate == Clifford.Z:
                 pass
             else:
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         return Domains(s_domain, t_domain)
 
-
-TABLE = tuple(Clifford(i) for i in range(len(CLIFFORD)))
-
-
-def get(index: int) -> Clifford:
-    """Return the Clifford gate with given index."""
-    return TABLE[index]
+    @staticmethod
+    def cliffords() -> Iterator[Clifford]:
+        """Return an iterator over the Clifford gates."""
+        for i in range(len(CLIFFORD)):
+            yield Clifford(i)
 
 
-I = get(0)
-X = get(1)
-Y = get(2)
-Z = get(3)
-S = get(4)
-H = get(6)
+Clifford.I = Clifford(0)
+Clifford.X = Clifford(1)
+Clifford.Y = Clifford(2)
+Clifford.Z = Clifford(3)
+Clifford.S = Clifford(4)
+Clifford.H = Clifford(6)
