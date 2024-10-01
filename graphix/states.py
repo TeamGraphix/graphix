@@ -8,8 +8,8 @@ from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
+import pydantic.dataclasses
 import typing_extensions
-from pydantic import BaseModel
 
 from graphix.pauli import Plane
 
@@ -33,7 +33,8 @@ class State(ABC):
         return np.outer(self.get_statevector(), self.get_statevector().conj())
 
 
-class PlanarState(BaseModel, State):
+@pydantic.dataclasses.dataclass
+class PlanarState(State):
     """Light object used to instantiate backends.
 
     doesn't cover all possible states but this is
@@ -54,7 +55,7 @@ class PlanarState(BaseModel, State):
 
     def __repr__(self) -> str:
         """Return a string representation of the planar state."""
-        return f"graphix.states.PlanarState(plane={self.plane}, angle={self.angle})"
+        return f"graphix.states.PlanarState({self.plane}, {self.angle})"
 
     def __str__(self) -> str:
         """Return a string description of the planar state."""
@@ -78,12 +79,12 @@ class PlanarState(BaseModel, State):
 class BasicStates:
     """Basic states."""
 
-    ZERO: ClassVar = PlanarState(plane=Plane.XZ, angle=0)
-    ONE: ClassVar = PlanarState(plane=Plane.XZ, angle=np.pi)
-    PLUS: ClassVar = PlanarState(plane=Plane.XY, angle=0)
-    MINUS: ClassVar = PlanarState(plane=Plane.XY, angle=np.pi)
-    PLUS_I: ClassVar = PlanarState(plane=Plane.XY, angle=np.pi / 2)
-    MINUS_I: ClassVar = PlanarState(plane=Plane.XY, angle=-np.pi / 2)
+    ZERO: ClassVar = PlanarState(Plane.XZ, 0)
+    ONE: ClassVar = PlanarState(Plane.XZ, np.pi)
+    PLUS: ClassVar = PlanarState(Plane.XY, 0)
+    MINUS: ClassVar = PlanarState(Plane.XY, np.pi)
+    PLUS_I: ClassVar = PlanarState(Plane.XY, np.pi / 2)
+    MINUS_I: ClassVar = PlanarState(Plane.XY, -np.pi / 2)
     # remove that in the end
     # need in TN backend
     VEC: ClassVar = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
