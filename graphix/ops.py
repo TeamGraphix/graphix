@@ -4,38 +4,18 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
-from typing import ClassVar
 
 import numpy as np
+import numpy.typing as npt
+
+from graphix._db import WellKnownMatrix
 
 
-class Ops:
+class Ops(WellKnownMatrix):
     """Basic single- and two-qubits operators."""
 
-    x = np.array([[0, 1], [1, 0]])
-    y = np.array([[0, -1j], [1j, 0]])
-    z = np.array([[1, 0], [0, -1]])
-    s = np.array([[1, 0], [0, 1j]])
-    h = np.array([[1, 1], [1, -1]]) / np.sqrt(2)
-    cz = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
-    cnot = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
-    swap = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-    ccx = np.array(
-        [
-            [1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1],
-            [0, 0, 0, 0, 0, 0, 1, 0],
-        ]
-    )
-    Pauli_ops: ClassVar = [np.eye(2), x, y, z]
-
     @staticmethod
-    def rx(theta):
+    def rx(theta: float) -> npt.NDArray[np.complex128]:
         """X rotation.
 
         Parameters
@@ -45,12 +25,15 @@ class Ops:
 
         Returns
         -------
-        operator : 2*2 np.array
+        operator : 2*2 np.asarray
         """
-        return np.array([[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]])
+        return np.asarray(
+            [[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]],
+            dtype=np.complex128,
+        )
 
     @staticmethod
-    def ry(theta):
+    def ry(theta: float) -> npt.NDArray[np.complex128]:
         """Y rotation.
 
         Parameters
@@ -60,12 +43,14 @@ class Ops:
 
         Returns
         -------
-        operator : 2*2 np.array
+        operator : 2*2 np.asarray
         """
-        return np.array([[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]])
+        return np.asarray(
+            [[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]], dtype=np.complex128
+        )
 
     @staticmethod
-    def rz(theta):
+    def rz(theta: float) -> npt.NDArray[np.complex128]:
         """Z rotation.
 
         Parameters
@@ -75,12 +60,12 @@ class Ops:
 
         Returns
         -------
-        operator : 2*2 np.array
+        operator : 2*2 np.asarray
         """
-        return np.array([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]])
+        return np.asarray([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]], dtype=np.complex128)
 
     @staticmethod
-    def rzz(theta):
+    def rzz(theta: float) -> npt.NDArray[np.complex128]:
         """zz-rotation.
 
         Equivalent to the sequence
@@ -95,12 +80,12 @@ class Ops:
 
         Returns
         -------
-        operator : 4*4 np.array
+        operator : 4*4 np.asarray
         """
-        return Ops.cnot @ np.kron(np.eye(2), Ops.rz(theta)) @ Ops.cnot
+        return np.asarray(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, dtype=np.complex128)
 
     @staticmethod
-    def build_tensor_pauli_ops(n_qubits: int):
+    def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray[np.complex128]:
         r"""Build all the 4^n tensor Pauli operators {I, X, Y, Z}^{\otimes n}.
 
         :param n_qubits: number of copies (qubits) to consider
@@ -114,6 +99,5 @@ class Ops:
         else:
             raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
 
-        tensor_pauli_ops = [reduce(lambda x, y: np.kron(x, y), i) for i in product(Ops.Pauli_ops, repeat=n_qubits)]
-
-        return np.array(tensor_pauli_ops)
+        # TODO: Refactor this
+        return np.array([reduce(np.kron, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)])

@@ -7,7 +7,7 @@ import numpy.typing as npt
 import pytest
 
 from graphix import Circuit
-from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
+from graphix.channels import KrausChannel, KrausData, depolarising_channel, two_qubit_depolarising_channel
 from graphix.noise_models.noise_model import NoiseModel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
@@ -75,7 +75,7 @@ class NoiseModelTester(NoiseModel):
     def clifford(self) -> KrausChannel:
         """Apply noise to qubits that happens in the Clifford gate process."""
         # TODO list separate different Cliffords to allow customization
-        return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
+        return KrausChannel([KrausData(1.0, np.eye(2))])
 
     def tick_clock(self) -> None:
         """Notion of time in real devices - this is where we apply effect of T1 and T2.
@@ -481,9 +481,9 @@ class TestNoisyDensityMatrixBackend:
         exact = self.rz_exact_res(alpha)
 
         assert (
-            np.allclose(res.rho, Ops.x @ exact @ Ops.x)
-            or np.allclose(res.rho, Ops.z @ exact @ Ops.z)
-            or np.allclose(res.rho, Ops.z @ Ops.x @ exact @ Ops.x @ Ops.z)
+            np.allclose(res.rho, Ops.X @ exact @ Ops.X)
+            or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
+            or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )
 
         # arbitrary probability
@@ -497,7 +497,7 @@ class TestNoisyDensityMatrixBackend:
         # just add the case without readout errors
         assert (
             np.allclose(res.rho, exact)
-            or np.allclose(res.rho, Ops.x @ exact @ Ops.x)
-            or np.allclose(res.rho, Ops.z @ exact @ Ops.z)
-            or np.allclose(res.rho, Ops.z @ Ops.x @ exact @ Ops.x @ Ops.z)
+            or np.allclose(res.rho, Ops.X @ exact @ Ops.X)
+            or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
+            or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
         )

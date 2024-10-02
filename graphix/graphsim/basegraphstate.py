@@ -655,11 +655,11 @@ class BaseGraphState(ABC):
             gstate.entangle((imapping[i], imapping[j]))
         for i in range(nqubit):
             if self.nodes[mapping[i]]["sign"]:
-                gstate.evolve_single(Ops.z, i)
+                gstate.evolve_single(Ops.Z, i)
         for i in range(nqubit):
             if self.nodes[mapping[i]]["loop"]:
-                gstate.evolve_single(Ops.s, i)
+                gstate.evolve_single(Ops.S, i)
         for i in range(nqubit):
             if self.nodes[mapping[i]]["hollow"]:
-                gstate.evolve_single(Ops.h, i)
+                gstate.evolve_single(Ops.H, i)
         return gstate
