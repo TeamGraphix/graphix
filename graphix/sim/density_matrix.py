@@ -17,8 +17,8 @@ import sys
 import numpy as np
 
 import graphix.states
+from graphix import linalg_validations as lv
 from graphix.channels import KrausChannel
-from graphix.linalg_validations import check_psd, check_square, check_unit_trace
 from graphix.sim.base_backend import Backend, State
 from graphix.sim.statevec import CNOT_TENSOR, Statevec
 
@@ -74,10 +74,13 @@ class DensityMatrix(State):
                 try:
                     if isinstance(input_list[0], Iterable) and isinstance(input_list[0][0], numbers.Number):
                         self.rho = np.array(input_list)
-                        assert check_square(self.rho)
+                        if not lv.is_qubitop(self.rho):
+                            raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
                         check_size_consistency(self.rho)
-                        assert check_unit_trace(self.rho)
-                        assert check_psd(self.rho)
+                        if not lv.is_unit_trace(self.rho):
+                            raise ValueError("Density matrix must have unit trace.")
+                        if not lv.is_psd(self.rho):
+                            raise ValueError("Density matrix must be positive semi-definite.")
                         return
                 except TypeError:
                     pass
@@ -310,10 +313,10 @@ class DensityMatrix(State):
         if not isinstance(channel, KrausChannel):
             raise TypeError("Can't apply a channel that is not a Channel object.")
 
-        for k_op in channel.kraus_ops:
+        for k_op in channel:
             dm = copy.copy(self)
-            dm.evolve(k_op["operator"], qargs)
-            result_array += k_op["coef"] * np.conj(k_op["coef"]) * dm.rho
+            dm.evolve(k_op.operator, qargs)
+            result_array += k_op.coef * np.conj(k_op.coef) * dm.rho
             # reinitialize to input density matrix
 
         if not np.allclose(result_array.trace(), 1.0):

@@ -573,8 +573,6 @@ class TestDensityMatrix:
 
         # useless since checked in apply_channel method.
         assert isinstance(dephase_channel, KrausChannel)
-        # useless since checked in the constructor.
-        assert dephase_channel.is_normalized()
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -584,7 +582,7 @@ class TestDensityMatrix:
         # compare
         expected_dm = (
             np.sqrt(1 - prob) ** 2 * identity @ rho_test @ identity.conj().T
-            + np.sqrt(prob) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
+            + np.sqrt(prob) ** 2 * Ops.Z @ rho_test @ Ops.Z.conj().T
         )
 
         assert np.allclose(expected_dm.trace(), 1.0)
@@ -609,8 +607,6 @@ class TestDensityMatrix:
 
         # useless since checked in apply_channel method.
         assert isinstance(dephase_channel, KrausChannel)
-        # useless since checked in the constructor.
-        assert dephase_channel.is_normalized()
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -626,7 +622,7 @@ class TestDensityMatrix:
         psi_evolved = np.tensordot(identity, psi.reshape((2,) * nqubits), (1, i))
         psi_evolved = np.moveaxis(psi_evolved, 0, i)
 
-        psi_evolvedb = np.tensordot(Ops.z, psi.reshape((2,) * nqubits), (1, i))
+        psi_evolvedb = np.tensordot(Ops.Z, psi.reshape((2,) * nqubits), (1, i))
         psi_evolvedb = np.moveaxis(psi_evolvedb, 0, i)
 
         # compute final density matrix
@@ -655,8 +651,6 @@ class TestDensityMatrix:
 
         # useless since checked in apply_channel method.
         assert isinstance(depol_channel, KrausChannel)
-        # useless since checked in the constructor.
-        assert depol_channel.is_normalized()
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -666,9 +660,9 @@ class TestDensityMatrix:
         # compare
         expected_dm = (
             np.sqrt(1 - prob) ** 2 * identity @ rho_test @ identity.conj().T
-            + np.sqrt(prob / 3.0) ** 2 * Ops.x @ rho_test @ Ops.x.conj().T
-            + np.sqrt(prob / 3.0) ** 2 * Ops.y @ rho_test @ Ops.y.conj().T
-            + np.sqrt(prob / 3.0) ** 2 * Ops.z @ rho_test @ Ops.z.conj().T
+            + np.sqrt(prob / 3.0) ** 2 * Ops.X @ rho_test @ Ops.X.conj().T
+            + np.sqrt(prob / 3.0) ** 2 * Ops.Y @ rho_test @ Ops.Y.conj().T
+            + np.sqrt(prob / 3.0) ** 2 * Ops.Z @ rho_test @ Ops.Z.conj().T
         )
 
         assert np.allclose(expected_dm.trace(), 1.0)
@@ -697,8 +691,6 @@ class TestDensityMatrix:
 
         # useless since checked in apply_channel method.
         assert isinstance(depol_channel, KrausChannel)
-        # useless since checked in the constructor.
-        assert depol_channel.is_normalized()
 
         # apply channel. list with single element needed.
         # if Channel.nqubit == 1 use list with single element.
@@ -714,13 +706,13 @@ class TestDensityMatrix:
         psi_evolved = np.tensordot(identity, psi.reshape((2,) * nqubits), (1, i))
         psi_evolved = np.moveaxis(psi_evolved, 0, i)
 
-        psi_evolvedb = np.tensordot(Ops.x, psi.reshape((2,) * nqubits), (1, i))
+        psi_evolvedb = np.tensordot(Ops.X, psi.reshape((2,) * nqubits), (1, i))
         psi_evolvedb = np.moveaxis(psi_evolvedb, 0, i)
 
-        psi_evolvedc = np.tensordot(Ops.y, psi.reshape((2,) * nqubits), (1, i))
+        psi_evolvedc = np.tensordot(Ops.Y, psi.reshape((2,) * nqubits), (1, i))
         psi_evolvedc = np.moveaxis(psi_evolvedc, 0, i)
 
-        psi_evolvedd = np.tensordot(Ops.z, psi.reshape((2,) * nqubits), (1, i))
+        psi_evolvedd = np.tensordot(Ops.Z, psi.reshape((2,) * nqubits), (1, i))
         psi_evolvedd = np.moveaxis(psi_evolvedd, 0, i)
 
         # compute final density matrix
@@ -779,10 +771,10 @@ class TestDensityMatrix:
         # initialize. NOT a DM object, just a matrix.
         expected_dm = np.zeros((2**nqubits, 2**nqubits), dtype=np.complex128)
 
-        for elem in channel.kraus_ops:  # kraus_ops is a list of dicts
-            psi_evolved = np.tensordot(elem["operator"], psi.reshape((2,) * nqubits), (1, i))
+        for elem in channel:  # kraus_ops is a list of dicts
+            psi_evolved = np.tensordot(elem.operator, psi.reshape((2,) * nqubits), (1, i))
             psi_evolved = np.moveaxis(psi_evolved, 0, i)
-            expected_dm += elem["coef"] * np.conj(elem["coef"]) * np.outer(psi_evolved, np.conj(psi_evolved))
+            expected_dm += elem.coef * np.conj(elem.coef) * np.outer(psi_evolved, np.conj(psi_evolved))
 
         # compare
         assert np.allclose(expected_dm.trace(), 1.0)
@@ -815,14 +807,14 @@ class TestDensityMatrix:
         # initialize. NOT a DM object, just a matrix.
         expected_dm = np.zeros((2**nqubits, 2**nqubits), dtype=np.complex128)
         # reshape statevec since not in tensor format
-        for elem in channel.kraus_ops:  # kraus_ops is a list of dicts
+        for elem in channel:  # kraus_ops is a list of dicts
             psi_evolved = np.tensordot(
-                elem["operator"].reshape((2,) * 2 * nqb),
+                elem.operator.reshape((2,) * 2 * nqb),
                 psi.reshape((2,) * nqubits),
                 ((2, 3), qubits),
             )
             psi_evolved = np.moveaxis(psi_evolved, (0, 1), qubits)
-            expected_dm += elem["coef"] * np.conj(elem["coef"]) * np.outer(psi_evolved, np.conj(psi_evolved))
+            expected_dm += elem.coef * np.conj(elem.coef) * np.outer(psi_evolved, np.conj(psi_evolved))
 
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)

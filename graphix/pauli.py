@@ -187,11 +187,11 @@ class Axis(enum.Enum):
     def op(self) -> npt.NDArray:
         """Return the single qubit operator associated to the axis."""
         if self == Axis.X:
-            return Ops.x
+            return Ops.X
         if self == Axis.Y:
-            return Ops.y
+            return Ops.Y
         if self == Axis.Z:
-            return Ops.z
+            return Ops.Z
 
         typing_extensions.assert_never(self)
 
