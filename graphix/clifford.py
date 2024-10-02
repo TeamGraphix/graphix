@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 from typing import TYPE_CHECKING, ClassVar
 
@@ -106,7 +107,7 @@ class Clifford:
     def measure(self, pauli: Pauli) -> Pauli:
         """Compute C† P C."""
         if pauli.symbol == IXYZ.I:
-            return pauli
+            return copy.deepcopy(pauli)
         table = CLIFFORD_MEASURE[self.__index]
         symbol, sign = table[pauli.symbol.value]
         return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit(Sign(sign), False))
@@ -120,8 +121,8 @@ class Clifford:
         Note that applying the method to `self.conj` computes the reverse commutation:
         indeed, `C†X^sZ^t = (X^sZ^tC)† = (CX^s'Z^t')† = X^s'Z^t'C†`.
         """
-        s_domain = domains.s_domain
-        t_domain = domains.t_domain
+        s_domain = domains.s_domain.copy()
+        t_domain = domains.t_domain.copy()
         for gate in self.hsz:
             if gate == Clifford.I:
                 pass
