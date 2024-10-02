@@ -129,7 +129,7 @@ class KrausChannel:
 
     def __getitem__(self, index: SupportsIndex | slice, /) -> KrausData | list[KrausData]:
         """Return the Kraus operator at the given index."""
-        return copy.deepcopy(self.__data[index])
+        return self.__data[index]
 
     def __len__(self) -> int:
         """Return the number of Kraus operators."""
