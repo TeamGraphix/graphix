@@ -1181,9 +1181,9 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 if include_identity:
-                    vops[cmd.node] = clifford.I
+                    vops[cmd.node] = Clifford.I
             elif cmd.kind == CommandKind.C:
-                if cmd.clifford == clifford.I:
+                if cmd.clifford == Clifford.I:
                     if include_identity:
                         vops[cmd.node] = cmd.clifford
                 else:
@@ -1821,7 +1821,7 @@ class CommandNode:
                 raise NotImplementedError("Patterns with more than one Z corrections are not supported")
             return command.Z(node=self.index, domain=self.z_signal)
         elif cmd == -4:
-            return command.C(node=self.index, clifford=clifford.TABLE[self.vop])
+            return command.C(node=self.index, clifford=Clifford(self.vop))
 
     def get_signal_destination(self):
         """Get signal destination.
