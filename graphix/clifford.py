@@ -6,8 +6,6 @@ import copy
 import dataclasses
 from typing import TYPE_CHECKING, ClassVar
 
-import numpy as np
-
 from graphix._db import (
     CLIFFORD,
     CLIFFORD_CONJ,
