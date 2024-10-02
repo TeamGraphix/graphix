@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import dataclasses
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
 
-@dataclass
+@dataclasses.dataclass
 class Domains:
     """
     Represent `X^sZ^t` where s and t are XOR of results from given sets of indices.

@@ -12,13 +12,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-import graphix.clifford
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, M, MeasureUpdate
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
@@ -154,7 +154,7 @@ class PatternSimulator:
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state=graphix.states.BasicStates.PLUS) -> None:
+    def run(self, input_state=BasicStates.PLUS) -> None:
         """Perform the simulation.
 
         Returns

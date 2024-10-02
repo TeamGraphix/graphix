@@ -15,7 +15,6 @@ from networkx.utils import graphs_equal
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
 
-import graphix.clifford
 import graphix.pauli
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.graphsim.graphstate import GraphState

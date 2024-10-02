@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import typing_extensions
 
-from graphix import clifford, command
-from graphix.clifford import Clifford
+from graphix import command
+from graphix.clifford import Clifford, Domains
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -397,7 +397,7 @@ class Pattern:
                 # be applied first (i.e., in right-most position).
                 t_domain = z_dict.pop(cmd.node, set())
                 s_domain = x_dict.pop(cmd.node, set())
-                domains = cmd.clifford.conj.commute_domains(clifford.Domains(s_domain, t_domain))
+                domains = cmd.clifford.conj.commute_domains(Domains(s_domain, t_domain))
                 if domains.t_domain:
                     z_dict[cmd.node] = domains.t_domain
                 if domains.s_domain:
