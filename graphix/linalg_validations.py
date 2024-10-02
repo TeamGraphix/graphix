@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TypeVar
 
 import numpy as np
@@ -22,7 +21,6 @@ def is_square(matrix: npt.NDArray[_T]) -> bool:
 def is_qubitop(matrix: npt.NDArray[_T]) -> bool:
     """Check if matrix is a square matrix with a power of 2 dimension."""
     if not is_square(matrix):
-        warnings.warn(f"is_square is not called before {is_qubitop.__name__}.", stacklevel=1)
         return False
     size, _ = matrix.shape
     return size > 0 and size & (size - 1) == 0
@@ -31,7 +29,6 @@ def is_qubitop(matrix: npt.NDArray[_T]) -> bool:
 def is_hermitian(matrix: npt.NDArray[_T]) -> bool:
     """Check if matrix is hermitian."""
     if not is_square(matrix):
-        warnings.warn(f"is_square is not called before {is_hermitian.__name__}.", stacklevel=1)
         return False
     return np.allclose(matrix, matrix.transpose().conjugate())
 
@@ -48,7 +45,6 @@ def is_psd(matrix: npt.NDArray[_T], tol: float = 1e-15) -> bool:
         tolerance on the small negatives. Default 1e-15.
     """
     if not is_square(matrix):
-        warnings.warn(f"is_square is not called before {is_psd.__name__}.", stacklevel=1)
         return False
     if tol < 0:
         raise ValueError("tol must be non-negative.")
@@ -61,6 +57,5 @@ def is_psd(matrix: npt.NDArray[_T], tol: float = 1e-15) -> bool:
 def is_unit_trace(matrix: npt.NDArray[_T]) -> bool:
     """Check if matrix has trace 1."""
     if not is_square(matrix):
-        warnings.warn(f"is_square is not called before {is_unit_trace.__name__}.", stacklevel=1)
         return False
     return np.allclose(matrix.trace(), 1.0)

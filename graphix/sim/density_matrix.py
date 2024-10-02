@@ -74,8 +74,6 @@ class DensityMatrix(State):
                 try:
                     if isinstance(input_list[0], Iterable) and isinstance(input_list[0][0], numbers.Number):
                         self.rho = np.array(input_list)
-                        if not lv.is_square(self.rho):
-                            raise ValueError("Density matrix must be square.")
                         if not lv.is_qubitop(self.rho):
                             raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
                         check_size_consistency(self.rho)
