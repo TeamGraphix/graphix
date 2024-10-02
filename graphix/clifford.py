@@ -56,7 +56,7 @@ class Clifford:
 
     @property
     def index(self) -> int:
-        """Return the index of the Clifford gate (inverse of clifford.get)."""
+        """Return the index of the Clifford gate."""
         return self.__index
 
     @property
