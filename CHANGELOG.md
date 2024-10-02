@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Now variables, functions, and classes are named based on PEP8.
+- `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
 
 ## [0.2.16] - 2024-08-26
 

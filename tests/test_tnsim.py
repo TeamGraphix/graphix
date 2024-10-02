@@ -26,7 +26,7 @@ def random_op(sites: int, dtype: type, rng: Generator) -> npt.NDArray:
     return rng.normal(size=(size, size)).astype(dtype)
 
 
-CZ = Ops.cz
+CZ = Ops.CZ
 plus = BasicStates.PLUS.get_statevector()
 
 

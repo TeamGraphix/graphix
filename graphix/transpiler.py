@@ -1614,15 +1614,15 @@ class Circuit:
             elif kind == instruction.InstructionKind.I:
                 pass
             elif kind == instruction.InstructionKind.S:
-                state.evolve_single(Ops.s, instr.target)
+                state.evolve_single(Ops.S, instr.target)
             elif kind == instruction.InstructionKind.H:
-                state.evolve_single(Ops.h, instr.target)
+                state.evolve_single(Ops.H, instr.target)
             elif kind == instruction.InstructionKind.X:
-                state.evolve_single(Ops.x, instr.target)
+                state.evolve_single(Ops.X, instr.target)
             elif kind == instruction.InstructionKind.Y:
-                state.evolve_single(Ops.y, instr.target)
+                state.evolve_single(Ops.Y, instr.target)
             elif kind == instruction.InstructionKind.Z:
-                state.evolve_single(Ops.z, instr.target)
+                state.evolve_single(Ops.Z, instr.target)
             elif kind == instruction.InstructionKind.RX:
                 state.evolve_single(Ops.rx(instr.angle), instr.target)
             elif kind == instruction.InstructionKind.RY:
@@ -1632,7 +1632,7 @@ class Circuit:
             elif kind == instruction.InstructionKind.RZZ:
                 state.evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
             elif kind == instruction.InstructionKind.CCX:
-                state.evolve(Ops.ccx, [instr.controls[0], instr.controls[1], instr.target])
+                state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif kind == instruction.InstructionKind.M:
                 result = graphix.sim.base_backend.perform_measure(
                     instr.target, instr.plane, instr.angle * np.pi, state, np.random
