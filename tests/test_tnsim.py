@@ -75,7 +75,7 @@ class TestTN:
         cmds = [
             X(node=0, domain=[15]),
             Z(node=0, domain=[15]),
-            C(node=0, clifford=fx_rng.choice(list(iter(Clifford)))),
+            C(node=0, clifford=fx_rng.choice(list(Clifford))),
         ]
         random_vec = fx_rng.normal(size=2)
 
