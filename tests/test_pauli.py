@@ -41,7 +41,7 @@ class TestPauli:
             graphix.pauli.Plane,
             (False, True),
             (False, True),
-            Clifford.cliffords(),
+            iter(Clifford),
             (0, np.pi),
             (False, True),
         ),

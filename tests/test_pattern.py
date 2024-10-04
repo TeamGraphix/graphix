@@ -37,7 +37,7 @@ def compare_backend_result_with_statevec(backend: str, backend_state, statevec: 
         raise NotImplementedError(backend)
 
 
-CTAB = list(Clifford.cliffords())
+CTAB = list(iter(Clifford))
 
 
 Outcome = typing.Literal[0, 1]

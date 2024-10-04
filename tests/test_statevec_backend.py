@@ -100,7 +100,7 @@ class TestStatevecNew:
             StatevectorBackend().add_nodes(hadamardpattern.input_nodes, data=[state, state2])
 
     def test_clifford(self) -> None:
-        for clifford in Clifford.cliffords():
+        for clifford in Clifford:
             state = BasicStates.PLUS
             vec = Statevec(nqubit=1, data=state)
             backend = StatevectorBackend()
