@@ -37,9 +37,6 @@ def compare_backend_result_with_statevec(backend: str, backend_state, statevec: 
         raise NotImplementedError(backend)
 
 
-CTAB = list(Clifford)
-
-
 Outcome = typing.Literal[0, 1]
 
 
@@ -446,10 +443,10 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        c0, c1 = rng.integers(len(CTAB), size=2)
+        c0, c1 = rng.integers(len(Clifford), size=2)
         pattern = Pattern(input_nodes=[0])
-        pattern.add(C(node=0, clifford=CTAB[c0]))
-        pattern.add(C(node=0, clifford=CTAB[c1]))
+        pattern.add(C(node=0, clifford=Clifford(c0)))
+        pattern.add(C(node=0, clifford=Clifford(c1)))
         pattern_ref = pattern.copy()
         pattern.standardize(method="direct")
         state_ref = pattern_ref.simulate_pattern()
@@ -460,13 +457,13 @@ class TestPattern:
     def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         x, z = rng.integers(2, size=2)
-        c = rng.integers(len(CTAB))
+        c = rng.integers(len(Clifford))
         pattern = Pattern(input_nodes=[0])
         pattern.results[1] = x
         pattern.add(X(node=0, domain={1}))
         pattern.results[2] = z
         pattern.add(Z(node=0, domain={2}))
-        pattern.add(C(node=0, clifford=CTAB[c]))
+        pattern.add(C(node=0, clifford=Clifford(c)))
         pattern_ref = pattern.copy()
         pattern.standardize(method="direct")
         state_ref = pattern_ref.simulate_pattern()
