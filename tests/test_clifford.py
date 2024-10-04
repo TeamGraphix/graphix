@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import functools
 import itertools
+import operator
+from typing import Final
 
 import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
 from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
+
+_QASM3_DB: Final = {
+    "id": Clifford.I,
+    "x": Clifford.X,
+    "y": Clifford.Y,
+    "z": Clifford.Z,
+    "s": Clifford.S,
+    "h": Clifford.H,
+    "sdg": Clifford(5),
+}
 
 
 class TestClifford:
@@ -61,3 +74,8 @@ class TestClifford:
             # Prevent aliasing
             assert cpc is not p
         assert np.allclose(cpc.matrix, cm.conj().T @ pm @ cm)
+
+    @pytest.mark.parametrize("c", Clifford)
+    def test_qasm3(self, c: Clifford) -> None:
+        cmul: Clifford = functools.reduce(operator.matmul, (_QASM3_DB[term] for term in reversed(c.qasm3)))
+        assert cmul == c
