@@ -130,3 +130,12 @@ include = [
   "tests/test_kraus.py",
   "tests/test_rng.py",
 ]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError\\(.*\\)",
+  "return NotImplemented",
+  "typing_extensions.assert_never\\(.*\\)",
+  "@abc.abstractmethod",
+]
