@@ -139,7 +139,7 @@ class Clifford(Enum):
                 t_domain ^= s_domain
             elif gate == Clifford.Z:
                 pass
-            else:
+            else:  # pragma: no cover
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         return Domains(s_domain, t_domain)
 
