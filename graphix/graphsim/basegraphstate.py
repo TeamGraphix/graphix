@@ -10,10 +10,9 @@ import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
 
 from graphix._db import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
+from graphix.graphsim.rxgraphviews import EdgeList, NodeList
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
-
-from .rxgraphviews import EdgeList, NodeList
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

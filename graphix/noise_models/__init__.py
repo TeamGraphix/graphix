@@ -1,4 +1,4 @@
 """Noise models."""
 
-from .noise_model import NoiseModel
-from .noiseless_noise_model import NoiselessNoiseModel
+from graphix.noise_models.noise_model import NoiseModel
+from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
