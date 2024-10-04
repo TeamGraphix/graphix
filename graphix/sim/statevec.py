@@ -11,9 +11,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    from numpy.random import Generator
-
 import graphix.pauli
 import graphix.states
 import graphix.types
@@ -21,6 +18,8 @@ from graphix.sim.base_backend import Backend, State
 
 if TYPE_CHECKING:
     import collections
+
+    from numpy.random import Generator
 
 
 class StatevectorBackend(Backend):

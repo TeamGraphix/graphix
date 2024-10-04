@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import annotated_types
 import typing_extensions
 
-if typing_extensions.TYPE_CHECKING:
+if TYPE_CHECKING:
     from collections.abc import Iterable
 
 PositiveOrNullInt = typing_extensions.Annotated[int, annotated_types.Ge(0)]  # includes 0

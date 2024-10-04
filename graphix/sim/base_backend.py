@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
-    from numpy.random import Generator
-
 import graphix.clifford
 import graphix.pauli
 import graphix.states
@@ -19,6 +16,8 @@ from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
+
+    from numpy.random import Generator
 
     from graphix.pauli import Plane
 
