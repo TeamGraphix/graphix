@@ -59,6 +59,7 @@ extend-select = [
   "PLW",
   "RUF",
   "TCH",
+  "TID",
   "UP",
   "W",
 ]
@@ -89,6 +90,9 @@ docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 # Silence cotengra warning
