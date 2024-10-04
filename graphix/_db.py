@@ -144,7 +144,9 @@ CLIFFORD_MUL = (
 CLIFFORD_CONJ = (0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 23, 21, 16, 19, 17, 18)
 
 
-class CliffordMeasure(NamedTuple):
+class _CliffordMeasure(NamedTuple):
+    """NamedTuple just for documentation purposes."""
+
     pstr: Literal["X", "Y", "Z"]
     sign: Literal[-1, +1]
 
@@ -153,30 +155,30 @@ class CliffordMeasure(NamedTuple):
 # i.e. C @ P @ C^dagger result in Pauli group, i.e. {\pm} \times {X, Y, Z}.
 # CLIFFORD_MEASURE contains the effect of Clifford conjugation of Pauli gates.
 CLIFFORD_MEASURE = (
-    (CliffordMeasure("X", +1), CliffordMeasure("Y", +1), CliffordMeasure("Z", +1)),
-    (CliffordMeasure("X", +1), CliffordMeasure("Y", -1), CliffordMeasure("Z", -1)),
-    (CliffordMeasure("X", -1), CliffordMeasure("Y", +1), CliffordMeasure("Z", -1)),
-    (CliffordMeasure("X", -1), CliffordMeasure("Y", -1), CliffordMeasure("Z", +1)),
-    (CliffordMeasure("Y", -1), CliffordMeasure("X", +1), CliffordMeasure("Z", +1)),
-    (CliffordMeasure("Y", +1), CliffordMeasure("X", -1), CliffordMeasure("Z", +1)),
-    (CliffordMeasure("Z", +1), CliffordMeasure("Y", -1), CliffordMeasure("X", +1)),
-    (CliffordMeasure("X", +1), CliffordMeasure("Z", -1), CliffordMeasure("Y", +1)),
-    (CliffordMeasure("Z", +1), CliffordMeasure("Y", +1), CliffordMeasure("X", -1)),
-    (CliffordMeasure("Y", -1), CliffordMeasure("X", -1), CliffordMeasure("Z", -1)),
-    (CliffordMeasure("Y", +1), CliffordMeasure("X", +1), CliffordMeasure("Z", -1)),
-    (CliffordMeasure("Z", -1), CliffordMeasure("Y", -1), CliffordMeasure("X", -1)),
-    (CliffordMeasure("Z", -1), CliffordMeasure("Y", +1), CliffordMeasure("X", +1)),
-    (CliffordMeasure("X", -1), CliffordMeasure("Z", -1), CliffordMeasure("Y", -1)),
-    (CliffordMeasure("X", -1), CliffordMeasure("Z", +1), CliffordMeasure("Y", +1)),
-    (CliffordMeasure("X", +1), CliffordMeasure("Z", +1), CliffordMeasure("Y", -1)),
-    (CliffordMeasure("Z", +1), CliffordMeasure("X", +1), CliffordMeasure("Y", +1)),
-    (CliffordMeasure("Z", -1), CliffordMeasure("X", +1), CliffordMeasure("Y", -1)),
-    (CliffordMeasure("Z", -1), CliffordMeasure("X", -1), CliffordMeasure("Y", +1)),
-    (CliffordMeasure("Z", +1), CliffordMeasure("X", -1), CliffordMeasure("Y", -1)),
-    (CliffordMeasure("Y", +1), CliffordMeasure("Z", +1), CliffordMeasure("X", +1)),
-    (CliffordMeasure("Y", -1), CliffordMeasure("Z", -1), CliffordMeasure("X", +1)),
-    (CliffordMeasure("Y", +1), CliffordMeasure("Z", -1), CliffordMeasure("X", -1)),
-    (CliffordMeasure("Y", -1), CliffordMeasure("Z", +1), CliffordMeasure("X", -1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", -1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", -1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", -1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", -1)),
 )
 
 # Decomposition of Clifford gates with H, S and Z.

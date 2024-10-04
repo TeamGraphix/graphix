@@ -12,13 +12,13 @@ from graphix._db import (
     CLIFFORD_HSZ_DECOMPOSITION,
     CLIFFORD_MEASURE,
     CLIFFORD_MUL,
-    CliffordMeasure,
+    _CliffordMeasure,
 )
 
 
 class TestClifford:
     @staticmethod
-    def classify_pauli(arr: npt.NDArray[np.complex128]) -> CliffordMeasure:
+    def classify_pauli(arr: npt.NDArray[np.complex128]) -> _CliffordMeasure:
         """Compare the gate arr with Pauli gates and return the tuple of (Pauli string, sign).
 
         Parameters
@@ -28,21 +28,20 @@ class TestClifford:
 
         Returns
         -------
-            ind : tuple
-                tuple containing (Pauli string, sign)
+            ind : _CliffordMeasure
         """
         if np.allclose(CLIFFORD[1], arr):
-            return CliffordMeasure("X", +1)
+            return _CliffordMeasure("X", +1)
         if np.allclose(-1 * CLIFFORD[1], arr):
-            return CliffordMeasure("X", -1)
+            return _CliffordMeasure("X", -1)
         if np.allclose(CLIFFORD[2], arr):
-            return CliffordMeasure("Y", +1)
+            return _CliffordMeasure("Y", +1)
         if np.allclose(-1 * CLIFFORD[2], arr):
-            return CliffordMeasure("Y", -1)
+            return _CliffordMeasure("Y", -1)
         if np.allclose(CLIFFORD[3], arr):
-            return CliffordMeasure("Z", +1)
+            return _CliffordMeasure("Z", +1)
         if np.allclose(-1 * CLIFFORD[3], arr):
-            return CliffordMeasure("Z", -1)
+            return _CliffordMeasure("Z", -1)
         msg = "No Pauli found"
         raise ValueError(msg)
 
