@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-from typing import TYPE_CHECKING, ClassVar
+from enum import Enum
+from typing import TYPE_CHECKING
 
 from graphix._db import (
     CLIFFORD,
@@ -18,8 +19,6 @@ from graphix._db import (
 from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     import numpy as np
     import numpy.typing as npt
 
@@ -36,42 +35,52 @@ class Domains:
     t_domain: set[int]
 
 
-class Clifford:
+class Clifford(Enum):
     """Clifford gate."""
 
-    __index: int
+    # MEMO: Cannot use ClassVar here
+    I: Clifford
+    X: Clifford
+    Y: Clifford
+    Z: Clifford
+    S: Clifford
+    H: Clifford
 
-    I: ClassVar[Clifford]
-    X: ClassVar[Clifford]
-    Y: ClassVar[Clifford]
-    Z: ClassVar[Clifford]
-    S: ClassVar[Clifford]
-    H: ClassVar[Clifford]
-
-    def __init__(self, index: int) -> None:
-        if not (0 <= index < len(CLIFFORD)):
-            raise ValueError("Clifford index out of range.")
-        self.__index = index
+    _0 = 0
+    _1 = 1
+    _2 = 2
+    _3 = 3
+    _4 = 4
+    _5 = 5
+    _6 = 6
+    _7 = 7
+    _8 = 8
+    _9 = 9
+    _10 = 10
+    _11 = 11
+    _12 = 12
+    _13 = 13
+    _14 = 14
+    _15 = 15
+    _16 = 16
+    _17 = 17
+    _18 = 18
+    _19 = 19
+    _20 = 20
+    _21 = 21
+    _22 = 22
+    _23 = 23
 
     @property
     def index(self) -> int:
         """Return the index of the Clifford gate."""
-        return self.__index
+        # mypy does not infer variant type (pyright does)
+        return self.value  # type: ignore[no-any-return]
 
     @property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Clifford gate."""
-        return CLIFFORD[self.__index]
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two Clifford gates."""
-        if isinstance(other, Clifford):
-            return self.__index == other.__index
-        return NotImplemented
-
-    def __hash__(self) -> int:
-        """Hash the Clifford gate using its index."""
-        return hash(self.__index)
+        return CLIFFORD[self.value]
 
     def __repr__(self) -> str:
         """Return the Clifford expression on the form of HSZ decomposition."""
@@ -79,34 +88,34 @@ class Clifford:
 
     def __str__(self) -> str:
         """Return the name of the Clifford gate."""
-        return CLIFFORD_LABEL[self.__index]
+        return CLIFFORD_LABEL[self.value]
 
     @property
     def conj(self) -> Clifford:
         """Return the conjugate of the Clifford gate."""
-        return Clifford(CLIFFORD_CONJ[self.__index])
+        return Clifford(CLIFFORD_CONJ[self.value])
 
     @property
     def hsz(self) -> list[Clifford]:
         """Return a decomposition of the Clifford gate with the gates `H`, `S`, `Z`."""
-        return [Clifford(i) for i in CLIFFORD_HSZ_DECOMPOSITION[self.__index]]
+        return [Clifford(i) for i in CLIFFORD_HSZ_DECOMPOSITION[self.value]]
 
     @property
     def qasm3(self) -> tuple[str, ...]:
         """Return a decomposition of the Clifford gate as qasm3 gates."""
-        return CLIFFORD_TO_QASM3[self.__index]
+        return CLIFFORD_TO_QASM3[self.value]
 
     def __matmul__(self, other: Clifford) -> Clifford:
         """Multiplication within the Clifford group (modulo unit factor)."""
         if isinstance(other, Clifford):
-            return Clifford(CLIFFORD_MUL[self.__index][other.__index])
+            return Clifford(CLIFFORD_MUL[self.value][other.value])
         return NotImplemented
 
     def measure(self, pauli: Pauli) -> Pauli:
         """Compute C† P C."""
         if pauli.symbol == IXYZ.I:
             return copy.deepcopy(pauli)
-        table = CLIFFORD_MEASURE[self.__index]
+        table = CLIFFORD_MEASURE[self.value]
         symbol, sign = table[pauli.symbol.value]
         return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit(Sign(sign), False))
 
@@ -133,12 +142,6 @@ class Clifford:
             else:
                 raise RuntimeError(f"{gate} should be either I, H, S or Z.")
         return Domains(s_domain, t_domain)
-
-    @staticmethod
-    def cliffords() -> Iterator[Clifford]:
-        """Return an iterator over the Clifford gates."""
-        for i in range(len(CLIFFORD)):
-            yield Clifford(i)
 
 
 Clifford.I = Clifford(0)
