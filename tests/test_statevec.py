@@ -11,7 +11,7 @@ from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
-    from np.random import Generator
+    from numpy.random import Generator
 
 
 class TestStatevec:
