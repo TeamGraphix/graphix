@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 
 from graphix._db import CLIFFORD, CLIFFORD_MUL
+from graphix.clifford import TABLE
 from graphix.command import MeasureUpdate
-from graphix.pauli import LIST, TABLE, UNITS, ComplexUnit, Pauli, Plane
+from graphix.pauli import LIST, UNITS, ComplexUnit, Pauli, Plane
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
