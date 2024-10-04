@@ -5,23 +5,24 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
+import copy
+import numbers
+import sys
 from typing import TYPE_CHECKING
+
+import numpy as np
+
+from graphix import linalg_validations as lv
+from graphix import states
+from graphix.channels import KrausChannel
+from graphix.sim.base_backend import Backend, State
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from numpy.random import Generator
 
-import copy
-import numbers
-import sys
-
-import numpy as np
-
-import graphix.states
-import graphix.types
-from graphix import linalg_validations as lv
-from graphix.channels import KrausChannel
-from graphix.sim.base_backend import Backend, State
-from graphix.sim.statevec import CNOT_TENSOR, Statevec
+    from graphix.types import PositiveOrNullInt
 
 
 class DensityMatrix(State):
@@ -29,8 +30,8 @@ class DensityMatrix(State):
 
     def __init__(
         self,
-        data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        data: Data = BasicStates.PLUS,
+        nqubit: PositiveOrNullInt | None = None,
     ):
         """Initialize density matrix objects.
 
@@ -230,7 +231,7 @@ class DensityMatrix(State):
             edge : (int, int) or [int, int]
                 (control, target) qubits indices.
         """
-        self.evolve(graphix.sim.statevec.SWAP_TENSOR.reshape(4, 4), edge)
+        self.evolve(SWAP_TENSOR.reshape(4, 4), edge)
 
     def entangle(self, edge) -> None:
         """Connect graph nodes.
@@ -240,7 +241,7 @@ class DensityMatrix(State):
             edge : (int, int) or [int, int]
                 (control, target) qubit indices.
         """
-        self.evolve(graphix.sim.statevec.CZ_TENSOR.reshape(4, 4), edge)
+        self.evolve(CZ_TENSOR.reshape(4, 4), edge)
 
     def normalize(self) -> None:
         """Normalize density matrix."""
@@ -358,10 +359,10 @@ if sys.version_info >= (3, 10):
     from collections.abc import Iterable
 
     Data = (
-        graphix.states.State
+        states.State
         | DensityMatrix
         | Statevec
-        | Iterable[graphix.states.State]
+        | Iterable[states.State]
         | Iterable[numbers.Number]
         | Iterable[Iterable[numbers.Number]]
     )
@@ -369,10 +370,10 @@ else:
     from typing import Iterable, Union
 
     Data = Union[
-        graphix.states.State,
+        states.State,
         DensityMatrix,
         Statevec,
-        Iterable[graphix.states.State],
+        Iterable[states.State],
         Iterable[numbers.Number],
         Iterable[Iterable[numbers.Number]],
     ]

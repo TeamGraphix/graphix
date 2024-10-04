@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import graphix.pauli
 from graphix.command import E, M, N, X, Z
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
+from graphix.pauli import Plane
 
 
 def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
@@ -54,7 +54,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
-        meas_planes = {i: graphix.pauli.Plane.XY for i in measuring_nodes}
+        meas_planes = {i: Plane.XY for i in measuring_nodes}
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)

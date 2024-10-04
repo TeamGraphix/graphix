@@ -11,23 +11,23 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 
-import graphix.pauli
-import graphix.states
-import graphix.types
+from graphix import states
+from graphix import types as gtypes
 from graphix.sim.base_backend import Backend, State
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     import collections
 
     from numpy.random import Generator
 
+    from graphix.types import PositiveOrNullInt
+
 
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(
-        self, input_state: Data = graphix.states.BasicStates.PLUS, pr_calc=True, rng: Generator | None = None
-    ) -> None:
+    def __init__(self, input_state: Data = BasicStates.PLUS, pr_calc=True, rng: Generator | None = None) -> None:
         """
         Construct a state vector backend.
 
@@ -62,8 +62,8 @@ class Statevec(State):
 
     def __init__(
         self,
-        data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        data: Data = BasicStates.PLUS,
+        nqubit: PositiveOrNullInt | None = None,
     ):
         """Initialize statevector objects.
 
@@ -96,7 +96,7 @@ class Statevec(State):
             self.psi = data.psi.copy()
             return
 
-        if isinstance(data, graphix.states.State):
+        if isinstance(data, states.State):
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
@@ -112,8 +112,8 @@ class Statevec(State):
             self.psi = np.array(1, dtype=np.complex128)
 
         else:
-            if isinstance(input_list[0], graphix.states.State):
-                graphix.types.check_list_elements(input_list, graphix.states.State)
+            if isinstance(input_list[0], states.State):
+                gtypes.check_list_elements(input_list, states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -123,7 +123,7 @@ class Statevec(State):
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
             elif isinstance(input_list[0], numbers.Number):
-                graphix.types.check_list_elements(input_list, numbers.Number)
+                gtypes.check_list_elements(input_list, numbers.Number)
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
@@ -371,13 +371,13 @@ def _get_statevec_norm(psi):
 if sys.version_info >= (3, 10):
     from collections.abc import Iterable
 
-    Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[numbers.Number]
+    Data = states.State | Statevec | Iterable[states.State] | Iterable[numbers.Number]
 else:
     from typing import Iterable, Union
 
     Data = Union[
-        graphix.states.State,
+        states.State,
         Statevec,
-        Iterable[graphix.states.State],
+        Iterable[states.State],
         Iterable[numbers.Number],
     ]

@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from graphix.pauli import Plane
+
 if TYPE_CHECKING:
     import numpy.typing as npt
 import pytest
@@ -15,8 +17,6 @@ from networkx.utils import graphs_equal
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
 
-import graphix.clifford
-import graphix.pauli
 from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
@@ -44,7 +44,7 @@ def get_state(g) -> Statevec:
     return gstate
 
 
-def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0) -> npt.NDArray:
+def meas_op(angle, vop=0, plane=Plane.XY, choice=0) -> npt.NDArray:
     """Return the projection operator for given measurement angle and local Clifford op (VOP).
 
     .. seealso:: :mod:`graphix.clifford`
@@ -68,11 +68,11 @@ def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0) -> npt.NDArray
     """
     assert vop in np.arange(24)
     assert choice in [0, 1]
-    if plane == graphix.pauli.Plane.XY:
+    if plane == Plane.XY:
         vec = (np.cos(angle), np.sin(angle), 0)
-    elif plane == graphix.pauli.Plane.YZ:
+    elif plane == Plane.YZ:
         vec = (0, np.cos(angle), np.sin(angle))
-    elif plane == graphix.pauli.Plane.XZ:
+    elif plane == Plane.XZ:
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
@@ -113,7 +113,7 @@ class TestGraphSim:
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * np.pi, plane=graphix.pauli.Plane.YZ), 1)  # z meas
+        gstate.evolve_single(meas_op(0.5 * np.pi, plane=Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
         gstate2 = get_state(g)

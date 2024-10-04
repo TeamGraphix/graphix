@@ -12,8 +12,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-import graphix.clifford
+from graphix import clifford
 from graphix.command import BaseM, CommandKind, M
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
@@ -71,7 +72,7 @@ class DefaultMeasureMethod(MeasureMethod):
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
         t_signal = sum(self.results[j] for j in cmd.t_domain)
-        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, graphix.clifford.I)
+        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, clifford.I)
         angle = angle * measure_update.coeff + measure_update.add_term
         return MeasurementDescription(measure_update.new_plane, angle)
 
@@ -154,7 +155,7 @@ class PatternSimulator:
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state=graphix.states.BasicStates.PLUS) -> None:
+    def run(self, input_state=BasicStates.PLUS) -> None:
         """Perform the simulation.
 
         Returns

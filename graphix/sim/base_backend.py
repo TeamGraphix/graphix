@@ -7,18 +7,18 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-import graphix.clifford
-import graphix.pauli
-import graphix.states
+from graphix._db import CLIFFORD
 from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from numpy.random import Generator
 
+    from graphix.clifford import Clifford
     from graphix.pauli import Plane
 
 
@@ -100,12 +100,12 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
-        op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
+        op_mat += sign * vec[i] * CLIFFORD[i + 1] / 2
     return op_mat
 
 
 def perform_measure(
-    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
+    qubit: int, plane: Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
 ) -> bool:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
@@ -176,7 +176,7 @@ class Backend:
         """Return the node index table of the backend."""
         return self.__node_index
 
-    def add_nodes(self, nodes, data=graphix.states.BasicStates.PLUS) -> None:
+    def add_nodes(self, nodes, data=BasicStates.PLUS) -> None:
         """Add new qubit(s) to statevector in argument and assign the corresponding node number to list self.node_index.
 
         Parameters
@@ -228,7 +228,7 @@ class Backend:
         index = self.node_index.index(node)
         self.state.evolve_single(op=op, i=index)
 
-    def apply_clifford(self, node: int, clifford: graphix.clifford.Clifford) -> None:
+    def apply_clifford(self, node: int, clifford: Clifford) -> None:
         """Apply single-qubit Clifford gate, specified by vop index specified in graphix.clifford.CLIFFORD."""
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
