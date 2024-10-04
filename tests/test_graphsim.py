@@ -14,7 +14,7 @@ from graphix.pauli import Plane
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
 
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
+from graphix._db import CLIFFORD, CLIFFORD_CONJ
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops

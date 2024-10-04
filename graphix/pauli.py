@@ -12,7 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions
 
-from graphix.clifford import CLIFFORD
+from graphix._db import CLIFFORD
 from graphix.ops import Ops
 
 if TYPE_CHECKING:

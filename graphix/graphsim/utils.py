@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from networkx import Graph
 from networkx.utils import graphs_equal
 
-from graphix.graphsim.graphstate import RUSTWORKX_INSTALLED
+from graphix.graphsim.basegraphstate import RUSTWORKX_INSTALLED
 from graphix.graphsim.nxgraphstate import NXGraphState
 from graphix.graphsim.rxgraphstate import RXGraphState
 

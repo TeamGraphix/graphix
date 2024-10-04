@@ -9,8 +9,8 @@ import pytest
 from graphix import pauli
 from graphix.clifford import TABLE
 from graphix.pauli import Plane
+from graphix.sim.base_backend import MeasurementDescription
 from graphix.sim.statevec import Statevec, StatevectorBackend
-from graphix.simulator import MeasurementDescription
 from graphix.states import BasicStates, PlanarState
 from tests.test_graphsim import meas_op
 
