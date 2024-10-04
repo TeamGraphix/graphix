@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import pytest
-from numpy.random import Generator
+from numpy.random import PCG64, Generator
 
 from graphix import command
 from graphix.gflow import (
@@ -24,9 +24,6 @@ from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
-
-    from numpy.random import PCG64
-
 
 seed = 30
 

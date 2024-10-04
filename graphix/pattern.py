@@ -8,7 +8,7 @@ from __future__ import annotations
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Iterator
 
 import networkx as nx
 import typing_extensions
@@ -22,9 +22,6 @@ from graphix.pauli import Axis, PauliMeasurement, Plane, Sign
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
-
-if TYPE_CHECKING:
-    from typing import Iterator
 
 
 class NodeAlreadyPreparedError(Exception):

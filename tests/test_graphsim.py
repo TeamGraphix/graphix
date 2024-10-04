@@ -2,17 +2,14 @@ from __future__ import annotations
 
 import contextlib
 import sys
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-from graphix.pauli import Plane
-
-if TYPE_CHECKING:
-    import numpy.typing as npt
+import numpy.typing as npt
 import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
+
+from graphix.pauli import Plane
 
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph

@@ -8,11 +8,10 @@ import pytest
 
 from graphix._db import CLIFFORD, CLIFFORD_MUL
 from graphix.command import MeasureUpdate
-from graphix.pauli import LIST, TABLE, UNITS, Plane
+from graphix.pauli import LIST, TABLE, UNITS, ComplexUnit, Pauli, Plane
 
 if TYPE_CHECKING:
     from graphix.clifford import Clifford
-    from graphix.pauli import ComplexUnit, Pauli
 
 
 class TestPauli:

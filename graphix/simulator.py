@@ -13,16 +13,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from graphix import clifford
-from graphix.command import BaseM, CommandKind, M
-from graphix.states import BasicStates
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
-from graphix.command import MeasureUpdate
+from graphix.command import BaseM, CommandKind, M, MeasureUpdate
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
+from graphix.states import BasicStates
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 
 class MeasureMethod(abc.ABC):

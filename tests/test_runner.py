@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
     from pytest_mock import MockerFixture
 
-
 try:
     import qiskit
     from qiskit_aer import Aer

@@ -14,7 +14,6 @@ from graphix.graphsim.rxgraphstate import RXGraphState
 if TYPE_CHECKING:
     from graphix.graphsim.basegraphstate import BaseGraphState
 
-
 if RUSTWORKX_INSTALLED:
     from rustworkx import PyGraph
 else:

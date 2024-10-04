@@ -9,14 +9,13 @@ from numbers import Number
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import typing_extensions
 
 from graphix.clifford import CLIFFORD
 from graphix.ops import Ops
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
-
     from graphix.states import PlanarState
 
 
