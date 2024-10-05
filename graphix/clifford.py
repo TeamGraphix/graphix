@@ -72,12 +72,6 @@ class Clifford(Enum):
     _23 = 23
 
     @property
-    def index(self) -> int:
-        """Return the index of the Clifford gate."""
-        # mypy does not infer variant type (pyright does)
-        return self.value  # type: ignore[no-any-return]
-
-    @property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Clifford gate."""
         return CLIFFORD[self.value]

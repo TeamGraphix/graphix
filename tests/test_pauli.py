@@ -55,7 +55,7 @@ class TestPauli:
         angle: float,
         choice: bool,
     ) -> None:
-        vop = clifford.index
+        vop: int = clifford.value
         if s:
             vop = graphix.clifford.CLIFFORD_MUL[1][vop]
         if t:
