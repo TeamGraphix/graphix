@@ -101,7 +101,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
-        op_mat += sign * vec[i] * _db.CLIFFORD[i + 1] / 2
+        op_mat += sign * vec[i] * Clifford(i + 1).matrix / 2
     return op_mat
 
 
