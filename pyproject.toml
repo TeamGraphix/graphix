@@ -108,6 +108,7 @@ files = [
   "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
+  "tests/test_pauli.py",
   "tests/test_rng.py",
 ]
 follow_imports = "silent"
@@ -128,5 +129,6 @@ include = [
   "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
+  "tests/test_pauli.py",
   "tests/test_rng.py",
 ]
