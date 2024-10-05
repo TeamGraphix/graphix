@@ -44,6 +44,7 @@ class Clifford(Enum):
     Y: Clifford
     Z: Clifford
     S: Clifford
+    SDG: Clifford
     H: Clifford
 
     _0 = 0
@@ -143,4 +144,5 @@ Clifford.X = Clifford(1)
 Clifford.Y = Clifford(2)
 Clifford.Z = Clifford(3)
 Clifford.S = Clifford(4)
+Clifford.SDG = Clifford(5)
 Clifford.H = Clifford(6)

@@ -17,8 +17,8 @@ _QASM3_DB: Final = {
     "y": Clifford.Y,
     "z": Clifford.Z,
     "s": Clifford.S,
+    "sdg": Clifford.SDG,
     "h": Clifford.H,
-    "sdg": Clifford(5),
 }
 
 
