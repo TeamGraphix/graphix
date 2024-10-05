@@ -9,7 +9,7 @@ import numpy as np
 
 import graphix.pauli
 import graphix.states
-from graphix import _db
+from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.clifford import Clifford
     from graphix.pauli import Plane
 
 

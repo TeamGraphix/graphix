@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import typing_extensions
 
+# TODO: Remove this import for safety
 from graphix._db import CLIFFORD
 from graphix.ops import Ops
 

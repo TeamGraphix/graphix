@@ -5,18 +5,19 @@ import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
-
-if TYPE_CHECKING:
-    import numpy.typing as npt
 import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
+
+from graphix.clifford import Clifford
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 with contextlib.suppress(ModuleNotFoundError):
     from rustworkx import PyGraph
 
 import graphix.pauli
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
@@ -75,8 +76,8 @@ def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0) -> npt.NDArray
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
-        op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
-    op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
+        op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2
+    op_mat = Clifford(vop).conj.matrix @ op_mat @ Clifford(vop).matrix
     return op_mat
 
 

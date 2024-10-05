@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 import graphix.pauli
-from graphix._db import CLIFFORD, CLIFFORD_MUL
 from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
 
@@ -56,7 +55,6 @@ class TestPauli:
         angle: float,
         choice: bool,
     ) -> None:
-        vop: int = clifford.value
         if s:
             clifford = Clifford.X @ clifford
         if t:
