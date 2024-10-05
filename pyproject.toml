@@ -101,6 +101,7 @@ filterwarnings = ["ignore:Couldn't import `kahypar`"]
 [tool.mypy]
 # Keep in sync with pyright
 files = [
+  "**/__init__.py",
   "graphix/channels.py",
   "graphix/linalg_validations.py",
   "graphix/ops.py",
@@ -119,6 +120,7 @@ strict = true
 # Keep in sync with mypy
 # TODO: Use strict later
 include = [
+  "**/__init__.py",
   "graphix/channels.py",
   "graphix/linalg_validations.py",
   "graphix/ops.py",
