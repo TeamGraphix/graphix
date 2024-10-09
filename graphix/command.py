@@ -4,18 +4,13 @@ from __future__ import annotations
 
 import abc
 import enum
-from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from graphix import clifford
-from graphix.clifford import Domains
+from graphix.clifford import Clifford, Domains
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
-
-if TYPE_CHECKING:
-    from graphix.clifford import Clifford
 
 Node = int
 
@@ -101,7 +96,7 @@ class C(Command):
 
     kind: CommandKind = CommandKind.C
     node: Node
-    clifford: clifford.Clifford
+    clifford: Clifford
 
 
 class Correction(Command):
@@ -149,9 +144,9 @@ class MeasureUpdate(BaseModel):
         """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
-            clifford_gate = clifford.X @ clifford_gate
+            clifford_gate = Clifford.X @ clifford_gate
         if t:
-            clifford_gate = clifford.Z @ clifford_gate
+            clifford_gate = Clifford.Z @ clifford_gate
         gates = list(map(clifford_gate.measure, gates))
         new_plane = Plane.from_axes(*(gate.axis for gate in gates))
         cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
