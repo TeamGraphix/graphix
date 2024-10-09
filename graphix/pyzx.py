@@ -133,8 +133,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
     inputs = list(g.inputs())
     outputs = list(g.outputs())
 
-    edges = g.edges()
-    g_nx = nx.Graph(edges)
+    g_nx = nx.Graph(g.edges())
 
     # We need to do this since the full reduce simplification can
     # leave either hadamard or plain wires on the inputs and outputs
