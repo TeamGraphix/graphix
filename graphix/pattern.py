@@ -381,7 +381,7 @@ class Pattern:
                 if clifford_gate := c_dict.pop(cmd.node, None):
                     new_cmd = cmd.clifford(clifford_gate)
                 else:
-                    new_cmd = dataclasses.replace(cmd)
+                    new_cmd = deepcopy(cmd)
                 if t_domain := z_dict.pop(cmd.node, None):
                     new_cmd.t_domain ^= t_domain
                 if s_domain := x_dict.pop(cmd.node, None):
