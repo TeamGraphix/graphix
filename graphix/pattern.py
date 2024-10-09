@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import typing_extensions
 
-from graphix import clifford, command
+from graphix import command
+from graphix.clifford import Clifford, Domains
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -396,7 +397,7 @@ class Pattern:
                 # be applied first (i.e., in right-most position).
                 t_domain = z_dict.pop(cmd.node, set())
                 s_domain = x_dict.pop(cmd.node, set())
-                domains = cmd.clifford.conj.commute_domains(clifford.Domains(s_domain, t_domain))
+                domains = cmd.clifford.conj.commute_domains(Domains(s_domain, t_domain))
                 if domains.t_domain:
                     z_dict[cmd.node] = domains.t_domain
                 if domains.s_domain:
@@ -404,7 +405,7 @@ class Pattern:
                 # Each pattern command is applied by left multiplication: if a clifford `C`
                 # has been already applied to a node, applying a clifford `C'` to the same
                 # node is equivalent to apply `C'C` to a fresh node.
-                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, clifford.I)
+                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
         self.__seq = [
             *n_list,
             *e_list,
@@ -1180,9 +1181,9 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 if include_identity:
-                    vops[cmd.node] = clifford.I
+                    vops[cmd.node] = Clifford.I
             elif cmd.kind == CommandKind.C:
-                if cmd.clifford == clifford.I:
+                if cmd.clifford == Clifford.I:
                     if include_identity:
                         vops[cmd.node] = cmd.clifford
                 else:
@@ -1820,7 +1821,7 @@ class CommandNode:
                 raise NotImplementedError("Patterns with more than one Z corrections are not supported")
             return command.Z(node=self.index, domain=self.z_signal)
         elif cmd == -4:
-            return command.C(node=self.index, clifford=clifford.TABLE[self.vop])
+            return command.C(node=self.index, clifford=Clifford(self.vop))
 
     def get_signal_destination(self):
         """Get signal destination.
@@ -2151,12 +2152,12 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
-        cmd.clifford(clifford.get(vops[cmd.node]))
+        cmd.clifford(Clifford(vops[cmd.node]))
         for cmd in pattern
         if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
-        command.C(node=index, clifford=clifford.get(vops[index])) for index in pattern.output_nodes if vops[index] != 0
+        command.C(node=index, clifford=Clifford(vops[index])) for index in pattern.output_nodes if vops[index] != 0
     )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
 
