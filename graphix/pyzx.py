@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 from fractions import Fraction
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
 import pyzx as zx
@@ -104,7 +104,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
 
 
 def _checked_float(x: FractionLike) -> float:
-    if not isinstance(x, (Fraction, int)):
+    if not isinstance(x, SupportsFloat):
         # Possibly a Poly object
         raise TypeError(f"Cannot convert {x} to a float.")
     return float(x)
