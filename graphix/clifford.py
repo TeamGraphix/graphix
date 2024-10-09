@@ -79,7 +79,7 @@ class Clifford(Enum):
 
     def __repr__(self) -> str:
         """Return the Clifford expression on the form of HSZ decomposition."""
-        return " @ ".join([f"graphix.clifford.{gate}" for gate in self.hsz])
+        return " @ ".join([f"Clifford.{gate}" for gate in self.hsz])
 
     def __str__(self) -> str:
         """Return the name of the Clifford gate."""

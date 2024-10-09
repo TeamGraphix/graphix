@@ -40,10 +40,10 @@ class TestClifford:
     def test_repr(self, c: Clifford) -> None:
         for term in repr(c).split(" @ "):
             assert term in [
-                "graphix.clifford.I",
-                "graphix.clifford.H",
-                "graphix.clifford.S",
-                "graphix.clifford.Z",
+                "Clifford.I",
+                "Clifford.H",
+                "Clifford.S",
+                "Clifford.Z",
             ]
 
     @pytest.mark.parametrize(
