@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import galois
 import numpy as np
+import numpy.typing as npt
 import sympy as sp
-
-if TYPE_CHECKING:
-    import numpy.typing as npt
 
 
 class MatGF2:

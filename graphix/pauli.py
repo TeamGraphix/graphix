@@ -9,15 +9,13 @@ from numbers import Number
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import typing_extensions
 
-# TODO: Remove this import for safety
 from graphix._db import CLIFFORD
 from graphix.ops import Ops
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
-
     from graphix.states import PlanarState
 
 
@@ -406,6 +404,7 @@ def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
     return TABLE[symbol.value + 1][unit.sign == Sign.Minus][unit.is_imag]
 
 
+# TODO: Include in Pauli namespace
 I = get(IXYZ.I, UNIT)
 X = get(IXYZ.X, UNIT)
 Y = get(IXYZ.Y, UNIT)

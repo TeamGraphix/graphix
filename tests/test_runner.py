@@ -7,14 +7,13 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-import graphix
 from graphix.device_interface import PatternRunner
+from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
     from collections.abc import Collection
 
     from pytest_mock import MockerFixture
-
 
 try:
     import qiskit
@@ -61,7 +60,7 @@ class TestPatternRunner:
         sys.modules["graphix_ibmq.runner"] = runner
 
         # circuit in graphix
-        circuit = graphix.Circuit(3)
+        circuit = Circuit(3)
         circuit.h(1)
         circuit.h(2)
         circuit.rx(1, 1.23)

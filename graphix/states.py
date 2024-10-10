@@ -15,6 +15,7 @@ from graphix.pauli import Plane
 
 
 # generic class State for all States
+# FIXME: Name conflict
 class State(ABC):
     """Abstract base class for single qubit states objects.
 

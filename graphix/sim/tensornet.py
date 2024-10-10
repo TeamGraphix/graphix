@@ -8,9 +8,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import quimb.tensor as qtn
-
-if TYPE_CHECKING:
-    from numpy.random import Generator
 from quimb.tensor import Tensor, TensorNetwork
 
 from graphix import command
@@ -20,6 +17,8 @@ from graphix.sim.base_backend import Backend, MeasurementDescription, State
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
+    from numpy.random import Generator
+
     from graphix.clifford import Clifford
     from graphix.simulator import MeasureMethod
 

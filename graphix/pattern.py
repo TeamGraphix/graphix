@@ -9,7 +9,7 @@ import dataclasses
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Iterator
 
 import networkx as nx
 import typing_extensions
@@ -24,9 +24,6 @@ from graphix.pauli import Axis, PauliMeasurement, Plane, Sign
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
-
-if TYPE_CHECKING:
-    from typing import Iterator
 
 
 class NodeAlreadyPreparedError(Exception):
@@ -305,7 +302,7 @@ class Pattern:
                 node_prop[cmd.node]["vop"] = cmd.clifford.index
                 node_prop[cmd.node]["seq"].append(-4)
             elif kind == CommandKind.S:
-                raise NotImplementedError()
+                raise NotImplementedError
             else:
                 raise ValueError(f"command {cmd} is invalid!")
         nodes = dict()
