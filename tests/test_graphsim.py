@@ -9,16 +9,15 @@ import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
 
-from graphix.pauli import Plane
-
-with contextlib.suppress(ModuleNotFoundError):
-    from rustworkx import PyGraph
-
-from graphix._db import CLIFFORD, CLIFFORD_CONJ
+from graphix.clifford import Clifford
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
+from graphix.pauli import Plane
 from graphix.sim.statevec import Statevec
+
+with contextlib.suppress(ModuleNotFoundError):
+    from rustworkx import PyGraph
 
 
 def get_state(g) -> Statevec:
@@ -73,8 +72,8 @@ def meas_op(angle, vop=0, plane=Plane.XY, choice=0) -> npt.NDArray:
         vec = (np.cos(angle), 0, np.sin(angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
-        op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
-    op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
+        op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2
+    op_mat = Clifford(vop).conj.matrix @ op_mat @ Clifford(vop).matrix
     return op_mat
 
 

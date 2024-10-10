@@ -103,14 +103,20 @@ filterwarnings = ["ignore:Couldn't import `kahypar`"]
 files = [
   "**/__init__.py",
   "graphix/channels.py",
+  "graphix/clifford.py",
+  "graphix/command.py",
+  "graphix/instruction.py",
   "graphix/linalg_validations.py",
   "graphix/ops.py",
   "graphix/rng.py",
-  "graphix/types.py",
+  "graphix/states.py",
+  "graphix/type_utils.py",
   "graphix/_db.py",
   "tests/conftest.py",
+  "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
+  "tests/test_pauli.py",
   "tests/test_rng.py",
 ]
 follow_imports = "silent"
@@ -122,14 +128,20 @@ strict = true
 include = [
   "**/__init__.py",
   "graphix/channels.py",
+  "graphix/clifford.py",
+  "graphix/command.py",
+  "graphix/instruction.py",
   "graphix/linalg_validations.py",
   "graphix/ops.py",
   "graphix/rng.py",
-  "graphix/types.py",
+  "graphix/states.py",
+  "graphix/type_utils.py",
   "graphix/_db.py",
   "tests/conftest.py",
+  "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
+  "tests/test_pauli.py",
   "tests/test_rng.py",
 ]
 

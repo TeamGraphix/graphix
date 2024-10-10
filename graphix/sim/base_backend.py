@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from graphix._db import CLIFFORD
+from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.clifford import Clifford
     from graphix.pauli import Plane
 
 
@@ -100,7 +99,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
-        op_mat += sign * vec[i] * CLIFFORD[i + 1] / 2
+        op_mat += sign * vec[i] * Clifford(i + 1).matrix / 2
     return op_mat
 
 

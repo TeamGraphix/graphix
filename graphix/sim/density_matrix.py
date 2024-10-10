@@ -22,8 +22,6 @@ from graphix.states import BasicStates
 if TYPE_CHECKING:
     from numpy.random import Generator
 
-    from graphix.types import PositiveOrNullInt
-
 
 class DensityMatrix(State):
     """DensityMatrix object."""
@@ -31,7 +29,7 @@ class DensityMatrix(State):
     def __init__(
         self,
         data: Data = BasicStates.PLUS,
-        nqubit: PositiveOrNullInt | None = None,
+        nqubit: int | None = None,
     ):
         """Initialize density matrix objects.
 
@@ -55,7 +53,8 @@ class DensityMatrix(State):
         :param nqubit: number of qubits to prepare, defaults to `None`
         :type nqubit: int, optional
         """
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None and nqubit < 0:
+            raise ValueError("nqubit must be a non-negative integer.")
 
         def check_size_consistency(mat):
             if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):

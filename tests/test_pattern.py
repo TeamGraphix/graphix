@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix import clifford
+from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.pattern import CommandNode, Pattern, shift_outcomes
 from graphix.pauli import PauliMeasurement, Plane
@@ -357,7 +357,7 @@ class TestPattern:
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):
-            pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(clifford.get(vop_list[i % 3])))
+            pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(Clifford(vop_list[i % 3])))
         ref_meas_plane = {
             0: Plane.XY,
             1: Plane.XY,
@@ -378,11 +378,11 @@ class TestPattern:
         pattern = Pattern(input_nodes=[0])
         for i in (1, 2, 3):
             pattern.add(N(node=i))
-            pattern.add(E(nodes=[0, i]))
+            pattern.add(E(nodes=(0, i)))
         pattern.add(M(node=0, angle=0.5))
         pattern.add(M(node=1, angle=0.5))
-        pattern.add(M(node=2, angle=0.5, plane=plane, s_domain=[0], t_domain=[1]))
-        pattern.add(Z(node=3, domain=[2]))
+        pattern.add(M(node=2, angle=0.5, plane=plane, s_domain={0}, t_domain={1}))
+        pattern.add(Z(node=3, domain={2}))
         pattern_ref = copy.deepcopy(pattern)
         pattern.standardize(method="global")
         signal_dict = pattern.shift_signals(method=method)
@@ -443,10 +443,10 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        c0, c1 = rng.integers(len(clifford.TABLE), size=2)
+        c0, c1 = rng.integers(len(Clifford), size=2)
         pattern = Pattern(input_nodes=[0])
-        pattern.add(C(node=0, clifford=clifford.TABLE[c0]))
-        pattern.add(C(node=0, clifford=clifford.TABLE[c1]))
+        pattern.add(C(node=0, clifford=Clifford(c0)))
+        pattern.add(C(node=0, clifford=Clifford(c1)))
         pattern_ref = pattern.copy()
         pattern.standardize(method="direct")
         state_ref = pattern_ref.simulate_pattern()
@@ -457,13 +457,13 @@ class TestPattern:
     def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         x, z = rng.integers(2, size=2)
-        c = rng.integers(len(clifford.TABLE))
+        c = rng.integers(len(Clifford))
         pattern = Pattern(input_nodes=[0])
         pattern.results[1] = x
         pattern.add(X(node=0, domain={1}))
         pattern.results[2] = z
         pattern.add(Z(node=0, domain={2}))
-        pattern.add(C(node=0, clifford=clifford.TABLE[c]))
+        pattern.add(C(node=0, clifford=Clifford(c)))
         pattern_ref = pattern.copy()
         pattern.standardize(method="direct")
         state_ref = pattern_ref.simulate_pattern()
@@ -713,7 +713,7 @@ class TestLocalPattern:
     def test_remove_qubit(self) -> None:
         p = Pattern(input_nodes=[0, 1])
         p.add(M(node=0))
-        p.add(C(node=0, clifford=clifford.X))
+        p.add(C(node=0, clifford=Clifford.X))
         with pytest.raises(KeyError):
             p.simulate_pattern()
 

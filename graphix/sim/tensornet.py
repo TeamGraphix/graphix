@@ -168,7 +168,7 @@ class TensorNetworkBackend(Backend):
             result = self.__rng.choice([0, 1])
             self.results[node] = result
             buffer = 2**0.5
-        vec = PlanarState(plane=measurement_description.plane, angle=measurement_description.angle).get_statevector()
+        vec = PlanarState(measurement_description.plane, measurement_description.angle).get_statevector()
         if result:
             vec = measurement_description.plane.orth.op @ vec
         proj_vec = vec * buffer

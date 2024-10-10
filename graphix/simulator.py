@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from graphix import clifford
+from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, M, MeasureUpdate
 from graphix.sim.base_backend import Backend, MeasurementDescription
 from graphix.sim.density_matrix import DensityMatrixBackend
@@ -71,7 +71,7 @@ class DefaultMeasureMethod(MeasureMethod):
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
         t_signal = sum(self.results[j] for j in cmd.t_domain)
-        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, clifford.I)
+        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, Clifford.I)
         angle = angle * measure_update.coeff + measure_update.add_term
         return MeasurementDescription(measure_update.new_plane, angle)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, TypeVar
+from typing import ClassVar, Literal, NamedTuple, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -143,38 +143,42 @@ CLIFFORD_MUL = (
 # For instance, CLIFFORD[7].conj().T = - CLIFFORD[CLIFFORD_CONJ[7]]
 CLIFFORD_CONJ = (0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 23, 21, 16, 19, 17, 18)
 
+
+class _CliffordMeasure(NamedTuple):
+    """NamedTuple just for documentation purposes."""
+
+    pstr: Literal["X", "Y", "Z"]
+    sign: Literal[-1, +1]
+
+
 # Conjugation of Pauli gates P with Clifford gate C,
 # i.e. C @ P @ C^dagger result in Pauli group, i.e. {\pm} \times {X, Y, Z}.
 # CLIFFORD_MEASURE contains the effect of Clifford conjugation of Pauli gates.
-# Example(H gate): CLIFFORD_MEASURE[6] = ((2, 0), (1, 1), (0, 0))
-# first item is the result of conjugation of X gate, with first item of the tuple
-# being the Clifford index of resulting gate and second item giving sign (+ for 0 and - for 1).
-# i.e. HXH = X, HYH = -Y, HZH = X
 CLIFFORD_MEASURE = (
-    ((0, 0), (1, 0), (2, 0)),
-    ((0, 0), (1, 1), (2, 1)),
-    ((0, 1), (1, 0), (2, 1)),
-    ((0, 1), (1, 1), (2, 0)),
-    ((1, 1), (0, 0), (2, 0)),
-    ((1, 0), (0, 1), (2, 0)),
-    ((2, 0), (1, 1), (0, 0)),
-    ((0, 0), (2, 1), (1, 0)),
-    ((2, 0), (1, 0), (0, 1)),
-    ((1, 1), (0, 1), (2, 1)),
-    ((1, 0), (0, 0), (2, 1)),
-    ((2, 1), (1, 1), (0, 1)),
-    ((2, 1), (1, 0), (0, 0)),
-    ((0, 1), (2, 1), (1, 1)),
-    ((0, 1), (2, 0), (1, 0)),
-    ((0, 0), (2, 0), (1, 1)),
-    ((2, 0), (0, 0), (1, 0)),
-    ((2, 1), (0, 0), (1, 1)),
-    ((2, 1), (0, 1), (1, 0)),
-    ((2, 0), (0, 1), (1, 1)),
-    ((1, 0), (2, 0), (0, 0)),
-    ((1, 1), (2, 1), (0, 0)),
-    ((1, 0), (2, 1), (0, 1)),
-    ((1, 1), (2, 0), (0, 1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", +1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", -1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", -1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", -1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("X", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("X", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("Z", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", +1)),
+    (_CliffordMeasure("Z", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", -1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", +1)),
+    (_CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", -1)),
+    (_CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", -1)),
 )
 
 # Decomposition of Clifford gates with H, S and Z.

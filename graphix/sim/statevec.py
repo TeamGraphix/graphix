@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 
-from graphix import states
-from graphix import types as gtypes
+from graphix import states, type_utils
 from graphix.sim.base_backend import Backend, State
 from graphix.states import BasicStates
 
@@ -20,8 +19,6 @@ if TYPE_CHECKING:
     import collections
 
     from numpy.random import Generator
-
-    from graphix.types import PositiveOrNullInt
 
 
 class StatevectorBackend(Backend):
@@ -63,7 +60,7 @@ class Statevec(State):
     def __init__(
         self,
         data: Data = BasicStates.PLUS,
-        nqubit: PositiveOrNullInt | None = None,
+        nqubit: int | None = None,
     ):
         """Initialize statevector objects.
 
@@ -85,7 +82,8 @@ class Statevec(State):
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None and nqubit < 0:
+            raise ValueError("nqubit must be a non-negative integer.")
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
@@ -113,7 +111,7 @@ class Statevec(State):
 
         else:
             if isinstance(input_list[0], states.State):
-                gtypes.check_list_elements(input_list, states.State)
+                type_utils.check_list_elements(input_list, states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -123,7 +121,7 @@ class Statevec(State):
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
             elif isinstance(input_list[0], numbers.Number):
-                gtypes.check_list_elements(input_list, numbers.Number)
+                type_utils.check_list_elements(input_list, numbers.Number)
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
