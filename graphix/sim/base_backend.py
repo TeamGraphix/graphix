@@ -103,9 +103,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     return op_mat
 
 
-def perform_measure(
-    qubit: int, plane: Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
-) -> bool:
+def perform_measure(qubit: int, plane: Plane, angle: float, state, rng: Generator, pr_calc: bool = True) -> bool:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
     if pr_calc:
