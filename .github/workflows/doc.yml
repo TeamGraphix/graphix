@@ -34,4 +34,4 @@ jobs:
         run: pip install .[dev,doc]
 
       - name: Make docs
-        run: sphinx-build -M html docs/source docs/build
+        run: sphinx-build -M html docs/source docs/build --fail-on-warning
