@@ -404,6 +404,7 @@ def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
     return TABLE[symbol.value + 1][unit.sign == Sign.Minus][unit.is_imag]
 
 
+# TODO: Include in Pauli namespace
 I = get(IXYZ.I, UNIT)
 X = get(IXYZ.X, UNIT)
 Y = get(IXYZ.Y, UNIT)
