@@ -17,7 +17,7 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.sim.statevec
 from graphix import command, instruction
-from graphix.clifford import H
+from graphix.clifford import Clifford
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
 from graphix.pattern import Pattern
@@ -1274,7 +1274,7 @@ class Circuit:
         """
         seq = [N(node=ancilla)]
         seq.append(E(nodes=(input_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(H))
+        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H))
         seq.append(Z(node=input_node, domain={ancilla}))
         return input_node, seq
 
@@ -1305,7 +1305,7 @@ class Circuit:
         seq = [N(node=ancilla)]
         seq.append(E(nodes=(control_node, ancilla)))
         seq.append(E(nodes=(target_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(H))
+        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H))
         seq.append(Z(node=control_node, domain={ancilla}))
         seq.append(Z(node=target_node, domain={ancilla}))
         return control_node, target_node, seq
@@ -1520,13 +1520,13 @@ class Circuit:
         seq.append(E(nodes=(ancilla[8], ancilla[10])))
         seq.append(M(node=target_node))
         seq.append(M(node=control_node1))
-        seq.append(M(node=ancilla[0], angle=-1.75, s_domain={target_node}).clifford(H))
+        seq.append(M(node=ancilla[0], angle=-1.75, s_domain={target_node}).clifford(Clifford.H))
         seq.append(M(node=ancilla[8], s_domain={control_node1}))
-        seq.append(M(node=ancilla[2], angle=-0.25, s_domain={target_node, ancilla[8]}).clifford(H))
+        seq.append(M(node=ancilla[2], angle=-0.25, s_domain={target_node, ancilla[8]}).clifford(Clifford.H))
         seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(M(node=ancilla[3], angle=-1.75, s_domain={ancilla[8], target_node}).clifford(H))
-        seq.append(M(node=ancilla[4], angle=-1.75, s_domain={ancilla[8]}).clifford(H))
-        seq.append(M(node=ancilla[1], angle=-0.25, s_domain={ancilla[8]}).clifford(H))
+        seq.append(M(node=ancilla[3], angle=-1.75, s_domain={ancilla[8], target_node}).clifford(Clifford.H))
+        seq.append(M(node=ancilla[4], angle=-1.75, s_domain={ancilla[8]}).clifford(Clifford.H))
+        seq.append(M(node=ancilla[1], angle=-0.25, s_domain={ancilla[8]}).clifford(Clifford.H))
         seq.append(
             M(
                 node=ancilla[5],

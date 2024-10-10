@@ -98,6 +98,7 @@ filterwarnings = ["ignore:Couldn't import `kahypar`"]
 # Keep in sync with pyright
 files = [
   "graphix/channels.py",
+  "graphix/clifford.py",
   "graphix/command.py",
   "graphix/instruction.py",
   "graphix/linalg_validations.py",
@@ -107,8 +108,10 @@ files = [
   "graphix/type_utils.py",
   "graphix/_db.py",
   "tests/conftest.py",
+  "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
+  "tests/test_pauli.py",
   "tests/test_rng.py",
 ]
 follow_imports = "silent"
@@ -119,6 +122,7 @@ strict = true
 # TODO: Use strict later
 include = [
   "graphix/channels.py",
+  "graphix/clifford.py",
   "graphix/command.py",
   "graphix/instruction.py",
   "graphix/linalg_validations.py",
@@ -128,7 +132,9 @@ include = [
   "graphix/type_utils.py",
   "graphix/_db.py",
   "tests/conftest.py",
+  "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
+  "tests/test_pauli.py",
   "tests/test_rng.py",
 ]

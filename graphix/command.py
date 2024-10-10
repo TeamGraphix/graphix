@@ -10,7 +10,7 @@ from typing import ClassVar, Literal, Union
 
 import numpy as np
 
-from graphix import clifford, type_utils
+from graphix import type_utils
 from graphix.clifford import Clifford, Domains
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
@@ -151,9 +151,9 @@ class MeasureUpdate:
         """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
-            clifford_gate = clifford.X @ clifford_gate
+            clifford_gate = Clifford.X @ clifford_gate
         if t:
-            clifford_gate = clifford.Z @ clifford_gate
+            clifford_gate = Clifford.Z @ clifford_gate
         gates = list(map(clifford_gate.measure, gates))
         new_plane = Plane.from_axes(*(gate.axis for gate in gates))
         cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
