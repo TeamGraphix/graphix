@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools
+import importlib.util  # Use fully-qualified import to avoid name conflict (util)
 import random
 from copy import deepcopy
 from typing import TYPE_CHECKING
@@ -12,13 +14,9 @@ if TYPE_CHECKING:
 SEED = 123
 
 
+@functools.cache
 def _pyzx_notfound() -> bool:
-    try:
-        import pyzx  # noqa: F401
-
-        return False
-    except ModuleNotFoundError:
-        return True
+    return importlib.util.find_spec("pyzx") is None
 
 
 @pytest.mark.skipif(_pyzx_notfound(), reason="pyzx not installed")
