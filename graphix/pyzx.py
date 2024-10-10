@@ -7,10 +7,13 @@ OpenGraph class because we want PyZX to be an optional dependency.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from fractions import Fraction
+from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
 import pyzx as zx
+from pyzx.graph import Graph
+from pyzx.utils import EdgeType, FractionLike, VertexType
 
 from graphix.opengraph import Measurement, OpenGraph
 from graphix.pauli import Plane
@@ -19,7 +22,7 @@ if TYPE_CHECKING:
     from pyzx.graph.base import BaseGraph
 
 
-def to_pyzx_graph(og: OpenGraph) -> BaseGraph:
+def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     """Return a PyZX graph corresponding to the the open graph.
 
     Example
@@ -43,10 +46,10 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph:
             "`to_pyzx_graph` is guaranteed to work only with pyzx==0.8.0 due to possible breaking changes in `pyzx`.",
             stacklevel=1,
         )
-    g = zx.Graph()
+    g = Graph()
 
     # Add vertices into the graph and set their type
-    def add_vertices(n: int, ty: zx.VertexType) -> list[zx.VertexType]:
+    def add_vertices(n: int, ty: VertexType.Type) -> list[VertexType]:
         verts = g.add_vertices(n)
         for vert in verts:
             g.set_type(vert, ty)
@@ -54,20 +57,20 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph:
         return verts
 
     # Add input boundary nodes
-    in_verts = add_vertices(len(og.inputs), zx.VertexType.BOUNDARY)
-    g.set_inputs(in_verts)
+    in_verts = add_vertices(len(og.inputs), VertexType.BOUNDARY)
+    g.set_inputs(tuple(in_verts))
 
     # Add nodes for internal Z spiders - not including the phase gadgets
-    body_verts = add_vertices(len(og.inside), zx.VertexType.Z)
+    body_verts = add_vertices(len(og.inside), VertexType.Z)
 
     # Add nodes for the phase gadgets. In OpenGraph we don't store the
     # effect as a seperate node, it is instead just stored in the
     # "measurement" attribute of the node it measures.
     x_meas = [i for i, m in og.measurements.items() if m.plane == Plane.YZ]
-    x_meas_verts = add_vertices(len(x_meas), zx.VertexType.Z)
+    x_meas_verts = add_vertices(len(x_meas), VertexType.Z)
 
-    out_verts = add_vertices(len(og.outputs), zx.VertexType.BOUNDARY)
-    g.set_outputs(out_verts)
+    out_verts = add_vertices(len(og.outputs), VertexType.BOUNDARY)
+    g.set_outputs(tuple(out_verts))
 
     # Maps a node's ID in the Open Graph to it's corresponding node ID in
     # the PyZX graph and vice versa.
@@ -84,23 +87,30 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph:
 
     og_edges = og.inside.edges()
     pyzx_edges = ((map_to_pyzx[a], map_to_pyzx[b]) for a, b in og_edges)
-    g.add_edges(pyzx_edges, zx.EdgeType.HADAMARD)
+    g.add_edges(pyzx_edges, EdgeType.HADAMARD)
 
     # Add the edges between the Z spiders in the graph body
     for og_index, meas in og.measurements.items():
         # If it's an X measured node, then we handle it in the next loop
         if meas.plane == Plane.XY:
-            g.set_phase(map_to_pyzx[og_index], meas.angle)
+            g.set_phase(map_to_pyzx[og_index], Fraction(meas.angle))
 
     # Connect the X measured vertices
     for og_index, pyzx_index in zip(x_meas, x_meas_verts):
-        g.add_edge((map_to_pyzx[og_index], pyzx_index), zx.EdgeType.HADAMARD)
-        g.set_phase(pyzx_index, og.measurements[og_index].angle)
+        g.add_edge((map_to_pyzx[og_index], pyzx_index), EdgeType.HADAMARD)
+        g.set_phase(pyzx_index, Fraction(og.measurements[og_index].angle))
 
     return g
 
 
-def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
+def _checked_float(x: FractionLike) -> float:
+    if not isinstance(x, SupportsFloat):
+        # Possibly a Poly object
+        raise TypeError(f"Cannot convert {x} to a float.")
+    return float(x)
+
+
+def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
     """Construct an Optyx Open Graph from a PyZX graph.
 
     This method may add additional nodes to the graph so that it adheres
@@ -120,8 +130,8 @@ def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
     zx.simplify.to_graph_like(g)
 
     measurements = {}
-    inputs = g.inputs()
-    outputs = g.outputs()
+    inputs = list(g.inputs())
+    outputs = list(g.outputs())
 
     g_nx = nx.Graph(g.edges())
 
@@ -131,7 +141,7 @@ def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
         first_nbr = next(iter(g.neighbors(inp)))
         et = g.edge_type((first_nbr, inp))
 
-        if et == zx.EdgeType.SIMPLE:
+        if et == EdgeType.SIMPLE:
             g_nx.remove_node(inp)
             inputs = [i if i != inp else first_nbr for i in inputs]
 
@@ -139,7 +149,7 @@ def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
         first_nbr = next(iter(g.neighbors(out)))
         et = g.edge_type((first_nbr, out))
 
-        if et == zx.EdgeType.SIMPLE:
+        if et == EdgeType.SIMPLE:
             g_nx.remove_node(out)
             outputs = [o if o != out else first_nbr for o in outputs]
 
@@ -153,7 +163,7 @@ def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement(float(g.phase(v)), Plane.YZ)
+            measurements[nbrs[0]] = Measurement(_checked_float(g.phase(v)), Plane.YZ)
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1
@@ -177,6 +187,6 @@ def from_pyzx_graph(g: BaseGraph) -> OpenGraph:
 
         # g.phase() may be a fractions.Fraction object, but Measurement
         # expects a float
-        measurements[v] = Measurement(float(g.phase(v)), Plane.XY)
+        measurements[v] = Measurement(_checked_float(g.phase(v)), Plane.XY)
 
     return OpenGraph(g_nx, measurements, inputs, outputs)
