@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import importlib.util  # Use fully-qualified import to avoid name conflict (util)
 import random
 from copy import deepcopy
@@ -14,7 +13,6 @@ if TYPE_CHECKING:
 SEED = 123
 
 
-@functools.cache
 def _pyzx_notfound() -> bool:
     return importlib.util.find_spec("pyzx") is None
 
