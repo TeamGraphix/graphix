@@ -455,19 +455,19 @@ class Circuit:
                 n_node += 2
                 self._instr.append(instr)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[7].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[8].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.control,
                         domain=seq[9].domain,
                     )
@@ -488,7 +488,7 @@ class Circuit:
                 self._m.append(seq[2])
                 self._instr.append(instr)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[3].domain,
                     )
@@ -502,13 +502,13 @@ class Circuit:
                 self._m.extend(seq[4:6])
                 self._instr.append(instr)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[6].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[7].domain,
                     )
@@ -522,13 +522,13 @@ class Circuit:
                 self._m.extend(seq[4:6])
                 self._instr.append(instr)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[6].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[7].domain,
                     )
@@ -542,13 +542,13 @@ class Circuit:
                 self._m.extend(seq[8:12])
                 self._instr.append(instr)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[12].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[13].domain,
                     )
@@ -562,13 +562,13 @@ class Circuit:
                 self._m.extend(seq[4:6])
                 self._instr.append(instr)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[6].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[7].domain,
                     )
@@ -584,13 +584,13 @@ class Circuit:
                 instr_.meas_index = len(self._m) - 1  # index of arb angle measurement command
                 self._instr.append(instr_)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[6].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[7].domain,
                     )
@@ -606,13 +606,13 @@ class Circuit:
                 instr_.meas_index = len(self._m) - 3  # index of arb angle measurement command
                 self._instr.append(instr_)
                 self._instr.append(
-                    instruction.XC(
+                    instruction._XC(
                         target=instr.target,
                         domain=seq[12].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[13].domain,
                     )
@@ -629,7 +629,7 @@ class Circuit:
                     instr_.meas_index = len(self._m) - 1  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
-                        instruction.ZC(
+                        instruction._ZC(
                             target=instr.target,
                             domain=seq[3].domain,
                         )
@@ -645,13 +645,13 @@ class Circuit:
                     instr_.meas_index = len(self._m) - 2  # index of arb angle measurement command
                     self._instr.append(instr_)
                     self._instr.append(
-                        instruction.XC(
+                        instruction._XC(
                             target=instr.target,
                             domain=seq[6].domain,
                         )
                     )
                     self._instr.append(
-                        instruction.ZC(
+                        instruction._ZC(
                             target=instr.target,
                             domain=seq[7].domain,
                         )
@@ -670,13 +670,13 @@ class Circuit:
                 instr_.meas_index = len(self._m) - 1  # index of arb angle measurement command
                 self._instr.append(instr_)
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.target,
                         domain=seq[4].domain,
                     )
                 )
                 self._instr.append(
-                    instruction.ZC(
+                    instruction._ZC(
                         target=instr.control,
                         domain=seq[5].domain,
                     )
@@ -696,13 +696,13 @@ class Circuit:
         x_cmds: list[command.X] = []
         for i in range(len(self._instr)):
             instr = self._instr[i]
-            if instr.kind == instruction.InstructionKind.XC:
+            if instr.kind == instruction.InstructionKind._XC:
                 if instr.target in bpx_added.keys():
                     x_cmds[bpx_added[instr.target]].domain ^= instr.domain
                 else:
                     bpx_added[instr.target] = len(x_cmds)
                     x_cmds.append(X(node=out[instr.target], domain=deepcopy(instr.domain)))
-            elif instr.kind == instruction.InstructionKind.ZC:
+            elif instr.kind == instruction.InstructionKind._ZC:
                 if instr.target in bpz_added.keys():
                     z_cmds[bpz_added[instr.target]].domain ^= instr.domain
                 else:
@@ -721,8 +721,8 @@ class Circuit:
         correction_instr = self._instr[target]
         swap_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert swap_instr.kind == instruction.InstructionKind.SWAP
         if correction_instr.target == swap_instr.targets[0]:
@@ -739,14 +739,14 @@ class Circuit:
         correction_instr = self._instr[target]
         cnot_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert cnot_instr.kind == instruction.InstructionKind.CNOT
         if (
-            correction_instr.kind == instruction.InstructionKind.XC and correction_instr.target == cnot_instr.control
+            correction_instr.kind == instruction.InstructionKind._XC and correction_instr.target == cnot_instr.control
         ):  # control
-            new_cmd = instruction.XC(
+            new_cmd = instruction._XC(
                 target=cnot_instr.target,
                 domain=correction_instr.domain,
             )
@@ -754,9 +754,9 @@ class Circuit:
             self._instr.insert(target + 1, new_cmd)
             return target + 1
         elif (
-            correction_instr.kind == instruction.InstructionKind.ZC and correction_instr.target == cnot_instr.target
+            correction_instr.kind == instruction.InstructionKind._ZC and correction_instr.target == cnot_instr.target
         ):  # target
-            new_cmd = instruction.ZC(
+            new_cmd = instruction._ZC(
                 target=cnot_instr.control,
                 domain=correction_instr.domain,
             )
@@ -771,18 +771,18 @@ class Circuit:
         correction_instr = self._instr[target]
         h_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert h_instr.kind == instruction.InstructionKind.H
         if correction_instr.target == h_instr.target:
-            if correction_instr.kind == instruction.InstructionKind.XC:
-                self._instr[target] = instruction.ZC(
+            if correction_instr.kind == instruction.InstructionKind._XC:
+                self._instr[target] = instruction._ZC(
                     target=correction_instr.target, domain=correction_instr.domain
                 )  # byproduct changes to Z
                 self._commute_with_following(target)
             else:
-                self._instr[target] = instruction.XC(
+                self._instr[target] = instruction._XC(
                     target=correction_instr.target, domain=correction_instr.domain
                 )  # byproduct changes to X
                 self._commute_with_following(target)
@@ -793,17 +793,17 @@ class Circuit:
         correction_instr = self._instr[target]
         s_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert s_instr.kind == instruction.InstructionKind.S
         if correction_instr.target == s_instr.target:
-            if correction_instr.kind == instruction.InstructionKind.XC:
+            if correction_instr.kind == instruction.InstructionKind._XC:
                 self._commute_with_following(target)
                 # changes to Y = XZ
                 self._instr.insert(
                     target + 1,
-                    instruction.ZC(
+                    instruction._ZC(
                         target=correction_instr.target,
                         domain=correction_instr.domain,
                     ),
@@ -816,12 +816,12 @@ class Circuit:
         correction_instr = self._instr[target]
         rx_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert rx_instr.kind == instruction.InstructionKind.RX
         if correction_instr.target == rx_instr.target:
-            if correction_instr.kind == instruction.InstructionKind.ZC:
+            if correction_instr.kind == instruction.InstructionKind._ZC:
                 # add to the s-domain
                 _extend_domain(self._m[rx_instr.meas_index], correction_instr.domain)
                 self._commute_with_following(target)
@@ -834,8 +834,8 @@ class Circuit:
         correction_instr = self._instr[target]
         ry_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert ry_instr.kind == instruction.InstructionKind.RY
         if correction_instr.target == ry_instr.target:
@@ -849,12 +849,12 @@ class Circuit:
         correction_instr = self._instr[target]
         rz_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert rz_instr.kind == instruction.InstructionKind.RZ
         if correction_instr.target == rz_instr.target:
-            if correction_instr.kind == instruction.InstructionKind.XC:
+            if correction_instr.kind == instruction.InstructionKind._XC:
                 # add to the s-domain
                 _extend_domain(self._m[rz_instr.meas_index], correction_instr.domain)
                 self._commute_with_following(target)
@@ -867,11 +867,11 @@ class Circuit:
         correction_instr = self._instr[target]
         rzz_instr = self._instr[target + 1]
         assert (
-            correction_instr.kind == instruction.InstructionKind.XC
-            or correction_instr.kind == instruction.InstructionKind.ZC
+            correction_instr.kind == instruction.InstructionKind._XC
+            or correction_instr.kind == instruction.InstructionKind._ZC
         )
         assert rzz_instr.kind == instruction.InstructionKind.RZZ
-        if correction_instr.kind == instruction.InstructionKind.XC:
+        if correction_instr.kind == instruction.InstructionKind._XC:
             cond = correction_instr.target == rzz_instr.control
             cond2 = correction_instr.target == rzz_instr.target
             if cond or cond2:
@@ -913,8 +913,8 @@ class Circuit:
         num_ops = 0
         while ite < len(self._instr):
             if (
-                self._instr[target].kind == instruction.InstructionKind.ZC
-                or self._instr[target].kind == instruction.InstructionKind.XC
+                self._instr[target].kind == instruction.InstructionKind._ZC
+                or self._instr[target].kind == instruction.InstructionKind._XC
             ):
                 num_ops += 1
             if num_ops == skipnum + 1:
@@ -930,8 +930,8 @@ class Circuit:
         target = self._find_byproduct_to_move(rev=True, skipnum=moved)
         while target != "end":
             if (target == len(self._instr) - 1) or (
-                self._instr[target + 1].kind == instruction.InstructionKind.XC
-                or self._instr[target + 1].kind == instruction.InstructionKind.ZC
+                self._instr[target + 1].kind == instruction.InstructionKind._XC
+                or self._instr[target + 1].kind == instruction.InstructionKind._ZC
             ):
                 moved += 1
                 target = self._find_byproduct_to_move(rev=True, skipnum=moved)

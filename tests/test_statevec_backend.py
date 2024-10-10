@@ -80,7 +80,7 @@ class TestStatevecNew:
         # random planar state
         rand_angle = fx_rng.random() * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]))
-        state = PlanarState(plane=rand_plane, angle=rand_angle)
+        state = PlanarState(rand_plane, rand_angle)
         backend = StatevectorBackend()
         backend.add_nodes(hadamardpattern.input_nodes, data=state)
         vec = Statevec(nqubit=1, data=state)
@@ -94,8 +94,8 @@ class TestStatevecNew:
         rand_angle = fx_rng.random(2) * 2 * np.pi
         rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), 2)
 
-        state = PlanarState(plane=rand_plane[0], angle=rand_angle[0])
-        state2 = PlanarState(plane=rand_plane[1], angle=rand_angle[1])
+        state = PlanarState(rand_plane[0], rand_angle[0])
+        state2 = PlanarState(rand_plane[1], rand_angle[1])
         with pytest.raises(ValueError):
             StatevectorBackend().add_nodes(hadamardpattern.input_nodes, data=[state, state2])
 

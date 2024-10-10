@@ -17,7 +17,6 @@ import sys
 import numpy as np
 
 import graphix.states
-import graphix.types
 from graphix import linalg_validations as lv
 from graphix.channels import KrausChannel
 from graphix.sim.base_backend import Backend, State
@@ -30,7 +29,7 @@ class DensityMatrix(State):
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        nqubit: int | None = None,
     ):
         """Initialize density matrix objects.
 
@@ -54,7 +53,8 @@ class DensityMatrix(State):
         :param nqubit: number of qubits to prepare, defaults to `None`
         :type nqubit: int, optional
         """
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None and nqubit < 0:
+            raise ValueError("nqubit must be a non-negative integer.")
 
         def check_size_consistency(mat):
             if nqubit is not None and mat.shape != (2**nqubit, 2**nqubit):
