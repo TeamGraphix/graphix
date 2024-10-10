@@ -22,7 +22,7 @@ jobs:
         run: python -m pip install --upgrade pip
 
       - name: Install graphix with dev deps.
-        run: pip install .[dev]
+        run: pip install .[dev,extra]
 
       - name: Run pytest
         run: pytest --cov=./graphix --cov-report=xml
