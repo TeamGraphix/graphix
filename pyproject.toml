@@ -39,6 +39,7 @@ dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.dynamic.optional-dependencies]
 dev = { file = ["requirements-dev.txt"] }
+doc = { file = ["requirements-doc.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 
 [tool.ruff]

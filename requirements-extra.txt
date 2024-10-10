@@ -1,2 +1,6 @@
 graphix-ibmq
 graphix-perceval
+pyzx==0.8.0
+qiskit-aer
+qiskit>=1.0
+rustworkx
