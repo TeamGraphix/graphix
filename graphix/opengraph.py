@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import networkx as nx
 
 from graphix.generator import generate_from_graph
+from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
-    from graphix.pauli import Plane
 
 
 @dataclass(frozen=True)

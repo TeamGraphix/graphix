@@ -12,8 +12,9 @@ from numpy.random import PCG64, Generator
 
 from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N, X, Z
+from graphix.measurements import PauliMeasurement
 from graphix.pattern import CommandNode, Pattern, shift_outcomes
-from graphix.pauli import PauliMeasurement, Plane
+from graphix.pauli import Plane
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import PatternSimulator

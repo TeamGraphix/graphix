@@ -11,9 +11,10 @@ import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
 from graphix import command
+from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
-from graphix.sim.base_backend import Backend, MeasurementDescription, State
+from graphix.sim.base_backend import Backend, State
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
@@ -143,7 +144,7 @@ class TensorNetworkBackend(Backend):
         elif self.graph_prep == "opt":
             pass
 
-    def measure(self, node: int, measurement_description: MeasurementDescription) -> tuple[Backend, int]:
+    def measure(self, node: int, meas: Measurement) -> tuple[Backend, int]:
         """Perform measurement of the node.
 
         In the context of tensornetwork, performing measurement equals to
@@ -153,7 +154,7 @@ class TensorNetworkBackend(Backend):
         ----------
         node : int
             index of the node to measure
-        measurement_description : MeasurementDescription
+        meas : Measurement
             measure plane and angle
         """
         if node in self._isolated_nodes:
@@ -168,9 +169,9 @@ class TensorNetworkBackend(Backend):
             result = self.__rng.choice([0, 1])
             self.results[node] = result
             buffer = 2**0.5
-        vec = PlanarState(measurement_description.plane, measurement_description.angle).get_statevector()
+        vec = PlanarState(meas.plane, meas.angle).get_statevector()
         if result:
-            vec = measurement_description.plane.orth.op @ vec
+            vec = meas.plane.orth.op @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec)
         return result

@@ -11,7 +11,8 @@ from typing import ClassVar, Literal, Union
 import numpy as np
 
 from graphix import type_utils
-from graphix.clifford import Clifford, Domains
+from graphix.clifford import Clifford
+from graphix.measurements import Domains
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
 
@@ -147,9 +148,11 @@ class MeasureUpdate:
     add_term: float
 
     @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
+    def compute(plane: Plane, s: int, t: int, clifford_gate: Clifford) -> MeasureUpdate:
         """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
+        s %= 2
+        t %= 2
         if s:
             clifford_gate = Clifford.X @ clifford_gate
         if t:
@@ -159,10 +162,7 @@ class MeasureUpdate:
         cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
         sin_pauli = clifford_gate.measure(Pauli.from_axis(plane.sin))
         exchange = cos_pauli.axis != new_plane.cos
-        if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
-            coeff = -1
-        else:
-            coeff = 1
+        coeff = -1 if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign) else 1
         add_term: float = 0
         if cos_pauli.unit.sign == Sign.MINUS:
             add_term += np.pi

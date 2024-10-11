@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
+from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.states import BasicStates
@@ -17,16 +17,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from numpy.random import Generator
-
-    from graphix.pauli import Plane
-
-
-@dataclass
-class MeasurementDescription:
-    """An MBQC measurement."""
-
-    plane: Plane
-    angle: float
 
 
 class NodeIndex:
@@ -195,18 +185,16 @@ class Backend:
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, node: int, measurement_description: MeasurementDescription) -> bool:
+    def measure(self, node: int, meas: Measurement) -> bool:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
-        measurement_description: MeasurementDescription
+        meas: Measurement
         """
         loc = self.node_index.index(node)
-        result = perform_measure(
-            loc, measurement_description.plane, measurement_description.angle, self.state, self.__rng, self.__pr_calc
-        )
+        result = perform_measure(loc, meas.plane, meas.angle, self.state, self.__rng, self.__pr_calc)
         self.node_index.remove(node)
         self.state.remove_qubit(loc)
         return result

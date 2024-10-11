@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
+from graphix.measurements import Measurement
 from graphix.pauli import Pauli, Plane
-from graphix.sim.base_backend import MeasurementDescription
 from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.states import BasicStates, PlanarState
 from tests.test_graphsim import meas_op
@@ -127,10 +127,9 @@ class TestStatevecNew:
             backend.add_nodes(nodes=nodes, data=states)
 
             backend.entangle_nodes(edge=(nodes[0], nodes[1]))
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
+            meas = Measurement(0, Plane.XY)
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
+            result = backend.measure(node=node_to_measure, meas=meas)
             assert result == expected_result
 
     def test_deterministic_measure(self):
@@ -145,10 +144,9 @@ class TestStatevecNew:
 
             for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
+            meas = Measurement(0, Plane.XY)
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
+            result = backend.measure(node=node_to_measure, meas=meas)
             assert result == 0
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
@@ -174,12 +172,11 @@ class TestStatevecNew:
                     backend.entangle_nodes(edge=(other, dummy))
 
             # Same measurement for all traps
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
+            meas = Measurement(0, Plane.XY)
 
             for trap in nodes[:n_traps]:
                 node_to_measure = trap
-                result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
+                result = backend.measure(node=node_to_measure, meas=meas)
                 assert result == 0
 
             assert list(backend.node_index) == list(range(n_traps, n_neighbors + n_traps + n_whatever))
@@ -203,9 +200,8 @@ class TestStatevecNew:
 
             for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
-            measurement_description = MeasurementDescription(plane=Plane.XY, angle=0)
+            meas = Measurement(0, Plane.XY)
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, measurement_description=measurement_description)
+            result = backend.measure(node=node_to_measure, meas=meas)
             assert result == expected_result
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import dataclasses
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -18,6 +17,7 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
+from graphix.measurements import Domains
 from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
 
 if TYPE_CHECKING:

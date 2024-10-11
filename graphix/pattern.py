@@ -15,12 +15,13 @@ import networkx as nx
 import typing_extensions
 
 from graphix import command
-from graphix.clifford import Clifford, Domains
+from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
-from graphix.pauli import Axis, PauliMeasurement, Plane, Sign
+from graphix.measurements import Domains, PauliMeasurement
+from graphix.pauli import Axis, Plane, Sign
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
