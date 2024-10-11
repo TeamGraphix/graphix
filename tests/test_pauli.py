@@ -5,29 +5,22 @@ import itertools
 import numpy as np
 import pytest
 
-from graphix import pauli
 from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
-from graphix.pauli import UNITS, ComplexUnit, Pauli, Plane
+from graphix.pauli import ComplexUnit, Pauli, Plane
 
 
 class TestPauli:
     @pytest.mark.parametrize(
         ("u", "p"),
-        itertools.product(
-            UNITS,
-            pauli.LIST,
-        ),
+        itertools.product(ComplexUnit, Pauli.iterate()),
     )
     def test_unit_mul(self, u: ComplexUnit, p: Pauli) -> None:
         assert np.allclose((u * p).matrix, complex(u) * p.matrix)
 
     @pytest.mark.parametrize(
         ("a", "b"),
-        itertools.product(
-            pauli.LIST,
-            pauli.LIST,
-        ),
+        itertools.product(Pauli.iterate(), Pauli.iterate()),
     )
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
         assert np.allclose((a @ b).matrix, a.matrix @ b.matrix)
@@ -35,7 +28,7 @@ class TestPauli:
     @pytest.mark.parametrize(
         ("plane", "s", "t", "clifford", "angle", "choice"),
         itertools.product(
-            Plane,
+            iter(Plane),
             (False, True),
             (False, True),
             Clifford,

@@ -54,10 +54,10 @@ class TestClifford:
                 Pauli(sym, u)
                 for sym in IXYZ
                 for u in (
-                    ComplexUnit(Sign.Plus, False),
-                    ComplexUnit(Sign.Minus, False),
-                    ComplexUnit(Sign.Plus, True),
-                    ComplexUnit(Sign.Minus, True),
+                    ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=False),
+                    ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=False),
+                    ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=True),
+                    ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True),
                 )
             ),
         ),
