@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import typing
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, SupportsInt, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -41,3 +41,8 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
     if typing.get_origin(ann) is not Literal:
         msg = "Tag attribute must be a literal."
         raise TypeError(msg)
+
+
+def is_integer(value: SupportsInt) -> bool:
+    """Return `True` if `value` is an integer, `False` otherwise."""
+    return value == int(value)

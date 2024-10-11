@@ -20,7 +20,7 @@ import networkx as nx
 import numpy as np
 import sympy as sp
 
-from graphix import pauli
+from graphix import pauli, type_utils
 from graphix.command import CommandKind
 from graphix.linalg import MatGF2
 from graphix.pauli import Plane
@@ -1372,18 +1372,18 @@ def get_pauli_nodes(
     l_x, l_y, l_z = set(), set(), set()
     for node, plane in meas_planes.items():
         if plane == Plane.XY:
-            if pauli.is_int(meas_angles[node]):  # measurement angle is integer
+            if type_utils.is_integer(meas_angles[node]):  # measurement angle is integer
                 l_x |= {node}
-            elif pauli.is_int(2 * meas_angles[node]):  # measurement angle is half integer
+            elif type_utils.is_integer(2 * meas_angles[node]):  # measurement angle is half integer
                 l_y |= {node}
         elif plane == Plane.XZ:
-            if pauli.is_int(meas_angles[node]):
+            if type_utils.is_integer(meas_angles[node]):
                 l_z |= {node}
-            elif pauli.is_int(2 * meas_angles[node]):
+            elif type_utils.is_integer(2 * meas_angles[node]):
                 l_x |= {node}
         elif plane == Plane.YZ:
-            if pauli.is_int(meas_angles[node]):
+            if type_utils.is_integer(meas_angles[node]):
                 l_y |= {node}
-            elif pauli.is_int(2 * meas_angles[node]):
+            elif type_utils.is_integer(2 * meas_angles[node]):
                 l_z |= {node}
     return l_x, l_y, l_z
