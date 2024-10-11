@@ -164,7 +164,7 @@ class MeasureUpdate:
         else:
             coeff = 1
         add_term: float = 0
-        if cos_pauli.unit.sign == Sign.Minus:
+        if cos_pauli.unit.sign == Sign.MINUS:
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term

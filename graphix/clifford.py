@@ -7,6 +7,8 @@ import dataclasses
 from enum import Enum
 from typing import TYPE_CHECKING
 
+import typing_extensions
+
 from graphix._db import (
     CLIFFORD,
     CLIFFORD_CONJ,
@@ -111,8 +113,15 @@ class Clifford(Enum):
         if pauli.symbol == IXYZ.I:
             return copy.deepcopy(pauli)
         table = CLIFFORD_MEASURE[self.value]
-        symbol, sign = table[pauli.symbol.value]
-        return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit(Sign(sign), False))
+        if pauli.symbol == IXYZ.X:
+            symbol, sign = table.x
+        elif pauli.symbol == IXYZ.Y:
+            symbol, sign = table.y
+        elif pauli.symbol == IXYZ.Z:
+            symbol, sign = table.z
+        else:
+            typing_extensions.assert_never(pauli.symbol)
+        return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit.from_properties(sign=Sign(sign)))
 
     def commute_domains(self, domains: Domains) -> Domains:
         """

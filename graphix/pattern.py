@@ -2130,7 +2130,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
             measure = graph_state.measure_z
         else:
             typing_extensions.assert_never(basis.axis)
-        if basis.sign == Sign.Plus:
+        if basis.sign == Sign.PLUS:
             results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
         else:
             results[pattern_cmd.node] = 1 - measure(pattern_cmd.node, choice=1)
