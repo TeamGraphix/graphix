@@ -11,7 +11,6 @@ import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
 from graphix import command
-from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.sim.base_backend import Backend, State
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.clifford import Clifford
+    from graphix.measurements import Measurement
     from graphix.simulator import MeasureMethod
 
 

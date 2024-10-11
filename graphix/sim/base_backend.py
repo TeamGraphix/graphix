@@ -8,7 +8,6 @@ import numpy as np
 
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
-from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.states import BasicStates
@@ -17,6 +16,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from numpy.random import Generator
+
+    from graphix.measurements import Measurement
 
 
 class NodeIndex:

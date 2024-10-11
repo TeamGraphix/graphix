@@ -8,11 +8,10 @@ import functools
 import math
 import typing
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, ClassVar
 
 import typing_extensions
 
-from graphix import type_utils
 from graphix._db import WellKnownMatrix
 
 if TYPE_CHECKING:
