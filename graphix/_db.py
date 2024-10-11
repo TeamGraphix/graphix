@@ -242,14 +242,14 @@ CLIFFORD_TO_QASM3 = (
 class WellKnownMatrix:
     """Collection of well-known matrices."""
 
-    I: ClassVar = _C0
-    X: ClassVar = _C1
-    Y: ClassVar = _C2
-    Z: ClassVar = _C3
-    S: ClassVar = _C4
-    SDG: ClassVar = _C5
-    H: ClassVar = _C6
-    CZ: ClassVar = _lock(
+    I: ClassVar[npt.NDArray[np.complex128]] = _C0
+    X: ClassVar[npt.NDArray[np.complex128]] = _C1
+    Y: ClassVar[npt.NDArray[np.complex128]] = _C2
+    Z: ClassVar[npt.NDArray[np.complex128]] = _C3
+    S: ClassVar[npt.NDArray[np.complex128]] = _C4
+    SDG: ClassVar[npt.NDArray[np.complex128]] = _C5
+    H: ClassVar[npt.NDArray[np.complex128]] = _C6
+    CZ: ClassVar[npt.NDArray[np.complex128]] = _lock(
         np.asarray(
             [
                 [1, 0, 0, 0],
@@ -259,7 +259,7 @@ class WellKnownMatrix:
             ],
         )
     )
-    CNOT: ClassVar = _lock(
+    CNOT: ClassVar[npt.NDArray[np.complex128]] = _lock(
         np.asarray(
             [
                 [1, 0, 0, 0],
@@ -269,7 +269,7 @@ class WellKnownMatrix:
             ],
         )
     )
-    SWAP: ClassVar = _lock(
+    SWAP: ClassVar[npt.NDArray[np.complex128]] = _lock(
         np.asarray(
             [
                 [1, 0, 0, 0],
@@ -279,7 +279,7 @@ class WellKnownMatrix:
             ],
         )
     )
-    CCX: ClassVar = _lock(
+    CCX: ClassVar[npt.NDArray[np.complex128]] = _lock(
         np.asarray(
             [
                 [1, 0, 0, 0, 0, 0, 0, 0],
