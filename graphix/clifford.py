@@ -25,18 +25,6 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
 
-@dataclasses.dataclass
-class Domains:
-    """
-    Represent `X^sZ^t` where s and t are XOR of results from given sets of indices.
-
-    This representation is used in `Clifford.commute_domains`.
-    """
-
-    s_domain: set[int]
-    t_domain: set[int]
-
-
 class Clifford(Enum):
     """Clifford gate."""
 

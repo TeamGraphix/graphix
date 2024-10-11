@@ -16,34 +16,6 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class Measurement:
-    """An MBQC measurement.
-
-    :param angle: the angle of the measurement. Should be between [0, 2)
-    :param plane: the measurement plane
-    """
-
-    angle: float
-    plane: Plane
-
-    def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
-        """Compare if two measurements have the same plane and their angles are close.
-
-        Example
-        -------
-        >>> from graphix.opengraph import Measurement
-        >>> from graphix.pauli import Plane
-        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
-        True
-        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.YZ))
-        False
-        >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
-        False
-        """
-        return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
-
-
-@dataclass(frozen=True)
 class OpenGraph:
     """Open graph contains the graph, measurement, and input and output nodes.
 

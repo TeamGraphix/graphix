@@ -428,21 +428,3 @@ Pauli.I = Pauli(IXYZ.I)
 Pauli.X = Pauli(IXYZ.X)
 Pauli.Y = Pauli(IXYZ.Y)
 Pauli.Z = Pauli(IXYZ.Z)
-
-
-class PauliMeasurement(NamedTuple):
-    """Pauli measurement."""
-
-    axis: Axis
-    sign: Sign
-
-    @staticmethod
-    def try_from(plane: Plane, angle: float) -> PauliMeasurement | None:
-        """Return the Pauli measurement description if a given measure is Pauli."""
-        angle_double = 2 * angle
-        if not type_utils.is_integer(angle_double):
-            return None
-        angle_double_mod_4 = int(angle_double) % 4
-        axis = plane.cos if angle_double_mod_4 % 2 == 0 else plane.sin
-        sign = Sign.minus_if(angle_double_mod_4 >= 2)
-        return PauliMeasurement(axis, sign)
