@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 # Custom stuff
+.DS_Store
 docs/source/benchmarks
 docs/source/gallery
 graphix/_version.py
