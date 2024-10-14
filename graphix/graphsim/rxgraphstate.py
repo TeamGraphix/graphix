@@ -81,7 +81,7 @@ class RXGraphState(BaseGraphState):
         See :meth:`BaseGraphState.neighbors`.
         """
         nidx = self.nodes.get_node_index(node)
-        return iter(self._graph.neighbors(nidx))
+        return iter(self.nodes.idx_to_num[idx] for idx in self._graph.neighbors(nidx))
 
     def subgraph(self, nodes: list) -> rx.PyGraph:
         """Return a subgraph of the graph.
