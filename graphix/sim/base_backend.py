@@ -7,12 +7,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-import graphix.pauli
-import graphix.states
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -104,9 +103,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     return op_mat
 
 
-def perform_measure(
-    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
-) -> bool:
+def perform_measure(qubit: int, plane: Plane, angle: float, state, rng: Generator, pr_calc: bool = True) -> bool:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
     if pr_calc:
@@ -176,7 +173,7 @@ class Backend:
         """Return the node index table of the backend."""
         return self.__node_index
 
-    def add_nodes(self, nodes, data=graphix.states.BasicStates.PLUS) -> None:
+    def add_nodes(self, nodes, data=BasicStates.PLUS) -> None:
         """Add new qubit(s) to statevector in argument and assign the corresponding node number to list self.node_index.
 
         Parameters

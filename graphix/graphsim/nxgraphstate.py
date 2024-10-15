@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
-from .basegraphstate import BaseGraphState
+from graphix.graphsim.basegraphstate import BaseGraphState
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

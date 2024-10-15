@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+import abc
 import sys
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
 
 from graphix.clifford import Clifford
+from graphix.graphsim.rxgraphviews import EdgeList, NodeList
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
-
-from .rxgraphviews import EdgeList, NodeList
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -60,29 +60,29 @@ class BaseGraphState(ABC):
         super().__init__()
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def nodes(self) -> NodesObject:
         """Return the set of nodes."""
         ...
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def edges(self) -> EdgesObject:
         """Return the set of edges."""
         ...
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def graph(self) -> GraphObject:
         """Return the graph itself."""
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def degree(self) -> Iterator[tuple[int, int]]:
         """Return an iterator for (node, degree) tuples, where degree is the number of edges adjacent to the node."""
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def neighbors(self, node: int) -> Iterator:
         """Return an iterator over all neighbors of node n.
 
@@ -98,7 +98,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def subgraph(self, nodes: list) -> GraphObject:
         """Return a subgraph of the graph.
 
@@ -114,7 +114,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
         """Return the number of edges between two nodes.
 
@@ -133,7 +133,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def adjacency(self) -> Iterator:
         """Return an iterator over (node, adjacency dict) tuples for all nodes.
 
@@ -144,7 +144,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_node(self, node: int) -> None:
         """Remove a node from the graph.
 
@@ -159,7 +159,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_nodes_from(self, nodes: list[int]) -> None:
         """Remove all nodes specified in the list.
 
@@ -174,7 +174,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_edge(self, u: int, v: int) -> None:
         """Remove an edge from the graph.
 
@@ -191,7 +191,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Remove all edges specified in the list.
 
@@ -228,7 +228,7 @@ class BaseGraphState(ABC):
                 elif lc == Clifford.S:
                     self.s(node)
 
-    @abstractmethod
+    @abc.abstractmethod
     def add_nodes_from(self, nodes: list[int]) -> None:
         """Add nodes and initialize node properties.
 
@@ -243,7 +243,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def add_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Add edges and initialize node properties of newly added nodes.
 
@@ -258,7 +258,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_isolates(self) -> list[int]:
         """Return a list of isolated nodes (nodes with no edges).
 
@@ -469,7 +469,7 @@ class BaseGraphState(ABC):
             for i in self.neighbors(node2):
                 self.flip_sign(i)
 
-    @abstractmethod
+    @abc.abstractmethod
     def local_complement(self, node: int) -> None:
         """Perform local complementation of a graph.
 

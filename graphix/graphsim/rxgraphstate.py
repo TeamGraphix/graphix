@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
-from .rxgraphviews import EdgeList, NodeList
+from graphix.graphsim.basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
+from graphix.graphsim.rxgraphviews import EdgeList, NodeList
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
