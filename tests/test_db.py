@@ -6,15 +6,20 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from graphix._db import CLIFFORD, CLIFFORD_CONJ, CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MEASURE, CLIFFORD_MUL
+from graphix._db import (
+    CLIFFORD,
+    CLIFFORD_CONJ,
+    CLIFFORD_HSZ_DECOMPOSITION,
+    CLIFFORD_MEASURE,
+    CLIFFORD_MUL,
+    _CliffordMeasure,
+)
 
 
 class TestClifford:
     @staticmethod
-    def classify_pauli(arr: npt.NDArray[np.complex128]) -> tuple[int, int]:
-        """Return the index of Pauli gate with sign for a given 2x2 matrix.
-
-        Compare the gate arr with Pauli gates and return the tuple of (matching index, sign).
+    def classify_pauli(arr: npt.NDArray[np.complex128]) -> _CliffordMeasure:
+        """Compare the gate arr with Pauli gates and return the tuple of (Pauli string, sign).
 
         Parameters
         ----------
@@ -23,21 +28,20 @@ class TestClifford:
 
         Returns
         -------
-            ind : tuple
-                tuple containing (pauli index, sign index)
+            ind : _CliffordMeasure
         """
         if np.allclose(CLIFFORD[1], arr):
-            return (0, 0)
+            return _CliffordMeasure("X", +1)
         if np.allclose(-1 * CLIFFORD[1], arr):
-            return (0, 1)
+            return _CliffordMeasure("X", -1)
         if np.allclose(CLIFFORD[2], arr):
-            return (1, 0)
+            return _CliffordMeasure("Y", +1)
         if np.allclose(-1 * CLIFFORD[2], arr):
-            return (1, 1)
+            return _CliffordMeasure("Y", -1)
         if np.allclose(CLIFFORD[3], arr):
-            return (2, 0)
+            return _CliffordMeasure("Z", +1)
         if np.allclose(-1 * CLIFFORD[3], arr):
-            return (2, 1)
+            return _CliffordMeasure("Z", -1)
         msg = "No Pauli found"
         raise ValueError(msg)
 

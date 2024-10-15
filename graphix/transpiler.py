@@ -17,7 +17,7 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.sim.statevec
 from graphix import command, instruction
-from graphix.clifford import H
+from graphix.clifford import Clifford
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
 from graphix.pattern import Pattern

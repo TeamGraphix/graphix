@@ -2,74 +2,62 @@
 
 from __future__ import annotations
 
-import abc
+import dataclasses
 import enum
-from typing import TYPE_CHECKING
+import sys
+from enum import Enum
+from typing import ClassVar, Literal, Union
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
 
-from graphix import clifford
-from graphix.clifford import Domains
+from graphix import type_utils
+from graphix.clifford import Clifford, Domains
 from graphix.pauli import Pauli, Plane, Sign
 from graphix.states import BasicStates, State
-
-if TYPE_CHECKING:
-    from graphix.clifford import Clifford
 
 Node = int
 
 
-class CommandKind(enum.Enum):
+class CommandKind(Enum):
     """Tag for command kind."""
 
-    N = "N"
-    M = "M"
-    E = "E"
-    C = "C"
-    X = "X"
-    Z = "Z"
-    T = "T"
-    S = "S"
+    N = enum.auto()
+    M = enum.auto()
+    E = enum.auto()
+    C = enum.auto()
+    X = enum.auto()
+    Z = enum.auto()
+    S = enum.auto()
+    T = enum.auto()
 
 
-class Command(BaseModel, abc.ABC):
-    """Base command class."""
+class _KindChecker:
+    """Enforce tag field declaration."""
 
-    kind: CommandKind = None
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        type_utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
-class N(Command):
+@dataclasses.dataclass
+class N(_KindChecker):
     """Preparation command."""
 
-    kind: CommandKind = CommandKind.N
     node: Node
-    state: State = BasicStates.PLUS
+    state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
+    kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
 
-class BaseM(Command):
-    """Base measurement command.
+@dataclasses.dataclass
+class M(_KindChecker):
+    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
 
-    Represent a measurement of a node. In MBQC, a measure is an instance of `M`,
-    with given plane, angles, and domains. In the context of blind computations,
-    the server only knows which node is measured, and the parameters are given
-    by the :class:`graphix.simulator.MeasureMethod` provided by the client.
-    """
-
-    kind: CommandKind = CommandKind.M
     node: Node
-
-
-class M(BaseM):
-    """Measurement command.
-
-    By default the plane is set to 'XY', the angle to 0, empty domains.
-    """
-
     plane: Plane = Plane.XY
     angle: float = 0.0
-    s_domain: set[Node] = set()
-    t_domain: set[Node] = set()
+    s_domain: set[Node] = dataclasses.field(default_factory=set)
+    t_domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
     def clifford(self, clifford_gate: Clifford) -> M:
         """Apply a Clifford gate to the measure command.
@@ -79,65 +67,79 @@ class M(BaseM):
         domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
-            node=self.node,
-            plane=update.new_plane,
-            angle=self.angle * update.coeff + update.add_term / np.pi,
-            s_domain=domains.s_domain,
-            t_domain=domains.t_domain,
+            self.node,
+            update.new_plane,
+            self.angle * update.coeff + update.add_term / np.pi,
+            domains.s_domain,
+            domains.t_domain,
         )
 
 
-class E(Command):
+@dataclasses.dataclass
+class E(_KindChecker):
     """Entanglement command."""
 
-    kind: CommandKind = CommandKind.E
     nodes: tuple[Node, Node]
+    kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
 
-class C(Command):
+@dataclasses.dataclass
+class C(_KindChecker):
     """Clifford command."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)  # for the `clifford` field
-
-    kind: CommandKind = CommandKind.C
     node: Node
-    clifford: clifford.Clifford
+    clifford: Clifford
+    kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
 
-class Correction(Command):
-    """Base class for correction command (either X or Z)."""
-
-    node: Node
-    domain: set[Node] = set()
-
-
-class X(Correction):
+@dataclasses.dataclass
+class X(_KindChecker):
     """X correction command."""
 
-    kind: CommandKind = CommandKind.X
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
 
-class Z(Correction):
+@dataclasses.dataclass
+class Z(_KindChecker):
     """Z correction command."""
 
-    kind: CommandKind = CommandKind.Z
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
 
-class S(Command):
+@dataclasses.dataclass
+class S(_KindChecker):
     """S command."""
 
-    kind: CommandKind = CommandKind.S
     node: Node
-    domain: set[Node] = set()
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
 
-class T(Command):
+@dataclasses.dataclass
+class T(_KindChecker):
     """T command."""
 
-    kind: CommandKind = CommandKind.T
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
 
-class MeasureUpdate(BaseModel):
+if sys.version_info >= (3, 10):
+    Command = N | M | E | C | X | Z | S | T
+    Correction = X | Z
+else:
+    Command = Union[N, M, E, C, X, Z, S, T]
+    Correction = Union[X, Z]
+
+BaseM = M
+
+
+@dataclasses.dataclass
+class MeasureUpdate:
     """Describe how a measure is changed by the signals and/or a vertex operator."""
 
     new_plane: Plane
@@ -149,9 +151,9 @@ class MeasureUpdate(BaseModel):
         """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
-            clifford_gate = clifford.X @ clifford_gate
+            clifford_gate = Clifford.X @ clifford_gate
         if t:
-            clifford_gate = clifford.Z @ clifford_gate
+            clifford_gate = Clifford.Z @ clifford_gate
         gates = list(map(clifford_gate.measure, gates))
         new_plane = Plane.from_axes(*(gate.axis for gate in gates))
         cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
@@ -166,4 +168,4 @@ class MeasureUpdate(BaseModel):
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term
-        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)
+        return MeasureUpdate(new_plane, coeff, add_term)
