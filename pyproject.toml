@@ -108,15 +108,18 @@ files = [
   "graphix/instruction.py",
   "graphix/linalg_validations.py",
   "graphix/ops.py",
+  "graphix/pyzx.py",
   "graphix/rng.py",
   "graphix/states.py",
   "graphix/type_utils.py",
   "graphix/_db.py",
+  "noxfile.py",
   "tests/conftest.py",
   "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
   "tests/test_pauli.py",
+  "tests/test_pyzx.py",
   "tests/test_rng.py",
 ]
 follow_imports = "silent"
@@ -124,7 +127,6 @@ strict = true
 
 [tool.pyright]
 # Keep in sync with mypy
-# TODO: Use strict later
 include = [
   "**/__init__.py",
   "graphix/channels.py",
@@ -133,15 +135,18 @@ include = [
   "graphix/instruction.py",
   "graphix/linalg_validations.py",
   "graphix/ops.py",
+  "graphix/pyzx.py",
   "graphix/rng.py",
   "graphix/states.py",
   "graphix/type_utils.py",
   "graphix/_db.py",
+  "noxfile.py",
   "tests/conftest.py",
   "tests/test_clifford.py",
   "tests/test_db.py",
   "tests/test_kraus.py",
   "tests/test_pauli.py",
+  "tests/test_pyzx.py",
   "tests/test_rng.py",
 ]
 
