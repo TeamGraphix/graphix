@@ -374,7 +374,8 @@ if sys.version_info >= (3, 10):
 
     Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[numbers.Number]
 else:
-    from typing import Iterable, Union
+    from collections.abc import Iterable
+    from typing import Union
 
     Data = Union[
         graphix.states.State,
