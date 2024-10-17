@@ -366,7 +366,8 @@ if sys.version_info >= (3, 10):
         | Iterable[Iterable[numbers.Number]]
     )
 else:
-    from typing import Iterable, Union
+    from collections.abc import Iterable
+    from typing import Union
 
     Data = Union[
         graphix.states.State,

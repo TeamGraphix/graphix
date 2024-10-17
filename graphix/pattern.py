@@ -26,7 +26,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from typing import Iterator
+    from collections.abc import Iterator
 
 
 class NodeAlreadyPreparedError(Exception):
@@ -1761,7 +1761,7 @@ class CommandNode:
         dependent_nodes_dict["X"] = self.x_signal
         dependent_nodes_dict["Z"] = self.z_signal
         return dependent_nodes_dict
-    
+
 
 def xor_combination_list(list1, list2):
     """Combine two lists according to XOR operation.
