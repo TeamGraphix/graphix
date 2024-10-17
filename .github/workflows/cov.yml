@@ -1,7 +1,9 @@
 name: pytest-cov
 
 # Need to include "push"
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
 
 permissions:
   contents: read
