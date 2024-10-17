@@ -79,7 +79,7 @@ class TestPattern:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("use_rustworkx", [False, True])
-    def test_pauli_non_contiguous(self, use_rustworkx) -> None:
+    def test_pauli_non_contiguous(self, use_rustworkx: bool) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.extend(
             [
