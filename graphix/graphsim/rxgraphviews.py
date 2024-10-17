@@ -31,6 +31,7 @@ class NodeList:
         self.nodes = set(node_nums)
         self.num_to_data = {nnum: node_datas[nidx] for nidx, nnum in zip(node_indices, node_nums)}
         self.num_to_idx = {nnum: nidx for nidx, nnum in zip(node_indices, node_nums)}
+        self.idx_to_num = {nidx: nnum for nidx, nnum in zip(node_indices, node_nums)}
 
     def __contains__(self, nnum: int) -> bool:
         """Return `True` if the node `nnum` belongs to the list, `False` otherwise."""
@@ -64,6 +65,7 @@ class NodeList:
         self.nodes.add(nnum)
         self.num_to_data[nnum] = ndata
         self.num_to_idx[nnum] = nidx
+        self.idx_to_num[nidx] = nnum
 
     def add_nodes_from(self, node_nums: list[int], node_datas: list[dict], node_indices: list[int]) -> None:
         """Add nodes to the list."""
@@ -80,7 +82,8 @@ class NodeList:
             raise ValueError(f"Node {nnum} does not exist")
         self.nodes.remove(nnum)
         del self.num_to_data[nnum]
-        del self.num_to_idx[nnum]
+        idx = self.num_to_idx.pop(nnum)
+        del self.idx_to_num[idx]
 
     def remove_nodes_from(self, node_nums: list[int]) -> None:
         """Remove nodes from the list."""
