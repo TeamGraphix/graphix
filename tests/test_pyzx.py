@@ -1,26 +1,28 @@
 from __future__ import annotations
 
+import importlib.util  # Use fully-qualified import to avoid name conflict (util)
 import random
-import sys
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import pytest
 
-try:
-    import pyzx as zx
-
-    # MEMO: PEP8 violation in pyzx
-    from pyzx.generate import cliffordT as clifford_t  # noqa: N813
-
-    from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
-except ModuleNotFoundError:
-    pass
+if TYPE_CHECKING:
+    from pyzx.graph.base import BaseGraph
 
 SEED = 123
 
 
-@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
+def _pyzx_notfound() -> bool:
+    return importlib.util.find_spec("pyzx") is None
+
+
+@pytest.mark.skipif(_pyzx_notfound(), reason="pyzx not installed")
 def test_graph_equality() -> None:
+    from pyzx.generate import cliffordT as clifford_t  # noqa: N813
+
+    from graphix.pyzx import from_pyzx_graph
+
     random.seed(SEED)
     g = clifford_t(4, 10, 0.1)
 
@@ -32,10 +34,12 @@ def test_graph_equality() -> None:
     assert og1.isclose(og2)
 
 
-# Converts a graph to and from an Open graph and then checks the resulting
-# pyzx graph is equal to the original.
-@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
-def assert_reconstructed_pyzx_graph_equal(g: zx.Graph) -> None:
+def assert_reconstructed_pyzx_graph_equal(g: BaseGraph[int, tuple[int, int]]) -> None:
+    """Convert a graph to and from an Open graph and then checks the resulting pyzx graph is equal to the original."""
+    import pyzx as zx
+
+    from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
+
     zx.simplify.to_graph_like(g)
 
     g_copy = deepcopy(g)
@@ -56,8 +60,10 @@ def assert_reconstructed_pyzx_graph_equal(g: zx.Graph) -> None:
 # Tests that compiling from a pyzx graph to an OpenGraph returns the same
 # graph. Only works with small circuits up to 4 qubits since PyZX's `tensorfy`
 # function seems to consume huge amount of memory for larger qubit
-@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
+@pytest.mark.skipif(_pyzx_notfound(), reason="pyzx not installed")
 def test_random_clifford_t() -> None:
+    from pyzx.generate import cliffordT as clifford_t  # noqa: N813
+
     for _ in range(15):
         g = clifford_t(4, 10, 0.1)
         assert_reconstructed_pyzx_graph_equal(g)
