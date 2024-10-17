@@ -6,7 +6,7 @@ import nox
 from nox import Session
 
 
-@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12"])
+@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
 def tests_minimal(session: Session) -> None:
     """Run the test suite with minimal dependencies."""
     session.install("-e", ".")
@@ -14,7 +14,7 @@ def tests_minimal(session: Session) -> None:
     session.run("pytest")
 
 
-@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12"])
+@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
 def tests(session: Session) -> None:
     """Run the test suite with full dependencies."""
     session.install("-e", ".[dev]")
