@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-import graphix.pauli
-import graphix.simulator
+from graphix.pauli import Plane
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.transpiler import Circuit
 
@@ -157,7 +156,7 @@ class TestTranspilerOpt:
         circuit = Circuit(2)
         circuit.h(1)
         circuit.cnot(0, 1)
-        circuit.m(0, graphix.pauli.Plane.XY, 0.5)
+        circuit.m(0, Plane.XY, 0.5)
         _ = circuit.transpile()
 
         def simulate_and_measure() -> int:

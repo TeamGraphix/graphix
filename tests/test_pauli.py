@@ -1,25 +1,22 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
-import graphix.pauli
+from graphix import pauli
 from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
-
-if TYPE_CHECKING:
-    from graphix.pauli import ComplexUnit, Pauli, Plane
+from graphix.pauli import UNITS, ComplexUnit, Pauli, Plane
 
 
 class TestPauli:
     @pytest.mark.parametrize(
         ("u", "p"),
         itertools.product(
-            graphix.pauli.UNITS,
-            graphix.pauli.LIST,
+            UNITS,
+            pauli.LIST,
         ),
     )
     def test_unit_mul(self, u: ComplexUnit, p: Pauli) -> None:
@@ -28,8 +25,8 @@ class TestPauli:
     @pytest.mark.parametrize(
         ("a", "b"),
         itertools.product(
-            graphix.pauli.LIST,
-            graphix.pauli.LIST,
+            pauli.LIST,
+            pauli.LIST,
         ),
     )
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
@@ -38,10 +35,10 @@ class TestPauli:
     @pytest.mark.parametrize(
         ("plane", "s", "t", "clifford", "angle", "choice"),
         itertools.product(
-            graphix.pauli.Plane,
+            Plane,
             (False, True),
             (False, True),
-            iter(Clifford),
+            Clifford,
             (0, np.pi),
             (False, True),
         ),

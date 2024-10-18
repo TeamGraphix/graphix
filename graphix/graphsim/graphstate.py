@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import warnings
 
-from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
-from .nxgraphstate import NXGraphState
-from .rxgraphstate import RXGraphState
+from graphix.graphsim.basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
+from graphix.graphsim.nxgraphstate import NXGraphState
+from graphix.graphsim.rxgraphstate import RXGraphState
 
 
 class GraphState:
