@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 import typing_extensions
 
 from graphix._db import WellKnownMatrix
-from graphix.fundamentals import IXYZ, Axis, ComplexUnit, Sign
+from graphix.fundamentals import IXYZ, Axis, ComplexUnit, Sign, SupportsComplexCtor
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -127,17 +127,15 @@ class Pauli:
             return _matmul_impl(self.symbol, other.symbol) * (self.unit * other.unit)
         return NotImplemented
 
-    def __mul__(self, other: ComplexUnit) -> Pauli:
+    def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> Pauli:
         """Return the product of two Paulis."""
-        if isinstance(other, ComplexUnit):
-            return dataclasses.replace(self, unit=self.unit * other)
+        if u := ComplexUnit.try_from(other):
+            return dataclasses.replace(self, unit=self.unit * u)
         return NotImplemented
 
-    def __rmul__(self, other: ComplexUnit) -> Pauli:
+    def __rmul__(self, other: ComplexUnit | SupportsComplexCtor) -> Pauli:
         """Return the product of two Paulis."""
-        if isinstance(other, ComplexUnit):
-            return self.__mul__(other)
-        return NotImplemented
+        return self.__mul__(other)
 
     def __neg__(self) -> Pauli:
         """Return the opposite."""

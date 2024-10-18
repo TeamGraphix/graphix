@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import enum
 import math
+import sys
 import typing
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex
 
 import typing_extensions
 
@@ -15,6 +16,14 @@ from graphix._db import WellKnownMatrix
 if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
+
+
+if sys.version_info >= (3, 9):
+    SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
+else:
+    from typing import Union
+
+    SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
 
 
 class IXYZ(Enum):
@@ -124,8 +133,14 @@ class ComplexUnit(Enum):
     MINUS_J = 3
 
     @staticmethod
-    def try_from_complex(value: complex) -> ComplexUnit | None:
+    def try_from(value: ComplexUnit | SupportsComplexCtor) -> ComplexUnit | None:
         """Return the ComplexUnit instance if the value is compatible, None otherwise."""
+        if isinstance(value, ComplexUnit):
+            return value
+        try:
+            value = complex(value)
+        except Exception:
+            return None
         if value == 1:
             return ComplexUnit.PLUS
         if value == -1:
@@ -165,17 +180,17 @@ class ComplexUnit(Enum):
             result = "-" + result
         return result
 
-    def __mul__(self, other: ComplexUnit | complex) -> ComplexUnit:
+    def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> ComplexUnit:
         """Multiply the complex unit with another complex unit."""
         if isinstance(other, ComplexUnit):
             return ComplexUnit((self.value + other.value) % 4)
-        if other_ := ComplexUnit.try_from_complex(other):
+        if other_ := ComplexUnit.try_from(other):
             return self.__mul__(other_)
         return NotImplemented
 
-    def __rmul__(self, other: complex) -> ComplexUnit:
+    def __rmul__(self, other: SupportsComplexCtor) -> ComplexUnit:
         """Multiply the complex unit with a number."""
-        if isinstance(other, complex):
+        if isinstance(other, SupportsComplexCtor):
             return self.__mul__(other)
         return NotImplemented
 
