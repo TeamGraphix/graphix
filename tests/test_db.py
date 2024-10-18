@@ -16,7 +16,7 @@ from graphix._db import (
 )
 
 
-class TestClifford:
+class TestCliffordDB:
     @staticmethod
     def classify_pauli(arr: npt.NDArray[np.complex128]) -> _CliffordMeasure:
         """Compare the gate arr with Pauli gates and return the tuple of (Pauli string, sign).
