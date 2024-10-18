@@ -37,7 +37,7 @@ class TestPauli:
             Plane,
             (False, True),
             (False, True),
-            iter(Clifford),
+            Clifford,
             (0, np.pi),
             (False, True),
         ),
