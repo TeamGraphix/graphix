@@ -5,9 +5,10 @@ import itertools
 import numpy as np
 import pytest
 
+from graphix import pauli
 from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
-from graphix.pauli import LIST, UNITS, ComplexUnit, Pauli, Plane
+from graphix.pauli import UNITS, ComplexUnit, Pauli, Plane
 
 
 class TestPauli:
@@ -15,7 +16,7 @@ class TestPauli:
         ("u", "p"),
         itertools.product(
             UNITS,
-            LIST,
+            pauli.LIST,
         ),
     )
     def test_unit_mul(self, u: ComplexUnit, p: Pauli) -> None:
@@ -24,8 +25,8 @@ class TestPauli:
     @pytest.mark.parametrize(
         ("a", "b"),
         itertools.product(
-            LIST,
-            LIST,
+            pauli.LIST,
+            pauli.LIST,
         ),
     )
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
