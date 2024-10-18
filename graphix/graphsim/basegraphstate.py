@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
 
-from graphix._db import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
+from graphix.clifford import Clifford
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
@@ -206,7 +206,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    def apply_vops(self, vops: dict) -> None:
+    def apply_vops(self, vops: dict[int, int]) -> None:
         """Apply local Clifford operators to the graph state from a dictionary.
 
         Parameters
@@ -220,12 +220,12 @@ class BaseGraphState(ABC):
         None
         """
         for node, vop in vops.items():
-            for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
-                if lc == 3:
+            for lc in reversed(Clifford(vop).hsz):
+                if lc == Clifford.Z:
                     self.z(node)
-                elif lc == 6:
+                elif lc == Clifford.H:
                     self.h(node)
-                elif lc == 4:
+                elif lc == Clifford.S:
                     self.s(node)
 
     @abstractmethod
@@ -269,7 +269,7 @@ class BaseGraphState(ABC):
         """
         ...
 
-    def get_vops(self) -> dict:
+    def get_vops(self) -> dict[int, int]:
         """Apply local Clifford operators to the graph state from a dictionary.
 
         Parameters
@@ -280,13 +280,13 @@ class BaseGraphState(ABC):
         """
         vops = {}
         for i in self.nodes:
-            vop = 0
+            vop: int = 0
             if self.nodes[i]["sign"]:
-                vop = CLIFFORD_MUL[3][vop]
+                vop = (Clifford.Z @ Clifford(vop)).value
             if self.nodes[i]["loop"]:
-                vop = CLIFFORD_MUL[4][vop]
+                vop = (Clifford.S @ Clifford(vop)).value
             if self.nodes[i]["hollow"]:
-                vop = CLIFFORD_MUL[6][vop]
+                vop = (Clifford.H @ Clifford(vop)).value
             vops[i] = vop
         return vops
 
@@ -655,11 +655,11 @@ class BaseGraphState(ABC):
             gstate.entangle((imapping[i], imapping[j]))
         for i in range(nqubit):
             if self.nodes[mapping[i]]["sign"]:
-                gstate.evolve_single(Ops.z, i)
+                gstate.evolve_single(Ops.Z, i)
         for i in range(nqubit):
             if self.nodes[mapping[i]]["loop"]:
-                gstate.evolve_single(Ops.s, i)
+                gstate.evolve_single(Ops.S, i)
         for i in range(nqubit):
             if self.nodes[mapping[i]]["hollow"]:
-                gstate.evolve_single(Ops.h, i)
+                gstate.evolve_single(Ops.H, i)
         return gstate

@@ -169,7 +169,7 @@ class TensorNetworkBackend(Backend):
             result = self.__rng.choice([0, 1])
             self.results[node] = result
             buffer = 2**0.5
-        vec = PlanarState(plane=measurement_description.plane, angle=measurement_description.angle).get_statevector()
+        vec = PlanarState(measurement_description.plane, measurement_description.angle).get_statevector()
         if result:
             vec = measurement_description.plane.orth.op @ vec
         proj_vec = vec * buffer
@@ -188,7 +188,7 @@ class TensorNetworkBackend(Backend):
             The measure method to use
         """
         if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
-            op = Ops.x if isinstance(cmd, command.X) else Ops.z
+            op = Ops.X if isinstance(cmd, command.X) else Ops.Z
             self.state.evolve_single(cmd.node, op, cmd.kind)
 
     def apply_clifford(self, node: int, clifford: Clifford) -> None:
@@ -701,7 +701,7 @@ def _get_decomposed_cz():
     4-rank x1         3-rank x2
     """
     cz_ts = Tensor(
-        Ops.cz.reshape((2, 2, 2, 2)).astype(np.float64),
+        Ops.CZ.reshape((2, 2, 2, 2)).astype(np.float64),
         ["O1", "O2", "I1", "I2"],
         ["CZ"],
     )

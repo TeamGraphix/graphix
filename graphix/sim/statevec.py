@@ -11,16 +11,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    from numpy.random import Generator
-
 import graphix.pauli
 import graphix.states
-import graphix.types
+from graphix import type_utils
 from graphix.sim.base_backend import Backend, State
 
 if TYPE_CHECKING:
     import collections
+
+    from numpy.random import Generator
 
 
 class StatevectorBackend(Backend):
@@ -64,7 +63,7 @@ class Statevec(State):
     def __init__(
         self,
         data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        nqubit: int | None = None,
     ):
         """Initialize statevector objects.
 
@@ -86,7 +85,8 @@ class Statevec(State):
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
-        assert nqubit is None or isinstance(nqubit, numbers.Integral) and nqubit >= 0
+        if nqubit is not None and nqubit < 0:
+            raise ValueError("nqubit must be a non-negative integer.")
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
@@ -114,7 +114,7 @@ class Statevec(State):
 
         else:
             if isinstance(input_list[0], graphix.states.State):
-                graphix.types.check_list_elements(input_list, graphix.states.State)
+                type_utils.check_list_elements(input_list, graphix.states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -124,7 +124,7 @@ class Statevec(State):
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
             elif isinstance(input_list[0], numbers.Number):
-                graphix.types.check_list_elements(input_list, numbers.Number)
+                type_utils.check_list_elements(input_list, numbers.Number)
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):

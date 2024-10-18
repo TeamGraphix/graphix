@@ -10,7 +10,7 @@ import numpy.typing as npt
 import scipy.linalg
 from scipy.stats import unitary_group
 
-from graphix.channels import KrausChannel
+from graphix.channels import KrausChannel, KrausData
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.transpiler import Circuit
@@ -148,7 +148,7 @@ def rand_channel_kraus(
     h_mat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
     kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(h_mat))
 
-    return KrausChannel([{"coef": 1.0 + 0.0 * 1j, "operator": kraus_list[i]} for i in range(rank)])
+    return KrausChannel([KrausData(1.0 + 0.0 * 1j, kraus_list[i]) for i in range(rank)])
 
 
 # or merge with previous with a "pauli" kwarg?
@@ -194,7 +194,7 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     # TODO see how to use zip and dict to convert from tuple to dict
     # https://www.tutorialspoint.com/How-I-can-convert-a-Python-Tuple-into-Dictionary
 
-    data = [{"coef": np.sqrt(params[i]), "operator": ops[i]} for i in range(0, rank)]
+    data = [KrausData(np.sqrt(params[i]), ops[i]) for i in range(0, rank)]
 
     # NOTE retain a strong probability on the identity or not?
     # think we don't really care

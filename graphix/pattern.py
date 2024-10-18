@@ -5,6 +5,7 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 
 from __future__ import annotations
 
+import dataclasses
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
@@ -13,7 +14,8 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import typing_extensions
 
-from graphix import clifford, command
+from graphix import command
+from graphix.clifford import Clifford, Domains
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -380,7 +382,7 @@ class Pattern:
                 if clifford_gate := c_dict.pop(cmd.node, None):
                     new_cmd = cmd.clifford(clifford_gate)
                 else:
-                    new_cmd = cmd.model_copy()
+                    new_cmd = deepcopy(cmd)
                 if t_domain := z_dict.pop(cmd.node, None):
                     new_cmd.t_domain ^= t_domain
                 if s_domain := x_dict.pop(cmd.node, None):
@@ -396,7 +398,7 @@ class Pattern:
                 # be applied first (i.e., in right-most position).
                 t_domain = z_dict.pop(cmd.node, set())
                 s_domain = x_dict.pop(cmd.node, set())
-                domains = cmd.clifford.conj.commute_domains(clifford.Domains(s_domain, t_domain))
+                domains = cmd.clifford.conj.commute_domains(Domains(s_domain, t_domain))
                 if domains.t_domain:
                     z_dict[cmd.node] = domains.t_domain
                 if domains.s_domain:
@@ -404,7 +406,7 @@ class Pattern:
                 # Each pattern command is applied by left multiplication: if a clifford `C`
                 # has been already applied to a node, applying a clifford `C'` to the same
                 # node is equivalent to apply `C'C` to a fresh node.
-                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, clifford.I)
+                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
         self.__seq = [
             *n_list,
             *e_list,
@@ -537,12 +539,12 @@ class Pattern:
                         signal_dict[cmd.node] = s_domain
                         s_domain = set()
                 if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
-                    self.__seq[i] = cmd.model_copy(update={"s_domain": s_domain, "t_domain": t_domain})
+                    self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
                 domain = set(cmd.domain)
                 expand_domain(domain)
                 if domain != cmd.domain:
-                    self.__seq[i] = cmd.model_copy(update={"domain": domain})
+                    self.__seq[i] = dataclasses.replace(cmd, domain=domain)
         return signal_dict
 
     def _find_op_to_be_moved(self, op: CommandKind, rev=False, skipnum=0):
@@ -1180,9 +1182,9 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 if include_identity:
-                    vops[cmd.node] = clifford.I
+                    vops[cmd.node] = Clifford.I
             elif cmd.kind == CommandKind.C:
-                if cmd.clifford == clifford.I:
+                if cmd.clifford == Clifford.I:
                     if include_identity:
                         vops[cmd.node] = cmd.clifford
                 else:
@@ -1539,7 +1541,7 @@ class Pattern:
     def copy(self) -> Pattern:
         """Return a copy of the pattern."""
         result = self.__new__(self.__class__)
-        result.__seq = [cmd.model_copy(deep=True) for cmd in self.__seq]
+        result.__seq = [deepcopy(cmd) for cmd in self.__seq]
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node
@@ -1820,7 +1822,7 @@ class CommandNode:
                 raise NotImplementedError("Patterns with more than one Z corrections are not supported")
             return command.Z(node=self.index, domain=self.z_signal)
         elif cmd == -4:
-            return command.C(node=self.index, clifford=clifford.TABLE[self.vop])
+            return command.C(node=self.index, clifford=Clifford(self.vop))
 
     def get_signal_destination(self):
         """Get signal destination.
@@ -2151,12 +2153,12 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
-        cmd.clifford(clifford.get(vops[cmd.node]))
+        cmd.clifford(Clifford(vops[cmd.node]))
         for cmd in pattern
         if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
-        command.C(node=index, clifford=clifford.get(vops[index])) for index in pattern.output_nodes if vops[index] != 0
+        command.C(node=index, clifford=Clifford(vops[index])) for index in pattern.output_nodes if vops[index] != 0
     )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
 

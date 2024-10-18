@@ -7,18 +7,17 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
-    from numpy.random import Generator
-
-import graphix.clifford
 import graphix.pauli
 import graphix.states
+from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
+
+    from numpy.random import Generator
 
     from graphix.pauli import Plane
 
@@ -77,6 +76,7 @@ class NodeIndex:
         """Remove the specified node label from the list and dictionary, and re-attributes qubit indices for the remaining nodes."""
         index = self.__dict[node]
         del self.__list[index]
+        del self.__dict[node]
         for new_index, node in enumerate(self.__list[index:], start=index):
             self.__dict[node] = new_index
 
@@ -100,7 +100,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
-        op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
+        op_mat += sign * vec[i] * Clifford(i + 1).matrix / 2
     return op_mat
 
 
@@ -218,9 +218,9 @@ class Backend:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
         if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
             if cmd.kind == CommandKind.X:
-                op = Ops.x
+                op = Ops.X
             elif cmd.kind == CommandKind.Z:
-                op = Ops.z
+                op = Ops.Z
             self.apply_single(node=cmd.node, op=op)
 
     def apply_single(self, node, op) -> None:
@@ -228,7 +228,7 @@ class Backend:
         index = self.node_index.index(node)
         self.state.evolve_single(op=op, i=index)
 
-    def apply_clifford(self, node: int, clifford: graphix.clifford.Clifford) -> None:
+    def apply_clifford(self, node: int, clifford: Clifford) -> None:
         """Apply single-qubit Clifford gate, specified by vop index specified in graphix.clifford.CLIFFORD."""
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
