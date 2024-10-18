@@ -90,7 +90,7 @@ class Pauli:
             return co * WellKnownMatrix.Z
         typing_extensions.assert_never(self.symbol)
 
-    def get_eigenstate(self, eigenvalue: int | Sign = 0) -> PlanarState:
+    def eigenstate(self, eigenvalue: int | Sign = 0) -> PlanarState:
         """Return the eigenstate of the Pauli."""
         from graphix.states import BasicStates
 
