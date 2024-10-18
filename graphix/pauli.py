@@ -149,9 +149,9 @@ class Pauli:
         ----------
             include_unit (bool, optional): Include the unit in the iteration. Defaults to True.
         """
-        us = iter(ComplexUnit) if include_unit else (ComplexUnit.PLUS,)
-        for unit in us:
-            for symbol in IXYZ:
+        us = tuple(ComplexUnit) if include_unit else (ComplexUnit.PLUS,)
+        for symbol in IXYZ:
+            for unit in us:
                 yield Pauli(symbol, unit)
 
 
