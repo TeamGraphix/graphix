@@ -101,7 +101,6 @@ filterwarnings = ["ignore:Couldn't import `kahypar`"]
 [tool.mypy]
 # Keep in sync with pyright
 files = [
-  "**/__init__.py",
   "graphix/channels.py",
   "graphix/clifford.py",
   "graphix/command.py",
@@ -113,6 +112,7 @@ files = [
   "graphix/rng.py",
   "graphix/states.py",
   "graphix/type_utils.py",
+  "graphix/**/__init__.py",
   "graphix/_db.py",
   "noxfile.py",
   "tests/conftest.py",
@@ -130,7 +130,6 @@ strict = true
 [tool.pyright]
 # Keep in sync with mypy
 include = [
-  "**/__init__.py",
   "graphix/channels.py",
   "graphix/clifford.py",
   "graphix/command.py",
@@ -142,6 +141,7 @@ include = [
   "graphix/rng.py",
   "graphix/states.py",
   "graphix/type_utils.py",
+  "graphix/**/__init__.py",
   "graphix/_db.py",
   "noxfile.py",
   "tests/conftest.py",
