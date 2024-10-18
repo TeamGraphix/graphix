@@ -5,7 +5,8 @@ import itertools
 import numpy as np
 import pytest
 
-from graphix.pauli import ComplexUnit, Pauli
+from graphix.fundamentals import ComplexUnit
+from graphix.pauli import Pauli
 
 
 class TestPauli:

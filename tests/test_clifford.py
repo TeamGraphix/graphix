@@ -9,7 +9,8 @@ import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
-from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
+from graphix.fundamentals import IXYZ, ComplexUnit, Sign
+from graphix.pauli import Pauli
 
 _QASM3_DB: Final = {
     "id": Clifford.I,

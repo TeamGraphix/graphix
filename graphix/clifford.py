@@ -17,8 +17,9 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
+from graphix.fundamentals import IXYZ, ComplexUnit, Sign
 from graphix.measurements import Domains
-from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
+from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
     import numpy as np

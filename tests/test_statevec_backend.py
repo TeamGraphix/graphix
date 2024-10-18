@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
+from graphix.fundamentals import Plane
 from graphix.measurements import Measurement
-from graphix.pauli import Pauli, Plane
+from graphix.pauli import Pauli
 from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.states import BasicStates, PlanarState
 from tests.test_graphsim import meas_op

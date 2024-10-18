@@ -8,7 +8,7 @@ import pytest
 
 from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 
 
 @pytest.mark.parametrize(

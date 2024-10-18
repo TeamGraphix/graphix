@@ -11,7 +11,7 @@ import numpy.typing as npt
 import pydantic.dataclasses
 import typing_extensions
 
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 
 
 # generic class State for all States

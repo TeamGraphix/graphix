@@ -9,7 +9,7 @@ from enum import Enum
 from typing import ClassVar, Literal, Union
 
 from graphix import type_utils
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 
 
 class InstructionKind(Enum):

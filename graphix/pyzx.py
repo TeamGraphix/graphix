@@ -15,9 +15,9 @@ import pyzx as zx
 from pyzx.graph import Graph
 from pyzx.utils import EdgeType, FractionLike, VertexType
 
+from graphix.fundamentals import Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
-from graphix.pauli import Plane
 
 if TYPE_CHECKING:
     from pyzx.graph.base import BaseGraph

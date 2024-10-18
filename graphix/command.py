@@ -12,8 +12,9 @@ import numpy as np
 
 from graphix import type_utils
 from graphix.clifford import Clifford
+from graphix.fundamentals import Plane, Sign
 from graphix.measurements import Domains
-from graphix.pauli import Pauli, Plane, Sign
+from graphix.pauli import Pauli
 from graphix.states import BasicStates, State
 
 Node = int

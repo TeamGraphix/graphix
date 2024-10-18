@@ -10,10 +10,10 @@ from networkx import Graph
 from networkx.utils import graphs_equal
 
 from graphix.clifford import Clifford
+from graphix.fundamentals import Plane
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
-from graphix.pauli import Plane
 from graphix.sim.statevec import Statevec
 
 with contextlib.suppress(ModuleNotFoundError):

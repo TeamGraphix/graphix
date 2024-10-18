@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from graphix.command import E, M, N, X, Z
+from graphix.fundamentals import Plane
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
-from graphix.pauli import Plane
 
 
 def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):

@@ -6,7 +6,7 @@ import dataclasses
 import math
 
 from graphix import type_utils
-from graphix.pauli import Axis, Plane, Sign
+from graphix.fundamentals import Axis, Plane, Sign
 
 
 @dataclasses.dataclass
@@ -34,7 +34,7 @@ class Measurement:
         Example
         -------
         >>> from graphix.opengraph import Measurement
-        >>> from graphix.pauli import Plane
+        >>> from graphix.fundamentals import Plane
         >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         True
         >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.YZ))

@@ -22,8 +22,8 @@ import sympy as sp
 
 from graphix import type_utils
 from graphix.command import CommandKind
+from graphix.fundamentals import Plane
 from graphix.linalg import MatGF2
-from graphix.pauli import Plane
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern

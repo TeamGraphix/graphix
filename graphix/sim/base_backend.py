@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.fundamentals import Plane
     from graphix.measurements import Measurement
-    from graphix.pauli import Plane
 
 
 class NodeIndex:
