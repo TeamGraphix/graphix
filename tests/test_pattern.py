@@ -78,6 +78,18 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
+    @pytest.mark.parametrize("use_rustworkx", [False, True])
+    def test_pauli_non_contiguous(self, use_rustworkx: bool) -> None:
+        pattern = Pattern(input_nodes=[0])
+        pattern.extend(
+            [
+                N(node=2, state=PlanarState(plane=Plane.XY, angle=0.0)),
+                E(nodes=(0, 2)),
+                M(node=0, plane=Plane.XY, angle=0.0, s_domain=set(), t_domain=set()),
+            ]
+        )
+        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_minimize_space_with_gflow(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
         rng = Generator(fx_bg.jumped(jumps))
