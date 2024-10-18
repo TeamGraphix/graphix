@@ -20,7 +20,7 @@ import networkx as nx
 import numpy as np
 import sympy as sp
 
-from graphix import pauli, type_utils
+from graphix import type_utils
 from graphix.command import CommandKind
 from graphix.linalg import MatGF2
 from graphix.pauli import Plane
