@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import functools
 import math
 import sys
 import typing
@@ -24,15 +25,6 @@ else:
     from typing import Union
 
     SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
-
-
-class IXYZ(Enum):
-    """I, X, Y or Z."""
-
-    I = enum.auto()
-    X = enum.auto()
-    Y = enum.auto()
-    Z = enum.auto()
 
 
 class Sign(Enum):
@@ -199,6 +191,28 @@ class ComplexUnit(Enum):
         return ComplexUnit((self.value + 2) % 4)
 
 
+class IXYZ(Enum):
+    """I, X, Y or Z."""
+
+    I = enum.auto()
+    X = enum.auto()
+    Y = enum.auto()
+    Z = enum.auto()
+
+    @functools.cached_property
+    def matrix(self) -> npt.NDArray[np.complex128]:
+        """Return the matrix representation."""
+        if self == IXYZ.I:
+            return WellKnownMatrix.I
+        if self == IXYZ.X:
+            return WellKnownMatrix.X
+        if self == IXYZ.Y:
+            return WellKnownMatrix.Y
+        if self == IXYZ.Z:
+            return WellKnownMatrix.Z
+        typing_extensions.assert_never(self)
+
+
 class Axis(Enum):
     """Axis: `X`, `Y` or `Z`."""
 
@@ -206,9 +220,9 @@ class Axis(Enum):
     Y = enum.auto()
     Z = enum.auto()
 
-    @property
-    def op(self) -> npt.NDArray[np.complex128]:
-        """Return the single qubit operator associated to the axis."""
+    @functools.cached_property
+    def matrix(self) -> npt.NDArray[np.complex128]:
+        """Return the matrix representation."""
         if self == Axis.X:
             return WellKnownMatrix.X
         if self == Axis.Y:

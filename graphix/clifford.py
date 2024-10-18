@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import functools
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -63,7 +64,7 @@ class Clifford(Enum):
     _22 = 22
     _23 = 23
 
-    @property
+    @functools.cached_property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Clifford gate."""
         return CLIFFORD[self.value]

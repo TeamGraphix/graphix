@@ -171,7 +171,7 @@ class TensorNetworkBackend(Backend):
             buffer = 2**0.5
         vec = PlanarState(meas.plane, meas.angle).get_statevector()
         if result:
-            vec = meas.plane.orth.op @ vec
+            vec = meas.plane.orth.matrix @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec)
         return result
