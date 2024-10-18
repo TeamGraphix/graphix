@@ -173,7 +173,7 @@ class ComplexUnit(Enum):
         ret: complex = 1j**self.value
         return ret
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """Return a string representation of the unit."""
         result = "1j" if self.is_imag else "1"
         if self.sign == Sign.MINUS:
@@ -181,7 +181,7 @@ class ComplexUnit(Enum):
         return result
 
     def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> ComplexUnit:
-        """Multiply the complex unit with another complex unit."""
+        """Multiply the complex unit with a number."""
         if isinstance(other, ComplexUnit):
             return ComplexUnit((self.value + other.value) % 4)
         if other_ := ComplexUnit.try_from(other):
