@@ -42,7 +42,7 @@ def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
         return Pauli(IXYZ.Y, ComplexUnit.PLUS_J)
     if lr == (IXYZ.X, IXYZ.Z):
         return Pauli(IXYZ.Y, ComplexUnit.MINUS_J)
-    raise RuntimeError("Unreachable.")
+    raise RuntimeError("Unreachable.")  # pragma: no cover
 
 
 @dataclasses.dataclass(frozen=True)
