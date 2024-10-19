@@ -5,6 +5,7 @@ import functools
 import itertools
 import math
 import operator
+import re
 from typing import TYPE_CHECKING, Final
 
 import numpy as np
@@ -44,7 +45,9 @@ class TestClifford:
 
     @pytest.mark.parametrize("c", Clifford)
     def test_repr(self, c: Clifford) -> None:
-        for term in repr(c).split(" @ "):
+        m = re.match(r"\((.*)\)", repr(c))
+        assert m is not None
+        for term in m.group(1).split(" @ "):
             assert term in [
                 "Clifford.I",
                 "Clifford.H",
