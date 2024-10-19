@@ -10,7 +10,7 @@ from typing import ClassVar, Literal, Union
 
 import numpy as np
 
-from graphix import type_utils
+from graphix import utils
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane, Sign
 from graphix.measurements import Domains
@@ -38,7 +38,7 @@ class _KindChecker:
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        type_utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
+        utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
 @dataclasses.dataclass

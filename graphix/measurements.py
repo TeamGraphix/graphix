@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import math
 
-from graphix import type_utils
+from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign
 
 
@@ -56,7 +56,7 @@ class PauliMeasurement:
     def try_from(plane: Plane, angle: float) -> PauliMeasurement | None:
         """Return the Pauli measurement description if a given measure is Pauli."""
         angle_double = 2 * angle
-        if not type_utils.is_integer(angle_double):
+        if not utils.is_integer(angle_double):
             return None
         angle_double_mod_4 = int(angle_double) % 4
         axis = plane.cos if angle_double_mod_4 % 2 == 0 else plane.sin
