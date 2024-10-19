@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 if sys.version_info >= (3, 10):
     SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
-else:
+else:  # pragma: no cover
     from typing import Union
 
     SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
@@ -293,7 +293,7 @@ class Plane(Enum):
             return (0, math.sin(angle), math.cos(angle))
         if pp == (Axis.Z, Axis.X):
             return (math.sin(angle), 0, math.cos(angle))
-        raise RuntimeError("Unreachable.")
+        raise RuntimeError("Unreachable.")  # pragma: no cover
 
     @staticmethod
     def from_axes(a: Axis, b: Axis) -> Plane:

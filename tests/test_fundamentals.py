@@ -88,6 +88,7 @@ class TestComplexUnit:
         assert ComplexUnit.try_from(1) == ComplexUnit.PLUS
         assert ComplexUnit.try_from(1.0) == ComplexUnit.PLUS
         assert ComplexUnit.try_from(1.0 + 0.0j) == ComplexUnit.PLUS
+        assert ComplexUnit.try_from(3) is None
 
     def test_from_properties(self) -> None:
         assert ComplexUnit.from_properties() == ComplexUnit.PLUS
@@ -152,3 +153,11 @@ class TestPlane:
         assert Plane.from_axes(Axis.Y, Axis.X) == Plane.XY
         assert Plane.from_axes(Axis.Z, Axis.Y) == Plane.YZ
         assert Plane.from_axes(Axis.Z, Axis.X) == Plane.XZ
+
+    def test_from_axes_ng(self) -> None:
+        with pytest.raises(ValueError):
+            Plane.from_axes(Axis.X, Axis.X)
+        with pytest.raises(ValueError):
+            Plane.from_axes(Axis.Y, Axis.Y)
+        with pytest.raises(ValueError):
+            Plane.from_axes(Axis.Z, Axis.Z)
