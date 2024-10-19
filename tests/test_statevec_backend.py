@@ -121,8 +121,8 @@ class TestStatevecNew:
             coins = [fx_rng.choice([0, 1]), fx_rng.choice([0, 1])]
             expected_result = sum(coins) % 2
             states = [
-                Pauli.X.eigenstate(eigenvalue=coins[0]),
-                Pauli.Z.eigenstate(eigenvalue=coins[1]),
+                Pauli.X.eigenstate(coins[0]),
+                Pauli.Z.eigenstate(coins[1]),
             ]
             nodes = range(len(states))
             backend.add_nodes(nodes=nodes, data=states)
@@ -193,9 +193,7 @@ class TestStatevecNew:
             n_neighbors = 10
             coins = [fx_rng.choice([0, 1])] + [fx_rng.choice([0, 1]) for _ in range(n_neighbors)]
             expected_result = sum(coins) % 2
-            states = [Pauli.X.eigenstate(eigenvalue=coins[0])] + [
-                Pauli.Z.eigenstate(eigenvalue=coins[i + 1]) for i in range(n_neighbors)
-            ]
+            states = [Pauli.X.eigenstate(coins[0])] + [Pauli.Z.eigenstate(coins[i + 1]) for i in range(n_neighbors)]
             nodes = range(len(states))
             backend.add_nodes(nodes=nodes, data=states)
 

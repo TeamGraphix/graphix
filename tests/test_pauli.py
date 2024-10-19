@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pytest
 
-from graphix.fundamentals import Axis, ComplexUnit
+from graphix.fundamentals import Axis, ComplexUnit, Sign
 from graphix.pauli import Pauli
 
 
@@ -75,3 +75,17 @@ class TestPauli:
         assert cmp[13] == 1j * Pauli.Z
         assert cmp[14] == -1 * Pauli.Z
         assert cmp[15] == -1j * Pauli.Z
+
+    @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(include_unit=False), [0, 1]))
+    def test_eigenstate(self, p: Pauli, b: int) -> None:
+        if p == Pauli.I and b != 0:
+            pytest.skip("Invalid eigenstate for I.")
+        evec = p.eigenstate(b).get_statevector()
+        assert np.allclose(p.matrix @ evec, float(Sign.plus_if(b == 0)) * evec)
+
+    def test_eigenstate_invalid(self) -> None:
+        with pytest.raises(ValueError):
+            _ = Pauli.I.eigenstate(1)
+
+        with pytest.raises(ValueError):
+            _ = Pauli.I.eigenstate(2)
