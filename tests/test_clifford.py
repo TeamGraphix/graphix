@@ -92,4 +92,4 @@ class TestClifford:
 
     def test_try_from_matrix_ng(self, fx_rng: Generator) -> None:
         assert Clifford.try_from_matrix(np.zeros((2, 3))) is None
-        assert Clifford.try_from_matrix(fx_rng.normal(size=(2, 3))) is None
+        assert Clifford.try_from_matrix(fx_rng.normal(size=(2, 2))) is None
