@@ -10,14 +10,14 @@ from graphix import utils
 from graphix.fundamentals import IXYZ, Sign
 from graphix.ops import Ops
 
-# 24 Unique 1-qubit Clifford gates
-_C0 = Ops.I  # identity
+# 24 unique 1-qubit Clifford gates
+_C0 = Ops.I  # I
 _C1 = Ops.X  # X
 _C2 = Ops.Y  # Y
 _C3 = Ops.Z  # Z
 _C4 = Ops.S  # S = \sqrt{Z}
-_C5 = Ops.SDG  # S dagger
-_C6 = Ops.H  # Hadamard
+_C5 = Ops.SDG  # SDG = S^{\dagger}
+_C6 = Ops.H  # H
 _C7 = utils.lock(np.asarray([[1, -1j], [-1j, 1]]) / np.sqrt(2))  # \sqrt{iX}
 _C8 = utils.lock(np.asarray([[1, -1], [1, 1]]) / np.sqrt(2))  # \sqrt{iY}
 _C9 = utils.lock(np.asarray([[0, 1 - 1j], [-1 - 1j, 0]]) / np.sqrt(2))  # sqrt{I}
@@ -37,7 +37,6 @@ _C22 = utils.lock(np.asarray([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]]) / 2)  # I^(1
 _C23 = utils.lock(np.asarray([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
 
 
-# list of unique 1-qubit Clifford gates
 CLIFFORD = (
     _C0,
     _C1,
@@ -65,7 +64,7 @@ CLIFFORD = (
     _C23,
 )
 
-# readable labels for the 1-qubit Clifford
+# Human-readable labels
 CLIFFORD_LABEL = (
     "I",
     "X",
@@ -94,8 +93,7 @@ CLIFFORD_LABEL = (
     "I^{1/3}",
 )
 
-# Multiplying single-qubit Clifford gates result in a single-qubit Clifford gate.
-# CLIFFORD_MUL provides the result of Clifford gate multiplications by Clifford index (see above).
+# Clifford(CLIFFORD_MUL[i][j]) ~ CLIFFORD[i] @ CLIFFORD[j] (up to phase)
 CLIFFORD_MUL = (
     (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23),
     (1, 0, 3, 2, 9, 10, 8, 15, 6, 4, 5, 12, 11, 14, 13, 7, 19, 18, 17, 16, 22, 23, 20, 21),
@@ -123,17 +121,12 @@ CLIFFORD_MUL = (
     (23, 22, 21, 20, 14, 15, 10, 8, 9, 7, 13, 5, 4, 6, 12, 11, 2, 3, 0, 1, 17, 16, 19, 18),
 )
 
-# Conjugation of Clifford gates result in a Clifford gate.
-# CLIFFORD_CONJ provides the Clifford index of conjugated matrix.
-# Example (S and S dagger):  CLIFFORD_CONJ[4] = 5
-# WARNING: CLIFFORD[i].conj().T is not necessarily equal to
-# CLIFFORD[CLIFFORD_CONJ[i]] in general: the phase may differ.
-# For instance, CLIFFORD[7].conj().T = - CLIFFORD[CLIFFORD_CONJ[7]]
+# Clifford(CLIFFORD_CONJ[i]) ~ CLIFFORD[i].H (up to phase)
 CLIFFORD_CONJ = (0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 23, 21, 16, 19, 17, 18)
 
 
 class _CM(NamedTuple):
-    """NamedTuple just for documentation purposes."""
+    """Pauli string and sign."""
 
     pstr: IXYZ
     sign: Sign
@@ -175,7 +168,7 @@ CLIFFORD_MEASURE = (
     _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
 )
 
-# Decomposition of Clifford gates with H, S and Z.
+# Decomposition of Clifford gates with H, S and Z (up to phase).
 CLIFFORD_HSZ_DECOMPOSITION = (
     (0,),
     (6, 3, 6),
