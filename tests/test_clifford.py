@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import cmath
 import functools
 import itertools
+import math
 import operator
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import numpy as np
 import pytest
@@ -11,6 +13,9 @@ import pytest
 from graphix.clifford import Clifford
 from graphix.fundamentals import IXYZ, ComplexUnit, Sign
 from graphix.pauli import Pauli
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 _QASM3_DB: Final = {
     "id": Clifford.I,
@@ -76,3 +81,8 @@ class TestClifford:
     def test_qasm3(self, c: Clifford) -> None:
         cmul: Clifford = functools.reduce(operator.matmul, (_QASM3_DB[term] for term in reversed(c.qasm3)))
         assert cmul == c
+
+    @pytest.mark.parametrize("c", Clifford)
+    def test_try_from_matrix(self, fx_rng: Generator, c: Clifford) -> None:
+        co = cmath.exp(2j * math.pi * fx_rng.uniform())
+        assert Clifford.try_from_matrix(co * c.matrix) == c

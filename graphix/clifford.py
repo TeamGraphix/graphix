@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import copy
 import functools
+import math
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import typing_extensions
 
 from graphix._db import (
@@ -23,7 +25,6 @@ from graphix.measurements import Domains
 from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
-    import numpy as np
     import numpy.typing as npt
 
 
@@ -68,6 +69,29 @@ class Clifford(Enum):
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Clifford gate."""
         return CLIFFORD[self.value]
+
+    @staticmethod
+    def try_from_matrix(mat: npt.NDArray[Any]) -> Clifford | None:
+        """Find the Clifford gate from the matrix.
+
+        Return `None` if not found.
+
+        Notes
+        -----
+        Global phase is ignored.
+        """
+        if mat.shape != (2, 2):
+            return None
+        for ci in Clifford:
+            mi = ci.matrix
+            for piv, piv_ in zip(mat.flat, mi.flat):
+                if math.isclose(abs(piv), 0):
+                    continue
+                if math.isclose(abs(piv_), 0):
+                    continue
+                if np.allclose(mat / piv, mi / piv_):
+                    return ci
+        return None
 
     def __repr__(self) -> str:
         """Return the Clifford expression on the form of HSZ decomposition."""
