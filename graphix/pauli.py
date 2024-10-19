@@ -104,8 +104,6 @@ class Pauli:
             return BasicStates.ZERO if b == 0 else BasicStates.ONE
         # Any state is eigenstate of the identity
         if self.symbol == IXYZ.I:
-            if b == 1:
-                raise ValueError("Unexpected eigenvalue for I.")
             return BasicStates.PLUS
         typing_extensions.assert_never(self.symbol)
 

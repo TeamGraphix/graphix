@@ -78,14 +78,10 @@ class TestPauli:
 
     @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(include_unit=False), [0, 1]))
     def test_eigenstate(self, p: Pauli, b: int) -> None:
-        if p == Pauli.I and b != 0:
-            pytest.skip("Invalid eigenstate for I.")
+        ev = float(Sign.plus_if(b == 0)) if p != Pauli.I else 1
         evec = p.eigenstate(b).get_statevector()
-        assert np.allclose(p.matrix @ evec, float(Sign.plus_if(b == 0)) * evec)
+        assert np.allclose(p.matrix @ evec, ev * evec)
 
     def test_eigenstate_invalid(self) -> None:
-        with pytest.raises(ValueError):
-            _ = Pauli.I.eigenstate(1)
-
         with pytest.raises(ValueError):
             _ = Pauli.I.eigenstate(2)
