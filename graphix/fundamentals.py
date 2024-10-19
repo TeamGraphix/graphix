@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
 else:
     from typing import Union
