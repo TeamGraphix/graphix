@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex
 
 import typing_extensions
 
-from graphix._db import WellKnownMatrix
+from graphix.ops import Ops
 
 if TYPE_CHECKING:
     import numpy as np
@@ -203,13 +203,13 @@ class IXYZ(Enum):
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix representation."""
         if self == IXYZ.I:
-            return WellKnownMatrix.I
+            return Ops.I
         if self == IXYZ.X:
-            return WellKnownMatrix.X
+            return Ops.X
         if self == IXYZ.Y:
-            return WellKnownMatrix.Y
+            return Ops.Y
         if self == IXYZ.Z:
-            return WellKnownMatrix.Z
+            return Ops.Z
         typing_extensions.assert_never(self)
 
 
@@ -224,11 +224,11 @@ class Axis(Enum):
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix representation."""
         if self == Axis.X:
-            return WellKnownMatrix.X
+            return Ops.X
         if self == Axis.Y:
-            return WellKnownMatrix.Y
+            return Ops.Y
         if self == Axis.Z:
-            return WellKnownMatrix.Z
+            return Ops.Z
         typing_extensions.assert_never(self)
 
 

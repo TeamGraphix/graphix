@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 import typing_extensions
 
-from graphix._db import WellKnownMatrix
 from graphix.fundamentals import IXYZ, Axis, ComplexUnit, Sign, SupportsComplexCtor
+from graphix.ops import Ops
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -81,13 +81,13 @@ class Pauli:
         """Return the matrix of the Pauli gate."""
         co = complex(self.unit)
         if self.symbol == IXYZ.I:
-            return co * WellKnownMatrix.I
+            return co * Ops.I
         if self.symbol == IXYZ.X:
-            return co * WellKnownMatrix.X
+            return co * Ops.X
         if self.symbol == IXYZ.Y:
-            return co * WellKnownMatrix.Y
+            return co * Ops.Y
         if self.symbol == IXYZ.Z:
-            return co * WellKnownMatrix.Z
+            return co * Ops.Z
         typing_extensions.assert_never(self.symbol)
 
     def eigenstate(self, eigenvalue: int | Sign = 0) -> PlanarState:
