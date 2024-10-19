@@ -18,7 +18,7 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
-from graphix.fundamentals import IXYZ, ComplexUnit, Sign
+from graphix.fundamentals import IXYZ, ComplexUnit
 from graphix.measurements import Domains
 from graphix.pauli import Pauli
 
@@ -111,7 +111,7 @@ class Clifford(Enum):
             symbol, sign = table.z
         else:
             typing_extensions.assert_never(pauli.symbol)
-        return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit.from_properties(sign=Sign(sign)))
+        return pauli.unit * Pauli(symbol, ComplexUnit.from_properties(sign=sign))
 
     def commute_domains(self, domains: Domains) -> Domains:
         """

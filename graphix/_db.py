@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 import numpy as np
 
 from graphix import utils
+from graphix.fundamentals import IXYZ, Sign
 from graphix.ops import Ops
 
 # 24 Unique 1-qubit Clifford gates
@@ -131,47 +132,47 @@ CLIFFORD_MUL = (
 CLIFFORD_CONJ = (0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 23, 21, 16, 19, 17, 18)
 
 
-class _CliffordMeasure(NamedTuple):
+class _CM(NamedTuple):
     """NamedTuple just for documentation purposes."""
 
-    pstr: Literal["X", "Y", "Z"]
-    sign: Literal[-1, +1]
+    pstr: IXYZ
+    sign: Sign
 
 
-class _CliffordMeasureTuple(NamedTuple):
-    x: _CliffordMeasure
-    y: _CliffordMeasure
-    z: _CliffordMeasure
+class _CMTuple(NamedTuple):
+    x: _CM
+    y: _CM
+    z: _CM
 
 
 # Conjugation of Pauli gates P with Clifford gate C,
 # i.e. C @ P @ C^dagger result in Pauli group, i.e. {\pm} \times {X, Y, Z}.
 # CLIFFORD_MEASURE contains the effect of Clifford conjugation of Pauli gates.
 CLIFFORD_MEASURE = (
-    _CliffordMeasureTuple(_CliffordMeasure("X", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("X", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Z", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", +1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", -1)),
-    _CliffordMeasureTuple(_CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", -1)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
 )
 
 # Decomposition of Clifford gates with H, S and Z.
