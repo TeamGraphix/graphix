@@ -2,54 +2,41 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, Literal, NamedTuple, TypeVar
+from typing import NamedTuple
 
 import numpy as np
-import numpy.typing as npt
 
-_T = TypeVar("_T", bound=np.generic)
+from graphix import utils
+from graphix.fundamentals import IXYZ, Sign
+from graphix.ops import Ops
 
-
-def _lock(data: npt.NDArray[_T]) -> npt.NDArray[np.complex128]:
-    """Create a true immutable view.
-
-    data must not have aliasing references, otherwise users can still turn on writeable flag of m.
-    """
-    m = data.astype(np.complex128)
-    m.flags.writeable = False
-    v = m.view()
-    assert not v.flags.writeable
-    return v
-
-
-# 24 Unique 1-qubit Clifford gates
-_C0 = _lock(np.asarray([[1, 0], [0, 1]]))  # identity
-_C1 = _lock(np.asarray([[0, 1], [1, 0]]))  # X
-_C2 = _lock(np.asarray([[0, -1j], [1j, 0]]))  # Y
-_C3 = _lock(np.asarray([[1, 0], [0, -1]]))  # Z
-_C4 = _lock(np.asarray([[1, 0], [0, 1j]]))  # S = \sqrt{Z}
-_C5 = _lock(np.asarray([[1, 0], [0, -1j]]))  # S dagger
-_C6 = _lock(np.asarray([[1, 1], [1, -1]]) / np.sqrt(2))  # Hadamard
-_C7 = _lock(np.asarray([[1, -1j], [-1j, 1]]) / np.sqrt(2))  # \sqrt{iX}
-_C8 = _lock(np.asarray([[1, -1], [1, 1]]) / np.sqrt(2))  # \sqrt{iY}
-_C9 = _lock(np.asarray([[0, 1 - 1j], [-1 - 1j, 0]]) / np.sqrt(2))  # sqrt{I}
-_C10 = _lock(np.asarray([[0, -1 - 1j], [1 - 1j, 0]]) / np.sqrt(2))  # sqrt{-I}
-_C11 = _lock(np.asarray([[1, -1], [-1, -1]]) / np.sqrt(2))  # sqrt{I}
-_C12 = _lock(np.asarray([[-1, -1], [1, -1]]) / np.sqrt(2))  # sqrt{-iY}
-_C13 = _lock(np.asarray([[1j, -1], [1, -1j]]) / np.sqrt(2))  # sqrt{-I}
-_C14 = _lock(np.asarray([[1j, 1], [-1, -1j]]) / np.sqrt(2))  # sqrt{-I}
-_C15 = _lock(np.asarray([[-1, -1j], [-1j, -1]]) / np.sqrt(2))  # sqrt{-iX}
-_C16 = _lock(np.asarray([[-1 + 1j, 1 + 1j], [-1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C17 = _lock(np.asarray([[-1 + 1j, -1 - 1j], [1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C18 = _lock(np.asarray([[1 + 1j, 1 - 1j], [-1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
-_C19 = _lock(np.asarray([[-1 - 1j, 1 - 1j], [-1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
-_C20 = _lock(np.asarray([[-1 - 1j, -1 - 1j], [1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
-_C21 = _lock(np.asarray([[-1 + 1j, -1 + 1j], [1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
-_C22 = _lock(np.asarray([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
-_C23 = _lock(np.asarray([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
+# 24 unique 1-qubit Clifford gates
+_C0 = Ops.I  # I
+_C1 = Ops.X  # X
+_C2 = Ops.Y  # Y
+_C3 = Ops.Z  # Z
+_C4 = Ops.S  # S = \sqrt{Z}
+_C5 = Ops.SDG  # SDG = S^{\dagger}
+_C6 = Ops.H  # H
+_C7 = utils.lock(np.asarray([[1, -1j], [-1j, 1]]) / np.sqrt(2))  # \sqrt{iX}
+_C8 = utils.lock(np.asarray([[1, -1], [1, 1]]) / np.sqrt(2))  # \sqrt{iY}
+_C9 = utils.lock(np.asarray([[0, 1 - 1j], [-1 - 1j, 0]]) / np.sqrt(2))  # sqrt{I}
+_C10 = utils.lock(np.asarray([[0, -1 - 1j], [1 - 1j, 0]]) / np.sqrt(2))  # sqrt{-I}
+_C11 = utils.lock(np.asarray([[1, -1], [-1, -1]]) / np.sqrt(2))  # sqrt{I}
+_C12 = utils.lock(np.asarray([[-1, -1], [1, -1]]) / np.sqrt(2))  # sqrt{-iY}
+_C13 = utils.lock(np.asarray([[1j, -1], [1, -1j]]) / np.sqrt(2))  # sqrt{-I}
+_C14 = utils.lock(np.asarray([[1j, 1], [-1, -1j]]) / np.sqrt(2))  # sqrt{-I}
+_C15 = utils.lock(np.asarray([[-1, -1j], [-1j, -1]]) / np.sqrt(2))  # sqrt{-iX}
+_C16 = utils.lock(np.asarray([[-1 + 1j, 1 + 1j], [-1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
+_C17 = utils.lock(np.asarray([[-1 + 1j, -1 - 1j], [1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
+_C18 = utils.lock(np.asarray([[1 + 1j, 1 - 1j], [-1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
+_C19 = utils.lock(np.asarray([[-1 - 1j, 1 - 1j], [-1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
+_C20 = utils.lock(np.asarray([[-1 - 1j, -1 - 1j], [1 - 1j, -1 + 1j]]) / 2)  # I^(1/3)
+_C21 = utils.lock(np.asarray([[-1 + 1j, -1 + 1j], [1 + 1j, -1 - 1j]]) / 2)  # I^(1/3)
+_C22 = utils.lock(np.asarray([[1 + 1j, -1 - 1j], [1 - 1j, 1 - 1j]]) / 2)  # I^(1/3)
+_C23 = utils.lock(np.asarray([[-1 + 1j, 1 - 1j], [-1 - 1j, -1 - 1j]]) / 2)  # I^(1/3)
 
 
-# list of unique 1-qubit Clifford gates
 CLIFFORD = (
     _C0,
     _C1,
@@ -77,7 +64,7 @@ CLIFFORD = (
     _C23,
 )
 
-# readable labels for the 1-qubit Clifford
+# Human-readable labels
 CLIFFORD_LABEL = (
     "I",
     "X",
@@ -106,8 +93,7 @@ CLIFFORD_LABEL = (
     "I^{1/3}",
 )
 
-# Multiplying single-qubit Clifford gates result in a single-qubit Clifford gate.
-# CLIFFORD_MUL provides the result of Clifford gate multiplications by Clifford index (see above).
+# Clifford(CLIFFORD_MUL[i][j]) ~ CLIFFORD[i] @ CLIFFORD[j] (up to phase)
 CLIFFORD_MUL = (
     (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23),
     (1, 0, 3, 2, 9, 10, 8, 15, 6, 4, 5, 12, 11, 14, 13, 7, 19, 18, 17, 16, 22, 23, 20, 21),
@@ -135,53 +121,54 @@ CLIFFORD_MUL = (
     (23, 22, 21, 20, 14, 15, 10, 8, 9, 7, 13, 5, 4, 6, 12, 11, 2, 3, 0, 1, 17, 16, 19, 18),
 )
 
-# Conjugation of Clifford gates result in a Clifford gate.
-# CLIFFORD_CONJ provides the Clifford index of conjugated matrix.
-# Example (S and S dagger):  CLIFFORD_CONJ[4] = 5
-# WARNING: CLIFFORD[i].conj().T is not necessarily equal to
-# CLIFFORD[CLIFFORD_CONJ[i]] in general: the phase may differ.
-# For instance, CLIFFORD[7].conj().T = - CLIFFORD[CLIFFORD_CONJ[7]]
+# Clifford(CLIFFORD_CONJ[i]) ~ CLIFFORD[i].H (up to phase)
 CLIFFORD_CONJ = (0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 23, 21, 16, 19, 17, 18)
 
 
-class _CliffordMeasure(NamedTuple):
-    """NamedTuple just for documentation purposes."""
+class _CM(NamedTuple):
+    """Pauli string and sign."""
 
-    pstr: Literal["X", "Y", "Z"]
-    sign: Literal[-1, +1]
+    pstr: IXYZ
+    sign: Sign
+
+
+class _CMTuple(NamedTuple):
+    x: _CM
+    y: _CM
+    z: _CM
 
 
 # Conjugation of Pauli gates P with Clifford gate C,
 # i.e. C @ P @ C^dagger result in Pauli group, i.e. {\pm} \times {X, Y, Z}.
 # CLIFFORD_MEASURE contains the effect of Clifford conjugation of Pauli gates.
 CLIFFORD_MEASURE = (
-    (_CliffordMeasure("X", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1)),
-    (_CliffordMeasure("X", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1)),
-    (_CliffordMeasure("X", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1)),
-    (_CliffordMeasure("X", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1)),
-    (_CliffordMeasure("Y", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", +1)),
-    (_CliffordMeasure("Y", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", +1)),
-    (_CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", +1)),
-    (_CliffordMeasure("X", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1)),
-    (_CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", -1)),
-    (_CliffordMeasure("Y", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Z", -1)),
-    (_CliffordMeasure("Y", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Z", -1)),
-    (_CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1), _CliffordMeasure("X", -1)),
-    (_CliffordMeasure("Z", -1), _CliffordMeasure("Y", +1), _CliffordMeasure("X", +1)),
-    (_CliffordMeasure("X", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("Y", -1)),
-    (_CliffordMeasure("X", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", +1)),
-    (_CliffordMeasure("X", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("Y", -1)),
-    (_CliffordMeasure("Z", +1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", +1)),
-    (_CliffordMeasure("Z", -1), _CliffordMeasure("X", +1), _CliffordMeasure("Y", -1)),
-    (_CliffordMeasure("Z", -1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", +1)),
-    (_CliffordMeasure("Z", +1), _CliffordMeasure("X", -1), _CliffordMeasure("Y", -1)),
-    (_CliffordMeasure("Y", +1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", +1)),
-    (_CliffordMeasure("Y", -1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", +1)),
-    (_CliffordMeasure("Y", +1), _CliffordMeasure("Z", -1), _CliffordMeasure("X", -1)),
-    (_CliffordMeasure("Y", -1), _CliffordMeasure("Z", +1), _CliffordMeasure("X", -1)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
 )
 
-# Decomposition of Clifford gates with H, S and Z.
+# Decomposition of Clifford gates with H, S and Z (up to phase).
 CLIFFORD_HSZ_DECOMPOSITION = (
     (0,),
     (6, 3, 6),
@@ -237,59 +224,3 @@ CLIFFORD_TO_QASM3 = (
     ("h", "x", "sdg"),
     ("h", "x", "s"),
 )
-
-
-class WellKnownMatrix:
-    """Collection of well-known matrices."""
-
-    I: ClassVar = _C0
-    X: ClassVar = _C1
-    Y: ClassVar = _C2
-    Z: ClassVar = _C3
-    S: ClassVar = _C4
-    SDG: ClassVar = _C5
-    H: ClassVar = _C6
-    CZ: ClassVar = _lock(
-        np.asarray(
-            [
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, -1],
-            ],
-        )
-    )
-    CNOT: ClassVar = _lock(
-        np.asarray(
-            [
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 0, 1],
-                [0, 0, 1, 0],
-            ],
-        )
-    )
-    SWAP: ClassVar = _lock(
-        np.asarray(
-            [
-                [1, 0, 0, 0],
-                [0, 0, 1, 0],
-                [0, 1, 0, 0],
-                [0, 0, 0, 1],
-            ],
-        )
-    )
-    CCX: ClassVar = _lock(
-        np.asarray(
-            [
-                [1, 0, 0, 0, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0, 0, 0, 0],
-                [0, 0, 1, 0, 0, 0, 0, 0],
-                [0, 0, 0, 1, 0, 0, 0, 0],
-                [0, 0, 0, 0, 1, 0, 0, 0],
-                [0, 0, 0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 1],
-                [0, 0, 0, 0, 0, 0, 1, 0],
-            ],
-        )
-    )

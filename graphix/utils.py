@@ -1,10 +1,13 @@
-"""Type utilities."""
+"""Utilities."""
 
 from __future__ import annotations
 
 import sys
 import typing
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, SupportsInt, TypeVar
+
+import numpy as np
+import numpy.typing as npt
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -41,3 +44,31 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
     if typing.get_origin(ann) is not Literal:
         msg = "Tag attribute must be a literal."
         raise TypeError(msg)
+
+
+def is_integer(value: SupportsInt) -> bool:
+    """Return `True` if `value` is an integer, `False` otherwise."""
+    return value == int(value)
+
+
+G = TypeVar("G", bound=np.generic)
+
+
+@typing.overload
+def lock(data: npt.NDArray[Any]) -> npt.NDArray[np.complex128]: ...
+
+
+@typing.overload
+def lock(data: npt.NDArray[Any], dtype: type[G]) -> npt.NDArray[G]: ...
+
+
+def lock(data: npt.NDArray[Any], dtype: type = np.complex128) -> npt.NDArray[Any]:
+    """Create a true immutable view.
+
+    data must not have aliasing references, otherwise users can still turn on writeable flag of m.
+    """
+    m: npt.NDArray[Any] = data.astype(dtype)
+    m.flags.writeable = False
+    v = m.view()
+    assert not v.flags.writeable
+    return v

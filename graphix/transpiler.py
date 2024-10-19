@@ -16,9 +16,9 @@ import numpy as np
 from graphix import command, instruction
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, E, M, N, X, Z
+from graphix.fundamentals import Plane
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.pauli import Plane
 from graphix.sim import base_backend
 from graphix.sim.statevec import Data, Statevec
 

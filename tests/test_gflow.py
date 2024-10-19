@@ -9,6 +9,7 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import command
+from graphix.fundamentals import Plane
 from graphix.gflow import (
     find_flow,
     find_gflow,
@@ -19,7 +20,6 @@ from graphix.gflow import (
     verify_pauliflow,
 )
 from graphix.pattern import Pattern
-from graphix.pauli import Plane
 from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:

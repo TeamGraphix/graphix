@@ -8,8 +8,8 @@ import sys
 from enum import Enum
 from typing import ClassVar, Literal, Union
 
-from graphix import type_utils
-from graphix.pauli import Plane
+from graphix import utils
+from graphix.fundamentals import Plane
 
 
 class InstructionKind(Enum):
@@ -39,7 +39,7 @@ class _KindChecker:
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        type_utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
+        utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
 @dataclasses.dataclass
