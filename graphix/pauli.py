@@ -10,6 +10,7 @@ import typing_extensions
 
 from graphix.fundamentals import IXYZ, Axis, ComplexUnit, SupportsComplexCtor
 from graphix.ops import Ops
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -92,8 +93,6 @@ class Pauli:
 
     def eigenstate(self, b: int = 0) -> PlanarState:
         """Return the eigenstate of the Pauli."""
-        from graphix.states import BasicStates
-
         if b not in {0, 1}:
             raise ValueError("b must be 0 or 1.")
         if self.symbol == IXYZ.X:
