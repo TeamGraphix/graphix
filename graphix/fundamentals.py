@@ -182,9 +182,7 @@ class ComplexUnit(Enum):
 
     def __rmul__(self, other: SupportsComplexCtor) -> ComplexUnit:
         """Multiply the complex unit with a number."""
-        if isinstance(other, SupportsComplexCtor):
-            return self.__mul__(other)
-        return NotImplemented
+        return self.__mul__(other)
 
     def __neg__(self) -> ComplexUnit:
         """Return the opposite of the complex unit."""
