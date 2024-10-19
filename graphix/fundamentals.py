@@ -92,7 +92,7 @@ class Sign(Enum):
 
     def __rmul__(self, other: complex) -> int | float | complex:
         """Multiply the sign with a number."""
-        if isinstance(other, int | float | complex):
+        if isinstance(other, (int, float, complex)):
             return self.__mul__(other)
         return NotImplemented
 

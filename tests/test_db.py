@@ -38,7 +38,7 @@ class TestCliffordDB:
     def test_decomposition(self, i: int) -> None:
         op = np.eye(2, dtype=np.complex128)
         for j in CLIFFORD_HSZ_DECOMPOSITION[i]:
-            op @= CLIFFORD[j]
+            op = op @ CLIFFORD[j]
         assert Clifford.try_from_matrix(op) == Clifford(i)
 
     @pytest.mark.parametrize("i", range(24))
