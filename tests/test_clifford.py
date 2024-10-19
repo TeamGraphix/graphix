@@ -89,3 +89,7 @@ class TestClifford:
     def test_try_from_matrix(self, fx_rng: Generator, c: Clifford) -> None:
         co = cmath.exp(2j * math.pi * fx_rng.uniform())
         assert Clifford.try_from_matrix(co * c.matrix) == c
+
+    def test_try_from_matrix_ng(self, fx_rng: Generator) -> None:
+        assert Clifford.try_from_matrix(np.zeros((2, 3))) is None
+        assert Clifford.try_from_matrix(fx_rng.normal(size=(2, 3))) is None
