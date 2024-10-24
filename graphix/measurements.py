@@ -1,4 +1,4 @@
-"""MBQC measurements."""
+"""Data structure for single-qubit measurements in MBQC."""
 
 from __future__ import annotations
 
