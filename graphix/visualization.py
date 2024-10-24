@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from graphix import gflow
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     # MEMO: Potential circular import

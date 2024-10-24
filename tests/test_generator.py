@@ -6,8 +6,8 @@ import networkx as nx
 import numpy as np
 import pytest
 
+from graphix.fundamentals import Plane
 from graphix.generator import generate_from_graph
-from graphix.pauli import Plane
 from graphix.random_objects import rand_gate
 
 if TYPE_CHECKING:

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, PlanarState
 

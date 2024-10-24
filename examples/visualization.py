@@ -22,7 +22,7 @@ with the pattern, graph or the (generalized-)flow.
 import numpy as np
 
 from graphix import Circuit
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
