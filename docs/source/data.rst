@@ -30,7 +30,7 @@ This module defines standard data structure for pattern commands.
 :mod:`graphix.fundamentals` module
 ++++++++++++++++++++++++++++++++++
 
-This module defines fundamental components of quantum computing.
+This module defines standard data structure for Pauli operators.
 
 .. automodule:: graphix.fundamentals
 
