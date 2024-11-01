@@ -126,9 +126,9 @@ class TestStatevecNew:
             backend.add_nodes(nodes=nodes, data=states)
 
             backend.entangle_nodes(edge=(nodes[0], nodes[1]))
-            meas = Measurement(0, Plane.XY)
+            measurement = Measurement(0, Plane.XY)
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, meas=meas)
+            result = backend.measure(node=node_to_measure, measurement=measurement)
             assert result == expected_result
 
     def test_deterministic_measure(self):
@@ -143,9 +143,9 @@ class TestStatevecNew:
 
             for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
-            meas = Measurement(0, Plane.XY)
+            measurement = Measurement(0, Plane.XY)
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, meas=meas)
+            result = backend.measure(node=node_to_measure, measurement=measurement)
             assert result == 0
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))
 
@@ -171,11 +171,11 @@ class TestStatevecNew:
                     backend.entangle_nodes(edge=(other, dummy))
 
             # Same measurement for all traps
-            meas = Measurement(0, Plane.XY)
+            measurement = Measurement(0, Plane.XY)
 
             for trap in nodes[:n_traps]:
                 node_to_measure = trap
-                result = backend.measure(node=node_to_measure, meas=meas)
+                result = backend.measure(node=node_to_measure, measurement=measurement)
                 assert result == 0
 
             assert list(backend.node_index) == list(range(n_traps, n_neighbors + n_traps + n_whatever))
@@ -197,8 +197,8 @@ class TestStatevecNew:
 
             for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
-            meas = Measurement(0, Plane.XY)
+            measurement = Measurement(0, Plane.XY)
             node_to_measure = backend.node_index[0]
-            result = backend.measure(node=node_to_measure, meas=meas)
+            result = backend.measure(node=node_to_measure, measurement=measurement)
             assert result == expected_result
             assert list(backend.node_index) == list(range(1, n_neighbors + 1))

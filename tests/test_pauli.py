@@ -36,12 +36,23 @@ class TestPauli:
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
         assert np.allclose((a @ b).matrix, a.matrix @ b.matrix)
 
-    def test_str(self) -> None:
-        assert str(Pauli.I) == "IXYZ.I"
-        assert str(1 * Pauli.I) == "IXYZ.I"
-        assert str(1j * Pauli.I) == "1j * IXYZ.I"
-        assert str(-1 * Pauli.I) == "-IXYZ.I"
-        assert str(-1j * Pauli.I) == "-1j * IXYZ.I"
+    @pytest.mark.parametrize("p", Pauli.iterate(include_unit=False))
+    def test_repr(self, p: Pauli) -> None:
+        pstr = f"Pauli.{p.symbol.name}"
+        assert repr(p) == pstr
+        assert repr(1 * p) == pstr
+        assert repr(1j * p) == f"1j * {pstr}"
+        assert repr(-1 * p) == f"-{pstr}"
+        assert repr(-1j * p) == f"-1j * {pstr}"
+
+    @pytest.mark.parametrize("p", Pauli.iterate(include_unit=False))
+    def test_str(self, p: Pauli) -> None:
+        pstr = p.symbol.name
+        assert str(p) == pstr
+        assert str(1 * p) == pstr
+        assert str(1j * p) == f"1j * {pstr}"
+        assert str(-1 * p) == f"-{pstr}"
+        assert str(-1j * p) == f"-1j * {pstr}"
 
     @pytest.mark.parametrize("p", Pauli)
     def test_neg(self, p: Pauli) -> None:
