@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-import functools
 from typing import TYPE_CHECKING, ClassVar
 
 import typing_extensions
@@ -19,31 +18,6 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
     from graphix.states import PlanarState
-
-
-@functools.lru_cache(maxsize=None)
-def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
-    """Return the product of two Paulis."""
-    if lhs == IXYZ.I:
-        return Pauli(rhs)
-    if rhs == IXYZ.I:
-        return Pauli(lhs)
-    if lhs == rhs:
-        return Pauli()
-    lr = (lhs, rhs)
-    if lr == (IXYZ.X, IXYZ.Y):
-        return Pauli(IXYZ.Z, ComplexUnit.J)
-    if lr == (IXYZ.Y, IXYZ.X):
-        return Pauli(IXYZ.Z, ComplexUnit.MINUS_J)
-    if lr == (IXYZ.Y, IXYZ.Z):
-        return Pauli(IXYZ.X, ComplexUnit.J)
-    if lr == (IXYZ.Z, IXYZ.Y):
-        return Pauli(IXYZ.X, ComplexUnit.MINUS_J)
-    if lr == (IXYZ.Z, IXYZ.X):
-        return Pauli(IXYZ.Y, ComplexUnit.J)
-    if lr == (IXYZ.X, IXYZ.Z):
-        return Pauli(IXYZ.Y, ComplexUnit.MINUS_J)
-    raise RuntimeError("Unreachable.")  # pragma: no cover
 
 
 class _PauliMeta(type):
@@ -134,10 +108,33 @@ class Pauli(metaclass=_PauliMeta):
         """Return a simplified string representation of the Pauli."""
         return self._repr_impl(None)
 
+    @staticmethod
+    def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
+        if lhs == IXYZ.I:
+            return Pauli(rhs)
+        if rhs == IXYZ.I:
+            return Pauli(lhs)
+        if lhs == rhs:
+            return Pauli()
+        lr = (lhs, rhs)
+        if lr == (IXYZ.X, IXYZ.Y):
+            return Pauli(IXYZ.Z, ComplexUnit.J)
+        if lr == (IXYZ.Y, IXYZ.X):
+            return Pauli(IXYZ.Z, ComplexUnit.MINUS_J)
+        if lr == (IXYZ.Y, IXYZ.Z):
+            return Pauli(IXYZ.X, ComplexUnit.J)
+        if lr == (IXYZ.Z, IXYZ.Y):
+            return Pauli(IXYZ.X, ComplexUnit.MINUS_J)
+        if lr == (IXYZ.Z, IXYZ.X):
+            return Pauli(IXYZ.Y, ComplexUnit.J)
+        if lr == (IXYZ.X, IXYZ.Z):
+            return Pauli(IXYZ.Y, ComplexUnit.MINUS_J)
+        raise RuntimeError("Unreachable.")  # pragma: no cover
+
     def __matmul__(self, other: Pauli) -> Pauli:
         """Return the product of two Paulis."""
         if isinstance(other, Pauli):
-            return _matmul_impl(self.symbol, other.symbol) * (self.unit * other.unit)
+            return self._matmul_impl(self.symbol, other.symbol) * (self.unit * other.unit)
         return NotImplemented
 
     def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> Pauli:
