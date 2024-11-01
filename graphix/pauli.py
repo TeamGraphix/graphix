@@ -112,17 +112,27 @@ class Pauli(metaclass=_PauliMeta):
             return BasicStates.PLUS
         typing_extensions.assert_never(self.symbol)
 
-    def __str__(self) -> str:
-        """Return a string representation of the Pauli (without module prefix)."""
+    def _repr_impl(self, prefix: str | None) -> str:
+        sym = self.symbol.name
+        if prefix is not None:
+            sym = f"{prefix}.{sym}"
         if self.unit == ComplexUnit.PLUS:
-            return str(self.symbol)
+            return sym
         if self.unit == ComplexUnit.MINUS:
-            return f"-{self.symbol}"
+            return f"-{sym}"
         if self.unit == ComplexUnit.PLUS_J:
-            return f"1j * {self.symbol}"
+            return f"1j * {sym}"
         if self.unit == ComplexUnit.MINUS_J:
-            return f"-1j * {self.symbol}"
+            return f"-1j * {sym}"
         typing_extensions.assert_never(self.unit)
+
+    def __repr__(self) -> str:
+        """Return a string representation of the Pauli."""
+        return self._repr_impl(self.__class__.__name__)
+
+    def __str__(self) -> str:
+        """Return a simplified string representation of the Pauli."""
+        return self._repr_impl(None)
 
     def __matmul__(self, other: Pauli) -> Pauli:
         """Return the product of two Paulis."""
