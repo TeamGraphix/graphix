@@ -152,14 +152,14 @@ class Pauli(metaclass=_PauliMeta):
         return dataclasses.replace(self, unit=-self.unit)
 
     @staticmethod
-    def iterate(include_unit: bool = True) -> Iterator[Pauli]:
+    def iterate(symbol_only: bool = False) -> Iterator[Pauli]:
         """Iterate over all Pauli gates.
 
         Parameters
         ----------
-            include_unit (bool, optional): Include the unit in the iteration. Defaults to True.
+            symbol_only (bool, optional): Exclude the unit in the iteration. Defaults to False.
         """
-        us = tuple(ComplexUnit) if include_unit else (ComplexUnit.ONE,)
+        us = (ComplexUnit.ONE,) if symbol_only else tuple(ComplexUnit)
         for symbol in IXYZ:
             for unit in us:
                 yield Pauli(symbol, unit)

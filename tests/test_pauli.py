@@ -36,7 +36,7 @@ class TestPauli:
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
         assert np.allclose((a @ b).matrix, a.matrix @ b.matrix)
 
-    @pytest.mark.parametrize("p", Pauli.iterate(include_unit=False))
+    @pytest.mark.parametrize("p", Pauli.iterate(symbol_only=True))
     def test_repr(self, p: Pauli) -> None:
         pstr = f"Pauli.{p.symbol.name}"
         assert repr(p) == pstr
@@ -45,7 +45,7 @@ class TestPauli:
         assert repr(-1 * p) == f"-{pstr}"
         assert repr(-1j * p) == f"-1j * {pstr}"
 
-    @pytest.mark.parametrize("p", Pauli.iterate(include_unit=False))
+    @pytest.mark.parametrize("p", Pauli.iterate(symbol_only=True))
     def test_str(self, p: Pauli) -> None:
         pstr = p.symbol.name
         assert str(p) == pstr
@@ -59,16 +59,16 @@ class TestPauli:
         pneg = -p
         assert pneg == -p
 
-    def test_iterate_false(self) -> None:
-        cmp = list(Pauli.iterate(include_unit=False))
+    def test_iterate_true(self) -> None:
+        cmp = list(Pauli.iterate(symbol_only=True))
         assert len(cmp) == 4
         assert cmp[0] == Pauli.I
         assert cmp[1] == Pauli.X
         assert cmp[2] == Pauli.Y
         assert cmp[3] == Pauli.Z
 
-    def test_iterate_true(self) -> None:
-        cmp = list(Pauli.iterate(include_unit=True))
+    def test_iterate_false(self) -> None:
+        cmp = list(Pauli.iterate(symbol_only=False))
         assert len(cmp) == 16
         assert cmp[0] == Pauli.I
         assert cmp[1] == 1j * Pauli.I
@@ -88,14 +88,14 @@ class TestPauli:
         assert cmp[15] == -1j * Pauli.Z
 
     def test_iter_meta(self) -> None:
-        it = Pauli.iterate(include_unit=True)
+        it = Pauli.iterate(symbol_only=False)
         it_ = iter(Pauli)
         for p, p_ in zip(it, it_):
             assert p == p_
         assert all(False for _ in it)
         assert all(False for _ in it_)
 
-    @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(include_unit=False), [0, 1]))
+    @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(symbol_only=True), [0, 1]))
     def test_eigenstate(self, p: Pauli, b: int) -> None:
         ev = float(Sign.plus_if(b == 0)) if p != Pauli.I else 1
         evec = p.eigenstate(b).get_statevector()
