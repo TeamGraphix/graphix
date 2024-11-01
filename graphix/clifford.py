@@ -95,6 +95,8 @@ class Clifford(Enum):
     def __repr__(self) -> str:
         """Return the Clifford expression on the form of HSZ decomposition."""
         formula = " @ ".join([f"Clifford.{gate}" for gate in self.hsz])
+        if len(self.hsz) == 1:
+            return formula
         return f"({formula})"
 
     def __str__(self) -> str:
