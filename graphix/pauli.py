@@ -97,16 +97,16 @@ class Pauli(metaclass=_PauliMeta):
             return co * Ops.Z
         typing_extensions.assert_never(self.symbol)
 
-    def eigenstate(self, b: int = 0) -> PlanarState:
+    def eigenstate(self, binary: int = 0) -> PlanarState:
         """Return the eigenstate of the Pauli."""
-        if b not in {0, 1}:
+        if binary not in {0, 1}:
             raise ValueError("b must be 0 or 1.")
         if self.symbol == IXYZ.X:
-            return BasicStates.PLUS if b == 0 else BasicStates.MINUS
+            return BasicStates.PLUS if binary == 0 else BasicStates.MINUS
         if self.symbol == IXYZ.Y:
-            return BasicStates.PLUS_I if b == 0 else BasicStates.MINUS_I
+            return BasicStates.PLUS_I if binary == 0 else BasicStates.MINUS_I
         if self.symbol == IXYZ.Z:
-            return BasicStates.ZERO if b == 0 else BasicStates.ONE
+            return BasicStates.ZERO if binary == 0 else BasicStates.ONE
         # Any state is eigenstate of the identity
         if self.symbol == IXYZ.I:
             return BasicStates.PLUS
