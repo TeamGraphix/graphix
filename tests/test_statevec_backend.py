@@ -81,8 +81,7 @@ class TestStatevecNew:
 
         # random planar state
         rand_angle = fx_rng.random() * 2 * np.pi
-        rand_plane = fx_rng.choice(np.array([i for i in Plane]))
-        rand_plane = fx_rng.choice(np.array([i for i in Plane]))
+        rand_plane = fx_rng.choice(np.array(Plane))
         state = PlanarState(rand_plane, rand_angle)
         backend = StatevectorBackend()
         backend.add_nodes(hadamardpattern.input_nodes, data=state)
@@ -95,8 +94,7 @@ class TestStatevecNew:
 
     def test_init_fail(self, hadamardpattern, fx_rng: Generator) -> None:
         rand_angle = fx_rng.random(2) * 2 * np.pi
-        rand_plane = fx_rng.choice(np.array([i for i in Plane]), 2)
-        rand_plane = fx_rng.choice(np.array([i for i in Plane]), 2)
+        rand_plane = fx_rng.choice(np.array(Plane), 2)
 
         state = PlanarState(rand_plane[0], rand_angle[0])
         state2 = PlanarState(rand_plane[1], rand_angle[1])
