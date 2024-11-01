@@ -1,7 +1,6 @@
-pre-commit
-
-# Tests
+# CI
 nox==2024.10.09 # Keep in sync with CI
+pre-commit
 
 # Optional dependencies
 qiskit>=1.0

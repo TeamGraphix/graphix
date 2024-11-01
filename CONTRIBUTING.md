@@ -26,7 +26,7 @@ pip install matplotlib
 
 For other depencencies for the docs build, see `docs/requirements.txt`.
 
-Before comitting the code, make sure to format/lint it with `pre-commit`.
+Before comitting the code, make sure to format it with `pre-commit`.
 To format a python file, just run in the top level of the repository:
 
 ```bash
