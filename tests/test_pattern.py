@@ -185,7 +185,7 @@ class TestPattern:
         assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("ignore_pauli_with_deps", (False, True))
+    @pytest.mark.parametrize("ignore_pauli_with_deps", [False, True])
     def test_pauli_measurement_random_circuit_all_paulis(
         self, fx_bg: PCG64, jumps: int, ignore_pauli_with_deps: bool, use_rustworkx: bool = True
     ) -> None:

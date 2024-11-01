@@ -112,7 +112,8 @@ class DensityMatrix(State):
             i : int
                 Index of qubit to apply operator.
         """
-        assert i >= 0 and i < self.nqubit
+        assert i >= 0
+        assert i < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
