@@ -149,11 +149,9 @@ class MeasureUpdate:
     add_term: float
 
     @staticmethod
-    def compute(plane: Plane, s: int, t: int, clifford_gate: Clifford) -> MeasureUpdate:
+    def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
         """Compute the update for a given plane, signals and vertex operator."""
         gates = list(map(Pauli.from_axis, plane.axes))
-        s %= 2
-        t %= 2
         if s:
             clifford_gate = Clifford.X @ clifford_gate
         if t:
