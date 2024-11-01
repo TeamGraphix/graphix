@@ -28,7 +28,7 @@ For any gate network, we can use the :class:`~graphix.transpiler.Circuit` class 
     pattern = circuit.transpile().pattern
 
 the :class:`~graphix.pattern.Pattern` object contains the sequence of commands according to the measurement calculus framework [#Danos2007]_.
-Let us print the pattern (command sequence) that we generated, 
+Let us print the pattern (command sequence) that we generated,
 
 >>> pattern.print_pattern() # show the command sequence (pattern)
 N, node = 1
@@ -142,7 +142,7 @@ As an example, let us prepare a pattern to rotate two qubits in :math:`|+\rangle
     circuit.cnot(0, 1)
     pattern = circuit.transpile().pattern
 
-This produces a rather long and complicated command sequence. 
+This produces a rather long and complicated command sequence.
 
 >>> pattern.print_pattern() # show the command sequence (pattern)
 N, node = 2
@@ -514,5 +514,3 @@ References
 ----------
 
 .. [#Danos2007] `V. Danos, E Kashefi and P. Panangaden, "The Measurement Calculus", Journal of the ACM 54, 2 (2007) <https://doi.org/10.48550/arXiv.0704.1263>`_
-
-

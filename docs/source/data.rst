@@ -96,8 +96,3 @@ This module defines standard data structure for gate seqence (circuit model) use
 .. currentmodule:: graphix.states
 
 .. autoclass:: State
-
-
-
-
-
