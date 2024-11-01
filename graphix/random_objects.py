@@ -152,7 +152,7 @@ def rand_channel_kraus(
 
 
 # or merge with previous with a "pauli" kwarg?
-### continue here
+# continue here
 def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int | None = None) -> KrausChannel:
     """Return a random Kraus channel operator."""
     rng = ensure_rng(rng)

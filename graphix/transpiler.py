@@ -985,14 +985,18 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(target_node, ancilla[0])))
-        seq.append(E(nodes=(control_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=target_node))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={target_node}))
-        seq.append(Z(node=control_node, domain={target_node}))
+        seq.extend(
+            (
+                E(nodes=(target_node, ancilla[0])),
+                E(nodes=(control_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=target_node),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={target_node}),
+                Z(node=control_node, domain={target_node}),
+            )
+        )
         return control_node, ancilla[1], seq
 
     @classmethod
@@ -1035,9 +1039,7 @@ class Circuit:
             list of MBQC commands
         """
         seq = [N(node=ancilla)]
-        seq.append(E(nodes=(input_node, ancilla)))
-        seq.append(M(node=input_node))
-        seq.append(X(node=ancilla, domain={input_node}))
+        seq.extend((E(nodes=(input_node, ancilla)), M(node=input_node), X(node=ancilla, domain={input_node})))
         return ancilla, seq
 
     @classmethod
@@ -1060,12 +1062,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), command.N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node, angle=-0.5))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node, angle=-0.5),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -1088,12 +1094,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node))
-        seq.append(M(node=ancilla[0], angle=-1))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node),
+                M(node=ancilla[0], angle=-1),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -1117,16 +1127,20 @@ class Circuit:
         assert len(ancilla) == 4
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(E(nodes=(ancilla[1], ancilla[2])))
-        seq.append(E(nodes=(ancilla[2], ancilla[3])))
-        seq.append(M(node=input_node, angle=0.5))
-        seq.append(M(node=ancilla[0], angle=1.0, s_domain={input_node}))
-        seq.append(M(node=ancilla[1], angle=-0.5, s_domain={input_node}))
-        seq.append(M(node=ancilla[2]))
-        seq.append(X(node=ancilla[3], domain={ancilla[0], ancilla[2]}))
-        seq.append(Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                E(nodes=(ancilla[1], ancilla[2])),
+                E(nodes=(ancilla[2], ancilla[3])),
+                M(node=input_node, angle=0.5),
+                M(node=ancilla[0], angle=1.0, s_domain={input_node}),
+                M(node=ancilla[1], angle=-0.5, s_domain={input_node}),
+                M(node=ancilla[2]),
+                X(node=ancilla[3], domain={ancilla[0], ancilla[2]}),
+                Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}),
+            )
+        )
         return ancilla[3], seq
 
     @classmethod
@@ -1149,12 +1163,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node, angle=-1))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node, angle=-1),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -1179,12 +1197,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node))
-        seq.append(M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node),
+                M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -1210,16 +1232,20 @@ class Circuit:
         assert len(ancilla) == 4
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(E(nodes=(ancilla[1], ancilla[2])))
-        seq.append(E(nodes=(ancilla[2], ancilla[3])))
-        seq.append(M(node=input_node, angle=0.5))
-        seq.append(M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}))
-        seq.append(M(node=ancilla[1], angle=-0.5, s_domain={input_node}))
-        seq.append(M(node=ancilla[2]))
-        seq.append(X(node=ancilla[3], domain={ancilla[0], ancilla[2]}))
-        seq.append(Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                E(nodes=(ancilla[1], ancilla[2])),
+                E(nodes=(ancilla[2], ancilla[3])),
+                M(node=input_node, angle=0.5),
+                M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}),
+                M(node=ancilla[1], angle=-0.5, s_domain={input_node}),
+                M(node=ancilla[2]),
+                X(node=ancilla[3], domain={ancilla[0], ancilla[2]}),
+                Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}),
+            )
+        )
         return ancilla[3], seq
 
     @classmethod
@@ -1244,12 +1270,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node, angle=-angle / np.pi))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node, angle=-angle / np.pi),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -1273,9 +1303,13 @@ class Circuit:
             list of MBQC commands
         """
         seq = [N(node=ancilla)]
-        seq.append(E(nodes=(input_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H))
-        seq.append(Z(node=input_node, domain={ancilla}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla)),
+                M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H),
+                Z(node=input_node, domain={ancilla}),
+            )
+        )
         return input_node, seq
 
     @classmethod
@@ -1303,11 +1337,15 @@ class Circuit:
             list of MBQC commands
         """
         seq = [N(node=ancilla)]
-        seq.append(E(nodes=(control_node, ancilla)))
-        seq.append(E(nodes=(target_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H))
-        seq.append(Z(node=control_node, domain={ancilla}))
-        seq.append(Z(node=target_node, domain={ancilla}))
+        seq.extend(
+            (
+                E(nodes=(control_node, ancilla)),
+                E(nodes=(target_node, ancilla)),
+                M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H),
+                Z(node=control_node, domain={ancilla}),
+                Z(node=target_node, domain={ancilla}),
+            )
+        )
         return control_node, target_node, seq
 
     @classmethod
@@ -1344,126 +1382,77 @@ class Circuit:
         """
         assert len(ancilla) == 18
         seq = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
-        seq.append(E(nodes=(target_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(E(nodes=(ancilla[1], ancilla[2])))
-        seq.append(E(nodes=(ancilla[1], control_node2)))
-        seq.append(E(nodes=(control_node1, ancilla[14])))
-        seq.append(E(nodes=(ancilla[2], ancilla[3])))
-        seq.append(E(nodes=(ancilla[14], ancilla[4])))
-        seq.append(E(nodes=(ancilla[3], ancilla[5])))
-        seq.append(E(nodes=(ancilla[3], ancilla[4])))
-        seq.append(E(nodes=(ancilla[5], ancilla[6])))
-        seq.append(E(nodes=(control_node2, ancilla[6])))
-        seq.append(E(nodes=(control_node2, ancilla[9])))
-        seq.append(E(nodes=(ancilla[6], ancilla[7])))
-        seq.append(E(nodes=(ancilla[9], ancilla[4])))
-        seq.append(E(nodes=(ancilla[9], ancilla[10])))
-        seq.append(E(nodes=(ancilla[7], ancilla[8])))
-        seq.append(E(nodes=(ancilla[10], ancilla[11])))
-        seq.append(E(nodes=(ancilla[4], ancilla[8])))
-        seq.append(E(nodes=(ancilla[4], ancilla[11])))
-        seq.append(E(nodes=(ancilla[4], ancilla[16])))
-        seq.append(E(nodes=(ancilla[8], ancilla[12])))
-        seq.append(E(nodes=(ancilla[11], ancilla[15])))
-        seq.append(E(nodes=(ancilla[12], ancilla[13])))
-        seq.append(E(nodes=(ancilla[16], ancilla[17])))
-        seq.append(M(node=target_node))
-        seq.append(M(node=ancilla[0], s_domain={target_node}))
-        seq.append(M(node=ancilla[1], s_domain={ancilla[0]}))
-        seq.append(M(node=control_node1))
-        seq.append(M(node=ancilla[2], angle=-1.75, s_domain={ancilla[1], target_node}))
-        seq.append(M(node=ancilla[14], s_domain={control_node1}))
-        seq.append(M(node=ancilla[3], s_domain={ancilla[2], ancilla[0]}))
-        seq.append(
-            M(
-                node=ancilla[5],
-                angle=-0.25,
-                s_domain={ancilla[3], ancilla[1], ancilla[14], target_node},
-            )
-        )
-        seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(M(node=ancilla[6], s_domain={ancilla[5], ancilla[2], ancilla[0]}))
-        seq.append(
-            M(
-                node=ancilla[9],
-                s_domain={control_node2, ancilla[5], ancilla[2]},
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[7],
-                angle=-1.75,
-                s_domain={ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node},
-            )
-        )
-        seq.append(M(node=ancilla[10], angle=-1.75, s_domain={ancilla[9], ancilla[14]}))
-        seq.append(M(node=ancilla[4], angle=-0.25, s_domain={ancilla[14]}))
-        seq.append(
-            M(
-                node=ancilla[8],
-                s_domain={ancilla[7], ancilla[5], ancilla[2], ancilla[0]},
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[11],
-                s_domain={ancilla[10], control_node2, ancilla[5], ancilla[2]},
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[12],
-                angle=-0.25,
-                s_domain={
-                    ancilla[8],
-                    ancilla[6],
-                    ancilla[3],
-                    ancilla[1],
-                    target_node,
-                },
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[16],
-                s_domain={
-                    ancilla[4],
-                    control_node1,
-                    ancilla[2],
-                    control_node2,
-                    ancilla[7],
-                    ancilla[10],
-                    ancilla[2],
-                    control_node2,
-                    ancilla[5],
-                },
-            )
-        )
-        seq.append(X(node=ancilla[17], domain={ancilla[14], ancilla[16]}))
-        seq.append(X(node=ancilla[15], domain={ancilla[9], ancilla[11]}))
-        seq.append(
-            X(
-                node=ancilla[13],
-                domain={ancilla[0], ancilla[2], ancilla[5], ancilla[7], ancilla[12]},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[17],
-                domain={ancilla[4], ancilla[5], ancilla[7], ancilla[10], control_node1},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[15],
-                domain={control_node2, ancilla[2], ancilla[5], ancilla[10]},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[13],
-                domain={ancilla[1], ancilla[3], ancilla[6], ancilla[8], target_node},
+        seq.extend(
+            (
+                E(nodes=(target_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                E(nodes=(ancilla[1], ancilla[2])),
+                E(nodes=(ancilla[1], control_node2)),
+                E(nodes=(control_node1, ancilla[14])),
+                E(nodes=(ancilla[2], ancilla[3])),
+                E(nodes=(ancilla[14], ancilla[4])),
+                E(nodes=(ancilla[3], ancilla[5])),
+                E(nodes=(ancilla[3], ancilla[4])),
+                E(nodes=(ancilla[5], ancilla[6])),
+                E(nodes=(control_node2, ancilla[6])),
+                E(nodes=(control_node2, ancilla[9])),
+                E(nodes=(ancilla[6], ancilla[7])),
+                E(nodes=(ancilla[9], ancilla[4])),
+                E(nodes=(ancilla[9], ancilla[10])),
+                E(nodes=(ancilla[7], ancilla[8])),
+                E(nodes=(ancilla[10], ancilla[11])),
+                E(nodes=(ancilla[4], ancilla[8])),
+                E(nodes=(ancilla[4], ancilla[11])),
+                E(nodes=(ancilla[4], ancilla[16])),
+                E(nodes=(ancilla[8], ancilla[12])),
+                E(nodes=(ancilla[11], ancilla[15])),
+                E(nodes=(ancilla[12], ancilla[13])),
+                E(nodes=(ancilla[16], ancilla[17])),
+                M(node=target_node),
+                M(node=ancilla[0], s_domain={target_node}),
+                M(node=ancilla[1], s_domain={ancilla[0]}),
+                M(node=control_node1),
+                M(node=ancilla[2], angle=-1.75, s_domain={ancilla[1], target_node}),
+                M(node=ancilla[14], s_domain={control_node1}),
+                M(node=ancilla[3], s_domain={ancilla[2], ancilla[0]}),
+                M(node=ancilla[5], angle=-0.25, s_domain={ancilla[3], ancilla[1], ancilla[14], target_node}),
+                M(node=control_node2, angle=-0.25),
+                M(node=ancilla[6], s_domain={ancilla[5], ancilla[2], ancilla[0]}),
+                M(node=ancilla[9], s_domain={control_node2, ancilla[5], ancilla[2]}),
+                M(
+                    node=ancilla[7],
+                    angle=-1.75,
+                    s_domain={ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node},
+                ),
+                M(node=ancilla[10], angle=-1.75, s_domain={ancilla[9], ancilla[14]}),
+                M(node=ancilla[4], angle=-0.25, s_domain={ancilla[14]}),
+                M(node=ancilla[8], s_domain={ancilla[7], ancilla[5], ancilla[2], ancilla[0]}),
+                M(node=ancilla[11], s_domain={ancilla[10], control_node2, ancilla[5], ancilla[2]}),
+                M(
+                    node=ancilla[12],
+                    angle=-0.25,
+                    s_domain={ancilla[8], ancilla[6], ancilla[3], ancilla[1], target_node},
+                ),
+                M(
+                    node=ancilla[16],
+                    s_domain={
+                        ancilla[4],
+                        control_node1,
+                        ancilla[2],
+                        control_node2,
+                        ancilla[7],
+                        ancilla[10],
+                        ancilla[2],
+                        control_node2,
+                        ancilla[5],
+                    },
+                ),
+                X(node=ancilla[17], domain={ancilla[14], ancilla[16]}),
+                X(node=ancilla[15], domain={ancilla[9], ancilla[11]}),
+                X(node=ancilla[13], domain={ancilla[0], ancilla[2], ancilla[5], ancilla[7], ancilla[12]}),
+                Z(node=ancilla[17], domain={ancilla[4], ancilla[5], ancilla[7], ancilla[10], control_node1}),
+                Z(node=ancilla[15], domain={control_node2, ancilla[2], ancilla[5], ancilla[10]}),
+                Z(node=ancilla[13], domain={ancilla[1], ancilla[3], ancilla[6], ancilla[8], target_node}),
             )
         )
         return ancilla[17], ancilla[15], ancilla[13], seq
@@ -1502,54 +1491,43 @@ class Circuit:
         """
         assert len(ancilla) == 11
         seq = [N(node=ancilla[i]) for i in range(11)]
-        seq.append(E(nodes=(control_node1, ancilla[8])))
-        seq.append(E(nodes=(control_node2, ancilla[4])))
-        seq.append(E(nodes=(control_node2, ancilla[5])))
-        seq.append(E(nodes=(control_node2, ancilla[2])))
-        seq.append(E(nodes=(control_node2, ancilla[0])))
-        seq.append(E(nodes=(target_node, ancilla[6])))
-        seq.append(E(nodes=(ancilla[0], ancilla[6])))
-        seq.append(E(nodes=(ancilla[1], ancilla[10])))
-        seq.append(E(nodes=(ancilla[2], ancilla[10])))
-        seq.append(E(nodes=(ancilla[2], ancilla[6])))
-        seq.append(E(nodes=(ancilla[3], ancilla[6])))
-        seq.append(E(nodes=(ancilla[3], ancilla[10])))
-        seq.append(E(nodes=(ancilla[4], ancilla[10])))
-        seq.append(E(nodes=(ancilla[5], ancilla[9])))
-        seq.append(E(nodes=(ancilla[6], ancilla[7])))
-        seq.append(E(nodes=(ancilla[8], ancilla[10])))
-        seq.append(M(node=target_node))
-        seq.append(M(node=control_node1))
-        seq.append(M(node=ancilla[0], angle=-1.75, s_domain={target_node}).clifford(Clifford.H))
-        seq.append(M(node=ancilla[8], s_domain={control_node1}))
-        seq.append(M(node=ancilla[2], angle=-0.25, s_domain={target_node, ancilla[8]}).clifford(Clifford.H))
-        seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(M(node=ancilla[3], angle=-1.75, s_domain={ancilla[8], target_node}).clifford(Clifford.H))
-        seq.append(M(node=ancilla[4], angle=-1.75, s_domain={ancilla[8]}).clifford(Clifford.H))
-        seq.append(M(node=ancilla[1], angle=-0.25, s_domain={ancilla[8]}).clifford(Clifford.H))
-        seq.append(
-            M(
-                node=ancilla[5],
-                s_domain={control_node2, ancilla[0], ancilla[2], ancilla[4]},
+        seq.extend(
+            (
+                E(nodes=(control_node1, ancilla[8])),
+                E(nodes=(control_node2, ancilla[4])),
+                E(nodes=(control_node2, ancilla[5])),
+                E(nodes=(control_node2, ancilla[2])),
+                E(nodes=(control_node2, ancilla[0])),
+                E(nodes=(target_node, ancilla[6])),
+                E(nodes=(ancilla[0], ancilla[6])),
+                E(nodes=(ancilla[1], ancilla[10])),
+                E(nodes=(ancilla[2], ancilla[10])),
+                E(nodes=(ancilla[2], ancilla[6])),
+                E(nodes=(ancilla[3], ancilla[6])),
+                E(nodes=(ancilla[3], ancilla[10])),
+                E(nodes=(ancilla[4], ancilla[10])),
+                E(nodes=(ancilla[5], ancilla[9])),
+                E(nodes=(ancilla[6], ancilla[7])),
+                E(nodes=(ancilla[8], ancilla[10])),
+                M(node=target_node),
+                M(node=control_node1),
+                M(node=ancilla[0], angle=-1.75, s_domain={target_node}).clifford(Clifford.H),
+                M(node=ancilla[8], s_domain={control_node1}),
+                M(node=ancilla[2], angle=-0.25, s_domain={target_node, ancilla[8]}).clifford(Clifford.H),
+                M(node=control_node2, angle=-0.25),
+                M(node=ancilla[3], angle=-1.75, s_domain={ancilla[8], target_node}).clifford(Clifford.H),
+                M(node=ancilla[4], angle=-1.75, s_domain={ancilla[8]}).clifford(Clifford.H),
+                M(node=ancilla[1], angle=-0.25, s_domain={ancilla[8]}).clifford(Clifford.H),
+                M(node=ancilla[5], s_domain={control_node2, ancilla[0], ancilla[2], ancilla[4]}),
+                M(node=ancilla[6], angle=-0.25, s_domain={target_node}),
+                X(node=ancilla[10], domain={ancilla[8]}),
+                X(node=ancilla[9], domain={ancilla[5]}),
+                X(node=ancilla[7], domain={ancilla[0], ancilla[2], ancilla[3], ancilla[6]}),
+                Z(node=ancilla[10], domain={control_node1, ancilla[1], ancilla[2], ancilla[3], ancilla[4]}),
+                Z(node=ancilla[9], domain={control_node2, ancilla[0], ancilla[2], ancilla[4]}),
+                Z(node=ancilla[7], domain={target_node}),
             )
         )
-        seq.append(M(node=ancilla[6], angle=-0.25, s_domain={target_node}))
-        seq.append(X(node=ancilla[10], domain={ancilla[8]}))
-        seq.append(X(node=ancilla[9], domain={ancilla[5]}))
-        seq.append(X(node=ancilla[7], domain={ancilla[0], ancilla[2], ancilla[3], ancilla[6]}))
-        seq.append(
-            Z(
-                node=ancilla[10],
-                domain={control_node1, ancilla[1], ancilla[2], ancilla[3], ancilla[4]},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[9],
-                domain={control_node2, ancilla[0], ancilla[2], ancilla[4]},
-            )
-        )
-        seq.append(Z(node=ancilla[7], domain={target_node}))
 
         return ancilla[10], ancilla[9], ancilla[7], seq
 

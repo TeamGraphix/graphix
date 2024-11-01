@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from copy import deepcopy
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -105,7 +106,7 @@ def get_fusion_network_from_graph(
 
     # Find GHZ graphs in the graph and remove their edges from the graph.
     # All nodes that have more than 2 edges become the roots of the GHZ clusters.
-    for v, _ in sorted(neighbors_list, key=lambda tup: tup[1], reverse=True):
+    for v, _ in sorted(neighbors_list, key=operator.itemgetter(1), reverse=True):
         if len(adjdict[v]) > 2:
             nodes = [v]
             while len(adjdict[v]) > 0 and len(nodes) < max_ghz:
