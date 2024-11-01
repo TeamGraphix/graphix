@@ -1,7 +1,9 @@
 # Lint/format
+pre-commit
+
+# Type checking
 mypy
 pyright
-ruff
 
 # Stubs
 types-networkx
