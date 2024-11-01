@@ -32,15 +32,15 @@ def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
         return Pauli()
     lr = (lhs, rhs)
     if lr == (IXYZ.X, IXYZ.Y):
-        return Pauli(IXYZ.Z, ComplexUnit.PLUS_J)
+        return Pauli(IXYZ.Z, ComplexUnit.J)
     if lr == (IXYZ.Y, IXYZ.X):
         return Pauli(IXYZ.Z, ComplexUnit.MINUS_J)
     if lr == (IXYZ.Y, IXYZ.Z):
-        return Pauli(IXYZ.X, ComplexUnit.PLUS_J)
+        return Pauli(IXYZ.X, ComplexUnit.J)
     if lr == (IXYZ.Z, IXYZ.Y):
         return Pauli(IXYZ.X, ComplexUnit.MINUS_J)
     if lr == (IXYZ.Z, IXYZ.X):
-        return Pauli(IXYZ.Y, ComplexUnit.PLUS_J)
+        return Pauli(IXYZ.Y, ComplexUnit.J)
     if lr == (IXYZ.X, IXYZ.Z):
         return Pauli(IXYZ.Y, ComplexUnit.MINUS_J)
     raise RuntimeError("Unreachable.")  # pragma: no cover
@@ -62,7 +62,7 @@ class Pauli(metaclass=_PauliMeta):
     """
 
     symbol: IXYZ = IXYZ.I
-    unit: ComplexUnit = ComplexUnit.PLUS
+    unit: ComplexUnit = ComplexUnit.ONE
     I: ClassVar[Pauli]
     X: ClassVar[Pauli]
     Y: ClassVar[Pauli]
@@ -116,11 +116,11 @@ class Pauli(metaclass=_PauliMeta):
         sym = self.symbol.name
         if prefix is not None:
             sym = f"{prefix}.{sym}"
-        if self.unit == ComplexUnit.PLUS:
+        if self.unit == ComplexUnit.ONE:
             return sym
-        if self.unit == ComplexUnit.MINUS:
+        if self.unit == ComplexUnit.MINUS_ONE:
             return f"-{sym}"
-        if self.unit == ComplexUnit.PLUS_J:
+        if self.unit == ComplexUnit.J:
             return f"1j * {sym}"
         if self.unit == ComplexUnit.MINUS_J:
             return f"-1j * {sym}"
@@ -162,7 +162,7 @@ class Pauli(metaclass=_PauliMeta):
         ----------
             include_unit (bool, optional): Include the unit in the iteration. Defaults to True.
         """
-        us = tuple(ComplexUnit) if include_unit else (ComplexUnit.PLUS,)
+        us = tuple(ComplexUnit) if include_unit else (ComplexUnit.ONE,)
         for symbol in IXYZ:
             for unit in us:
                 yield Pauli(symbol, unit)

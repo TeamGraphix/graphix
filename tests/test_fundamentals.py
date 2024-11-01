@@ -84,16 +84,16 @@ class TestSign:
 
 class TestComplexUnit:
     def test_try_from(self) -> None:
-        assert ComplexUnit.try_from(ComplexUnit.PLUS) == ComplexUnit.PLUS
-        assert ComplexUnit.try_from(1) == ComplexUnit.PLUS
-        assert ComplexUnit.try_from(1.0) == ComplexUnit.PLUS
-        assert ComplexUnit.try_from(1.0 + 0.0j) == ComplexUnit.PLUS
+        assert ComplexUnit.try_from(ComplexUnit.ONE) == ComplexUnit.ONE
+        assert ComplexUnit.try_from(1) == ComplexUnit.ONE
+        assert ComplexUnit.try_from(1.0) == ComplexUnit.ONE
+        assert ComplexUnit.try_from(1.0 + 0.0j) == ComplexUnit.ONE
         assert ComplexUnit.try_from(3) is None
 
     def test_from_properties(self) -> None:
-        assert ComplexUnit.from_properties() == ComplexUnit.PLUS
-        assert ComplexUnit.from_properties(is_imag=True) == ComplexUnit.PLUS_J
-        assert ComplexUnit.from_properties(sign=Sign.MINUS) == ComplexUnit.MINUS
+        assert ComplexUnit.from_properties() == ComplexUnit.ONE
+        assert ComplexUnit.from_properties(is_imag=True) == ComplexUnit.J
+        assert ComplexUnit.from_properties(sign=Sign.MINUS) == ComplexUnit.MINUS_ONE
         assert ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True) == ComplexUnit.MINUS_J
 
     @pytest.mark.parametrize(("sign", "is_imag"), itertools.product([Sign.PLUS, Sign.MINUS], [True, False]))
@@ -102,15 +102,15 @@ class TestComplexUnit:
         assert ComplexUnit.from_properties(sign=sign, is_imag=is_imag).is_imag == is_imag
 
     def test_complex(self) -> None:
-        assert complex(ComplexUnit.PLUS) == 1
-        assert complex(ComplexUnit.PLUS_J) == 1j
-        assert complex(ComplexUnit.MINUS) == -1
+        assert complex(ComplexUnit.ONE) == 1
+        assert complex(ComplexUnit.J) == 1j
+        assert complex(ComplexUnit.MINUS_ONE) == -1
         assert complex(ComplexUnit.MINUS_J) == -1j
 
     def test_str(self) -> None:
-        assert str(ComplexUnit.PLUS) == "1"
-        assert str(ComplexUnit.PLUS_J) == "1j"
-        assert str(ComplexUnit.MINUS) == "-1"
+        assert str(ComplexUnit.ONE) == "1"
+        assert str(ComplexUnit.J) == "1j"
+        assert str(ComplexUnit.MINUS_ONE) == "-1"
         assert str(ComplexUnit.MINUS_J) == "-1j"
 
     @pytest.mark.parametrize(("lhs", "rhs"), itertools.product(ComplexUnit, ComplexUnit))
@@ -118,18 +118,18 @@ class TestComplexUnit:
         assert complex(lhs * rhs) == complex(lhs) * complex(rhs)
 
     def test_mul_number(self) -> None:
-        assert ComplexUnit.PLUS * 1 == ComplexUnit.PLUS
-        assert 1 * ComplexUnit.PLUS == ComplexUnit.PLUS
-        assert ComplexUnit.PLUS * 1.0 == ComplexUnit.PLUS
-        assert 1.0 * ComplexUnit.PLUS == ComplexUnit.PLUS
-        assert ComplexUnit.PLUS * complex(1) == ComplexUnit.PLUS
-        assert complex(1) * ComplexUnit.PLUS == ComplexUnit.PLUS
+        assert ComplexUnit.ONE * 1 == ComplexUnit.ONE
+        assert 1 * ComplexUnit.ONE == ComplexUnit.ONE
+        assert ComplexUnit.ONE * 1.0 == ComplexUnit.ONE
+        assert 1.0 * ComplexUnit.ONE == ComplexUnit.ONE
+        assert ComplexUnit.ONE * complex(1) == ComplexUnit.ONE
+        assert complex(1) * ComplexUnit.ONE == ComplexUnit.ONE
 
     def test_neg(self) -> None:
-        assert -ComplexUnit.PLUS == ComplexUnit.MINUS
-        assert -ComplexUnit.PLUS_J == ComplexUnit.MINUS_J
-        assert -ComplexUnit.MINUS == ComplexUnit.PLUS
-        assert -ComplexUnit.MINUS_J == ComplexUnit.PLUS_J
+        assert -ComplexUnit.ONE == ComplexUnit.MINUS_ONE
+        assert -ComplexUnit.J == ComplexUnit.MINUS_J
+        assert -ComplexUnit.MINUS_ONE == ComplexUnit.ONE
+        assert -ComplexUnit.MINUS_J == ComplexUnit.J
 
 
 _PLANE_INDEX = {Axis.X: 0, Axis.Y: 1, Axis.Z: 2}

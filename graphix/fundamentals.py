@@ -118,10 +118,11 @@ class ComplexUnit(Enum):
     with Python constants 1, -1, 1j, -1j, and can be negated.
     """
 
-    # HACK: Related to arg(z)
-    PLUS = 0
-    PLUS_J = 1
-    MINUS = 2
+    # HACK: complex(u) == (1j) ** u.value for all u in ComplexUnit.
+
+    ONE = 0
+    J = 1
+    MINUS_ONE = 2
     MINUS_J = 3
 
     @staticmethod
@@ -134,11 +135,11 @@ class ComplexUnit(Enum):
         except Exception:
             return None
         if value == 1:
-            return ComplexUnit.PLUS
+            return ComplexUnit.ONE
         if value == -1:
-            return ComplexUnit.MINUS
+            return ComplexUnit.MINUS_ONE
         if value == 1j:
-            return ComplexUnit.PLUS_J
+            return ComplexUnit.J
         if value == -1j:
             return ComplexUnit.MINUS_J
         return None
