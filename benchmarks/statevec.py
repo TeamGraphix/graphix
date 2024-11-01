@@ -13,6 +13,7 @@ The methods and modules we use are the followings:
 
 # %%
 # Firstly, let us import relevant modules:
+from __future__ import annotations
 
 from time import perf_counter
 

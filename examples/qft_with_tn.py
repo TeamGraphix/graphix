@@ -13,6 +13,8 @@ Firstly, let us import relevant modules and define the circuit:
 """
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 
 from graphix import Circuit

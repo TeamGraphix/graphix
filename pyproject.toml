@@ -85,6 +85,9 @@ docstring-code-format = true
   "D10", # Allow undocumented items
 ]
 
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
