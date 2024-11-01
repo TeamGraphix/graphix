@@ -73,9 +73,6 @@ allowed-confusables = ["α"]
 docstring-code-format = true
 
 [tool.ruff.lint.extend-per-file-ignores]
-"__init__.py" = [
-  "F401", # Unused import
-]
 "benchmarks/*.py" = [
   "D", # Benchmarks follow Sphinx doc conventions
 ]
