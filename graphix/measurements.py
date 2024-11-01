@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
+from typing import NamedTuple
 
 from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign
@@ -17,8 +18,7 @@ class Domains:
     t_domain: set[int]
 
 
-@dataclasses.dataclass(frozen=True)
-class Measurement:
+class Measurement(NamedTuple):
     """An MBQC measurement.
 
     :param angle: the angle of the measurement. Should be between [0, 2)
@@ -45,8 +45,7 @@ class Measurement:
         return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
 
 
-@dataclasses.dataclass(frozen=True)
-class PauliMeasurement:
+class PauliMeasurement(NamedTuple):
     """Pauli measurement."""
 
     axis: Axis
