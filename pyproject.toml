@@ -46,6 +46,7 @@ line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
+preview = true
 select = ["ALL"]
 extend-ignore = [
   # Maintained by formatter
@@ -69,6 +70,8 @@ extend-ignore = [
   "ARG",
   "C4",
   "C90",
+  "CPY",
+  "DOC",
   "EM",
   "ERA",
   "FBT",
@@ -82,11 +85,12 @@ extend-ignore = [
   "TD",
 
   # Rules
-  "E74",    # Ambiguous name
-  "E501",   # Line too long
-  "PT011",  # `pytest.raises` is too broad
-  "S101",   # Use of assert detected
-  "TRY003", # Avoid specifiying long messages
+  "E74",     # Ambiguous name
+  "E501",    # Line too long
+  "PLC0415", # `import` should be at the top-level
+  "PT011",   # `pytest.raises` is too broad
+  "S101",    # Use of assert detected
+  "TRY003",  # Avoid specifiying long messages
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
 allowed-confusables = ["α"]
@@ -104,7 +108,8 @@ docstring-code-format = true
   "E402", # Import not at top of file
 ]
 "tests/*.py" = [
-  "D10", # Allow undocumented items
+  "D10",     # Allow undocumented items
+  "PLC2701", # Allow private import
 ]
 
 [tool.ruff.lint.isort]
