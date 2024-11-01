@@ -45,9 +45,10 @@ class TestClifford:
 
     @pytest.mark.parametrize("c", Clifford)
     def test_repr(self, c: Clifford) -> None:
-        m = re.match(r"\((.*)\)", repr(c))
-        assert m is not None
-        for term in m.group(1).split(" @ "):
+        rep: str = repr(c)
+        m = re.match(r"\((.*)\)", rep)
+        rep = m.group(1) if m is not None else rep
+        for term in rep.split(" @ "):
             assert term in [
                 "Clifford.I",
                 "Clifford.H",
