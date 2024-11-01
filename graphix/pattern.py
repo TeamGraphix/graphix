@@ -309,12 +309,12 @@ class Pattern:
             else:
                 raise ValueError(f"command {cmd} is invalid!")
         nodes = dict()
-        for index in node_prop.keys():
+        for index, prop in node_prop.items():
             if index in self.output_nodes:
-                node_prop[index]["is_output"] = True
+                prop["is_output"] = True
             if index in self.input_nodes:
-                node_prop[index]["is_input"] = True
-            node = CommandNode(index, **node_prop[index])
+                prop["is_input"] = True
+            node = CommandNode(index, **prop)
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 

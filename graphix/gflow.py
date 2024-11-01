@@ -678,8 +678,8 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k.keys():
-        l_k[node] = lmax - l_k[node] + 1
+    for node, layer in l_k.items():
+        l_k[node] = lmax - layer + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
 
@@ -728,8 +728,8 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k.keys():
-        l_k[node] = lmax - l_k[node] + 1
+    for node, layer in l_k.items():
+        l_k[node] = lmax - layer + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
 
@@ -955,8 +955,8 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     """
     d = get_min_depth(l_k)
     layers = {k: set() for k in range(d + 1)}
-    for i in l_k.keys():
-        layers[l_k[i]] |= {i}
+    for i, li in l_k.items():
+        layers[li] |= {i}
     return d, layers
 
 
