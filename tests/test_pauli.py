@@ -24,14 +24,14 @@ class TestPauli:
 
     @pytest.mark.parametrize(
         ("u", "p"),
-        itertools.product(ComplexUnit, Pauli.iterate()),
+        itertools.product(ComplexUnit, Pauli),
     )
     def test_unit_mul(self, u: ComplexUnit, p: Pauli) -> None:
         assert np.allclose((u * p).matrix, complex(u) * p.matrix)
 
     @pytest.mark.parametrize(
         ("a", "b"),
-        itertools.product(Pauli.iterate(), Pauli.iterate()),
+        itertools.product(Pauli, Pauli),
     )
     def test_matmul(self, a: Pauli, b: Pauli) -> None:
         assert np.allclose((a @ b).matrix, a.matrix @ b.matrix)
@@ -43,7 +43,7 @@ class TestPauli:
         assert str(-1 * Pauli.I) == "-IXYZ.I"
         assert str(-1j * Pauli.I) == "-1j * IXYZ.I"
 
-    @pytest.mark.parametrize("p", Pauli.iterate())
+    @pytest.mark.parametrize("p", Pauli)
     def test_neg(self, p: Pauli) -> None:
         pneg = -p
         assert pneg == -p
@@ -75,6 +75,14 @@ class TestPauli:
         assert cmp[13] == 1j * Pauli.Z
         assert cmp[14] == -1 * Pauli.Z
         assert cmp[15] == -1j * Pauli.Z
+
+    def test_iter_meta(self) -> None:
+        it = Pauli.iterate(include_unit=True)
+        it_ = iter(Pauli)
+        for p, p_ in zip(it, it_):
+            assert p == p_
+        assert all(False for _ in it)
+        assert all(False for _ in it_)
 
     @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(include_unit=False), [0, 1]))
     def test_eigenstate(self, p: Pauli, b: int) -> None:

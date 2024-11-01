@@ -46,8 +46,14 @@ def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
     raise RuntimeError("Unreachable.")  # pragma: no cover
 
 
+class _PauliMeta(type):
+    def __iter__(cls) -> Iterator[Pauli]:
+        """Iterate over all Pauli gates, including the unit."""
+        return Pauli.iterate()
+
+
 @dataclasses.dataclass(frozen=True)
-class Pauli:
+class Pauli(metaclass=_PauliMeta):
     """Pauli gate: `u * {I, X, Y, Z}` where u is a complex unit.
 
     Pauli gates can be multiplied with other Pauli gates (with `@`),
