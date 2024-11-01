@@ -93,7 +93,6 @@ class State:
     """Base class for backend state."""
 
 
-
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
     op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result

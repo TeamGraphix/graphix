@@ -34,7 +34,7 @@ def check_meas_planes(meas_planes: dict[int, Plane]) -> None:
     """Check that all planes are valid planes."""
     for node, plane in meas_planes.items():
         if not isinstance(plane, Plane):
-            raise ValueError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
+            raise TypeError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
 
 
 def find_gflow(
@@ -982,10 +982,7 @@ def get_dependence_flow(
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    try:  # if inputs is not empty
-        dependence_flow = {u: set() for u in inputs}
-    except Exception:
-        dependence_flow = dict()
+    dependence_flow = {u: set() for u in inputs}
     # concatenate flow and odd_flow
     combined_flow = dict()
     for node, corrections in flow.items():
