@@ -144,7 +144,7 @@ class TensorNetworkBackend(Backend):
         elif self.graph_prep == "opt":
             pass
 
-    def measure(self, node: int, meas: Measurement) -> tuple[Backend, int]:
+    def measure(self, node: int, measurement: Measurement) -> tuple[Backend, int]:
         """Perform measurement of the node.
 
         In the context of tensornetwork, performing measurement equals to
@@ -154,7 +154,7 @@ class TensorNetworkBackend(Backend):
         ----------
         node : int
             index of the node to measure
-        meas : Measurement
+        measurement : Measurement
             measure plane and angle
         """
         if node in self._isolated_nodes:
@@ -169,9 +169,9 @@ class TensorNetworkBackend(Backend):
             result = self.__rng.choice([0, 1])
             self.results[node] = result
             buffer = 2**0.5
-        vec = PlanarState(meas.plane, meas.angle).get_statevector()
+        vec = PlanarState(measurement.plane, measurement.angle).get_statevector()
         if result:
-            vec = meas.plane.orth.matrix @ vec
+            vec = measurement.plane.orth.matrix @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec)
         return result
