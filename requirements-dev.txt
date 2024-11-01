@@ -1,13 +1,4 @@
-# Lint/format
 pre-commit
-
-# Type checking
-mypy
-pyright
-
-# Stubs
-types-networkx
-types-psutil
 
 # Tests
 nox==2024.10.09 # Keep in sync with CI

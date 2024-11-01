@@ -1,4 +1,39 @@
-# TODO: Add mypy/pyright once all the files are typed
+files-typed: &files-typed "^(\
+  graphix/channels|\
+  graphix/clifford|\
+  graphix/command|\
+  graphix/instruction|\
+  graphix/linalg_validations|\
+  graphix/ops|\
+  graphix/pyzx|\
+  graphix/rng|\
+  graphix/states|\
+  graphix/type_utils|\
+  graphix/_db|\
+  noxfile|\
+  setup.py|\
+  tests/conftest|\
+  tests/test_clifford|\
+  tests/test_db|\
+  tests/test_kraus|\
+  tests/test_pauli|\
+  tests/test_pyzx|\
+  tests/test_rng\
+  .*/__init__|\
+  ).py$"
+
+deps-typecheck:
+  &deps-typecheck [
+    "nox",
+    "numpy",
+    "pydantic",
+    "pytest",
+    "pytest-mock",
+    "pyzx",
+    "types-networkx",
+    "types-psutil",
+  ]
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -10,6 +45,20 @@ repos:
       - id: fix-byte-order-marker
       - id: mixed-line-ending
       - id: trailing-whitespace
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.13.0"
+    hooks:
+      - id: mypy
+        files: *files-typed
+        additional_dependencies: *deps-typecheck
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.387
+    hooks:
+      - id: pyright
+        files: *files-typed
+        additional_dependencies: *deps-typecheck
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.7.1

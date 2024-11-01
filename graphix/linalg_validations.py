@@ -15,6 +15,8 @@ def is_square(matrix: npt.NDArray[_T]) -> bool:
     if matrix.ndim != 2:
         return False
     rows, cols = matrix.shape
+    assert isinstance(rows, int)
+    assert isinstance(cols, int)
     return rows == cols
 
 
@@ -23,6 +25,7 @@ def is_qubitop(matrix: npt.NDArray[_T]) -> bool:
     if not is_square(matrix):
         return False
     size, _ = matrix.shape
+    assert isinstance(size, int)
     return size > 0 and size & (size - 1) == 0
 
 
