@@ -88,7 +88,8 @@ extend-ignore = [
   "E74",     # Ambiguous name
   "E501",    # Line too long
   "PLC0415", # `import` should be at the top-level
-  "PT011",   # `pytest.raises` is too broad
+  "PLW1641", # Object does not implement `__hash__` (tentative)
+  "PT011",   # `pytest.raises` is too broad (tentative)
   "S101",    # Use of assert detected
   "TRY003",  # Avoid specifiying long messages
 ]
