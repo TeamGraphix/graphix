@@ -46,25 +46,47 @@ line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-extend-select = [
-  "A",
-  "B",
-  "D",
-  "FA",
-  "I",
-  "NPY",
-  "N",
-  "PERF",
-  "PLE",
-  "PLW",
-  "RUF",
-  "TCH",
-  "TID",
-  "UP",
-  "W",
-]
-ignore = [
-  "E74", # Ambiguous name
+select = ["ALL"]
+extend-ignore = [
+  # Maintained by formatter
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "ISC001",
+  "ISC002",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "W191",
+
+  # Rulesets
+  "ANN",
+  "ARG",
+  "C4",
+  "C90",
+  "EM",
+  "ERA",
+  "FBT",
+  "FIX",
+  "INP",
+  "PLR",
+  "RET",
+  "SIM",
+  "SLF",
+  "T20",
+  "TD",
+
+  # Rules
+  "E74",    # Ambiguous name
+  "E501",   # Line too long
+  "PT011",  # `pytest.raises` is too broad
+  "S101",   # Use of assert detected
+  "TRY003", # Avoid specifiying long messages
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
 allowed-confusables = ["α"]
