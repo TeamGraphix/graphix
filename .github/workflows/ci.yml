@@ -36,4 +36,4 @@ jobs:
         # Keep in sync with requirements-dev.txt
         uses: wntrblm/nox@2024.10.09
 
-      - run: nox --python ${{ matrix.python }}
+      - run: nox --python ${{ matrix.python }} --session runtest_mini runtest_full
