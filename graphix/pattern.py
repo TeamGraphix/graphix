@@ -16,12 +16,13 @@ import networkx as nx
 import typing_extensions
 
 from graphix import command
-from graphix.clifford import Clifford, Domains
+from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
+from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim.graphstate import GraphState
-from graphix.pauli import Axis, PauliMeasurement, Plane, Sign
+from graphix.measurements import Domains, PauliMeasurement
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
@@ -2134,7 +2135,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
             measure = graph_state.measure_z
         else:
             typing_extensions.assert_never(basis.axis)
-        if basis.sign == Sign.Plus:
+        if basis.sign == Sign.PLUS:
             results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
         else:
             results[pattern_cmd.node] = 1 - measure(pattern_cmd.node, choice=1)

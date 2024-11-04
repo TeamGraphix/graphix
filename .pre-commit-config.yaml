@@ -2,19 +2,24 @@ files-typed: &files-typed "^(\
   graphix/channels|\
   graphix/clifford|\
   graphix/command|\
+  graphix/fundamentals|\
   graphix/instruction|\
   graphix/linalg_validations|\
+  graphix/measurements|\
   graphix/ops|\
+  graphix/pauli|\
   graphix/pyzx|\
   graphix/rng|\
   graphix/states|\
-  graphix/type_utils|\
+  graphix/utils|\
   graphix/_db|\
   noxfile|\
   setup.py|\
   tests/conftest|\
   tests/test_clifford|\
+  tests/test_command|\
   tests/test_db|\
+  tests/test_fundamentals|\
   tests/test_kraus|\
   tests/test_pauli|\
   tests/test_pyzx|\

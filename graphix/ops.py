@@ -4,15 +4,68 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
+from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
 
-from graphix._db import WellKnownMatrix
+from graphix import utils
 
 
-class Ops(WellKnownMatrix):
+class Ops:
     """Basic single- and two-qubits operators."""
+
+    I: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, 1]]))
+    X: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[0, 1], [1, 0]]))
+    Y: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[0, -1j], [1j, 0]]))
+    Z: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, -1]]))
+    S: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, 1j]]))
+    SDG: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 0], [0, -1j]]))
+    H: ClassVar[npt.NDArray[np.complex128]] = utils.lock(np.asarray([[1, 1], [1, -1]]) / np.sqrt(2))
+    CZ: ClassVar[npt.NDArray[np.complex128]] = utils.lock(
+        np.asarray(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, -1],
+            ],
+        )
+    )
+    CNOT: ClassVar[npt.NDArray[np.complex128]] = utils.lock(
+        np.asarray(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 0, 1],
+                [0, 0, 1, 0],
+            ],
+        )
+    )
+    SWAP: ClassVar[npt.NDArray[np.complex128]] = utils.lock(
+        np.asarray(
+            [
+                [1, 0, 0, 0],
+                [0, 0, 1, 0],
+                [0, 1, 0, 0],
+                [0, 0, 0, 1],
+            ],
+        )
+    )
+    CCX: ClassVar[npt.NDArray[np.complex128]] = utils.lock(
+        np.asarray(
+            [
+                [1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0, 0, 1, 0],
+            ],
+        )
+    )
 
     @staticmethod
     def rx(theta: float) -> npt.NDArray[np.complex128]:

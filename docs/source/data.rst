@@ -27,14 +27,14 @@ This module defines standard data structure for pattern commands.
 .. autoclass:: MeasureUpdate
 
 
-:mod:`graphix.pauli` module
-+++++++++++++++++++++++++++
+:mod:`graphix.fundamentals` module
+++++++++++++++++++++++++++++++++++
 
-This module defines standard data structure for Pauli operators, measurement planes and their transformations.
+This module defines standard data structure for Pauli operators.
 
-.. automodule:: graphix.pauli
+.. automodule:: graphix.fundamentals
 
-.. currentmodule:: graphix.pauli
+.. currentmodule:: graphix.fundamentals
 
 .. autoclass:: Axis
     :members:
@@ -51,8 +51,16 @@ This module defines standard data structure for Pauli operators, measurement pla
 .. autoclass:: Plane
     :members:
 
-.. autoclass:: Pauli
+:mod:`graphix.pauli` module
++++++++++++++++++++++++++++
 
+This module defines standard data structure for Pauli operators.
+
+.. automodule:: graphix.pauli
+
+.. currentmodule:: graphix.pauli
+
+.. autoclass:: Pauli
 
 :mod:`graphix.instruction` module
 +++++++++++++++++++++++++++++++++
