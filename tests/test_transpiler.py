@@ -106,50 +106,13 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-
-class TestTranspilerOpt:
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_ccx_opt(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 4
-        depth = 6
-        circuit = rand_circuit(nqubits, depth, rng, use_ccx=True)
-        circuit.ccx(0, 1, 2)
-        pattern = circuit.transpile(opt=True).pattern
-        pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
-    def test_transpile_opt(self, fx_rng: Generator) -> None:
+    def test_transpiled(self, fx_rng: Generator) -> None:
         nqubits = 2
         depth = 1
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rand_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
-        pattern = circuit.transpile(opt=True).pattern
+        pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
-    def test_standardize_and_transpile(self, fx_rng: Generator) -> None:
-        nqubits = 3
-        depth = 2
-        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rand_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
-        pattern = circuit.standardize_and_transpile().pattern
-        state = circuit.simulate_statevector().statevec
-        pattern.minimize_space()
-        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
-    def test_standardize_and_transpile_opt(self, fx_rng: Generator) -> None:
-        nqubits = 3
-        depth = 2
-        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rand_gate(nqubits, depth, pairs, fx_rng, use_rzz=True)
-        pattern = circuit.standardize_and_transpile(opt=True).pattern
-        state = circuit.simulate_statevector().statevec
-        pattern.minimize_space()
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 

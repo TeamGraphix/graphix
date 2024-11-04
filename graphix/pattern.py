@@ -6,7 +6,6 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 from __future__ import annotations
 
 import dataclasses
-import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -26,7 +25,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from typing import Iterator
+    from collections.abc import Iterator
 
 
 class NodeAlreadyPreparedError(Exception):
@@ -270,23 +269,16 @@ class Pattern:
             'direct' fast standardization implemented as `standardize_direct()`
             defaults to 'direct'
         """
-        if method == "direct":
+        if method == "direct":  # faster implementation
             self.standardize_direct()
             return
-        if method not in {"local", "mc"}:
-            raise ValueError("Invalid method")
-        warnings.warn(
-            f"Method `{method}` is deprecated for `standardize`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1,
-        )
-        if method == "mc":
-            localpattern = self.get_local_pattern()
-            localpattern.standardize()
-            self.__seq = localpattern.get_pattern().__seq
-        elif method == "global":
+        elif method == "mc":  # direct measuremment calculus implementation
             self._move_n_to_left()
             self._move_byproduct_to_right()
             self._move_e_after_n()
+            return
+        else:
+            raise ValueError("Invalid method")
 
     def standardize_direct(self) -> None:
         """Execute standardization of the pattern.
@@ -393,8 +385,7 @@ class Pattern:
         ----------
         method : str, optional
             'direct' shift_signals is executed on a conventional Pattern sequence.
-            'local' shift_signals is done on a LocalPattern class which is faster but results in equivalent pattern.
-            defaults to 'local'
+            'mc' shift_signals is done using the original algorithm on the measurement calculus paper.
 
         Returns
         -------
@@ -403,17 +394,7 @@ class Pattern:
         """
         if method == "direct":
             return self.shift_signals_direct()
-        if method not in {"local", "global"}:
-            raise ValueError("Invalid method")
-        warnings.warn(
-            f"Method `{method}` is deprecated for `shift_signals`. Please use the default `direct` method instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1,
-        )
-        if method == "local":
-            localpattern = self.get_local_pattern()
-            signal_dict = localpattern.shift_signals()
-            self.__seq = localpattern.get_pattern().__seq
-        elif method == "global":
+        elif method == "mc":
             signal_dict = self.extract_signals()
             target = self._find_op_to_be_moved(CommandKind.S, rev=True)
             while target is not None:
@@ -434,7 +415,9 @@ class Pattern:
                 else:
                     self._commute_with_following(target)
                 target += 1
-        return signal_dict
+            return signal_dict
+        else:
+            raise ValueError("Invalid method")
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure."""
@@ -1533,258 +1516,6 @@ class Pattern:
         if not pauli_nodes_inserted:
             new_seq.extend(pauli_nodes.values())
         self.__seq = new_seq
-
-
-class CommandNode:
-    """A node decorated with a distributed command sequence.
-
-    Attributes
-    ----------
-    index : int
-        node index
-    seq : list
-        command sequence. In this class, a command sequence follows the rules noted below.
-
-        E: pair node's index(>=0)
-        M: -1
-        X: -2
-        Z: -3
-        C: -4
-    m_prop : list
-        attributes for a measurement command. consists of [meas_plane, angle, s_domain, t_domain]
-    result : int
-        measurement result of the node
-    x_signal : list
-        signal domain
-    x_signals : list
-        signal domain. x_signals may contains lists. For standardization, this variable is used.
-    z_signal : list
-        signal domain
-    input : bool
-        whether the node is an input or not
-    output : bool
-        whether the node is an output or not
-    """
-
-    def __init__(self, node_index, seq, m_prop, z_signal, is_input, is_output, x_signal=None, x_signals=None):
-        """
-        Construct a command node.
-
-        Parameters
-        ----------
-        node_index : int
-            node index
-
-        seq : list
-            distributed command sequence
-
-        m_prop : list
-            attributes for measurement command
-
-        x_signal : list
-            signal domain for X byproduct correction
-
-        x_signals : list of list
-            signal domains for X byproduct correction
-            x_signal or x_signals must be specified
-
-        z_signal : list
-            signal domain for Z byproduct correction
-
-        is_input : bool
-            whether the node is an input or not
-
-        is_output : bool
-            whether the node is an output or not
-        """
-        if x_signals is None:
-            x_signals = []
-        if x_signal is None:
-            x_signal = set()
-        self.index = node_index
-        self.seq = seq  # composed of [E, M, X, Z, C]
-        self.m_prop = m_prop
-        self.result = None
-        self.x_signal = x_signal
-        self.x_signals = x_signals
-        self.z_signal = z_signal  # appeared at most e + 1
-        self.is_input = is_input
-        self.is_output = is_output
-
-    def is_standard(self):
-        """Check whether the local command sequence is standardized.
-
-        Returns
-        -------
-        standardized : Bool
-            whether the local command sequence is standardized or not
-        """
-        order_dict = {
-            -1: [-1, -2, -3, -4],
-            -2: [-2, -3, -4],
-            -3: [-2, -3, -4],
-            -4: [-4],
-        }
-        standardized = True
-        cmd_ref = 0
-        for cmd in self.seq:
-            if cmd_ref >= 0:
-                pass
-            else:
-                standardized &= cmd in order_dict[cmd_ref]
-            cmd_ref = cmd
-        return standardized
-
-    def commute_x(self):
-        """Move all X correction commands to the back.
-
-        Returns
-        -------
-        EXcommutated_nodes : dict
-            when X commutes with E, Z correction is added on the pair node. This dict specifies target nodes where Zs will be added.
-        """
-        ex_commutated_nodes = dict()
-        combined_xsignal = set()
-        for x_signal in self.x_signals:
-            x_pos = self.seq.index(-2)
-            for i in range(x_pos, len(self.seq)):
-                if self.seq[i] >= 0:
-                    try:
-                        ex_commutated_nodes[self.seq[i]] ^= x_signal
-                    except KeyError:
-                        ex_commutated_nodes[self.seq[i]] = x_signal
-            self.seq.remove(-2)
-            combined_xsignal ^= x_signal
-        if self.is_output:
-            self.seq.append(-2)  # put X on the end of the pattern
-            self.x_signal = combined_xsignal
-            self.x_signals = [combined_xsignal]
-        else:
-            self.m_prop[2] ^= combined_xsignal
-            self.x_signal = []
-            self.x_signals = []
-        return ex_commutated_nodes
-
-    def commute_z(self):
-        """Move all Zs to the back. EZ commutation produces no additional command unlike EX commutation."""
-        z_in_seq = False
-        while -3 in self.seq:
-            z_in_seq = True
-            self.seq.remove(-3)
-        if self.is_output and z_in_seq:
-            self.seq.append(-3)
-        else:
-            self.m_prop[3] ^= self.z_signal
-            self.z_signal = []
-
-    def _add_z(self, pair, signal):
-        """Add Z correction into the node.
-
-        Parameters
-        ----------
-        pair : int
-            a node index where the Z is produced. The additional Z will be inserted just behind the E(with pair) command
-        signal : list
-            signal domain for the additional Z correction
-        """
-        # caused by EX commutation.
-        self.z_signal ^= signal
-        e_pos = self.seq.index(pair)
-        self.seq.insert(e_pos + 1, -3)
-
-    def print_pattern(self):
-        """Print the local command sequence."""
-        for cmd in self.seq:
-            print(self.get_command(cmd))
-
-    def get_command(self, cmd):
-        """Get a command with full description. Patterns with more than one X or Z corrections are not supported.
-
-        Parameters
-        ----------
-        cmd : int
-            an integer corresponds to a command as described below.
-            E: pair node's index(>=0)
-            M: -1
-            X: -2
-            Z: -3
-            C: -4
-
-        Returns
-        -------
-        MBQC command : list
-            a command for a global pattern
-        """
-        if cmd >= 0:
-            return command.E(nodes=(self.index, cmd))
-        elif cmd == -1:
-            return command.M(
-                node=self.index,
-                plane=self.m_prop[0],
-                angle=self.m_prop[1],
-                s_domain=self.m_prop[2],
-                t_domain=self.m_prop[3],
-            )
-        elif cmd == -2:
-            if self.seq.count(-2) > 1:
-                raise NotImplementedError("Patterns with more than one X corrections are not supported")
-            return command.X(node=self.index, domain=self.x_signal)
-        elif cmd == -3:
-            if self.seq.count(-3) > 1:
-                raise NotImplementedError("Patterns with more than one Z corrections are not supported")
-            return command.Z(node=self.index, domain=self.z_signal)
-        elif cmd == -4:
-            return command.C(node=self.index, clifford=Clifford(self.vop))
-
-    def get_signal_destination(self):
-        """Get signal destination.
-
-        Returns
-        -------
-        signal_destination : set
-            Counterpart of 'dependent nodes'. measurement results of each node propagate to the nodes specified by 'signal_distination'.
-        """
-        signal_destination = self.m_prop[2] | self.m_prop[3] | self.x_signal | self.z_signal
-        return signal_destination
-
-    def get_signal_destination_dict(self):
-        """Get signal destination. distinguish the kind of signals.
-
-        Returns
-        -------
-        signal_destination_dict : dict
-            Counterpart of 'dependent nodes'. Unlike 'get_signal_destination', types of domains are memorarized. measurement results of each node propagate to the nodes specified by 'signal_distination_dict'.
-        """
-        dependent_nodes_dict = dict()
-        dependent_nodes_dict["Ms"] = self.m_prop[2]
-        dependent_nodes_dict["Mt"] = self.m_prop[3]
-        dependent_nodes_dict["X"] = self.x_signal
-        dependent_nodes_dict["Z"] = self.z_signal
-        return dependent_nodes_dict
-    
-
-def xor_combination_list(list1, list2):
-    """Combine two lists according to XOR operation.
-
-    Parameters
-    ----------
-    list1 : list
-        list to be combined
-    list2 : list
-        list to be combined
-
-    Returns
-    -------
-    result : list
-        xor-combined list
-    """
-    result = list2
-    for elem in list1:
-        if elem in result:
-            result.remove(elem)
-        else:
-            result.append(elem)
-    return result
 
 
 def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
