@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import enum
-import functools
 import math
 import sys
 import typing
@@ -198,7 +197,7 @@ class IXYZ(Enum):
     Y = enum.auto()
     Z = enum.auto()
 
-    @functools.cached_property
+    @property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix representation."""
         if self == IXYZ.I:
@@ -219,7 +218,7 @@ class Axis(Enum):
     Y = enum.auto()
     Z = enum.auto()
 
-    @functools.cached_property
+    @property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix representation."""
         if self == Axis.X:
