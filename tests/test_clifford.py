@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import cmath
 import functools
 import itertools
+import math
 import operator
-from typing import Final
+import re
+from typing import TYPE_CHECKING, Final
 
 import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
-from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
+from graphix.fundamentals import IXYZ, ComplexUnit, Sign
+from graphix.pauli import Pauli
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 _QASM3_DB: Final = {
     "id": Clifford.I,
@@ -38,7 +45,10 @@ class TestClifford:
 
     @pytest.mark.parametrize("c", Clifford)
     def test_repr(self, c: Clifford) -> None:
-        for term in repr(c).split(" @ "):
+        rep: str = repr(c)
+        m = re.match(r"\((.*)\)", rep)
+        rep = m.group(1) if m is not None else rep
+        for term in rep.split(" @ "):
             assert term in [
                 "Clifford.I",
                 "Clifford.H",
@@ -54,10 +64,10 @@ class TestClifford:
                 Pauli(sym, u)
                 for sym in IXYZ
                 for u in (
-                    ComplexUnit(Sign.Plus, False),
-                    ComplexUnit(Sign.Minus, False),
-                    ComplexUnit(Sign.Plus, True),
-                    ComplexUnit(Sign.Minus, True),
+                    ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=False),
+                    ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=False),
+                    ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=True),
+                    ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=True),
                 )
             ),
         ),
@@ -75,3 +85,12 @@ class TestClifford:
     def test_qasm3(self, c: Clifford) -> None:
         cmul: Clifford = functools.reduce(operator.matmul, (_QASM3_DB[term] for term in reversed(c.qasm3)))
         assert cmul == c
+
+    @pytest.mark.parametrize("c", Clifford)
+    def test_try_from_matrix(self, fx_rng: Generator, c: Clifford) -> None:
+        co = cmath.exp(2j * math.pi * fx_rng.uniform())
+        assert Clifford.try_from_matrix(co * c.matrix) == c
+
+    def test_try_from_matrix_ng(self, fx_rng: Generator) -> None:
+        assert Clifford.try_from_matrix(np.zeros((2, 3))) is None
+        assert Clifford.try_from_matrix(fx_rng.normal(size=(2, 2))) is None

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import copy
-import dataclasses
+import math
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+import typing_extensions
 
 from graphix._db import (
     CLIFFORD,
@@ -16,23 +19,12 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
-from graphix.pauli import IXYZ, ComplexUnit, Pauli, Sign
+from graphix.fundamentals import IXYZ, ComplexUnit
+from graphix.measurements import Domains
+from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
-    import numpy as np
     import numpy.typing as npt
-
-
-@dataclasses.dataclass
-class Domains:
-    """
-    Represent `X^sZ^t` where s and t are XOR of results from given sets of indices.
-
-    This representation is used in `Clifford.commute_domains`.
-    """
-
-    s_domain: set[int]
-    t_domain: set[int]
 
 
 class Clifford(Enum):
@@ -77,9 +69,35 @@ class Clifford(Enum):
         """Return the matrix of the Clifford gate."""
         return CLIFFORD[self.value]
 
+    @staticmethod
+    def try_from_matrix(mat: npt.NDArray[Any]) -> Clifford | None:
+        """Find the Clifford gate from the matrix.
+
+        Return `None` if not found.
+
+        Notes
+        -----
+        Global phase is ignored.
+        """
+        if mat.shape != (2, 2):
+            return None
+        for ci in Clifford:
+            mi = ci.matrix
+            for piv, piv_ in zip(mat.flat, mi.flat):
+                if math.isclose(abs(piv), 0):
+                    continue
+                if math.isclose(abs(piv_), 0):
+                    continue
+                if np.allclose(mat / piv, mi / piv_):
+                    return ci
+        return None
+
     def __repr__(self) -> str:
         """Return the Clifford expression on the form of HSZ decomposition."""
-        return " @ ".join([f"Clifford.{gate}" for gate in self.hsz])
+        formula = " @ ".join([f"Clifford.{gate}" for gate in self.hsz])
+        if len(self.hsz) == 1:
+            return formula
+        return f"({formula})"
 
     def __str__(self) -> str:
         """Return the name of the Clifford gate."""
@@ -111,8 +129,15 @@ class Clifford(Enum):
         if pauli.symbol == IXYZ.I:
             return copy.deepcopy(pauli)
         table = CLIFFORD_MEASURE[self.value]
-        symbol, sign = table[pauli.symbol.value]
-        return pauli.unit * Pauli(IXYZ[symbol], ComplexUnit(Sign(sign), False))
+        if pauli.symbol == IXYZ.X:
+            symbol, sign = table.x
+        elif pauli.symbol == IXYZ.Y:
+            symbol, sign = table.y
+        elif pauli.symbol == IXYZ.Z:
+            symbol, sign = table.z
+        else:
+            typing_extensions.assert_never(pauli.symbol)
+        return pauli.unit * Pauli(symbol, ComplexUnit.from_properties(sign=sign))
 
     def commute_domains(self, domains: Domains) -> Domains:
         """

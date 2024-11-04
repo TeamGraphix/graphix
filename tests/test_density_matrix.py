@@ -11,8 +11,8 @@ import pytest
 
 import graphix.random_objects as randobj
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
+from graphix.fundamentals import Plane
 from graphix.ops import Ops
-from graphix.pauli import Plane
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
 from graphix.simulator import DefaultMeasureMethod

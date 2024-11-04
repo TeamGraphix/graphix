@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.transpiler import Circuit
 
