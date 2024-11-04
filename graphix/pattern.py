@@ -256,34 +256,10 @@ class Pattern:
         if len(self.__seq) > i + 1:
             print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
 
-    def standardize(self, method="direct"):
+    def standardize(self) -> None:
         """Execute standardization of the pattern.
 
-        'standard' pattern is one where commands are sorted in the order of
-        'N', 'E', 'M' and then byproduct commands ('X' and 'Z').
-
-        Parameters
-        ----------
-        method : str, optional
-            'mc' corresponds to a conventional standardization defined in original measurement calculus paper, executed on Pattern class.
-            'direct' fast standardization implemented as `standardize_direct()`
-            defaults to 'direct'
-        """
-        if method == "direct":  # faster implementation
-            self.standardize_direct()
-            return
-        elif method == "mc":  # direct measuremment calculus implementation
-            self._move_n_to_left()
-            self._move_byproduct_to_right()
-            self._move_e_after_n()
-            return
-        else:
-            raise ValueError("Invalid method")
-
-    def standardize_direct(self) -> None:
-        """Execute standardization of the pattern.
-
-        This algorithm sort the commands in the following order:
+        This algorithm sort the commands in the following order while respecting the commutation relation of the commands:
         `N`, `E`, `M`, `C`, `Z`, `X`.
         """
         n_list = []
@@ -371,56 +347,22 @@ class Pattern:
         except StopIteration:
             return True
 
-    def shift_signals(self, method="direct") -> dict[int, list[int]]:
+    def shift_signals(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure.
 
         Extract the t-dependence of the measurement into 'S' commands
         and commute them to the end of the command sequence where it can be removed.
         This procedure simplifies the dependence structure of the pattern.
 
-        Ref for the original 'mc' method:
+        Ref for the original method:
             V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
-
-        Parameters
-        ----------
-        method : str, optional
-            'direct' shift_signals is executed on a conventional Pattern sequence.
-            'mc' shift_signals is done using the original algorithm on the measurement calculus paper.
+        this implementation is an optimized version of original method
 
         Returns
         -------
         signal_dict : dict[int, list[int]]
             For each node, the signal that have been shifted.
         """
-        if method == "direct":
-            return self.shift_signals_direct()
-        elif method == "mc":
-            signal_dict = self.extract_signals()
-            target = self._find_op_to_be_moved(CommandKind.S, rev=True)
-            while target is not None:
-                if target == len(self.__seq) - 1:
-                    self.__seq.pop(target)
-                    target = self._find_op_to_be_moved(CommandKind.S, rev=True)
-                    continue
-                cmd = self.__seq[target + 1]
-                kind = cmd.kind
-                if kind == CommandKind.X:
-                    self._commute_xs(target)
-                elif kind == CommandKind.Z:
-                    self._commute_zs(target)
-                elif kind == CommandKind.M:
-                    self._commute_ms(target)
-                elif kind == CommandKind.S:
-                    self._commute_ss(target)
-                else:
-                    self._commute_with_following(target)
-                target += 1
-            return signal_dict
-        else:
-            raise ValueError("Invalid method")
-
-    def shift_signals_direct(self) -> dict[int, set[int]]:
-        """Perform signal shifting procedure."""
         signal_dict = {}
 
         def expand_domain(domain: set[command.Node]) -> None:
@@ -493,270 +435,6 @@ class Pattern:
 
         # If no target found
         return None
-
-    def _commute_ex(self, target):
-        """Perform the commutation of E and X.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a X command followed by E command
-        """
-        assert self.__seq[target].kind == CommandKind.X
-        assert self.__seq[target + 1].kind == CommandKind.E
-        x = self.__seq[target]
-        e = self.__seq[target + 1]
-        if e.nodes[0] == x.node:
-            z = command.Z(node=e.nodes[1], domain=x.domain)
-            self.__seq.pop(target + 1)  # del E
-            self.__seq.insert(target, z)  # add Z in front of X
-            self.__seq.insert(target, e)  # add E in front of Z
-            return True
-        elif e.nodes[1] == x.node:
-            z = command.Z(node=e.nodes[0], domain=x.domain)
-            self.__seq.pop(target + 1)  # del E
-            self.__seq.insert(target, z)  # add Z in front of X
-            self.__seq.insert(target, e)  # add E in front of Z
-            return True
-        else:
-            self._commute_with_following(target)
-            return False
-
-    def _commute_mx(self, target):
-        """Perform the commutation of M and X.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a X command followed by M command
-        """
-        assert self.__seq[target].kind == CommandKind.X
-        assert self.__seq[target + 1].kind == CommandKind.M
-        x = self.__seq[target]
-        m = self.__seq[target + 1]
-        if x.node == m.node:
-            m.s_domain ^= x.domain
-            self.__seq.pop(target)  # del X
-            return True
-        else:
-            self._commute_with_following(target)
-            return False
-
-    def _commute_mz(self, target):
-        """Perform the commutation of M and Z.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a Z command followed by M command
-        """
-        assert self.__seq[target].kind == CommandKind.Z
-        assert self.__seq[target + 1].kind == CommandKind.M
-        z = self.__seq[target]
-        m = self.__seq[target + 1]
-        if z.node == m.node:
-            m.t_domain ^= z.domain
-            self.__seq.pop(target)  # del Z
-            return True
-        else:
-            self._commute_with_following(target)
-            return False
-
-    def _commute_xs(self, target):
-        """Perform the commutation of X and S.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a S command followed by X command
-        """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.X
-        s = self.__seq[target]
-        x = self.__seq[target + 1]
-        if s.node in x.domain:
-            x.domain ^= s.domain
-        self._commute_with_following(target)
-
-    def _commute_zs(self, target):
-        """Perform the commutation of Z and S.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a S command followed by Z command
-        """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.Z
-        s = self.__seq[target]
-        z = self.__seq[target + 1]
-        if s.node in z.domain:
-            z.domain ^= s.domain
-        self._commute_with_following(target)
-
-    def _commute_ms(self, target):
-        """Perform the commutation of M and S.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a S command followed by M command
-        """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.M
-        s = self.__seq[target]
-        m = self.__seq[target + 1]
-        if s.node in m.s_domain:
-            m.s_domain ^= s.domain
-        if s.node in m.t_domain:
-            m.t_domain ^= s.domain
-        self._commute_with_following(target)
-
-    def _commute_ss(self, target):
-        """Perform the commutation of two S commands.
-
-        Parameters
-        ----------
-        target : int
-            target command index. this must point to
-            a S command followed by S command
-        """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.S
-        s1 = self.__seq[target]
-        s2 = self.__seq[target + 1]
-        if s1.node in s2.domain:
-            s2.domain ^= s1.domain
-        self._commute_with_following(target)
-
-    def _commute_with_following(self, target):
-        """Perform the commutation of two consecutive commands that commutes.
-
-        commutes the target command with the following command.
-
-        Parameters
-        ----------
-        target : int
-            target command index
-        """
-        a = self.__seq[target + 1]
-        self.__seq.pop(target + 1)
-        self.__seq.insert(target, a)
-
-    def _commute_with_preceding(self, target):
-        """Perform the commutation of two consecutive commands that commutes.
-
-        commutes the target command with the preceding command.
-
-        Parameters
-        ----------
-        target : int
-            target command index
-        """
-        a = self.__seq[target - 1]
-        self.__seq.pop(target - 1)
-        self.__seq.insert(target, a)
-
-    def _move_n_to_left(self):
-        """Move all 'N' commands to the start of the sequence.
-
-        N can be moved to the start of sequence without the need of considering
-        commutation relations.
-        """
-        new_seq = []
-        n_list = []
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                n_list.append(cmd)
-            else:
-                new_seq.append(cmd)
-        n_list.sort(key=lambda n_cmd: n_cmd.node)
-        self.__seq = n_list + new_seq
-
-    def _move_byproduct_to_right(self):
-        """Move the byproduct commands to the end of sequence, using the commutation relations implemented in graphix.Pattern class."""
-        # First, we move all X commands to the end of sequence
-        index = len(self.__seq) - 1
-        x_limit = len(self.__seq) - 1
-        while index > 0:
-            if self.__seq[index].kind == CommandKind.X:
-                index_x = index
-                while index_x < x_limit:
-                    cmd = self.__seq[index_x + 1]
-                    kind = cmd.kind
-                    if kind == CommandKind.E:
-                        move = self._commute_ex(index_x)
-                        if move:
-                            x_limit += 1  # addition of extra Z means target must be increased
-                            index_x += 1
-                    elif kind == CommandKind.M:
-                        search = self._commute_mx(index_x)
-                        if search:
-                            x_limit -= 1  # XM commutation rule removes X command
-                            break
-                    else:
-                        self._commute_with_following(index_x)
-                    index_x += 1
-                else:
-                    x_limit -= 1
-            index -= 1
-        # then, move Z to the end of sequence in front of X
-        index = x_limit
-        z_limit = x_limit
-        while index > 0:
-            if self.__seq[index].kind == CommandKind.Z:
-                index_z = index
-                while index_z < z_limit:
-                    cmd = self.__seq[index_z + 1]
-                    if cmd.kind == CommandKind.M:
-                        search = self._commute_mz(index_z)
-                        if search:
-                            z_limit -= 1  # ZM commutation rule removes Z command
-                            break
-                    else:
-                        self._commute_with_following(index_z)
-                    index_z += 1
-            index -= 1
-
-    def _move_e_after_n(self):
-        """Move all E commands to the start of sequence, before all N commands. assumes that _move_n_to_left() method was called."""
-        moved_e = 0
-        target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_e)
-        while target is not None:
-            if (target == 0) or (
-                self.__seq[target - 1].kind == CommandKind.N or self.__seq[target - 1].kind == CommandKind.E
-            ):
-                moved_e += 1
-                target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_e)
-                continue
-            self._commute_with_preceding(target)
-            target -= 1
-
-    def extract_signals(self) -> dict[int, list[int]]:
-        """Extract 't' domain of measurement commands, turn them into signal 'S' commands and add to the command sequence.
-
-        This is used for shift_signals() method.
-        """
-        signal_dict = {}
-        pos = 0
-        while pos < len(self.__seq):
-            if self.__seq[pos].kind == CommandKind.M:
-                cmd: command.M = self.__seq[pos]
-                extracted_signal = extract_signal(cmd.plane, cmd.s_domain, cmd.t_domain)
-                if extracted_signal.signal:
-                    self.__seq.insert(pos + 1, command.S(node=cmd.node, domain=extracted_signal.signal))
-                    cmd.s_domain = extracted_signal.s_domain
-                    cmd.t_domain = extracted_signal.t_domain
-                    pos += 1
-                signal_dict[cmd.node] = extracted_signal.signal
-            pos += 1
-        return signal_dict
 
     def _get_dependency(self):
         """Get dependency (byproduct correction & dependent measurement) structure of nodes in the graph (resource) state, according to the pattern.
