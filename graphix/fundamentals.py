@@ -131,7 +131,7 @@ class ComplexUnit(Enum):
             return value
         try:
             value = complex(value)
-        except Exception:
+        except (ValueError, TypeError):
             return None
         if value == 1:
             return ComplexUnit.ONE
