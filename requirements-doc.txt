@@ -1,0 +1,7 @@
+furo
+ipython
+matplotlib
+scikit-learn
+seaborn
+sphinx-gallery
+sphinx>=5.0
