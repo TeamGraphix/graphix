@@ -51,10 +51,19 @@ class N(_KindChecker):
 
 
 @dataclasses.dataclass
-class M(_KindChecker):
-    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
+class BaseM:
+    """Base class for measurement command.
+
+    This class does not contain any data except for the node to measure.
+    """
 
     node: Node
+
+
+@dataclasses.dataclass
+class M(BaseM, _KindChecker):
+    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
+
     plane: Plane = Plane.XY
     angle: float = 0.0
     s_domain: set[Node] = dataclasses.field(default_factory=set)
@@ -136,8 +145,6 @@ if sys.version_info >= (3, 10):
 else:
     Command = Union[N, M, E, C, X, Z, S, T]
     Correction = Union[X, Z]
-
-BaseM = M
 
 
 @dataclasses.dataclass
