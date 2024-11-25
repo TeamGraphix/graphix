@@ -54,7 +54,7 @@ circuit = Circuit(n)
 ansatz(circuit, n, gamma, beta, iterations)
 
 # Transpile Circuit into pattern as it is needed for creating the TN.
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 # Optimizing according to standardization algorithm of graphix.
 pattern.standardize()
 pattern.shift_signals()
@@ -176,7 +176,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     beta = params[slice_index:]
     ansatz(circuit, n, gamma, beta, quantum_iter)
 
-    pattern = circuit.transpile(opt=True).pattern
+    pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
     pattern.perform_pauli_measurements(use_rustworkx=True)
@@ -217,7 +217,7 @@ print(res.message)
 
 circuit = Circuit(n)
 ansatz(circuit, n, res.x[: len(gamma)], res.x[len(gamma) :], iterations)
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")

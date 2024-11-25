@@ -5,6 +5,7 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -355,8 +356,6 @@ class DensityMatrixBackend(Backend):
 
 
 if sys.version_info >= (3, 10):
-    from collections.abc import Iterable
-
     Data = (
         graphix.states.State
         | DensityMatrix
@@ -366,7 +365,7 @@ if sys.version_info >= (3, 10):
         | Iterable[Iterable[numbers.Number]]
     )
 else:
-    from typing import Iterable, Union
+    from typing import Union
 
     Data = Union[
         graphix.states.State,

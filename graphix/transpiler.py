@@ -7,7 +7,6 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-import warnings
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -17,7 +16,6 @@ import graphix.pauli
 import graphix.sim.base_backend
 import graphix.sim.statevec
 from graphix import command, instruction
-from graphix.clifford import Clifford
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.ops import Ops
 from graphix.pattern import Pattern

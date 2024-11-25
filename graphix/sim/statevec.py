@@ -6,6 +6,7 @@ import copy
 import functools
 import numbers
 import sys
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -370,11 +371,9 @@ def _get_statevec_norm(psi):
 
 
 if sys.version_info >= (3, 10):
-    from collections.abc import Iterable
-
     Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[numbers.Number]
 else:
-    from typing import Iterable, Union
+    from typing import Union
 
     Data = Union[
         graphix.states.State,

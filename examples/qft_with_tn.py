@@ -56,7 +56,7 @@ for i in range(n):
 qft(circuit, n)
 
 # standardize pattern
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 nodes, edges = pattern.get_graph()
