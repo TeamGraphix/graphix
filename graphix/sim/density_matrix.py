@@ -112,7 +112,8 @@ class DensityMatrix(State):
             i : int
                 Index of qubit to apply operator.
         """
-        assert i >= 0 and i < self.nqubit
+        assert i >= 0
+        assert i < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
@@ -180,7 +181,7 @@ class DensityMatrix(State):
             complex: expectation value (real for hermitian ops!).
         """
         if not (0 <= i < self.nqubit):
-            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.nqubit-1}.")
+            raise ValueError(f"Wrong target qubit {i}. Must between 0 and {self.nqubit - 1}.")
 
         if op.shape != (2, 2):
             raise ValueError("op must be 2x2 matrix.")

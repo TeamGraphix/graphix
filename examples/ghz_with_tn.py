@@ -14,6 +14,7 @@ Firstly, let us import relevant modules:
 """
 
 # %%
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -54,6 +55,6 @@ plt.show()
 
 tn = pattern.simulate_pattern(backend="tensornetwork")
 print(f"The amplitude of |00...0>: {tn.get_basis_amplitude(0)}")
-print(f"The amplitude of |11...1>: {tn.get_basis_amplitude(2**n-1)}")
+print(f"The amplitude of |11...1>: {tn.get_basis_amplitude(2**n - 1)}")
 
 # %%

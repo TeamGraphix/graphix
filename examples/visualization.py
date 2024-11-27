@@ -19,6 +19,8 @@ with the pattern, graph or the (generalized-)flow.
 # - Nodes with blue color is the nodes that are measured in *Pauli basis*, one of *X*, *Y* or *Z* computational bases.
 # - Nodes in white are the ones measured in *non-Pauli basis*.
 #
+from __future__ import annotations
+
 import numpy as np
 
 from graphix import Circuit

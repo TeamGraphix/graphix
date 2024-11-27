@@ -302,7 +302,7 @@ class MatGF2:
         rank = self.get_rank()
         b = MatGF2(b)
         x = list()
-        kernels = sp.symbols("x0:%d" % (self.data.shape[1] - rank))
+        kernels = sp.symbols(f"x0:{self.data.shape[1] - rank}")
         for col in range(b.data.shape[1]):
             x_col = list()
             b_col = b.data[:, col]

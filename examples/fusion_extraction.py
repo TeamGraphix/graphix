@@ -14,6 +14,8 @@ The decomposition algorithm is based on [1].
 """
 
 # %%
+from __future__ import annotations
+
 import itertools
 
 import graphix

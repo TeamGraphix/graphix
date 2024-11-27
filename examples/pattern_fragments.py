@@ -10,6 +10,8 @@ with fewer resource requirement than the standard pattern.
 # %%
 # First, for Toffoli gate, here is the pattern based on the decomposition of CCX gate with CNOT and single-qubit rotations,
 # turned into a measurement pattern:
+from __future__ import annotations
+
 import numpy as np
 
 from graphix import Circuit

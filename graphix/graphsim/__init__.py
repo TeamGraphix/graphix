@@ -1,5 +1,7 @@
 """Graph simulator."""
 
+from __future__ import annotations
+
 from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.nxgraphstate import NXGraphState
@@ -9,11 +11,11 @@ from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equa
 
 __all__ = [
     "BaseGraphState",
+    "EdgeList",
     "GraphState",
     "NXGraphState",
-    "RXGraphState",
-    "EdgeList",
     "NodeList",
+    "RXGraphState",
     "convert_rustworkx_to_networkx",
     "is_graphs_equal",
 ]

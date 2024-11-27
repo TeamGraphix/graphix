@@ -14,6 +14,8 @@ First, let us import relevant modules:
 """
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 
 from graphix import Circuit, Statevec

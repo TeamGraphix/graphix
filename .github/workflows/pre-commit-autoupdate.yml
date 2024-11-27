@@ -1,0 +1,18 @@
+name: pre-commit-autoupdate
+
+on:
+  # Once a week
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  pc-update:
+    uses: browniebroke/github-actions/.github/workflows/pre-commit-autoupdate.yml@v1
+    secrets:
+      gh_pat: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+    with:
+      python_version: "3.12"
+      branch_name: "pc-update/pre-commit-hooks"
+      pull_request_title: "Update pre-commit hooks"
+      commit_message: ":arrow_up: Upgrade pre-commit hooks"

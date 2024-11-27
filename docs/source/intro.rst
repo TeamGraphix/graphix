@@ -216,7 +216,3 @@ References and footnotes
 .. [#raussendorf] Raussendorf `et al.`, `PRL 86, 5188 (2001) <https://link.aps.org/doi/10.1103/PhysRevLett.86.5188>`_ and `PRA 68, 022312 (2003) <https://link.aps.org/doi/10.1103/PhysRevA.68.022312>`_. Here, by MBQC we refer to one-way quantum computing by Raussendorf among several measurement-based schemes.
 
 .. [#mc] Danos `et al.`, `J. ACM 54.2 8 (2007) <https://arxiv.org/abs/0704.1263>`_ and `Chapter 7, "Semantic Techniques in Quantum Computation" <https://www.cambridge.org/core/books/abs/semantic-techniques-in-quantum-computation/extended-measurement-calculus/7DFCD85D9BA613B57B8935E3B57323BC>`_
-
-
-
-

@@ -47,4 +47,3 @@ class NoiselessNoiseModel(NoiseModel):
 
         See :meth:`NoiseModel.tick_clock`.
         """
-        pass

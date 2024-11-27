@@ -12,6 +12,8 @@ You can run this code on your browser with `mybinder.org <https://mybinder.org/>
 """
 
 # %%
+from __future__ import annotations
+
 import networkx as nx
 import numpy as np
 
