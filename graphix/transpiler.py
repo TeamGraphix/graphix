@@ -72,24 +72,38 @@ class Circuit:
         self.instruction: list[instruction.Instruction] = []
         self.active_qubits = set(range(width))
 
-
     def pretty_print(self):
-        lines = { q_index: "" for q_index in range(self.width) }
-        one_qubit_instructions = set([instruction.InstructionKind.H, instruction.InstructionKind.S, instruction.InstructionKind.X, instruction.InstructionKind.Y, instruction.InstructionKind.Z, instruction.InstructionKind.I, instruction.InstructionKind.M, instruction.InstructionKind.RX, instruction.InstructionKind.RY, instruction.InstructionKind.RZ])
-        two_qubits_instructions = set([instruction.InstructionKind.CNOT, instruction.InstructionKind.SWAP, instruction.InstructionKind.RZZ])
+        lines = ["" for _ in range(self.width)]
+        one_qubit_instructions = set(
+            [
+                instruction.InstructionKind.H,
+                instruction.InstructionKind.S,
+                instruction.InstructionKind.X,
+                instruction.InstructionKind.Y,
+                instruction.InstructionKind.Z,
+                instruction.InstructionKind.I,
+                instruction.InstructionKind.M,
+                instruction.InstructionKind.RX,
+                instruction.InstructionKind.RY,
+                instruction.InstructionKind.RZ,
+            ]
+        )
+        two_qubits_instructions = set(
+            [instruction.InstructionKind.CNOT, instruction.InstructionKind.SWAP, instruction.InstructionKind.RZZ]
+        )
         max_line = 0
         for instr in self.instruction:
-            if instr.kind in one_qubit_instructions:    # One qubit instruction
+            if instr.kind in one_qubit_instructions:  # One qubit instruction
                 s = f"-[ {instr.kind.value} ]"
                 lines[instr.target] += s
-                # Eventually display the angle if rotation instruction (this way is pretty much unreadable)
+                # Eventually display the angle if rotation instruction (this way is pretty much unreadable) ?
                 # if isinstance(instr, instruction.RotationInstruction):
-                    # lines[instr.target] += f"θ={instr.angle}"
-                
+                # lines[instr.target] += f"θ={instr.angle}"
+
                 # Track max line length
                 max_line = max(max_line, len(lines[instr.target]))
-            
-            elif instr.kind in two_qubits_instructions: # Two qubits instruction
+
+            elif instr.kind in two_qubits_instructions:  # Two qubits instruction
                 if len(lines[instr.target]) < max_line:
                     lines[instr.target] += "-" * (max_line - len(lines[instr.target]) - 1)  # Equalize line
                 s = f"-[ {instr.kind.value} ]"
@@ -97,13 +111,17 @@ class Circuit:
                 max_line = max(max_line, len(lines[instr.target]))  # Update max_line if needed
 
                 if len(lines[instr.control]) < max_line:
-                    lines[instr.control] += "-" * (max_line - len(lines[instr.control]) - 1 - len(s) // 2)  # Equalize line
+                    lines[instr.control] += "-" * (
+                        max_line - len(lines[instr.control]) - 1 - len(s) // 2
+                    )  # Equalize line
 
-                lines[instr.control] += "*" # Add the control
-                lines[instr.control] += "-" * (max_line - len(lines[instr.control]))    # Equalize to match length of the target
+                lines[instr.control] += "*"  # Add the control
+                lines[instr.control] += "-" * (
+                    max_line - len(lines[instr.control])
+                )  # Equalize to match length of the target
 
-                max_line = max(max_line, len(lines[instr.control])) # Update max_line if needed
-            else:   # Three qubits instruction
+                max_line = max(max_line, len(lines[instr.control]))  # Update max_line if needed
+            else:  # Three qubits instruction
                 # Equalize lines if needed
                 if len(lines[instr.target]) < max_line:
                     lines[instr.target] += "-" * (max_line - len(lines[instr.target]) - 1)
@@ -116,23 +134,23 @@ class Circuit:
                 if len(lines[instr.controls[1]]) < max_line:
                     lines[instr.controls[1]] += "-" * (max_line - len(lines[instr.controls[1]]) - 1)
                 max_line = max(max_line, len(lines[instr.controls[1]]))
-                
+
                 # Add the target and controls
                 lines[instr.target] += f"-[ {instr.kind.value} ]"
                 lines[instr.controls[0]] += f"-*-"
                 lines[instr.controls[1]] += f"-*-"
-                
+
             """ COMMENTED FOR DEBUG
             print(instr.kind)
             for _, val in lines.items():
                 print(f'|0>{val}')
         print("================================")"""
 
-        for _, val in lines.items():
-            if len(val) < max_line:
-                val += "-" * (max_line - len(val))
-            print(f'|0>{val}')
-    
+        for line in lines:
+            if len(line) < max_line:
+                line += "-" * (max_line - len(line))
+            print(f"|0>{line}")
+
     def cnot(self, control: int, target: int):
         """CNOT gate
 
