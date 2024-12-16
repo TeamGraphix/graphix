@@ -35,6 +35,10 @@ class Instruction(BaseModel, abc.ABC):
 
     kind: InstructionKind = None
     meas_index: int = None
+    
+    @abc.abstractmethod
+    def to_QASM3(self):
+        pass
 
 
 class OneQubitInstruction(Instruction):
