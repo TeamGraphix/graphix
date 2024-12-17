@@ -37,7 +37,7 @@ class Instruction(BaseModel, abc.ABC):
     meas_index: int = None
     
     @abc.abstractmethod
-    def to_QASM3(self):
+    def to_QASM3(self) -> str:
         pass
 
 
@@ -47,6 +47,9 @@ class OneQubitInstruction(Instruction):
     """
 
     target: int
+    
+    def to_QASM3(self) -> str:
+        return f"{self.kind.value.lower()} {self.target};"
 
 
 class CorrectionInstruction(OneQubitInstruction):
@@ -64,6 +67,9 @@ class RotationInstruction(OneQubitInstruction):
 
     angle: float
 
+    def to_QASM3(self) -> str:
+        return f"{self.kind.value.lower()}({self.angle}) {self.target}"
+
 
 class OneControlInstruction(OneQubitInstruction):
     """
@@ -72,6 +78,9 @@ class OneControlInstruction(OneQubitInstruction):
 
     control: int
 
+    def to_QASM3(self) -> str:
+        return f"{self.kind.value.lower()} q[{self.control}], q[{self.target}]"
+
 
 class TwoControlsInstruction(OneQubitInstruction):
     """
@@ -79,6 +88,9 @@ class TwoControlsInstruction(OneQubitInstruction):
     """
 
     controls: tuple[int, int]
+
+    def to_QASM3(self) -> str:
+        return f"{self.kind.value.lower()} q[{self.controls[0]}], q[{self.controls[1]}], q[{self.target}]"
 
 
 class XC(CorrectionInstruction):
@@ -104,6 +116,9 @@ class CCX(TwoControlsInstruction):
 
     kind: InstructionKind = InstructionKind.CCX
 
+    def to_QASM3(self):
+        return super().to_QASM3()
+
 
 class RZZ(OneControlInstruction, RotationInstruction):
     """
@@ -111,6 +126,9 @@ class RZZ(OneControlInstruction, RotationInstruction):
     """
 
     kind: InstructionKind = InstructionKind.RZZ
+    
+    def to_QASM3(self) -> str:
+        return f"{self.kind.value.lower()}({self.angle}) q[{self.control}], q[{self.target}]"
 
 
 class CNOT(OneControlInstruction):
@@ -119,6 +137,9 @@ class CNOT(OneControlInstruction):
     """
 
     kind: InstructionKind = InstructionKind.CNOT
+
+    def to_QASM3(self):
+        return super().to_QASM3()
 
 
 class SWAP(Instruction):
@@ -129,6 +150,9 @@ class SWAP(Instruction):
     kind: InstructionKind = InstructionKind.SWAP
     targets: tuple[int, int]
 
+    def to_QASM3(self):
+        return f"{self.kind.value.lower()} q[{self.targets[0]}], q[{self.targets[1]}]"
+
 
 class H(OneQubitInstruction):
     """
@@ -136,6 +160,7 @@ class H(OneQubitInstruction):
     """
 
     kind: InstructionKind = InstructionKind.H
+
 
 
 class S(OneQubitInstruction):
@@ -186,6 +211,9 @@ class M(OneQubitInstruction):
     kind: InstructionKind = InstructionKind.M
     plane: Plane
     angle: float
+    
+    def to_QASM3(self):
+        return f"bits[{self.target}] = measure q[{self.target}]"
 
 
 class RX(RotationInstruction):
