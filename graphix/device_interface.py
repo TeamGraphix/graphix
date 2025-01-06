@@ -17,7 +17,7 @@ class PatternRunner:
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern: Pattern, backend: str = "ibmq", **kwargs) -> None:
+    def __init__(self, pattern: Pattern, backend: str = "ibmq", instance: str | None = None, resource: str | None = None, save_statevector: bool = False, optimizer_level: int = 1, shots: int = 1024) -> None:
         """Instantiate a pattern runner.
 
         Parameters
@@ -26,8 +26,18 @@ class PatternRunner:
             MBQC pattern to be executed.
         backend: str
             execution backend (optional, default is 'ibmq')
-        kwargs: dict
-            keyword args for specified backend.
+        instance: str | None
+            instance name (optional, backend specific)
+        resource: str | None
+            resource name (optional, backend specific)
+        instance: str | None
+            instance name (optional, backend specific)
+        save_statevector: bool
+            whether to save the statevector before the measurements of output qubits (optional, default is 'False', backend specific)
+        optimizer_level: int
+            optimizer level (optional, default is '1', backend specific)
+        shots: int
+            number of shots (optional, default is '1024', backend specific)
         """
         self.pattern = pattern
         self.backend_name = backend
@@ -35,26 +45,20 @@ class PatternRunner:
         if self.backend_name == "ibmq":
             try:
                 from graphix_ibmq.runner import IBMQBackend
-            except Exception as e:
+            except ImportError as e:
                 raise ImportError(
                     "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix-ibmq`."
                 ) from e
             self.backend = IBMQBackend(pattern)
-            try:
-                instance = kwargs.get("instance", "ibm-q/open/main")
-                resource = kwargs.get("resource", None)
-                save_statevector = kwargs.get("save_statevector", False)
-                optimization_level = kwargs.get("optimizer_level", 1)
-
-                self.backend.get_backend(instance, resource)
-                self.backend.to_qiskit(save_statevector)
-                self.backend.transpile(optimization_level)
-                self.shots = kwargs.get("shots", 1024)
-            except Exception:
-                save_statevector = kwargs.get("save_statevector", False)
-                optimization_level = kwargs.get("optimizer_level", 1)
-                self.backend.to_qiskit(save_statevector)
-                self.shots = kwargs.get("shots", 1024)
+            kwargs_get_backend = {}
+            if instance is not None:
+                kwargs_get_backend["instance"] = instance
+            if resource is not None:
+                kwargs_get_backend["resource"] = resource
+            self.backend.get_backend(**kwargs_get_backend)
+            self.backend.to_qiskit(save_statevector)
+            self.backend.transpile(optimizer_level)
+            self.shots = shots
         else:
             raise ValueError("unknown backend")
 
