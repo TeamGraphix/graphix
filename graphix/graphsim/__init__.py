@@ -9,11 +9,11 @@ from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equa
 
 __all__ = [
     "BaseGraphState",
+    "EdgeList",
     "GraphState",
     "NXGraphState",
-    "RXGraphState",
-    "EdgeList",
     "NodeList",
+    "RXGraphState",
     "convert_rustworkx_to_networkx",
     "is_graphs_equal",
 ]
