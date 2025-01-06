@@ -33,8 +33,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         pattern,
         input_state: Data = graphix.states.BasicStates.PLUS,
         max_qubit_num=20,
-        pr_calc=True,
-        rng: np.random.Generator | None = None,
+        **kwargs
     ):
         """
         Parameters
@@ -65,7 +64,7 @@ class StatevectorBackend(graphix.sim.base_backend.Backend):
         self.max_qubit_num = max_qubit_num
         if pattern.max_space() > max_qubit_num:
             raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-        super().__init__(pr_calc, rng)
+        super().__init__(**kwargs)
 
         # initialize input qubits to desired init_state
         self.add_nodes(pattern.input_nodes, input_state)

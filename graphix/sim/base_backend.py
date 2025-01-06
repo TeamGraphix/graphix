@@ -10,12 +10,11 @@ import graphix.parameter
 import graphix.pauli
 
 
-def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:
-    if all(isinstance(value, numbers.Number) for value in vec):
-        op_mat = np.eye(2, dtype=np.complex128) / 2
-    else:
-        # At least one value is symbolic (i.e., parameterized).
+def op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic: bool = False) -> np.ndarray:
+    if symbolic:
         op_mat = np.eye(2, dtype="O") / 2
+    else:
+        op_mat = np.eye(2, dtype=np.complex128) / 2
     sign = (-1) ** result
     for i in range(3):
         op_mat += sign * vec[i] * graphix.clifford.CLIFFORD[i + 1] / 2
@@ -23,31 +22,36 @@ def op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndar
 
 
 def perform_measure(
-    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng, pr_calc: bool = True
+    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng, pr_calc: bool = True, symbolic: bool = False
 ) -> np.ndarray:
     vec = plane.polar(angle)
     if pr_calc:
-        op_mat = op_mat_from_result(vec, False)
+        op_mat = op_mat_from_result(vec, result=False, symbolic=symbolic)
         prob_0 = state.expectation_single(op_mat, qubit)
         result = rng.random() > prob_0
         if result:
-            op_mat = op_mat_from_result(vec, True)
+            op_mat = op_mat_from_result(vec, result=True, symbolic=symbolic)
     else:
         # choose the measurement result randomly
         result = rng.choice([0, 1])
-        op_mat = op_mat_from_result(vec, result)
+        op_mat = op_mat_from_result(vec, result=result, symbolic=symbolic)
     state.evolve_single(op_mat, qubit)
     return result
 
 
 class Backend:
-    def __init__(self, pr_calc: bool = True, rng: np.random.Generator | None = None):
+    def __init__(self, pr_calc: bool = True, rng: np.random.Generator | None = None, symbolic: bool = False):
         """
         Parameters
         ----------
             pr_calc : bool
                 whether or not to compute the probability distribution before choosing the measurement result.
-                if False, measurements yield results 0/1 with 50% probabilities each.
+                If `False`, measurements yield results 0/1 with 50% probabilities each.
+                Optional, default is `True`.
+            symbolic : bool
+                If `False`, matrice data-type is `np.complex128`, for efficiency.
+                If `True`, matrice data-type is `O` (arbitrary Python object), to allow symbolic computation, at the price of performance cost.
+                Optional, default is `False`.
         """
         # whether to compute the probability
         if rng is None:
@@ -55,6 +59,7 @@ class Backend:
         else:
             self.__rng = rng
         self.pr_calc = pr_calc
+        self.symbolic = symbolic
 
     def _perform_measure(self, cmd: graphix.command.M):
         s_signal = np.sum([self.results[j] for j in cmd.s_domain])
@@ -65,7 +70,7 @@ class Backend:
         )
         angle = angle * measure_update.coeff + measure_update.add_term
         loc = self.node_index.index(cmd.node)
-        result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.__rng, self.pr_calc)
+        result = perform_measure(loc, measure_update.new_plane, angle, self.state, self.__rng, pr_calc=self.pr_calc, symbolic=self.symbolic)
         self.results[cmd.node] = result
         self.node_index.remove(cmd.node)
         return loc
