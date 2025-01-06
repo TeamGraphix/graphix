@@ -181,7 +181,7 @@ def test_simulation_exception() -> None:
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
     pattern.add(graphix.command.M(node=1, angle=alpha))
-    with pytest.raises(graphix.parameter.PlaceholderOperationError):
+    with pytest.raises((AttributeError, TypeError)):
         pattern.simulate_pattern()
 
 

@@ -49,21 +49,6 @@ class Expression(ABC):
     def __mod__(self, other: Any) -> ExpressionOrFloat: ...
 
     @abstractmethod
-    def sin(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def cos(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def exp(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def conjugate(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
-    def sqrt(self) -> ExpressionOrFloat: ...
-
-    @abstractmethod
     def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrComplex: ...
 
     @abstractmethod
@@ -157,21 +142,6 @@ class AffineExpression(Expression):
 
     def __mod__(self, other: Any) -> ExpressionOrFloat:
         return NotImplemented
-
-    def sin(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def cos(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def exp(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def conjugate(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
-
-    def sqrt(self) -> ExpressionOrFloat:
-        raise PlaceholderOperationError()
 
     def __str__(self) -> str:
         return f"{self.a} * {self.x} + {self.b}"
