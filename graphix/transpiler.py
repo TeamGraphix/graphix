@@ -21,6 +21,8 @@ from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec
 
+from qiskit.qasm3 import loads
+import matplotlib.pyplot as plt
 
 @dataclasses.dataclass
 class TranspileResult:
@@ -72,86 +74,27 @@ class Circuit:
         self.instruction: list[instruction.Instruction] = []
         self.active_qubits = set(range(width))
 
-    def pretty_print(self):
-        lines = ["" for _ in range(self.width)]
-        one_qubit_instructions = set(
-            [
-                instruction.InstructionKind.H,
-                instruction.InstructionKind.S,
-                instruction.InstructionKind.X,
-                instruction.InstructionKind.Y,
-                instruction.InstructionKind.Z,
-                instruction.InstructionKind.I,
-                instruction.InstructionKind.M,
-                instruction.InstructionKind.RX,
-                instruction.InstructionKind.RY,
-                instruction.InstructionKind.RZ,
-            ]
-        )
-        two_qubits_instructions = set(
-            [instruction.InstructionKind.CNOT, instruction.InstructionKind.SWAP, instruction.InstructionKind.RZZ]
-        )
-        max_line = 0
-        for instr in self.instruction:
-            if instr.kind in one_qubit_instructions:  # One qubit instruction
-                s = f"-[ {instr.kind.value} ]"
-                lines[instr.target] += s
-                # Eventually display the angle if rotation instruction (this way is pretty much unreadable) ?
-                # if isinstance(instr, instruction.RotationInstruction):
-                # lines[instr.target] += f"θ={instr.angle}"
+    def __str__(self) -> str:
+        qasm_circuit = self._to_qasm3()
+        qiskit_circuit = loads(qasm_circuit)
+        return qiskit_circuit.draw('text').single_string()
 
-                # Track max line length
-                max_line = max(max_line, len(lines[instr.target]))
+    def pretty_print(self, format: str='text'):
+        assert format in ['text', 'mpl', 'latex', 'latex_source']
+        qasm_circuit = self._to_qasm3()
+        qiskit_circuit = loads(qasm_circuit)
+        if format == 'text':
+            print(self)
+            return
+        elif format == 'mpl':
+            fig = qiskit_circuit.draw(output=format)
+            return fig
+        elif format == 'latex':
+            print(qiskit_circuit.draw(output=format))
+        else:
+            return qiskit_circuit.draw(output=format)
 
-            elif instr.kind in two_qubits_instructions:  # Two qubits instruction
-                if len(lines[instr.target]) < max_line:
-                    lines[instr.target] += "-" * (max_line - len(lines[instr.target]) - 1)  # Equalize line
-                s = f"-[ {instr.kind.value} ]"
-                lines[instr.target] += s
-                max_line = max(max_line, len(lines[instr.target]))  # Update max_line if needed
-
-                if len(lines[instr.control]) < max_line:
-                    lines[instr.control] += "-" * (
-                        max_line - len(lines[instr.control]) - 1 - len(s) // 2
-                    )  # Equalize line
-
-                lines[instr.control] += "*"  # Add the control
-                lines[instr.control] += "-" * (
-                    max_line - len(lines[instr.control])
-                )  # Equalize to match length of the target
-
-                max_line = max(max_line, len(lines[instr.control]))  # Update max_line if needed
-            else:  # Three qubits instruction
-                # Equalize lines if needed
-                if len(lines[instr.target]) < max_line:
-                    lines[instr.target] += "-" * (max_line - len(lines[instr.target]) - 1)
-                max_line = max(max_line, len(lines[instr.target]))
-
-                if len(lines[instr.controls[0]]) < max_line:
-                    lines[instr.controls[0]] += "-" * (max_line - len(lines[instr.controls[0]]) - 1)
-                max_line = max(max_line, len(lines[instr.controls[0]]))
-
-                if len(lines[instr.controls[1]]) < max_line:
-                    lines[instr.controls[1]] += "-" * (max_line - len(lines[instr.controls[1]]) - 1)
-                max_line = max(max_line, len(lines[instr.controls[1]]))
-
-                # Add the target and controls
-                lines[instr.target] += f"-[ {instr.kind.value} ]"
-                lines[instr.controls[0]] += f"-*-"
-                lines[instr.controls[1]] += f"-*-"
-
-            """ COMMENTED FOR DEBUG
-            print(instr.kind)
-            for _, val in lines.items():
-                print(f'|0>{val}')
-        print("================================")"""
-
-        for line in lines:
-            if len(line) < max_line:
-                line += "-" * (max_line - len(line))
-            print(f"|0>{line}")
-            
-    def to_qasm3(self):
+    def _to_qasm3(self):
         """Export circuit instructions to OpenQASM 3.0 file
         
         Returns
@@ -161,13 +104,14 @@ class Circuit:
         """
         qasm_lines = []
 
-        qasm_lines.append("// Generated by Circuit.to_QASM3")
+        qasm_lines.append("// Generated by Circuit.to_QASM3\n")
         qasm_lines.append("OPENQASM 3.0;")
+        qasm_lines.append('include "stdgates.inc";\n')
         qasm_lines.append(f"qubit[{self.width}] q;")
-        qasm_lines.apend(f"bit[{self.width}] b;")
+        qasm_lines.append(f"bit[{self.width}] b;\n")
 
         for instr in self.instruction:
-            qasm_lines.append(instr.to_QASM3())
+            qasm_lines.append(f'{instr.to_qasm3()};')
 
         return "\n".join(qasm_lines)
 
