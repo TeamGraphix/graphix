@@ -75,26 +75,16 @@ class Circuit:
         self.active_qubits = set(range(width))
 
     def __str__(self) -> str:
-        qasm_circuit = self._to_qasm3()
-        qiskit_circuit = loads(qasm_circuit)
-        return qiskit_circuit.draw('text').single_string()
+        return self.draw()
 
-    def pretty_print(self, format: str='text'):
-        assert format in ['text', 'mpl', 'latex', 'latex_source']
-        qasm_circuit = self._to_qasm3()
+    def draw(self, format: str='text'):
+        qasm_circuit = self.to_qasm3()
         qiskit_circuit = loads(qasm_circuit)
         if format == 'text':
-            print(self)
-            return
-        elif format == 'mpl':
-            fig = qiskit_circuit.draw(output=format)
-            return fig
-        elif format == 'latex':
-            print(qiskit_circuit.draw(output=format))
-        else:
-            return qiskit_circuit.draw(output=format)
+            return qiskit_circuit.draw('text').single_string()
+        return qiskit_circuit.draw(output=format)
 
-    def _to_qasm3(self):
+    def to_qasm3(self):
         """Export circuit instructions to OpenQASM 3.0 file
         
         Returns

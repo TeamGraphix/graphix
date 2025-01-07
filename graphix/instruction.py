@@ -38,7 +38,7 @@ class Instruction(BaseModel, abc.ABC):
     
     @abc.abstractmethod
     def to_qasm3(self) -> str:
-        pass
+        ...
 
 
 class OneQubitInstruction(Instruction):
