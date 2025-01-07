@@ -12,3 +12,4 @@ tox
 qiskit>=1.0
 qiskit-aer
 rustworkx
+pylatexenc
