@@ -289,9 +289,15 @@ end = time()
 print("Duration:", end - start)
 result
 
+data_point_placeholders = tuple(Placeholder(f"d[{f}]") for f in range(n_features))
+circuit = qnn.data_reuploading_circuit(data_point_placeholders, result.x)
+pattern = circuit.transpile().pattern
+pattern.standardize()
+pattern.shift_signals()
+
 # %%
 # Compute predictions on the train data and calculate accuracy
-predictions = np.array([qnn.compute_expectation(data_point, result.x) for data_point in x])
+predictions = np.array([qnn.compute_expectation(pattern, data_point_placeholders, data_point) for data_point in x])
 predictions[predictions > 0.0] = 1.0
 predictions[predictions <= 0.0] = -1.0
 print(np.mean(y == predictions))
@@ -310,7 +316,7 @@ grid = np.mgrid[GRID_X_START:GRID_X_END:20j, GRID_X_START:GRID_Y_END:20j]
 grid_2d = grid.reshape(2, -1).T
 XX, YY = grid
 grid_2d = np.pad(grid_2d, ((0, 0), (0, 1)))
-predictions = np.array([qnn.compute_expectation(data_point, result.x) for data_point in grid_2d])
+predictions = np.array([qnn.compute_expectation(pattern, data_point_placeholders, data_point) for data_point in grid_2d])
 
 print(predictions.shape, XX.shape)
 
