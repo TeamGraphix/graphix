@@ -316,7 +316,9 @@ grid = np.mgrid[GRID_X_START:GRID_X_END:20j, GRID_X_START:GRID_Y_END:20j]
 grid_2d = grid.reshape(2, -1).T
 XX, YY = grid
 grid_2d = np.pad(grid_2d, ((0, 0), (0, 1)))
-predictions = np.array([qnn.compute_expectation(pattern, data_point_placeholders, data_point) for data_point in grid_2d])
+predictions = np.array(
+    [qnn.compute_expectation(pattern, data_point_placeholders, data_point) for data_point in grid_2d]
+)
 
 print(predictions.shape, XX.shape)
 
