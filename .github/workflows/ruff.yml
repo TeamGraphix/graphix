@@ -1,8 +1,16 @@
 name: ruff
+
 on:
   pull_request:
     branches: ["master"]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:

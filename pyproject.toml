@@ -47,24 +47,27 @@ extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 extend-select = [
-  "UP",
-  "NPY",
   "A",
   "B",
-  "W",
+  "D",
+  "FA",
+  "I",
+  "NPY",
+  "N",
+  "PERF",
   "PLE",
   "PLW",
-  "FA",
   "RUF",
-  "PERF",
   "TCH",
-  "I",
+  "TID",
+  "UP",
+  "W",
 ]
 ignore = [
-  # TODO: Resolve this immediately
-  "NPY002", # Use np.random.Generator
-  "E74",    # Ambiguous name
+  "E74", # Ambiguous name
 ]
+# Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
+allowed-confusables = ["α"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -73,14 +76,95 @@ docstring-code-format = true
 "__init__.py" = [
   "F401", # Unused import
 ]
+"benchmarks/*.py" = [
+  "D", # Benchmarks follow Sphinx doc conventions
+]
 "examples/*.py" = [
-  "E402", # Import not at top of file
   "B018", # Useless expression
+  "D",    # Examples follow Sphinx doc conventions
+  "E402", # Import not at top of file
+]
+"tests/*.py" = [
+  "D10", # Allow undocumented items
 ]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
 [tool.pytest.ini_options]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
+
+[tool.mypy]
+# Keep in sync with pyright
+files = [
+  "graphix/channels.py",
+  "graphix/clifford.py",
+  "graphix/command.py",
+  "graphix/fundamentals.py",
+  "graphix/instruction.py",
+  "graphix/linalg_validations.py",
+  "graphix/measurements.py",
+  "graphix/ops.py",
+  "graphix/pauli.py",
+  "graphix/pyzx.py",
+  "graphix/rng.py",
+  "graphix/states.py",
+  "graphix/utils.py",
+  "graphix/**/__init__.py",
+  "graphix/_db.py",
+  "noxfile.py",
+  "tests/conftest.py",
+  "tests/test_clifford.py",
+  "tests/test_command.py",
+  "tests/test_db.py",
+  "tests/test_fundamentals.py",
+  "tests/test_kraus.py",
+  "tests/test_pauli.py",
+  "tests/test_pyzx.py",
+  "tests/test_rng.py",
+]
+follow_imports = "silent"
+strict = true
+
+[tool.pyright]
+# Keep in sync with mypy
+include = [
+  "graphix/channels.py",
+  "graphix/clifford.py",
+  "graphix/command.py",
+  "graphix/fundamentals.py",
+  "graphix/instruction.py",
+  "graphix/linalg_validations.py",
+  "graphix/measurements.py",
+  "graphix/ops.py",
+  "graphix/pauli.py",
+  "graphix/pyzx.py",
+  "graphix/rng.py",
+  "graphix/states.py",
+  "graphix/utils.py",
+  "graphix/**/__init__.py",
+  "graphix/_db.py",
+  "noxfile.py",
+  "tests/conftest.py",
+  "tests/test_clifford.py",
+  "tests/test_command.py",
+  "tests/test_db.py",
+  "tests/test_fundamentals.py",
+  "tests/test_kraus.py",
+  "tests/test_pauli.py",
+  "tests/test_pyzx.py",
+  "tests/test_rng.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError\\(.*\\)",
+  "return NotImplemented",
+  "typing_extensions.assert_never\\(.*\\)",
+  "@abc.abstractmethod",
+]

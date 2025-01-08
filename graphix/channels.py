@@ -1,82 +1,147 @@
+"""Quantum channels and noise models."""
+
 from __future__ import annotations
 
-import numpy as np
+import copy
+import typing
+from typing import TYPE_CHECKING, SupportsIndex, TypeVar
 
-from graphix.linalg_validations import check_data_dims, check_data_normalization, check_data_values_type, check_rank
+import numpy as np
+import numpy.typing as npt
+
+from graphix import linalg_validations as lv
 from graphix.ops import Ops
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
-class KrausChannel:
-    """quantum channel class in the Kraus representation.
-    Defined by Kraus operators :math:`K_i` with scalar prefactors :code:`coef`) :math:`c_i`,
-    where the channel act on density matrix as :math:`\\rho'  = \\sum_i K_i^\\dagger \\rho K_i`.
-    The data should satisfy :math:`\\sum K_i^\\dagger K_i = I`
+_T = TypeVar("_T", bound=np.generic)
+
+
+def _ilog2(n: int) -> int:
+    if n <= 0:
+        raise ValueError("n must be positive.")
+    return (n - 1).bit_length()
+
+
+class KrausData:
+    """Kraus operator data.
 
     Attributes
     ----------
-    nqubit : int
-        number of qubits acted on by the Kraus operators
-    size : int
-        number of Kraus operators (== Choi rank)
-    kraus_ops : array_like(dict())
-        the data in format
-        array_like(dict): [{coef: scalar, operator: array_like}, {coef: scalar, operator: array_like}, ...]
+    coef : complex
+        Scalar prefactor of the operator.
 
-    Returns
-    -------
-    Channel object
-        containing the corresponding Kraus operators
-
+    operator : npt.NDArray[np.complex128]
+        Operator.
     """
 
-    def __init__(self, kraus_data):
-        """
+    __coef: complex
+    __operator: npt.NDArray[np.complex128]
+
+    def __init__(self, coef: complex, operator: npt.NDArray[_T]) -> None:
+        if not lv.is_square(operator):
+            raise ValueError("Operator must be a square matrix.")
+        if not lv.is_qubitop(operator):
+            raise ValueError("Operator must be a qubit operator.")
+        self.__coef = coef
+        self.__operator = operator.astype(np.complex128, copy=True)
+        self.__operator.flags.writeable = False
+
+    @property
+    def coef(self) -> complex:
+        """Return the scalar prefactor."""
+        return self.__coef
+
+    @property
+    def operator(self) -> npt.NDArray[np.complex128]:
+        """Return the operator."""
+        return self.__operator.view()
+
+    @property
+    def nqubit(self) -> int:
+        """Validate the data."""
+        size, _ = self.__operator.shape
+        return _ilog2(size)
+
+
+class KrausChannel:
+    r"""Quantum channel class in the Kraus representation.
+
+    Defined by Kraus operators :math:`K_i` with scalar prefactors :code:`coef`) :math:`c_i`,
+    where the channel act on density matrix as :math:`\rho'  = \sum_i K_i^\dagger \rho K_i`.
+    The data should satisfy :math:`\sum K_i^\dagger K_i = I`.
+    """
+
+    __nqubit: int
+    __data: list[KrausData]
+
+    @staticmethod
+    def _nqubit(kraus_data: Iterable[KrausData]) -> int:
+        # MEMO: kraus_data is not empty.
+        it = iter(kraus_data)
+        nqubit = next(it).nqubit
+
+        if any(data.nqubit != nqubit for data in it):
+            raise ValueError("All operators must have the same shape.")
+
+        return nqubit
+
+    def __init__(self, kraus_data: Iterable[KrausData]) -> None:
+        """Initialize `KrausChannel` given a Kraus operator.
+
         Parameters
         ----------
-        kraus_data : array_like
-            array of Kraus operator data.
-            array_like(dict): [{coef: scalar, operator: array_like}, {parameter: scalar, operator: array_like}, ...]
-            only works for square Kraus operators
+        kraus_data : Iterable[KrausData]
+            Iterable of Kraus operator data.
 
         Raises
         ------
         ValueError
-            If empty array_like is provided.
+            If kraus_data is empty.
         """
+        kraus_data = list(copy.deepcopy(kdata) for kdata in kraus_data)
 
-        # check there is data
         if not kraus_data:
             raise ValueError("Cannot instantiate the channel with empty data.")
 
-        if not isinstance(kraus_data, (list, np.ndarray, tuple)):
-            raise TypeError(f"The data must be a list, a numpy.ndarray or a tuple not a {type(kraus_data)}.")
+        self.__nqubit = self._nqubit(kraus_data)
+        self.__data = kraus_data
 
-        # check that data is correctly formatted before assigning it to the object.
-        assert check_data_values_type(kraus_data)
-        assert check_data_dims(kraus_data)
+        if len(self.__data) > 4**self.__nqubit:
+            raise ValueError("len(kraus_data) cannot exceed 4**nqubit.")
 
-        # check that the channel is properly normalized i.e
-        # \sum_K_i^\dagger K_i = Identity
-        assert check_data_normalization(kraus_data)
-        assert check_rank(kraus_data)
+        # Check that the channel is properly normalized, i.e., \sum_K_i^\dagger K_i = Identity.
+        data = next(iter(self.__data))
+        work = np.zeros_like(data.operator, dtype=np.complex128)
+        for data in self.__data:
+            m = data.coef * data.operator
+            work += m.conj().T @ m
+        if not np.allclose(work, np.eye(2**self.__nqubit)):
+            raise ValueError("The specified channel is not normalized.")
 
-        self.nqubit = int(np.log2(kraus_data[0]["operator"].shape[0]))
-        self.kraus_ops = kraus_data
+    @typing.overload
+    def __getitem__(self, index: SupportsIndex, /) -> KrausData: ...
 
-        # np.asarray(data, dtype=np.complex128)
-        # number of Kraus operators in the Channel
+    @typing.overload
+    def __getitem__(self, index: slice, /) -> list[KrausData]: ...
 
-        self.size = len(kraus_data)
+    def __getitem__(self, index: SupportsIndex | slice, /) -> KrausData | list[KrausData]:
+        """Return the Kraus operator at the given index."""
+        return self.__data[index]
 
-    def __repr__(self):
-        return f"KrausChannel object with {self.size} Kraus operators of dimension {self.nqubit}."
+    def __len__(self) -> int:
+        """Return the number of Kraus operators."""
+        return len(self.__data)
 
-    def is_normalized(self):
-        return check_data_normalization(self.kraus_ops)
+    @property
+    def nqubit(self) -> int:
+        """Return the number of qubits."""
+        return self.__nqubit
 
 
 def dephasing_channel(prob: float) -> KrausChannel:
-    """single-qubit dephasing channel, :math:`(1-p) \\rho + p Z  \\rho Z`
+    r"""Single-qubit dephasing channel, :math:`(1-p) \rho + p Z  \rho Z`.
 
     Parameters
     ----------
@@ -85,19 +150,22 @@ def dephasing_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    :class:`graphix.channel.KrausChannel` object
+    :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
     return KrausChannel(
-        [{"coef": np.sqrt(1 - prob), "operator": np.eye(2)}, {"coef": np.sqrt(prob), "operator": Ops.z}]
+        [
+            KrausData(np.sqrt(1 - prob), Ops.I),
+            KrausData(np.sqrt(prob), Ops.Z),
+        ]
     )
 
 
 def depolarising_channel(prob: float) -> KrausChannel:
-    """single-qubit depolarizing channel
+    r"""Single-qubit depolarizing channel.
 
     .. math::
-        (1-p) \\rho + \\frac{p}{3} (X \\rho X + Y \\rho Y + Z \\rho Z) = (1 - 4 \\frac{p}{3}) \\rho + 4 \\frac{p}{3} id
+        (1-p) \rho + \frac{p}{3} (X \rho X + Y \rho Y + Z \rho Z) = (1 - 4 \frac{p}{3}) \rho + 4 \frac{p}{3} id
 
     Parameters
     ----------
@@ -107,39 +175,39 @@ def depolarising_channel(prob: float) -> KrausChannel:
     """
     return KrausChannel(
         [
-            {"coef": np.sqrt(1 - prob), "operator": np.eye(2)},
-            {"coef": np.sqrt(prob / 3.0), "operator": Ops.x},
-            {"coef": np.sqrt(prob / 3.0), "operator": Ops.y},
-            {"coef": np.sqrt(prob / 3.0), "operator": Ops.z},
+            KrausData(np.sqrt(1 - prob), Ops.I),
+            KrausData(np.sqrt(prob / 3.0), Ops.X),
+            KrausData(np.sqrt(prob / 3.0), Ops.Y),
+            KrausData(np.sqrt(prob / 3.0), Ops.Z),
         ]
     )
 
 
 def pauli_channel(px: float, py: float, pz: float) -> KrausChannel:
-    """single-qubit pauli channel,
+    r"""Single-qubit Pauli channel.
 
     .. math::
-        (1-p_X-p_Y-p_Z) \\rho + p_X X \\rho X + p_Y Y \\rho Y + p_Z Z \\rho Z)
+        (1-p_X-p_Y-p_Z) \rho + p_X X \rho X + p_Y Y \rho Y + p_Z Z \rho Z)
 
     """
     if px + py + pz > 1:
         raise ValueError("The sum of probabilities must not exceed 1.")
-    pI = 1 - px - py - pz
+    p_i = 1 - px - py - pz
     return KrausChannel(
         [
-            {"coef": np.sqrt(1 - pI), "operator": np.eye(2)},
-            {"coef": np.sqrt(px / 3.0), "operator": Ops.x},
-            {"coef": np.sqrt(py / 3.0), "operator": Ops.y},
-            {"coef": np.sqrt(pz / 3.0), "operator": Ops.z},
+            KrausData(np.sqrt(1 - p_i), Ops.I),
+            KrausData(np.sqrt(px / 3.0), Ops.X),
+            KrausData(np.sqrt(py / 3.0), Ops.Y),
+            KrausData(np.sqrt(pz / 3.0), Ops.Z),
         ]
     )
 
 
 def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
-    """two-qubit depolarising channel.
+    r"""Two-qubit depolarising channel.
 
     .. math::
-        \\mathcal{E} (\\rho) = (1-p) \\rho + \\frac{p}{15}  \\sum_{P_i \\in \\{id, X, Y ,Z\\}^{\\otimes 2}/(id \\otimes id)}P_i \\rho P_i
+        \mathcal{E} (\rho) = (1-p) \rho + \frac{p}{15}  \sum_{P_i \in \{id, X, Y ,Z\}^{\otimes 2}/(id \otimes id)}P_i \rho P_i
 
     Parameters
     ----------
@@ -148,38 +216,38 @@ def two_qubit_depolarising_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    :class:`graphix.channel.KrausChannel` object
+    :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
-
     return KrausChannel(
         [
-            {"coef": np.sqrt(1 - prob), "operator": np.kron(np.eye(2), np.eye(2))},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.x)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.z)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, np.eye(2))},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.y)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, np.eye(2))},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, np.eye(2))},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.x)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.y)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(np.eye(2), Ops.z)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.y)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.x, Ops.z)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.x)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.y, Ops.z)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.y)},
-            {"coef": np.sqrt(prob / 15.0), "operator": np.kron(Ops.z, Ops.x)},
+            KrausData(np.sqrt(1 - prob), np.kron(Ops.I, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.I)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.I, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.I, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.I, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.X, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.X)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Y, Ops.Z)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.Y)),
+            KrausData(np.sqrt(prob / 15.0), np.kron(Ops.Z, Ops.X)),
         ]
     )
 
 
 def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
-    """two-qubit tensor channel of single-qubit depolarising channels with same probability.
+    r"""Two-qubit tensor channel of single-qubit depolarising channels with same probability.
+
     Kraus operators:
 
     .. math::
-        \\Big\\{ \\sqrt{(1-p)} id, \\sqrt{(p/3)} X, \\sqrt{(p/3)} Y , \\sqrt{(p/3)} Z \\Big\\} \\otimes \\Big\\{ \\sqrt{(1-p)} id, \\sqrt{(p/3)} X, \\sqrt{(p/3)} Y , \\sqrt{(p/3)} Z \\Big\\}
+        \Big\{ \sqrt{(1-p)} id, \sqrt{(p/3)} X, \sqrt{(p/3)} Y , \sqrt{(p/3)} Z \Big\} \otimes \Big\{ \sqrt{(1-p)} id, \sqrt{(p/3)} X, \sqrt{(p/3)} Y , \sqrt{(p/3)} Z \Big\}
 
     Parameters
     ----------
@@ -188,27 +256,26 @@ def two_qubit_depolarising_tensor_channel(prob: float) -> KrausChannel:
 
     Returns
     -------
-    :class:`graphix.channel.KrausChannel` object
+    :class:`graphix.channels.KrausChannel` object
         containing the corresponding Kraus operators
     """
-
     return KrausChannel(
         [
-            {"coef": 1 - prob, "operator": np.kron(np.eye(2), np.eye(2))},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.x)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.y)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.z)},
-            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.x, np.eye(2))},
-            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.y, np.eye(2))},
-            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(Ops.z, np.eye(2))},
-            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.x)},
-            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.y)},
-            {"coef": np.sqrt(1 - prob) * np.sqrt(prob / 3.0), "operator": np.kron(np.eye(2), Ops.z)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.y)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.x, Ops.z)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.x)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.y, Ops.z)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.x)},
-            {"coef": prob / 3.0, "operator": np.kron(Ops.z, Ops.y)},
+            KrausData(1 - prob, np.kron(Ops.I, Ops.I)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.Y)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Z)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.X, Ops.I)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.Y, Ops.I)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.Z, Ops.I)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.I, Ops.X)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.I, Ops.Y)),
+            KrausData(np.sqrt(1 - prob) * np.sqrt(prob / 3.0), np.kron(Ops.I, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.Y)),
+            KrausData(prob / 3.0, np.kron(Ops.X, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Y, Ops.Z)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.X)),
+            KrausData(prob / 3.0, np.kron(Ops.Z, Ops.Y)),
         ]
     )

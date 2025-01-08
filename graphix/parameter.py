@@ -248,6 +248,7 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
 
     """
     if not isinstance(value, Expression):
+        print(f"{value} is not an expression")
         return value
     new_value = value.subs(variable, substitute)
     if isinstance(new_value, SupportsComplex):

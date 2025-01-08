@@ -1,214 +1,194 @@
+"""Instruction classes."""
+
 from __future__ import annotations
 
-import abc
+import dataclasses
 import enum
+import sys
+from enum import Enum
+from typing import ClassVar, Literal, Union
 
-from pydantic import BaseModel, ConfigDict
-
-# TCH001: ExpressionOrFloat and Plane are used in pydantic models
-from graphix.parameter import ExpressionOrFloat  # noqa: TCH001
-from graphix.pauli import Plane  # noqa: TCH001
+from graphix import utils
+from graphix.fundamentals import Plane
+from graphix.parameter import ExpressionOrFloat
 
 
-class InstructionKind(enum.Enum):
-    CCX = "CCX"
-    RZZ = "RZZ"
-    CNOT = "CNOT"
-    SWAP = "SWAP"
-    H = "H"
-    S = "S"
-    X = "X"
-    Y = "Y"
-    Z = "Z"
-    I = "I"
-    M = "M"
-    RX = "RX"
-    RY = "RY"
-    RZ = "RZ"
+class InstructionKind(Enum):
+    """Tag for instruction kind."""
+
+    CCX = enum.auto()
+    RZZ = enum.auto()
+    CNOT = enum.auto()
+    SWAP = enum.auto()
+    H = enum.auto()
+    S = enum.auto()
+    X = enum.auto()
+    Y = enum.auto()
+    Z = enum.auto()
+    I = enum.auto()
+    M = enum.auto()
+    RX = enum.auto()
+    RY = enum.auto()
+    RZ = enum.auto()
     # The two following instructions are used internally by the transpiler
-    XC = "XC"
-    ZC = "ZC"
+    _XC = enum.auto()
+    _ZC = enum.auto()
 
 
-class Instruction(BaseModel, abc.ABC):
-    """
-    Circuit instruction base class model.
-    """
+class _KindChecker:
+    """Enforce tag field declaration."""
 
-    kind: InstructionKind = None
-    meas_index: int = None
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
-class OneQubitInstruction(Instruction):
-    """
-    One qubit circuit instruction base class model.
-    """
+@dataclasses.dataclass
+class CCX(_KindChecker):
+    """Toffoli circuit instruction."""
 
     target: int
-
-
-class CorrectionInstruction(OneQubitInstruction):
-    """
-    Correction instruction base class model.
-    """
-
-    domain: set[int]
-
-
-class RotationInstruction(OneQubitInstruction):
-    """
-    Rotation instruction base class model.
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    angle: ExpressionOrFloat
-
-
-class OneControlInstruction(OneQubitInstruction):
-    """
-    One control instruction base class model.
-    """
-
-    control: int
-
-
-class TwoControlsInstruction(OneQubitInstruction):
-    """
-    Two controls instruction base class model.
-    """
-
     controls: tuple[int, int]
+    kind: ClassVar[Literal[InstructionKind.CCX]] = dataclasses.field(default=InstructionKind.CCX, init=False)
 
 
-class XC(CorrectionInstruction):
-    """
-    X correction circuit instruction. Used internally by the transpiler.
-    """
+@dataclasses.dataclass
+class RZZ(_KindChecker):
+    """RZZ circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.XC
-
-
-class ZC(CorrectionInstruction):
-    """
-    Z correction circuit instruction. Used internally by the transpiler.
-    """
-
-    kind: InstructionKind = InstructionKind.ZC
+    target: int
+    control: int
+    angle: ExpressionOrFloat
+    # FIXME: Remove `| None` from `meas_index`
+    # - `None` makes codes messy/type-unsafe
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RZZ]] = dataclasses.field(default=InstructionKind.RZZ, init=False)
 
 
-class CCX(TwoControlsInstruction):
-    """
-    Toffoli circuit instruction.
-    """
+@dataclasses.dataclass
+class CNOT(_KindChecker):
+    """CNOT circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.CCX
-
-
-class RZZ(OneControlInstruction, RotationInstruction):
-    """
-    RZZ circuit instruction.
-    """
-
-    kind: InstructionKind = InstructionKind.RZZ
+    target: int
+    control: int
+    kind: ClassVar[Literal[InstructionKind.CNOT]] = dataclasses.field(default=InstructionKind.CNOT, init=False)
 
 
-class CNOT(OneControlInstruction):
-    """
-    CNOT circuit instruction.
-    """
+@dataclasses.dataclass
+class SWAP(_KindChecker):
+    """SWAP circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.CNOT
-
-
-class SWAP(Instruction):
-    """
-    SWAP circuit instruction.
-    """
-
-    kind: InstructionKind = InstructionKind.SWAP
     targets: tuple[int, int]
+    kind: ClassVar[Literal[InstructionKind.SWAP]] = dataclasses.field(default=InstructionKind.SWAP, init=False)
 
 
-class H(OneQubitInstruction):
-    """
-    H circuit instruction.
-    """
+@dataclasses.dataclass
+class H(_KindChecker):
+    """H circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.H
-
-
-class S(OneQubitInstruction):
-    """
-    S circuit instruction.
-    """
-
-    kind: InstructionKind = InstructionKind.S
+    target: int
+    kind: ClassVar[Literal[InstructionKind.H]] = dataclasses.field(default=InstructionKind.H, init=False)
 
 
-class X(OneQubitInstruction):
-    """
-    X circuit instruction.
-    """
+@dataclasses.dataclass
+class S(_KindChecker):
+    """S circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.X
-
-
-class Y(OneQubitInstruction):
-    """
-    Y circuit instruction.
-    """
-
-    kind: InstructionKind = InstructionKind.Y
+    target: int
+    kind: ClassVar[Literal[InstructionKind.S]] = dataclasses.field(default=InstructionKind.S, init=False)
 
 
-class Z(OneQubitInstruction):
-    """
-    Z circuit instruction.
-    """
+@dataclasses.dataclass
+class X(_KindChecker):
+    """X circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.Z
-
-
-class I(OneQubitInstruction):
-    """
-    I circuit instruction.
-    """
-
-    kind: InstructionKind = InstructionKind.I
+    target: int
+    kind: ClassVar[Literal[InstructionKind.X]] = dataclasses.field(default=InstructionKind.X, init=False)
 
 
-class M(OneQubitInstruction):
-    """
-    M circuit instruction.
-    """
+@dataclasses.dataclass
+class Y(_KindChecker):
+    """Y circuit instruction."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    target: int
+    kind: ClassVar[Literal[InstructionKind.Y]] = dataclasses.field(default=InstructionKind.Y, init=False)
 
-    kind: InstructionKind = InstructionKind.M
+
+@dataclasses.dataclass
+class Z(_KindChecker):
+    """Z circuit instruction."""
+
+    target: int
+    kind: ClassVar[Literal[InstructionKind.Z]] = dataclasses.field(default=InstructionKind.Z, init=False)
+
+
+@dataclasses.dataclass
+class I(_KindChecker):
+    """I circuit instruction."""
+
+    target: int
+    kind: ClassVar[Literal[InstructionKind.I]] = dataclasses.field(default=InstructionKind.I, init=False)
+
+
+@dataclasses.dataclass
+class M(_KindChecker):
+    """M circuit instruction."""
+
+    target: int
     plane: Plane
     angle: ExpressionOrFloat
+    kind: ClassVar[Literal[InstructionKind.M]] = dataclasses.field(default=InstructionKind.M, init=False)
 
 
-class RX(RotationInstruction):
-    """
-    X rotation circuit instruction.
-    """
+@dataclasses.dataclass
+class RX(_KindChecker):
+    """X rotation circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.RX
-
-
-class RY(RotationInstruction):
-    """
-    Y rotation circuit instruction.
-    """
-
-    kind: InstructionKind = InstructionKind.RY
+    target: int
+    angle: ExpressionOrFloat
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RX]] = dataclasses.field(default=InstructionKind.RX, init=False)
 
 
-class RZ(RotationInstruction):
-    """
-    Z rotation circuit instruction.
-    """
+@dataclasses.dataclass
+class RY(_KindChecker):
+    """Y rotation circuit instruction."""
 
-    kind: InstructionKind = InstructionKind.RZ
+    target: int
+    angle: ExpressionOrFloat
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RY]] = dataclasses.field(default=InstructionKind.RY, init=False)
+
+
+@dataclasses.dataclass
+class RZ(_KindChecker):
+    """Z rotation circuit instruction."""
+
+    target: int
+    angle: ExpressionOrFloat
+    meas_index: int | None = None
+    kind: ClassVar[Literal[InstructionKind.RZ]] = dataclasses.field(default=InstructionKind.RZ, init=False)
+
+
+@dataclasses.dataclass
+class _XC(_KindChecker):
+    """X correction circuit instruction. Used internally by the transpiler."""
+
+    target: int
+    domain: set[int]
+    kind: ClassVar[Literal[InstructionKind._XC]] = dataclasses.field(default=InstructionKind._XC, init=False)
+
+
+@dataclasses.dataclass
+class _ZC(_KindChecker):
+    """Z correction circuit instruction. Used internally by the transpiler."""
+
+    target: int
+    domain: set[int]
+    kind: ClassVar[Literal[InstructionKind._ZC]] = dataclasses.field(default=InstructionKind._ZC, init=False)
+
+
+if sys.version_info >= (3, 10):
+    Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC
+else:
+    Instruction = Union[CCX, RZZ, CNOT, SWAP, H, S, X, Y, Z, I, M, RX, RY, RZ, _XC, _ZC]

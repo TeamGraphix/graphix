@@ -6,6 +6,8 @@ Pattern data structure
 
 This module defines standard data structure for pattern commands.
 
+.. automodule:: graphix.command
+
 .. currentmodule:: graphix.command
 
 .. autoclass:: CommandKind
@@ -22,27 +24,50 @@ This module defines standard data structure for pattern commands.
 
 .. autoclass:: Z
 
+.. autoclass:: MeasureUpdate
 
 
-:mod:`graphix.pauli` module
-+++++++++++++++++++++++++++
+:mod:`graphix.fundamentals` module
+++++++++++++++++++++++++++++++++++
 
-This module defines standard data structure for Pauli operators, measurement planes and their transformations.
+This module defines standard data structure for Pauli operators.
 
-.. currentmodule:: graphix.pauli
+.. automodule:: graphix.fundamentals
+
+.. currentmodule:: graphix.fundamentals
+
+.. autoclass:: Axis
+    :members:
+
+.. autoclass:: ComplexUnit
+    :members:
+
+.. autoclass:: Sign
+    :members:
+
+.. autoclass:: IXYZ
+    :members:
 
 .. autoclass:: Plane
     :members:
 
-.. autoclass:: Pauli
-    :members:
+:mod:`graphix.pauli` module
++++++++++++++++++++++++++++
 
-.. autoclass:: MeasureUpdate
+This module defines standard data structure for Pauli operators.
+
+.. automodule:: graphix.pauli
+
+.. currentmodule:: graphix.pauli
+
+.. autoclass:: Pauli
 
 :mod:`graphix.instruction` module
 +++++++++++++++++++++++++++++++++
 
 This module defines standard data structure for gate seqence (circuit model) used for :class:`graphix.transpiler.Circuit`.
+
+.. automodule:: graphix.instruction
 
 .. currentmodule:: graphix.instruction
 
@@ -98,3 +123,12 @@ https://github.com/TeamGraphix/graphix-symbolic.
 .. autoclass:: AffineExpression
 
 .. autoclass:: Placeholder
+
+:mod:`graphix.states` module
+++++++++++++++++++++++++++++
+
+.. automodule:: graphix.states
+
+.. currentmodule:: graphix.states
+
+.. autoclass:: State

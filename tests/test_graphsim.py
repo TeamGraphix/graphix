@@ -4,18 +4,20 @@ import contextlib
 import sys
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
 
-with contextlib.suppress(ModuleNotFoundError):
-    from rustworkx import PyGraph
-
-import graphix.pauli
+from graphix.clifford import Clifford
+from graphix.fundamentals import Plane
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.utils import convert_rustworkx_to_networkx, is_graphs_equal
 from graphix.ops import Ops
-from graphix.sim.statevec import Statevec, meas_op
+from graphix.sim.statevec import Statevec
+
+with contextlib.suppress(ModuleNotFoundError):
+    from rustworkx import PyGraph
 
 
 def get_state(g) -> Statevec:
@@ -28,14 +30,51 @@ def get_state(g) -> Statevec:
         gstate.entangle((imapping[i], imapping[j]))
     for i in range(nqubit):
         if g.nodes[mapping[i]]["sign"]:
-            gstate.evolve_single(Ops.z, i)
+            gstate.evolve_single(Ops.Z, i)
     for i in range(nqubit):
         if g.nodes[mapping[i]]["loop"]:
-            gstate.evolve_single(Ops.s, i)
+            gstate.evolve_single(Ops.S, i)
     for i in range(nqubit):
         if g.nodes[mapping[i]]["hollow"]:
-            gstate.evolve_single(Ops.h, i)
+            gstate.evolve_single(Ops.H, i)
     return gstate
+
+
+def meas_op(angle, vop=0, plane=Plane.XY, choice=0) -> npt.NDArray:
+    """Return the projection operator for given measurement angle and local Clifford op (VOP).
+
+    .. seealso:: :mod:`graphix.clifford`
+
+    Parameters
+    ----------
+    angle : float
+        original measurement angle in radian
+    vop : int
+        index of local Clifford (vop), see graphq.clifford.CLIFFORD
+    plane : 'XY', 'YZ' or 'ZX'
+        measurement plane on which angle shall be defined
+    choice : 0 or 1
+        choice of measurement outcome. measured eigenvalue would be (-1)**choice.
+
+    Returns
+    -------
+    op : numpy array
+        projection operator
+
+    """
+    assert vop in np.arange(24)
+    assert choice in [0, 1]
+    if plane == Plane.XY:
+        vec = (np.cos(angle), np.sin(angle), 0)
+    elif plane == Plane.YZ:
+        vec = (0, np.cos(angle), np.sin(angle))
+    elif plane == Plane.XZ:
+        vec = (np.cos(angle), 0, np.sin(angle))
+    op_mat = np.eye(2, dtype=np.complex128) / 2
+    for i in range(3):
+        op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2
+    op_mat = Clifford(vop).conj.matrix @ op_mat @ Clifford(vop).matrix
+    return op_mat
 
 
 @pytest.mark.parametrize(
@@ -50,9 +89,7 @@ def get_state(g) -> Statevec:
 )
 class TestGraphSim:
     def test_fig2(self, use_rustworkx: bool) -> None:
-        """Example of three single-qubit measurements
-        presented in Fig.2 of M. Elliot et al (2010)
-        """
+        """Three single-qubit measurements presented in Fig.2 of M. Elliot et al (2010)."""
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
@@ -72,7 +109,7 @@ class TestGraphSim:
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * np.pi, plane=graphix.pauli.Plane.YZ), 1)  # z meas
+        gstate.evolve_single(meas_op(0.5 * np.pi, plane=Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
         gstate2 = get_state(g)
@@ -85,23 +122,23 @@ class TestGraphSim:
         g.h(3)
         gstate = get_state(g)
 
-        g.equivalent_graph_E2(3, 4)
+        g.equivalent_graph_e2(3, 4)
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(4, 0)
+        g.equivalent_graph_e2(4, 0)
         gstate3 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(4, 5)
+        g.equivalent_graph_e2(4, 5)
         gstate4 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate4.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(0, 3)
+        g.equivalent_graph_e2(0, 3)
         gstate5 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate5.flatten())) == pytest.approx(1)
 
-        g.equivalent_graph_E2(0, 3)
+        g.equivalent_graph_e2(0, 3)
         gstate6 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate6.flatten())) == pytest.approx(1)
 
@@ -111,16 +148,16 @@ class TestGraphSim:
         g = GraphState(nodes=np.arange(nqubit), edges=edges, use_rustworkx=use_rustworkx)
         g.nodes[3]["loop"] = True
         gstate = get_state(g)
-        g.equivalent_graph_E1(3)
+        g.equivalent_graph_e1(3)
 
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
         g.z(4)
         gstate = get_state(g)
-        g.equivalent_graph_E1(4)
+        g.equivalent_graph_e1(4)
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
-        g.equivalent_graph_E1(4)
+        g.equivalent_graph_e1(4)
         gstate3 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
 

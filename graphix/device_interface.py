@@ -1,27 +1,31 @@
-"""Quantum hardware device interface
+"""Quantum hardware device interface.
 
 Runs MBQC command sequence on quantum hardware.
-
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
+
 
 class PatternRunner:
-    """MBQC pattern runner
+    """MBQC pattern runner.
 
     Executes the measurement pattern.
     """
 
-    def __init__(self, pattern, backend="ibmq", **kwargs):
-        """
+    def __init__(self, pattern: Pattern, backend: str = "ibmq", **kwargs) -> None:
+        """Instantiate a pattern runner.
 
         Parameters
-        -----------
+        ----------
         pattern: :class:`graphix.pattern.Pattern` object
             MBQC pattern to be executed.
-        backend_name: str, optional
-            execution backend, default is 'ibmq'.
+        backend: str
+            execution backend (optional, default is 'ibmq')
         kwargs: dict
             keyword args for specified backend.
         """
@@ -54,7 +58,7 @@ class PatternRunner:
         else:
             raise ValueError("unknown backend")
 
-    def simulate(self, **kwargs):
+    def simulate(self, **kwargs) -> Any:
         """Perform the simulation.
 
         Parameters
@@ -64,7 +68,7 @@ class PatternRunner:
 
         Returns
         -------
-        result :
+        result: Any
             the simulation result,
             in the representation depending on the backend used.
         """
@@ -77,7 +81,7 @@ class PatternRunner:
 
         return result
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> Any:
         """Perform the execution.
 
         Parameters
@@ -87,7 +91,7 @@ class PatternRunner:
 
         Returns
         -------
-        result :
+        result: Any
             the measurement result,
             in the representation depending on the backend used.
         """
@@ -100,7 +104,7 @@ class PatternRunner:
 
         return result
 
-    def retrieve_result(self, **kwargs):
+    def retrieve_result(self, **kwargs) -> Any:
         """Retrieve the execution result.
 
         Parameters
@@ -110,7 +114,7 @@ class PatternRunner:
 
         Returns
         -------
-        result :
+        result: Any
             the measurement result,
             in the representation depending on the backend used.
         """

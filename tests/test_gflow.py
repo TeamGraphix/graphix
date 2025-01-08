@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import pytest
-from numpy.random import Generator
+from numpy.random import PCG64, Generator
 
-import graphix.pauli
+from graphix import command
+from graphix.fundamentals import Plane
 from graphix.gflow import (
     find_flow,
     find_gflow,
@@ -19,13 +20,10 @@ from graphix.gflow import (
     verify_pauliflow,
 )
 from graphix.pattern import Pattern
-from tests.random_circuit import get_rand_circuit
+from graphix.random_objects import rand_circuit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
-
-    from numpy.random import PCG64
-
 
 seed = 30
 
@@ -79,10 +77,10 @@ def _graph2() -> GraphForTest:
     inputs = {1}
     outputs = {5}
     meas_planes = {
-        1: graphix.pauli.Plane.XY,
-        2: graphix.pauli.Plane.XY,
-        3: graphix.pauli.Plane.XY,
-        4: graphix.pauli.Plane.XY,
+        1: Plane.XY,
+        2: Plane.XY,
+        3: Plane.XY,
+        4: Plane.XY,
     }
     return GraphForTest(
         graph,
@@ -110,10 +108,10 @@ def _graph3() -> GraphForTest:
     inputs = {1, 2}
     outputs = {5, 6}
     meas_planes = {
-        1: graphix.pauli.Plane.XY,
-        2: graphix.pauli.Plane.XY,
-        3: graphix.pauli.Plane.XY,
-        4: graphix.pauli.Plane.XY,
+        1: Plane.XY,
+        2: Plane.XY,
+        3: Plane.XY,
+        4: Plane.XY,
     }
     return GraphForTest(
         graph,
@@ -148,7 +146,7 @@ def _graph4() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XY, 3: graphix.pauli.Plane.XY}
+    meas_planes = {1: Plane.XY, 2: Plane.XY, 3: Plane.XY}
     return GraphForTest(
         graph,
         inputs,
@@ -177,10 +175,10 @@ def _graph5() -> GraphForTest:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {
-        0: graphix.pauli.Plane.XY,
-        1: graphix.pauli.Plane.XY,
-        2: graphix.pauli.Plane.XZ,
-        3: graphix.pauli.Plane.YZ,
+        0: Plane.XY,
+        1: Plane.XY,
+        2: Plane.XZ,
+        3: Plane.YZ,
     }
     return GraphForTest(
         graph,
@@ -209,7 +207,7 @@ def _graph6() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XY}
+    meas_planes = {1: Plane.XY, 2: Plane.XY}
     return GraphForTest(
         graph,
         inputs,
@@ -238,10 +236,10 @@ def _graph7() -> GraphForTest:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {
-        0: graphix.pauli.Plane.XY,
-        1: graphix.pauli.Plane.XY,
-        2: graphix.pauli.Plane.XY,
-        3: graphix.pauli.Plane.XY,
+        0: Plane.XY,
+        1: Plane.XY,
+        2: Plane.XY,
+        3: Plane.XY,
     }
     meas_angles = {0: 0.1, 1: 0, 2: 0.1, 3: 0}
     return GraphForTest(
@@ -270,10 +268,10 @@ def _graph8() -> GraphForTest:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {
-        0: graphix.pauli.Plane.YZ,
-        1: graphix.pauli.Plane.XZ,
-        2: graphix.pauli.Plane.XY,
-        3: graphix.pauli.Plane.YZ,
+        0: Plane.YZ,
+        1: Plane.XZ,
+        2: Plane.XY,
+        3: Plane.YZ,
     }
     meas_angles = {0: 0.5, 1: 0, 2: 0.5, 3: 0}
     return GraphForTest(
@@ -303,7 +301,7 @@ def _graph9() -> GraphForTest:
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
-    meas_planes = {0: graphix.pauli.Plane.YZ, 1: graphix.pauli.Plane.XZ, 2: graphix.pauli.Plane.XY}
+    meas_planes = {0: Plane.YZ, 1: Plane.XZ, 2: Plane.XY}
     meas_angles = {0: 0.5, 1: 0.1, 2: 0.5}
     return GraphForTest(
         graph,
@@ -448,7 +446,7 @@ def get_rand_graph(rng: Generator, n_nodes: int, edge_prob: float = 0.3) -> Rand
     vout = set(rng.choice(list(set(nodes) - vin), output_nodes_number, replace=False))
 
     meas_planes = {}
-    meas_plane_candidates = [graphix.pauli.Plane.XY, graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]
+    meas_plane_candidates = [Plane.XY, Plane.XZ, Plane.YZ]
     meas_angles = {}
     meas_angle_candidates = [0, 0.25, 0.5, 0.75]
 
@@ -527,7 +525,7 @@ class TestGflow:
     def test_with_rand_circ(self, fx_rng: Generator) -> None:
         # test for large graph
         # graph transpiled from circuit always has a flow
-        circ = get_rand_circuit(10, 10, fx_rng)
+        circ = rand_circuit(10, 10, fx_rng)
         pattern = circ.transpile().pattern
         nodes, edges = pattern.get_graph()
         graph = nx.Graph()
@@ -546,7 +544,7 @@ class TestGflow:
     def test_rand_circ_gflow(self, fx_rng: Generator) -> None:
         # test for large graph
         # pauli-node measured graph always has gflow
-        circ = get_rand_circuit(5, 5, fx_rng)
+        circ = rand_circuit(5, 5, fx_rng)
         pattern = circ.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
@@ -600,12 +598,12 @@ class TestGflow:
             assert valid
 
     def test_corrections_from_pattern(self) -> None:
-        pattern = Pattern(input_nodes=range(5))
-        pattern.add(graphix.command.M(node=0))
-        pattern.add(graphix.command.M(node=1))
-        pattern.add(graphix.command.M(node=2, s_domain=(0,), t_domain=(1,)))
-        pattern.add(graphix.command.X(node=3, domain=(2,)))
-        pattern.add(graphix.command.Z(node=4, domain=(3,)))
+        pattern = Pattern(input_nodes=list(range(5)))
+        pattern.add(command.M(node=0))
+        pattern.add(command.M(node=1))
+        pattern.add(command.M(node=2, s_domain={0}, t_domain={1}))
+        pattern.add(command.X(node=3, domain={2}))
+        pattern.add(command.Z(node=4, domain={3}))
         xflow, zflow = get_corrections_from_pattern(pattern)
         assert xflow == {0: {2}, 2: {3}}
         assert zflow == {1: {2}, 3: {4}}

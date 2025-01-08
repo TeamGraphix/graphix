@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import functools
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
-import graphix.pauli
+from graphix.fundamentals import Plane
 from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, PlanarState
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 class TestStatevec:
@@ -46,7 +50,7 @@ class TestStatevec:
         assert len(vec.dims()) == 1
 
     # even more tests?
-    def test_default_tensor_success(self, fx_rng: np.random.Generator) -> None:
+    def test_default_tensor_success(self, fx_rng: Generator) -> None:
         nqb = fx_rng.integers(2, 5)
         print(f"nqb is {nqb}")
         vec = Statevec(nqubit=nqb)
@@ -61,8 +65,8 @@ class TestStatevec:
 
         # tensor of same state
         rand_angle = fx_rng.random() * 2 * np.pi
-        rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]))
-        state = PlanarState(plane=rand_plane, angle=rand_angle)
+        rand_plane = fx_rng.choice(np.array([i for i in Plane]))
+        state = PlanarState(rand_plane, rand_angle)
         vec = Statevec(nqubit=nqb, data=state)
         sv_list = [state.get_statevector() for _ in range(nqb)]
         sv = functools.reduce(np.kron, sv_list)
@@ -71,7 +75,7 @@ class TestStatevec:
 
         # tensor of different states
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(nqubit=nqb, data=states)
         sv_list = [state.get_statevector() for state in states]
@@ -79,7 +83,7 @@ class TestStatevec:
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
 
-    def test_data_success(self, fx_rng: np.random.Generator) -> None:
+    def test_data_success(self, fx_rng: Generator) -> None:
         nqb = fx_rng.integers(2, 5)
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
@@ -89,7 +93,7 @@ class TestStatevec:
         assert len(vec.dims()) == nqb
 
     # fail: incorrect len
-    def test_data_dim_fail(self, fx_rng: np.random.Generator) -> None:
+    def test_data_dim_fail(self, fx_rng: Generator) -> None:
         length = 5
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
@@ -97,7 +101,7 @@ class TestStatevec:
             _vec = Statevec(data=rand_vec)
 
     # fail: with less qubit than number of qubits inferred from a correct state vect
-    def test_data_dim_fail_mismatch(self, fx_rng: np.random.Generator) -> None:
+    def test_data_dim_fail_mismatch(self, fx_rng: Generator) -> None:
         nqb = 3
         rand_vec = fx_rng.random(2**nqb) + 1j * fx_rng.random(2**nqb)
         rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
@@ -105,7 +109,7 @@ class TestStatevec:
             _vec = Statevec(nqubit=2, data=rand_vec)
 
     # fail: not normalized
-    def test_data_norm_fail(self, fx_rng: np.random.Generator) -> None:
+    def test_data_norm_fail(self, fx_rng: Generator) -> None:
         nqb = fx_rng.integers(2, 5)
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
@@ -117,7 +121,7 @@ class TestStatevec:
         assert len(vec.dims()) == 1
 
     # try copying Statevec input
-    def test_copy_success(self, fx_rng: np.random.Generator) -> None:
+    def test_copy_success(self, fx_rng: Generator) -> None:
         nqb = fx_rng.integers(2, 5)
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
@@ -130,7 +134,7 @@ class TestStatevec:
         assert len(vec.dims()) == len(test_vec.dims())
 
     # try calling with incorrect number of qubits compared to inferred one
-    def test_copy_fail(self, fx_rng: np.random.Generator) -> None:
+    def test_copy_fail(self, fx_rng: Generator) -> None:
         nqb = fx_rng.integers(2, 5)
         length = 2**nqb
         rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)

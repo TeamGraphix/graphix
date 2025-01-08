@@ -1,195 +1,29 @@
+"""MBQC state vector backend."""
+
 from __future__ import annotations
 
-import collections
+import copy
 import functools
-from copy import deepcopy
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 import numpy.typing as npt
 
-import graphix.parameter
-import graphix.pauli
-import graphix.sim.base_backend
-import graphix.states
-import graphix.types
-from graphix import command
-from graphix.clifford import CLIFFORD, CLIFFORD_CONJ
-from graphix.ops import Ops
-from graphix.parameter import Expression
+from graphix import parameter, states, utils
+from graphix.parameter import Expression, ExpressionOrSupportsComplex
+from graphix.sim.base_backend import Backend, State
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    import sys
-    from typing import Mapping
-
-    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
+    import collections
 
 
-class StatevectorBackend(graphix.sim.base_backend.Backend):
+class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(
-        self,
-        pattern,
-        input_state: Data = graphix.states.BasicStates.PLUS,
-        max_qubit_num=20,
-        **kwargs
-    ):
-        """
-        Parameters
-        -----------
-        pattern : :class:`graphix.pattern.Pattern` object
-            MBQC pattern to be simulated.
-        input_state: same syntax as `graphix.statevec.Statevec` constructor.
-        max_qubit_num : int
-            optional argument specifying the maximum number of qubits
-            to be stored in the statevector at a time.
-        pr_calc : bool
-            whether or not to compute the probability distribution before choosing the measurement result.
-            if False, measurements yield results 0/1 with 50% probabilities each.
-        """
-        # check that pattern has output nodes configured
-        # assert len(pattern.output_nodes) > 0
-        self.pattern = pattern
-        if pattern._pauli_preprocessed and input_state != graphix.states.BasicStates.PLUS:
-            raise NotImplementedError(
-                "Pauli preprocessing is currently only available when inputs are initialized in |+> state (see https://github.com/TeamGraphix/graphix/issues/168 )."
-            )
-        self.results = deepcopy(pattern.results)
-        self.state = None
-        self.node_index = []
-        self.Nqubit = 0
-        self.to_trace = []
-        self.to_trace_loc = []
-        self.max_qubit_num = max_qubit_num
-        if pattern.max_space() > max_qubit_num:
-            raise ValueError("Pattern.max_space is larger than max_qubit_num. Increase max_qubit_num and try again.")
-        super().__init__(**kwargs)
-
-        # initialize input qubits to desired init_state
-        self.add_nodes(pattern.input_nodes, input_state)
-
-    def qubit_dim(self):
-        """Returns the qubit number in the internal statevector
-
-        Returns
-        -------
-        n_qubit : int
-        """
-        return len(self.state.dims())
-
-    def add_nodes(self, nodes: list[int], input_state=graphix.states.BasicStates.PLUS) -> None:
-        """add new qubit to internal statevector
-        and assign the corresponding node number
-        to list self.node_index.
-
-        Parameters
-        ----------
-        nodes : list of node indices
-        """
-        if not self.state:
-            self.state = Statevec(nqubit=0)
-        n = len(nodes)
-        sv_to_add = Statevec(nqubit=n, data=input_state)
-        self.state.tensor(sv_to_add)
-        self.node_index.extend(nodes)
-        self.Nqubit += n
-
-    def entangle_nodes(self, edge: tuple[int]):
-        """Apply CZ gate to two connected nodes
-
-        Parameters
-        ----------
-        edge : tuple (i, j)
-            a pair of node indices
-        """
-        target = self.node_index.index(edge[0])
-        control = self.node_index.index(edge[1])
-        self.state.entangle((target, control))
-
-    def measure(self, cmd: command.M):
-        """Perform measurement of a node in the internal statevector and trace out the qubit
-
-        Parameters
-        ----------
-        cmd : list
-            measurement command : ['M', node, plane angle, s_domain, t_domain]
-        """
-        loc = self._perform_measure(cmd)
-        self.state.remove_qubit(loc)
-        self.Nqubit -= 1
-
-    def correct_byproduct(self, cmd: list[command.X, command.Z]):
-        """Byproduct correction
-        correct for the X or Z byproduct operators,
-        by applying the X or Z gate.
-        """
-        if np.mod(np.sum([self.results[j] for j in cmd.domain]), 2) == 1:
-            loc = self.node_index.index(cmd.node)
-            op = Ops.x if isinstance(cmd, command.X) else Ops.z
-            self.state.evolve_single(op, loc)
-
-    def apply_clifford(self, cmd: command.C):
-        """Apply single-qubit Clifford gate,
-        specified by vop index specified in graphix.clifford.CLIFFORD
-        """
-        loc = self.node_index.index(cmd.node)
-        self.state.evolve_single(CLIFFORD[cmd.cliff_index], loc)
-
-    def finalize(self):
-        """to be run at the end of pattern simulation."""
-        self.sort_qubits()
-        self.state.normalize()
-
-    def sort_qubits(self):
-        """sort the qubit order in internal statevector"""
-        for i, ind in enumerate(self.pattern.output_nodes):
-            if not self.node_index[i] == ind:
-                move_from = self.node_index.index(ind)
-                self.state.swap((i, move_from))
-                self.node_index[i], self.node_index[move_from] = (
-                    self.node_index[move_from],
-                    self.node_index[i],
-                )
-
-
-# This function is no longer used
-def meas_op(angle, vop=0, plane=graphix.pauli.Plane.XY, choice=0):
-    """Returns the projection operator for given measurement angle and local Clifford op (VOP).
-
-    .. seealso:: :mod:`graphix.clifford`
-
-    Parameters
-    ----------
-    angle : float
-        original measurement angle in radian
-    vop : int
-        index of local Clifford (vop), see graphq.clifford.CLIFFORD
-    plane : 'XY', 'YZ' or 'ZX'
-        measurement plane on which angle shall be defined
-    choice : 0 or 1
-        choice of measurement outcome. measured eigenvalue would be (-1)**choice.
-
-    Returns
-    -------
-    op : numpy array
-        projection operator
-
-    """
-    assert vop in np.arange(24)
-    assert choice in [0, 1]
-    assert plane in [graphix.pauli.Plane.XY, graphix.pauli.Plane.YZ, graphix.pauli.Plane.XZ]
-    if plane == graphix.pauli.Plane.XY:
-        vec = (np.cos(angle), np.sin(angle), 0)
-    elif plane == graphix.pauli.Plane.YZ:
-        vec = (0, np.cos(angle), np.sin(angle))
-    elif plane == graphix.pauli.Plane.XZ:
-        vec = (np.cos(angle), 0, np.sin(angle))
-    op_mat = np.eye(2, dtype=np.complex128) / 2
-    for i in range(3):
-        op_mat += (-1) ** (choice) * vec[i] * CLIFFORD[i + 1] / 2
-    op_mat = CLIFFORD[CLIFFORD_CONJ[vop]] @ op_mat @ CLIFFORD[vop]
-    return op_mat
+    def __init__(self, **kwargs) -> None:
+        """Construct a state vector backend."""
+        super().__init__(Statevec(nqubit=0), **kwargs)
 
 
 CZ_TENSOR = np.array(
@@ -206,15 +40,17 @@ SWAP_TENSOR = np.array(
 )
 
 
-class Statevec:
-    """Statevector object"""
+class Statevec(State):
+    """Statevector object."""
 
     def __init__(
         self,
-        data: Data = graphix.states.BasicStates.PLUS,
-        nqubit: graphix.types.PositiveOrNullInt | None = None,
+        data: Data = BasicStates.PLUS,
+        nqubit: int | None = None,
     ):
-        """Initialize statevector objects. The behaviour is as follows. `data` can be:
+        """Initialize statevector objects.
+
+        `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
         - an iterable of scalars (A 2**n numerical statevector)
@@ -232,11 +68,8 @@ class Statevec:
         :param nqubit: number of qubits to prepare, defaults to None
         :type nqubit: int, optional
         """
-
-        if nqubit is not None:
-            nqubit = int(nqubit)
-            if nqubit < 0:
-                raise ValueError("nqubit should be positive or null")
+        if nqubit is not None and nqubit < 0:
+            raise ValueError("nqubit must be a non-negative integer.")
 
         if isinstance(data, Statevec):
             # assert nqubit is None or len(state.flatten()) == 2**nqubit
@@ -247,11 +80,11 @@ class Statevec:
             self.psi = data.psi.copy()
             return
 
-        if isinstance(data, graphix.states.State):
+        if isinstance(data, states.State):
             if nqubit is None:
                 nqubit = 1
             input_list = [data] * nqubit
-        elif isinstance(data, collections.abc.Iterable):
+        elif isinstance(data, Iterable):
             input_list = list(data)
         else:
             raise TypeError(f"Incorrect type for data: {type(data)}")
@@ -263,8 +96,8 @@ class Statevec:
             self.psi = np.array(1, dtype=np.complex128)
 
         else:
-            if isinstance(input_list[0], graphix.states.State):
-                graphix.types.check_list_elements(input_list, graphix.states.State)
+            if isinstance(input_list[0], states.State):
+                utils.check_list_elements(input_list, states.State)
                 if nqubit is None:
                     nqubit = len(input_list)
                 elif nqubit != len(input_list):
@@ -273,9 +106,9 @@ class Statevec:
                 tmp_psi = functools.reduce(np.kron, list_of_sv)
                 # reshape
                 self.psi = tmp_psi.reshape((2,) * nqubit)
-            # numpy.float64 is not an instance of SupportsComplex!
+            # `SupportsFloat` is needed because `numpy.float64` is not an instance of `SupportsComplex`!
             elif isinstance(input_list[0], (Expression, SupportsComplex, SupportsFloat)):
-                graphix.types.check_list_elements(input_list, (Expression, SupportsComplex, SupportsFloat))
+                utils.check_list_elements(input_list, (Expression, SupportsComplex, SupportsFloat))
                 if nqubit is None:
                     length = len(input_list)
                     if length & (length - 1):
@@ -293,11 +126,17 @@ class Statevec:
                     f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
                 )
 
-    def __repr__(self):
+    def __str__(self) -> str:
+        """Return a string description."""
         return f"Statevec object with statevector {self.psi} and length {self.dims()}."
 
-    def evolve_single(self, op: npt.NDArray, i: int):
-        """Single-qubit operation
+    def add_nodes(self, nqubit, data) -> None:
+        """Add nodes to the state vector."""
+        sv_to_add = Statevec(nqubit=nqubit, data=data)
+        self.tensor(sv_to_add)
+
+    def evolve_single(self, op: npt.NDArray, i: int) -> None:
+        """Apply a single-qubit operation.
 
         Parameters
         ----------
@@ -306,11 +145,11 @@ class Statevec:
         i : int
             qubit index
         """
-        self.psi = np.tensordot(op, self.psi, (1, i))
-        self.psi = np.moveaxis(self.psi, 0, i)
+        psi = np.tensordot(op, self.psi, (1, i))
+        self.psi = np.moveaxis(psi, 0, i)
 
-    def evolve(self, op: np.ndarray, qargs: list[int]):
-        """Multi-qubit operation
+    def evolve(self, op: np.ndarray, qargs: list[int]) -> None:
+        """Apply a multi-qubit operation.
 
         Parameters
         ----------
@@ -323,17 +162,18 @@ class Statevec:
         # TODO shape = (2,)* 2 * op_dim
         shape = [2 for _ in range(2 * op_dim)]
         op_tensor = op.reshape(shape)
-        self.psi = np.tensordot(
+        psi = np.tensordot(
             op_tensor,
             self.psi,
             (tuple(op_dim + i for i in range(len(qargs))), tuple(qargs)),
         )
-        self.psi = np.moveaxis(self.psi, [i for i in range(len(qargs))], qargs)
+        self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
 
     def dims(self):
+        """Return the dimensions."""
         return self.psi.shape
 
-    def ptrace(self, qargs):
+    def ptrace(self, qargs) -> None:
         """Perform partial trace of the selected qubits.
 
         .. warning::
@@ -357,8 +197,9 @@ class Statevec:
         # TODO use np.eigh since rho is Hermitian?
         self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
-    def remove_qubit(self, qarg: int):
+    def remove_qubit(self, qarg: int) -> None:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
+
         This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
 
         For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over
@@ -410,8 +251,8 @@ class Statevec:
         )
         self.normalize()
 
-    def entangle(self, edge: tuple[int, int]):
-        """connect graph nodes
+    def entangle(self, edge: tuple[int, int]) -> None:
+        """Connect graph nodes.
 
         Parameters
         ----------
@@ -419,12 +260,13 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
+        psi = np.tensordot(CZ_TENSOR, self.psi, ((2, 3), edge))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), edge)
+        self.psi = np.moveaxis(psi, (0, 1), edge)
 
-    def tensor(self, other):
+    def tensor(self, other: Statevec) -> None:
         r"""Tensor product state with other qubits.
+
         Results in self :math:`\otimes` other.
 
         Parameters
@@ -438,8 +280,8 @@ class Statevec:
         total_num = len(self.dims()) + len(other.dims())
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
-    def CNOT(self, qubits):
-        """apply CNOT
+    def cnot(self, qubits):
+        """Apply CNOT.
 
         Parameters
         ----------
@@ -447,12 +289,12 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
+        psi = np.tensordot(CNOT_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
+        self.psi = np.moveaxis(psi, (0, 1), qubits)
 
-    def swap(self, qubits):
-        """swap qubits
+    def swap(self, qubits) -> None:
+        """Swap qubits.
 
         Parameters
         ----------
@@ -460,21 +302,21 @@ class Statevec:
             (control, target) qubit indices
         """
         # contraction: 2nd index - control index, and 3rd index - target index.
-        self.psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
+        psi = np.tensordot(SWAP_TENSOR, self.psi, ((2, 3), qubits))
         # sort back axes
-        self.psi = np.moveaxis(self.psi, (0, 1), qubits)
+        self.psi = np.moveaxis(psi, (0, 1), qubits)
 
-    def normalize(self):
-        """normalize the state"""
+    def normalize(self) -> None:
+        """Normalize the state in-place."""
         norm = _get_statevec_norm(self.psi)
         self.psi = self.psi / norm
 
     def flatten(self):
-        """returns flattened statevector"""
+        """Return flattened statevector."""
         return self.psi.flatten()
 
-    def expectation_single(self, op, loc):
-        """Expectation value of single-qubit operator.
+    def expectation_single(self, op: np.NDArray, loc: int) -> complex:
+        """Return the expectation value of single-qubit operator.
 
         Parameters
         ----------
@@ -487,14 +329,14 @@ class Statevec:
         -------
         complex : expectation value.
         """
-        st1 = deepcopy(self)
+        st1 = copy.copy(self)
         st1.normalize()
-        st2 = deepcopy(st1)
+        st2 = copy.copy(st1)
         st1.evolve_single(op, loc)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
-    def expectation_value(self, op, qargs):
-        """Expectation value of multi-qubit operator.
+    def expectation_value(self, op: np.NDArray, qargs: collections.abc.Iterable[int]) -> complex:
+        """Return the expectation value of multi-qubit operator.
 
         Parameters
         ----------
@@ -507,9 +349,9 @@ class Statevec:
         -------
         complex : expectation value
         """
-        st1 = deepcopy(self)
-        st1.normalize()
-        st2 = deepcopy(st1)
+        st2 = copy.copy(self)
+        st2.normalize()
+        st1 = copy.copy(st2)
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
@@ -523,7 +365,7 @@ class Statevec:
 
         """
         result = Statevec()
-        result.psi = np.vectorize(lambda value: graphix.parameter.subs(value, variable, substitute))(self.psi)
+        result.psi = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.psi)
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
@@ -536,26 +378,25 @@ class Statevec:
 
         """
         result = Statevec()
-        result.psi = np.vectorize(lambda value: graphix.parameter.xreplace(value, assignment))(self.psi)
+        result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
         return result
 
 
 def _get_statevec_norm(psi):
-    """returns norm of the state"""
+    """Return norm of the state."""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
 if TYPE_CHECKING:
-    if sys.version_info >= (3, 10):
-        from collections.abc import Iterable
+    from collections.abc import Iterable
 
-        Data = graphix.states.State | Statevec | Iterable[graphix.states.State] | Iterable[ExpressionOrSupportsComplex]
-    else:
-        from typing import Iterable, Union
+    Data = states.State | Statevec | Iterable[states.State] | Iterable[ExpressionOrSupportsComplex]
+else:
+    from typing import Iterable, Union
 
-        Data = Union[
-            graphix.states.State,
-            Statevec,
-            Iterable[graphix.states.State],
-            Iterable[ExpressionOrSupportsComplex],
-        ]
+    Data = Union[
+        states.State,
+        Statevec,
+        Iterable[states.State],
+        Iterable[ExpressionOrSupportsComplex],
+    ]

@@ -1,17 +1,19 @@
+"""Base class for graph state simulator."""
+
 from __future__ import annotations
 
+import abc
 import sys
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
 import networkx as nx
 import networkx.classes.reportviews as nx_reportviews
 
-from graphix.clifford import CLIFFORD_HSZ_DECOMPOSITION, CLIFFORD_MUL
+from graphix.clifford import Clifford
+from graphix.graphsim.rxgraphviews import EdgeList, NodeList
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
-
-from .rxgraphviews import EdgeList, NodeList
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,30 +60,31 @@ class BaseGraphState(ABC):
         super().__init__()
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def nodes(self) -> NodesObject:
-        raise NotImplementedError
+        """Return the set of nodes."""
+        ...
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def edges(self) -> EdgesObject:
-        raise NotImplementedError
+        """Return the set of edges."""
+        ...
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def graph(self) -> GraphObject:
-        raise NotImplementedError
+        """Return the graph itself."""
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def degree(self) -> Iterator[tuple[int, int]]:
-        """Returns an iterator for (node, degree) tuples,
-        where degree is the number of edges adjacent to the node
-        """
-        raise NotImplementedError
+        """Return an iterator for (node, degree) tuples, where degree is the number of edges adjacent to the node."""
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def neighbors(self, node: int) -> Iterator:
-        """Returns an iterator over all neighbors of node n.
+        """Return an iterator over all neighbors of node n.
 
         Parameters
         ----------
@@ -89,15 +92,15 @@ class BaseGraphState(ABC):
             A node in the graph
 
         Returns
-        ----------
+        -------
         iter
             An iterator over all neighbors of node n.
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def subgraph(self, nodes: list) -> GraphObject:
-        """Returns a subgraph of the graph.
+        """Return a subgraph of the graph.
 
         Parameters
         ----------
@@ -105,15 +108,15 @@ class BaseGraphState(ABC):
             A list of node indices to generate the subgraph from.
 
         Returns
-        ----------
+        -------
         GraphObject
             A subgraph of the graph.
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def number_of_edges(self, u: int | None = None, v: int | None = None) -> int:
-        """Returns the number of edges between two nodes.
+        """Return the number of edges between two nodes.
 
         Parameters
         ----------
@@ -123,25 +126,25 @@ class BaseGraphState(ABC):
             A node in the graph
 
         Returns
-        ----------
+        -------
         int
             The number of edges in the graph. If u and v are specified,
             return the number of edges between those nodes.
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def adjacency(self) -> Iterator:
-        """Returns an iterator over (node, adjacency dict) tuples for all nodes.
+        """Return an iterator over (node, adjacency dict) tuples for all nodes.
 
         Returns
-        ----------
-        iter
+        -------
+        Iterator
             An iterator over (node, adjacency dictionary) for all nodes in the graph.
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_node(self, node: int) -> None:
         """Remove a node from the graph.
 
@@ -151,12 +154,12 @@ class BaseGraphState(ABC):
             A node in the graph
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_nodes_from(self, nodes: list[int]) -> None:
         """Remove all nodes specified in the list.
 
@@ -166,12 +169,12 @@ class BaseGraphState(ABC):
             A list of nodes to remove from the graph.
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_edge(self, u: int, v: int) -> None:
         """Remove an edge from the graph.
 
@@ -183,12 +186,12 @@ class BaseGraphState(ABC):
             A node in the graph
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Remove all edges specified in the list.
 
@@ -198,13 +201,13 @@ class BaseGraphState(ABC):
             A list of edges to remove from the graph.
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
-    def apply_vops(self, vops: dict) -> None:
-        """Apply local Clifford operators to the graph state from a dictionary
+    def apply_vops(self, vops: dict[int, int]) -> None:
+        """Apply local Clifford operators to the graph state from a dictionary.
 
         Parameters
         ----------
@@ -213,19 +216,19 @@ class BaseGraphState(ABC):
             local Clifford indices as values (see graphix.clifford.CLIFFORD)
 
         Returns
-        ----------
+        -------
         None
         """
         for node, vop in vops.items():
-            for lc in reversed(CLIFFORD_HSZ_DECOMPOSITION[vop]):
-                if lc == 3:
+            for lc in reversed(Clifford(vop).hsz):
+                if lc == Clifford.Z:
                     self.z(node)
-                elif lc == 6:
+                elif lc == Clifford.H:
                     self.h(node)
-                elif lc == 4:
+                elif lc == Clifford.S:
                     self.s(node)
 
-    @abstractmethod
+    @abc.abstractmethod
     def add_nodes_from(self, nodes: list[int]) -> None:
         """Add nodes and initialize node properties.
 
@@ -235,12 +238,12 @@ class BaseGraphState(ABC):
             A list of nodes.
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def add_edges_from(self, edges: list[tuple[int, int]]) -> None:
         """Add edges and initialize node properties of newly added nodes.
 
@@ -250,24 +253,24 @@ class BaseGraphState(ABC):
             must be given as list of 2-tuples (u, v)
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_isolates(self) -> list[int]:
-        """Returns a list of isolated nodes (nodes with no edges).
+        """Return a list of isolated nodes (nodes with no edges).
 
         Returns
-        ----------
+        -------
         list[int]
             A list of isolated nodes.
         """
-        raise NotImplementedError
+        ...
 
-    def get_vops(self) -> dict:
-        """Apply local Clifford operators to the graph state from a dictionary
+    def get_vops(self) -> dict[int, int]:
+        """Apply local Clifford operators to the graph state from a dictionary.
 
         Parameters
         ----------
@@ -277,13 +280,13 @@ class BaseGraphState(ABC):
         """
         vops = {}
         for i in self.nodes:
-            vop = 0
+            vop: int = 0
             if self.nodes[i]["sign"]:
-                vop = CLIFFORD_MUL[3, vop]
+                vop = (Clifford.Z @ Clifford(vop)).value
             if self.nodes[i]["loop"]:
-                vop = CLIFFORD_MUL[4, vop]
+                vop = (Clifford.S @ Clifford(vop)).value
             if self.nodes[i]["hollow"]:
-                vop = CLIFFORD_MUL[6, vop]
+                vop = (Clifford.H @ Clifford(vop)).value
             vops[i] = vop
         return vops
 
@@ -296,13 +299,14 @@ class BaseGraphState(ABC):
             graph node to flip the fill
 
         Returns
-        ----------
+        -------
         None
         """
         self.nodes[node]["hollow"] = not self.nodes[node]["hollow"]
 
     def flip_sign(self, node) -> None:
-        """Flips the sign (local Z) of a node.
+        """Flip the sign (local Z) of a node.
+
         Note that application of Z gate is different from `flip_sign`
         if there exist an edge from the node.
 
@@ -312,13 +316,14 @@ class BaseGraphState(ABC):
             graph node to flip the sign
 
         Returns
-        ----------
+        -------
         None
         """
         self.nodes[node]["sign"] = not self.nodes[node]["sign"]
 
     def advance(self, node: int) -> None:
-        """Flips the loop (local S) of a node.
+        """Flip the loop (local S) of a node.
+
         If the loop already exist, sign is also flipped,
         reflecting the relation SS=Z.
         Note that application of S gate is different from `advance`
@@ -330,7 +335,7 @@ class BaseGraphState(ABC):
             graph node to advance the loop.
 
         Returns
-        ----------
+        -------
         None
         """
         if self.nodes[node]["loop"]:
@@ -348,7 +353,7 @@ class BaseGraphState(ABC):
             graph node to apply H gate
 
         Returns
-        ----------
+        -------
         None
         """
         self.flip_fill(node)
@@ -362,7 +367,7 @@ class BaseGraphState(ABC):
             graph node to apply S gate
 
         Returns
-        ----------
+        -------
         None
         """
         if self.nodes[node]["hollow"]:
@@ -391,7 +396,7 @@ class BaseGraphState(ABC):
             graph node to apply Z gate
 
         Returns
-        ----------
+        -------
         None
         """
         if self.nodes[node]["hollow"]:
@@ -402,9 +407,9 @@ class BaseGraphState(ABC):
         else:  # solid
             self.flip_sign(node)
 
-    def equivalent_graph_E1(self, node: int) -> None:
-        """Tranform a graph state to a different graph state
-        representing the same stabilizer state.
+    def equivalent_graph_e1(self, node: int) -> None:
+        """Tranform a graph state to a different graph state representing the same stabilizer state.
+
         This rule applies only to a node with loop.
 
         Parameters
@@ -413,7 +418,7 @@ class BaseGraphState(ABC):
             A graph node with a loop to apply rule E1
 
         Returns
-        ----------
+        -------
         None
         """
         if not self.nodes[node]["loop"]:
@@ -427,9 +432,9 @@ class BaseGraphState(ABC):
             for i in self.neighbors(node):
                 self.flip_sign(i)
 
-    def equivalent_graph_E2(self, node1: int, node2: int) -> None:
-        """Tranform a graph state to a different graph state
-        representing the same stabilizer state.
+    def equivalent_graph_e2(self, node1: int, node2: int) -> None:
+        """Tranform a graph state to a different graph state representing the same stabilizer state.
+
         This rule applies only to two connected nodes without loop.
 
         Parameters
@@ -438,7 +443,7 @@ class BaseGraphState(ABC):
             connected graph nodes to apply rule E2
 
         Returns
-        ----------
+        -------
         None
         """
         if (node1, node2) not in self.edges and (node2, node1) not in self.edges:
@@ -464,9 +469,9 @@ class BaseGraphState(ABC):
             for i in self.neighbors(node2):
                 self.flip_sign(i)
 
-    @abstractmethod
+    @abc.abstractmethod
     def local_complement(self, node: int) -> None:
-        """Perform local complementation of a graph
+        """Perform local complementation of a graph.
 
         Parameters
         ----------
@@ -474,13 +479,14 @@ class BaseGraphState(ABC):
             chosen node for the local complementation
 
         Returns
-        ----------
+        -------
         None
         """
-        raise NotImplementedError
+        ...
 
     def equivalent_fill_node(self, node: int) -> int:
-        """Fill the chosen node by graph transformation rules E1 and E2,
+        """Fill the chosen node by graph transformation rules E1 and E2.
+
         If the selected node is hollow and isolated, it cannot be filled
         and warning is thrown.
 
@@ -490,7 +496,7 @@ class BaseGraphState(ABC):
             node to fill.
 
         Returns
-        ----------
+        -------
         result : int
             if the selected node is hollow and isolated, `result` is 1.
             if filled and isolated, 2.
@@ -498,19 +504,19 @@ class BaseGraphState(ABC):
         """
         if self.nodes[node]["hollow"]:
             if self.nodes[node]["loop"]:
-                self.equivalent_graph_E1(node)
+                self.equivalent_graph_e1(node)
                 return 0
             else:  # node = hollow and loopless
                 if len(list(self.neighbors(node))) == 0:
                     return 1
                 for i in self.neighbors(node):
                     if not self.nodes[i]["loop"]:
-                        self.equivalent_graph_E2(node, i)
+                        self.equivalent_graph_e2(node, i)
                         return 0
                 # if all neighbor has loop, pick one and apply E1, then E1 to the node.
                 i = next(self.neighbors(node))
-                self.equivalent_graph_E1(i)  # this gives loop to node.
-                self.equivalent_graph_E1(node)
+                self.equivalent_graph_e1(i)  # this gives loop to node.
+                self.equivalent_graph_e1(node)
                 return 0
         else:
             if len(list(self.neighbors(node))) == 0:
@@ -519,7 +525,8 @@ class BaseGraphState(ABC):
                 return 0
 
     def measure_x(self, node: int, choice: int = 0) -> int:
-        """perform measurement in X basis
+        """Perform measurement in X basis.
+
         According to original paper, we realise X measurement by
         applying H gate to the measured node before Z measurement.
 
@@ -531,7 +538,7 @@ class BaseGraphState(ABC):
             choice of measurement outcome. observe (-1)^choice
 
         Returns
-        ----------
+        -------
         result : int
             measurement outcome. 0 or 1.
         """
@@ -552,7 +559,8 @@ class BaseGraphState(ABC):
             return self.measure_z(node, choice=choice)
 
     def measure_y(self, node: int, choice: int = 0) -> int:
-        """perform measurement in Y basis
+        """Perform measurement in Y basis.
+
         According to original paper, we realise Y measurement by
         applying S,Z and H gate to the measured node before Z measurement.
 
@@ -564,7 +572,7 @@ class BaseGraphState(ABC):
             choice of measurement outcome. observe (-1)^choice
 
         Returns
-        ----------
+        -------
         result : int
             measurement outcome. 0 or 1.
         """
@@ -576,7 +584,8 @@ class BaseGraphState(ABC):
         return self.measure_z(node, choice=choice)
 
     def measure_z(self, node: int, choice: int = 0) -> int:
-        """perform measurement in Z basis
+        """Perform measurement in Z basis.
+
         To realize the simple Z measurement on undecorated graph state,
         we first fill the measured node (remove local H gate)
 
@@ -588,7 +597,7 @@ class BaseGraphState(ABC):
             choice of measurement outcome. observe (-1)^choice
 
         Returns
-        ----------
+        -------
         result : int
             measurement outcome. 0 or 1.
         """
@@ -607,14 +616,15 @@ class BaseGraphState(ABC):
 
     def draw(self, fill_color: str = "C0", **kwargs):
         """Draw decorated graph state.
+
         Negative nodes are indicated by negative sign of node labels.
 
         Parameters
         ----------
-        fill_color : str, optional
-            fill color of nodes
-        kwargs : keyword arguments, optional
-            additional arguments to supply networkx.draw().
+        fill_color : str
+            optional, fill color of nodes
+        kwargs :
+            optional, additional arguments to supply networkx.draw().
         """
         nqubit = len(self.nodes)
         nodes = list(self.nodes)
@@ -634,6 +644,7 @@ class BaseGraphState(ABC):
         nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
 
     def to_statevector(self) -> Statevec:
+        """Convert the graph state into a state vector."""
         node_list = list(self.nodes)
         nqubit = len(self.nodes)
         gstate = Statevec(nqubit=nqubit)
@@ -644,11 +655,11 @@ class BaseGraphState(ABC):
             gstate.entangle((imapping[i], imapping[j]))
         for i in range(nqubit):
             if self.nodes[mapping[i]]["sign"]:
-                gstate.evolve_single(Ops.z, i)
+                gstate.evolve_single(Ops.Z, i)
         for i in range(nqubit):
             if self.nodes[mapping[i]]["loop"]:
-                gstate.evolve_single(Ops.s, i)
+                gstate.evolve_single(Ops.S, i)
         for i in range(nqubit):
             if self.nodes[mapping[i]]["hollow"]:
-                gstate.evolve_single(Ops.h, i)
+                gstate.evolve_single(Ops.H, i)
         return gstate

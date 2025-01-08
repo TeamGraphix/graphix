@@ -1,313 +1,171 @@
-"""
-Pauli gates ± {1,j} × {I, X, Y, Z}
-"""  # noqa: RUF002
+"""Pauli gates ± {1,j} × {I, X, Y, Z}."""  # noqa: RUF002
 
 from __future__ import annotations
 
-import enum
+import dataclasses
+from typing import TYPE_CHECKING, ClassVar
 
-import numpy as np
-import pydantic
+import typing_extensions
 
-import graphix.clifford
+from graphix.fundamentals import IXYZ, Axis, ComplexUnit, SupportsComplexCtor
+from graphix.ops import Ops
+from graphix.states import BasicStates
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
-class IXYZ(enum.Enum):
-    I = -1
-    X = 0
-    Y = 1
-    Z = 2
+    import numpy as np
+    import numpy.typing as npt
 
-
-class ComplexUnit:
-    """
-    Complex unit: 1, -1, j, -j.
-
-    Complex units can be multiplied with other complex units,
-    with Python constants 1, -1, 1j, -1j, and can be negated.
-    """
-
-    def __init__(self, sign: bool, im: bool):
-        self.__sign = sign
-        self.__im = im
-
-    @property
-    def sign(self):
-        return self.__sign
-
-    @property
-    def im(self):
-        return self.__im
-
-    @property
-    def complex(self) -> complex:
-        """
-        Return the unit as complex number
-        """
-        result: complex = 1
-        if self.__sign:
-            result *= -1
-        if self.__im:
-            result *= 1j
-        return result
-
-    def __repr__(self):
-        if self.__im:
-            result = "1j"
-        else:
-            result = "1"
-        if self.__sign:
-            result = "-" + result
-        return result
-
-    def prefix(self, s: str) -> str:
-        """
-        Prefix the given string by the complex unit as coefficient,
-        1 leaving the string unchanged.
-        """
-        if self.__im:
-            result = "1j*" + s
-        else:
-            result = s
-        if self.__sign:
-            result = "-" + result
-        return result
-
-    def __mul__(self, other):
-        if isinstance(other, ComplexUnit):
-            im = self.__im != other.__im
-            sign = (self.__sign != other.__sign) != (self.__im and other.__im)
-            return COMPLEX_UNITS[sign][im]
-        return NotImplemented
-
-    def __rmul__(self, other):
-        if other == 1:
-            return self
-        elif other == -1:
-            return COMPLEX_UNITS[not self.__sign][self.__im]
-        elif other == 1j:
-            return COMPLEX_UNITS[self.__sign != self.__im][not self.__im]
-        elif other == -1j:
-            return COMPLEX_UNITS[self.__sign == self.__im][not self.__im]
-
-    def __neg__(self):
-        return COMPLEX_UNITS[not self.__sign][self.__im]
+    from graphix.states import PlanarState
 
 
-COMPLEX_UNITS = [[ComplexUnit(sign, im) for im in (False, True)] for sign in (False, True)]
+class _PauliMeta(type):
+    def __iter__(cls) -> Iterator[Pauli]:
+        """Iterate over all Pauli gates, including the unit."""
+        return Pauli.iterate()
 
 
-UNIT = COMPLEX_UNITS[False][False]
+@dataclasses.dataclass(frozen=True)
+class Pauli(metaclass=_PauliMeta):
+    """Pauli gate: `u * {I, X, Y, Z}` where u is a complex unit.
 
-
-UNITS = [UNIT, -UNIT, 1j * UNIT, -1j * UNIT]
-
-
-class Axis(enum.Enum):
-    X = 0
-    Y = 1
-    Z = 2
-
-
-class Plane(enum.Enum):
-    XY = 0
-    YZ = 1
-    XZ = 2
-
-    @property
-    def axes(self) -> list[Axis]:
-        # match self:
-        #     case Plane.XY:
-        #         return [Axis.X, Axis.Y]
-        #     case Plane.YZ:
-        #         return [Axis.Y, Axis.Z]
-        #     case Plane.XZ:
-        #         return [Axis.X, Axis.Z]
-        if self == Plane.XY:
-            return [Axis.X, Axis.Y]
-        elif self == Plane.YZ:
-            return [Axis.Y, Axis.Z]
-        elif self == Plane.XZ:
-            return [Axis.X, Axis.Z]
-
-    @property
-    def cos(self) -> Axis:
-        # match self:
-        #     case Plane.XY:
-        #         return Axis.X
-        #     case Plane.YZ:
-        #         return Axis.Z  # former convention was Y
-        #     case Plane.XZ:
-        #         return Axis.Z  # former convention was X
-        if self == Plane.XY:
-            return Axis.X
-        elif self == Plane.YZ:
-            return Axis.Z  # former convention was Y
-        elif self == Plane.XZ:
-            return Axis.Z  # former convention was X
-
-    @property
-    def sin(self) -> Axis:
-        # match self:
-        #     case Plane.XY:
-        #         return Axis.Y
-        #     case Plane.YZ:
-        #         return Axis.Y  # former convention was Z
-        #     case Plane.XZ:
-        #         return Axis.X  # former convention was Z
-        if self == Plane.XY:
-            return Axis.Y
-        elif self == Plane.YZ:
-            return Axis.Y  # former convention was Z
-        elif self == Plane.XZ:
-            return Axis.X  # former convention was Z
-
-    def polar(self, angle: float) -> tuple[float, float, float]:
-        result = [0, 0, 0]
-        result[self.cos.value] = np.cos(angle)
-        result[self.sin.value] = np.sin(angle)
-        return tuple(result)
-
-    @staticmethod
-    def from_axes(a: Axis, b: Axis) -> Plane:
-        if b.value < a.value:
-            a, b = b, a
-        # match a, b:
-        #     case Axis.X, Axis.Y:
-        #         return Plane.XY
-        #     case Axis.Y, Axis.Z:
-        #         return Plane.YZ
-        #     case Axis.X, Axis.Z:
-        #         return Plane.XZ
-        if a == Axis.X and b == Axis.Y:
-            return Plane.XY
-        elif a == Axis.Y and b == Axis.Z:
-            return Plane.YZ
-        elif a == Axis.X and b == Axis.Z:
-            return Plane.XZ
-        assert a == b
-        raise ValueError(f"Cannot make a plane giving the same axis {a} twice.")
-
-
-class Pauli:
-    """
-    Pauli gate: u * {I, X, Y, Z} where u is a complex unit
-
-    Pauli gates can be multiplied with other Pauli gates (with @),
-    with complex units and unit constants (with *),
+    Pauli gates can be multiplied with other Pauli gates (with `@`),
+    with complex units and unit constants (with `*`),
     and can be negated.
     """
 
-    def __init__(self, symbol: IXYZ, unit: ComplexUnit):
-        self.__symbol = symbol
-        self.__unit = unit
+    symbol: IXYZ = IXYZ.I
+    unit: ComplexUnit = ComplexUnit.ONE
+    I: ClassVar[Pauli]
+    X: ClassVar[Pauli]
+    Y: ClassVar[Pauli]
+    Z: ClassVar[Pauli]
 
     @staticmethod
     def from_axis(axis: Axis) -> Pauli:
-        return Pauli(IXYZ[axis.name], UNIT)
+        """Return the Pauli associated to the given axis."""
+        return Pauli(IXYZ[axis.name])
 
     @property
     def axis(self) -> Axis:
-        if self.__symbol == IXYZ.I:
+        """Return the axis associated to the Pauli.
+
+        Fails if the Pauli is identity.
+        """
+        if self.symbol == IXYZ.I:
             raise ValueError("I is not an axis.")
-        return Axis[self.__symbol.name]
+        return Axis[self.symbol.name]
 
     @property
-    def symbol(self):
-        return self.__symbol
+    def matrix(self) -> npt.NDArray[np.complex128]:
+        """Return the matrix of the Pauli gate."""
+        co = complex(self.unit)
+        if self.symbol == IXYZ.I:
+            return co * Ops.I
+        if self.symbol == IXYZ.X:
+            return co * Ops.X
+        if self.symbol == IXYZ.Y:
+            return co * Ops.Y
+        if self.symbol == IXYZ.Z:
+            return co * Ops.Z
+        typing_extensions.assert_never(self.symbol)
 
-    @property
-    def unit(self):
-        return self.__unit
+    def eigenstate(self, binary: int = 0) -> PlanarState:
+        """Return the eigenstate of the Pauli."""
+        if binary not in {0, 1}:
+            raise ValueError("b must be 0 or 1.")
+        if self.symbol == IXYZ.X:
+            return BasicStates.PLUS if binary == 0 else BasicStates.MINUS
+        if self.symbol == IXYZ.Y:
+            return BasicStates.PLUS_I if binary == 0 else BasicStates.MINUS_I
+        if self.symbol == IXYZ.Z:
+            return BasicStates.ZERO if binary == 0 else BasicStates.ONE
+        # Any state is eigenstate of the identity
+        if self.symbol == IXYZ.I:
+            return BasicStates.PLUS
+        typing_extensions.assert_never(self.symbol)
 
-    @property
-    def matrix(self) -> np.ndarray:
-        """
-        Return the matrix of the Pauli gate.
-        """
-        return self.__unit.complex * graphix.clifford.CLIFFORD[self.__symbol.value + 1]
+    def _repr_impl(self, prefix: str | None) -> str:
+        sym = self.symbol.name
+        if prefix is not None:
+            sym = f"{prefix}.{sym}"
+        if self.unit == ComplexUnit.ONE:
+            return sym
+        if self.unit == ComplexUnit.MINUS_ONE:
+            return f"-{sym}"
+        if self.unit == ComplexUnit.J:
+            return f"1j * {sym}"
+        if self.unit == ComplexUnit.MINUS_J:
+            return f"-1j * {sym}"
+        typing_extensions.assert_never(self.unit)
 
-    def __repr__(self):
-        return self.__unit.prefix(self.__symbol.name)
+    def __repr__(self) -> str:
+        """Return a string representation of the Pauli."""
+        return self._repr_impl(self.__class__.__name__)
 
-    def __matmul__(self, other):
-        if isinstance(other, Pauli):
-            if self.__symbol == IXYZ.I:
-                symbol = other.__symbol
-                unit = 1
-            elif other.__symbol == IXYZ.I:
-                symbol = self.__symbol
-                unit = 1
-            elif self.__symbol == other.__symbol:
-                symbol = IXYZ.I
-                unit = 1
-            elif (self.__symbol.value + 1) % 3 == other.__symbol.value:
-                symbol = IXYZ((self.__symbol.value + 2) % 3)
-                unit = 1j
-            else:
-                symbol = IXYZ((self.__symbol.value + 1) % 3)
-                unit = -1j
-            return get(symbol, unit * self.__unit * other.__unit)
-        return NotImplemented
-
-    def __rmul__(self, other):
-        return get(self.__symbol, other * self.__unit)
-
-    def __neg__(self):
-        return get(self.__symbol, -self.__unit)
-
-
-TABLE = [
-    [[Pauli(symbol, COMPLEX_UNITS[sign][im]) for im in (False, True)] for sign in (False, True)]
-    for symbol in (IXYZ.I, IXYZ.X, IXYZ.Y, IXYZ.Z)
-]
-
-
-LIST = [pauli for sign_im_list in TABLE for im_list in sign_im_list for pauli in im_list]
-
-
-def get(symbol: IXYZ, unit: ComplexUnit) -> Pauli:
-    """Return the Pauli gate with given symbol and unit."""
-    return TABLE[symbol.value + 1][unit.sign][unit.im]
-
-
-I = get(IXYZ.I, UNIT)
-X = get(IXYZ.X, UNIT)
-Y = get(IXYZ.Y, UNIT)
-Z = get(IXYZ.Z, UNIT)
-
-
-def parse(name: str) -> Pauli:
-    """
-    Return the Pauli gate with the given name (limited to "I", "X", "Y" and "Z").
-    """
-    return get(IXYZ[name], UNIT)
-
-
-class MeasureUpdate(pydantic.BaseModel):
-    new_plane: Plane
-    coeff: int
-    add_term: float
+    def __str__(self) -> str:
+        """Return a simplified string representation of the Pauli."""
+        return self._repr_impl(None)
 
     @staticmethod
-    def compute(plane: Plane, s: bool, t: bool, clifford: graphix.clifford.Clifford) -> MeasureUpdate:
-        gates = list(map(Pauli.from_axis, plane.axes))
-        if s:
-            clifford = graphix.clifford.X @ clifford
-        if t:
-            clifford = graphix.clifford.Z @ clifford
-        gates = list(map(clifford.measure, gates))
-        new_plane = Plane.from_axes(*(gate.axis for gate in gates))
-        cos_pauli = clifford.measure(Pauli.from_axis(plane.cos))
-        sin_pauli = clifford.measure(Pauli.from_axis(plane.sin))
-        exchange = cos_pauli.axis != new_plane.cos
-        if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
-            coeff = -1
-        else:
-            coeff = 1
-        add_term = 0
-        if cos_pauli.unit.sign:
-            add_term += np.pi
-        if exchange:
-            add_term = np.pi / 2 - add_term
-        return MeasureUpdate(new_plane=new_plane, coeff=coeff, add_term=add_term)
+    def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
+        if lhs == IXYZ.I:
+            return Pauli(rhs)
+        if rhs == IXYZ.I:
+            return Pauli(lhs)
+        if lhs == rhs:
+            return Pauli()
+        lr = (lhs, rhs)
+        if lr == (IXYZ.X, IXYZ.Y):
+            return Pauli(IXYZ.Z, ComplexUnit.J)
+        if lr == (IXYZ.Y, IXYZ.X):
+            return Pauli(IXYZ.Z, ComplexUnit.MINUS_J)
+        if lr == (IXYZ.Y, IXYZ.Z):
+            return Pauli(IXYZ.X, ComplexUnit.J)
+        if lr == (IXYZ.Z, IXYZ.Y):
+            return Pauli(IXYZ.X, ComplexUnit.MINUS_J)
+        if lr == (IXYZ.Z, IXYZ.X):
+            return Pauli(IXYZ.Y, ComplexUnit.J)
+        if lr == (IXYZ.X, IXYZ.Z):
+            return Pauli(IXYZ.Y, ComplexUnit.MINUS_J)
+        raise RuntimeError("Unreachable.")  # pragma: no cover
+
+    def __matmul__(self, other: Pauli) -> Pauli:
+        """Return the product of two Paulis."""
+        if isinstance(other, Pauli):
+            return self._matmul_impl(self.symbol, other.symbol) * (self.unit * other.unit)
+        return NotImplemented
+
+    def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> Pauli:
+        """Return the product of two Paulis."""
+        if u := ComplexUnit.try_from(other):
+            return dataclasses.replace(self, unit=self.unit * u)
+        return NotImplemented
+
+    def __rmul__(self, other: ComplexUnit | SupportsComplexCtor) -> Pauli:
+        """Return the product of two Paulis."""
+        return self.__mul__(other)
+
+    def __neg__(self) -> Pauli:
+        """Return the opposite."""
+        return dataclasses.replace(self, unit=-self.unit)
+
+    @staticmethod
+    def iterate(symbol_only: bool = False) -> Iterator[Pauli]:
+        """Iterate over all Pauli gates.
+
+        Parameters
+        ----------
+            symbol_only (bool, optional): Exclude the unit in the iteration. Defaults to False.
+        """
+        us = (ComplexUnit.ONE,) if symbol_only else tuple(ComplexUnit)
+        for symbol in IXYZ:
+            for unit in us:
+                yield Pauli(symbol, unit)
+
+
+Pauli.I = Pauli(IXYZ.I)
+Pauli.X = Pauli(IXYZ.X)
+Pauli.Y = Pauli(IXYZ.Y)
+Pauli.Z = Pauli(IXYZ.Z)

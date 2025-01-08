@@ -1,11 +1,19 @@
-# Style
+# Lint/format
+mypy
+pyright
 ruff
 
+# Stubs
+types-networkx
+types-psutil
+
 # Tests
+# Keep in sync with CI
+nox==2024.10.09
+psutil
 pytest
 pytest-cov
 pytest-mock
-tox
 
 # Optional dependencies
 qiskit>=1.0
