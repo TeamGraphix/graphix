@@ -20,13 +20,12 @@ from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    import sys
     from collections.abc import Collection
     from typing import Mapping
 
     import numpy.typing as npt
 
-    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
 class DensityMatrix(State):
@@ -334,27 +333,13 @@ class DensityMatrix(State):
         self.rho = result_array
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> DensityMatrix:
-        """Return a copy of the density matrix where all occurrences
-        of the given variable in measurement angles are substituted by
-        the given value.
-
-        If the substitution returns a number, this number is coerced
-        to `complex`.
-
-        """
+        """Return a copy of the density matrix where all occurrences of the given variable in measurement angles are substituted by the given value."""
         result = copy.copy(self)
         result.rho = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.rho)
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> DensityMatrix:
-        """Return a copy of the density matrix where all occurrences of the
-        given keys in measurement angles are substituted by the given
-        values in parallel.
-
-        If the substitution returns a number, this number is coerced
-        to `complex`.
-
-        """
+        """Return a copy of the density matrix where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         result = copy.copy(self)
         result.rho = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.rho)
         return result

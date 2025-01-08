@@ -16,6 +16,9 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     import collections
+    from typing import Mapping
+
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
 class StatevectorBackend(Backend):
@@ -356,27 +359,13 @@ class Statevec(State):
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
-        """Return a copy of the state vector where all occurrences of
-        the given variable in measurement angles are substituted by
-        the given value.
-
-        If the substitution returns a number, this number is coerced
-        to `complex`.
-
-        """
+        """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
         result = Statevec()
         result.psi = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.psi)
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
-        """Return a copy of the state vector where all occurrences of the
-        given keys in measurement angles are substituted by the given
-        values in parallel.
-
-        If the substitution returns a number, this number is coerced
-        to `complex`.
-
-        """
+        """Return a copy of the state vector where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         result = Statevec()
         result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
         return result

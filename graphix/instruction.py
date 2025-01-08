@@ -10,7 +10,9 @@ from typing import ClassVar, Literal, Union
 
 from graphix import utils
 from graphix.fundamentals import Plane
-from graphix.parameter import ExpressionOrFloat
+
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 
 
 class InstructionKind(Enum):

@@ -14,7 +14,9 @@ from graphix import utils
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane, Sign
 from graphix.measurements import Domains
-from graphix.parameter import ExpressionOrFloat
+
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
 from graphix.states import BasicStates, State
 

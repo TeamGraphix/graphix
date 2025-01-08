@@ -1644,6 +1644,7 @@ class Circuit:
         return SimulateResult(state, classical_measures)
 
     def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:
+        """Apply `f` to all angles that occur in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
             angle = getattr(instr, "angle", None)
@@ -1655,9 +1656,11 @@ class Circuit:
         return result
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Circuit:
+        """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
         return self.map_angle(lambda angle: parameter.subs(angle, variable, substitute))
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Circuit:
+        """Return a copy of the circuit where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         return self.map_angle(lambda angle: parameter.xreplace(angle, assignment))
 
 

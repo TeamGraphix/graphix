@@ -28,6 +28,8 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
+    from abc.collections import Mapping
+
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
@@ -1543,23 +1545,19 @@ class Pattern:
                     file.write(line)
 
     def is_parameterized(self) -> bool:
-        """Return True if there is at least one measurement angle that
-        is not just an instance of `SupportsFloat`. A parameterized
-        pattern is a pattern where at least one measurement angle is an
-        expression that is not a number, typically an instance of `sympy.Expr`
-        (but we don't force to choose `sympy` here).
+        """
+        Return `True` if there is at least one measurement angle that is not just an instance of `SupportsFloat`.
+
+        A parameterized pattern is a pattern where at least one
+        measurement angle is an expression that is not a number,
+        typically an instance of `sympy.Expr` (but we don't force to
+        choose `sympy` here).
+
         """
         return any(not isinstance(cmd.angle, SupportsFloat) for cmd in self if cmd.kind == command.CommandKind.M)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
-        """Return a copy of the pattern where all occurrences of the
-        given variable in measurement angles are substituted by the
-        given value.
-
-        If the substitution returns a number, this number is coerced
-        to `complex`.
-
-        """
+        """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value."""
         result = self.copy()
         for cmd in result:
             if cmd.kind == command.CommandKind.M:
@@ -1569,14 +1567,7 @@ class Pattern:
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
-        """Return a copy of the pattern where all occurrences of the
-        given keys in measurement angles are substituted by the given
-        values in parallel.
-
-        If the substitution returns a number, this number is coerced
-        to `complex`.
-
-        """
+        """Return a copy of the pattern where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         result = self.copy()
         for cmd in result:
             if cmd.kind == command.CommandKind.M:

@@ -368,7 +368,7 @@ class GraphVisualizer:
 
     def __draw_nodes_role(self, pos: dict[int, tuple[float, float]], show_pauli_measurement: bool = False) -> None:
         """
-        Draw the nodes with different colors based on their role (input, output, or other)
+        Draw the nodes with different colors based on their role (input, output, or other).
 
         Parameters
         ----------

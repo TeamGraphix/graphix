@@ -8,7 +8,9 @@ from typing import NamedTuple, SupportsInt
 
 from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign
-from graphix.parameter import ExpressionOrFloat
+
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 
 
 @dataclasses.dataclass

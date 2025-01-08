@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     import numpy.typing as npt
     from numpy.random import Generator
 
+    from graphix import command
+    from graphix.fundamentals import Plane
     from graphix.measurements import Measurement
     from graphix.simulator import MeasureMethod
 
@@ -100,7 +102,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic:
 
 
 def perform_measure(
-    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng, pr_calc: bool = True, symbolic: bool = False
+    qubit: int, plane: Plane, angle: float, state, rng, pr_calc: bool = True, symbolic: bool = False
 ) -> npt.NDArray:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)

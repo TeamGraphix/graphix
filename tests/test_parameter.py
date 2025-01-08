@@ -7,10 +7,10 @@ from numpy.random import Generator
 
 import graphix
 import graphix.command
-import tests.random_circuit as rc
 from graphix.device_interface import PatternRunner
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
+from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
 
@@ -151,7 +151,7 @@ def test_random_circuit_with_parameters(
     depth = 5
     alpha = Placeholder("alpha")
     beta = Placeholder("beta")
-    circuit = rc.get_rand_circuit(nqubits, depth, fx_rng, parameters=[alpha, beta])
+    circuit = rand_circuit(nqubits, depth, fx_rng, parameters=[alpha, beta])
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals(method="global")

@@ -1,4 +1,4 @@
-"""Parameter class
+"""Parameter class.
 
 Parameter object acts as a placeholder of measurement angles and
 allows the manipulation of the measurement pattern without specific
@@ -19,50 +19,100 @@ class Expression(ABC):
     """Expression with parameters."""
 
     @abstractmethod
-    def __mul__(self, other: Any) -> ExpressionOrFloat: ...
+    def __mul__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the product of this expression with another object.
+
+        This special method is called to implement the multiplication operator (*).
+        """
 
     @abstractmethod
-    def __rmul__(self, other: Any) -> ExpressionOrFloat: ...
+    def __rmul__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the product of `other` with this expression.
+
+        This special method is called to implement the multiplication operator (*)
+        when the left operand does not support multiplication with this type.
+        Typically, `other` can be a number.
+        """
 
     @abstractmethod
-    def __add__(self, other: Any) -> ExpressionOrFloat: ...
+    def __add__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the sum of this expression with another object.
+
+        This special method is called to implement the addition operator (+).
+        """
 
     @abstractmethod
-    def __radd__(self, other: Any) -> ExpressionOrFloat: ...
+    def __radd__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the sum of `other` with this expression.
+
+        This special method is called to implement the addition operator (+)
+        when the left operand does not support addition with this type.
+        Typically, `other` can be a number.
+        """
 
     @abstractmethod
-    def __sub__(self, other: Any) -> ExpressionOrFloat: ...
+    def __sub__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the difference of this expression with another object.
+
+        This special method is called to implement the substraction operator (-).
+        """
 
     @abstractmethod
-    def __rsub__(self, other: Any) -> ExpressionOrFloat: ...
+    def __rsub__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the difference of `other` with this expression.
+
+        This special method is called to implement the substraction operator (-)
+        when the left operand does not support substraction with this type.
+        Typically, `other` can be a number.
+        """
 
     @abstractmethod
-    def __neg__(self) -> ExpressionOrFloat: ...
+    def __neg__(self) -> ExpressionOrFloat:
+        """
+        Return the opposite of this expression.
+
+        This special method is called to implement the unary opposite operator (-).
+        """
 
     @abstractmethod
-    def __truediv__(self, other: Any) -> ExpressionOrFloat: ...
+    def __truediv__(self, other: Any) -> ExpressionOrFloat:
+        """
+        Return the quotient of this expression with another object.
+
+        This special method is called to implement the division operator (/).
+        """
 
     @abstractmethod
-    def __rtruediv__(self, other: Any) -> ExpressionOrFloat: ...
+    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrComplex:
+        """Return the expression where every occurrence of `variable` is replaced with `value`."""
 
     @abstractmethod
-    def __mod__(self, other: Any) -> ExpressionOrFloat: ...
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrComplex:
+        """
+        Return the expression where every occurrence of any keys from `assignment` is replaced with the corresponding value.
 
-    @abstractmethod
-    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrComplex: ...
-
-    @abstractmethod
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrComplex: ...
+        The substitutions are performed in parallel, i.e., once an
+        occurrence has been replaced by a value, this value is not
+        subject to any further replacement, even if another occurrence
+        of a key appears in this value.
+        """
 
 
 class Parameter(Expression):
     """Abstract class for substituable parameter."""
 
-    ...
-
 
 class PlaceholderOperationError(ValueError):
+    """Error raised when an operation is not supported by the placeholder."""
+
     def __init__(self):
+        """Instantiate the error."""
         super().__init__(
             "Placeholder angles do not support any form of computation before substitution except affine operation. You may use `subs` with an actual value before the computation."
         )
@@ -80,27 +130,32 @@ class AffineExpression(Expression):
     b: float
 
     def offset(self, d: float) -> AffineExpression:
+        """Add `d` to the expression."""
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
     def __scale_non_null(self, k: float) -> AffineExpression:
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
     def scale(self, k: float) -> ExpressionOrFloat:
+        """Multiply the expression by `k`."""
         if k == 0:
             return 0
         return self.__scale_non_null(k)
 
     def __mul__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
     def __rmul__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
     def __add__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
         if isinstance(other, AffineExpression):
@@ -113,11 +168,13 @@ class AffineExpression(Expression):
         return NotImplemented
 
     def __radd__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
         return NotImplemented
 
     def __sub__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, AffineExpression):
             return self + -other
         if isinstance(other, SupportsFloat):
@@ -125,41 +182,43 @@ class AffineExpression(Expression):
         return NotImplemented
 
     def __rsub__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.__scale_non_null(-1).offset(float(other))
         return NotImplemented
 
     def __neg__(self) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         return self.__scale_non_null(-1)
 
     def __truediv__(self, other: Any) -> ExpressionOrFloat:
+        """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(1 / float(other))
         return NotImplemented
 
-    def __rtruediv__(self, other: Any) -> ExpressionOrFloat:
-        return NotImplemented
-
-    def __mod__(self, other: Any) -> ExpressionOrFloat:
-        return NotImplemented
-
     def __str__(self) -> str:
+        """Return a textual representation of the expression."""
         return f"{self.a} * {self.x} + {self.b}"
 
     def __eq__(self, other: Any) -> bool:
+        """Check if two expressions are equal."""
         if isinstance(other, AffineExpression):
             return self.a == other.a and self.x == other.x and self.b == other.b
         return False
 
     def evaluate(self, value: ExpressionOrSupportsFloat) -> ExpressionOrFloat:
+        """Evaluate the expression at `value`."""
         return self.a * float(value) + self.b
 
     def subs(self, variable: Parameter, value: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
+        """Look to the documentation in the parent class."""
         if variable == self.x:
             return self.evaluate(value)
         return self
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
+        """Look to the documentation in the parent class."""
         value = assignment.get(self.x)
         # `value` can be 0, so checking with `is not None` is mandatory here.
         if value is not None:
@@ -197,20 +256,25 @@ class Placeholder(AffineExpression, Parameter):
 
     @property
     def name(self) -> str:
+        """Return the name of the placeholder."""
         return self.__name
 
     def __repr__(self) -> str:
+        """Return a representation of the placeholder."""
         return f"Placeholder({self.__name!r})"
 
     def __str__(self) -> str:
+        """Return the name of the placeholder."""
         return self.__name
 
     def __eq__(self, other: Any) -> bool:
+        """Check if two placeholders are identical."""
         if isinstance(other, Parameter):
             return self is other
         return super().__eq__(other)
 
     def __hash__(self) -> int:
+        """Return an hash value for the placeholder."""
         return id(self)
 
 
@@ -236,9 +300,13 @@ T = TypeVar("T")
 
 
 def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | complex:
-    """Generic substitution in `value`: if `value` is in instance of
-    :class:`Expression`, then return `value.subs(variable,
-    substitute)` (coerced into a complex if the result is a number).
+    """
+    Substitute in `value`.
+
+    If `value` is in instance of :class:`Expression`, then return
+    `value.subs(variable, substitute)` (coerced into a complex if the
+    result is a number).
+
     If `value` does not implement `subs`, `value` is returned
     unchanged.
 
@@ -257,11 +325,15 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
 
 
 def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | complex:
-    """Generic parallel substitution in `value`: if `value` is an an
-    instance of :class:`Expression`, then return
+    """
+    Substitute in parallel in `value`.
+
+    If `value` is an an instance of :class:`Expression`, then return
     `value.xreplace(assignment)` (coerced into a complex if the result
-    is a number).  If `value` does not implement `xreplace`, `value`
-    is returned unchanged.
+    is a number).
+
+    If `value` does not implement `xreplace`, `value` is returned
+    unchanged.
 
     This function is used to apply parallel substitutions to
     collections where some elements are Expression and other elements
