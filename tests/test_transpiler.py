@@ -168,3 +168,13 @@ class TestTranspilerOpt:
         nb_shots = 10000
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20
+
+def test_circuit_draw() -> None:
+    circuit = Circuit(10)
+    try:
+        circuit.draw('text')
+        circuit.draw('mpl')
+        circuit.draw('latex')
+        circuit.draw('latex_source')
+    except Exception as e:
+        assert False, e
