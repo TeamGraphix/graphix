@@ -295,6 +295,10 @@ class DensityMatrix(State):
         """
         return np.abs(statevec.transpose().conj() @ self.rho @ statevec)
 
+    def flatten(self) -> npt.NDArray:
+        """Return flattened density matrix."""
+        return self.rho.flatten()
+
     def apply_channel(self, channel: KrausChannel, qargs: Collection[int]) -> None:
         """Apply a channel to a density matrix.
 

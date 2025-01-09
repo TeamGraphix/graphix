@@ -109,6 +109,7 @@ files = [
   "graphix/linalg_validations.py",
   "graphix/measurements.py",
   "graphix/ops.py",
+  "graphix/parameter.py",
   "graphix/pauli.py",
   "graphix/pyzx.py",
   "graphix/rng.py",
@@ -123,11 +124,13 @@ files = [
   "tests/test_db.py",
   "tests/test_fundamentals.py",
   "tests/test_kraus.py",
+  "tests/test_parameter.py",
   "tests/test_pauli.py",
   "tests/test_pyzx.py",
   "tests/test_rng.py",
 ]
 follow_imports = "silent"
+follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
 strict = true
 
 [tool.pyright]
@@ -141,6 +144,7 @@ include = [
   "graphix/linalg_validations.py",
   "graphix/measurements.py",
   "graphix/ops.py",
+  "graphix/parameter.py",
   "graphix/pauli.py",
   "graphix/pyzx.py",
   "graphix/rng.py",
@@ -155,6 +159,7 @@ include = [
   "tests/test_db.py",
   "tests/test_fundamentals.py",
   "tests/test_kraus.py",
+  "tests/test_parameter.py",
   "tests/test_pauli.py",
   "tests/test_pyzx.py",
   "tests/test_rng.py",

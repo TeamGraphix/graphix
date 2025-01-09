@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -84,10 +85,12 @@ class NodeIndex:
         self.__dict[node_j] = i
 
 
-class State:
+class State(ABC):
     """Base class for backend state."""
 
-    pass
+    @abstractmethod
+    def flatten(self) -> npt.NDArray:
+        """Return flattened state."""
 
 
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic: bool = False) -> npt.NDArray:

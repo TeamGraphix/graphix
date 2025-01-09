@@ -30,6 +30,7 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from abc.collections import Mapping
 
+    from graphix.sim.base_backend import State
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
@@ -322,7 +323,7 @@ class Pattern:
             nodes[index] = node
         return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 
-    def standardize(self, method="direct"):
+    def standardize(self, method="direct") -> None:
         """Execute standardization of the pattern.
 
         'standard' pattern is one where commands are sorted in the order of
@@ -1282,7 +1283,7 @@ class Pattern:
         meas_order = self._measurement_order_depth()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
-    def minimize_space(self):
+    def minimize_space(self) -> None:
         """Optimize the pattern to minimize the max_space property of the pattern.
 
         The optimized pattern has significantly
@@ -1381,7 +1382,9 @@ class Pattern:
                 n_list.append(nodes)
         return n_list
 
-    def simulate_pattern(self, backend="statevector", input_state=BasicStates.PLUS, **kwargs):
+    def simulate_pattern(
+        self, backend: str = "statevector", input_state: BasicStates = BasicStates.PLUS, **kwargs
+    ) -> State:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
         Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
@@ -1452,16 +1455,16 @@ class Pattern:
 
     def draw_graph(
         self,
-        flow_from_pattern=True,
-        show_pauli_measurement=True,
-        show_local_clifford=False,
-        show_measurement_planes=False,
-        show_loop=True,
-        node_distance=(1, 1),
-        figsize=None,
-        save=False,
-        filename=None,
-    ):
+        flow_from_pattern: bool = True,
+        show_pauli_measurement: bool = True,
+        show_local_clifford: bool = False,
+        show_measurement_planes: bool = False,
+        show_loop: bool = True,
+        node_distance: tuple[int, int] = (1, 1),
+        figsize: tuple | None = None,
+        save: bool = False,
+        filename: str | None = None,
+    ) -> None:
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
         Parameters

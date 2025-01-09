@@ -1,4 +1,5 @@
-import importlib
+import importlib.util
+from typing import TYPE_CHECKING
 
 import matplotlib
 import numpy as np
@@ -8,11 +9,15 @@ from numpy.random import Generator
 import graphix
 import graphix.command
 from graphix.device_interface import PatternRunner
-from graphix.parameter import Placeholder
+from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
+
+
+if TYPE_CHECKING:
+    from graphix.parameter import Parameter
 
 
 def test_pattern_affine_operations() -> None:
@@ -23,8 +28,8 @@ def test_pattern_affine_operations() -> None:
     assert alpha / 2 == 0.5 * alpha
     assert -alpha + alpha == 0
     beta = Placeholder("beta")
-    with pytest.raises(graphix.parameter.PlaceholderOperationError):
-        alpha + beta
+    with pytest.raises(PlaceholderOperationError):
+        _ = alpha + beta
 
 
 def test_pattern_without_parameter_is_not_parameterized() -> None:
@@ -157,7 +162,7 @@ def test_random_circuit_with_parameters(
     pattern.shift_signals(method="global")
     pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
     pattern.minimize_space()
-    assignment = {alpha: fx_rng.uniform(high=2), beta: fx_rng.uniform(high=2)}
+    assignment: dict[Parameter, float] = {alpha: fx_rng.uniform(high=2), beta: fx_rng.uniform(high=2)}
     if use_xreplace:
         state = circuit.xreplace(assignment).simulate_statevector().statevec
         state_mbqc = pattern.xreplace(assignment).simulate_pattern()
@@ -190,7 +195,7 @@ def test_simulation_exception() -> None:
     reason="qiskit and/or graphix-ibmq not installed",
 )
 def test_ibmq_backend() -> None:
-    import qiskit
+    import qiskit.circuit.exceptions
 
     circuit = graphix.Circuit(1)
     alpha = Placeholder("alpha")
