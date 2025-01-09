@@ -89,11 +89,11 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def subs(self, variable: Parameter, value: ExpressionOrFloat) -> ExpressionOrComplex:
+    def subs(self, variable: Parameter, value: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
         """Return the expression where every occurrence of `variable` is replaced with `value`."""
 
     @abstractmethod
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> ExpressionOrComplex:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> ExpressionOrComplex:
         """
         Return the expression where every occurrence of any keys from `assignment` is replaced with the corresponding value.
 
@@ -111,7 +111,7 @@ class Parameter(Expression):
 class PlaceholderOperationError(ValueError):
     """Error raised when an operation is not supported by the placeholder."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Instantiate the error."""
         super().__init__(
             "Placeholder angles do not support any form of computation before substitution except affine operation. You may use `subs` with an actual value before the computation."
@@ -160,7 +160,7 @@ class AffineExpression(Expression):
             return self.offset(float(other))
         if isinstance(other, AffineExpression):
             if other.x != self.x:
-                raise PlaceholderOperationError()
+                raise PlaceholderOperationError
             a = self.a + other.a
             if a == 0:
                 return 0
@@ -209,7 +209,9 @@ class AffineExpression(Expression):
 
     def evaluate(self, value: ExpressionOrSupportsFloat) -> ExpressionOrFloat:
         """Evaluate the expression at `value`."""
-        return self.a * float(value) + self.b
+        if isinstance(value, SupportsFloat):
+            return self.a * float(value) + self.b
+        return self.a * value + self.b
 
     def subs(self, variable: Parameter, value: ExpressionOrSupportsFloat) -> ExpressionOrComplex:
         """Look to the documentation in the parent class."""
@@ -299,7 +301,9 @@ else:
 T = TypeVar("T")
 
 
-def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | complex:
+# The return type could be `T | Expression | complex` since `subs` returns `Expression` only
+# if `T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
+def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | Expression | complex:
     """
     Substitute in `value`.
 
@@ -316,7 +320,6 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
 
     """
     if not isinstance(value, Expression):
-        print(f"{value} is not an expression")
         return value
     new_value = value.subs(variable, substitute)
     if isinstance(new_value, SupportsComplex):
@@ -324,7 +327,9 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     return new_value
 
 
-def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | complex:
+# The return type could be `T | Expression | complex` since `subs` returns `Expression` only
+# if `T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex:
     """
     Substitute in parallel in `value`.
 
