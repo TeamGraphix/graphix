@@ -518,7 +518,7 @@ class MBQCTensorNet(State, TensorNetwork):
         coef = self.get_basis_coefficient(basis, **kwagrs)
         return abs(coef) ** 2
 
-    def to_statevector(self, indices=None, **kwagrs):
+    def to_statevector(self, indices=None, **kwagrs) -> npt.NDArray:
         """Retrieve the statevector from the tensornetwork.
 
         This method tends to be slow however we plan to parallelize this.
@@ -541,6 +541,10 @@ class MBQCTensorNet(State, TensorNetwork):
         for i in range(len(statevec)):
             statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices, **kwagrs)
         return statevec / np.linalg.norm(statevec)
+
+    def flatten(self) -> npt.NDArray:
+        """Return flattened statevector."""
+        return self.to_statevector().flatten()
 
     def get_norm(self, **kwagrs):
         """Calculate the norm of the state.
