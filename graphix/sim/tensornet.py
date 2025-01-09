@@ -17,6 +17,7 @@ from graphix.sim.base_backend import Backend, State
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from numpy.random import Generator
 
     from graphix.clifford import Clifford

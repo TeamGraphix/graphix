@@ -15,7 +15,6 @@ from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
 
-
 if TYPE_CHECKING:
     from graphix.parameter import Parameter
 

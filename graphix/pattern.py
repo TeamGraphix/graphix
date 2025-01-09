@@ -30,8 +30,8 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from abc.collections import Mapping
 
-    from graphix.sim.base_backend import State
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
+    from graphix.sim.base_backend import State
 
 
 class NodeAlreadyPreparedError(Exception):
