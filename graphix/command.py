@@ -11,6 +11,20 @@ from graphix.pauli import Plane
 
 Node = int
 
+def _command_to_latex(cmd: Command) -> str:
+    kind = cmd.kind
+    out = kind.name
+
+    if kind == CommandKind.N:
+        out += '_{' + str(cmd.node) + '}'
+    if kind == CommandKind.M:
+        out += '_' + str(cmd.node) + '^{' + cmd.plane.name + ',' + str(round(cmd.angle, 2)) + '}'
+    if kind == CommandKind.E:
+        out += '_{' + str(cmd.nodes[0]) + ',' + str(cmd.nodes[1]) + '}'
+    if kind == CommandKind.C:
+        out += '_' + str(cmd.node) + '^{' + ''.join(cmd.domain) + '}'
+    
+    return '$' + out + '$'
 
 class CommandKind(enum.Enum):
     N = "N"
@@ -29,6 +43,9 @@ class Command(BaseModel, abc.ABC):
     """
 
     kind: CommandKind = None
+
+    def to_latex(self) -> str:
+        return _command_to_latex(self)
 
 
 class N(Command):

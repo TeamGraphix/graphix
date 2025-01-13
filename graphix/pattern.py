@@ -6,8 +6,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import io
 import networkx as nx
 import numpy as np
+import warnings
 
 import graphix.clifford
 import graphix.pauli
@@ -204,6 +206,104 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
+    def _latex_file_to_image(self, tmpdirname, tmpfilename):
+        import os
+        import PIL
+        import subprocess
+        import warnings
+
+        try:
+            subprocess.run(
+                [
+                    "pdflatex",
+                    "-halt-on-error",
+                    f"-output-directory={tmpdirname}",
+                    f"{tmpfilename + '.tex'}",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+        except OSError as exc:
+            # OSError should generally not occur, because it's usually only triggered if `pdflatex`
+            # doesn't exist as a command, but we've already checked that.
+            raise Exception("`pdflatex` command could not be run.") from exc
+        except subprocess.CalledProcessError as exc:
+            with open("latex_error.log", "wb") as error_file:
+                error_file.write(exc.stdout)
+            warnings.warn(
+                "Unable to compile LaTeX. Perhaps you are missing the `qcircuit` package."
+                " The output from the `pdflatex` command is in `latex_error.log`."
+            )
+            raise Exception(
+                "`pdflatex` call did not succeed: see `latex_error.log`."
+            ) from exc
+        
+        base = os.path.join(tmpdirname, tmpfilename)
+        try:
+            subprocess.run(
+                ["pdftocairo", "-singlefile", "-png", "-q", base + ".pdf", base],
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            message = "`pdftocairo` failed to produce an image."
+            warnings.warn(message)
+            raise Exception(message) from exc
+
+        return PIL.Image.open(base + ".png")
+
+
+    def to_latex(self):
+        import PIL
+        import os
+        import subprocess
+        import tempfile
+
+        header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
+
+        header_2 = r"""
+\usepackage{graphicx}
+
+\begin{document}
+"""
+
+        output = io.StringIO()
+        output.write(header_1)
+        output.write(header_2)
+
+        for instr in self.__seq:
+            output.write(instr.to_latex())
+            output.write('\n')
+        
+        output.write("\n\\end{document}")
+        contents = output.getvalue()
+        output.close()
+
+        print(contents)
+        tmpfilename = "pattern.tex"
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmppath = os.path.join(tmpdirname, tmpfilename)
+
+            with open(tmppath, "w") as latex_file:
+                latex_file.write(contents)
+            
+            image = self._latex_file_to_image(tmpdirname, tmpfilename)
+
+            def _trim(image):
+                """Trim a PIL image and remove white space."""
+
+                background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
+                diff = PIL.ImageChops.difference(image, background)
+                diff = PIL.ImageChops.add(diff, diff, 2.0, -100)
+                bbox = diff.getbbox()
+                if bbox:
+                    image = image.crop(bbox)
+                return image
+
+            return _trim(image)
+
+
     def print_pattern(self, lim=40, filter: list[command.CommandKind] = None):
         """print the pattern sequence (Pattern.seq).
 
@@ -272,6 +372,15 @@ class Pattern:
 
         if len(self.__seq) > i + 1:
             print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
+
+    def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode']='ascii'):
+        if format == 'ascii':
+            return str(self)
+        if format == 'latex':
+            return self.toLatex()
+        if format == 'unicode':
+            return self.toUnicode()
+        
 
     def get_local_pattern(self):
         """Get a local pattern transpiled from the pattern.
