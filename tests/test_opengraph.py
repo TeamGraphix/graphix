@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import networkx as nx
 
-from graphix.opengraph import Measurement, OpenGraph
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
+from graphix.measurements import Measurement
+from graphix.opengraph import OpenGraph
 
 
 # Tests whether an open graph can be converted to and from a pattern and be

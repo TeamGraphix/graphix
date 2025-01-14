@@ -20,8 +20,9 @@ import networkx as nx
 import numpy as np
 import sympy as sp
 
-import graphix.pauli
+from graphix import utils
 from graphix.command import CommandKind
+from graphix.fundamentals import Plane
 from graphix.linalg import MatGF2
 
 if TYPE_CHECKING:
@@ -29,10 +30,10 @@ if TYPE_CHECKING:
 
 
 # TODO: This should be ensured by type-checking.
-def check_meas_planes(meas_planes: dict[int, graphix.pauli.Plane]) -> None:
+def check_meas_planes(meas_planes: dict[int, Plane]) -> None:
     """Check that all planes are valid planes."""
     for node, plane in meas_planes.items():
-        if not isinstance(plane, graphix.pauli.Plane):
+        if not isinstance(plane, Plane):
             raise ValueError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
 
 
@@ -40,7 +41,7 @@ def find_gflow(
     graph: nx.Graph,
     iset: set[int],
     oset: set[int],
-    meas_planes: dict[int, graphix.pauli.Plane],
+    meas_planes: dict[int, Plane],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Maximally delayed gflow finding algorithm.
@@ -98,7 +99,7 @@ def gflowaux(
     graph: nx.Graph,
     iset: set[int],
     oset: set[int],
-    meas_planes: dict[int, graphix.pauli.Plane],
+    meas_planes: dict[int, Plane],
     k: int,
     l_k: dict[int, int],
     g: dict[int, set[int]],
@@ -160,13 +161,13 @@ def gflowaux(
     for i_row in range(len(node_order_row)):
         node = node_order_row[i_row]
         vec = MatGF2(np.zeros(len(node_order_row), dtype=int))
-        if meas_planes[node] == graphix.pauli.Plane.XY:
+        if meas_planes[node] == Plane.XY:
             vec.data[i_row] = 1
-        elif meas_planes[node] == graphix.pauli.Plane.XZ:
+        elif meas_planes[node] == Plane.XZ:
             vec.data[i_row] = 1
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
             vec = vec + vec_add
-        elif meas_planes[node] == graphix.pauli.Plane.YZ:
+        elif meas_planes[node] == Plane.YZ:
             vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
     adj_mat, b, _, col_permutation = adj_mat.forward_eliminate(b)
@@ -183,7 +184,7 @@ def gflowaux(
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
             g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-            if meas_planes[non_out_node] in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
+            if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
                 g[non_out_node] |= {non_out_node}
 
         elif mode == "all":
@@ -194,7 +195,7 @@ def gflowaux(
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
-                if meas_planes[non_out_node] in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
+                if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
@@ -204,7 +205,7 @@ def gflowaux(
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
-            if meas_planes[non_out_node] in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
+            if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
                 g[non_out_node][non_out_node] = sp.true
 
         l_k[non_out_node] = k
@@ -232,7 +233,7 @@ def find_flow(
     graph: nx.Graph,
     iset: set[int],
     oset: set[int],
-    meas_planes: dict[int, graphix.pauli.Plane] | None = None,
+    meas_planes: dict[int, Plane] | None = None,
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Causal flow finding algorithm.
 
@@ -251,10 +252,10 @@ def find_flow(
         set of node labels for input
     oset: set
         set of node labels for output
-    meas_planes: dict(int, graphix.pauli.Plane)
+    meas_planes: dict(int, Plane)
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
-        Note that an underlying graph has a causal flow only if all measurement planes are graphix.pauli.Plane.XY.
-        If not specified, all measurement planes are interpreted as graphix.pauli.Plane.XY.
+        Note that an underlying graph has a causal flow only if all measurement planes are Plane.XY.
+        If not specified, all measurement planes are interpreted as Plane.XY.
 
     Returns
     -------
@@ -268,10 +269,10 @@ def find_flow(
     edges = set(graph.edges)
 
     if meas_planes is None:
-        meas_planes = {i: graphix.pauli.Plane.XY for i in (nodes - oset)}
+        meas_planes = {i: Plane.XY for i in (nodes - oset)}
 
     for plane in meas_planes.values():
-        if plane != graphix.pauli.Plane.XY:
+        if plane != Plane.XY:
             return None, None
 
     l_k = {i: 0 for i in nodes}
@@ -359,7 +360,7 @@ def find_pauliflow(
     graph: nx.Graph,
     iset: set[int],
     oset: set[int],
-    meas_planes: dict[int, graphix.pauli.Plane],
+    meas_planes: dict[int, Plane],
     meas_angles: dict[int, float],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -423,7 +424,7 @@ def pauliflowaux(
     graph: nx.Graph,
     iset: set[int],
     oset: set[int],
-    meas_planes: dict[int, graphix.pauli.Plane],
+    meas_planes: dict[int, Plane],
     k: int,
     correction_candidate: set[int],
     solved_nodes: set[int],
@@ -515,7 +516,7 @@ def pauliflowaux(
             p[node] = list()
 
         solved = False
-        if meas_planes[node] == graphix.pauli.Plane.XY or node in l_x or node in l_y:
+        if meas_planes[node] == Plane.XY or node in l_x or node in l_y:
             mat = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             mat.data[node_order_row_.index(node), :] = 1
             mat_lower = MatGF2(np.zeros((len(node_order_row_lower_), 1), dtype=int))
@@ -551,7 +552,7 @@ def pauliflowaux(
                         p_i[node_temp] = x_xy[i]
                     p[node].append(p_i)
 
-        if not solved and (meas_planes[node] == graphix.pauli.Plane.XZ or node in l_z or node in l_x):
+        if not solved and (meas_planes[node] == Plane.XZ or node in l_z or node in l_x):
             mat = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             mat.data[node_order_row_.index(node)] = 1
             for neighbor in search_neighbor(node, graph.edges):
@@ -593,7 +594,7 @@ def pauliflowaux(
                     p_i[node] = sp.true
                     p[node].append(p_i)
 
-        if not solved and (meas_planes[node] == graphix.pauli.Plane.YZ or node in l_y or node in l_z):
+        if not solved and (meas_planes[node] == Plane.YZ or node in l_y or node in l_z):
             mat = MatGF2(np.zeros((len(node_order_row_), 1), dtype=int))
             for neighbor in search_neighbor(node, graph.edges):
                 if neighbor in pset | {node}:
@@ -661,7 +662,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     """
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
-        if plane != graphix.pauli.Plane.XY:
+        if plane != Plane.XY:
             return None, None
     g = nx.Graph()
     nodes, edges = pattern.get_graph()
@@ -734,7 +735,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in [graphix.pauli.Plane.XZ, graphix.pauli.Plane.YZ]:
+        if plane in [Plane.XZ, Plane.YZ]:
             if node not in xflow.keys():
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -1128,7 +1129,7 @@ def verify_flow(
     iset: set[int],
     oset: set[int],
     flow: dict[int, set],
-    meas_planes: dict[int, graphix.pauli.Plane] | None = None,
+    meas_planes: dict[int, Plane] | None = None,
 ) -> bool:
     """Check whether the flow is valid.
 
@@ -1154,7 +1155,7 @@ def verify_flow(
     non_outputs = set(graph.nodes) - oset
     # if meas_planes is given, check whether all measurement planes are "XY"
     for node, plane in meas_planes.items():
-        if plane != graphix.pauli.Plane.XY or node not in non_outputs:
+        if plane != Plane.XY or node not in non_outputs:
             valid_flow = False
             return valid_flow
 
@@ -1183,7 +1184,7 @@ def verify_gflow(
     iset: set[int],
     oset: set[int],
     gflow: dict[int, set],
-    meas_planes: dict[int, graphix.pauli.Plane],
+    meas_planes: dict[int, Plane],
 ) -> bool:
     """Check whether the gflow is valid.
 
@@ -1226,11 +1227,11 @@ def verify_gflow(
     # check for each measurement plane
     for node, plane in meas_planes.items():
         # index = node_order.index(node)
-        if plane == graphix.pauli.Plane.XY:
+        if plane == Plane.XY:
             valid_gflow &= (node not in gflow[node]) and (node in odd_flow[node])
-        elif plane == graphix.pauli.Plane.XZ:
+        elif plane == Plane.XZ:
             valid_gflow &= (node in gflow[node]) and (node in odd_flow[node])
-        elif plane == graphix.pauli.Plane.YZ:
+        elif plane == Plane.YZ:
             valid_gflow &= (node in gflow[node]) and (node not in odd_flow[node])
 
     return valid_gflow
@@ -1241,7 +1242,7 @@ def verify_pauliflow(
     iset: set[int],
     oset: set[int],
     pauliflow: dict[int, set[int]],
-    meas_planes: dict[int, graphix.pauli.Plane],
+    meas_planes: dict[int, Plane],
     meas_angles: dict[int, float],
 ) -> bool:
     """Check whether the Pauliflow is valid.
@@ -1256,7 +1257,7 @@ def verify_pauliflow(
         set of node labels for output
     pauliflow: dict[int, set]
         Pauli flow function. pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
-    meas_planes: dict[int, graphix.pauli.Plane]
+    meas_planes: dict[int, Plane]
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
     meas_angles: dict[int, float]
         measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
@@ -1295,11 +1296,11 @@ def verify_pauliflow(
             valid_pauliflow &= node in pauliflow[node]
         elif node in l_y:
             valid_pauliflow &= node in pauliflow[node].symmetric_difference(odd_flow[node])
-        elif plane == graphix.pauli.Plane.XY:
+        elif plane == Plane.XY:
             valid_pauliflow &= (node not in pauliflow[node]) and (node in odd_flow[node])
-        elif plane == graphix.pauli.Plane.XZ:
+        elif plane == Plane.XZ:
             valid_pauliflow &= (node in pauliflow[node]) and (node in odd_flow[node])
-        elif plane == graphix.pauli.Plane.YZ:
+        elif plane == Plane.YZ:
             valid_pauliflow &= (node in pauliflow[node]) and (node not in odd_flow[node])
 
     return valid_pauliflow
@@ -1347,13 +1348,13 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
 
 
 def get_pauli_nodes(
-    meas_planes: dict[int, graphix.pauli.Plane], meas_angles: dict[int, float]
+    meas_planes: dict[int, Plane], meas_angles: dict[int, float]
 ) -> tuple[set[int], set[int], set[int]]:
     """Get sets of nodes measured in X, Y, Z basis.
 
     Parameters
     ----------
-    meas_planes: dict[int, graphix.pauli.Plane]
+    meas_planes: dict[int, Plane]
         measurement planes for each node.
     meas_angles: dict[int, float]
         measurement angles for each node.
@@ -1370,19 +1371,19 @@ def get_pauli_nodes(
     check_meas_planes(meas_planes)
     l_x, l_y, l_z = set(), set(), set()
     for node, plane in meas_planes.items():
-        if plane == graphix.pauli.Plane.XY:
-            if graphix.pauli.is_int(meas_angles[node]):  # measurement angle is integer
+        if plane == Plane.XY:
+            if utils.is_integer(meas_angles[node]):  # measurement angle is integer
                 l_x |= {node}
-            elif graphix.pauli.is_int(2 * meas_angles[node]):  # measurement angle is half integer
+            elif utils.is_integer(2 * meas_angles[node]):  # measurement angle is half integer
                 l_y |= {node}
-        elif plane == graphix.pauli.Plane.XZ:
-            if graphix.pauli.is_int(meas_angles[node]):
+        elif plane == Plane.XZ:
+            if utils.is_integer(meas_angles[node]):
                 l_z |= {node}
-            elif graphix.pauli.is_int(2 * meas_angles[node]):
+            elif utils.is_integer(2 * meas_angles[node]):
                 l_x |= {node}
-        elif plane == graphix.pauli.Plane.YZ:
-            if graphix.pauli.is_int(meas_angles[node]):
+        elif plane == Plane.YZ:
+            if utils.is_integer(meas_angles[node]):
                 l_y |= {node}
-            elif graphix.pauli.is_int(2 * meas_angles[node]):
+            elif utils.is_integer(2 * meas_angles[node]):
                 l_z |= {node}
     return l_x, l_y, l_z

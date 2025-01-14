@@ -2,32 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-import graphix.pauli
-import graphix.states
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from numpy.random import Generator
 
-    from graphix.pauli import Plane
-
-
-@dataclass
-class MeasurementDescription:
-    """An MBQC measurement."""
-
-    plane: Plane
-    angle: float
+    from graphix.fundamentals import Plane
+    from graphix.measurements import Measurement
 
 
 class NodeIndex:
@@ -104,9 +95,7 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.nda
     return op_mat
 
 
-def perform_measure(
-    qubit: int, plane: graphix.pauli.Plane, angle: float, state, rng: np.random.Generator, pr_calc: bool = True
-) -> bool:
+def perform_measure(qubit: int, plane: Plane, angle: float, state, rng: Generator, pr_calc: bool = True) -> bool:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
     if pr_calc:
@@ -176,7 +165,7 @@ class Backend:
         """Return the node index table of the backend."""
         return self.__node_index
 
-    def add_nodes(self, nodes, data=graphix.states.BasicStates.PLUS) -> None:
+    def add_nodes(self, nodes, data=BasicStates.PLUS) -> None:
         """Add new qubit(s) to statevector in argument and assign the corresponding node number to list self.node_index.
 
         Parameters
@@ -198,18 +187,16 @@ class Backend:
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, node: int, measurement_description: MeasurementDescription) -> bool:
+    def measure(self, node: int, measurement: Measurement) -> bool:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
-        measurement_description: MeasurementDescription
+        measurement: Measurement
         """
         loc = self.node_index.index(node)
-        result = perform_measure(
-            loc, measurement_description.plane, measurement_description.angle, self.state, self.__rng, self.__pr_calc
-        )
+        result = perform_measure(loc, measurement.plane, measurement.angle, self.state, self.__rng, self.__pr_calc)
         self.node_index.remove(node)
         self.state.remove_qubit(loc)
         return result

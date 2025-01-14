@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-import graphix.pauli
+from graphix.fundamentals import Plane
 from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
-    from np.random import Generator
+    from numpy.random import Generator
 
 
 class TestStatevec:
@@ -65,7 +65,7 @@ class TestStatevec:
 
         # tensor of same state
         rand_angle = fx_rng.random() * 2 * np.pi
-        rand_plane = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]))
+        rand_plane = fx_rng.choice(np.array([i for i in Plane]))
         state = PlanarState(rand_plane, rand_angle)
         vec = Statevec(nqubit=nqb, data=state)
         sv_list = [state.get_statevector() for _ in range(nqb)]
@@ -75,7 +75,7 @@ class TestStatevec:
 
         # tensor of different states
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in graphix.pauli.Plane]), nqb)
+        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         vec = Statevec(nqubit=nqb, data=states)
         sv_list = [state.get_statevector() for state in states]

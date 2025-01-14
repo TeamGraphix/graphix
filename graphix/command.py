@@ -10,9 +10,11 @@ from typing import ClassVar, Literal, Union
 
 import numpy as np
 
-from graphix import type_utils
-from graphix.clifford import Clifford, Domains
-from graphix.pauli import Pauli, Plane, Sign
+from graphix import utils
+from graphix.clifford import Clifford
+from graphix.fundamentals import Plane, Sign
+from graphix.measurements import Domains
+from graphix.pauli import Pauli
 from graphix.states import BasicStates, State
 
 Node = int
@@ -36,7 +38,7 @@ class _KindChecker:
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        type_utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
+        utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
 @dataclasses.dataclass
@@ -159,12 +161,9 @@ class MeasureUpdate:
         cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
         sin_pauli = clifford_gate.measure(Pauli.from_axis(plane.sin))
         exchange = cos_pauli.axis != new_plane.cos
-        if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign):
-            coeff = -1
-        else:
-            coeff = 1
+        coeff = -1 if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign) else 1
         add_term: float = 0
-        if cos_pauli.unit.sign == Sign.Minus:
+        if cos_pauli.unit.sign == Sign.MINUS:
             add_term += np.pi
         if exchange:
             add_term = np.pi / 2 - add_term

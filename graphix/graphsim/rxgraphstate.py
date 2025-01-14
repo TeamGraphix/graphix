@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
-from .rxgraphviews import EdgeList, NodeList
+from graphix.graphsim.basegraphstate import RUSTWORKX_INSTALLED, BaseGraphState
+from graphix.graphsim.rxgraphviews import EdgeList, NodeList
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -75,13 +75,13 @@ class RXGraphState(BaseGraphState):
             ret.append((n, degree))
         return iter(ret)
 
-    def neighbors(self, node) -> Iterator:
+    def neighbors(self, node) -> Iterator[int]:
         """Return an iterator over all neighbors of node n.
 
         See :meth:`BaseGraphState.neighbors`.
         """
         nidx = self.nodes.get_node_index(node)
-        return iter(self._graph.neighbors(nidx))
+        return (self.nodes.idx_to_num[idx] for idx in self._graph.neighbors(nidx))
 
     def subgraph(self, nodes: list) -> rx.PyGraph:
         """Return a subgraph of the graph.

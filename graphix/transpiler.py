@@ -12,15 +12,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-import graphix.pauli
-import graphix.sim.base_backend
-import graphix.sim.statevec
 from graphix import command, instruction
 from graphix.command import CommandKind, E, M, N, X, Z
+from graphix.fundamentals import Plane
 from graphix.ops import Ops
 from graphix.pattern import Pattern
-from graphix.pauli import Plane
-from graphix.sim.statevec import Statevec
+from graphix.sim import base_backend
+from graphix.sim.statevec import Data, Statevec
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -850,7 +848,7 @@ class Circuit:
             elif cmd.nodes in old_out:
                 cmd.nodes = output_nodes[old_out.index(cmd.nodes)]
 
-    def simulate_statevector(self, input_state: graphix.sim.statevec.Data | None = None) -> SimulateResult:
+    def simulate_statevector(self, input_state: Data | None = None) -> SimulateResult:
         """Run statevector simulation of the gate sequence.
 
         Parameters
@@ -899,9 +897,7 @@ class Circuit:
             elif kind == instruction.InstructionKind.CCX:
                 state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif kind == instruction.InstructionKind.M:
-                result = graphix.sim.base_backend.perform_measure(
-                    instr.target, instr.plane, instr.angle * np.pi, state, np.random
-                )
+                result = base_backend.perform_measure(instr.target, instr.plane, instr.angle * np.pi, state, np.random)
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")

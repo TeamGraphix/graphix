@@ -15,7 +15,6 @@ from graphix.ops import Ops
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-
 _T = TypeVar("_T", bound=np.generic)
 
 

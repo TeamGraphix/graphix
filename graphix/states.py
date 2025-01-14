@@ -11,10 +11,11 @@ import numpy.typing as npt
 import pydantic.dataclasses
 import typing_extensions
 
-from graphix.pauli import Plane
+from graphix.fundamentals import Plane
 
 
 # generic class State for all States
+# FIXME: Name conflict
 class State(ABC):
     """Abstract base class for single qubit states objects.
 
@@ -79,12 +80,12 @@ class PlanarState(State):
 class BasicStates:
     """Basic states."""
 
-    ZERO: ClassVar = PlanarState(Plane.XZ, 0)
-    ONE: ClassVar = PlanarState(Plane.XZ, np.pi)
-    PLUS: ClassVar = PlanarState(Plane.XY, 0)
-    MINUS: ClassVar = PlanarState(Plane.XY, np.pi)
-    PLUS_I: ClassVar = PlanarState(Plane.XY, np.pi / 2)
-    MINUS_I: ClassVar = PlanarState(Plane.XY, -np.pi / 2)
+    ZERO: ClassVar[PlanarState] = PlanarState(Plane.XZ, 0)
+    ONE: ClassVar[PlanarState] = PlanarState(Plane.XZ, np.pi)
+    PLUS: ClassVar[PlanarState] = PlanarState(Plane.XY, 0)
+    MINUS: ClassVar[PlanarState] = PlanarState(Plane.XY, np.pi)
+    PLUS_I: ClassVar[PlanarState] = PlanarState(Plane.XY, np.pi / 2)
+    MINUS_I: ClassVar[PlanarState] = PlanarState(Plane.XY, -np.pi / 2)
     # remove that in the end
     # need in TN backend
-    VEC: ClassVar = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]
+    VEC: ClassVar[list[PlanarState]] = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]

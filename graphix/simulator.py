@@ -14,7 +14,8 @@ import numpy as np
 
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, M, MeasureUpdate
-from graphix.sim.base_backend import Backend, MeasurementDescription
+from graphix.measurements import Measurement
+from graphix.sim.base_backend import Backend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
@@ -41,7 +42,7 @@ class MeasureMethod(abc.ABC):
         self.set_measure_result(cmd.node, result)
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription:
+    def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a given measure command (possibly blind)."""
         ...
 
@@ -64,7 +65,7 @@ class DefaultMeasureMethod(MeasureMethod):
             results = dict()
         self.results = results
 
-    def get_measurement_description(self, cmd: BaseM) -> MeasurementDescription:
+    def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a given measure command (cannot be blind in the case of DefaultMeasureMethod)."""
         assert isinstance(cmd, M)
         angle = cmd.angle * np.pi
@@ -73,7 +74,7 @@ class DefaultMeasureMethod(MeasureMethod):
         t_signal = sum(self.results[j] for j in cmd.t_domain)
         measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, Clifford.I)
         angle = angle * measure_update.coeff + measure_update.add_term
-        return MeasurementDescription(measure_update.new_plane, angle)
+        return Measurement(angle, measure_update.new_plane)
 
     def get_measure_result(self, node: int) -> bool:
         """Return the result of a previous measurement."""
