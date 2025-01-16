@@ -219,6 +219,7 @@ class Pattern:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 check=True,
+                timeout=5
             )
         except OSError as exc:
             # OSError should generally not occur, because it's usually only triggered if `pdflatex`
@@ -275,7 +276,6 @@ class Pattern:
         contents = output.getvalue()
         output.close()
 
-        print(contents)
         tmpfilename = "pattern.tex"
 
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -300,7 +300,7 @@ class Pattern:
             return _trim(image)
 
 
-    def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
+    def __str__(self, lim=40, target: list[CommandKind] | None = None) -> str:
         """Print the pattern sequence (Pattern.seq).
 
         Parameters
@@ -310,6 +310,8 @@ class Pattern:
         target : list of CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
+
+        output_lines = []
         if len(self.__seq) < lim:
             nmax = len(self.__seq)
         else:
@@ -332,36 +334,35 @@ class Pattern:
             cmd = self.__seq[i]
             if cmd.kind == CommandKind.N and (CommandKind.N in target):
                 count += 1
-                print(f"N, node = {cmd.node}")
+                output_lines += f"N, node={cmd.node}\n"
             elif cmd.kind == CommandKind.E and (CommandKind.E in target):
                 count += 1
-                print(f"E, nodes = {cmd.nodes}")
+                output_lines += f"E, nodes={cmd.nodes}\n"
             elif cmd.kind == CommandKind.M and (CommandKind.M in target):
                 count += 1
-                print(
-                    f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
-                    + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
-                )
+                output_lines += f"M, node={cmd.node}, plane={cmd.plane}, angle(pi)={cmd.angle}, " + f"s_domain={cmd.s_domain}, t_domain={cmd.t_domain}\n"
             elif cmd.kind == CommandKind.X and (CommandKind.X in target):
                 count += 1
-                print(f"X byproduct, node = {cmd.node}, domain = {cmd.domain}")
+                output_lines += f"X byproduct, node={cmd.node}, domain={cmd.domain}\n"
             elif cmd.kind == CommandKind.Z and (CommandKind.Z in target):
                 count += 1
-                print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
+                output_lines += f"Z byproduct, node={cmd.node}, domain={cmd.domain}\n"
             elif cmd.kind == CommandKind.C and (CommandKind.C in target):
                 count += 1
-                print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
+                output_lines += f"Clifford, node={cmd.node}, Clifford={cmd.clifford}\n"
 
         if len(self.__seq) > i + 1:
-            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
+            output_lines += f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more\n"
 
-    def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode']='ascii'):
+        return ''.join(output_lines)
+
+    def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode']='ascii', lim: int=40, target: list[CommandKind]=None) -> str | PIL.image:
         if format == 'ascii':
-            return str(self)
+            return self.__str__(lim=lim, target=target)
         if format == 'latex':
-            return self.toLatex()
+            return self.to_latex()
         if format == 'unicode':
-            return self.toUnicode()
+            return self.__str__(lim=lim, target=target)
         
 
     def get_local_pattern(self):

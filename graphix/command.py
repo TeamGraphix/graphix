@@ -19,8 +19,8 @@ from graphix.states import BasicStates, State
 
 Node = int
 
-def _command_to_latex(cmd: Command) -> str:
-    kind = cmd.kind
+def command_to_latex(cmd: _KindChecker) -> str:
+    kind = getattr(cmd, 'kind')
     out = kind.name
 
     if kind == CommandKind.N:
@@ -55,7 +55,7 @@ class _KindChecker:
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
     def to_latex(self) -> str:
-        return _command_to_latex(self)
+        return command_to_latex(self)
 
 
 @dataclasses.dataclass
