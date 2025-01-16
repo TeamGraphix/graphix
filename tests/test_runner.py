@@ -1,26 +1,25 @@
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
 import pytest
+
+from graphix.device_interface import PatternRunner
+from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
+
+    from pytest_mock import MockerFixture
 
 try:
     import qiskit
     from qiskit_aer import Aer
 except ModuleNotFoundError:
     pass
-
-from typing import TYPE_CHECKING
-
-import graphix
-from graphix.device_interface import PatternRunner
-
-if TYPE_CHECKING:
-    from collections.abc import Collection
-
-    from pytest_mock import MockerFixture
 
 
 def modify_statevector(statevector: npt.ArrayLike, output_qubit: Collection[int]) -> npt.NDArray:
@@ -61,7 +60,7 @@ class TestPatternRunner:
         sys.modules["graphix_ibmq.runner"] = runner
 
         # circuit in graphix
-        circuit = graphix.Circuit(3)
+        circuit = Circuit(3)
         circuit.h(1)
         circuit.h(2)
         circuit.rx(1, 1.23)

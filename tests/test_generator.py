@@ -6,9 +6,9 @@ import networkx as nx
 import numpy as np
 import pytest
 
-import graphix.pauli
-import tests.random_circuit as rc
+from graphix.fundamentals import Plane
 from graphix.generator import generate_from_graph
+from graphix.random_objects import rand_gate
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -22,12 +22,12 @@ class TestGenerator:
         angles = fx_rng.normal(size=6)
         results = []
         repeats = 3  # for testing the determinism of a pattern
-        meas_planes = {i: graphix.pauli.Plane.XY for i in range(6)}
+        meas_planes = {i: Plane.XY for i in range(6)}
         for _ in range(repeats):
             pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
             pattern.minimize_space()
-            state = pattern.simulate_pattern()
+            state = pattern.simulate_pattern(rng=fx_rng)
             results.append(state)
         combinations = [(0, 1), (0, 2), (1, 2)]
         for i, j in combinations:
@@ -39,14 +39,14 @@ class TestGenerator:
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
         angles = fx_rng.normal(size=6)
-        meas_planes = {i: graphix.pauli.Plane.XY for i in range(1, 6)}
+        meas_planes = {i: Plane.XY for i in range(1, 6)}
         results = []
         repeats = 3  # for testing the determinism of a pattern
         for _ in range(repeats):
             pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
             pattern.standardize()
             pattern.minimize_space()
-            state = pattern.simulate_pattern()
+            state = pattern.simulate_pattern(rng=fx_rng)
             results.append(state)
         combinations = [(0, 1), (0, 2), (1, 2)]
         for i, j in combinations:
@@ -57,7 +57,7 @@ class TestGenerator:
         nqubits = 3
         depth = 2
         pairs = [(0, 1), (1, 2)]
-        circuit = rc.generate_gate(nqubits, depth, pairs, fx_rng)
+        circuit = rand_gate(nqubits, depth, pairs, fx_rng)
         # transpile into graph
         pattern = circuit.transpile().pattern
         pattern.standardize()
@@ -78,5 +78,5 @@ class TestGenerator:
         pattern2.shift_signals()
         pattern2.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern2.simulate_pattern()
+        state_mbqc = pattern2.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)

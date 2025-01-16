@@ -1,11 +1,11 @@
-name: Publish Python distributions to PyPI
+name: publish
 
 on:
   release:
     types: [published]
 
 jobs:
-  build-n-publish:
+  publish:
     name: Build and publish Python distributions to PyPI
     runs-on: ubuntu-latest
     environment: release

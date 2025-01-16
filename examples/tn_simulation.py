@@ -20,8 +20,8 @@ import quimb.tensor as qtn
 from scipy.optimize import minimize
 
 from graphix import Circuit
-from graphix.gflow import find_gflow
-from graphix.visualization import GraphVisualizer
+
+rng = np.random.default_rng()
 
 # %%
 # This application will be for the QAOA (Quantum Approximate Optimization Algorithm),
@@ -47,8 +47,8 @@ def ansatz(circuit, n, gamma, beta, iterations):
 
 n = 5  # This will result in a graph that would be too large for statevector simulation.
 iterations = 2  # Define the number of iterations in the quantum circuit.
-gamma = 2 * np.pi * np.random.rand(iterations)
-beta = 2 * np.pi * np.random.rand(iterations)
+gamma = 2 * np.pi * rng.random(iterations)
+beta = 2 * np.pi * rng.random(iterations)
 # Define the circuit.
 circuit = Circuit(n)
 ansatz(circuit, n, gamma, beta, iterations)
@@ -127,53 +127,11 @@ plt.show()
 fig, ax = plt.subplots(figsize=(13, 10))
 color = ["Open", "Close"]
 
-# Rebuilding the graph to be visualizable
-# Ignoring dangling edges when plotting, but coloring according to them
-ind_map, tag_map, default_output_nodes = mbqc_tn.ind_map, mbqc_tn.tag_map, mbqc_tn.default_output_nodes
-nodes = set()
-nodes.update(list(tag_map["Open"]))  # The node has "dangling" index
-nodes.update(list(tag_map["Close"]))
-edges = []
-for i in ind_map.items():
-    if len(i[1]) < 2:
-        continue
-    edges.append(list(i[1]))
-input_nodes = []
-for node in nodes:
-    candidate = True
-    for edge in edges:
-        if edge[1] == node:
-            candidate = False
-            continue
-    if candidate:
-        input_nodes.append(node)
-for i in range(0, len(default_output_nodes)):
-    default_output_nodes[i] = str(default_output_nodes[i])
-out_nodes = []
-for i in tag_map.items():
-    if i[0] in default_output_nodes:
-        out_nodes.append(list(i[-1])[-1])
-meas_planes = dict()
-for c in ["M", "Z", "C", "X"]:
-    if c in tag_map.keys():
-        for i in list(tag_map[c]):
-            meas_planes[i] = c
-for i in nodes:
-    if i not in meas_planes.keys():
-        meas_planes[i] = ""
-
-G = nx.Graph()
-G.add_nodes_from(nodes)
-G.add_edges_from(edges)
-f, l_k = find_gflow(G, input=set(input_nodes), output=set(out_nodes), meas_planes=meas_planes)
-pos = GraphVisualizer(G, input_nodes, out_nodes).get_pos_from_gflow(g=f, l_k=l_k)
-
 mbqc_tn.draw(
     ax=ax,
     color=color,
     show_tags=False,
     show_inds=False,
-    fix=pos,
     iterations=100,
     k=0.01,
 )
@@ -183,7 +141,7 @@ plt.show()
 # Let's calculate the measuring probability corresponding to the first basis state.
 
 value = mbqc_tn.get_basis_amplitude(0)
-print("Probability for {} is {}".format(0, value))
+print(f"Probability for {0} is {value}")
 
 # %%
 # It is also possible to change the path contraction algorithm.
@@ -249,7 +207,7 @@ class MyOptimizer(oe.paths.PathOptimizer):
 
 opt = MyOptimizer()
 # Define initial parameters, which will be optimized through running the algorithm.
-params = 2 * np.pi * np.random.rand(len(gamma) + len(beta))
+params = 2 * np.pi * rng.random(len(gamma) + len(beta))
 # Run the classical optimizer and simulate the quantum circuit with TN backend.
 res = minimize(cost, params, args=(n, ham, iterations, len(gamma), opt), method="COBYLA")
 print(res.message)

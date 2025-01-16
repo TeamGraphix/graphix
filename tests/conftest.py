@@ -1,10 +1,23 @@
 from __future__ import annotations
 
+import os
+from typing import TYPE_CHECKING
+
+import psutil
+
+if os.environ.get("NUMBA_NUM_THREADS") is None:
+    # Prevent quimb from overwriting
+    #  Need to set as soon as possible
+    os.environ["NUMBA_NUM_THREADS"] = f"{psutil.cpu_count(logical=False)}"
+
 import pytest
 from numpy.random import PCG64, Generator
 
-import graphix.transpiler
-import tests.random_circuit
+from graphix.random_objects import rand_circuit
+from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 SEED = 25
 DEPTH = 1
@@ -21,8 +34,8 @@ def fx_bg() -> PCG64:
 
 
 @pytest.fixture
-def hadamardpattern() -> graphix.pattern.Pattern:
-    circ = graphix.transpiler.Circuit(1)
+def hadamardpattern() -> Pattern:
+    circ = Circuit(1)
     circ.h(0)
     return circ.transpile().pattern
 
@@ -33,10 +46,10 @@ def nqb(fx_rng: Generator) -> int:
 
 
 @pytest.fixture
-def rand_circ(nqb, fx_rng: Generator) -> graphix.transpiler.Circuit:
-    return tests.random_circuit.get_rand_circuit(nqb, DEPTH, fx_rng)
+def rand_circ(nqb: int, fx_rng: Generator) -> Circuit:
+    return rand_circuit(nqb, DEPTH, rng=fx_rng)
 
 
 @pytest.fixture
-def randpattern(rand_circ) -> graphix.pattern.Pattern:
+def randpattern(rand_circ: Circuit) -> Pattern:
     return rand_circ.transpile().pattern

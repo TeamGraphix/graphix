@@ -1,2 +1,0 @@
-networkx==3.2.1
-rustworkx==0.13.2

@@ -6,6 +6,8 @@ Graph state simulator
 
 This provides an efficient graph state simulator using the decorated graph method.
 
+.. automodule:: graphix.graphsim
+
 .. currentmodule:: graphix.graphsim
 
 .. autoclass:: GraphState

@@ -15,17 +15,17 @@ from functools import reduce
 from time import time
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import seaborn as sns
 from IPython.display import clear_output
-from matplotlib import cm
 from scipy.optimize import minimize
 from sklearn.datasets import make_circles
 
 from graphix.transpiler import Circuit
 
-np.random.seed(0)
+rng = np.random.default_rng()
+
+Z_OP = np.array([[1, 0], [0, -1]])
 
 # %%
 # Dataset
@@ -75,7 +75,6 @@ class QNN:
         assert n_features % 3 == 0, "n_features must be a multiple of 3"
 
         # Pauli Z operator on all qubits
-        Z_OP = np.array([[1, 0], [0, -1]])
         operator = [Z_OP] * self.n_qubits
         self.obs = reduce(np.kron, operator)
         self.cost_values = []  # to store cost values during optimization
@@ -104,7 +103,8 @@ class QNN:
           circuit: The quantum circuit object that the entangling layer will be added to.
           n_qubits: The number of qubits in the quantum circuit.
 
-        Returns:
+        Returns
+        -------
           If `n_qubits` is less than 2, nothing is returned. Otherwise, the function
         performs a linear entanglement operation on the `n_qubits` qubits in the
         given `circuit` using CNOT gates and does not return anything.
@@ -132,7 +132,8 @@ class QNN:
         the quantum circuit, `n_qubits` is the number of qubits in the quantum circuit,
         `n_features` is the number of features in the input data.
 
-        Returns:
+        Returns
+        -------
           a quantum circuit object that has been constructed using the input parameters
         and the parameters passed to the function.
         """
@@ -156,9 +157,10 @@ class QNN:
         Calculates the expectation value of an PauliZ obeservable given a state vector.
 
         Args:
-          sv: sSate vector represented as a numpy array.
+          sv: State vector represented as a numpy array.
 
-        Returns:
+        Returns
+        -------
           the expectation value of a quantum observable.
         """
         exp_val = self.obs @ sv
@@ -176,7 +178,8 @@ class QNN:
         construct a quantum circuit. The specific details of what these parameters
         represent is described in  `data_reuploading_circuit` method.
 
-        Returns:
+        Returns
+        -------
           the expectation value of a quantum circuit, which is computed using the
         statevector of the output state of the circuit.
         """
@@ -205,7 +208,8 @@ class QNN:
           y: `y` is a numpy array containing the actual target values for the given
         input data `x`. Each value in `y` is either -1 or 1.
 
-        Returns:
+        Returns
+        -------
           the cost value
         """
         y_pred = [self.compute_expectation(data_point, params) for data_point in x]
@@ -247,11 +251,12 @@ class QNN:
           maxiter: Maximum number of iterations that the optimization algorithm will
         perform during the training process. Defaults to 5
 
-        Returns:
+        Returns
+        -------
           The function `fit` returns the result of the optimization process performed
         by the `minimize` function from the `scipy.optimize` module.
         """
-        params = np.random.rand(self.n_layers * self.n_qubits * self.n_features * 2)
+        params = rng.random(self.n_layers * self.n_qubits * self.n_features * 2)
         res = minimize(
             self.cost,
             params,
@@ -311,8 +316,8 @@ sns.set_style("whitegrid")
 plt.title("Binary classification", fontsize=20)
 plt.xlabel("X", fontsize=15)
 plt.ylabel("Y", fontsize=15)
-plt.contourf(XX, YY, predictions.reshape(XX.shape), alpha=0.7, cmap=cm.Spectral)
-plt.scatter(x[:, 0], x[:, 1], c=y.ravel(), s=50, cmap=plt.cm.Spectral, edgecolors="black")
+plt.contourf(XX, YY, predictions.reshape(XX.shape), alpha=0.7, cmap="Spectral")
+plt.scatter(x[:, 0], x[:, 1], c=y.ravel(), s=50, cmap="Spectral", edgecolors="black")
 plt.colorbar()
 plt.show()
 
@@ -323,8 +328,8 @@ n_qubits = 2
 n_layers = 2
 n_features = 3
 
-params = np.random.rand(n_layers * n_qubits * n_features * 2)
-input_params = np.random.rand(n_features)
+params = rng.random(n_layers * n_qubits * n_features * 2)
+input_params = rng.random(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
@@ -350,13 +355,13 @@ pattern.draw_graph(flow_from_pattern=False)
 qubits = range(1, 10)
 n_layers = 2
 n_features = 3
-input_params = np.random.rand(n_features)
+input_params = rng.random(n_features)
 
 before_meas = []
 after_meas = []
 
 for n_qubits in qubits:
-    params = np.random.rand(n_layers * n_qubits * n_features * 2)
+    params = rng.random(n_layers * n_qubits * n_features * 2)
     qnn = QNN(n_qubits, n_layers, n_features)
     circuit = qnn.data_reuploading_circuit(input_params, params)
     pattern = circuit.transpile().pattern

@@ -1,4 +1,4 @@
-Pattern Optimization
+Pattern Manipulation
 ====================
 
 :mod:`graphix.pattern` module
