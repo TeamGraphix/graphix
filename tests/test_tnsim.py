@@ -8,10 +8,10 @@ import pytest
 from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
-import tests.random_circuit as rc
-from graphix.clifford import CLIFFORD
+from graphix.clifford import Clifford
 from graphix.command import C, E, X, Z
 from graphix.ops import Ops
+from graphix.random_objects import rand_circuit
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
@@ -26,14 +26,14 @@ def random_op(sites: int, dtype: type, rng: Generator) -> npt.NDArray:
     return rng.normal(size=(size, size)).astype(dtype)
 
 
-CZ = Ops.cz
+CZ = Ops.CZ
 plus = BasicStates.PLUS.get_statevector()
 
 
 class TestTN:
     def test_add_node(self, fx_rng: Generator) -> None:
         node_index = fx_rng.integers(0, 1000)
-        tn = MBQCTensorNet()
+        tn = MBQCTensorNet(fx_rng)
 
         tn.add_qubit(node_index)
 
@@ -42,7 +42,7 @@ class TestTN:
 
     def test_add_nodes(self, fx_rng: Generator) -> None:
         node_index = set(fx_rng.integers(0, 1000, 20))
-        tn = MBQCTensorNet()
+        tn = MBQCTensorNet(fx_rng)
 
         tn.graph_prep = "sequential"
         tn.add_qubits(node_index)
@@ -51,12 +51,12 @@ class TestTN:
         for tensor in tn.tensor_map.values():
             assert (tensor.data == plus).all()
 
-    def test_entangle_nodes(self) -> None:
+    def test_entangle_nodes(self, fx_rng: Generator) -> None:
         random_vec = np.array([1.0, 1.0, 1.0, 1.0]).reshape(2, 2)
         circuit = Circuit(2)
         pattern = circuit.transpile().pattern
         pattern.add(E(nodes=(0, 1)))
-        tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", rng=fx_rng)
         dummy_index = [gen_str() for _ in range(2)]
         for qubit_index, n in enumerate(tn._dangling):
             ind = tn._dangling[n]
@@ -75,7 +75,7 @@ class TestTN:
         cmds = [
             X(node=0, domain=[15]),
             Z(node=0, domain=[15]),
-            C(node=0, cliff_index=fx_rng.integers(23)),
+            C(node=0, clifford=fx_rng.choice(list(Clifford))),
         ]
         random_vec = fx_rng.normal(size=2)
 
@@ -84,7 +84,7 @@ class TestTN:
         pattern.results[15] = 1  # X&Z operator will be applied.
         for cmd in cmds:
             pattern.add(cmd)
-        tn = pattern.simulate_pattern(backend="tensornetwork")
+        tn = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         dummy_index = gen_str()
         ind = tn._dangling.pop("0")
         tensor = tn.tensor_map[tn._get_tids_from_inds(ind).popleft()]
@@ -97,7 +97,7 @@ class TestTN:
         ops = [
             np.array([[0.0, 1.0], [1.0, 0.0]]),
             np.array([[1.0, 0.0], [0.0, -1.0]]),
-            CLIFFORD[cmds[2].cliff_index],
+            cmds[2].clifford.matrix,
         ]
         contracted_ref = np.einsum("i,ij,jk,kl,l", random_vec, ops[2], ops[1], ops[0], plus)
         assert contracted == pytest.approx(contracted_ref)
@@ -106,7 +106,7 @@ class TestTN:
         circuit = Circuit(1)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -116,7 +116,7 @@ class TestTN:
         circuit = Circuit(2)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op2 = random_op(2, np.complex128, fx_rng)
         input_list = [0, 1]
         for qargs in itertools.permutations(input_list):
@@ -128,7 +128,7 @@ class TestTN:
         circuit = Circuit(3)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op3 = random_op(3, np.complex128, fx_rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list):
@@ -140,7 +140,7 @@ class TestTN:
         circuit = Circuit(3)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", rng=fx_rng)
         random_op3 = random_op(3, np.complex128, fx_rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list):
@@ -152,7 +152,7 @@ class TestTN:
         circuit = Circuit(3)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list, 1):
@@ -164,7 +164,7 @@ class TestTN:
         circuit = Circuit(3)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op2 = random_op(2, np.complex128, fx_rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list, 2):
@@ -176,7 +176,7 @@ class TestTN:
         circuit = Circuit(3)
         state = circuit.simulate_statevector().statevec
         pattern = circuit.transpile().pattern
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", rng=fx_rng)
         random_op2 = random_op(2, np.complex128, fx_rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list, 2):
@@ -190,7 +190,7 @@ class TestTN:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -201,7 +201,7 @@ class TestTN:
         circuit.s(0)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -212,7 +212,7 @@ class TestTN:
         circuit.x(0)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -223,7 +223,7 @@ class TestTN:
         circuit.y(0)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -234,7 +234,7 @@ class TestTN:
         circuit.z(0)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -246,7 +246,7 @@ class TestTN:
         circuit.rx(0, theta)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -258,7 +258,7 @@ class TestTN:
         circuit.ry(0, theta)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -270,7 +270,7 @@ class TestTN:
         circuit.rz(0, theta)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -281,7 +281,7 @@ class TestTN:
         circuit.i(0)
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op1 = random_op(1, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op1, [0])
         value2 = tn_mbqc.expectation_value(random_op1, [0])
@@ -293,36 +293,36 @@ class TestTN:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op2 = random_op(2, np.complex128, fx_rng)
         value1 = state.expectation_value(random_op2, [0, 1])
         value2 = tn_mbqc.expectation_value(random_op2, [0, 1])
         assert value1 == pytest.approx(value2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_ccx(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_ccx(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         circuit.ccx(0, 1, 2)
         pattern = circuit.transpile().pattern
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op3 = random_op(3, np.complex128, rng)
         value1 = state.expectation_value(random_op3, [0, 1, 2])
         value2 = tn_mbqc.expectation_value(random_op3, [0, 1, 2])
         assert value1 == pytest.approx(value2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_with_graphtrans(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_with_graphtrans(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         pattern.perform_pauli_measurements()
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op3 = random_op(3, np.complex128, rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list):
@@ -331,16 +331,16 @@ class TestTN:
             assert value1 == pytest.approx(value2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_with_graphtrans_sequential(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_with_graphtrans_sequential(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         pattern = circuit.transpile().pattern
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         pattern.perform_pauli_measurements()
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", graph_prep="sequential", rng=fx_rng)
         random_op3 = random_op(3, np.complex128, rng)
         input_list = [0, 1, 2]
         for qargs in itertools.permutations(input_list):
@@ -349,15 +349,15 @@ class TestTN:
             assert value1 == pytest.approx(value2)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_coef_state(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_coef_state(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 2, rng)
+        circuit = rand_circuit(4, 2, rng)
 
         pattern = circuit.standardize_and_transpile().pattern
 
         statevec_ref = circuit.simulate_statevector().statevec
 
-        tn = pattern.simulate_pattern("tensornetwork")
+        tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)
         for number in range(len(statevec_ref.flatten())):
             coef_tn = tn.get_basis_coefficient(number)
             coef_sv = statevec_ref.flatten()[number]
@@ -365,28 +365,28 @@ class TestTN:
             assert abs(coef_tn) == pytest.approx(abs(coef_sv))
 
     @pytest.mark.parametrize(("nqubits", "jumps"), itertools.product(range(2, 6), range(1, 6)))
-    def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int) -> None:
+    def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(nqubits, 3, rng)
+        circuit = rand_circuit(nqubits, 3, rng)
         pattern = circuit.standardize_and_transpile().pattern
         statevec_ref = circuit.simulate_statevector().statevec
 
-        tn = pattern.simulate_pattern("tensornetwork")
+        tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)
         statevec_tn = tn.to_statevector()
 
         inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
         assert abs(inner_product) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_evolve(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_evolve(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        circuit = rc.get_rand_circuit(4, 6, rng)
+        circuit = rand_circuit(4, 6, rng)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
         pattern.perform_pauli_measurements()
         state = circuit.simulate_statevector().statevec
-        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork")
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
         random_op3 = random_op(3, np.complex128, rng)
         random_op3_exp = random_op(3, np.complex128, rng)
 

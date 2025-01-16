@@ -1,12 +1,10 @@
-"""
-MBQC pattern generator
-
-"""
+"""MBQC pattern generator."""
 
 from __future__ import annotations
 
+from graphix.command import E, M, N, X, Z
+from graphix.fundamentals import Plane
 import graphix.pauli
-from graphix.command import C, E, M, N, X, Z
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
 
@@ -18,10 +16,10 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     specified by networks.Graph and two lists specifying input and output nodes.
     Currently we support XY-plane measurements.
 
-    Searches for the flow in the open graph using :func:`find_flow` and if found,
+    Searches for the flow in the open graph using :func:`graphix.gflow.find_flow` and if found,
     construct the measurement pattern according to the theorem 1 of [NJP 9, 250 (2007)].
 
-    Then, if no flow was found, searches for gflow using :func:`find_gflow`,
+    Then, if no flow was found, searches for gflow using :func:`graphix.gflow.find_gflow`,
     from which measurement pattern can be constructed from theorem 2 of [NJP 9, 250 (2007)].
 
     The constructed measurement pattern deterministically realize the unitary embedding
@@ -34,7 +32,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     angles :math:`\alpha_i` are applied to the measuring nodes,
     i.e. the randomness of the measurement is eliminated by the added byproduct commands.
 
-    .. seealso:: :func:`find_flow` :func:`find_gflow` :class:`graphix.pattern.Pattern`
+    .. seealso:: :func:`graphix.gflow.find_flow` :func:`graphix.gflow.find_gflow` :class:`graphix.pattern.Pattern`
 
     Parameters
     ----------
@@ -46,18 +44,18 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
         list of node indices for input nodes
     outputs : list
         list of node indices for output nodes
-    meas_planes : dict(optional)
-        measurement planes for each nodes on the graph, except output nodes
+    meas_planes : dict
+        optional: measurement planes for each nodes on the graph, except output nodes
 
     Returns
     -------
-    pattern : graphix.pattern.Pattern object
+    pattern : graphix.pattern.Pattern
         constructed pattern.
     """
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
-        meas_planes = {i: graphix.pauli.Plane.XY for i in measuring_nodes}
+        meas_planes = {i: Plane.XY for i in measuring_nodes}
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -80,8 +78,8 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
                     neighbors = neighbors | set(graph.neighbors(k))
                 for k in neighbors - set([j]):
                     # if k not in measured:
-                    pattern.add(Z(node=k, domain=[j]))
-                pattern.add(X(node=f[j].pop(), domain=[j]))
+                    pattern.add(Z(node=k, domain={j}))
+                pattern.add(X(node=f[j].pop(), domain={j}))
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -99,9 +97,9 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
                     pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
                     odd_neighbors = find_odd_neighbor(graph, g[j])
                     for k in odd_neighbors - set([j]):
-                        pattern.add(Z(node=k, domain=[j]))
+                        pattern.add(Z(node=k, domain={j}))
                     for k in g[j] - set([j]):
-                        pattern.add(X(node=k, domain=[j]))
+                        pattern.add(X(node=k, domain={j}))
         else:
             raise ValueError("no flow or gflow found")
 

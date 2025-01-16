@@ -20,10 +20,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from paddle import to_tensor
 from paddle_quantum.mbqc.qobject import Circuit as PaddleCircuit
-from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC
-from paddle_quantum.mbqc.transpiler import transpile as PaddleTranspile
+from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC  # noqa: N811
+from paddle_quantum.mbqc.transpiler import transpile as paddle_transpile
 
 from graphix import Circuit
+
+rng = np.random.default_rng()
 
 # %%
 # Next, define a circuit to be transpiled into measurement pattern:
@@ -50,11 +52,11 @@ def simple_random_circuit(nqubit, depth):
     qubit_index = [i for i in range(nqubit)]
     circuit = Circuit(nqubit)
     for _ in range(depth):
-        np.random.shuffle(qubit_index)
+        rng.shuffle(qubit_index)
         for j in range(len(qubit_index) // 2):
             circuit.cnot(qubit_index[2 * j], qubit_index[2 * j + 1])
         for j in range(len(qubit_index)):
-            circuit.rz(qubit_index[j], 2 * np.pi * np.random.random())
+            circuit.rz(qubit_index[j], 2 * np.pi * rng.random())
     return circuit
 
 
@@ -127,7 +129,7 @@ paddle_quantum_time = []
 for width in test_cases_for_paddle_quantum:
     graphix_circuit = graphix_circuits[width]
     paddle_quantum_circuit = translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit)
-    pat = PaddleTranspile(paddle_quantum_circuit)
+    pat = paddle_transpile(paddle_quantum_circuit)
     mbqc = PaddleMBQC()
     mbqc.set_pattern(pat)
     start = perf_counter()
@@ -164,7 +166,4 @@ fig.show()
 import importlib.metadata  # noqa: E402
 
 # print package versions.
-[
-    print("{} - {}".format(pkg, importlib.metadata.version(pkg)))
-    for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]
-]
+[print(f"{pkg} - {importlib.metadata.version(pkg)}") for pkg in ["numpy", "graphix", "paddlepaddle", "paddle-quantum"]]

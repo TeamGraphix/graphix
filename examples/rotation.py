@@ -18,6 +18,9 @@ import numpy as np
 
 from graphix import Circuit, Statevec
 from graphix.ops import Ops
+from graphix.states import BasicStates
+
+rng = np.random.default_rng()
 
 # %%
 # Here, :class:`~graphix.sim.statevec.Statevec` is our simple statevector simulator class.
@@ -32,7 +35,7 @@ circuit.h(1)
 circuit.h(0)
 
 # apply rotation gates
-theta = np.random.rand(2)
+theta = rng.random(2)
 circuit.rx(0, theta[0])
 circuit.rx(1, theta[1])
 
@@ -69,9 +72,9 @@ print(out_state.flatten())
 # %%
 # Let us compare with statevector simulation of the original circuit:
 
-state = Statevec(nqubit=2, plus_states=False)  # starts with |0> states
-state.evolve_single(Ops.Rx(theta[0]), 0)
-state.evolve_single(Ops.Rx(theta[1]), 1)
+state = Statevec(nqubit=2, data=BasicStates.ZERO)  # starts with |0> states
+state.evolve_single(Ops.rx(theta[0]), 0)
+state.evolve_single(Ops.rx(theta[1]), 1)
 print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_state.psi.flatten())))
 
 # %%
@@ -82,7 +85,7 @@ print("overlap of states: ", np.abs(np.dot(state.psi.flatten().conjugate(), out_
 circuit = Circuit(2)
 
 # apply rotation gates
-theta = np.random.rand(4)
+theta = rng.random(4)
 circuit.rz(0, theta[0])
 circuit.rz(1, theta[1])
 circuit.cnot(0, 1)

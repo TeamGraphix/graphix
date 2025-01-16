@@ -48,7 +48,7 @@ def qft(circuit, n):
 # We will simulate 55-qubit QFT, which requires graph states with more than 10000 nodes.
 
 n = 55
-print("{}-qubit QFT".format(n))
+print(f"{n}-qubit QFT")
 circuit = Circuit(n)
 
 for i in range(n):
@@ -73,7 +73,7 @@ pattern.perform_pauli_measurements(use_rustworkx=True)
 # To specify TN backend of the simulation, simply provide as a keyword argument.
 # here we do a very basic check that one of the statevector amplitudes is what it is expected to be:
 
-import time  # noqa: E402
+import time
 
 t1 = time.time()
 tn = pattern.simulate_pattern(backend="tensornetwork")

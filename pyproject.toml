@@ -41,19 +41,130 @@ dependencies = { file = ["requirements.txt"] }
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 
-[tool.black]
-line-length = 120
-target-version = ["py38"]
-
-[tool.isort]
-profile = "black"
-py_version = 38
-line_length = 120
-wrap_length = 120
-
 [tool.ruff]
 line-length = 120
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+extend-select = [
+  "A",
+  "B",
+  "D",
+  "FA",
+  "I",
+  "NPY",
+  "N",
+  "PERF",
+  "PLE",
+  "PLW",
+  "RUF",
+  "TCH",
+  "TID",
+  "UP",
+  "W",
+]
+ignore = [
+  "E74", # Ambiguous name
+]
+# Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
+allowed-confusables = ["α"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = [
+  "F401", # Unused import
+]
+"benchmarks/*.py" = [
+  "D", # Benchmarks follow Sphinx doc conventions
+]
+"examples/*.py" = [
+  "B018", # Useless expression
+  "D",    # Examples follow Sphinx doc conventions
+  "E402", # Import not at top of file
+]
+"tests/*.py" = [
+  "D10", # Allow undocumented items
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
+
+[tool.mypy]
+# Keep in sync with pyright
+files = [
+  "graphix/channels.py",
+  "graphix/clifford.py",
+  "graphix/command.py",
+  "graphix/fundamentals.py",
+  "graphix/instruction.py",
+  "graphix/linalg_validations.py",
+  "graphix/measurements.py",
+  "graphix/ops.py",
+  "graphix/pauli.py",
+  "graphix/pyzx.py",
+  "graphix/rng.py",
+  "graphix/states.py",
+  "graphix/utils.py",
+  "graphix/**/__init__.py",
+  "graphix/_db.py",
+  "noxfile.py",
+  "tests/conftest.py",
+  "tests/test_clifford.py",
+  "tests/test_command.py",
+  "tests/test_db.py",
+  "tests/test_fundamentals.py",
+  "tests/test_kraus.py",
+  "tests/test_pauli.py",
+  "tests/test_pyzx.py",
+  "tests/test_rng.py",
+]
+follow_imports = "silent"
+strict = true
+
+[tool.pyright]
+# Keep in sync with mypy
+include = [
+  "graphix/channels.py",
+  "graphix/clifford.py",
+  "graphix/command.py",
+  "graphix/fundamentals.py",
+  "graphix/instruction.py",
+  "graphix/linalg_validations.py",
+  "graphix/measurements.py",
+  "graphix/ops.py",
+  "graphix/pauli.py",
+  "graphix/pyzx.py",
+  "graphix/rng.py",
+  "graphix/states.py",
+  "graphix/utils.py",
+  "graphix/**/__init__.py",
+  "graphix/_db.py",
+  "noxfile.py",
+  "tests/conftest.py",
+  "tests/test_clifford.py",
+  "tests/test_command.py",
+  "tests/test_db.py",
+  "tests/test_fundamentals.py",
+  "tests/test_kraus.py",
+  "tests/test_pauli.py",
+  "tests/test_pyzx.py",
+  "tests/test_rng.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError\\(.*\\)",
+  "return NotImplemented",
+  "typing_extensions.assert_never\\(.*\\)",
+  "@abc.abstractmethod",
+]

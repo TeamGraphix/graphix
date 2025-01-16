@@ -1,18 +1,23 @@
+"""Utilities for the graph simulator."""
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from networkx import Graph
 from networkx.utils import graphs_equal
 
-from .graphstate import RUSTWORKX_INSTALLED
+from graphix.graphsim.basegraphstate import RUSTWORKX_INSTALLED
+from graphix.graphsim.nxgraphstate import NXGraphState
+from graphix.graphsim.rxgraphstate import RXGraphState
+
+if TYPE_CHECKING:
+    from graphix.graphsim.basegraphstate import BaseGraphState
 
 if RUSTWORKX_INSTALLED:
     from rustworkx import PyGraph
 else:
     PyGraph = None
-
-from .basegraphstate import BaseGraphState
-from .nxgraphstate import NXGraphState
-from .rxgraphstate import RXGraphState
 
 
 def convert_rustworkx_to_networkx(graph: PyGraph) -> Graph:
