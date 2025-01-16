@@ -107,7 +107,7 @@ class Circuit:
         qasm_lines.append(f"bit[{self.width}] b;\n")
 
         for instr in self.instruction:
-            qasm_lines.append(f'{instr.to_qasm3()};')
+            qasm_lines.append(f'{instruction.to_qasm3(instr)};')
 
         return "\n".join(qasm_lines)
 

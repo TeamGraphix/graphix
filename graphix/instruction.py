@@ -11,6 +11,35 @@ from typing import ClassVar, Literal, Union
 from graphix import utils
 from graphix.fundamentals import Plane
 
+def to_qasm3(instruction: _KindChecker) -> str:
+    oneQRotationsInstructions = { InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ }
+    oneQInstructions = { InstructionKind.H, InstructionKind.I, InstructionKind.S, InstructionKind.X, InstructionKind.Y, InstructionKind.Z }
+    oneQInstructions.update(oneQRotationsInstructions)
+    twoQInstructions = { InstructionKind.CNOT, InstructionKind.RZZ, InstructionKind.SWAP }
+
+    kind = getattr(instruction, 'kind')
+    if kind == InstructionKind.CNOT:
+        out = 'cx'
+    elif kind == InstructionKind.M:
+        out = ''
+    else:
+        out = kind.name.lower()
+
+    if kind == InstructionKind.M:
+        out += f'b[{instruction.target}] = measure q[{instruction.target}]'
+    elif kind in oneQInstructions:
+        if kind in oneQRotationsInstructions:
+            out += f'({instruction.angle}) q[{instruction.target}]'
+        else:
+            out += f' q[{instruction.target}]'
+    elif kind in twoQInstructions:
+        if kind == InstructionKind.SWAP:
+            out += f' q[{instruction.targets[0]}], q[{instruction.targets[1]}]'
+        else:
+            out += f' q[{instruction.control}], q[{instruction.target}]'
+
+    return out
+
 
 class InstructionKind(Enum):
     """Tag for instruction kind."""
