@@ -58,16 +58,6 @@ class RZZ(_KindChecker):
     target: int
     control: int
     angle: float
-
-    def to_qasm3(self) -> str:
-        return f"{self.kind.value.lower()}({self.angle}) q[{self.target}]"
-
-
-class OneControlInstruction(OneQubitInstruction):
-    """
-    One control instruction base class model.
-    """
-
     # FIXME: Remove `| None` from `meas_index`
     # - `None` makes codes messy/type-unsafe
     meas_index: int | None = None
