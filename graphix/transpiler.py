@@ -25,9 +25,6 @@ from graphix.sim.statevec import Data, Statevec
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-from qiskit.qasm3 import loads
-import matplotlib.pyplot as plt
-
 @dataclasses.dataclass
 class TranspileResult:
     """
@@ -84,6 +81,8 @@ class Circuit:
         return self.draw()
 
     def draw(self, format: str='text'):
+        from qiskit.qasm3 import loads
+
         qasm_circuit = self.to_qasm3()
         qiskit_circuit = loads(qasm_circuit)
         if format == 'text':
