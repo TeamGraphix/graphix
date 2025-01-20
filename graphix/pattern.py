@@ -254,7 +254,9 @@ class Pattern:
                 print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
 
         if len(self.__seq) > i + 1:
-            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
+            print(
+                f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
+            )
 
     def standardize(self, method="direct"):
         """Execute standardization of the pattern.

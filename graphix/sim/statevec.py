@@ -369,10 +369,12 @@ def _get_statevec_norm(psi):
 
 if sys.version_info >= (3, 10):
     from collections.abc import Iterable
+
     Data = states.State | Statevec | Iterable[states.State] | Iterable[numbers.Number]
 else:
     from collections.abc import Iterable
     from typing import Union
+
     Data = Union[
         states.State,
         Statevec,
