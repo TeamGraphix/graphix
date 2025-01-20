@@ -5,7 +5,6 @@ Simulate MBQC with density matrix representation.
 
 from __future__ import annotations
 
-
 import copy
 import numbers
 import sys
@@ -22,6 +21,7 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from numpy.random import Generator
+from collections.abc import Iterable
 
 
 class DensityMatrix(State):

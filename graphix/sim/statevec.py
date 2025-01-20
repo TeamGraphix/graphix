@@ -371,8 +371,7 @@ if sys.version_info >= (3, 10):
     from collections.abc import Iterable
     Data = states.State | Statevec | Iterable[states.State] | Iterable[numbers.Number]
 else:
-    from typing import Union
-
+    from typing import Union, Iterable
     Data = Union[
         states.State,
         Statevec,
