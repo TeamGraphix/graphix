@@ -284,7 +284,6 @@ class Pattern:
             with open(tmppath, "w") as latex_file:
                 latex_file.write(contents)
             
-            print(tmppath)
             image = self._latex_file_to_image(tmpdirname, tmpfilename)
 
             def _trim(image):
