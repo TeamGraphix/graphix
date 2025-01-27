@@ -214,7 +214,7 @@ class Pattern:
                     "pdflatex",
                     "-halt-on-error",
                     f"-output-directory={tmpdirname}",
-                    f"{tmpfilename + '.tex'}",
+                    f"{tmpfilename}.tex",
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
@@ -276,14 +276,15 @@ class Pattern:
         contents = output.getvalue()
         output.close()
 
-        tmpfilename = "pattern.tex"
+        tmpfilename = "pattern"
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            tmppath = os.path.join(tmpdirname, tmpfilename)
+            tmppath = os.path.join(tmpdirname, tmpfilename + '.tex')
 
             with open(tmppath, "w") as latex_file:
                 latex_file.write(contents)
             
+            print(tmppath)
             image = self._latex_file_to_image(tmpdirname, tmpfilename)
 
             def _trim(image):
