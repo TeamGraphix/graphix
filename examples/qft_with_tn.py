@@ -4,11 +4,6 @@ Large-scale simulations with tensor network simulator
 
 In this example, we demonstrate simulation of MBQC involving 10k+ nodes.
 
-You can also run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
-
-.. image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_tn.ipynb
-
 Firstly, let us import relevant modules and define the circuit:
 """
 
