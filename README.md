@@ -93,12 +93,12 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix` to ask questions.
 
-## Core Contributors
+## Core Contributors (alphabetical order)
 
- - Thierry Matinez (Inria, Paris)
- - Maxime Garnier (Inria, Paris)
- - Sora Shiratani (University of Tokyo, Fixstars Amplify)
  - Masato Fukushima (University of Tokyo, Fixstars Amplify)
+ - Maxime Garnier (Inria Paris)
+ - Thierry Matinez (Inria Paris)
+ - Sora Shiratani (University of Tokyo, Fixstars Amplify)
  - Shinichi Sunami (University of Oxford)
 
 ## Acknowledgements
