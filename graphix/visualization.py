@@ -259,7 +259,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph with flow structure.
+        Visualizes the graph with flow structure.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -398,7 +398,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph with flow structure.
+        Visualizes the graph with flow structure.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -549,7 +549,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph without flow or gflow.
+        Visualizes the graph without flow or gflow.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -654,7 +654,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph of pattern with all correction flows.
+        Visualizes the graph of pattern with all correction flows.
 
         Nodes are colored based on their role (input, output, or other) and edges of graph are depicted as dashed lines.
         Xflow is depicted as red arrows and Zflow is depicted as blue arrows. The function does not return anything but plots the graph using matplotlib's pyplot.
