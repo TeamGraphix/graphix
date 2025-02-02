@@ -57,7 +57,7 @@ extend-select = [
   "PLE",
   "PLW",
   "RUF",
-  "TCH",
+  "TC",
   "TID",
   "UP",
   "W",
