@@ -23,7 +23,6 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
     "sphinx_gallery.gen_gallery",
-    "sphinxawesome_theme.highlighting",
 ]
 
 templates_path = ["_templates"]
