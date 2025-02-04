@@ -477,7 +477,7 @@ class TestMCOps:
         n = 3
         g = nx.complete_graph(n)
         circuit = Circuit(n)
-        for (u, v) in g.edges:
+        for u, v in g.edges:
             circuit.cnot(u, v)
             circuit.rz(v, np.pi / 4)
             circuit.cnot(u, v)
