@@ -302,6 +302,9 @@ class Pattern:
     def __str__(self) -> str:
         return '\n'.join([str(cmd) for cmd in self.__seq])
 
+    def to_unicode(self) -> str:
+        return ''.join([cmd.to_unicode() for cmd in self.__seq])
+
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
 
