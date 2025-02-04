@@ -471,13 +471,13 @@ class TestMCOps:
         n = 3
         circuit = Circuit(n)
         pattern = circuit.transpile().pattern
-        assert list(iter(pattern)) == []
+        assert len(list(iter(pattern))) == 0
 
     def test_get_graph(self) -> None:
         n = 3
         g = nx.complete_graph(n)
         circuit = Circuit(n)
-        for _i, (u, v) in enumerate(g.edges):
+        for (u, v) in g.edges:
             circuit.cnot(u, v)
             circuit.rz(v, np.pi / 4)
             circuit.cnot(u, v)
