@@ -247,15 +247,20 @@ class Pattern:
             warnings.warn(message)
             raise Exception(message) from exc
 
-        return PIL.Image.open(base + ".png")
+        def _trim(image):
+                """Trim a PIL image and remove white space."""
 
+                background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
+                diff = PIL.ImageChops.difference(image, background)
+                diff = PIL.ImageChops.add(diff, diff, 2.0, -100)
+                bbox = diff.getbbox()
+                if bbox:
+                    image = image.crop(bbox)
+                return image
 
-    def to_latex(self):
-        import PIL
-        import os
-        import subprocess
-        import tempfile
+        return _trim(PIL.Image.open(base + ".png"))
 
+    def to_latex(self) -> str:
         header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
         header_2 = r"""
@@ -276,31 +281,28 @@ class Pattern:
         contents = output.getvalue()
         output.close()
 
+        return contents
+
+    def to_png(self):
+        import PIL
+        import os
+        import tempfile
+
         tmpfilename = "pattern"
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmppath = os.path.join(tmpdirname, tmpfilename + '.tex')
 
             with open(tmppath, "w") as latex_file:
+                contents = self.to_latex()
                 latex_file.write(contents)
-            
-            image = self._latex_file_to_image(tmpdirname, tmpfilename)
 
-            def _trim(image):
-                """Trim a PIL image and remove white space."""
+            return self._latex_file_to_image(tmpdirname, tmpfilename)
 
-                background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
-                diff = PIL.ImageChops.difference(image, background)
-                diff = PIL.ImageChops.add(diff, diff, 2.0, -100)
-                bbox = diff.getbbox()
-                if bbox:
-                    image = image.crop(bbox)
-                return image
+    def __str__(self) -> str:
+        return '\n'.join([str(cmd) for cmd in self.__seq])
 
-            return _trim(image)
-
-
-    def __str__(self, lim=40, target: list[CommandKind] | None = None) -> str:
+    def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
 
         Parameters
@@ -310,8 +312,6 @@ class Pattern:
         target : list of CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
-
-        output_lines = []
         if len(self.__seq) < lim:
             nmax = len(self.__seq)
         else:
@@ -334,35 +334,37 @@ class Pattern:
             cmd = self.__seq[i]
             if cmd.kind == CommandKind.N and (CommandKind.N in target):
                 count += 1
-                output_lines += f"N, node={cmd.node}\n"
+                print(f"N, node = {cmd.node}")
             elif cmd.kind == CommandKind.E and (CommandKind.E in target):
                 count += 1
-                output_lines += f"E, nodes={cmd.nodes}\n"
+                print(f"E, nodes = {cmd.nodes}")
             elif cmd.kind == CommandKind.M and (CommandKind.M in target):
                 count += 1
-                output_lines += f"M, node={cmd.node}, plane={cmd.plane}, angle(pi)={cmd.angle}, " + f"s_domain={cmd.s_domain}, t_domain={cmd.t_domain}\n"
+                print(
+                    f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
+                    + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
+                )
             elif cmd.kind == CommandKind.X and (CommandKind.X in target):
                 count += 1
-                output_lines += f"X byproduct, node={cmd.node}, domain={cmd.domain}\n"
+                print(f"X byproduct, node = {cmd.node}, domain = {cmd.domain}")
             elif cmd.kind == CommandKind.Z and (CommandKind.Z in target):
                 count += 1
-                output_lines += f"Z byproduct, node={cmd.node}, domain={cmd.domain}\n"
+                print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
             elif cmd.kind == CommandKind.C and (CommandKind.C in target):
                 count += 1
-                output_lines += f"Clifford, node={cmd.node}, Clifford={cmd.clifford}\n"
+                print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
 
         if len(self.__seq) > i + 1:
-            output_lines += f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more\n"
+            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
 
-        return ''.join(output_lines)
 
     def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode']='ascii', lim: int=40, target: list[CommandKind]=None) -> str | PIL.image:
         if format == 'ascii':
-            return self.__str__(lim=lim, target=target)
+            return str(self)
         if format == 'latex':
-            return self.to_latex()
+            return self.to_png()
         if format == 'unicode':
-            return self.__str__(lim=lim, target=target)
+            return self.to_unicode()
         
 
     def get_local_pattern(self):
