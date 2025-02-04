@@ -261,6 +261,16 @@ class Pattern:
         return _trim(PIL.Image.open(base + ".png"))
 
     def to_latex(self) -> str:
+        output = io.StringIO()
+        for instr in self.__seq:
+            output.write(instr.to_latex())
+            output.write('\n')
+        
+        contents = output.getvalue()
+        output.close()
+        return contents
+
+    def _to_latex_document(self) -> str:
         header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
         header_2 = r"""
@@ -273,9 +283,7 @@ class Pattern:
         output.write(header_1)
         output.write(header_2)
 
-        for instr in self.__seq:
-            output.write(instr.to_latex())
-            output.write('\n')
+        output.write(self.to_latex())
         
         output.write("\n\\end{document}")
         contents = output.getvalue()
@@ -294,7 +302,7 @@ class Pattern:
             tmppath = os.path.join(tmpdirname, tmpfilename + '.tex')
 
             with open(tmppath, "w") as latex_file:
-                contents = self.to_latex()
+                contents = self._to_latex_document()
                 latex_file.write(contents)
 
             return self._latex_file_to_image(tmpdirname, tmpfilename)
@@ -361,11 +369,13 @@ class Pattern:
             print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
 
 
-    def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode']='ascii', lim: int=40, target: list[CommandKind]=None) -> str | PIL.image:
+    def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode'] | Literal['png']='ascii') -> str | PIL.image:
         if format == 'ascii':
             return str(self)
-        if format == 'latex':
+        if format == 'png':
             return self.to_png()
+        if format == 'latex':
+            return self.to_latex()
         if format == 'unicode':
             return self.to_unicode()
         
