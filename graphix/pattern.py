@@ -241,7 +241,7 @@ class Pattern:
                 count += 1
                 print(
                     f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
-                    + f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
+                    f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
                 )
             elif cmd.kind == CommandKind.X and (CommandKind.X in target):
                 count += 1

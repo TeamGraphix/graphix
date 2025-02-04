@@ -204,7 +204,6 @@ class TensorNetworkBackend(Backend):
 
     def finalize(self, output_nodes) -> None:
         """Do nothing."""
-        pass
 
 
 class MBQCTensorNet(State, TensorNetwork):

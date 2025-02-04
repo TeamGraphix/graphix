@@ -84,7 +84,6 @@ class NodeIndex:
 class State:
     """Base class for backend state."""
 
-    pass
 
 
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:

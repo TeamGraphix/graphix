@@ -474,7 +474,7 @@ class TestMCOps:  #
         pattern = circuit.transpile().pattern
         assert list(iter(pattern)) == []
 
-    def test_get_graph(self, fx_rng: Generator) -> None:
+    def test_get_graph(self) -> None:
         n = 3
         g = nx.complete_graph(n)
         circuit = Circuit(n)
