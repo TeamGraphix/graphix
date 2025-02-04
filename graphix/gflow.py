@@ -214,19 +214,17 @@ def gflowaux(
     if len(corrected_nodes) == 0:
         if oset == nodes:
             return g, l_k
-        else:
-            return None, None
-    else:
-        return gflowaux(
-            graph,
-            iset,
-            oset | corrected_nodes,
-            meas_planes,
-            k + 1,
-            l_k,
-            g,
-            mode=mode,
-        )
+        return None, None
+    return gflowaux(
+        graph,
+        iset,
+        oset | corrected_nodes,
+        meas_planes,
+        k + 1,
+        l_k,
+        g,
+        mode=mode,
+    )
 
 
 def find_flow(
@@ -342,8 +340,7 @@ def flowaux(
     if not v_out_prime:
         if oset == nodes:
             return f, l_k
-        else:
-            return None, None
+        return None, None
     return flowaux(
         nodes,
         edges,
@@ -638,11 +635,9 @@ def pauliflowaux(
     if solved_update == set() and k > 0:
         if solved_nodes == nodes:
             return p, l_k
-        else:
-            return None, None
-    else:
-        bset = solved_nodes | solved_update
-        return pauliflowaux(graph, iset, oset, meas_planes, k + 1, bset, bset, l_k, p, (l_x, l_y, l_z), mode)
+        return None, None
+    bset = solved_nodes | solved_update
+    return pauliflowaux(graph, iset, oset, meas_planes, k + 1, bset, bset, l_k, p, (l_x, l_y, l_z), mode)
 
 
 def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -694,8 +689,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
         if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
             return None, None
         return xflow, l_k
-    else:
-        return None, None
+    return None, None
 
 
 def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -749,8 +743,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
             return None, None
         return xflow, l_k
-    else:
-        return None, None
+    return None, None
 
 
 def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -816,7 +809,7 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
                         if mode == "single":
                             p[node] = set(p_i)
                             break
-                        elif mode == "all":
+                        if mode == "all":
                             if node not in p:
                                 p[node] = set()
                             p[node].add(frozenset(p_i))
@@ -1097,10 +1090,8 @@ def get_layers_from_flow(
                 layers[depth] = outputs
                 depth += 1
                 break
-            else:
-                raise ValueError("Invalid flow")
-        else:
-            depth += 1
+            raise ValueError("Invalid flow")
+        depth += 1
     return layers, depth
 
 
@@ -1154,26 +1145,22 @@ def verify_flow(
     # if meas_planes is given, check whether all measurement planes are "XY"
     for node, plane in meas_planes.items():
         if plane != Plane.XY or node not in non_outputs:
-            valid_flow = False
-            return valid_flow
+            return False
 
     odd_flow = {node: find_odd_neighbor(graph, corrections) for node, corrections in flow.items()}
 
     try:
         _, _ = get_layers_from_flow(flow, odd_flow, iset, oset)
     except ValueError:
-        valid_flow = False
-        return valid_flow
+        return False
     # check if v ~ f(v) for each node
     edges = set(graph.edges)
     for node, corrections in flow.items():
         if len(corrections) > 1:
-            valid_flow = False
-            return valid_flow
+            return False
         correction = next(iter(corrections))
         if (node, correction) not in edges and (correction, node) not in edges:
-            valid_flow = False
-            return valid_flow
+            return False
     return valid_flow
 
 
@@ -1219,8 +1206,7 @@ def verify_gflow(
     try:
         _, _ = get_layers_from_flow(gflow, odd_flow, iset, oset)
     except ValueError:
-        valid_flow = False
-        return valid_flow
+        return False
 
     # check for each measurement plane
     for node, plane in meas_planes.items():
@@ -1281,8 +1267,7 @@ def verify_pauliflow(
     try:
         layers, depth = get_layers_from_flow(pauliflow, odd_flow, iset, oset, (l_x, l_y, l_z))
     except ValueError:
-        valid_flow = False
-        return valid_flow
+        return False
     node_order = []
     for d in range(depth):
         node_order.extend(list(layers[d]))
@@ -1320,8 +1305,7 @@ def get_input_from_flow(flow: dict[int, set]) -> set:
     non_output = set(flow.keys())
     for correction in flow.values():
         non_output -= correction
-    inputs = non_output
-    return inputs
+    return non_output
 
 
 def get_output_from_flow(flow: dict[int, set]) -> set:
@@ -1341,8 +1325,7 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
     non_inputs = set()
     for correction in flow.values():
         non_inputs |= correction
-    outputs = non_inputs - non_outputs
-    return outputs
+    return non_inputs - non_outputs
 
 
 def get_pauli_nodes(

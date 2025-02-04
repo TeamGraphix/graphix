@@ -33,10 +33,9 @@ if TYPE_CHECKING:
 def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
     if backend == "statevector":
         return np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten()))
-    elif backend == "densitymatrix":
+    if backend == "densitymatrix":
         return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
-    else:
-        raise NotImplementedError(backend)
+    raise NotImplementedError(backend)
 
 
 Outcome = typing.Literal[0, 1]

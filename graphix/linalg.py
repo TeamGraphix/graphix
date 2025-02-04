@@ -190,8 +190,7 @@ class MatGF2:
             if diag[nonzero_diag_index[i]] == 0:
                 if np.count_nonzero(diag[i:]) != 0:
                     break
-                else:
-                    return False
+                return False
 
         ref_array = MatGF2(np.diag(np.diagonal(self.data[:rank, :rank])))
         if np.count_nonzero(self.data[:rank, :rank] - ref_array.data) != 0:

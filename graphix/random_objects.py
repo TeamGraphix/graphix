@@ -35,8 +35,7 @@ def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray:
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
-    else:
-        return unitary_group.rvs(sz, random_state=rng)
+    return unitary_group.rvs(sz, random_state=rng)
 
 
 UNITS = np.array([1, 1j])
@@ -84,8 +83,7 @@ def rand_dm(
 
         # will raise an error if incorrect dimension
         return DensityMatrix(data=dm)
-    else:
-        return dm
+    return dm
 
 
 def rand_gauss_cpx_mat(dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:

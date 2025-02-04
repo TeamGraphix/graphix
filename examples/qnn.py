@@ -257,7 +257,7 @@ class QNN:
         by the `minimize` function from the `scipy.optimize` module.
         """
         params = rng.random(self.n_layers * self.n_qubits * self.n_features * 2)
-        res = minimize(
+        return minimize(
             self.cost,
             params,
             args=(x, y),
@@ -265,7 +265,6 @@ class QNN:
             callback=self.callback,
             options={"maxiter": maxiter, "disp": True},
         )
-        return res
 
 
 # %%

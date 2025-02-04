@@ -271,13 +271,12 @@ class Pattern:
         if method == "direct":  # faster implementation
             self.standardize_direct()
             return
-        elif method == "mc":  # direct measuremment calculus implementation
+        if method == "mc":  # direct measuremment calculus implementation
             self._move_n_to_left()
             self._move_byproduct_to_right()
             self._move_e_after_n()
             return
-        else:
-            raise ValueError("Invalid method")
+        raise ValueError("Invalid method")
 
     def standardize_direct(self) -> None:
         """Execute standardization of the pattern.
@@ -393,7 +392,7 @@ class Pattern:
         """
         if method == "direct":
             return self.shift_signals_direct()
-        elif method == "mc":
+        if method == "mc":
             signal_dict = self.extract_signals()
             target = self._find_op_to_be_moved(CommandKind.S, rev=True)
             while target is not None:
@@ -415,8 +414,7 @@ class Pattern:
                     self._commute_with_following(target)
                 target += 1
             return signal_dict
-        else:
-            raise ValueError("Invalid method")
+        raise ValueError("Invalid method")
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure."""
@@ -511,15 +509,14 @@ class Pattern:
             self.__seq.insert(target, z)  # add Z in front of X
             self.__seq.insert(target, e)  # add E in front of Z
             return True
-        elif e.nodes[1] == x.node:
+        if e.nodes[1] == x.node:
             z = command.Z(node=e.nodes[0], domain=x.domain)
             self.__seq.pop(target + 1)  # del E
             self.__seq.insert(target, z)  # add Z in front of X
             self.__seq.insert(target, e)  # add E in front of Z
             return True
-        else:
-            self._commute_with_following(target)
-            return False
+        self._commute_with_following(target)
+        return False
 
     def _commute_mx(self, target):
         """Perform the commutation of M and X.
@@ -538,9 +535,8 @@ class Pattern:
             m.s_domain ^= x.domain
             self.__seq.pop(target)  # del X
             return True
-        else:
-            self._commute_with_following(target)
-            return False
+        self._commute_with_following(target)
+        return False
 
     def _commute_mz(self, target):
         """Perform the commutation of M and Z.
@@ -559,9 +555,8 @@ class Pattern:
             m.t_domain ^= z.domain
             self.__seq.pop(target)  # del Z
             return True
-        else:
-            self._commute_with_following(target)
-            return False
+        self._commute_with_following(target)
+        return False
 
     def _commute_xs(self, target):
         """Perform the commutation of X and S.
@@ -1037,8 +1032,7 @@ class Pattern:
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         degree = g.degree()
-        max_degree = max([i for i in dict(degree).values()])
-        return max_degree
+        return max([i for i in dict(degree).values()])
 
     def get_graph(self):
         """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
@@ -1074,8 +1068,7 @@ class Pattern:
         connected_node_set = set()
         for edge in edges:
             connected_node_set |= set(edge)
-        isolated_nodes = node_set - connected_node_set
-        return isolated_nodes
+        return node_set - connected_node_set
 
     def get_vops(self, conj=False, include_identity=False):
         """Get local-Clifford decorations from measurement or Clifford commands.
@@ -1299,8 +1292,7 @@ class Pattern:
             in the representation depending on the backend used.
         """
         exe = PatternRunner(self, backend=backend, **kwargs)
-        result = exe.run()
-        return result
+        return exe.run()
 
     def perform_pauli_measurements(
         self, leave_input: bool = False, use_rustworkx: bool = False, ignore_pauli_with_deps: bool = False

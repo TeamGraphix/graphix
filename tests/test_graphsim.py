@@ -73,8 +73,7 @@ def meas_op(angle, vop=0, plane=Plane.XY, choice=0) -> npt.NDArray:
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
         op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2
-    op_mat = Clifford(vop).conj.matrix @ op_mat @ Clifford(vop).matrix
-    return op_mat
+    return Clifford(vop).conj.matrix @ op_mat @ Clifford(vop).matrix
 
 
 @pytest.mark.parametrize(

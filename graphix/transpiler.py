@@ -421,8 +421,7 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        seq = [M(node=input_node, plane=plane, angle=angle)]
-        return seq
+        return [M(node=input_node, plane=plane, angle=angle)]
 
     @classmethod
     def _h_command(cls, input_node: int, ancilla: int):

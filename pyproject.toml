@@ -65,6 +65,7 @@ extend-select = [
   "PLR",
   "PLW",
   "PYI",
+  "RET",
   "RUF",
   "SIM",
   "TC",

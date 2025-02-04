@@ -825,9 +825,8 @@ class GraphVisualizer:
         else:
             width = (max(l_k.values()) + 1) * 0.8
         height = len(set([pos[node][1] for node in self.graph.nodes()])) if pos is not None else len(self.v_out)
-        figsize = (width * node_distance[0], height * node_distance[1])
+        return (width * node_distance[0], height * node_distance[1])
 
-        return figsize
 
     def get_edge_path(self, flow: dict[int, int | set[int]], pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
@@ -882,9 +881,8 @@ class GraphVisualizer:
                             nodes = set(nodes) - {node}
                 if not intersect:
                     break
-                else:
-                    for i, ctrl_point in enumerate(ctrl_points):
-                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+                for i, ctrl_point in enumerate(ctrl_points):
+                    bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
             bezier_path = self._check_path(bezier_path)
             edge_path[edge] = bezier_path
 
@@ -940,9 +938,8 @@ class GraphVisualizer:
                                 )
                     if not intersect:
                         break
-                    else:
-                        for i, ctrl_point in enumerate(ctrl_points):
-                            bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+                    for i, ctrl_point in enumerate(ctrl_points):
+                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
                 bezier_path = self._check_path(bezier_path, pos[arrow[1]])
             arrow_path[arrow] = bezier_path
 
@@ -992,9 +989,8 @@ class GraphVisualizer:
                             nodes = set(nodes) - {node}
                 if not intersect:
                     break
-                else:
-                    for i, ctrl_point in enumerate(ctrl_points):
-                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+                for i, ctrl_point in enumerate(ctrl_points):
+                    bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
             bezier_path = self._check_path(bezier_path)
             edge_path[edge] = bezier_path
         return edge_path
@@ -1029,8 +1025,7 @@ class GraphVisualizer:
         # Change the x coordinates of the nodes based on their layer, sort in descending order
         for node, layer in l_k.items():
             pos[node][0] = lmax - layer
-        pos = {k: tuple(v) for k, v in pos.items()}
-        return pos
+        return {k: tuple(v) for k, v in pos.items()}
 
     def get_pos_from_gflow(self, g: dict[int, set[int]], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
@@ -1256,12 +1251,11 @@ class GraphVisualizer:
                     if i == len(path) - 3:
                         path = np.delete(path, i + 1, 0)
                         break
-                    else:
-                        mean = (path[i + 1] + path[i + 2]) / 2
-                        path = np.delete(path, i + 1, 0)
-                        path = np.delete(path, i + 1, 0)
-                        path = np.insert(path, i + 1, mean, 0)
-                        break
+                    mean = (path[i + 1] + path[i + 2]) / 2
+                    path = np.delete(path, i + 1, 0)
+                    path = np.delete(path, i + 1, 0)
+                    path = np.insert(path, i + 1, mean, 0)
+                    break
                 it += 1
             else:
                 acute = False

@@ -493,8 +493,7 @@ class MBQCTensorNet(State, TensorNetwork):
         if normalize:
             norm = self.get_norm()
             return coef / norm
-        else:
-            return coef
+        return coef
 
     def get_basis_amplitude(self, basis, **kwagrs):
         """Calculate the probability amplitude of the specified computational basis state.
@@ -547,8 +546,7 @@ class MBQCTensorNet(State, TensorNetwork):
         tn_cp2 = tn_cp1.conj()
         tn = TensorNetwork([tn_cp1, tn_cp2])
         tn_simplified = tn.full_simplify("ADCR")
-        norm = abs(tn_simplified.contract(output_inds=[], **kwagrs)) ** 0.5
-        return norm
+        return abs(tn_simplified.contract(output_inds=[], **kwagrs)) ** 0.5
 
     def expectation_value(self, op, qubit_indices, output_node_indices=None, **kwagrs):
         """Calculate expectation value of the given operator.
@@ -571,9 +569,8 @@ class MBQCTensorNet(State, TensorNetwork):
         if output_node_indices is None:
             if self.default_output_nodes is None:
                 raise ValueError("output_nodes is not set.")
-            else:
-                target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
-                out_inds = self.default_output_nodes
+            target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
+            out_inds = self.default_output_nodes
         else:
             target_nodes = [output_node_indices[ind] for ind in qubit_indices]
             out_inds = output_node_indices
@@ -666,8 +663,7 @@ class MBQCTensorNet(State, TensorNetwork):
         """
         if deep:
             return deepcopy(self)
-        else:
-            return self.__class__(rng=self.__rng, ts=self)
+        return self.__class__(rng=self.__rng, ts=self)
 
 
 def _get_decomposed_cz():
@@ -707,8 +703,7 @@ def _get_decomposed_cz():
 
 def gen_str():
     """Generate dummy string for einsum."""
-    result = qtn.rand_uuid()
-    return result
+    return qtn.rand_uuid()
 
 
 def outer_product(vectors):
