@@ -50,19 +50,29 @@ extend-select = [
   "B",
   "D",
   "FA",
+  "FLY",
+  "FURB",
+  "ICN",
+  "INT",
+  "ISC",
   "I",
   "NPY",
   "N",
   "PERF",
+  "PGH",
+  "PIE",
   "PLE",
   "PLW",
+  "PYI",
   "RUF",
   "TC",
   "TID",
+  "TID",
   "UP",
   "W",
+  "YTT",
 ]
-ignore = [
+extend-ignore = [
   "E74", # Ambiguous name
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
