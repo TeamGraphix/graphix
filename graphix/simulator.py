@@ -62,7 +62,7 @@ class DefaultMeasureMethod(MeasureMethod):
 
     def __init__(self, results=None):
         if results is None:
-            results = dict()
+            results = {}
         self.results = results
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
@@ -112,7 +112,7 @@ class PatternSimulator:
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         if isinstance(backend, Backend):
-            assert kwargs == dict()
+            assert kwargs == {}
             self.backend = backend
         elif backend == "statevector":
             self.backend = StatevectorBackend(**kwargs)

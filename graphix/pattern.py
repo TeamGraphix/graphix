@@ -810,7 +810,7 @@ class Pattern:
             if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
                 not_measured = not_measured | {cmd.node}
         depth = 0
-        l_k = dict()
+        l_k = {}
         k = 0
         while not_measured:
             l_k[k] = set()
@@ -999,7 +999,7 @@ class Pattern:
         meas_plane: dict of graphix.pauli.Plane
             list of planes representing measurement plane for each node.
         """
-        meas_plane = dict()
+        meas_plane = {}
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 meas_plane[cmd.node] = cmd.plane
@@ -1032,7 +1032,7 @@ class Pattern:
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         degree = g.degree()
-        return max([i for i in dict(degree).values()])
+        return max(list(dict(degree).values()))
 
     def get_graph(self):
         """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
@@ -1084,7 +1084,7 @@ class Pattern:
         -------
             vops : dict
         """
-        vops = dict()
+        vops = {}
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 if include_identity:
@@ -1534,7 +1534,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
-    if not leave_input and len(list(set(pattern.input_nodes) & set([i[0].node for i in to_measure]))) > 0:
+    if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
         new_inputs = []
     else:
         new_inputs = pattern.input_nodes

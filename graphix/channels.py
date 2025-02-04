@@ -100,7 +100,7 @@ class KrausChannel:
         ValueError
             If kraus_data is empty.
         """
-        kraus_data = list(copy.deepcopy(kdata) for kdata in kraus_data)
+        kraus_data = [copy.deepcopy(kdata) for kdata in kraus_data]
 
         if not kraus_data:
             raise ValueError("Cannot instantiate the channel with empty data.")

@@ -641,7 +641,7 @@ class TestMCOps:
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
+        rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
@@ -650,7 +650,7 @@ class TestMCOps:
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
+        rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):

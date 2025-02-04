@@ -34,7 +34,7 @@ class NodeIndex:
     """
 
     def __init__(self) -> None:
-        self.__dict = dict()
+        self.__dict = {}
         self.__list = []
 
     def __getitem__(self, index: int) -> int:

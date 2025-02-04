@@ -49,7 +49,7 @@ def simple_random_circuit(nqubit, depth):
     circuit : graphix.transpiler.Circuit object
         generated circuit
     """
-    qubit_index = [i for i in range(nqubit)]
+    qubit_index = list(range(nqubit))
     circuit = Circuit(nqubit)
     for _ in range(depth):
         rng.shuffle(qubit_index)
@@ -64,7 +64,7 @@ def simple_random_circuit(nqubit, depth):
 # We define the test cases: shallow (depth=1) random circuits, only changing the number of qubits.
 
 DEPTH = 1
-test_cases = [i for i in range(2, 22)]
+test_cases = list(range(2, 22))
 graphix_circuits = {}
 
 pattern_time = []
@@ -123,7 +123,7 @@ def translate_graphix_rc_into_paddle_quantum_circuit(graphix_circuit: Circuit) -
     return paddle_quantum_circuit
 
 
-test_cases_for_paddle_quantum = [i for i in range(2, 22)]
+test_cases_for_paddle_quantum = list(range(2, 22))
 paddle_quantum_time = []
 
 for width in test_cases_for_paddle_quantum:

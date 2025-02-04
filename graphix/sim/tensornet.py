@@ -240,7 +240,7 @@ class MBQCTensorNet(State, TensorNetwork):
             self.default_output_nodes = default_output_nodes
         else:
             super().__init__(ts=ts, **kwargs)
-            self._dangling = dict()
+            self._dangling = {}
             self.default_output_nodes = default_output_nodes
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
@@ -413,8 +413,8 @@ class MBQCTensorNet(State, TensorNetwork):
 
         .. seealso:: :meth:`~graphix.sim.tensornet.TensorNetworkBackend.__init__()`
         """
-        ind_dict = dict()
-        vec_dict = dict()
+        ind_dict = {}
+        vec_dict = {}
         for edge in edges:
             for node in edge:
                 if node not in ind_dict:

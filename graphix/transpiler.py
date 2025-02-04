@@ -279,8 +279,8 @@ class Circuit:
         result : :class:`TranspileResult` object
         """
         n_node = self.width
-        out = [j for j in range(self.width)]
-        pattern = Pattern(input_nodes=[j for j in range(self.width)])
+        out = list(range(self.width))
+        pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
         for instr in self.instruction:
             kind = instr.kind

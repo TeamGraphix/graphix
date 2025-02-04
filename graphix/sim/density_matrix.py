@@ -164,8 +164,8 @@ class DensityMatrix(State):
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
-            [i for i in range(len(qargs))] + [-i for i in range(1, len(qargs) + 1)],
-            [i for i in qargs] + [i + self.nqubit for i in reversed(list(qargs))],
+            list(range(len(qargs))) + [-i for i in range(1, len(qargs) + 1)],
+            list(qargs) + [i + self.nqubit for i in reversed(list(qargs))],
         )
         self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
@@ -267,7 +267,7 @@ class DensityMatrix(State):
         qargs_num = len(qargs)
         nqubit_after = n - qargs_num
         assert n > 0
-        assert all([qarg >= 0 and qarg < n for qarg in qargs])
+        assert all(qarg >= 0 and qarg < n for qarg in qargs)
 
         rho_res = self.rho.reshape((2,) * n * 2)
         # ket, bra indices to trace out
