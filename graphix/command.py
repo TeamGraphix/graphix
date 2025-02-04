@@ -30,7 +30,9 @@ def command_to_latex(cmd: _KindChecker) -> str:
     if kind == CommandKind.E:
         out += '_{' + str(cmd.nodes[0]) + ',' + str(cmd.nodes[1]) + '}'
     if kind == CommandKind.C:
-        out += '_' + str(cmd.node) + '^{' + ''.join(cmd.domain) + '}'
+        out += '_' + str(cmd.node)
+    if kind in { CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T }:
+        out += '_' + str(cmd.node) + '^{[' + ''.join([str(dom) for dom in cmd.domain]) + ']}'
     
     return '$' + out + '$'
 
@@ -45,7 +47,9 @@ def command_to_str(cmd: _KindChecker) -> str:
     if kind == CommandKind.E:
         out += '(' + str(cmd.nodes[0]) + ',' + str(cmd.nodes[1]) + ')'
     if kind == CommandKind.C:
-        out += '(' + str(cmd.node) + '[' + ','.join(cmd.domain) + ']' + ')'
+        out += '(' + str(cmd.node)
+    if kind in { CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T }:
+        out += '(' + str(cmd.node) + ')'
     
     return out
 
@@ -57,12 +61,13 @@ def command_to_unicode(cmd: _KindChecker) -> str:
 
     def _get_subscript_from_number(number: int) -> str:
         strnum = str(number)
+        if len(strnum) == 0:
+            return ''
         if len(strnum) == 1:
             return subscripts[int(number)]
-
         sub = int(strnum[0])
         next_sub = strnum[1:]
-        return subscripts[sub] + _get_subscript_from_number(next_sub)
+        return subscripts[sub] + _get_subscript_from_number(int(next_sub))
 
     if kind == CommandKind.N:
 
@@ -72,6 +77,8 @@ def command_to_unicode(cmd: _KindChecker) -> str:
     if kind == CommandKind.E:
         out += _get_subscript_from_number(cmd.nodes[0]) + _get_subscript_from_number(cmd.nodes[1])
     if kind == CommandKind.C:
+        out += _get_subscript_from_number(cmd.node)
+    if kind in { CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T }:
         out += _get_subscript_from_number(cmd.node)
     
     return out
