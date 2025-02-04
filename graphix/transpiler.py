@@ -239,7 +239,9 @@ class Circuit:
         assert control1 in self.active_qubits
         assert control2 in self.active_qubits
         assert target in self.active_qubits
-        assert control1 != control2 and control1 != target and control2 != target
+        assert control1 != control2
+        assert control1 != target
+        assert control2 != target
         self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
 
     def i(self, qubit: int):

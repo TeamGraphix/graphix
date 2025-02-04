@@ -462,7 +462,7 @@ class Pattern:
                         s_domain = set()
                 if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
                     self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
+            elif cmd.kind in {CommandKind.X, CommandKind.Z}:
                 domain = set(cmd.domain)
                 expand_domain(domain)
                 if domain != cmd.domain:
@@ -1109,11 +1109,10 @@ class Pattern:
                 if cmd.clifford == Clifford.I:
                     if include_identity:
                         vops[cmd.node] = cmd.clifford
+                elif conj:
+                    vops[cmd.node] = cmd.clifford.conj
                 else:
-                    if conj:
-                        vops[cmd.node] = cmd.clifford.conj
-                    else:
-                        vops[cmd.node] = cmd.clifford
+                    vops[cmd.node] = cmd.clifford
         for out in self.output_nodes:
             if out not in vops.keys():
                 if include_identity:
@@ -1249,8 +1248,7 @@ class Pattern:
                 nodes += 1
             elif cmd.kind == CommandKind.M:
                 nodes -= 1
-            if nodes > max_nodes:
-                max_nodes = nodes
+            max_nodes = max(nodes, max_nodes)
         return max_nodes
 
     def space_list(self):
@@ -1459,7 +1457,7 @@ class Pattern:
                 domain ^= shift_domains[node]
 
         for cmd in self:
-            if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:
+            if cmd.kind in {CommandKind.X, CommandKind.Z}:
                 expand_domain(cmd.domain)
             if cmd.kind == CommandKind.M:
                 expand_domain(cmd.s_domain)
@@ -1733,7 +1731,7 @@ def cmd_to_qasm3(cmd):
             yield "p(theta" + str(qubit) + ") q" + str(qubit) + ";\n"
             yield "\n"
 
-    elif (name == "X") or (name == "Z"):
+    elif name in {"X", "Z"}:
         qubit = cmd.node
         sdomain = cmd.domain
         yield "// byproduct correction on qubit q" + str(qubit) + "\n"

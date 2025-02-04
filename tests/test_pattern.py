@@ -454,7 +454,7 @@ def swap(circuit: Circuit, a: int, b: int) -> None:
     circuit.cnot(a, b)
 
 
-class TestMCOps:  #
+class TestMCOps:
     @pytest.mark.parametrize(
         "test",
         [

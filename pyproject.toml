@@ -62,6 +62,7 @@ extend-select = [
   "PGH",
   "PIE",
   "PLE",
+  "PLR",
   "PLW",
   "PYI",
   "RUF",
@@ -73,7 +74,9 @@ extend-select = [
   "YTT",
 ]
 extend-ignore = [
-  "E74", # Ambiguous name
+  "E74",     # Ambiguous name
+  "PLR091",  # Too many XXX
+  "PLR2004", # Magic vavlue comparison
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
 allowed-confusables = ["α"]

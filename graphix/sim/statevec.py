@@ -110,34 +110,31 @@ class Statevec(State):
 
             self.psi = np.array(1, dtype=np.complex128)
 
+        elif isinstance(input_list[0], states.State):
+            utils.check_list_elements(input_list, states.State)
+            if nqubit is None:
+                nqubit = len(input_list)
+            elif nqubit != len(input_list):
+                raise ValueError("Mismatch between nqubit and length of input state.")
+            list_of_sv = [s.get_statevector() for s in input_list]
+            tmp_psi = functools.reduce(np.kron, list_of_sv)
+            # reshape
+            self.psi = tmp_psi.reshape((2,) * nqubit)
+        elif isinstance(input_list[0], numbers.Number):
+            utils.check_list_elements(input_list, numbers.Number)
+            if nqubit is None:
+                length = len(input_list)
+                if length & (length - 1):
+                    raise ValueError("Length is not a power of two")
+                nqubit = length.bit_length() - 1
+            elif nqubit != len(input_list).bit_length() - 1:
+                raise ValueError("Mismatch between nqubit and length of input state")
+            psi = np.array(input_list)
+            if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
+                raise ValueError("Input state is not normalized")
+            self.psi = psi.reshape((2,) * nqubit)
         else:
-            if isinstance(input_list[0], states.State):
-                utils.check_list_elements(input_list, states.State)
-                if nqubit is None:
-                    nqubit = len(input_list)
-                elif nqubit != len(input_list):
-                    raise ValueError("Mismatch between nqubit and length of input state.")
-                list_of_sv = [s.get_statevector() for s in input_list]
-                tmp_psi = functools.reduce(np.kron, list_of_sv)
-                # reshape
-                self.psi = tmp_psi.reshape((2,) * nqubit)
-            elif isinstance(input_list[0], numbers.Number):
-                utils.check_list_elements(input_list, numbers.Number)
-                if nqubit is None:
-                    length = len(input_list)
-                    if length & (length - 1):
-                        raise ValueError("Length is not a power of two")
-                    nqubit = length.bit_length() - 1
-                elif nqubit != len(input_list).bit_length() - 1:
-                    raise ValueError("Mismatch between nqubit and length of input state")
-                psi = np.array(input_list)
-                if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
-                    raise ValueError("Input state is not normalized")
-                self.psi = psi.reshape((2,) * nqubit)
-            else:
-                raise TypeError(
-                    f"First element of data has type {type(input_list[0])} whereas Number or State is expected"
-                )
+            raise TypeError(f"First element of data has type {type(input_list[0])} whereas Number or State is expected")
 
     def __str__(self) -> str:
         """Return a string description."""

@@ -518,11 +518,10 @@ class BaseGraphState(ABC):
                 self.equivalent_graph_e1(i)  # this gives loop to node.
                 self.equivalent_graph_e1(node)
                 return 0
+        elif len(list(self.neighbors(node))) == 0:
+            return 2
         else:
-            if len(list(self.neighbors(node))) == 0:
-                return 2
-            else:
-                return 0
+            return 0
 
     def measure_x(self, node: int, choice: int = 0) -> int:
         """Perform measurement in X basis.
