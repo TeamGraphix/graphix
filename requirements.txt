@@ -11,3 +11,4 @@ quimb>=1.4.0
 scipy
 sympy>=1.9
 typing_extensions
+qiskit_qasm3_import
