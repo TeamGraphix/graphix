@@ -197,10 +197,7 @@ class MatGF2:
         if np.count_nonzero(self.data[:rank, :rank] - ref_array.data) != 0:
             return False
 
-        if np.count_nonzero(self.data[rank:, :]) != 0:
-            return False
-
-        return True
+        return np.count_nonzero(self.data[rank:, :]) == 0
 
     def get_rank(self) -> int:
         """Get the rank of the matrix.
@@ -210,10 +207,7 @@ class MatGF2:
         int: int
             rank of the matrix
         """
-        if not self.is_canonical_form():
-            mat_a = self.forward_eliminate(copy=True)[0]
-        else:
-            mat_a = self
+        mat_a = self.forward_eliminate(copy=True)[0] if not self.is_canonical_form() else self
         nonzero_index = np.diag(mat_a.data).nonzero()
         return len(nonzero_index[0])
 
@@ -242,10 +236,7 @@ class MatGF2:
         col_permutation: list
             column permutation
         """
-        if copy:
-            mat_a = MatGF2(self.data)
-        else:
-            mat_a = self
+        mat_a = MatGF2(self.data) if copy else self
         if b is None:
             b = np.zeros((mat_a.data.shape[0], 1), dtype=int)
         b = MatGF2(b)

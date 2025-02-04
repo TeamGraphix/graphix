@@ -370,10 +370,7 @@ class MBQCTensorNet(State, TensorNetwork):
             measurement result.
         """
         if bypass_probability_calculation:
-            if outcome is not None:
-                result = outcome
-            else:
-                result = self.__rng.choice([0, 1])
+            result = outcome if outcome is not None else self.__rng.choice([0, 1])
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -420,7 +417,7 @@ class MBQCTensorNet(State, TensorNetwork):
         vec_dict = dict()
         for edge in edges:
             for node in edge:
-                if node not in ind_dict.keys():
+                if node not in ind_dict:
                     ind = gen_str()
                     self._dangling[str(node)] = ind
                     ind_dict[node] = [ind]
@@ -434,7 +431,7 @@ class MBQCTensorNet(State, TensorNetwork):
             ind_dict[edge[1]].append(ind)
 
         for node in nodes:
-            if node not in ind_dict.keys():
+            if node not in ind_dict:
                 ind = gen_str()
                 self._dangling[str(node)] = ind
                 self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))
@@ -532,10 +529,7 @@ class MBQCTensorNet(State, TensorNetwork):
         numpy.ndarray :
             statevector
         """
-        if indices is None:
-            n_qubit = len(self.default_output_nodes)
-        else:
-            n_qubit = len(indices)
+        n_qubit = len(self.default_output_nodes) if indices is None else len(indices)
         statevec = np.zeros(2**n_qubit, np.complex128)
         for i in range(len(statevec)):
             statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices, **kwagrs)

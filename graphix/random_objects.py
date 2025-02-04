@@ -141,7 +141,7 @@ def rand_channel_kraus(
     if not isinstance(rank, int):
         raise TypeError("The rank of a Kraus expansion must be an integer.")
 
-    if not 1 <= rank:
+    if not rank >= 1:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
     pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
@@ -172,7 +172,7 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     else:
         if not isinstance(rank, int):
             raise TypeError("The rank of a Kraus expansion must be an integer.")
-        if not 1 <= rank:
+        if not rank >= 1:
             raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
 
     # full probability has to have dim**2 operators.

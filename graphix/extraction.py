@@ -96,7 +96,7 @@ def get_fusion_network_from_graph(
     neighbors_list = []
 
     # Prepare a list sorted by number of neighbors to get the largest GHZ clusters first.
-    for v in adjdict.keys():
+    for v in adjdict:
         if len(adjdict[v]) > 2:
             neighbors_list.append((v, len(adjdict[v])))
         # If there is an isolated node, add it to the list.
@@ -117,7 +117,7 @@ def get_fusion_network_from_graph(
 
     # Find Linear clusters in the remaining graph and remove their edges from the graph.
     while number_of_edges != 0:
-        for v in adjdict.keys():
+        for v in adjdict:
             if len(adjdict[v]) == 1:
                 n = v
                 nodes = [n]
@@ -141,7 +141,7 @@ def get_fusion_network_from_graph(
                     resource_list.append(create_resource_graph(nodes, use_rustworkx=use_rustworkx))
 
         # If a cycle exists in the graph, extract one 3-qubit ghz cluster from the cycle.
-        for v in adjdict.keys():
+        for v in adjdict:
             if len(adjdict[v]) == 2:
                 neighbors = list(adjdict[v].keys())
                 nodes = [v, *neighbors]

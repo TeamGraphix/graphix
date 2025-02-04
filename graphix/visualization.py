@@ -294,7 +294,7 @@ class GraphVisualizer:
 
         edge_path, arrow_path = self.get_edge_path(f, pos)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
@@ -302,7 +302,7 @@ class GraphVisualizer:
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        for arrow in arrow_path.keys():
+        for arrow in arrow_path:
             if len(arrow_path[arrow]) == 2:
                 nx.draw_networkx_edges(
                     self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
@@ -347,12 +347,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -437,7 +437,7 @@ class GraphVisualizer:
             figsize = self.get_figsize(l_k, pos, node_distance=node_distance)
         plt.figure(figsize=figsize)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
@@ -445,7 +445,7 @@ class GraphVisualizer:
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        for arrow in arrow_path.keys():
+        for arrow in arrow_path:
             if arrow[0] == arrow[1]:  # self loop
                 if show_loop:
                     t = np.linspace(0, 1, 100)
@@ -501,12 +501,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -582,7 +582,7 @@ class GraphVisualizer:
 
         edge_path = self.get_edge_path_wo_structure(pos)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
@@ -612,12 +612,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -704,14 +704,14 @@ class GraphVisualizer:
                 xzflow[key] = value
         edge_path, arrow_path = self.get_edge_path(xzflow, pos)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
-        for arrow in arrow_path.keys():
+        for arrow in arrow_path:
             if arrow[1] not in xflow.get(arrow[0], set()):
                 color = "tab:green"
             elif arrow[1] not in zflow.get(arrow[0], set()):
@@ -761,12 +761,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -824,10 +824,7 @@ class GraphVisualizer:
             width = len(set([pos[node][0] for node in self.graph.nodes()])) * 0.8
         else:
             width = (max(l_k.values()) + 1) * 0.8
-        if pos is not None:
-            height = len(set([pos[node][1] for node in self.graph.nodes()]))
-        else:
-            height = len(self.v_out)
+        height = len(set([pos[node][1] for node in self.graph.nodes()])) if pos is not None else len(self.v_out)
         figsize = (width * node_distance[0], height * node_distance[1])
 
         return figsize
@@ -1024,7 +1021,7 @@ class GraphVisualizer:
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             node = k
-            while node in f.keys():
+            while node in f:
                 node = next(iter(f[node]))
                 pos[node][1] = i
 
@@ -1130,10 +1127,7 @@ class GraphVisualizer:
                 for i, node in enumerate(order[::-1]):
                     k = i // nv
                     layers[node] = k
-                if layers == dict():
-                    layer_input = 0
-                else:
-                    layer_input = max(layers.values()) + 1
+                layer_input = 0 if layers == dict() else max(layers.values()) + 1
                 for node in fixed_nodes:
                     layers[node] = layer_input
 

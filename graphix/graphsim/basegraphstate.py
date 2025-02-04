@@ -606,10 +606,7 @@ class BaseGraphState(ABC):
         if choice:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-        if not isolated:
-            result = choice
-        else:
-            result = int(self.nodes[node]["sign"])
+        result = choice if not isolated else int(self.nodes[node]["sign"])
         self.remove_node(node)
         return result
 

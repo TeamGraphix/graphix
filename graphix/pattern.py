@@ -211,10 +211,7 @@ class Pattern:
         target : list of CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
-        if len(self.__seq) < lim:
-            nmax = len(self.__seq)
-        else:
-            nmax = lim
+        nmax = min(lim, len(self.__seq))
         if target is None:
             target = [
                 CommandKind.N,
@@ -453,13 +450,12 @@ class Pattern:
                         signal_dict[cmd.node] = s_domain
                         t_domain ^= s_domain
                         s_domain = set()
-                elif plane == Plane.YZ:
+                elif plane == Plane.YZ and s_domain:
                     # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
                     #                  = S^s M^{YZ,(-1)^t·α}
                     #                  = S^s M^{YZ,α} Z^t
-                    if s_domain:
-                        signal_dict[cmd.node] = s_domain
-                        s_domain = set()
+                    signal_dict[cmd.node] = s_domain
+                    s_domain = set()
                 if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
                     self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
             elif cmd.kind in {CommandKind.X, CommandKind.Z}:
@@ -775,9 +771,7 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 dependency[cmd.node] = dependency[cmd.node] | cmd.s_domain | cmd.t_domain
-            elif cmd.kind == CommandKind.X:
-                dependency[cmd.node] = dependency[cmd.node] | cmd.domain
-            elif cmd.kind == CommandKind.Z:
+            elif cmd.kind in {CommandKind.X, CommandKind.Z}:
                 dependency[cmd.node] = dependency[cmd.node] | cmd.domain
         return dependency
 
@@ -796,7 +790,7 @@ class Pattern:
         dependency: dict of set
             updated dependency information
         """
-        for i in dependency.keys():
+        for i in dependency:
             dependency[i] -= measured
         return dependency
 
@@ -818,9 +812,8 @@ class Pattern:
         dependency = self.update_dependency(measured, dependency)
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                if cmd.node not in self.output_nodes:
-                    not_measured = not_measured | {cmd.node}
+            if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
+                not_measured = not_measured | {cmd.node}
         depth = 0
         l_k = dict()
         k = 0
@@ -859,9 +852,7 @@ class Pattern:
         """
         connected = set()
         for edge in edges:
-            if edge[0] == node:
-                connected = connected | {edge}
-            elif edge[1] == node:
+            if edge[0] == node or edge[1] == node:
                 connected = connected | {edge}
         return connected
 
@@ -1114,9 +1105,8 @@ class Pattern:
                 else:
                     vops[cmd.node] = cmd.clifford
         for out in self.output_nodes:
-            if out not in vops.keys():
-                if include_identity:
-                    vops[out] = 0
+            if out not in vops and include_identity:
+                vops[out] = 0
         return vops
 
     def connected_nodes(self, node, prepared=None):
@@ -1149,9 +1139,8 @@ class Pattern:
                 if cmd.nodes[0] == node:
                     if cmd.nodes[1] not in prepared:
                         node_list.append(cmd.nodes[1])
-                elif cmd.nodes[1] == node:
-                    if cmd.nodes[0] not in prepared:
-                        node_list.append(cmd.nodes[0])
+                elif cmd.nodes[1] == node and cmd.nodes[0] not in prepared:
+                    node_list.append(cmd.nodes[0])
                 ind += 1
                 cmd = self.__seq[ind]
         return node_list
@@ -1219,9 +1208,9 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N and cmd.node not in prepared:
                 new.append(command.N(node=cmd.node))
-            elif cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes):
-                new.append(cmd)
-            elif cmd.kind == CommandKind.C:  # Add Clifford nodes
+            elif (
+                cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes)
+            ) or cmd.kind == CommandKind.C:
                 new.append(cmd)
             elif cmd.kind in {CommandKind.Z, CommandKind.X}:  # Add corrections
                 c_list.append(cmd)
@@ -1617,10 +1606,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
     )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
 
-    if copy:
-        pat = Pattern()
-    else:
-        pat = pattern
+    pat = Pattern() if copy else pattern
 
     output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)

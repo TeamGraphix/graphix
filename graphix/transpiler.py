@@ -862,10 +862,7 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        if input_state is None:
-            state = Statevec(nqubit=self.width)
-        else:
-            state = Statevec(nqubit=self.width, data=input_state)
+        state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
 

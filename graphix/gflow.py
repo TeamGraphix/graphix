@@ -674,11 +674,11 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     layers = pattern.get_layers()
     l_k = dict()
-    for l in layers[1].keys():
+    for l in layers[1]:
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k.keys():
+    for node in l_k:
         l_k[node] = lmax - l_k[node] + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
@@ -724,11 +724,11 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     layers = pattern.get_layers()
     l_k = dict()
-    for l in layers[1].keys():
+    for l in layers[1]:
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k.keys():
+    for node in l_k:
         l_k[node] = lmax - l_k[node] + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
@@ -736,7 +736,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
         if plane in [Plane.XZ, Plane.YZ]:
-            if node not in xflow.keys():
+            if node not in xflow:
                 xflow[node] = {node}
             xflow[node] |= {node}
 
@@ -796,9 +796,9 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node in non_outputs:
-        xflow_node = xflow[node] if node in xflow.keys() else set()
-        zflow_node = zflow[node] if node in zflow.keys() else set()
-        p_list = list(p_all[node]) if node in p_all.keys() else []
+        xflow_node = xflow.get(node, set())
+        zflow_node = zflow.get(node, set())
+        p_list = list(p_all[node]) if node in p_all else []
         valid = False
 
         for p_i in p_list:
@@ -817,7 +817,7 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
                             p[node] = set(p_i)
                             break
                         elif mode == "all":
-                            if node not in p.keys():
+                            if node not in p:
                                 p[node] = set()
                             p[node].add(frozenset(p_i))
                             continue
@@ -852,25 +852,25 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
             xflow_source = cmd.s_domain & nodes
             zflow_source = cmd.t_domain & nodes
             for node in xflow_source:
-                if node not in xflow.keys():
+                if node not in xflow:
                     xflow[node] = set()
                 xflow[node] |= {target}
             for node in zflow_source:
-                if node not in zflow.keys():
+                if node not in zflow:
                     zflow[node] = set()
                 zflow[node] |= {target}
         if cmd.kind == CommandKind.X:
             target = cmd.node
             xflow_source = cmd.domain & nodes
             for node in xflow_source:
-                if node not in xflow.keys():
+                if node not in xflow:
                     xflow[node] = set()
                 xflow[node] |= {target}
         if cmd.kind == CommandKind.Z:
             target = cmd.node
             zflow_source = cmd.domain & nodes
             for node in zflow_source:
-                if node not in zflow.keys():
+                if node not in zflow:
                     zflow[node] = set()
                 zflow[node] |= {target}
     return xflow, zflow
@@ -955,7 +955,7 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     """
     d = get_min_depth(l_k)
     layers = {k: set() for k in range(d + 1)}
-    for i in l_k.keys():
+    for i in l_k:
         layers[l_k[i]] |= {i}
     return d, layers
 
@@ -992,7 +992,7 @@ def get_dependence_flow(
         combined_flow[node] = corrections | odd_flow[node]
     for node, corrections in combined_flow.items():
         for correction in corrections:
-            if correction not in dependence_flow.keys():
+            if correction not in dependence_flow:
                 dependence_flow[correction] = set()
             dependence_flow[correction] |= {node}
     return dependence_flow
@@ -1033,7 +1033,7 @@ def get_dependence_pauliflow(
                 combined_flow[node] |= {ynode}
     for node, corrections in combined_flow.items():
         for correction in corrections:
-            if correction not in dependence_pauliflow.keys():
+            if correction not in dependence_pauliflow:
                 dependence_pauliflow[correction] = set()
             dependence_pauliflow[correction] |= {node}
     return dependence_pauliflow
@@ -1087,9 +1087,7 @@ def get_layers_from_flow(
     while True:
         layers[depth] = set()
         for node in left_nodes:
-            if node not in dependence_flow.keys() or len(dependence_flow[node]) == 0:
-                layers[depth] |= {node}
-            elif dependence_flow[node] == {node}:
+            if node not in dependence_flow or len(dependence_flow[node]) == 0 or dependence_flow[node] == {node}:
                 layers[depth] |= {node}
         left_nodes -= layers[depth]
         for node in left_nodes:
@@ -1274,7 +1272,7 @@ def verify_pauliflow(
     non_outputs = set(graph.nodes) - oset
     odd_flow = dict()
     for non_output in non_outputs:
-        if non_output not in pauliflow.keys():
+        if non_output not in pauliflow:
             pauliflow[non_output] = set()
             odd_flow[non_output] = set()
         else:

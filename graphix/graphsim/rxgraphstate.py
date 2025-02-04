@@ -114,7 +114,7 @@ class RXGraphState(BaseGraphState):
             nidx = self.nodes.get_node_index(n)
             adjacency_dict = self._graph.adj(nidx)
             new_adjacency_dict = {}
-            for nidx in adjacency_dict.keys():
+            for nidx in adjacency_dict:
                 new_adjacency_dict[self.nodes.get_node_index(nidx)] = {}  # replace None with {}
             ret.append((n, new_adjacency_dict))
         return iter(ret)
