@@ -97,7 +97,7 @@ Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary
 
  - Masato Fukushima (University of Tokyo, Fixstars Amplify)
  - Maxime Garnier (Inria Paris)
- - Thierry Matinez (Inria Paris)
+ - Thierry Martinez (Inria Paris)
  - Sora Shiratani (University of Tokyo, Fixstars Amplify)
  - Shinichi Sunami (University of Oxford)
 
