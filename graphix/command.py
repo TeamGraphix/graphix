@@ -34,6 +34,21 @@ def command_to_latex(cmd: _KindChecker) -> str:
     
     return '$' + out + '$'
 
+def command_to_str(cmd: _KindChecker) -> str:
+    kind = getattr(cmd, 'kind')
+    out = kind.name
+
+    if kind == CommandKind.N:
+        out += "(" + str(cmd.node) + ")"
+    if kind == CommandKind.M:
+        out += "(" + str(cmd.node) + "," + cmd.plane.name + ',' + str(round(cmd.angle, 2)) + ')'
+    if kind == CommandKind.E:
+        out += '(' + str(cmd.nodes[0]) + ',' + str(cmd.nodes[1]) + ')'
+    if kind == CommandKind.C:
+        out += '(' + str(cmd.node) + '[' + ','.join(cmd.domain) + ']' + ')'
+    
+    return out
+
 class CommandKind(Enum):
     """Tag for command kind."""
 
@@ -56,6 +71,9 @@ class _KindChecker:
 
     def to_latex(self) -> str:
         return command_to_latex(self)
+
+    def __str__(self) -> str:
+        return command_to_str(self)
 
 
 @dataclasses.dataclass
