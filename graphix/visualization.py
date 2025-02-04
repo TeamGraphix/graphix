@@ -827,7 +827,6 @@ class GraphVisualizer:
         height = len({pos[node][1] for node in self.graph.nodes()}) if pos is not None else len(self.v_out)
         return (width * node_distance[0], height * node_distance[1])
 
-
     def get_edge_path(self, flow: dict[int, int | set[int]], pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
         Return the path of edges and gflow arrows.
