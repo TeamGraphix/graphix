@@ -49,6 +49,33 @@ def command_to_str(cmd: _KindChecker) -> str:
     
     return out
 
+def command_to_unicode(cmd: _KindChecker) -> str:
+    kind = getattr(cmd, 'kind')
+    out = kind.name
+
+    subscripts = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
+
+    def _get_subscript_from_number(number: int) -> str:
+        strnum = str(number)
+        if len(strnum) == 1:
+            return subscripts[int(number)]
+
+        sub = int(strnum[0])
+        next_sub = strnum[1:]
+        return subscripts[sub] + _get_subscript_from_number(next_sub)
+
+    if kind == CommandKind.N:
+
+        out += _get_subscript_from_number(cmd.node)
+    if kind == CommandKind.M:
+        out += _get_subscript_from_number(cmd.node)
+    if kind == CommandKind.E:
+        out += _get_subscript_from_number(cmd.nodes[0]) + _get_subscript_from_number(cmd.nodes[1])
+    if kind == CommandKind.C:
+        out += _get_subscript_from_number(cmd.node)
+    
+    return out
+
 class CommandKind(Enum):
     """Tag for command kind."""
 
@@ -71,6 +98,9 @@ class _KindChecker:
 
     def to_latex(self) -> str:
         return command_to_latex(self)
+
+    def to_unicode(self) -> str:
+        return command_to_unicode(self)
 
     def __str__(self) -> str:
         return command_to_str(self)
