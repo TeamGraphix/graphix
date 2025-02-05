@@ -3,11 +3,6 @@ QAOA
 ====
 
 Here we generate and optimize pattern for QAOA circuit.
-You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
-
-.. image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qaoa.ipynb
-
 
 """
 

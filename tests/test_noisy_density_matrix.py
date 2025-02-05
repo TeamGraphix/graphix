@@ -61,8 +61,7 @@ class NoiseModelTester(NoiseModel):
         """Assign wrong measurement result cmd = "M"."""
         if self.rng.uniform() < self.measure_error_prob:
             return not result
-        else:
-            return result
+        return result
 
     def byproduct_x(self) -> KrausChannel:
         """Apply noise to qubits after X gate correction."""

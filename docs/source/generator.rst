@@ -14,8 +14,6 @@ Pattern Generation
 
     .. automethod:: transpile
 
-    .. automethod:: standardize_and_transpile
-
     .. automethod:: simulate_statevector
 
     .. automethod:: cnot

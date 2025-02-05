@@ -8,12 +8,6 @@ Since this algorithm is written only with Clifford gates, we can expect the prep
 would significantly improve the MBQC pattern simulation.
 You can find nice description of the algorithm `here <https://en.wikipedia.org/wiki/Deutsch%E2%80%93Jozsa_algorithm>`_.
 
-You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
-
-
-.. image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=deutsch-jozsa.ipynb
-
 First, let us import relevant modules:
 """
 

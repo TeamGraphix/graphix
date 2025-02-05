@@ -62,7 +62,7 @@ class DefaultMeasureMethod(MeasureMethod):
 
     def __init__(self, results=None):
         if results is None:
-            results = dict()
+            results = {}
         self.results = results
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
@@ -112,7 +112,7 @@ class PatternSimulator:
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         if isinstance(backend, Backend):
-            assert kwargs == dict()
+            assert kwargs == {}
             self.backend = backend
         elif backend == "statevector":
             self.backend = StatevectorBackend(**kwargs)
@@ -174,9 +174,7 @@ class PatternSimulator:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 elif cmd.kind == CommandKind.M:
                     self.__measure_method.measure(self.backend, cmd)
-                elif cmd.kind == CommandKind.X:
-                    self.backend.correct_byproduct(cmd, self.__measure_method)
-                elif cmd.kind == CommandKind.Z:
+                elif cmd.kind in {CommandKind.X, CommandKind.Z}:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)
