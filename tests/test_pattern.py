@@ -6,6 +6,7 @@ import sys
 import typing
 from typing import TYPE_CHECKING
 
+import networkx as nx
 import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
@@ -14,7 +15,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
-from graphix.pattern import CommandNode, Pattern, shift_outcomes
+from graphix.pattern import Pattern, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import PatternSimulator
@@ -32,10 +33,9 @@ if TYPE_CHECKING:
 def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
     if backend == "statevector":
         return np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten()))
-    elif backend == "densitymatrix":
+    if backend == "densitymatrix":
         return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
-    else:
-        raise NotImplementedError(backend)
+    raise NotImplementedError(backend)
 
 
 Outcome = typing.Literal[0, 1]
@@ -62,7 +62,8 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
+
+        pattern.standardize(method="mc")
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
@@ -73,7 +74,7 @@ class TestPattern:
         depth = 5
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
+        pattern.standardize(method="direct")
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
@@ -99,8 +100,8 @@ class TestPattern:
         pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
         circuit = rand_gate(nqubits, depth, pairs, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -137,7 +138,7 @@ class TestPattern:
             pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
             circuit = rand_gate(nqubits, depth, pairs, fx_rng)
             pattern = circuit.transpile().pattern
-            pattern.standardize(method="global")
+            pattern.standardize(method="mc")
             pattern.minimize_space()
             assert pattern.max_space() == nqubits + 1
 
@@ -146,7 +147,7 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
+        pattern.standardize(method="mc")
         pattern.parallelize_pattern()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
@@ -159,8 +160,8 @@ class TestPattern:
         depth = 1
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
@@ -177,8 +178,8 @@ class TestPattern:
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -195,8 +196,8 @@ class TestPattern:
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, ignore_pauli_with_deps=ignore_pauli_with_deps)
         assert ignore_pauli_with_deps or not any(
             PauliMeasurement.try_from(cmd.plane, cmd.angle) for cmd in pattern if cmd.kind == CommandKind.M
@@ -223,57 +224,9 @@ class TestPattern:
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
-        pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurement_opt_gate(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 3
-        depth = 3
-        circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
-        pattern = circuit.transpile(opt=True).pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
-        pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurement_opt_gate_transpiler(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 3
-        depth = 3
-        circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
-        pattern = circuit.standardize_and_transpile(opt=True).pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
-        pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurement_opt_gate_transpiler_without_signalshift(
-        self,
-        fx_bg: PCG64,
-        jumps: int,
-        use_rustworkx: bool = True,
-    ) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 3
-        depth = 3
-        circuit = rand_circuit(nqubits, depth, rng, use_rzz=True)
-        pattern = circuit.standardize_and_transpile(opt=True).pattern
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
@@ -307,8 +260,8 @@ class TestPattern:
         swap(circuit, 0, 2)
 
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
 
         isolated_nodes = pattern.get_isolated_nodes()
@@ -345,8 +298,8 @@ class TestPattern:
         swap(circuit, 0, 2)
 
         pattern = circuit.transpile().pattern
-        pattern.standardize(method="global")
-        pattern.shift_signals(method="global")
+        pattern.standardize(method="mc")
+        pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
 
         isolated_nodes = pattern.get_isolated_nodes()
@@ -386,7 +339,7 @@ class TestPattern:
         assert meas_plane == ref_meas_plane
 
     @pytest.mark.parametrize("plane", Plane)
-    @pytest.mark.parametrize("method", ["local", "global", "direct"])
+    @pytest.mark.parametrize("method", ["mc", "direct"])
     def test_shift_signals_plane(self, plane: Plane, method: str) -> None:
         pattern = Pattern(input_nodes=[0])
         for i in (1, 2, 3):
@@ -397,7 +350,7 @@ class TestPattern:
         pattern.add(M(node=2, angle=0.5, plane=plane, s_domain={0}, t_domain={1}))
         pattern.add(Z(node=3, domain={2}))
         pattern_ref = copy.deepcopy(pattern)
-        pattern.standardize(method="global")
+        pattern.standardize(method="mc")
         signal_dict = pattern.shift_signals(method=method)
         # Test for every possible outcome of each measure
         for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
@@ -437,7 +390,7 @@ class TestPattern:
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    @pytest.mark.parametrize("method", ["global", "direct"])
+    @pytest.mark.parametrize("method", ["mc", "direct"])
     def test_pauli_measurement_then_standardize(
         self, fx_bg: PCG64, jumps: int, method: str, use_rustworkx: bool = True
     ) -> None:
@@ -500,7 +453,7 @@ def swap(circuit: Circuit, a: int, b: int) -> None:
     circuit.cnot(a, b)
 
 
-class TestLocalPattern:
+class TestMCOps:
     @pytest.mark.parametrize(
         "test",
         [
@@ -518,20 +471,55 @@ class TestLocalPattern:
         n = 3
         circuit = Circuit(n)
         pattern = circuit.transpile().pattern
-        localpattern = pattern.get_local_pattern()
-        for node in localpattern.nodes.values():
-            assert node.seq == []
+        assert len(list(iter(pattern))) == 0
 
-    def test_get_graph(self, fx_rng: Generator) -> None:
-        nqubits = 5
-        depth = 4
-        pairs = [(i, np.mod(i + 1, nqubits)) for i in range(nqubits)]
-        circuit = rand_gate(nqubits, depth, pairs, fx_rng)
+    def test_get_graph(self) -> None:
+        n = 3
+        g = nx.complete_graph(n)
+        circuit = Circuit(n)
+        for u, v in g.edges:
+            circuit.cnot(u, v)
+            circuit.rz(v, np.pi / 4)
+            circuit.cnot(u, v)
+        for v in g.nodes:
+            circuit.rx(v, np.pi / 9)
+
         pattern = circuit.transpile().pattern
-        nodes_ref, edges_ref = pattern.get_graph()
+        nodes, edges = pattern.get_graph()
 
-        localpattern = pattern.get_local_pattern()
-        nodes, edges = localpattern.get_graph()
+        nodes_ref = list(np.arange(27))
+        edges_ref = [
+            (1, 3),
+            (0, 3),
+            (3, 4),
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (0, 7),
+            (7, 8),
+            (2, 9),
+            (0, 9),
+            (9, 10),
+            (10, 11),
+            (11, 12),
+            (12, 13),
+            (0, 13),
+            (13, 14),
+            (14, 15),
+            (8, 15),
+            (15, 16),
+            (16, 17),
+            (17, 18),
+            (18, 19),
+            (8, 19),
+            (19, 20),
+            (0, 21),
+            (21, 22),
+            (8, 23),
+            (23, 24),
+            (20, 25),
+            (25, 26),
+        ]
 
         # nodes check
         nodes_check1 = True
@@ -570,14 +558,15 @@ class TestLocalPattern:
         depth = 4
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        localpattern = pattern.get_local_pattern()
-        localpattern.standardize()
-        pattern = localpattern.get_pattern()
+        pattern.standardize(method="direct")
+        pattern_mc = circuit.transpile().pattern
+        pattern_mc.standardize(method="mc")
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        pattern_mc.minimize_space()
+        state_d = pattern.simulate_pattern(rng=rng)
+        state_ref = pattern_mc.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(state_d.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
@@ -586,15 +575,17 @@ class TestLocalPattern:
         depth = 4
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        localpattern = pattern.get_local_pattern()
-        localpattern.standardize()
-        localpattern.shift_signals()
-        pattern = localpattern.get_pattern()
+        pattern.standardize(method="direct")
+        pattern.shift_signals(method="direct")
+        pattern_mc = circuit.transpile().pattern
+        pattern_mc.standardize(method="mc")
+        pattern_mc.shift_signals(method="mc")
         assert pattern.is_standard()
         pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        pattern_mc.minimize_space()
+        state_d = pattern.simulate_pattern(rng=rng)
+        state_ref = pattern_mc.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(state_d.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_and_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
@@ -603,7 +594,8 @@ class TestLocalPattern:
         depth = 4
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.standardize_and_shift_signals()
+        pattern.standardize()
+        pattern.shift_signals()
         assert pattern.is_standard()
         pattern.minimize_space()
         state_p = pattern.simulate_pattern(rng=rng)
@@ -614,13 +606,13 @@ class TestLocalPattern:
     def test_mixed_pattern_operations(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         processes = [
-            [["standardize", "global"], ["standardize", "local"]],
-            [["standardize", "local"], ["signal", "global"], ["signal", "local"]],
+            [["standardize", "direct"], ["standardize", "mc"]],
+            [["standardize", "direct"], ["signal", "mc"], ["signal", "direct"]],
             [
-                ["standardize", "local"],
-                ["signal", "global"],
-                ["standardize", "global"],
-                ["signal", "local"],
+                ["standardize", "direct"],
+                ["signal", "mc"],
+                ["standardize", "mc"],
+                ["signal", "direct"],
             ],
         ]
         nqubits = 3
@@ -639,63 +631,6 @@ class TestLocalPattern:
             state_p = pattern.simulate_pattern(rng=rng)
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_opt_transpile_standardize(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 5
-        depth = 4
-        circuit = rand_circuit(nqubits, depth, rng)
-        pattern = circuit.transpile(opt=True).pattern
-        pattern.standardize(method="local")
-        assert pattern.is_standard()
-        pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_opt_transpile_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 5
-        depth = 4
-        circuit = rand_circuit(nqubits, depth, rng)
-        pattern = circuit.transpile(opt=True).pattern
-        pattern.standardize(method="local")
-        pattern.shift_signals(method="local")
-        assert pattern.is_standard()
-        pattern.minimize_space()
-        state_p = pattern.simulate_pattern(rng=rng)
-        state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
-
-    @pytest.mark.parametrize(
-        "test",
-        [
-            ([1, 2, 3, -1], True),
-            ([1, 2, 3, -2, -3, -2, -4], True),
-            ([1, -4, 2, -3, -1, 3], False),
-            ([1, 2, 3, -1, -4, 2], False),
-        ],
-    )
-    def test_node_is_standardized(self, test: tuple[list[int], bool]) -> None:
-        seq, ref = test
-        node = CommandNode(0, seq, [], [], False, [], [])
-        result = node.is_standard()
-        assert result == ref
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_localpattern_is_standard(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 5
-        depth = 4
-        circuit = rand_circuit(nqubits, depth, rng)
-        localpattern = circuit.transpile().pattern.get_local_pattern()
-        result1 = localpattern.is_standard()
-        localpattern.standardize()
-        result2 = localpattern.is_standard()
-        assert not result1
-        assert result2
-
     def test_pauli_measurement_end_with_measure(self) -> None:
         # https://github.com/TeamGraphix/graphix/issues/153
         p = Pattern(input_nodes=[0])
@@ -706,7 +641,7 @@ class TestLocalPattern:
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
+        rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
@@ -715,7 +650,7 @@ class TestLocalPattern:
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
-        rand_planes = fx_rng.choice(np.array([i for i in Plane]), nqb)
+        rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):

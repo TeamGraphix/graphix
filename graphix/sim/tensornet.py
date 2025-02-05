@@ -204,7 +204,6 @@ class TensorNetworkBackend(Backend):
 
     def finalize(self, output_nodes) -> None:
         """Do nothing."""
-        pass
 
 
 class MBQCTensorNet(State, TensorNetwork):
@@ -241,7 +240,7 @@ class MBQCTensorNet(State, TensorNetwork):
             self.default_output_nodes = default_output_nodes
         else:
             super().__init__(ts=ts, **kwargs)
-            self._dangling = dict()
+            self._dangling = {}
             self.default_output_nodes = default_output_nodes
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
@@ -371,10 +370,7 @@ class MBQCTensorNet(State, TensorNetwork):
             measurement result.
         """
         if bypass_probability_calculation:
-            if outcome is not None:
-                result = outcome
-            else:
-                result = self.__rng.choice([0, 1])
+            result = outcome if outcome is not None else self.__rng.choice([0, 1])
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -417,11 +413,11 @@ class MBQCTensorNet(State, TensorNetwork):
 
         .. seealso:: :meth:`~graphix.sim.tensornet.TensorNetworkBackend.__init__()`
         """
-        ind_dict = dict()
-        vec_dict = dict()
+        ind_dict = {}
+        vec_dict = {}
         for edge in edges:
             for node in edge:
-                if node not in ind_dict.keys():
+                if node not in ind_dict:
                     ind = gen_str()
                     self._dangling[str(node)] = ind
                     ind_dict[node] = [ind]
@@ -435,7 +431,7 @@ class MBQCTensorNet(State, TensorNetwork):
             ind_dict[edge[1]].append(ind)
 
         for node in nodes:
-            if node not in ind_dict.keys():
+            if node not in ind_dict:
                 ind = gen_str()
                 self._dangling[str(node)] = ind
                 self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))
@@ -497,8 +493,7 @@ class MBQCTensorNet(State, TensorNetwork):
         if normalize:
             norm = self.get_norm()
             return coef / norm
-        else:
-            return coef
+        return coef
 
     def get_basis_amplitude(self, basis, **kwagrs):
         """Calculate the probability amplitude of the specified computational basis state.
@@ -533,10 +528,7 @@ class MBQCTensorNet(State, TensorNetwork):
         numpy.ndarray :
             statevector
         """
-        if indices is None:
-            n_qubit = len(self.default_output_nodes)
-        else:
-            n_qubit = len(indices)
+        n_qubit = len(self.default_output_nodes) if indices is None else len(indices)
         statevec = np.zeros(2**n_qubit, np.complex128)
         for i in range(len(statevec)):
             statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices, **kwagrs)
@@ -554,8 +546,7 @@ class MBQCTensorNet(State, TensorNetwork):
         tn_cp2 = tn_cp1.conj()
         tn = TensorNetwork([tn_cp1, tn_cp2])
         tn_simplified = tn.full_simplify("ADCR")
-        norm = abs(tn_simplified.contract(output_inds=[], **kwagrs)) ** 0.5
-        return norm
+        return abs(tn_simplified.contract(output_inds=[], **kwagrs)) ** 0.5
 
     def expectation_value(self, op, qubit_indices, output_node_indices=None, **kwagrs):
         """Calculate expectation value of the given operator.
@@ -578,9 +569,8 @@ class MBQCTensorNet(State, TensorNetwork):
         if output_node_indices is None:
             if self.default_output_nodes is None:
                 raise ValueError("output_nodes is not set.")
-            else:
-                target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
-                out_inds = self.default_output_nodes
+            target_nodes = [self.default_output_nodes[ind] for ind in qubit_indices]
+            out_inds = self.default_output_nodes
         else:
             target_nodes = [output_node_indices[ind] for ind in qubit_indices]
             out_inds = output_node_indices
@@ -673,8 +663,7 @@ class MBQCTensorNet(State, TensorNetwork):
         """
         if deep:
             return deepcopy(self)
-        else:
-            return self.__class__(rng=self.__rng, ts=self)
+        return self.__class__(rng=self.__rng, ts=self)
 
 
 def _get_decomposed_cz():
@@ -714,8 +703,7 @@ def _get_decomposed_cz():
 
 def gen_str():
     """Generate dummy string for einsum."""
-    result = qtn.rand_uuid()
-    return result
+    return qtn.rand_uuid()
 
 
 def outer_product(vectors):

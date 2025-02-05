@@ -257,7 +257,7 @@ class QNN:
         by the `minimize` function from the `scipy.optimize` module.
         """
         params = rng.random(self.n_layers * self.n_qubits * self.n_features * 2)
-        res = minimize(
+        return minimize(
             self.cost,
             params,
             args=(x, y),
@@ -265,7 +265,6 @@ class QNN:
             callback=self.callback,
             options={"maxiter": maxiter, "disp": True},
         )
-        return res
 
 
 # %%
@@ -333,7 +332,7 @@ input_params = rng.random(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
-pattern = circuit.transpile(opt=False).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 

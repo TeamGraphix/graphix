@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class NodeList:
@@ -31,7 +34,7 @@ class NodeList:
         self.nodes = set(node_nums)
         self.num_to_data = {nnum: node_datas[nidx] for nidx, nnum in zip(node_indices, node_nums)}
         self.num_to_idx = {nnum: nidx for nidx, nnum in zip(node_indices, node_nums)}
-        self.idx_to_num = {nidx: nnum for nidx, nnum in zip(node_indices, node_nums)}
+        self.idx_to_num = dict(zip(node_indices, node_nums))
 
     def __contains__(self, nnum: int) -> bool:
         """Return `True` if the node `nnum` belongs to the list, `False` otherwise."""

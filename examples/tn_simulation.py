@@ -33,12 +33,12 @@ rng = np.random.default_rng()
 
 
 def ansatz(circuit, n, gamma, beta, iterations):
-    for j in range(0, iterations):
+    for j in range(iterations):
         for i in range(1, n):
             circuit.cnot(i, 0)
             circuit.rz(0, gamma[j])
             circuit.cnot(i, 0)
-        for i in range(0, n):
+        for i in range(n):
             circuit.rx(i, beta[j])
 
 
@@ -54,7 +54,7 @@ circuit = Circuit(n)
 ansatz(circuit, n, gamma, beta, iterations)
 
 # Transpile Circuit into pattern as it is needed for creating the TN.
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 # Optimizing according to standardization algorithm of graphix.
 pattern.standardize()
 pattern.shift_signals()
@@ -176,7 +176,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     beta = params[slice_index:]
     ansatz(circuit, n, gamma, beta, quantum_iter)
 
-    pattern = circuit.transpile(opt=True).pattern
+    pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
     pattern.perform_pauli_measurements(use_rustworkx=True)
@@ -217,7 +217,7 @@ print(res.message)
 
 circuit = Circuit(n)
 ansatz(circuit, n, res.x[: len(gamma)], res.x[len(gamma) :], iterations)
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
@@ -228,7 +228,7 @@ mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel
 max_prob = 0
 most_prob_state = 0
 bars = []
-for i in range(0, 2**n):
+for i in range(2**n):
     value = mbqc_tn.get_basis_amplitude(i)
     bars.append(value)
 
@@ -236,8 +236,8 @@ for i in range(0, 2**n):
 # Plot the output.
 
 fig, ax = plt.subplots(figsize=(10, 5))
-ax.bar(range(0, 2**n), bars, color="maroon", width=0.2)
-ax.set_xticks(range(0, 2**n))
+ax.bar(range(2**n), bars, color="maroon", width=0.2)
+ax.set_xticks(range(2**n))
 ax.set_xlabel("States")
 ax.set_ylabel("Probabilites")
 ax.set_title("Measurement probabilities using the optimized parameters")

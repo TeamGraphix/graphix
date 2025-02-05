@@ -42,7 +42,7 @@ class PatternRunner:
             self.backend = IBMQBackend(pattern)
             try:
                 instance = kwargs.get("instance", "ibm-q/open/main")
-                resource = kwargs.get("resource", None)
+                resource = kwargs.get("resource")
                 save_statevector = kwargs.get("save_statevector", False)
                 optimization_level = kwargs.get("optimizer_level", 1)
 
@@ -74,7 +74,7 @@ class PatternRunner:
         """
         if self.backend_name == "ibmq":
             shots = kwargs.get("shots", self.shots)
-            noise_model = kwargs.get("noise_model", None)
+            noise_model = kwargs.get("noise_model")
             format_result = kwargs.get("format_result", True)
 
             result = self.backend.simulate(shots=shots, noise_model=noise_model, format_result=format_result)
@@ -119,7 +119,7 @@ class PatternRunner:
             in the representation depending on the backend used.
         """
         if self.backend_name == "ibmq":
-            job_id = kwargs.get("job_id", None)
+            job_id = kwargs.get("job_id")
             result = self.backend.retrieve_result(job_id)
 
         return result
