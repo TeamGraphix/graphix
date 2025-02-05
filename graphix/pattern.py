@@ -203,7 +203,7 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
-    def _latex_file_to_image(self, tmpdirname, tmpfilename):
+    def _latex_file_to_image(self, tmpdirname, tmpfilename) -> PIL.Image.Image:
         import os
         import PIL
         import subprocess
@@ -248,7 +248,7 @@ class Pattern:
             warnings.warn(message)
             raise Exception(message) from exc
 
-        def _trim(image):
+        def _trim(image) -> PIL.Image.Image:
                 """Trim a PIL image and remove white space."""
 
                 background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
@@ -292,8 +292,7 @@ class Pattern:
 
         return contents
 
-    def to_png(self):
-        import PIL
+    def to_png(self) -> PIL.Image.Image:
         import os
         import tempfile
 
