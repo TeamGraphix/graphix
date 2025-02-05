@@ -676,5 +676,6 @@ def test_draw_pattern():
         randpat.draw("ascii")
         randpat.draw("latex")
         randpat.draw("unicode")
+        randpat.draw("png")
     except Exception as e:
         pytest.fail(e)
