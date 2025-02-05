@@ -79,7 +79,10 @@ class Circuit:
     def __str__(self) -> str:
         return self.draw()
 
-    def draw(self, format: str = "text"):
+    def draw(self, format: str = "text") -> TextDrawing | matplotlib.figure | PIL.Image | str:
+        """Returns the appropriate visualization object of a Circuit based on Qiskit.
+        Generates the corresponding qasm3 code, load a `qiskit.QuantumCircuit` and call `QuantumCircuit.draw()`.
+        """
         from qiskit.qasm3 import loads
 
         qasm_circuit = self.to_qasm3()
@@ -88,7 +91,7 @@ class Circuit:
             return qiskit_circuit.draw("text").single_string()
         return qiskit_circuit.draw(output=format)
 
-    def to_qasm3(self):
+    def to_qasm3(self) -> str:
         """Export circuit instructions to OpenQASM 3.0 file
 
         Returns

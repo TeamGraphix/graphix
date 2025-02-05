@@ -204,6 +204,8 @@ class Pattern:
         )
 
     def _latex_file_to_image(self, tmpdirname, tmpfilename) -> PIL.Image.Image:
+        """Converts a latex file located in `tmpdirname/tmpfilename` to an image representation.
+        """
         import os
         import subprocess
 
@@ -258,6 +260,8 @@ class Pattern:
         return _trim(PIL.Image.open(base + ".png"))
 
     def to_latex(self) -> str:
+        """Returns a string containing the latex representation of the pattern.
+        """
         output = io.StringIO()
         for instr in self.__seq:
             output.write(instr.to_latex())
@@ -268,6 +272,8 @@ class Pattern:
         return contents
 
     def _to_latex_document(self) -> str:
+        """Generates a latex document with the latex representation of the pattern written in it.
+        """
         header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
         header_2 = r"""
@@ -289,6 +295,8 @@ class Pattern:
         return contents
 
     def to_png(self) -> PIL.Image.Image:
+        """Generates a PNG image of the latex representation of the pattern,
+        """
         import os
         import tempfile
 
@@ -366,6 +374,8 @@ class Pattern:
     def draw(
         self, format: Literal[ascii] | Literal[latex] | Literal[unicode] | Literal[png] = "ascii"
     ) -> str | PIL.image:
+        """Returns the appropriate visualization object.
+        """
         if format == "ascii":
             return str(self)
         if format == "png":
