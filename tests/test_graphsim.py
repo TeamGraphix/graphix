@@ -9,7 +9,6 @@ import pytest
 from networkx import Graph
 from networkx.utils import graphs_equal
 
-import graphix.pauli
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane
 from graphix.graphsim.graphstate import GraphState

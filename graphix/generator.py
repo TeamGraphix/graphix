@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import graphix.pauli
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
