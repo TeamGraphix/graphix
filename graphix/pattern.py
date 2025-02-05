@@ -364,8 +364,9 @@ class Pattern:
                 print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
 
         if len(self.__seq) > i + 1:
-            print(f"{len(self.__seq)-lim} more commands truncated. Change lim argument of print_pattern() to show more")
-
+            print(
+                f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
+            )
 
     def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode'] | Literal['png']='ascii') -> str | PIL.image:
         if format == 'ascii':
@@ -376,68 +377,6 @@ class Pattern:
             return self.to_latex()
         if format == 'unicode':
             return self.to_unicode()
-        
-
-    def get_local_pattern(self):
-        """Get a local pattern transpiled from the pattern.
-
-        Returns
-        -------
-        localpattern : LocalPattern
-            transpiled local pattern.
-        """
-        standardized = self.is_standard()
-
-        def fresh_node():
-            return {
-                "seq": [],
-                "m_prop": [None, None, set(), set()],
-                "x_signal": set(),
-                "x_signals": [],
-                "z_signal": set(),
-                "is_input": False,
-                "is_output": False,
-            }
-
-        node_prop = {u: fresh_node() for u in self.__input_nodes}
-        morder = []
-        for cmd in self.__seq:
-            kind = cmd.kind
-            if kind == CommandKind.N:
-                node_prop[cmd.node] = fresh_node()
-            elif kind == CommandKind.E:
-                node_prop[cmd.nodes[1]]["seq"].append(cmd.nodes[0])
-                node_prop[cmd.nodes[0]]["seq"].append(cmd.nodes[1])
-            elif kind == CommandKind.M:
-                node_prop[cmd.node]["m_prop"] = [cmd.plane, cmd.angle, cmd.s_domain, cmd.t_domain]
-                node_prop[cmd.node]["seq"].append(-1)
-                morder.append(cmd.node)
-            elif kind == CommandKind.X:
-                if standardized:
-                    node_prop[cmd.node]["x_signal"] ^= cmd.domain
-                    node_prop[cmd.node]["x_signals"] += [cmd.domain]
-                else:
-                    node_prop[cmd.node]["x_signals"].append(cmd.domain)
-                node_prop[cmd.node]["seq"].append(-2)
-            elif kind == CommandKind.Z:
-                node_prop[cmd.node]["z_signal"] ^= cmd.domain
-                node_prop[cmd.node]["seq"].append(-3)
-            elif kind == CommandKind.C:
-                node_prop[cmd.node]["vop"] = cmd.clifford.index
-                node_prop[cmd.node]["seq"].append(-4)
-            elif kind == CommandKind.S:
-                raise NotImplementedError
-            else:
-                raise ValueError(f"command {cmd} is invalid!")
-        nodes = dict()
-        for index in node_prop.keys():
-            if index in self.output_nodes:
-                node_prop[index]["is_output"] = True
-            if index in self.input_nodes:
-                node_prop[index]["is_input"] = True
-            node = CommandNode(index, **node_prop[index])
-            nodes[index] = node
-        return LocalPattern(nodes, self.input_nodes, self.output_nodes, morder)
 
     def standardize(self, method="direct"):
         """Execute standardization of the pattern.
