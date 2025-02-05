@@ -14,8 +14,8 @@ from graphix.fundamentals import Plane
 
 def to_qasm3(instruction: _KindChecker) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
-    oneQRotationsInstructions = {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}
-    oneQInstructions = {
+    one_q_rotations_instructions = {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}
+    one_q_instructions = {
         InstructionKind.H,
         InstructionKind.I,
         InstructionKind.S,
@@ -23,8 +23,8 @@ def to_qasm3(instruction: _KindChecker) -> str:
         InstructionKind.Y,
         InstructionKind.Z,
     }
-    oneQInstructions.update(oneQRotationsInstructions)
-    twoQInstructions = {InstructionKind.CNOT, InstructionKind.RZZ, InstructionKind.SWAP}
+    one_q_instructions.update(one_q_rotations_instructions)
+    two_q_instructions = {InstructionKind.CNOT, InstructionKind.RZZ, InstructionKind.SWAP}
 
     kind = instruction.kind
     if kind == InstructionKind.CNOT:
@@ -36,12 +36,12 @@ def to_qasm3(instruction: _KindChecker) -> str:
 
     if kind == InstructionKind.M:
         out += f"b[{instruction.target}] = measure q[{instruction.target}]"
-    elif kind in oneQInstructions:
-        if kind in oneQRotationsInstructions:
+    elif kind in one_q_instructions:
+        if kind in one_q_rotations_instructions:
             out += f"({instruction.angle}) q[{instruction.target}]"
         else:
             out += f" q[{instruction.target}]"
-    elif kind in twoQInstructions:
+    elif kind in two_q_instructions:
         if kind == InstructionKind.SWAP:
             out += f" q[{instruction.targets[0]}], q[{instruction.targets[1]}]"
         else:

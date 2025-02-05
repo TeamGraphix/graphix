@@ -29,6 +29,8 @@ from graphix.visualization import GraphVisualizer
 if typing_extensions.TYPE_CHECKING:
     from collections.abc import Iterator
 
+    import PIL.Image.Image
+
 
 class NodeAlreadyPreparedError(Exception):
     """Exception raised if a node is already prepared."""
@@ -204,8 +206,7 @@ class Pattern:
         )
 
     def _latex_file_to_image(self, tmpdirname, tmpfilename) -> PIL.Image.Image:
-        """Converts a latex file located in `tmpdirname/tmpfilename` to an image representation.
-        """
+        """Convert a latex file located in `tmpdirname/tmpfilename` to an image representation."""
         import os
         import subprocess
 
@@ -232,7 +233,7 @@ class Pattern:
                 error_file.write(exc.stdout)
             warnings.warn(
                 "Unable to compile LaTeX. Perhaps you are missing the `qcircuit` package."
-                " The output from the `pdflatex` command is in `latex_error.log`."
+                " The output from the `pdflatex` command is in `latex_error.log`.", stacklevel=2
             )
             raise Exception("`pdflatex` call did not succeed: see `latex_error.log`.") from exc
 
@@ -244,7 +245,7 @@ class Pattern:
             )
         except (OSError, subprocess.CalledProcessError) as exc:
             message = "`pdftocairo` failed to produce an image."
-            warnings.warn(message)
+            warnings.warn(message, stacklevel=2)
             raise Exception(message) from exc
 
         def _trim(image) -> PIL.Image.Image:
@@ -260,8 +261,7 @@ class Pattern:
         return _trim(PIL.Image.open(base + ".png"))
 
     def to_latex(self) -> str:
-        """Returns a string containing the latex representation of the pattern.
-        """
+        """Return a string containing the latex representation of the pattern."""
         output = io.StringIO()
         for instr in self.__seq:
             output.write(instr.to_latex())
@@ -272,8 +272,7 @@ class Pattern:
         return contents
 
     def _to_latex_document(self) -> str:
-        """Generates a latex document with the latex representation of the pattern written in it.
-        """
+        """Generate a latex document with the latex representation of the pattern written in it."""
         header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
         header_2 = r"""
@@ -295,8 +294,7 @@ class Pattern:
         return contents
 
     def to_png(self) -> PIL.Image.Image:
-        """Generates a PNG image of the latex representation of the pattern,
-        """
+        """Generate a PNG image of the latex representation of the pattern."""
         import os
         import tempfile
 
@@ -312,9 +310,11 @@ class Pattern:
             return self._latex_file_to_image(tmpdirname, tmpfilename)
 
     def __str__(self) -> str:
+        """Return a string representation of the pattern."""
         return "\n".join([str(cmd) for cmd in self.__seq])
 
     def to_unicode(self) -> str:
+        """Return the unicode string representation of the pattern."""
         return "".join([cmd.to_unicode() for cmd in self.__seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
@@ -372,18 +372,18 @@ class Pattern:
             )
 
     def draw(
-        self, format: Literal[ascii] | Literal[latex] | Literal[unicode] | Literal[png] = "ascii"
-    ) -> str | PIL.image:
-        """Returns the appropriate visualization object.
-        """
-        if format == "ascii":
+        self, output: Literal["ascii"] | Literal["latex"] | Literal["unicode"] | Literal["png"] = "ascii"
+    ) -> str | PIL.Image.Image:
+        """Return the appropriate visualization object."""
+        if output == "ascii":
             return str(self)
-        if format == "png":
+        if output == "png":
             return self.to_png()
-        if format == "latex":
+        if output == "latex":
             return self.to_latex()
-        if format == "unicode":
+        if output == "unicode":
             return self.to_unicode()
+        return None
 
     def standardize(self, method="direct"):
         """Execute standardization of the pattern.

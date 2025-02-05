@@ -23,6 +23,10 @@ from graphix.sim.statevec import Data, Statevec
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import matplotlib.figure
+    import PIL.Image.Image
+    import TextDrawing
+
 
 @dataclasses.dataclass
 class TranspileResult:
@@ -77,22 +81,24 @@ class Circuit:
         self.active_qubits = set(range(width))
 
     def __str__(self) -> str:
+        """Return a string representation of the Circuit."""
         return self.draw()
 
-    def draw(self, format: str = "text") -> TextDrawing | matplotlib.figure | PIL.Image | str:
-        """Returns the appropriate visualization object of a Circuit based on Qiskit.
-        Generates the corresponding qasm3 code, load a `qiskit.QuantumCircuit` and call `QuantumCircuit.draw()`.
+    def draw(self, output: str = "text") -> TextDrawing | matplotlib.figure | PIL.Image | str:
+        """Return the appropriate visualization object of a Circuit based on Qiskit.
+
+        Generate the corresponding qasm3 code, load a `qiskit.QuantumCircuit` and call `QuantumCircuit.draw()`.
         """
         from qiskit.qasm3 import loads
 
         qasm_circuit = self.to_qasm3()
         qiskit_circuit = loads(qasm_circuit)
-        if format == "text":
+        if output == "text":
             return qiskit_circuit.draw("text").single_string()
-        return qiskit_circuit.draw(output=format)
+        return qiskit_circuit.draw(output=output)
 
     def to_qasm3(self) -> str:
-        """Export circuit instructions to OpenQASM 3.0 file
+        """Export circuit instructions to OpenQASM 3.0 file.
 
         Returns
         -------
@@ -107,8 +113,7 @@ class Circuit:
         qasm_lines.append(f"qubit[{self.width}] q;")
         qasm_lines.append(f"bit[{self.width}] b;\n")
 
-        for instr in self.instruction:
-            qasm_lines.append(f"{instruction.to_qasm3(instr)};")
+        qasm_lines.extend([f"{instruction.to_qasm3(instr)};" for instr in self.instruction])
 
         return "\n".join(qasm_lines)
 
