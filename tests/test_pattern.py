@@ -669,11 +669,12 @@ class TestMCOps:
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
     return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))
 
+
 def test_draw_pattern():
     randpat = rand_circuit(5, 5).transpile().pattern
     try:
-        randpat.draw('ascii')
-        randpat.draw('latex')
-        randpat.draw('unicode')
+        randpat.draw("ascii")
+        randpat.draw("latex")
+        randpat.draw("unicode")
     except Exception as e:
         pytest.fail(e)

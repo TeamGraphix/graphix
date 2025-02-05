@@ -13,6 +13,7 @@ from graphix.fundamentals import Plane
 
 
 def to_qasm3(instruction: _KindChecker) -> str:
+    """Get the qasm3 representation of a single circuit instruction."""
     oneQRotationsInstructions = {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}
     oneQInstructions = {
         InstructionKind.H,
