@@ -34,7 +34,7 @@ class NodeIndex:
     """
 
     def __init__(self) -> None:
-        self.__dict = dict()
+        self.__dict = {}
         self.__list = []
 
     def __getitem__(self, index: int) -> int:
@@ -68,8 +68,8 @@ class NodeIndex:
         index = self.__dict[node]
         del self.__list[index]
         del self.__dict[node]
-        for new_index, node in enumerate(self.__list[index:], start=index):
-            self.__dict[node] = new_index
+        for new_index, u in enumerate(self.__list[index:], start=index):
+            self.__dict[u] = new_index
 
     def swap(self, i: int, j: int) -> None:
         """Swap two nodes given their indices."""
@@ -83,8 +83,6 @@ class NodeIndex:
 
 class State:
     """Base class for backend state."""
-
-    pass
 
 
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool) -> np.ndarray:

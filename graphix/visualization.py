@@ -259,7 +259,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph with flow structure.
+        Visualizes the graph with flow structure.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -294,7 +294,7 @@ class GraphVisualizer:
 
         edge_path, arrow_path = self.get_edge_path(f, pos)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
@@ -302,7 +302,7 @@ class GraphVisualizer:
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        for arrow in arrow_path.keys():
+        for arrow in arrow_path:
             if len(arrow_path[arrow]) == 2:
                 nx.draw_networkx_edges(
                     self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
@@ -322,7 +322,7 @@ class GraphVisualizer:
                     "",
                     xy=curve[-1],
                     xytext=curve[-2],
-                    arrowprops=dict(arrowstyle="->", color="k", lw=1),
+                    arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -347,12 +347,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -398,7 +398,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph with flow structure.
+        Visualizes the graph with flow structure.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -437,7 +437,7 @@ class GraphVisualizer:
             figsize = self.get_figsize(l_k, pos, node_distance=node_distance)
         plt.figure(figsize=figsize)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
@@ -445,7 +445,7 @@ class GraphVisualizer:
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        for arrow in arrow_path.keys():
+        for arrow in arrow_path:
             if arrow[0] == arrow[1]:  # self loop
                 if show_loop:
                     t = np.linspace(0, 1, 100)
@@ -455,7 +455,7 @@ class GraphVisualizer:
                         "",
                         xy=curve[-1],
                         xytext=curve[-2],
-                        arrowprops=dict(arrowstyle="->", color="k", lw=1),
+                        arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                     )
             elif len(arrow_path[arrow]) == 2:  # straight line
                 nx.draw_networkx_edges(
@@ -476,7 +476,7 @@ class GraphVisualizer:
                     "",
                     xy=curve[-1],
                     xytext=curve[-2],
-                    arrowprops=dict(arrowstyle="->", color="k", lw=1),
+                    arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -501,12 +501,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -549,7 +549,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph without flow or gflow.
+        Visualizes the graph without flow or gflow.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -582,7 +582,7 @@ class GraphVisualizer:
 
         edge_path = self.get_edge_path_wo_structure(pos)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
@@ -612,12 +612,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -654,7 +654,7 @@ class GraphVisualizer:
         filename: str | None = None,
     ):
         """
-        visualizes the graph of pattern with all correction flows.
+        Visualizes the graph of pattern with all correction flows.
 
         Nodes are colored based on their role (input, output, or other) and edges of graph are depicted as dashed lines.
         Xflow is depicted as red arrows and Zflow is depicted as blue arrows. The function does not return anything but plots the graph using matplotlib's pyplot.
@@ -691,7 +691,7 @@ class GraphVisualizer:
         figsize = (figsize[0] + 3.0, figsize[1])
         plt.figure(figsize=figsize)
 
-        xzflow = dict()
+        xzflow = {}
         for key, value in deepcopy(xflow).items():
             if key in xzflow:
                 xzflow[key] |= value
@@ -704,14 +704,14 @@ class GraphVisualizer:
                 xzflow[key] = value
         edge_path, arrow_path = self.get_edge_path(xzflow, pos)
 
-        for edge in edge_path.keys():
+        for edge in edge_path:
             if len(edge_path[edge]) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 t = np.linspace(0, 1, 100)
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
-        for arrow in arrow_path.keys():
+        for arrow in arrow_path:
             if arrow[1] not in xflow.get(arrow[0], set()):
                 color = "tab:green"
             elif arrow[1] not in zflow.get(arrow[0], set()):
@@ -738,7 +738,7 @@ class GraphVisualizer:
                     "",
                     xy=curve[-1],
                     xytext=curve[-2],
-                    arrowprops=dict(arrowstyle="->", color=color, lw=1),
+                    arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
                 )
 
         # Draw the nodes with different colors based on their role (input, output, or other)
@@ -761,12 +761,12 @@ class GraphVisualizer:
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
-                if node in self.local_clifford.keys():
+                if node in self.local_clifford:
                     plt.text(*pos[node] + np.array([0.2, 0.2]), f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
         if show_measurement_planes:
             for node in self.graph.nodes():
-                if node in self.meas_planes.keys():
+                if node in self.meas_planes:
                     plt.text(*pos[node] + np.array([0.22, -0.2]), f"{self.meas_planes[node]}", fontsize=9, zorder=3)
 
         # Draw the labels
@@ -821,16 +821,11 @@ class GraphVisualizer:
             figure size of the graph.
         """
         if l_k is None:
-            width = len(set([pos[node][0] for node in self.graph.nodes()])) * 0.8
+            width = len({pos[node][0] for node in self.graph.nodes()}) * 0.8
         else:
             width = (max(l_k.values()) + 1) * 0.8
-        if pos is not None:
-            height = len(set([pos[node][1] for node in self.graph.nodes()]))
-        else:
-            height = len(self.v_out)
-        figsize = (width * node_distance[0], height * node_distance[1])
-
-        return figsize
+        height = len({pos[node][1] for node in self.graph.nodes()}) if pos is not None else len(self.v_out)
+        return (width * node_distance[0], height * node_distance[1])
 
     def get_edge_path(self, flow: dict[int, int | set[int]], pos: dict[int, tuple[float, float]]) -> dict[int, list]:
         """
@@ -885,9 +880,8 @@ class GraphVisualizer:
                             nodes = set(nodes) - {node}
                 if not intersect:
                     break
-                else:
-                    for i, ctrl_point in enumerate(ctrl_points):
-                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+                for i, ctrl_point in enumerate(ctrl_points):
+                    bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
             bezier_path = self._check_path(bezier_path)
             edge_path[edge] = bezier_path
 
@@ -943,9 +937,8 @@ class GraphVisualizer:
                                 )
                     if not intersect:
                         break
-                    else:
-                        for i, ctrl_point in enumerate(ctrl_points):
-                            bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+                    for i, ctrl_point in enumerate(ctrl_points):
+                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
                 bezier_path = self._check_path(bezier_path, pos[arrow[1]])
             arrow_path[arrow] = bezier_path
 
@@ -995,9 +988,8 @@ class GraphVisualizer:
                             nodes = set(nodes) - {node}
                 if not intersect:
                     break
-                else:
-                    for i, ctrl_point in enumerate(ctrl_points):
-                        bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
+                for i, ctrl_point in enumerate(ctrl_points):
+                    bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
             bezier_path = self._check_path(bezier_path)
             edge_path[edge] = bezier_path
         return edge_path
@@ -1024,7 +1016,7 @@ class GraphVisualizer:
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             node = k
-            while node in f.keys():
+            while node in f:
                 node = next(iter(f[node]))
                 pos[node][1] = i
 
@@ -1032,8 +1024,7 @@ class GraphVisualizer:
         # Change the x coordinates of the nodes based on their layer, sort in descending order
         for node, layer in l_k.items():
             pos[node][0] = lmax - layer
-        pos = {k: tuple(v) for k, v in pos.items()}
-        return pos
+        return {k: tuple(v) for k, v in pos.items()}
 
     def get_pos_from_gflow(self, g: dict[int, set[int]], l_k: dict[int, int]) -> dict[int, tuple[float, float]]:
         """
@@ -1070,7 +1061,7 @@ class GraphVisualizer:
         for node, layer in l_k.items():
             pos[node][0] = l_max - layer
 
-        vert = list(set([pos[node][1] for node in self.graph.nodes()]))
+        vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()
         for node in self.graph.nodes():
             pos[node][1] = vert.index(pos[node][1])
@@ -1091,7 +1082,7 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-        layers = dict()
+        layers = {}
         connected_components = list(nx.connected_components(self.graph))
 
         for component in connected_components:
@@ -1130,10 +1121,7 @@ class GraphVisualizer:
                 for i, node in enumerate(order[::-1]):
                     k = i // nv
                     layers[node] = k
-                if layers == dict():
-                    layer_input = 0
-                else:
-                    layer_input = max(layers.values()) + 1
+                layer_input = 0 if layers == {} else max(layers.values()) + 1
                 for node in fixed_nodes:
                     layers[node] = layer_input
 
@@ -1165,7 +1153,7 @@ class GraphVisualizer:
         pos = nx.multipartite_layout(g_prime)
         for node, layer in layers.items():
             pos[node][0] = l_max - layer
-        vert = list(set([pos[node][1] for node in self.graph.nodes()]))
+        vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()
         for node in self.graph.nodes():
             pos[node][1] = vert.index(pos[node][1])
@@ -1192,7 +1180,7 @@ class GraphVisualizer:
         pos = nx.multipartite_layout(g_prime)
         for node, layer in layers.items():
             pos[node][0] = layer
-        vert = list(set([pos[node][1] for node in self.graph.nodes()]))
+        vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()
         for node in self.graph.nodes():
             pos[node][1] = vert.index(pos[node][1])
@@ -1262,12 +1250,11 @@ class GraphVisualizer:
                     if i == len(path) - 3:
                         path = np.delete(path, i + 1, 0)
                         break
-                    else:
-                        mean = (path[i + 1] + path[i + 2]) / 2
-                        path = np.delete(path, i + 1, 0)
-                        path = np.delete(path, i + 1, 0)
-                        path = np.insert(path, i + 1, mean, 0)
-                        break
+                    mean = (path[i + 1] + path[i + 2]) / 2
+                    path = np.delete(path, i + 1, 0)
+                    path = np.delete(path, i + 1, 0)
+                    path = np.insert(path, i + 1, mean, 0)
+                    break
                 it += 1
             else:
                 acute = False

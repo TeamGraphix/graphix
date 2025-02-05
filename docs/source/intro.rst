@@ -121,7 +121,7 @@ which we can express by a long sequence,
         & Z_3^{s_0} X_3^{s_2} \langle\pm|_2 \langle\pm_{-\eta}|_0 CZ_{23} CZ_{02} |+\rangle_3 |+\rangle_2 \otimes |\psi_{in}\rangle_{01} \big)\big)\big).  \label{10}   \tag{10}
     \end{align}
 
-Note that the input state has `teleported` to qubits 4 and 7 after the computation.
+Note that the input state has `teleported` to qubits 6 and 7 after the computation.
 
 ..
     We can inspect the graph state using :class:`~graphix.graphsim.GraphState` class:

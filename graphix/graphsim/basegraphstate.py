@@ -506,23 +506,21 @@ class BaseGraphState(ABC):
             if self.nodes[node]["loop"]:
                 self.equivalent_graph_e1(node)
                 return 0
-            else:  # node = hollow and loopless
-                if len(list(self.neighbors(node))) == 0:
-                    return 1
-                for i in self.neighbors(node):
-                    if not self.nodes[i]["loop"]:
-                        self.equivalent_graph_e2(node, i)
-                        return 0
-                # if all neighbor has loop, pick one and apply E1, then E1 to the node.
-                i = next(self.neighbors(node))
-                self.equivalent_graph_e1(i)  # this gives loop to node.
-                self.equivalent_graph_e1(node)
-                return 0
-        else:
+            # node = hollow and loopless
             if len(list(self.neighbors(node))) == 0:
-                return 2
-            else:
-                return 0
+                return 1
+            for i in self.neighbors(node):
+                if not self.nodes[i]["loop"]:
+                    self.equivalent_graph_e2(node, i)
+                    return 0
+            # if all neighbor has loop, pick one and apply E1, then E1 to the node.
+            i = next(self.neighbors(node))
+            self.equivalent_graph_e1(i)  # this gives loop to node.
+            self.equivalent_graph_e1(node)
+            return 0
+        if len(list(self.neighbors(node))) == 0:
+            return 2
+        return 0
 
     def measure_x(self, node: int, choice: int = 0) -> int:
         """Perform measurement in X basis.
@@ -554,9 +552,8 @@ class BaseGraphState(ABC):
                 choice_ = 0
             self.remove_node(node)
             return choice_
-        else:
-            self.h(node)
-            return self.measure_z(node, choice=choice)
+        self.h(node)
+        return self.measure_z(node, choice=choice)
 
     def measure_y(self, node: int, choice: int = 0) -> int:
         """Perform measurement in Y basis.
@@ -607,10 +604,7 @@ class BaseGraphState(ABC):
         if choice:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-        if not isolated:
-            result = choice
-        else:
-            result = int(self.nodes[node]["sign"])
+        result = choice if not isolated else int(self.nodes[node]["sign"])
         self.remove_node(node)
         return result
 

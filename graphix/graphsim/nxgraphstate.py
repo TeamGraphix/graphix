@@ -97,7 +97,7 @@ class NXGraphState(BaseGraphState):
         """
         if u is None and v is None:
             return len(self.edges)
-        elif u is None or v is None:
+        if u is None or v is None:
             raise ValueError("u and v must be specified together")
         return self._graph.number_of_edges(u, v)
 

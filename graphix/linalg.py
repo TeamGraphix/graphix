@@ -190,17 +190,13 @@ class MatGF2:
             if diag[nonzero_diag_index[i]] == 0:
                 if np.count_nonzero(diag[i:]) != 0:
                     break
-                else:
-                    return False
+                return False
 
         ref_array = MatGF2(np.diag(np.diagonal(self.data[:rank, :rank])))
         if np.count_nonzero(self.data[:rank, :rank] - ref_array.data) != 0:
             return False
 
-        if np.count_nonzero(self.data[rank:, :]) != 0:
-            return False
-
-        return True
+        return np.count_nonzero(self.data[rank:, :]) == 0
 
     def get_rank(self) -> int:
         """Get the rank of the matrix.
@@ -210,10 +206,7 @@ class MatGF2:
         int: int
             rank of the matrix
         """
-        if not self.is_canonical_form():
-            mat_a = self.forward_eliminate(copy=True)[0]
-        else:
-            mat_a = self
+        mat_a = self.forward_eliminate(copy=True)[0] if not self.is_canonical_form() else self
         nonzero_index = np.diag(mat_a.data).nonzero()
         return len(nonzero_index[0])
 
@@ -242,16 +235,13 @@ class MatGF2:
         col_permutation: list
             column permutation
         """
-        if copy:
-            mat_a = MatGF2(self.data)
-        else:
-            mat_a = self
+        mat_a = MatGF2(self.data) if copy else self
         if b is None:
             b = np.zeros((mat_a.data.shape[0], 1), dtype=int)
         b = MatGF2(b)
         # Remember the row and column order
-        row_permutation = [i for i in range(mat_a.data.shape[0])]
-        col_permutation = [i for i in range(mat_a.data.shape[1])]
+        row_permutation = list(range(mat_a.data.shape[0]))
+        col_permutation = list(range(mat_a.data.shape[1]))
 
         # Gauss-Jordan Elimination
         max_rank = min(mat_a.data.shape)
@@ -301,10 +291,10 @@ class MatGF2:
         """
         rank = self.get_rank()
         b = MatGF2(b)
-        x = list()
-        kernels = sp.symbols("x0:%d" % (self.data.shape[1] - rank))
+        x = []
+        kernels = sp.symbols(f"x0:{self.data.shape[1] - rank}")
         for col in range(b.data.shape[1]):
-            x_col = list()
+            x_col = []
             b_col = b.data[:, col]
             if np.count_nonzero(b_col[rank:]) != 0:
                 x_col = [sp.nan for i in range(self.data.shape[1])]
