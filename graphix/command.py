@@ -19,50 +19,56 @@ from graphix.states import BasicStates, State
 
 Node = int
 
+
 def command_to_latex(cmd: _KindChecker) -> str:
-    kind = getattr(cmd, 'kind')
+    """Get the latex string representation of a command."""
+    kind = cmd.kind
     out = kind.name
 
     if kind == CommandKind.N:
-        out += '_{' + str(cmd.node) + '}'
+        out += "_{" + str(cmd.node) + "}"
     if kind == CommandKind.M:
-        out += '_' + str(cmd.node) + '^{' + cmd.plane.name + ',' + str(round(cmd.angle, 2)) + '}'
+        out += "_" + str(cmd.node) + "^{" + cmd.plane.name + "," + str(round(cmd.angle, 2)) + "}"
     if kind == CommandKind.E:
-        out += '_{' + str(cmd.nodes[0]) + ',' + str(cmd.nodes[1]) + '}'
+        out += "_{" + str(cmd.nodes[0]) + "," + str(cmd.nodes[1]) + "}"
     if kind == CommandKind.C:
-        out += '_' + str(cmd.node)
-    if kind in { CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T }:
-        out += '_' + str(cmd.node) + '^{[' + ''.join([str(dom) for dom in cmd.domain]) + ']}'
-    
-    return '$' + out + '$'
+        out += "_" + str(cmd.node)
+    if kind in {CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}:
+        out += "_" + str(cmd.node) + "^{[" + "".join([str(dom) for dom in cmd.domain]) + "]}"
+
+    return "$" + out + "$"
+
 
 def command_to_str(cmd: _KindChecker) -> str:
-    kind = getattr(cmd, 'kind')
+    """Get the string representation of a command."""
+    kind = cmd.kind
     out = kind.name
 
     if kind == CommandKind.N:
         out += "(" + str(cmd.node) + ")"
     if kind == CommandKind.M:
-        out += "(" + str(cmd.node) + "," + cmd.plane.name + ',' + str(round(cmd.angle, 2)) + ')'
+        out += "(" + str(cmd.node) + "," + cmd.plane.name + "," + str(round(cmd.angle, 2)) + ")"
     if kind == CommandKind.E:
-        out += '(' + str(cmd.nodes[0]) + ',' + str(cmd.nodes[1]) + ')'
+        out += "(" + str(cmd.nodes[0]) + "," + str(cmd.nodes[1]) + ")"
     if kind == CommandKind.C:
-        out += '(' + str(cmd.node)
-    if kind in { CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T }:
-        out += '(' + str(cmd.node) + ')'
-    
+        out += "(" + str(cmd.node)
+    if kind in {CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}:
+        out += "(" + str(cmd.node) + ")"
+
     return out
 
+
 def command_to_unicode(cmd: _KindChecker) -> str:
-    kind = getattr(cmd, 'kind')
+    """Get the unicode representation of a command."""
+    kind = cmd.kind
     out = kind.name
 
-    subscripts = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
+    subscripts = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
 
     def _get_subscript_from_number(number: int) -> str:
         strnum = str(number)
         if len(strnum) == 0:
-            return ''
+            return ""
         if len(strnum) == 1:
             return subscripts[int(number)]
         sub = int(strnum[0])
@@ -70,7 +76,6 @@ def command_to_unicode(cmd: _KindChecker) -> str:
         return subscripts[sub] + _get_subscript_from_number(int(next_sub))
 
     if kind == CommandKind.N:
-
         out += _get_subscript_from_number(cmd.node)
     if kind == CommandKind.M:
         out += _get_subscript_from_number(cmd.node)
@@ -78,10 +83,11 @@ def command_to_unicode(cmd: _KindChecker) -> str:
         out += _get_subscript_from_number(cmd.nodes[0]) + _get_subscript_from_number(cmd.nodes[1])
     if kind == CommandKind.C:
         out += _get_subscript_from_number(cmd.node)
-    if kind in { CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T }:
+    if kind in {CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}:
         out += _get_subscript_from_number(cmd.node)
-    
+
     return out
+
 
 class CommandKind(Enum):
     """Tag for command kind."""

@@ -676,4 +676,4 @@ def test_draw_pattern():
         randpat.draw('latex')
         randpat.draw('unicode')
     except Exception as e:
-        assert False, e
+        pytest.fail(e)

@@ -6,13 +6,13 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 from __future__ import annotations
 
 import dataclasses
+import io
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 
-import io
 import networkx as nx
 import typing_extensions
-import warnings
 
 from graphix import command
 from graphix.clifford import Clifford
@@ -205,9 +205,9 @@ class Pattern:
 
     def _latex_file_to_image(self, tmpdirname, tmpfilename) -> PIL.Image.Image:
         import os
-        import PIL
         import subprocess
-        import warnings
+
+        import PIL
 
         try:
             subprocess.run(
@@ -220,7 +220,6 @@ class Pattern:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 check=True,
-                timeout=5
             )
         except OSError as exc:
             # OSError should generally not occur, because it's usually only triggered if `pdflatex`
@@ -233,10 +232,8 @@ class Pattern:
                 "Unable to compile LaTeX. Perhaps you are missing the `qcircuit` package."
                 " The output from the `pdflatex` command is in `latex_error.log`."
             )
-            raise Exception(
-                "`pdflatex` call did not succeed: see `latex_error.log`."
-            ) from exc
-        
+            raise Exception("`pdflatex` call did not succeed: see `latex_error.log`.") from exc
+
         base = os.path.join(tmpdirname, tmpfilename)
         try:
             subprocess.run(
@@ -249,15 +246,14 @@ class Pattern:
             raise Exception(message) from exc
 
         def _trim(image) -> PIL.Image.Image:
-                """Trim a PIL image and remove white space."""
-
-                background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
-                diff = PIL.ImageChops.difference(image, background)
-                diff = PIL.ImageChops.add(diff, diff, 2.0, -100)
-                bbox = diff.getbbox()
-                if bbox:
-                    image = image.crop(bbox)
-                return image
+            """Trim a PIL image and remove white space."""
+            background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
+            diff = PIL.ImageChops.difference(image, background)
+            diff = PIL.ImageChops.add(diff, diff, 2.0, -100)
+            bbox = diff.getbbox()
+            if bbox:
+                image = image.crop(bbox)
+            return image
 
         return _trim(PIL.Image.open(base + ".png"))
 
@@ -265,8 +261,8 @@ class Pattern:
         output = io.StringIO()
         for instr in self.__seq:
             output.write(instr.to_latex())
-            output.write('\n')
-        
+            output.write("\n")
+
         contents = output.getvalue()
         output.close()
         return contents
@@ -285,7 +281,7 @@ class Pattern:
         output.write(header_2)
 
         output.write(self.to_latex())
-        
+
         output.write("\n\\end{document}")
         contents = output.getvalue()
         output.close()
@@ -299,7 +295,7 @@ class Pattern:
         tmpfilename = "pattern"
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            tmppath = os.path.join(tmpdirname, tmpfilename + '.tex')
+            tmppath = os.path.join(tmpdirname, tmpfilename + ".tex")
 
             with open(tmppath, "w") as latex_file:
                 contents = self._to_latex_document()
@@ -308,10 +304,10 @@ class Pattern:
             return self._latex_file_to_image(tmpdirname, tmpfilename)
 
     def __str__(self) -> str:
-        return '\n'.join([str(cmd) for cmd in self.__seq])
+        return "\n".join([str(cmd) for cmd in self.__seq])
 
     def to_unicode(self) -> str:
-        return ''.join([cmd.to_unicode() for cmd in self.__seq])
+        return "".join([cmd.to_unicode() for cmd in self.__seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
@@ -367,14 +363,16 @@ class Pattern:
                 f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
             )
 
-    def draw(self, format: Literal['ascii'] | Literal['latex'] | Literal['unicode'] | Literal['png']='ascii') -> str | PIL.image:
-        if format == 'ascii':
+    def draw(
+        self, format: Literal[ascii] | Literal[latex] | Literal[unicode] | Literal[png] = "ascii"
+    ) -> str | PIL.image:
+        if format == "ascii":
             return str(self)
-        if format == 'png':
+        if format == "png":
             return self.to_png()
-        if format == 'latex':
+        if format == "latex":
             return self.to_latex()
-        if format == 'unicode':
+        if format == "unicode":
             return self.to_unicode()
 
     def standardize(self, method="direct"):

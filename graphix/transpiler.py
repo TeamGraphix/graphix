@@ -23,6 +23,7 @@ from graphix.sim.statevec import Data, Statevec
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+
 @dataclasses.dataclass
 class TranspileResult:
     """
@@ -78,18 +79,18 @@ class Circuit:
     def __str__(self) -> str:
         return self.draw()
 
-    def draw(self, format: str='text'):
+    def draw(self, format: str = "text"):
         from qiskit.qasm3 import loads
 
         qasm_circuit = self.to_qasm3()
         qiskit_circuit = loads(qasm_circuit)
-        if format == 'text':
-            return qiskit_circuit.draw('text').single_string()
+        if format == "text":
+            return qiskit_circuit.draw("text").single_string()
         return qiskit_circuit.draw(output=format)
 
     def to_qasm3(self):
         """Export circuit instructions to OpenQASM 3.0 file
-        
+
         Returns
         -------
         str
@@ -104,7 +105,7 @@ class Circuit:
         qasm_lines.append(f"bit[{self.width}] b;\n")
 
         for instr in self.instruction:
-            qasm_lines.append(f'{instruction.to_qasm3(instr)};')
+            qasm_lines.append(f"{instruction.to_qasm3(instr)};")
 
         return "\n".join(qasm_lines)
 
