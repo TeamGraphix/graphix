@@ -7,14 +7,12 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-import warnings
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from graphix import command, instruction
-from graphix.clifford import Clifford
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.ops import Ops
@@ -241,7 +239,9 @@ class Circuit:
         assert control1 in self.active_qubits
         assert control2 in self.active_qubits
         assert target in self.active_qubits
-        assert control1 != control2 and control1 != target and control2 != target
+        assert control1 != control2
+        assert control1 != target
+        assert control2 != target
         self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
 
     def i(self, qubit: int):
@@ -271,21 +271,16 @@ class Circuit:
         self.instruction.append(instruction.M(target=qubit, plane=plane, angle=angle))
         self.active_qubits.remove(qubit)
 
-    def transpile(self, opt: bool = False) -> TranspileResult:
+    def transpile(self) -> TranspileResult:
         """Transpile the circuit to a pattern.
-
-        Parameters
-        ----------
-        opt : bool
-            Whether or not to use pre-optimized gateset with local-Clifford decoration.
 
         Returns
         -------
         result : :class:`TranspileResult` object
         """
         n_node = self.width
-        out = [j for j in range(self.width)]
-        pattern = Pattern(input_nodes=[j for j in range(self.width)])
+        out = list(range(self.width))
+        pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
         for instr in self.instruction:
             kind = instr.kind
@@ -341,62 +336,25 @@ class Circuit:
                 pattern.extend(seq)
                 n_node += 4
             elif kind == instruction.InstructionKind.RZ:
-                if opt:
-                    ancilla = n_node
-                    out[instr.target], seq = self._rz_command_opt(out[instr.target], ancilla, instr.angle)
-                    pattern.extend(seq)
-                    n_node += 1
-                else:
-                    ancilla = [n_node, n_node + 1]
-                    out[instr.target], seq = self._rz_command(out[instr.target], ancilla, instr.angle)
-                    pattern.extend(seq)
-                    n_node += 2
-            elif kind == instruction.InstructionKind.RZZ:
-                if opt:
-                    ancilla = n_node
-                    (
-                        out[instr.control],
-                        out[instr.target],
-                        seq,
-                    ) = self._rzz_command_opt(out[instr.control], out[instr.target], ancilla, instr.angle)
-                    pattern.extend(seq)
-                    n_node += 1
-                else:
-                    raise NotImplementedError(
-                        "YZ-plane measurements not accepted and Rzz gate\
-                        cannot be directly transpiled"
-                    )
+                ancilla = [n_node, n_node + 1]
+                out[instr.target], seq = self._rz_command(out[instr.target], ancilla, instr.angle)
+                pattern.extend(seq)
+                n_node += 2
             elif kind == instruction.InstructionKind.CCX:
-                if opt:
-                    ancilla = [n_node + i for i in range(11)]
-                    (
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        seq,
-                    ) = self._ccx_command_opt(
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        ancilla,
-                    )
-                    pattern.extend(seq)
-                    n_node += 11
-                else:
-                    ancilla = [n_node + i for i in range(18)]
-                    (
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        seq,
-                    ) = self._ccx_command(
-                        out[instr.controls[0]],
-                        out[instr.controls[1]],
-                        out[instr.target],
-                        ancilla,
-                    )
-                    pattern.extend(seq)
-                    n_node += 18
+                ancilla = [n_node + i for i in range(18)]
+                (
+                    out[instr.controls[0]],
+                    out[instr.controls[1]],
+                    out[instr.target],
+                    seq,
+                ) = self._ccx_command(
+                    out[instr.controls[0]],
+                    out[instr.controls[1]],
+                    out[instr.target],
+                    ancilla,
+                )
+                pattern.extend(seq)
+                n_node += 18
             elif kind == instruction.InstructionKind.M:
                 node_index = out[instr.target]
                 seq = self._m_command(instr.target, instr.plane, instr.angle)
@@ -408,554 +366,6 @@ class Circuit:
         out = filter(lambda node: node is not None, out)
         pattern.reorder_output_nodes(out)
         return TranspileResult(pattern, tuple(classical_outputs))
-
-    def standardize_and_transpile(self, opt: bool = True) -> TranspileResult:
-        """Transpile the circuit to a standardized pattern.
-
-        Commutes all byproduct through gates, instead of through measurement
-        commands, to generate standardized measurement pattern.
-
-        Parameters
-        ----------
-        opt : bool
-            Whether or not to use pre-optimized gateset with local-Clifford decoration.
-
-        Returns
-        -------
-        pattern : :class:`graphix.pattern.Pattern` object
-        """
-        warnings.warn(
-            "`Circuit.standardize_and_transpile` is deprecated. Please use `Circuit.transpile` and `Pattern.standardize` in sequence instead. See https://github.com/TeamGraphix/graphix/pull/190 for more informations.",
-            stacklevel=1,
-        )
-        self._n: list[N] = []
-        # for i in range(self.width):
-        #    self._n.append(["N", i])
-        self._m: list[M] = []
-        self._e: list[E] = []
-        self._instr: list[instruction.Instruction] = []
-        n_node = self.width
-        inputs = [j for j in range(self.width)]
-        out = [j for j in range(self.width)]
-        classical_outputs = []
-        for instr in self.instruction:
-            kind = instr.kind
-            if kind == instruction.InstructionKind.CNOT:
-                ancilla = [n_node, n_node + 1]
-                assert out[instr.control] is not None
-                assert out[instr.target] is not None
-                out[instr.control], out[instr.target], seq = self._cnot_command(
-                    out[instr.control], out[instr.target], ancilla
-                )
-                self._n.extend(seq[0:2])
-                self._e.extend(seq[2:5])
-                self._m.extend(seq[5:7])
-                n_node += 2
-                self._instr.append(instr)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[7].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[8].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.control,
-                        domain=seq[9].domain,
-                    )
-                )
-            elif kind == instruction.InstructionKind.SWAP:
-                out[instr.targets[0]], out[instr.targets[1]] = (
-                    out[instr.targets[1]],
-                    out[instr.targets[0]],
-                )
-                self._instr.append(instr)
-            elif kind == instruction.InstructionKind.I:
-                pass
-            elif kind == instruction.InstructionKind.H:
-                ancilla = n_node
-                out[instr.target], seq = self._h_command(out[instr.target], ancilla)
-                self._n.append(seq[0])
-                self._e.append(seq[1])
-                self._m.append(seq[2])
-                self._instr.append(instr)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[3].domain,
-                    )
-                )
-                n_node += 1
-            elif kind == instruction.InstructionKind.S:
-                ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._s_command(out[instr.target], ancilla)
-                self._n.extend(seq[0:2])
-                self._e.extend(seq[2:4])
-                self._m.extend(seq[4:6])
-                self._instr.append(instr)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[6].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[7].domain,
-                    )
-                )
-                n_node += 2
-            elif kind == instruction.InstructionKind.X:
-                ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._x_command(out[instr.target], ancilla)
-                self._n.extend(seq[0:2])
-                self._e.extend(seq[2:4])
-                self._m.extend(seq[4:6])
-                self._instr.append(instr)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[6].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[7].domain,
-                    )
-                )
-                n_node += 2
-            elif kind == instruction.InstructionKind.Y:
-                ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                out[instr.target], seq = self._y_command(out[instr.target], ancilla)
-                self._n.extend(seq[0:4])
-                self._e.extend(seq[4:8])
-                self._m.extend(seq[8:12])
-                self._instr.append(instr)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[12].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[13].domain,
-                    )
-                )
-                n_node += 4
-            elif kind == instruction.InstructionKind.Z:
-                ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._z_command(out[instr.target], ancilla)
-                self._n.extend(seq[0:2])
-                self._e.extend(seq[2:4])
-                self._m.extend(seq[4:6])
-                self._instr.append(instr)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[6].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[7].domain,
-                    )
-                )
-                n_node += 2
-            elif kind == instruction.InstructionKind.RX:
-                ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._rx_command(out[instr.target], ancilla, instr.angle)
-                self._n.extend(seq[0:2])
-                self._e.extend(seq[2:4])
-                self._m.extend(seq[4:6])
-                instr_ = deepcopy(instr)
-                instr_.meas_index = len(self._m) - 1  # index of arb angle measurement command
-                self._instr.append(instr_)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[6].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[7].domain,
-                    )
-                )
-                n_node += 2
-            elif kind == instruction.InstructionKind.RY:
-                ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                out[instr.target], seq = self._ry_command(out[instr.target], ancilla, instr.angle)
-                self._n.extend(seq[0:4])
-                self._e.extend(seq[4:8])
-                self._m.extend(seq[8:12])
-                instr_ = deepcopy(instr)
-                instr_.meas_index = len(self._m) - 3  # index of arb angle measurement command
-                self._instr.append(instr_)
-                self._instr.append(
-                    instruction._XC(
-                        target=instr.target,
-                        domain=seq[12].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[13].domain,
-                    )
-                )
-                n_node += 4
-            elif kind == instruction.InstructionKind.RZ:
-                if opt:
-                    ancilla = n_node
-                    out[instr.target], seq = self._rz_command_opt(out[instr.target], ancilla, instr.angle)
-                    self._n.append(seq[0])
-                    self._e.append(seq[1])
-                    self._m.append(seq[2])
-                    instr_ = deepcopy(instr)
-                    instr_.meas_index = len(self._m) - 1  # index of arb angle measurement command
-                    self._instr.append(instr_)
-                    self._instr.append(
-                        instruction._ZC(
-                            target=instr.target,
-                            domain=seq[3].domain,
-                        )
-                    )
-                    n_node += 1
-                else:
-                    ancilla = [n_node, n_node + 1]
-                    out[instr.target], seq = self._rz_command(out[instr.target], ancilla, instr.angle)
-                    self._n.extend(seq[0:2])
-                    self._e.extend(seq[2:4])
-                    self._m.extend(seq[4:6])
-                    instr_ = deepcopy(instr)
-                    instr_.meas_index = len(self._m) - 2  # index of arb angle measurement command
-                    self._instr.append(instr_)
-                    self._instr.append(
-                        instruction._XC(
-                            target=instr.target,
-                            domain=seq[6].domain,
-                        )
-                    )
-                    self._instr.append(
-                        instruction._ZC(
-                            target=instr.target,
-                            domain=seq[7].domain,
-                        )
-                    )
-                    n_node += 2
-            elif kind == instruction.InstructionKind.RZZ:
-                ancilla = n_node
-                out[instr.control], out[instr.target], seq = self._rzz_command_opt(
-                    out[instr.control], out[instr.target], ancilla, instr.angle
-                )
-                self._n.append(seq[0])
-                self._e.extend(seq[1:3])
-                self._m.append(seq[3])
-                n_node += 1
-                instr_ = deepcopy(instr)
-                instr_.meas_index = len(self._m) - 1  # index of arb angle measurement command
-                self._instr.append(instr_)
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.target,
-                        domain=seq[4].domain,
-                    )
-                )
-                self._instr.append(
-                    instruction._ZC(
-                        target=instr.control,
-                        domain=seq[5].domain,
-                    )
-                )
-            else:
-                raise ValueError("Unknown instruction, commands not added")
-
-        # move xc, zc to the end of the self._instr, so they will be applied last
-        self._move_byproduct_to_right()
-
-        # create command sequence
-        command_seq = [*self._n, *reversed(self._e), *self._m]
-        bpx_added = dict()
-        bpz_added = dict()
-        # byproduct command buffer
-        z_cmds: list[command.Z] = []
-        x_cmds: list[command.X] = []
-        for i in range(len(self._instr)):
-            instr = self._instr[i]
-            if instr.kind == instruction.InstructionKind._XC:
-                if instr.target in bpx_added.keys():
-                    x_cmds[bpx_added[instr.target]].domain ^= instr.domain
-                else:
-                    bpx_added[instr.target] = len(x_cmds)
-                    x_cmds.append(X(node=out[instr.target], domain=deepcopy(instr.domain)))
-            elif instr.kind == instruction.InstructionKind._ZC:
-                if instr.target in bpz_added.keys():
-                    z_cmds[bpz_added[instr.target]].domain ^= instr.domain
-                else:
-                    bpz_added[instr.target] = len(z_cmds)
-                    z_cmds.append(Z(node=out[instr.target], domain=deepcopy(instr.domain)))
-        # append z commands first (X and Z commute up to global phase)
-        command_seq.extend(z_cmds)
-        command_seq.extend(x_cmds)
-        pattern = Pattern(input_nodes=inputs)
-        pattern.extend(command_seq)
-        out = filter(lambda node: node is not None, out)
-        pattern.reorder_output_nodes(out)
-        return TranspileResult(pattern, classical_outputs)
-
-    def _commute_with_swap(self, target: int):
-        correction_instr = self._instr[target]
-        swap_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert swap_instr.kind == instruction.InstructionKind.SWAP
-        if correction_instr.target == swap_instr.targets[0]:
-            correction_instr.target = swap_instr.targets[1]
-            self._commute_with_following(target)
-        elif correction_instr.target == swap_instr.targets[1]:
-            correction_instr.target = swap_instr.targets[0]
-            self._commute_with_following(target)
-        else:
-            self._commute_with_following(target)
-        return target
-
-    def _commute_with_cnot(self, target: int):
-        correction_instr = self._instr[target]
-        cnot_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert cnot_instr.kind == instruction.InstructionKind.CNOT
-        if (
-            correction_instr.kind == instruction.InstructionKind._XC and correction_instr.target == cnot_instr.control
-        ):  # control
-            new_cmd = instruction._XC(
-                target=cnot_instr.target,
-                domain=correction_instr.domain,
-            )
-            self._commute_with_following(target)
-            self._instr.insert(target + 1, new_cmd)
-            return target + 1
-        elif (
-            correction_instr.kind == instruction.InstructionKind._ZC and correction_instr.target == cnot_instr.target
-        ):  # target
-            new_cmd = instruction._ZC(
-                target=cnot_instr.control,
-                domain=correction_instr.domain,
-            )
-            self._commute_with_following(target)
-            self._instr.insert(target + 1, new_cmd)
-            return target + 1
-        else:
-            self._commute_with_following(target)
-        return target
-
-    def _commute_with_h(self, target: int):
-        correction_instr = self._instr[target]
-        h_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert h_instr.kind == instruction.InstructionKind.H
-        if correction_instr.target == h_instr.target:
-            if correction_instr.kind == instruction.InstructionKind._XC:
-                self._instr[target] = instruction._ZC(
-                    target=correction_instr.target, domain=correction_instr.domain
-                )  # byproduct changes to Z
-                self._commute_with_following(target)
-            else:
-                self._instr[target] = instruction._XC(
-                    target=correction_instr.target, domain=correction_instr.domain
-                )  # byproduct changes to X
-                self._commute_with_following(target)
-        else:
-            self._commute_with_following(target)
-
-    def _commute_with_s(self, target: int):
-        correction_instr = self._instr[target]
-        s_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert s_instr.kind == instruction.InstructionKind.S
-        if correction_instr.target == s_instr.target:
-            if correction_instr.kind == instruction.InstructionKind._XC:
-                self._commute_with_following(target)
-                # changes to Y = XZ
-                self._instr.insert(
-                    target + 1,
-                    instruction._ZC(
-                        target=correction_instr.target,
-                        domain=correction_instr.domain,
-                    ),
-                )
-                return target + 1
-        self._commute_with_following(target)
-        return target
-
-    def _commute_with_rx(self, target: int):
-        correction_instr = self._instr[target]
-        rx_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert rx_instr.kind == instruction.InstructionKind.RX
-        if correction_instr.target == rx_instr.target:
-            if correction_instr.kind == instruction.InstructionKind._ZC:
-                # add to the s-domain
-                _extend_domain(self._m[rx_instr.meas_index], correction_instr.domain)
-                self._commute_with_following(target)
-            else:
-                self._commute_with_following(target)
-        else:
-            self._commute_with_following(target)
-
-    def _commute_with_ry(self, target: int):
-        correction_instr = self._instr[target]
-        ry_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert ry_instr.kind == instruction.InstructionKind.RY
-        if correction_instr.target == ry_instr.target:
-            # add to the s-domain
-            _extend_domain(self._m[ry_instr.meas_index], correction_instr.domain)
-            self._commute_with_following(target)
-        else:
-            self._commute_with_following(target)
-
-    def _commute_with_rz(self, target: int):
-        correction_instr = self._instr[target]
-        rz_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert rz_instr.kind == instruction.InstructionKind.RZ
-        if correction_instr.target == rz_instr.target:
-            if correction_instr.kind == instruction.InstructionKind._XC:
-                # add to the s-domain
-                _extend_domain(self._m[rz_instr.meas_index], correction_instr.domain)
-                self._commute_with_following(target)
-            else:
-                self._commute_with_following(target)
-        else:
-            self._commute_with_following(target)
-
-    def _commute_with_rzz(self, target: int):
-        correction_instr = self._instr[target]
-        rzz_instr = self._instr[target + 1]
-        assert (
-            correction_instr.kind == instruction.InstructionKind._XC
-            or correction_instr.kind == instruction.InstructionKind._ZC
-        )
-        assert rzz_instr.kind == instruction.InstructionKind.RZZ
-        if correction_instr.kind == instruction.InstructionKind._XC:
-            cond = correction_instr.target == rzz_instr.control
-            cond2 = correction_instr.target == rzz_instr.target
-            if cond or cond2:
-                # add to the s-domain
-                _extend_domain(self._m[rzz_instr.meas_index], correction_instr.domain)
-        self._commute_with_following(target)
-
-    def _commute_with_following(self, target: int):
-        """Perform the commutation of two consecutive commands that commutes.
-
-        Commutes the target command with the following command.
-
-        Parameters
-        ----------
-        target : int
-            target command index
-        """
-        a = self._instr[target + 1]
-        self._instr.pop(target + 1)
-        self._instr.insert(target, a)
-
-    def _find_byproduct_to_move(self, rev: bool = False, skipnum: int = 0):
-        """Find command to move.
-
-        Parameters
-        ----------
-        rev : bool
-            search from the end (true) or start (false) of seq
-        skipnum : int
-            skip the detected command by specified times
-        """
-        if not rev:  # search from the start
-            target = 0
-            step = 1
-        else:  # search from the back
-            target = len(self._instr) - 1
-            step = -1
-        ite = 0
-        num_ops = 0
-        while ite < len(self._instr):
-            if (
-                self._instr[target].kind == instruction.InstructionKind._ZC
-                or self._instr[target].kind == instruction.InstructionKind._XC
-            ):
-                num_ops += 1
-            if num_ops == skipnum + 1:
-                return target
-            ite += 1
-            target += step
-        target = "end"
-        return target
-
-    def _move_byproduct_to_right(self):
-        """Move the byproduct 'gate' to the end of sequence, using the commutation relations."""
-        moved = 0  # number of moved op
-        target = self._find_byproduct_to_move(rev=True, skipnum=moved)
-        while target != "end":
-            if (target == len(self._instr) - 1) or (
-                self._instr[target + 1].kind == instruction.InstructionKind._XC
-                or self._instr[target + 1].kind == instruction.InstructionKind._ZC
-            ):
-                moved += 1
-                target = self._find_byproduct_to_move(rev=True, skipnum=moved)
-                continue
-            next_instr = self._instr[target + 1]
-            kind = next_instr.kind
-            if kind == instruction.InstructionKind.CNOT:
-                target = self._commute_with_cnot(target)
-            elif kind == instruction.InstructionKind.SWAP:
-                target = self._commute_with_swap(target)
-            elif kind == instruction.InstructionKind.H:
-                self._commute_with_h(target)
-            elif kind == instruction.InstructionKind.S:
-                target = self._commute_with_s(target)
-            elif kind == instruction.InstructionKind.RX:
-                self._commute_with_rx(target)
-            elif kind == instruction.InstructionKind.RY:
-                self._commute_with_ry(target)
-            elif kind == instruction.InstructionKind.RZ:
-                self._commute_with_rz(target)
-            elif kind == instruction.InstructionKind.RZZ:
-                self._commute_with_rzz(target)
-            else:
-                # Pauli gates commute up to global phase.
-                self._commute_with_following(target)
-            target += 1
 
     @classmethod
     def _cnot_command(
@@ -1011,8 +421,7 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        seq = [M(node=input_node, plane=plane, angle=angle)]
-        return seq
+        return [M(node=input_node, plane=plane, angle=angle)]
 
     @classmethod
     def _h_command(cls, input_node: int, ancilla: int):
@@ -1251,64 +660,6 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rz_command_opt(cls, input_node: int, ancilla: int, angle: float) -> tuple[int, list[command.Command]]:
-        """Optimized MBQC commands for Z rotation gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : int
-            ancilla node index to be added to graph
-        angle : float
-            measurement angle in radian
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        seq = [N(node=ancilla)]
-        seq.append(E(nodes=(input_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H))
-        seq.append(Z(node=input_node, domain={ancilla}))
-        return input_node, seq
-
-    @classmethod
-    def _rzz_command_opt(
-        cls, control_node: int, target_node: int, ancilla: int, angle: float
-    ) -> tuple[int, int, list[command.Command]]:
-        """Optimized MBQC commands for ZZ-rotation gate.
-
-        Parameters
-        ----------
-        input_node : int
-            input node index
-        ancilla : int
-            ancilla node index
-        angle : float
-            measurement angle in radian
-
-        Returns
-        -------
-        out_node_control : int
-            control node on graph after the gate
-        out_node_target : int
-            target node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        seq = [N(node=ancilla)]
-        seq.append(E(nodes=(control_node, ancilla)))
-        seq.append(E(nodes=(target_node, ancilla)))
-        seq.append(M(node=ancilla, angle=-angle / np.pi).clifford(Clifford.H))
-        seq.append(Z(node=control_node, domain={ancilla}))
-        seq.append(Z(node=target_node, domain={ancilla}))
-        return control_node, target_node, seq
-
-    @classmethod
     def _ccx_command(
         cls,
         control_node1: int,
@@ -1467,91 +818,6 @@ class Circuit:
         return ancilla[17], ancilla[15], ancilla[13], seq
 
     @classmethod
-    def _ccx_command_opt(
-        cls,
-        control_node1: int,
-        control_node2: int,
-        target_node: int,
-        ancilla: Sequence[int],
-    ) -> tuple[int, int, int, list[command.Command]]:
-        """Optimized MBQC commands for CCX gate.
-
-        Parameters
-        ----------
-        control_node1 : int
-            first control node on graph
-        control_node2 : int
-            second control node on graph
-        target_node : int
-            target node on graph
-        ancilla : list of int
-            ancilla node indices to be added to graph
-
-        Returns
-        -------
-        control_out1 : int
-            first control node on graph after the gate
-        control_out2 : int
-            second control node on graph after the gate
-        target_out : int
-            target node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        assert len(ancilla) == 11
-        seq = [N(node=ancilla[i]) for i in range(11)]
-        seq.append(E(nodes=(control_node1, ancilla[8])))
-        seq.append(E(nodes=(control_node2, ancilla[4])))
-        seq.append(E(nodes=(control_node2, ancilla[5])))
-        seq.append(E(nodes=(control_node2, ancilla[2])))
-        seq.append(E(nodes=(control_node2, ancilla[0])))
-        seq.append(E(nodes=(target_node, ancilla[6])))
-        seq.append(E(nodes=(ancilla[0], ancilla[6])))
-        seq.append(E(nodes=(ancilla[1], ancilla[10])))
-        seq.append(E(nodes=(ancilla[2], ancilla[10])))
-        seq.append(E(nodes=(ancilla[2], ancilla[6])))
-        seq.append(E(nodes=(ancilla[3], ancilla[6])))
-        seq.append(E(nodes=(ancilla[3], ancilla[10])))
-        seq.append(E(nodes=(ancilla[4], ancilla[10])))
-        seq.append(E(nodes=(ancilla[5], ancilla[9])))
-        seq.append(E(nodes=(ancilla[6], ancilla[7])))
-        seq.append(E(nodes=(ancilla[8], ancilla[10])))
-        seq.append(M(node=target_node))
-        seq.append(M(node=control_node1))
-        seq.append(M(node=ancilla[0], angle=-1.75, s_domain={target_node}).clifford(Clifford.H))
-        seq.append(M(node=ancilla[8], s_domain={control_node1}))
-        seq.append(M(node=ancilla[2], angle=-0.25, s_domain={target_node, ancilla[8]}).clifford(Clifford.H))
-        seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(M(node=ancilla[3], angle=-1.75, s_domain={ancilla[8], target_node}).clifford(Clifford.H))
-        seq.append(M(node=ancilla[4], angle=-1.75, s_domain={ancilla[8]}).clifford(Clifford.H))
-        seq.append(M(node=ancilla[1], angle=-0.25, s_domain={ancilla[8]}).clifford(Clifford.H))
-        seq.append(
-            M(
-                node=ancilla[5],
-                s_domain={control_node2, ancilla[0], ancilla[2], ancilla[4]},
-            )
-        )
-        seq.append(M(node=ancilla[6], angle=-0.25, s_domain={target_node}))
-        seq.append(X(node=ancilla[10], domain={ancilla[8]}))
-        seq.append(X(node=ancilla[9], domain={ancilla[5]}))
-        seq.append(X(node=ancilla[7], domain={ancilla[0], ancilla[2], ancilla[3], ancilla[6]}))
-        seq.append(
-            Z(
-                node=ancilla[10],
-                domain={control_node1, ancilla[1], ancilla[2], ancilla[3], ancilla[4]},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[9],
-                domain={control_node2, ancilla[0], ancilla[2], ancilla[4]},
-            )
-        )
-        seq.append(Z(node=ancilla[7], domain={target_node}))
-
-        return ancilla[10], ancilla[9], ancilla[7], seq
-
-    @classmethod
     def _sort_outputs(cls, pattern: Pattern, output_nodes: Sequence[int]):
         """Sort the node indices of ouput qubits.
 
@@ -1595,10 +861,7 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        if input_state is None:
-            state = Statevec(nqubit=self.width)
-        else:
-            state = Statevec(nqubit=self.width, data=input_state)
+        state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
 

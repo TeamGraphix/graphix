@@ -76,9 +76,7 @@ class MBQCVQE:
             if tn.default_output_nodes is None:
                 raise ValueError("Output nodes are not set for tensor network simulation.")
             return tn
-        else:
-            out_state = simulator.run()  # Simulate the MBQC circuit using other backends
-            return out_state
+        return simulator.run()  # Simulate the MBQC circuit using other backends
 
     # %%
     # Function to compute the energy
@@ -86,8 +84,7 @@ class MBQCVQE:
         # Simulate the MBQC circuit using tensor network backend
         tn = self.simulate_mbqc(params, backend="tensornetwork")
         # Compute the expectation value using MBQCTensornet.expectation_value
-        energy = tn.expectation_value(self.hamiltonian, qubit_indices=range(self.n_qubits))
-        return energy
+        return tn.expectation_value(self.hamiltonian, qubit_indices=range(self.n_qubits))
 
 
 # %%

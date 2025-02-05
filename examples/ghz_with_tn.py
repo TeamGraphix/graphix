@@ -4,11 +4,6 @@ Using Tensor Network simulator
 
 In this example, we simulate a circuit to create Greenberger-Horne-Zeilinger(GHZ) state with a tensor network simulator.
 
-You can run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
-
-.. image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=ghz_with_tn.ipynb
-
 We will simulate the generation of 100-qubit GHZ state.
 Firstly, let us import relevant modules:
 """

@@ -88,8 +88,8 @@ def find_gflow(
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
     check_meas_planes(meas_planes)
-    l_k = dict()
-    g = dict()
+    l_k = {}
+    g = {}
     for node in graph.nodes:
         l_k[node] = 0
     return gflowaux(graph, iset, oset, meas_planes, 1, l_k, g, mode=mode)
@@ -183,7 +183,7 @@ def gflowaux(
             sol_list = [x_col[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_col))]
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
-            g[non_out_node] = set(node_order_col[col_permutation.index(i)] for i in sol_index)
+            g[non_out_node] = {node_order_col[col_permutation.index(i)] for i in sol_index}
             if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
                 g[non_out_node] |= {non_out_node}
 
@@ -194,14 +194,14 @@ def gflowaux(
                 sol_list = [x_col[i].subs(zip(kernels, binary_combination)) for i in range(len(x_col))]
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
-                g_i = set(node_order_col[col_permutation.index(i)] for i in sol_index)
+                g_i = {node_order_col[col_permutation.index(i)] for i in sol_index}
                 if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
 
         elif mode == "abstract":
-            g[non_out_node] = dict()
+            g[non_out_node] = {}
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
@@ -214,19 +214,17 @@ def gflowaux(
     if len(corrected_nodes) == 0:
         if oset == nodes:
             return g, l_k
-        else:
-            return None, None
-    else:
-        return gflowaux(
-            graph,
-            iset,
-            oset | corrected_nodes,
-            meas_planes,
-            k + 1,
-            l_k,
-            g,
-            mode=mode,
-        )
+        return None, None
+    return gflowaux(
+        graph,
+        iset,
+        oset | corrected_nodes,
+        meas_planes,
+        k + 1,
+        l_k,
+        g,
+        mode=mode,
+    )
 
 
 def find_flow(
@@ -276,7 +274,7 @@ def find_flow(
             return None, None
 
     l_k = {i: 0 for i in nodes}
-    f = dict()
+    f = {}
     k = 1
     v_c = oset - iset
     return flowaux(nodes, edges, iset, oset, v_c, f, l_k, k)
@@ -342,8 +340,7 @@ def flowaux(
     if not v_out_prime:
         if oset == nodes:
             return f, l_k
-        else:
-            return None, None
+        return None, None
     return flowaux(
         nodes,
         edges,
@@ -410,8 +407,8 @@ def find_pauliflow(
         layers obtained by  Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
     check_meas_planes(meas_planes)
-    l_k = dict()
-    p = dict()
+    l_k = {}
+    p = {}
     l_x, l_y, l_z = get_pauli_nodes(meas_planes, meas_angles)
     for node in graph.nodes:
         if node in oset:
@@ -513,7 +510,7 @@ def pauliflowaux(
             p[node] = set()
 
         if mode == "abstract":
-            p[node] = list()
+            p[node] = []
 
         solved = False
         if meas_planes[node] == Plane.XY or node in l_x or node in l_y:
@@ -533,7 +530,7 @@ def pauliflowaux(
                     sol_list = [x_xy[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_xy))]
                     sol = np.array(sol_list)
                     sol_index = sol.nonzero()[0]
-                    p[node] = set(node_order_col_[col_permutation_xy.index(i)] for i in sol_index)
+                    p[node] = {node_order_col_[col_permutation_xy.index(i)] for i in sol_index}
                     solved = True
 
                 elif mode == "all":
@@ -542,11 +539,11 @@ def pauliflowaux(
                         sol_list = [x_xy[i].subs(zip(kernels, binary_combination)) for i in range(len(x_xy))]
                         sol = np.array(sol_list)
                         sol_index = sol.nonzero()[0]
-                        p_i = set(node_order_col_[col_permutation_xy.index(i)] for i in sol_index)
+                        p_i = {node_order_col_[col_permutation_xy.index(i)] for i in sol_index}
                         p[node].add(frozenset(p_i))
 
                 elif mode == "abstract":
-                    p_i = dict()
+                    p_i = {}
                     for i in range(len(x_xy)):
                         node_temp = node_order_col_[col_permutation_xy.index(i)]
                         p_i[node_temp] = x_xy[i]
@@ -574,7 +571,7 @@ def pauliflowaux(
                     sol_list = [x_xz[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_xz))]
                     sol = np.array(sol_list)
                     sol_index = sol.nonzero()[0]
-                    p[node] = set(node_order_col_[col_permutation_xz.index(i)] for i in sol_index) | {node}
+                    p[node] = {node_order_col_[col_permutation_xz.index(i)] for i in sol_index} | {node}
                     solved = True
 
                 elif mode == "all":
@@ -583,11 +580,11 @@ def pauliflowaux(
                         sol_list = [x_xz[i].subs(zip(kernels, binary_combination)) for i in range(len(x_xz))]
                         sol = np.array(sol_list)
                         sol_index = sol.nonzero()[0]
-                        p_i = set(node_order_col_[col_permutation_xz.index(i)] for i in sol_index) | {node}
+                        p_i = {node_order_col_[col_permutation_xz.index(i)] for i in sol_index} | {node}
                         p[node].add(frozenset(p_i))
 
                 elif mode == "abstract":
-                    p_i = dict()
+                    p_i = {}
                     for i in range(len(x_xz)):
                         node_temp = node_order_col_[col_permutation_xz.index(i)]
                         p_i[node_temp] = x_xz[i]
@@ -615,7 +612,7 @@ def pauliflowaux(
                     sol_list = [x_yz[i].subs(zip(kernels, [sp.false] * len(kernels))) for i in range(len(x_yz))]
                     sol = np.array(sol_list)
                     sol_index = sol.nonzero()[0]
-                    p[node] = set(node_order_col_[col_permutation_yz.index(i)] for i in sol_index) | {node}
+                    p[node] = {node_order_col_[col_permutation_yz.index(i)] for i in sol_index} | {node}
                     solved = True
 
                 elif mode == "all":
@@ -624,11 +621,11 @@ def pauliflowaux(
                         sol_list = [x_yz[i].subs(zip(kernels, binary_combination)) for i in range(len(x_yz))]
                         sol = np.array(sol_list)
                         sol_index = sol.nonzero()[0]
-                        p_i = set(node_order_col_[col_permutation_yz.index(i)] for i in sol_index) | {node}
+                        p_i = {node_order_col_[col_permutation_yz.index(i)] for i in sol_index} | {node}
                         p[node].add(frozenset(p_i))
 
                 elif mode == "abstract":
-                    p_i = dict()
+                    p_i = {}
                     for i in range(len(x_yz)):
                         node_temp = node_order_col_[col_permutation_yz.index(i)]
                         p_i[node_temp] = x_yz[i]
@@ -638,11 +635,9 @@ def pauliflowaux(
     if solved_update == set() and k > 0:
         if solved_nodes == nodes:
             return p, l_k
-        else:
-            return None, None
-    else:
-        bset = solved_nodes | solved_update
-        return pauliflowaux(graph, iset, oset, meas_planes, k + 1, bset, bset, l_k, p, (l_x, l_y, l_z), mode)
+        return None, None
+    bset = solved_nodes | solved_update
+    return pauliflowaux(graph, iset, oset, meas_planes, k + 1, bset, bset, l_k, p, (l_x, l_y, l_z), mode)
 
 
 def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -673,12 +668,12 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     nodes = set(nodes)
 
     layers = pattern.get_layers()
-    l_k = dict()
-    for l in layers[1].keys():
+    l_k = {}
+    for l in layers[1]:
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k.keys():
+    for node in l_k:
         l_k[node] = lmax - l_k[node] + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
@@ -686,7 +681,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     xflow, zflow = get_corrections_from_pattern(pattern)
 
     if verify_flow(g, input_nodes, output_nodes, xflow):  # if xflow is valid
-        zflow_from_xflow = dict()
+        zflow_from_xflow = {}
         for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(g, corrections) - {node}
             if cand:
@@ -694,8 +689,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
         if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
             return None, None
         return xflow, l_k
-    else:
-        return None, None
+    return None, None
 
 
 def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -723,12 +717,12 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     nodes = set(nodes)
 
     layers = pattern.get_layers()
-    l_k = dict()
-    for l in layers[1].keys():
+    l_k = {}
+    for l in layers[1]:
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k.keys():
+    for node in l_k:
         l_k[node] = lmax - l_k[node] + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
@@ -736,12 +730,12 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
         if plane in [Plane.XZ, Plane.YZ]:
-            if node not in xflow.keys():
+            if node not in xflow:
                 xflow[node] = {node}
             xflow[node] |= {node}
 
     if verify_gflow(g, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
-        zflow_from_xflow = dict()
+        zflow_from_xflow = {}
         for node, corrections in deepcopy(xflow).items():
             cand = find_odd_neighbor(g, corrections) - {node}
             if cand:
@@ -749,8 +743,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
             return None, None
         return xflow, l_k
-    else:
-        return None, None
+    return None, None
 
 
 def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, set[int]], dict[int, int]]:
@@ -792,13 +785,13 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
     if p_all is None:
         return None, None
 
-    p = dict()
+    p = {}
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node in non_outputs:
-        xflow_node = xflow[node] if node in xflow.keys() else set()
-        zflow_node = zflow[node] if node in zflow.keys() else set()
-        p_list = list(p_all[node]) if node in p_all.keys() else []
+        xflow_node = xflow.get(node, set())
+        zflow_node = zflow.get(node, set())
+        p_list = list(p_all[node]) if node in p_all else []
         valid = False
 
         for p_i in p_list:
@@ -816,8 +809,8 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
                         if mode == "single":
                             p[node] = set(p_i)
                             break
-                        elif mode == "all":
-                            if node not in p.keys():
+                        if mode == "all":
+                            if node not in p:
                                 p[node] = set()
                             p[node].add(frozenset(p_i))
                             continue
@@ -844,33 +837,33 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     """
     nodes, _ = pattern.get_graph()
     nodes = set(nodes)
-    xflow = dict()
-    zflow = dict()
+    xflow = {}
+    zflow = {}
     for cmd in pattern:
         if cmd.kind == CommandKind.M:
             target = cmd.node
             xflow_source = cmd.s_domain & nodes
             zflow_source = cmd.t_domain & nodes
             for node in xflow_source:
-                if node not in xflow.keys():
+                if node not in xflow:
                     xflow[node] = set()
                 xflow[node] |= {target}
             for node in zflow_source:
-                if node not in zflow.keys():
+                if node not in zflow:
                     zflow[node] = set()
                 zflow[node] |= {target}
         if cmd.kind == CommandKind.X:
             target = cmd.node
             xflow_source = cmd.domain & nodes
             for node in xflow_source:
-                if node not in xflow.keys():
+                if node not in xflow:
                     xflow[node] = set()
                 xflow[node] |= {target}
         if cmd.kind == CommandKind.Z:
             target = cmd.node
             zflow_source = cmd.domain & nodes
             for node in zflow_source:
-                if node not in zflow.keys():
+                if node not in zflow:
                     zflow[node] = set()
                 zflow[node] |= {target}
     return xflow, zflow
@@ -955,7 +948,7 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     """
     d = get_min_depth(l_k)
     layers = {k: set() for k in range(d + 1)}
-    for i in l_k.keys():
+    for i in l_k:
         layers[l_k[i]] |= {i}
     return d, layers
 
@@ -985,14 +978,14 @@ def get_dependence_flow(
     try:  # if inputs is not empty
         dependence_flow = {u: set() for u in inputs}
     except Exception:
-        dependence_flow = dict()
+        dependence_flow = {}
     # concatenate flow and odd_flow
-    combined_flow = dict()
+    combined_flow = {}
     for node, corrections in flow.items():
         combined_flow[node] = corrections | odd_flow[node]
     for node, corrections in combined_flow.items():
         for correction in corrections:
-            if correction not in dependence_flow.keys():
+            if correction not in dependence_flow:
                 dependence_flow[correction] = set()
             dependence_flow[correction] |= {node}
     return dependence_flow
@@ -1025,7 +1018,7 @@ def get_dependence_pauliflow(
     l_x, l_y, l_z = ls
     dependence_pauliflow = {u: set() for u in inputs}
     # concatenate p and odd_p
-    combined_flow = dict()
+    combined_flow = {}
     for node, corrections in flow.items():
         combined_flow[node] = (corrections - (l_x | l_y)) | (odd_flow[node] - (l_y | l_z))
         for ynode in l_y:
@@ -1033,7 +1026,7 @@ def get_dependence_pauliflow(
                 combined_flow[node] |= {ynode}
     for node, corrections in combined_flow.items():
         for correction in corrections:
-            if correction not in dependence_pauliflow.keys():
+            if correction not in dependence_pauliflow:
                 dependence_pauliflow[correction] = set()
             dependence_pauliflow[correction] |= {node}
     return dependence_pauliflow
@@ -1074,7 +1067,7 @@ def get_layers_from_flow(
     ValueError
         If the flow is not valid(e.g. there is no partial order).
     """
-    layers = dict()
+    layers = {}
     depth = 0
     if ls is None:
         dependence_flow = get_dependence_flow(inputs, odd_flow, flow)
@@ -1087,9 +1080,7 @@ def get_layers_from_flow(
     while True:
         layers[depth] = set()
         for node in left_nodes:
-            if node not in dependence_flow.keys() or len(dependence_flow[node]) == 0:
-                layers[depth] |= {node}
-            elif dependence_flow[node] == {node}:
+            if node not in dependence_flow or len(dependence_flow[node]) == 0 or dependence_flow[node] == {node}:
                 layers[depth] |= {node}
         left_nodes -= layers[depth]
         for node in left_nodes:
@@ -1099,10 +1090,8 @@ def get_layers_from_flow(
                 layers[depth] = outputs
                 depth += 1
                 break
-            else:
-                raise ValueError("Invalid flow")
-        else:
-            depth += 1
+            raise ValueError("Invalid flow")
+        depth += 1
     return layers, depth
 
 
@@ -1156,26 +1145,22 @@ def verify_flow(
     # if meas_planes is given, check whether all measurement planes are "XY"
     for node, plane in meas_planes.items():
         if plane != Plane.XY or node not in non_outputs:
-            valid_flow = False
-            return valid_flow
+            return False
 
     odd_flow = {node: find_odd_neighbor(graph, corrections) for node, corrections in flow.items()}
 
     try:
         _, _ = get_layers_from_flow(flow, odd_flow, iset, oset)
     except ValueError:
-        valid_flow = False
-        return valid_flow
+        return False
     # check if v ~ f(v) for each node
     edges = set(graph.edges)
     for node, corrections in flow.items():
         if len(corrections) > 1:
-            valid_flow = False
-            return valid_flow
+            return False
         correction = next(iter(corrections))
         if (node, correction) not in edges and (correction, node) not in edges:
-            valid_flow = False
-            return valid_flow
+            return False
     return valid_flow
 
 
@@ -1210,7 +1195,7 @@ def verify_gflow(
     check_meas_planes(meas_planes)
     valid_gflow = True
     non_outputs = set(graph.nodes) - oset
-    odd_flow = dict()
+    odd_flow = {}
     for non_output in non_outputs:
         if non_output not in gflow:
             gflow[non_output] = set()
@@ -1221,8 +1206,7 @@ def verify_gflow(
     try:
         _, _ = get_layers_from_flow(gflow, odd_flow, iset, oset)
     except ValueError:
-        valid_flow = False
-        return valid_flow
+        return False
 
     # check for each measurement plane
     for node, plane in meas_planes.items():
@@ -1272,9 +1256,9 @@ def verify_pauliflow(
 
     valid_pauliflow = True
     non_outputs = set(graph.nodes) - oset
-    odd_flow = dict()
+    odd_flow = {}
     for non_output in non_outputs:
-        if non_output not in pauliflow.keys():
+        if non_output not in pauliflow:
             pauliflow[non_output] = set()
             odd_flow[non_output] = set()
         else:
@@ -1283,8 +1267,7 @@ def verify_pauliflow(
     try:
         layers, depth = get_layers_from_flow(pauliflow, odd_flow, iset, oset, (l_x, l_y, l_z))
     except ValueError:
-        valid_flow = False
-        return valid_flow
+        return False
     node_order = []
     for d in range(depth):
         node_order.extend(list(layers[d]))
@@ -1322,8 +1305,7 @@ def get_input_from_flow(flow: dict[int, set]) -> set:
     non_output = set(flow.keys())
     for correction in flow.values():
         non_output -= correction
-    inputs = non_output
-    return inputs
+    return non_output
 
 
 def get_output_from_flow(flow: dict[int, set]) -> set:
@@ -1343,8 +1325,7 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
     non_inputs = set()
     for correction in flow.values():
         non_inputs |= correction
-    outputs = non_inputs - non_outputs
-    return outputs
+    return non_inputs - non_outputs
 
 
 def get_pauli_nodes(

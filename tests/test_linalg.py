@@ -176,5 +176,5 @@ class TestLinAlg:
         mat_eliminated, rhs_eliminated, _, _ = mat.forward_eliminate(rhs_input)
         x, kernel = mat_eliminated.backward_substitute(rhs_eliminated)
         if x is not None:
-            assert np.all(x == x)
+            assert np.all(x == x)  # noqa: PLR0124
         assert len(kernel) == kernel_dim
