@@ -31,11 +31,6 @@ jobs:
 
       - run: python -m pip install --upgrade pip
 
-      - name: Setup TeX Live
-          uses: teatimeguest/setup-texlive-action@v3
-          with:
-            packages: scheme-basic
-
       - name: Setup nox
         # Keep in sync with requirements-dev.txt
         uses: wntrblm/nox@2024.10.09
