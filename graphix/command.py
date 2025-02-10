@@ -20,9 +20,9 @@ from graphix.states import BasicStates, State
 Node = int
 
 
-def command_to_latex(cmd: _KindChecker) -> str:
+def command_to_latex(cmd: N | M | E | C | X | Z | S | T) -> str:
     """Get the latex string representation of a command."""
-    kind = getattr(cmd, "kind")
+    kind = cmd.kind
     out = kind.name
 
     if kind == CommandKind.N:
@@ -39,7 +39,7 @@ def command_to_latex(cmd: _KindChecker) -> str:
     return "$" + out + "$"
 
 
-def command_to_str(cmd: _KindChecker) -> str:
+def command_to_str(cmd: N | M | E | C | X | Z | S | T) -> str:
     """Get the string representation of a command."""
     kind = cmd.kind
     out = kind.name
@@ -58,7 +58,7 @@ def command_to_str(cmd: _KindChecker) -> str:
     return out
 
 
-def command_to_unicode(cmd: _KindChecker) -> str:
+def command_to_unicode(cmd: N | M | E | C | X | Z | S | T) -> str:
     """Get the unicode representation of a command."""
     kind = cmd.kind
     out = kind.name

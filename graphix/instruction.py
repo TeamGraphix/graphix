@@ -12,7 +12,7 @@ from graphix import utils
 from graphix.fundamentals import Plane
 
 
-def to_qasm3(instruction: _KindChecker) -> str:
+def to_qasm3(instruction: CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | XC | ZC) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
     one_q_rotations_instructions = {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}
     one_q_instructions = {
@@ -26,7 +26,7 @@ def to_qasm3(instruction: _KindChecker) -> str:
     one_q_instructions.update(one_q_rotations_instructions)
     two_q_instructions = {InstructionKind.CNOT, InstructionKind.RZZ, InstructionKind.SWAP}
 
-    kind = getattr(instruction, "kind")
+    kind = instruction.kind
     if kind == InstructionKind.CNOT:
         out = "cx"
     elif kind == InstructionKind.M:
