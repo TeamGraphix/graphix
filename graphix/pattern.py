@@ -373,9 +373,7 @@ class Pattern:
                 f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
             )
 
-    def draw(
-        self, output: Literal["ascii"] | Literal["latex"] | Literal["unicode"] | Literal["png"] = "ascii"
-    ) -> str | PIL.Image.Image:
+    def draw(self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii") -> str | PIL.Image.Image:
         """Return the appropriate visualization object."""
         if output == "ascii":
             return str(self)
