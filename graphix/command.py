@@ -20,7 +20,7 @@ from graphix.states import BasicStates, State
 Node = int
 
 
-def command_to_latex(cmd: N | M | E | C | X | Z | S | T) -> str:
+def command_to_latex(cmd: Command) -> str:
     """Get the latex string representation of a command."""
     kind = cmd.kind
     out = kind.name
@@ -39,7 +39,7 @@ def command_to_latex(cmd: N | M | E | C | X | Z | S | T) -> str:
     return "$" + out + "$"
 
 
-def command_to_str(cmd: N | M | E | C | X | Z | S | T) -> str:
+def command_to_str(cmd: Command) -> str:
     """Get the string representation of a command."""
     kind = cmd.kind
     out = kind.name
@@ -58,7 +58,7 @@ def command_to_str(cmd: N | M | E | C | X | Z | S | T) -> str:
     return out
 
 
-def command_to_unicode(cmd: N | M | E | C | X | Z | S | T) -> str:
+def command_to_unicode(cmd: Command) -> str:
     """Get the unicode representation of a command."""
     kind = cmd.kind
     out = kind.name
@@ -108,15 +108,6 @@ class _KindChecker:
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
-
-    def to_latex(self) -> str:
-        return command_to_latex(self)
-
-    def to_unicode(self) -> str:
-        return command_to_unicode(self)
-
-    def __str__(self) -> str:
-        return command_to_str(self)
 
 
 @dataclasses.dataclass

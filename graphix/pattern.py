@@ -17,7 +17,7 @@ import typing_extensions
 
 from graphix import command
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind
+from graphix.command import Command, CommandKind, command_to_latex, command_to_str, command_to_unicode
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -265,8 +265,8 @@ class Pattern:
     def to_latex(self) -> str:
         """Return a string containing the latex representation of the pattern."""
         output = io.StringIO()
-        for instr in self.__seq:
-            output.write(instr.to_latex())
+        for cmd in self.__seq:
+            output.write(command_to_latex(cmd))
             output.write("\n")
 
         contents = output.getvalue()
@@ -313,11 +313,11 @@ class Pattern:
 
     def __str__(self) -> str:
         """Return a string representation of the pattern."""
-        return "\n".join([str(cmd) for cmd in self.__seq])
+        return "\n".join([command_to_str(cmd) for cmd in self.__seq])
 
     def to_unicode(self) -> str:
         """Return the unicode string representation of the pattern."""
-        return "".join([cmd.to_unicode() for cmd in self.__seq])
+        return "".join([command_to_unicode(cmd) for cmd in self.__seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
