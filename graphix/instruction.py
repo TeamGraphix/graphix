@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import sys
 from enum import Enum
-from typing import ClassVar, Literal, Set, Type, Union
+from typing import ClassVar, Literal, Union
 
 from graphix import utils
 from graphix.fundamentals import Plane
@@ -14,8 +14,8 @@ from graphix.fundamentals import Plane
 
 def to_qasm3(instruction: Instruction) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
-    one_q_rotations_instructions: Set[Type[Instruction]] = {RX, RY, RZ}
-    one_q_instructions: Set[Type[Instruction]] = {
+    one_q_rotations_instructions: set[type[Instruction]] = {RX, RY, RZ}
+    one_q_instructions: set[type[Instruction]] = {
         H,
         I,
         S,
@@ -25,7 +25,7 @@ def to_qasm3(instruction: Instruction) -> str:
     }
     one_q_instructions.update(one_q_rotations_instructions)
 
-    two_q_instructions: Set[Type[Instruction]] = {CNOT, RZZ, SWAP}
+    two_q_instructions: set[type[Instruction]] = {CNOT, RZZ, SWAP}
 
     kind = instruction.kind
     if kind == InstructionKind.CNOT:
