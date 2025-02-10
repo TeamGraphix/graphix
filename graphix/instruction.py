@@ -12,7 +12,7 @@ from graphix import utils
 from graphix.fundamentals import Plane
 
 
-def to_qasm3(instruction: CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | XC | ZC) -> str:
+def to_qasm3(instruction: CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
     one_q_rotations_instructions = {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}
     one_q_instructions = {
