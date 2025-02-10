@@ -140,4 +140,4 @@ def test_circuit_draw() -> None:
         circuit.draw("latex")
         circuit.draw("latex_source")
     except Exception as e:
-        pytest.fail(e)
+        pytest.fail(str(e))

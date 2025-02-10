@@ -678,4 +678,4 @@ def test_draw_pattern():
         randpat.draw("unicode")
         randpat.draw("png")
     except Exception as e:
-        pytest.fail(e)
+        pytest.fail(str(e))
