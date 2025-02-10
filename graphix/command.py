@@ -25,15 +25,15 @@ def command_to_latex(cmd: Command) -> str:
     kind = cmd.kind
     out = kind.name
 
-    if kind == CommandKind.N:
+    if isinstance(cmd, N):
         out += "_{" + str(cmd.node) + "}"
-    if kind == CommandKind.M:
+    if isinstance(cmd, M):
         out += "_" + str(cmd.node) + "^{" + cmd.plane.name + "," + str(round(cmd.angle, 2)) + "}"
-    if kind == CommandKind.E:
+    if isinstance(cmd, E):
         out += "_{" + str(cmd.nodes[0]) + "," + str(cmd.nodes[1]) + "}"
-    if kind == CommandKind.C:
+    if isinstance(cmd, C):
         out += "_" + str(cmd.node)
-    if kind in {CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}:
+    if isinstance(cmd, (X, Z, S, T)):
         out += "_" + str(cmd.node) + "^{[" + "".join([str(dom) for dom in cmd.domain]) + "]}"
 
     return "$" + out + "$"
@@ -44,15 +44,15 @@ def command_to_str(cmd: Command) -> str:
     kind = cmd.kind
     out = kind.name
 
-    if kind == CommandKind.N:
+    if isinstance(cmd, N):
         out += "(" + str(cmd.node) + ")"
-    if kind == CommandKind.M:
+    if isinstance(cmd, M):
         out += "(" + str(cmd.node) + "," + cmd.plane.name + "," + str(round(cmd.angle, 2)) + ")"
-    if kind == CommandKind.E:
+    if isinstance(cmd, E):
         out += "(" + str(cmd.nodes[0]) + "," + str(cmd.nodes[1]) + ")"
-    if kind == CommandKind.C:
+    if isinstance(cmd, C):
         out += "(" + str(cmd.node)
-    if kind in {CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}:
+    if isinstance(cmd, (X, Z, S, T)):
         out += "(" + str(cmd.node) + ")"
 
     return out
@@ -75,15 +75,15 @@ def command_to_unicode(cmd: Command) -> str:
         next_sub = strnum[1:]
         return subscripts[sub] + _get_subscript_from_number(int(next_sub))
 
-    if kind == CommandKind.N:
+    if isinstance(cmd, N):
         out += _get_subscript_from_number(cmd.node)
-    if kind == CommandKind.M:
+    if isinstance(cmd, M):
         out += _get_subscript_from_number(cmd.node)
-    if kind == CommandKind.E:
+    if isinstance(cmd, E):
         out += _get_subscript_from_number(cmd.nodes[0]) + _get_subscript_from_number(cmd.nodes[1])
-    if kind == CommandKind.C:
+    if isinstance(cmd, C):
         out += _get_subscript_from_number(cmd.node)
-    if kind in {CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}:
+    if isinstance(cmd, (X, Z, S, T)):
         out += _get_subscript_from_number(cmd.node)
 
     return out

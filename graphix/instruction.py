@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import sys
 from enum import Enum
-from typing import ClassVar, Literal, Union
+from typing import ClassVar, Literal, Union, Set, Type
 
 from graphix import utils
 from graphix.fundamentals import Plane
@@ -14,17 +14,19 @@ from graphix.fundamentals import Plane
 
 def to_qasm3(instruction: Instruction) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
-    one_q_rotations_instructions = {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}
-    one_q_instructions = {
-        InstructionKind.H,
-        InstructionKind.I,
-        InstructionKind.S,
-        InstructionKind.X,
-        InstructionKind.Y,
-        InstructionKind.Z,
+    one_q_rotations_instructions: Set[Type[Instruction]] = {RX, RY, RZ}
+    one_q_instructions: Set[Type[Instruction]] = {
+        H,
+        I,
+        S,
+        X,
+        Y,
+        Z,
     }
     one_q_instructions.update(one_q_rotations_instructions)
-    two_q_instructions = {InstructionKind.CNOT, InstructionKind.RZZ, InstructionKind.SWAP}
+
+    two_q_instructions: Set[Type[Instruction]] = {CNOT, RZZ, SWAP}
+
 
     kind = instruction.kind
     if kind == InstructionKind.CNOT:
@@ -34,15 +36,15 @@ def to_qasm3(instruction: Instruction) -> str:
     else:
         out = kind.name.lower()
 
-    if kind == InstructionKind.M:
+    if isinstance(instruction, M):
         out += f"b[{instruction.target}] = measure q[{instruction.target}]"
-    elif kind in one_q_instructions:
-        if kind in one_q_rotations_instructions:
+    elif isinstance(instruction, (H, I, S, X, Y, Z)):
+        if isinstance(instruction, (RX, RY, RZ)):
             out += f"({instruction.angle}) q[{instruction.target}]"
         else:
             out += f" q[{instruction.target}]"
-    elif kind in two_q_instructions:
-        if kind == InstructionKind.SWAP:
+    elif isinstance(instruction, (CNOT, RZZ, SWAP)):
+        if isinstance(instruction, SWAP):
             out += f" q[{instruction.targets[0]}], q[{instruction.targets[1]}]"
         else:
             out += f" q[{instruction.control}], q[{instruction.target}]"
