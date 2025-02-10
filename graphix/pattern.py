@@ -10,6 +10,7 @@ import io
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Literal
 
 import networkx as nx
 import typing_extensions
@@ -233,7 +234,8 @@ class Pattern:
                 error_file.write(exc.stdout)
             warnings.warn(
                 "Unable to compile LaTeX. Perhaps you are missing the `qcircuit` package."
-                " The output from the `pdflatex` command is in `latex_error.log`.", stacklevel=2
+                " The output from the `pdflatex` command is in `latex_error.log`.",
+                stacklevel=2,
             )
             raise Exception("`pdflatex` call did not succeed: see `latex_error.log`.") from exc
 
