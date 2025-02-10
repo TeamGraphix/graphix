@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import sys
 from enum import Enum
-from typing import ClassVar, Literal, Union, Set, Type
+from typing import ClassVar, Literal, Set, Type, Union
 
 from graphix import utils
 from graphix.fundamentals import Plane
@@ -26,7 +26,6 @@ def to_qasm3(instruction: Instruction) -> str:
     one_q_instructions.update(one_q_rotations_instructions)
 
     two_q_instructions: Set[Type[Instruction]] = {CNOT, RZZ, SWAP}
-
 
     kind = instruction.kind
     if kind == InstructionKind.CNOT:
