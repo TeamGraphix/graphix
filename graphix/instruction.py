@@ -26,7 +26,7 @@ def to_qasm3(instruction: _KindChecker) -> str:
     one_q_instructions.update(one_q_rotations_instructions)
     two_q_instructions = {InstructionKind.CNOT, InstructionKind.RZZ, InstructionKind.SWAP}
 
-    kind = instruction.kind
+    kind = getattr(instruction, "kind")
     if kind == InstructionKind.CNOT:
         out = "cx"
     elif kind == InstructionKind.M:

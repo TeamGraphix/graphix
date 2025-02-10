@@ -22,7 +22,7 @@ Node = int
 
 def command_to_latex(cmd: _KindChecker) -> str:
     """Get the latex string representation of a command."""
-    kind = cmd.kind
+    kind = getattr(cmd, "kind")
     out = kind.name
 
     if kind == CommandKind.N:
