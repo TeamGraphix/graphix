@@ -14,19 +14,6 @@ from graphix.fundamentals import Plane
 
 def to_qasm3(instruction: Instruction) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
-    one_q_rotations_instructions: set[type[Instruction]] = {RX, RY, RZ}
-    one_q_instructions: set[type[Instruction]] = {
-        H,
-        I,
-        S,
-        X,
-        Y,
-        Z,
-    }
-    one_q_instructions.update(one_q_rotations_instructions)
-
-    two_q_instructions: set[type[Instruction]] = {CNOT, RZZ, SWAP}
-
     kind = instruction.kind
     if kind == InstructionKind.CNOT:
         out = "cx"
