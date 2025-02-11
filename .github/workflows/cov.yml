@@ -24,7 +24,7 @@ jobs:
           packages: |
             scheme-basic
             standalone
-            xy-pic
+            xypic
             qcircuit
 
       - name: Update and install dependencies
