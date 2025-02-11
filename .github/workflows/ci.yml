@@ -42,6 +42,8 @@ jobs:
           sudo apt-get update
           sudo apt-get upgrade -y
           sudo apt-get install -y poppler-utils
+          git clone https://github.com/CQuIC/qcircuit.git && sudo cp -r qcircuit /usr/share/texmf-dist/tex/latex/
+          texhash
 
       - name: Setup nox
         # Keep in sync with requirements-dev.txt
