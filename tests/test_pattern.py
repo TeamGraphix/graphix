@@ -674,8 +674,16 @@ def test_draw_pattern():
     randpat = rand_circuit(5, 5).transpile().pattern
     try:
         randpat.draw("ascii")
-        randpat.draw("latex")
         randpat.draw("unicode")
+    except Exception as e:
+        pytest.fail(str(e))
+
+from distutils.spawn import find_executable
+@pytest.mark.skipif(find_executable('latex') is None, reason="latex not installed")
+def test_draw_pattern_latex():
+    randpat = rand_circuit(5, 5).transpile().pattern
+    try:
+        randpat.draw("latex")
         randpat.draw("png")
     except Exception as e:
         pytest.fail(str(e))
