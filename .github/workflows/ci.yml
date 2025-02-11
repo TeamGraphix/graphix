@@ -38,12 +38,16 @@ jobs:
 
       - name: Update and install dependencies
         run: |
-          sudo rm -rf /var/lib/dpkg/lock-frontend
           sudo apt-get update
           sudo apt-get upgrade -y
           sudo apt-get install -y poppler-utils
-          git clone https://github.com/CQuIC/qcircuit.git && sudo cp -r qcircuit /usr/share/texmf-dist/tex/latex/
-          texhash
+          sudo updatedb
+          TEXMF=$(kpsewhich -var-value=TEXMFLOCAL || echo "/usr/local/texlive/texmf-local")
+          echo "TEXMF=$TEXMF"
+          git clone https://github.com/CQuIC/qcircuit.git
+          sudo mkdir -p $TEXMF/tex/latex/qcircuit
+          sudo cp -r qcircuit/* $TEXMF/tex/latex/qcircuit
+          sudo texhash
 
       - name: Setup nox
         # Keep in sync with requirements-dev.txt
