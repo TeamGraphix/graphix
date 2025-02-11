@@ -35,9 +35,11 @@ jobs:
         uses: teatimeguest/setup-texlive-action@v3
         with:
           packages: scheme-basic
-      
+
       - name: Install poppler-utils # Install pdftocairo
-         run: apt-get install poppler-utils 
+         run: |
+          sudo apt-get update && apt upgrade
+          sudo apt-get install poppler-utils
 
       - name: Setup nox
         # Keep in sync with requirements-dev.txt
