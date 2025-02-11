@@ -35,8 +35,10 @@ jobs:
         uses: teatimeguest/setup-texlive-action@v3
         with:
           packages: |
-            scheme-full
+            scheme-basic
             qcircuit
+            pdftolatex
+            pdftocairo
 
       - name: Update and install dependencies
         run: |
