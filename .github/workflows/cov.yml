@@ -22,7 +22,7 @@ jobs:
         uses: teatimeguest/setup-texlive-action@v3
         with:
           packages: scheme-basic
-      
+
       - name: Install poppler-utils # Install pdftocairo
          run: apt-get install poppler-utils 
 
