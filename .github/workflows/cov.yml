@@ -24,7 +24,7 @@ jobs:
           packages: scheme-basic
 
       - name: Install poppler-utils # Install pdftocairo
-         run: |
+        run: |
           sudo apt-get update && apt upgrade
           sudo apt-get install poppler-utils
 
