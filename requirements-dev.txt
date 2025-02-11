@@ -19,7 +19,6 @@ pytest-mock
 qiskit>=1.0
 qiskit-aer
 rustworkx
-pylatexenc
 
 # Optional dependency. Pinned due to version changes often being incompatible
 pyzx==0.8.0
