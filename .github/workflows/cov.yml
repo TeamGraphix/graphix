@@ -28,7 +28,6 @@ jobs:
           sudo apt-get update
           sudo apt-get upgrade -y
           sudo apt-get install -y poppler-utils
-          sudo updatedb
           TEXMF=$(kpsewhich -var-value=TEXMFLOCAL || echo "/usr/local/texlive/texmf-local")
           echo "TEXMF=$TEXMF"
           git clone https://github.com/CQuIC/qcircuit.git
