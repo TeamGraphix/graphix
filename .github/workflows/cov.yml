@@ -39,13 +39,8 @@ jobs:
       - name: Install graphix with dev deps.
         run: pip install .[dev]
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-
       - name: Run pytest
         run: pytest --cov=./graphix --cov-report=xml --cov-report=term
-
-
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
