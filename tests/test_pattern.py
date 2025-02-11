@@ -4,7 +4,7 @@ import copy
 import itertools
 import sys
 import typing
-from distutils.spawn import find_executable
+from shutil import which
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -680,7 +680,7 @@ def test_draw_pattern():
         pytest.fail(str(e))
 
 
-@pytest.mark.skipif(find_executable("latex") is None, reason="latex not installed")
+@pytest.mark.skipif(which("latex") is None, reason="latex not installed")
 def test_draw_pattern_latex():
     randpat = rand_circuit(5, 5).transpile().pattern
     try:

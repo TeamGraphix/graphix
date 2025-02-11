@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from distutils.spawn import find_executable
+from shutil import which
 
 import numpy as np
 import pytest
@@ -143,7 +143,7 @@ def test_circuit_draw() -> None:
         pytest.fail(str(e))
 
 
-@pytest.mark.skipif(find_executable("latex") is None, reason="latex not installed")
+@pytest.mark.skipif(which("latex") is None, reason="latex not installed")
 def test_circuit_draw_latex() -> None:
     circuit = Circuit(10)
     try:
