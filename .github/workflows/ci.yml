@@ -37,8 +37,6 @@ jobs:
           packages: |
             scheme-basic
             qcircuit
-            pdftolatex
-            pdftocairo
 
       - name: Update and install dependencies
         run: |
