@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from distutils.spawn import find_executable
+
 import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
@@ -139,9 +141,6 @@ def test_circuit_draw() -> None:
         circuit.draw("mpl")
     except Exception as e:
         pytest.fail(str(e))
-
-
-from distutils.spawn import find_executable
 
 
 @pytest.mark.skipif(find_executable("latex") is None, reason="latex not installed")

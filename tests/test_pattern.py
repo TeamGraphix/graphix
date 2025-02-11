@@ -4,6 +4,7 @@ import copy
 import itertools
 import sys
 import typing
+from distutils.spawn import find_executable
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -677,9 +678,6 @@ def test_draw_pattern():
         randpat.draw("unicode")
     except Exception as e:
         pytest.fail(str(e))
-
-
-from distutils.spawn import find_executable
 
 
 @pytest.mark.skipif(find_executable("latex") is None, reason="latex not installed")
