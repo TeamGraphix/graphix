@@ -23,6 +23,8 @@ jobs:
         with:
           packages: |
             scheme-basic
+            standalone
+            xy-pic
             qcircuit
 
       - name: Update and install dependencies
