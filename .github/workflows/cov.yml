@@ -23,10 +23,12 @@ jobs:
         with:
           packages: scheme-basic
 
-      - name: Install poppler-utils # Install pdftocairo
+      - name: Update and install dependencies
         run: |
-          sudo apt-get update && apt upgrade
-          sudo apt-get install poppler-utils
+          sudo rm -rf /var/lib/dpkg/lock-frontend
+          sudo apt-get update
+          sudo apt-get upgrade -y
+          sudo apt-get install -y poppler-utils
 
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
