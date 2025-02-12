@@ -1440,9 +1440,7 @@ class Pattern:
         result = self.copy()
         for cmd in result:
             if cmd.kind == command.CommandKind.M:
-                print(cmd.angle)
                 cmd.angle = parameter.subs(cmd.angle, variable, substitute)
-                print(cmd.angle)
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:

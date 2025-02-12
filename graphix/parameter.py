@@ -344,7 +344,8 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     if not isinstance(value, Expression):
         return value
     new_value = value.subs(variable, substitute)
-    if isinstance(new_value, SupportsComplex):
+    # On Python<=3.10, complex is not a subtype of SupportsComplex
+    if isinstance(new_value, (complex, SupportsComplex)):
         c = complex(new_value)
         if c.imag == 0.0:
             return c.real
@@ -373,8 +374,12 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     if not isinstance(value, Expression):
         return value
     new_value = value.xreplace(assignment)
-    if isinstance(new_value, SupportsComplex):
-        return complex(new_value)
+    # On Python<=3.10, complex is not a subtype of SupportsComplex
+    if isinstance(new_value, (complex, SupportsComplex)):
+        c = complex(new_value)
+        if c.imag == 0.0:
+            return c.real
+        return c
     return new_value
 
 
