@@ -19,3 +19,13 @@ def tests(session: Session) -> None:
     """Run the test suite with full dependencies."""
     session.install("-e", ".[dev]")
     session.run("pytest")
+
+
+@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12"])
+def tests_symbolic(session: Session) -> None:
+    """Run the test suite of graphix-symbolic."""
+    session.install("-e", ".[dev]")
+    # Use sympy branch until graphix-symbolic#1 is merged
+    session.run("git", "clone", "-b", "sympy", "https://github.com/thierry-martinez/graphix-symbolic")
+    session.cd("graphix-symbolic")
+    session.run("pytest")
