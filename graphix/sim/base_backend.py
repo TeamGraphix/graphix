@@ -38,7 +38,7 @@ class NodeIndex:
     """
 
     def __init__(self) -> None:
-        self.__dict = dict()
+        self.__dict = {}
         self.__list = []
 
     def __getitem__(self, index: int) -> int:
@@ -72,8 +72,8 @@ class NodeIndex:
         index = self.__dict[node]
         del self.__list[index]
         del self.__dict[node]
-        for new_index, node in enumerate(self.__list[index:], start=index):
-            self.__dict[node] = new_index
+        for new_index, u in enumerate(self.__list[index:], start=index):
+            self.__dict[u] = new_index
 
     def swap(self, i: int, j: int) -> None:
         """Swap two nodes given their indices."""
@@ -94,10 +94,8 @@ class State(ABC):
 
 
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic: bool = False) -> npt.NDArray:
-    if symbolic:
-        op_mat = np.eye(2, dtype="O") / 2
-    else:
-        op_mat = np.eye(2, dtype=np.complex128) / 2
+    dtype = "O" if symbolic else np.complex128
+    op_mat = np.eye(2, dtype=dtype) / 2
     sign = (-1) ** result
     for i in range(3):
         op_mat += sign * vec[i] * Clifford(i + 1).matrix / 2

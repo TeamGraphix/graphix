@@ -36,8 +36,7 @@ def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray:
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
-    else:
-        return unitary_group.rvs(sz, random_state=rng)
+    return unitary_group.rvs(sz, random_state=rng)
 
 
 UNITS = np.array([1, 1j])
@@ -85,8 +84,7 @@ def rand_dm(
 
         # will raise an error if incorrect dimension
         return DensityMatrix(data=dm)
-    else:
-        return dm
+    return dm
 
 
 def rand_gauss_cpx_mat(dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
@@ -142,7 +140,7 @@ def rand_channel_kraus(
     if not isinstance(rank, int):
         raise TypeError("The rank of a Kraus expansion must be an integer.")
 
-    if not 1 <= rank:
+    if not rank >= 1:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
     pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
@@ -173,7 +171,7 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     else:
         if not isinstance(rank, int):
             raise TypeError("The rank of a Kraus expansion must be an integer.")
-        if not 1 <= rank:
+        if not rank >= 1:
             raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
 
     # full probability has to have dim**2 operators.
@@ -195,7 +193,7 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     # TODO see how to use zip and dict to convert from tuple to dict
     # https://www.tutorialspoint.com/How-I-can-convert-a-Python-Tuple-into-Dictionary
 
-    data = [KrausData(np.sqrt(params[i]), ops[i]) for i in range(0, rank)]
+    data = [KrausData(np.sqrt(params[i]), ops[i]) for i in range(rank)]
 
     # NOTE retain a strong probability on the identity or not?
     # think we don't really care

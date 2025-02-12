@@ -28,7 +28,7 @@ from graphix import Circuit
 def genpair(n_qubits, count, rng):
     pairs = []
     for _ in range(count):
-        choice = [j for j in range(n_qubits)]
+        choice = list(range(n_qubits))
         x = rng.choice(choice)
         choice.pop(x)
         y = rng.choice(choice)
@@ -64,7 +64,7 @@ def random_clifford_circuit(nqubits, depth, seed=42):
 # We generate a set of random Clifford circuits with different widths.
 
 DEPTH = 3
-test_cases = [i for i in range(2, 300, 10)]
+test_cases = list(range(2, 300, 10))
 graphix_patterns = {}
 
 for i in test_cases:

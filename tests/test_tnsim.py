@@ -353,8 +353,9 @@ class TestTN:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = rand_circuit(4, 2, rng)
 
-        pattern = circuit.standardize_and_transpile().pattern
-
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
         statevec_ref = circuit.simulate_statevector().statevec
 
         tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)
@@ -368,7 +369,9 @@ class TestTN:
     def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int, fx_rng: Generator) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = rand_circuit(nqubits, 3, rng)
-        pattern = circuit.standardize_and_transpile().pattern
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
         statevec_ref = circuit.simulate_statevector().statevec
 
         tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)

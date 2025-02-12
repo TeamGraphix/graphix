@@ -12,7 +12,10 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Mapping, SupportsComplex, SupportsFloat, TypeVar
+from typing import TYPE_CHECKING, Any, SupportsComplex, SupportsFloat, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class Expression(ABC):
@@ -201,7 +204,7 @@ class AffineExpression(Expression):
         """Return a textual representation of the expression."""
         return f"{self.a} * {self.x} + {self.b}"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check if two expressions are equal."""
         if isinstance(other, AffineExpression):
             return self.a == other.a and self.x == other.x and self.b == other.b
@@ -269,7 +272,7 @@ class Placeholder(AffineExpression, Parameter):
         """Return the name of the placeholder."""
         return self.__name
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check if two placeholders are identical."""
         if isinstance(other, Parameter):
             return self is other

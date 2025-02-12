@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 ## [Unreleased]
 
 ### Added
@@ -13,8 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+## [0.3.0] - 2025-02-04
+
+### Changed
+
 - Now variables, functions, and classes are named based on PEP8.
 - `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
+- Deprecated support for Python 3.8.
+- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules. 
+  - Removed `opt` option for `Circuit.transpile` method.
+  - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
+  
 
 ## [0.2.16] - 2024-08-26
 

@@ -1,7 +1,7 @@
 import importlib.util
 from typing import TYPE_CHECKING
 
-import matplotlib
+import matplotlib as mpl
 import numpy as np
 import pytest
 from numpy.random import Generator
@@ -158,7 +158,7 @@ def test_random_circuit_with_parameters(
     circuit = rand_circuit(nqubits, depth, fx_rng, parameters=[alpha, beta])
     pattern = circuit.transpile().pattern
     pattern.standardize()
-    pattern.shift_signals(method="global")
+    pattern.shift_signals()
     pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
     pattern.minimize_space()
     assignment: dict[Parameter, float] = {alpha: fx_rng.uniform(high=2), beta: fx_rng.uniform(high=2)}
@@ -172,7 +172,7 @@ def test_random_circuit_with_parameters(
 
 
 def test_visualization() -> None:
-    matplotlib.use("Agg")  # Use a non-interactive backend
+    mpl.use("Agg")  # Use a non-interactive backend
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")

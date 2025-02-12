@@ -147,7 +147,7 @@ class Ops:
         :rtype: np.ndarray
         """
         if isinstance(n_qubits, int):
-            if not 1 <= n_qubits:
+            if not n_qubits >= 1:
                 raise ValueError(f"The number of qubits must be an integer <= 1 and not {n_qubits}.")
         else:
             raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")

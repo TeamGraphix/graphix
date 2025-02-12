@@ -73,7 +73,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 ### and more..
 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
-- You can try demos on browser with mybinder.org: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD)
+
 
 - Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
 
@@ -83,13 +83,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 ## Citing
 
-> Shinichi Sunami and Masato Fukushima, Graphix. (2023) <https://doi.org/10.5281/zenodo.7861382>
-
-<!--
-Update on the [arXiv paper](https://arxiv.org/pdf/2212.11975.pdf): [^1]
-
-[^1]: Following the release of this arXiv preprint, we were made aware of [Backens et al.](https://quantum-journal.org/papers/q-2021-03-25-421/) and related work, where graph-theoretic simplification (Pauli measurement elimination) of patterns were shown.
-Many thanks for letting us know about this work - at the time of the writing we were not aware of these important relevant works but will certainly properly mention in the new version; we are working on significant restructuring and rewriting of the paper and hope to update the paper soon. -->
+> Shinichi Sunami and Masato Fukushima, Graphix. (2023) <https://doi.org/10.5281/zenodo.7861382> 
 
 ## Contributing
 
@@ -99,11 +93,13 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix` to ask questions.
 
-## Core Contributors
+## Core Contributors (alphabetical order)
 
-Dr. Shinichi Sunami (University of Oxford)
-
-Masato Fukushima (University of Tokyo, Fixstars Amplify)
+ - Masato Fukushima (University of Tokyo, Fixstars Amplify)
+ - Maxime Garnier (Inria Paris)
+ - Thierry Martinez (Inria Paris)
+ - Sora Shiratani (University of Tokyo, Fixstars Amplify)
+ - Shinichi Sunami (University of Oxford)
 
 ## Acknowledgements
 

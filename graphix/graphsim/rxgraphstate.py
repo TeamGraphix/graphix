@@ -98,7 +98,7 @@ class RXGraphState(BaseGraphState):
         """
         if u is None and v is None:
             return len(self.edges)
-        elif u is None or v is None:
+        if u is None or v is None:
             raise ValueError("u and v must be specified together")
         uidx = self.nodes.get_node_index(u)
         vidx = self.nodes.get_node_index(v)
@@ -114,7 +114,7 @@ class RXGraphState(BaseGraphState):
             nidx = self.nodes.get_node_index(n)
             adjacency_dict = self._graph.adj(nidx)
             new_adjacency_dict = {}
-            for nidx in adjacency_dict.keys():
+            for nidx in adjacency_dict:
                 new_adjacency_dict[self.nodes.get_node_index(nidx)] = {}  # replace None with {}
             ret.append((n, new_adjacency_dict))
         return iter(ret)

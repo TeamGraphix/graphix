@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-import sys
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -330,14 +329,8 @@ def generate_test_graphs() -> list[GraphForTest]:
     ]
 
 
-if sys.version_info >= (3, 9):
-    FlowTestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
-    FlowTestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
-else:
-    from typing import Dict, Set, Tuple
-
-    FlowTestCaseType = Dict[str, Dict[str, Tuple[bool, Dict[int, Set[int]]]]]
-    FlowTestDataType = Tuple[GraphForTest, Tuple[bool, Dict[int, Set[int]]]]
+FlowTestCaseType = dict[str, dict[str, tuple[bool, dict[int, set[int]]]]]
+FlowTestDataType = tuple[GraphForTest, tuple[bool, dict[int, set[int]]]]
 
 FLOW_TEST_CASES: FlowTestCaseType = {
     "no measurement": {

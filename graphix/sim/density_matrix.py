@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import sys
+from collections.abc import Collection, Iterable
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
@@ -20,8 +21,7 @@ from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
-    from typing import Mapping
+    from collections.abc import Mapping
 
     import numpy.typing as npt
 
@@ -171,8 +171,8 @@ class DensityMatrix(State):
         )
         rho_tensor = np.moveaxis(
             rho_tensor,
-            [i for i in range(len(qargs))] + [-i for i in range(1, len(qargs) + 1)],
-            [i for i in qargs] + [i + self.nqubit for i in reversed(list(qargs))],
+            list(range(len(qargs))) + [-i for i in range(1, len(qargs) + 1)],
+            list(qargs) + [i + self.nqubit for i in reversed(list(qargs))],
         )
         self.rho = rho_tensor.reshape((2**self.nqubit, 2**self.nqubit))
 
@@ -274,7 +274,7 @@ class DensityMatrix(State):
         qargs_num = len(qargs)
         nqubit_after = n - qargs_num
         assert n > 0
-        assert all([qarg >= 0 and qarg < n for qarg in qargs])
+        assert all(qarg >= 0 and qarg < n for qarg in qargs)
 
         rho_res = self.rho.reshape((2,) * n * 2)
         # ket, bra indices to trace out
@@ -368,8 +368,6 @@ class DensityMatrixBackend(Backend):
 
 
 if sys.version_info >= (3, 10):
-    from collections.abc import Iterable
-
     Data = (
         states.State
         | DensityMatrix
@@ -379,7 +377,7 @@ if sys.version_info >= (3, 10):
         | Iterable[Iterable[ExpressionOrSupportsComplex]]
     )
 else:
-    from typing import Iterable, Union
+    from typing import Union
 
     Data = Union[
         states.State,

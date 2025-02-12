@@ -183,9 +183,7 @@ class QNN:
           the expectation value of a quantum circuit, which is computed using the
         statevector of the output state of the circuit.
         """
-        pattern = pattern.xreplace(
-            {placeholder: data for placeholder, data in zip(data_point_placeholders, data_point)}
-        )
+        pattern = pattern.xreplace(dict(zip(data_point_placeholders, data_point)))
         out_state = pattern.simulate_pattern("tensornetwork")
         sv = out_state.to_statevector().flatten()
         return self.get_expectation_value(sv)
@@ -261,7 +259,7 @@ class QNN:
         by the `minimize` function from the `scipy.optimize` module.
         """
         params = rng.random(self.n_layers * self.n_qubits * self.n_features * 2)
-        res = minimize(
+        return minimize(
             self.cost,
             params,
             args=(x, y),
@@ -269,7 +267,6 @@ class QNN:
             callback=self.callback,
             options={"maxiter": maxiter, "disp": True},
         )
-        return res
 
 
 # %%
@@ -345,7 +342,7 @@ input_params = rng.random(n_features)
 
 qnn = QNN(n_qubits, n_layers, n_features)
 circuit = qnn.data_reuploading_circuit(input_params, params)
-pattern = circuit.transpile(opt=False).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 

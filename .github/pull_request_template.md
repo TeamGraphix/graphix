@@ -5,7 +5,6 @@ Before submitting, please check the following:
 - Format added code by `ruff`
   - See `CONTRIBUTING.md` for more details
 - Make sure the checks (github actions) pass.
-- Check that the docs compile without errors (run `make html` in `./docs/` - you may need to install dependency for sphinx docs, see `docs/requirements.txt`.)
 
 Then, please fill in below:
 
