@@ -903,7 +903,6 @@ class Circuit:
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")
-
         return SimulateResult(state, classical_measures)
 
     def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:

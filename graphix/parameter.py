@@ -8,11 +8,14 @@ value assignment.
 
 from __future__ import annotations
 
+import math
 import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, SupportsComplex, SupportsFloat, TypeVar
+
+import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -105,6 +108,22 @@ class Expression(ABC):
         subject to any further replacement, even if another occurrence
         of a key appears in this value.
         """
+
+
+class ExpressionWithTrigonometry(Expression, ABC):
+    """Expression that supports trigonometric functions."""
+
+    @abstractmethod
+    def cos(self) -> ExpressionWithTrigonometry:
+        """Return the cosine of the expression."""
+
+    @abstractmethod
+    def sin(self) -> ExpressionWithTrigonometry:
+        """Return the cosine of the expression."""
+
+    @abstractmethod
+    def exp(self) -> ExpressionWithTrigonometry:
+        """Return the exponential of the expression."""
 
 
 class Parameter(Expression):
@@ -311,8 +330,8 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     Substitute in `value`.
 
     If `value` is in instance of :class:`Expression`, then return
-    `value.subs(variable, substitute)` (coerced into a complex if the
-    result is a number).
+    `value.subs(variable, substitute)` (coerced into a complex or a
+    float if the result is a number).
 
     If `value` does not implement `subs`, `value` is returned
     unchanged.
@@ -326,7 +345,10 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
         return value
     new_value = value.subs(variable, substitute)
     if isinstance(new_value, SupportsComplex):
-        return complex(new_value)
+        c = complex(new_value)
+        if c.imag == 0.0:
+            return c.real
+        return c
     return new_value
 
 
@@ -354,3 +376,29 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     if isinstance(new_value, SupportsComplex):
         return complex(new_value)
     return new_value
+
+
+def cos_sin(angle: ExpressionOrFloat) -> tuple[ExpressionOrFloat, ExpressionOrFloat]:
+    """Cosine and sine of a float or an expression."""
+    if isinstance(angle, Expression):
+        if isinstance(angle, ExpressionWithTrigonometry):
+            cos: ExpressionOrFloat = angle.cos()
+            sin: ExpressionOrFloat = angle.sin()
+        else:
+            raise PlaceholderOperationError
+    else:
+        cos = math.cos(angle)
+        sin = math.sin(angle)
+    return cos, sin
+
+
+def exp(z: ExpressionOrComplex) -> ExpressionOrComplex:
+    """Exponential of a number or an expression."""
+    if isinstance(z, Expression):
+        if isinstance(z, ExpressionWithTrigonometry):
+            return z.exp()
+        raise PlaceholderOperationError
+    e = np.exp(z)
+    # Result type of np.exp is Any!
+    assert isinstance(e, (complex, float))
+    return e
