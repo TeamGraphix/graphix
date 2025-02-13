@@ -25,7 +25,8 @@ def tests(session: Session) -> None:
 def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
     session.install("-e", ".[dev]")
-    # Use sympy branch until graphix-symbolic#1 is merged
-    session.run("git", "clone", "-b", "sympy", "https://github.com/thierry-martinez/graphix-symbolic")
+    ## If you need a specific branch:
+    # session.run("git", "clone", "-b", "branch-name", "https://github.com/TeamGraphix/graphix-symbolic")
+    session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
     session.cd("graphix-symbolic")
     session.run("pytest")
