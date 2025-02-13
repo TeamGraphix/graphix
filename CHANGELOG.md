@@ -36,6 +36,22 @@ This version introduces several important interface changes, aimed at secure exp
 - The following changes were made (#155):
   - Added `class Command` and all its child classes that represent all the pattern commands.
   - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
+- Parameterized circuits and patterns: angles in instructions and
+  measures can be expressions with parameters created with
+  `parameter.Placeholder` class.  Parameterized circuits can be
+  transpiled and parameterized patterns can be optimized
+  (standardization, minimization, signal shifting and Pauli
+  preprocessing) before being instantiated with the method `subs`.  An
+  additional package,
+  [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic),
+  provides parameters that suppor symbolic simulation, and the
+  resulting (symbolic) state vector or density matrix can be
+  instantiated with the method `subs` (probabilities cannot be
+  computed symbolically, so `pr_calc=False` should be passed to
+  simulators for symbolic computation, and an arbitrary path will be
+  computed).
+- Simulator back-ends have an additional optional argument `rng`,
+  to specify the random generator to use during the simulation.
 - `class graphix.OpenGraph` to transpile between graphix patterns and pyzx graphs.
 - `class graphix.pauli.PauliMeasurement` as a new Pauli measurement checks (used in `pattern.perform_pauli_measurements`).
 
