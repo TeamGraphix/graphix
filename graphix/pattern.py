@@ -11,6 +11,9 @@ import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Literal
+import subprocess
+import tempfile
+from pathlib import Path
 
 import networkx as nx
 import typing_extensions
@@ -208,9 +211,6 @@ class Pattern:
 
     def _latex_file_to_image(self, tmpdirname, tmpfilename) -> PIL.Image.Image:
         """Convert a latex file located in `tmpdirname/tmpfilename` to an image representation."""
-        import os
-        import subprocess
-
         import PIL
 
         try:
@@ -239,10 +239,10 @@ class Pattern:
             )
             raise Exception("`pdflatex` call did not succeed: see `latex_error.log`.") from exc
 
-        base = os.path.join(tmpdirname, tmpfilename)
+        base = Path(tmpdirname) / tmpfilename
         try:
             subprocess.run(
-                ["pdftocairo", "-singlefile", "-png", "-q", base + ".pdf", base],
+                ["pdftocairo", "-singlefile", "-png", "-q", base.with_suffix(".pdf"), base],
                 check=True,
             )
         except (OSError, subprocess.CalledProcessError) as exc:
@@ -260,7 +260,7 @@ class Pattern:
                 image = image.crop(bbox)
             return image
 
-        return _trim(PIL.Image.open(base + ".png"))
+        return _trim(PIL.Image.open(base.with_suffix(".png")))
 
     def to_latex(self) -> str:
         """Return a string containing the latex representation of the pattern."""
@@ -297,13 +297,11 @@ class Pattern:
 
     def to_png(self) -> PIL.Image.Image:
         """Generate a PNG image of the latex representation of the pattern."""
-        import os
-        import tempfile
-
         tmpfilename = "pattern"
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            tmppath = os.path.join(tmpdirname, tmpfilename + ".tex")
+            tmppath = Path(tmpdirname) / tmpfilename
+            tmppath = tmppath.with_suffix(".tex")
 
             with open(tmppath, "w") as latex_file:
                 contents = self._to_latex_document()
@@ -383,7 +381,7 @@ class Pattern:
             return self.to_latex()
         if output == "unicode":
             return self.to_unicode()
-        return None
+        raise ValueError("Unknown argument value for pattern drawing.")
 
     def standardize(self, method="direct"):
         """Execute standardization of the pattern.
