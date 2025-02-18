@@ -14,28 +14,28 @@ from graphix.fundamentals import Plane
 
 def to_qasm3(instruction: Instruction) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
+    out = []
     kind = instruction.kind
+
     if kind == InstructionKind.CNOT:
-        out = "cx"
-    elif kind == InstructionKind.M:
-        out = ""
-    else:
-        out = kind.name.lower()
+        out.append("cx")
+    elif kind != InstructionKind.M:
+        out.append(kind.name.lower())
 
     if isinstance(instruction, M):
-        out += f"b[{instruction.target}] = measure q[{instruction.target}]"
+        out.append(f"b[{instruction.target}] = measure q[{instruction.target}]")
     elif isinstance(instruction, (H, I, S, X, Y, Z)):
         if isinstance(instruction, (RX, RY, RZ)):
-            out += f"({instruction.angle}) q[{instruction.target}]"
+            out.append(f"({instruction.angle}) q[{instruction.target}]")
         else:
-            out += f" q[{instruction.target}]"
+            out.append(f"q[{instruction.target}]")
     elif isinstance(instruction, (CNOT, RZZ, SWAP)):
         if isinstance(instruction, SWAP):
-            out += f" q[{instruction.targets[0]}], q[{instruction.targets[1]}]"
+            out.append(f"q[{instruction.targets[0]}], q[{instruction.targets[1]}]")
         else:
-            out += f" q[{instruction.control}], q[{instruction.target}]"
+            out.append(f"q[{instruction.control}], q[{instruction.target}]")
 
-    return out
+    return " ".join(out)
 
 
 class InstructionKind(Enum):
