@@ -23,70 +23,59 @@ Node = int
 def command_to_latex(cmd: Command) -> str:
     """Get the latex string representation of a command."""
     kind = cmd.kind
-    out = kind.name
+    out = [kind.name]
 
-    if isinstance(cmd, N):
-        out += "_{" + str(cmd.node) + "}"
-    if isinstance(cmd, M):
-        out += "_" + str(cmd.node) + "^{" + cmd.plane.name + "," + str(round(cmd.angle, 2)) + "}"
-    if isinstance(cmd, E):
-        out += "_{" + str(cmd.nodes[0]) + "," + str(cmd.nodes[1]) + "}"
-    if isinstance(cmd, C):
-        out += "_" + str(cmd.node)
-    if isinstance(cmd, (X, Z, S, T)):
-        out += "_" + str(cmd.node) + "^{[" + "".join([str(dom) for dom in cmd.domain]) + "]}"
+    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+        out.append(f"_{{{cmd.node}}}")
+        if isinstance(cmd, M):
+            out.append(f"^{{{cmd.plane.name},{cmd.angle:.2f}}}")
+        if isinstance(cmd, (X, Z, S, T)):
+            out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
+    elif isinstance(cmd, E):
+        out.append(f"_{{{cmd.nodes[0]},{cmd.nodes[1]}}}")
 
-    return "$" + out + "$"
+    output = f"${''.join(out)}$"
+    print(output)
+    return f"${''.join(out)}$"
 
 
 def command_to_str(cmd: Command) -> str:
     """Get the string representation of a command."""
     kind = cmd.kind
-    out = kind.name
+    out = [kind.name]
 
-    if isinstance(cmd, N):
-        out += "(" + str(cmd.node) + ")"
-    if isinstance(cmd, M):
-        out += "(" + str(cmd.node) + "," + cmd.plane.name + "," + str(round(cmd.angle, 2)) + ")"
-    if isinstance(cmd, E):
-        out += "(" + str(cmd.nodes[0]) + "," + str(cmd.nodes[1]) + ")"
-    if isinstance(cmd, C):
-        out += "(" + str(cmd.node)
-    if isinstance(cmd, (X, Z, S, T)):
-        out += "(" + str(cmd.node) + ")"
+    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+        out.append(f"({cmd.node}")
+        if isinstance(cmd, M):
+            out.append(f",{cmd.plane.name},{cmd.angle:.2f})")
+        if isinstance(cmd, (X, Z, S, T)):
+            out.append(f",{''.join([str(dom) for dom in cmd.domain])}")
+    elif isinstance(cmd, E):
+        out.append(f"({cmd.nodes[0]},{cmd.nodes[1]})")
 
-    return out
+    return "".join(out)
+
 
 
 def command_to_unicode(cmd: Command) -> str:
     """Get the unicode representation of a command."""
     kind = cmd.kind
-    out = kind.name
-
-    subscripts = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
+    out = [kind.name]
 
     def _get_subscript_from_number(number: int) -> str:
-        strnum = str(number)
-        if len(strnum) == 0:
-            return ""
-        if len(strnum) == 1:
-            return subscripts[int(number)]
-        sub = int(strnum[0])
-        next_sub = strnum[1:]
-        return subscripts[sub] + _get_subscript_from_number(int(next_sub))
+        subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+        return str(number).translate(subscripts)
 
-    if isinstance(cmd, N):
-        out += _get_subscript_from_number(cmd.node)
-    if isinstance(cmd, M):
-        out += _get_subscript_from_number(cmd.node)
-    if isinstance(cmd, E):
-        out += _get_subscript_from_number(cmd.nodes[0]) + _get_subscript_from_number(cmd.nodes[1])
-    if isinstance(cmd, C):
-        out += _get_subscript_from_number(cmd.node)
-    if isinstance(cmd, (X, Z, S, T)):
-        out += _get_subscript_from_number(cmd.node)
+    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+        out.append(_get_subscript_from_number(cmd.node))
+        if isinstance(cmd, M):
+            out.append(f",{cmd.plane.name},{cmd.angle:.2f}")
+        if isinstance(cmd, (X, Z, S, T)):
+            out.append(f",{','.join([_get_subscript_from_number(dom) for dom in cmd.domain])}")
+    elif isinstance(cmd, E):
+        out.append(f"{_get_subscript_from_number(cmd.nodes[0])},{_get_subscript_from_number(cmd.nodes[1])}")
 
-    return out
+    return "".join(out)
 
 
 class CommandKind(Enum):
