@@ -12,6 +12,32 @@ from graphix import utils
 from graphix.fundamentals import Plane
 
 
+def to_qasm3(instruction: Instruction) -> str:
+    """Get the qasm3 representation of a single circuit instruction."""
+    out = []
+    kind = instruction.kind
+
+    if kind == InstructionKind.CNOT:
+        out.append("cx")
+    elif kind != InstructionKind.M:
+        out.append(kind.name.lower())
+
+    if isinstance(instruction, M):
+        out.append(f"b[{instruction.target}] = measure q[{instruction.target}]")
+    elif isinstance(instruction, (H, I, S, X, Y, Z)):
+        if isinstance(instruction, (RX, RY, RZ)):
+            out.append(f"({instruction.angle}) q[{instruction.target}]")
+        else:
+            out.append(f"q[{instruction.target}]")
+    elif isinstance(instruction, (CNOT, RZZ, SWAP)):
+        if isinstance(instruction, SWAP):
+            out.append(f"q[{instruction.targets[0]}], q[{instruction.targets[1]}]")
+        else:
+            out.append(f"q[{instruction.control}], q[{instruction.target}]")
+
+    return " ".join(out)
+
+
 class InstructionKind(Enum):
     """Tag for instruction kind."""
 

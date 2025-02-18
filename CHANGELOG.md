@@ -5,10 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+## [0.3.1]
+
+This version brings nice ways to visualize both circuit and patterns. 
+
+### Added
+
+- Both `Circuit` and `Pattern` classes now have a `draw` method with an argument corresponding to the format the user wants to visualize the object and that returns the appropriate visualization object.
+- `Circuit.draw()` is based on `qiskit.QuantumCircuit.draw()` method that takes a qasm3 circuit as input to generate the `QuantumCircuit` object and call its local `draw` method.
+- Added the `to_qasm3(Instruction)` method followed by the `Circuit.to_qasm3()` method to generate the appropriate qasm3 representation of a `Circuit` object.
+- Added `Circuit.__str__()` method overload that calls `Circuit.draw()` with the default `text` argument.
+- `Pattern.draw()` relates on its own, with the 4 following visualization formats: `ascii`, `latex`, `unicode` or `png`, respectively returning `str`, `str`, `str` or `PIL.Image.Image`.
+- Added `command_to_latex(Command)`, `command_to_str(Command)`/`Command.__str__()` and `command_to_unicode(Command)` methods to generate the appropriate visualizations of a `Command` object.
+- Added `Pattern.to_png()`, `Pattern.to_unicode()`, `Pattern.to_latex()` and `Pattern._str__()` methods. Also added 2 private methods `Pattern._to_latex_document()` and `Pattern._latex_file_to_image()` used internally to generate a visualization object.
 
 ### Fixed
 
@@ -38,6 +55,8 @@ This version introduces several important interface changes, aimed at secure exp
   - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
 - `class graphix.OpenGraph` to transpile between graphix patterns and pyzx graphs.
 - `class graphix.pauli.PauliMeasurement` as a new Pauli measurement checks (used in `pattern.perform_pauli_measurements`).
+- Now variables, functions, and classes are named based on PEP8.
+- `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
 
 ### Fixed
 

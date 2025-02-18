@@ -4,6 +4,7 @@ import copy
 import itertools
 import sys
 import typing
+from shutil import which
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -668,3 +669,22 @@ class TestMCOps:
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
     return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))
+
+
+def test_draw_pattern():
+    randpat = rand_circuit(5, 5).transpile().pattern
+    try:
+        randpat.draw("ascii")
+        randpat.draw("unicode")
+    except Exception as e:
+        pytest.fail(str(e))
+
+
+@pytest.mark.skipif(which("latex") is None, reason="latex not installed")
+def test_draw_pattern_latex():
+    randpat = rand_circuit(5, 5).transpile().pattern
+    try:
+        randpat.draw("latex")
+        randpat.draw("png")
+    except Exception as e:
+        pytest.fail(str(e))

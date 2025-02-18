@@ -20,6 +20,62 @@ from graphix.states import BasicStates, State
 Node = int
 
 
+def command_to_latex(cmd: Command) -> str:
+    """Get the latex string representation of a command."""
+    kind = cmd.kind
+    out = [kind.name]
+
+    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+        out.append(f"_{{{cmd.node}}}")
+        if isinstance(cmd, M):
+            out.append(f"^{{{cmd.plane.name},{cmd.angle:.2f}}}")
+        if isinstance(cmd, (X, Z, S, T)):
+            out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
+    elif isinstance(cmd, E):
+        out.append(f"_{{{cmd.nodes[0]},{cmd.nodes[1]}}}")
+
+    return f"${''.join(out)}$"
+
+
+def command_to_str(cmd: Command) -> str:
+    """Get the string representation of a command."""
+    kind = cmd.kind
+    out = [kind.name]
+
+    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+        out.append(f"({cmd.node}")
+        if isinstance(cmd, M):
+            out.append(f",{cmd.plane.name},{cmd.angle:.2f})")
+        if isinstance(cmd, (X, Z, S, T)):
+            out.append(f",{''.join([str(dom) for dom in cmd.domain])}")
+    elif isinstance(cmd, E):
+        out.append(f"({cmd.nodes[0]},{cmd.nodes[1]})")
+
+    return "".join(out)
+
+
+
+def command_to_unicode(cmd: Command) -> str:
+    """Get the unicode representation of a command."""
+    kind = cmd.kind
+    out = [kind.name]
+
+    def _get_subscript_from_number(number: int) -> str:
+        subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+        return str(number).translate(subscripts)
+
+    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+        out.append(_get_subscript_from_number(cmd.node))
+        if isinstance(cmd, M):
+            out.append(f",{cmd.plane.name},{cmd.angle:.2f}")
+        if isinstance(cmd, (X, Z, S, T)):
+            out.append(f",{','.join([_get_subscript_from_number(dom) for dom in cmd.domain])}")
+    elif isinstance(cmd, E):
+        out.append(f"{_get_subscript_from_number(cmd.nodes[0])},{_get_subscript_from_number(cmd.nodes[1])}")
+
+    return "".join(out)
+
+
 class CommandKind(Enum):
     """Tag for command kind."""
 
