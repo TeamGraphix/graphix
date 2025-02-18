@@ -34,8 +34,6 @@ def command_to_latex(cmd: Command) -> str:
     elif isinstance(cmd, E):
         out.append(f"_{{{cmd.nodes[0]},{cmd.nodes[1]}}}")
 
-    output = f"${''.join(out)}$"
-    print(output)
     return f"${''.join(out)}$"
 
 
