@@ -50,7 +50,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     g = Graph()
 
     # Add vertices into the graph and set their type
-    def add_vertices(n: int, ty: VertexType.Type) -> list[VertexType]:
+    def add_vertices(n: int, ty: VertexType) -> list[VertexType]:
         verts = g.add_vertices(n)
         for vert in verts:
             g.set_type(vert, ty)
