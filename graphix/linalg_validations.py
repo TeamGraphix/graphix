@@ -15,7 +15,7 @@ def is_square(matrix: npt.NDArray[_T]) -> bool:
     if matrix.ndim != 2:
         return False
     rows, cols = matrix.shape
-    return rows == cols
+    return bool(rows == cols)
 
 
 def is_qubitop(matrix: npt.NDArray[_T]) -> bool:
@@ -23,7 +23,7 @@ def is_qubitop(matrix: npt.NDArray[_T]) -> bool:
     if not is_square(matrix):
         return False
     size, _ = matrix.shape
-    return size > 0 and size & (size - 1) == 0
+    return bool(size > 0 and size & (size - 1) == 0)
 
 
 def is_hermitian(matrix: npt.NDArray[_T]) -> bool:
