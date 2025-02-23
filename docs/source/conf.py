@@ -22,8 +22,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
-    "sphinx_gallery.gen_gallery",
-    "sphinxawesome_theme.highlighting",
+    "sphinx_gallery.gen_gallery"
 ]
 
 templates_path = ["_templates"]
