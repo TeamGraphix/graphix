@@ -54,7 +54,6 @@ def command_to_str(cmd: Command) -> str:
     return "".join(out)
 
 
-
 def command_to_unicode(cmd: Command) -> str:
     """Get the unicode representation of a command."""
     kind = cmd.kind
