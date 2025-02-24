@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import dataclasses
 import io
+import subprocess
+import tempfile
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Literal
-import subprocess
-import tempfile
 from pathlib import Path
+from typing import Literal
 
 import networkx as nx
 import typing_extensions
