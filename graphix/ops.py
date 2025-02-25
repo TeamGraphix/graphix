@@ -81,7 +81,7 @@ class Ops:
     @staticmethod
     def _cast_array(
         array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
-    ) -> npt.NDArray[np.object_]: ...
+    ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]: ...
 
     @staticmethod
     def _cast_array(
