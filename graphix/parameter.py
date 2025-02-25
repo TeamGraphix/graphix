@@ -25,7 +25,7 @@ class Expression(ABC):
     """Expression with parameters."""
 
     @abstractmethod
-    def __mul__(self, other: Object) -> ExpressionOrFloat:
+    def __mul__(self, other: object) -> ExpressionOrFloat:
         """
         Return the product of this expression with another object.
 
@@ -33,7 +33,7 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def __rmul__(self, other: Object) -> ExpressionOrFloat:
+    def __rmul__(self, other: object) -> ExpressionOrFloat:
         """
         Return the product of `other` with this expression.
 
@@ -43,7 +43,7 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def __add__(self, other: Object) -> ExpressionOrFloat:
+    def __add__(self, other: object) -> ExpressionOrFloat:
         """
         Return the sum of this expression with another object.
 
@@ -51,7 +51,7 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def __radd__(self, other: Object) -> ExpressionOrFloat:
+    def __radd__(self, other: object) -> ExpressionOrFloat:
         """
         Return the sum of `other` with this expression.
 
@@ -61,7 +61,7 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def __sub__(self, other: Object) -> ExpressionOrFloat:
+    def __sub__(self, other: object) -> ExpressionOrFloat:
         """
         Return the difference of this expression with another object.
 
@@ -69,7 +69,7 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def __rsub__(self, other: Object) -> ExpressionOrFloat:
+    def __rsub__(self, other: object) -> ExpressionOrFloat:
         """
         Return the difference of `other` with this expression.
 
@@ -87,7 +87,7 @@ class Expression(ABC):
         """
 
     @abstractmethod
-    def __truediv__(self, other: Object) -> ExpressionOrFloat:
+    def __truediv__(self, other: object) -> ExpressionOrFloat:
         """
         Return the quotient of this expression with another object.
 
@@ -164,19 +164,19 @@ class AffineExpression(Expression):
             return 0
         return self.__scale_non_null(k)
 
-    def __mul__(self, other: Object) -> ExpressionOrFloat:
+    def __mul__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
-    def __rmul__(self, other: Object) -> ExpressionOrFloat:
+    def __rmul__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(float(other))
         return NotImplemented
 
-    def __add__(self, other: Object) -> ExpressionOrFloat:
+    def __add__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
@@ -189,13 +189,13 @@ class AffineExpression(Expression):
             return AffineExpression(a=a, x=self.x, b=self.b + other.b)
         return NotImplemented
 
-    def __radd__(self, other: Object) -> ExpressionOrFloat:
+    def __radd__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.offset(float(other))
         return NotImplemented
 
-    def __sub__(self, other: Object) -> ExpressionOrFloat:
+    def __sub__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, AffineExpression):
             return self + -other
@@ -203,7 +203,7 @@ class AffineExpression(Expression):
             return self + -float(other)
         return NotImplemented
 
-    def __rsub__(self, other: Object) -> ExpressionOrFloat:
+    def __rsub__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.__scale_non_null(-1).offset(float(other))
@@ -213,7 +213,7 @@ class AffineExpression(Expression):
         """Look to the documentation in the parent class."""
         return self.__scale_non_null(-1)
 
-    def __truediv__(self, other: Object) -> ExpressionOrFloat:
+    def __truediv__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
             return self.scale(1 / float(other))
