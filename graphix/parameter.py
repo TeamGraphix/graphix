@@ -13,7 +13,7 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeVar
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeVar, overload
 
 import numpy as np
 
@@ -155,14 +155,14 @@ class AffineExpression(Expression):
         """Add `d` to the expression."""
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
-    def __scale_non_null(self, k: float) -> AffineExpression:
+    def _scale_non_null(self, k: float) -> AffineExpression:
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
     def scale(self, k: float) -> ExpressionOrFloat:
         """Multiply the expression by `k`."""
         if k == 0:
             return 0
-        return self.__scale_non_null(k)
+        return self._scale_non_null(k)
 
     def __mul__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
@@ -206,12 +206,12 @@ class AffineExpression(Expression):
     def __rsub__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
-            return self.__scale_non_null(-1).offset(float(other))
+            return self._scale_non_null(-1).offset(float(other))
         return NotImplemented
 
     def __neg__(self) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
-        return self.__scale_non_null(-1)
+        return self._scale_non_null(-1)
 
     def __truediv__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
@@ -323,7 +323,15 @@ else:
 T = TypeVar("T")
 
 
-# The return type could be `T | Expression | complex` since `subs` returns `Expression` only
+@overload
+def subs(value: Expression, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Expression: ...
+
+
+@overload
+def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | complex: ...
+
+
+# The return type could be `T | complex` since `subs` returns `Expression` only
 # if `T == Expression`, but `mypy` does not handle this yet: https://github.com/python/mypy/issues/12989
 def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> T | Expression | complex:
     """

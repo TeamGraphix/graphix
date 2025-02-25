@@ -89,7 +89,7 @@ class State(ABC):
     """Base class for backend state."""
 
     @abstractmethod
-    def flatten(self) -> npt.NDArray:
+    def flatten(self) -> npt.NDArray[np.complex128]:
         """Return flattened state."""
 
 

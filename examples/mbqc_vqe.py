@@ -40,7 +40,7 @@ X = np.array([[0, 1], [1, 0]])
 
 # %%
 # Define the Hamiltonian for the VQE problem (Example: H = Z0Z1 + X0 + X1)
-def create_hamiltonian() -> npt.NDArray:
+def create_hamiltonian() -> npt.NDArray[np.complex128]:
     return np.kron(Z, Z) + np.kron(X, np.eye(2)) + np.kron(np.eye(2), X)
 
 
