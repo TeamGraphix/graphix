@@ -80,9 +80,15 @@ class Circuit:
         self.instruction: list[instruction.Instruction] = []
         self.active_qubits = set(range(width))
 
+    def __repr__(self) -> str:
+        return f"Circuit(width={self.width}, instructions={self.instruction})"
+
     def __str__(self) -> str:
         """Return a string representation of the Circuit."""
-        return self.draw()
+        try:
+            return self.draw()
+        except Exception as e:
+            return repr(self)
 
     def draw(self, output: str = "text") -> TextDrawing | matplotlib.figure | PIL.Image | str:
         """Return the appropriate visualization object of a Circuit based on Qiskit.
