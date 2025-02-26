@@ -262,19 +262,31 @@ class Pattern:
 
         return _trim(PIL.Image.open(base.with_suffix(".png")))
 
-    def to_latex(self) -> str:
-        """Return a string containing the latex representation of the pattern."""
+    def to_latex(self, reverse_composition: bool) -> str:
+        """Return a string containing the latex representation of the pattern.
+
+        Parameters
+        ----------
+        reverse_composition: bool
+            whether or not represent the pattern in reverse order
+        """
         output = io.StringIO()
-        for cmd in self.__seq:
-            output.write(command_to_latex(cmd))
-            output.write("\n")
+
+        seq = self.__seq[::-1] if reverse_composition else self.__seq
+        output.write(" ".join([command_to_latex(cmd) for cmd in seq]))
 
         contents = output.getvalue()
         output.close()
         return contents
 
-    def _to_latex_document(self) -> str:
-        """Generate a latex document with the latex representation of the pattern written in it."""
+    def _to_latex_document(self, reverse_composition: bool) -> str:
+        """Generate a latex document with the latex representation of the pattern written in it.
+
+        Parameters
+        ----------
+        reverse_composition: bool
+            whether or not represent the pattern in reverse order
+        """
         header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
         header_2 = r"""
@@ -287,7 +299,7 @@ class Pattern:
         output.write(header_1)
         output.write(header_2)
 
-        output.write(self.to_latex())
+        output.write(self.to_latex(reverse_composition))
 
         output.write("\n\\end{document}")
         contents = output.getvalue()
@@ -295,8 +307,14 @@ class Pattern:
 
         return contents
 
-    def to_png(self) -> PIL.Image.Image:
-        """Generate a PNG image of the latex representation of the pattern."""
+    def to_png(self, reverse_composition: bool) -> PIL.Image.Image:
+        """Generate a PNG image of the latex representation of the pattern.
+
+        Parameters
+        ----------
+        reverse_composition: bool
+            whether or not represent the pattern in reverse order
+        """
         tmpfilename = "pattern"
 
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -304,18 +322,36 @@ class Pattern:
             tmppath = tmppath.with_suffix(".tex")
 
             with open(tmppath, "w") as latex_file:
-                contents = self._to_latex_document()
+                contents = self._to_latex_document(reverse_composition)
                 latex_file.write(contents)
 
             return self._latex_file_to_image(tmpdirname, tmpfilename)
 
     def __str__(self) -> str:
         """Return a string representation of the pattern."""
-        return "\n".join([command_to_str(cmd) for cmd in self.__seq])
+        return self.to_ascii(reverse_composition=False)
 
-    def to_unicode(self) -> str:
-        """Return the unicode string representation of the pattern."""
-        return "".join([command_to_unicode(cmd) for cmd in self.__seq])
+    def to_ascii(self, reverse_composition: bool) -> str:
+        """Return the ascii string representation of the pattern.
+
+        Parameters
+        ----------
+        reverse_composition: bool
+            whether or not represent the pattern in reverse order
+        """
+        seq = self.__seq[::-1] if reverse_composition else self.__seq
+        return "\n".join([command_to_str(cmd) for cmd in seq])
+
+    def to_unicode(self, reverse_composition: bool) -> str:
+        """Return the unicode string representation of the pattern.
+
+        Parameters
+        ----------
+        reverse_composition: bool
+            whether or not represent the pattern in reverse order
+        """
+        seq = self.__seq[::-1] if reverse_composition else self.__seq
+        return "".join([command_to_unicode(cmd) for cmd in seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
@@ -371,16 +407,24 @@ class Pattern:
                 f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
             )
 
-    def draw(self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii") -> str | PIL.Image.Image:
-        """Return the appropriate visualization object."""
+    def draw(
+        self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii", reverse_composition: bool = False
+    ) -> str | PIL.Image.Image:
+        """Return the appropriate visualization object.
+
+        Parameters
+        ----------
+        reverse_composition: bool
+
+        """
         if output == "ascii":
-            return str(self)
+            return self.to_ascii(reverse_composition)
         if output == "png":
-            return self.to_png()
+            return self.to_png(reverse_composition)
         if output == "latex":
-            return self.to_latex()
+            return self.to_latex(reverse_composition)
         if output == "unicode":
-            return self.to_unicode()
+            return self.to_unicode(reverse_composition)
         raise ValueError("Unknown argument value for pattern drawing.")
 
     def standardize(self, method="direct"):
