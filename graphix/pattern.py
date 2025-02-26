@@ -273,7 +273,7 @@ class Pattern:
         output = io.StringIO()
 
         seq = self.__seq[::-1] if reverse_composition else self.__seq
-        output.write(" ".join([command_to_latex(cmd) for cmd in seq]))
+        output.write(f"\({' '.join([command_to_latex(cmd) for cmd in seq])}\)")
 
         contents = output.getvalue()
         output.close()
@@ -340,7 +340,7 @@ class Pattern:
             whether or not represent the pattern in reverse order
         """
         seq = self.__seq[::-1] if reverse_composition else self.__seq
-        return "\n".join([command_to_str(cmd) for cmd in seq])
+        return " ".join([command_to_str(cmd) for cmd in seq])
 
     def to_unicode(self, reverse_composition: bool) -> str:
         """Return the unicode string representation of the pattern.
@@ -351,7 +351,7 @@ class Pattern:
             whether or not represent the pattern in reverse order
         """
         seq = self.__seq[::-1] if reverse_composition else self.__seq
-        return "".join([command_to_unicode(cmd) for cmd in seq])
+        return " ".join([command_to_unicode(cmd) for cmd in seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).

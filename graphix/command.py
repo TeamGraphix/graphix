@@ -19,6 +19,20 @@ from graphix.states import BasicStates, State
 
 Node = int
 
+def _angle_to_str(angle: float) -> str:
+    angle_map = {
+        np.pi: "π",
+        np.pi / 2: "π/2",
+        np.pi / 4: "π/4"
+    }
+
+    rad = angle * np.pi / 180
+    tol = 1e-9
+    for value, s in angle_map.items():
+        if abs(rad - value) < tol:
+            return pretty
+    return f"{rad:.2f}"
+
 
 def command_to_latex(cmd: Command) -> str:
     """Get the latex string representation of a command."""
@@ -26,15 +40,34 @@ def command_to_latex(cmd: Command) -> str:
     out = [kind.name]
 
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
-        out.append(f"_{{{cmd.node}}}")
+        node = str(cmd.node)
+
         if isinstance(cmd, M):
-            out.append(f"^{{{cmd.plane.name},{cmd.angle:.2f}}}")
+            if cmd.t_domain != set():
+                out = [f"{{}}_{{{[str(dom) for dom in cmd.t_domain]}}}["] + out
+            out.append(f"_{{{cmd.node}}}")
+            if cmd.plane != Plane.XY or cmd.angle != 0. or cmd.s_domain != set():
+                s = []
+                if cmd.plane != Plane.XY:
+                    s.append(cmd.plane.name)
+                if cmd.angle != 0.:
+                    s.append(_angle_to_str(cmd.angle))
+
+                if cmd.t_domain != set():
+                    s.append("]")
+                out.append(f"^{{{''.join(s)}}}")
+
+                if cmd.s_domain != set():
+                    s.append(f"^{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
+
         if isinstance(cmd, (X, Z, S, T)):
-            out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
+            if cmd.domain != set():
+                out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
+
     elif isinstance(cmd, E):
         out.append(f"_{{{cmd.nodes[0]},{cmd.nodes[1]}}}")
 
-    return f"${''.join(out)}$"
+    return f"{kind.name}{''.join(out)}"
 
 
 def command_to_str(cmd: Command) -> str:
@@ -43,15 +76,34 @@ def command_to_str(cmd: Command) -> str:
     out = [kind.name]
 
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
-        out.append(f"({cmd.node}")
+        node = str(cmd.node)
         if isinstance(cmd, M):
-            out.append(f",{cmd.plane.name},{cmd.angle:.2f})")
-        if isinstance(cmd, (X, Z, S, T)):
-            out.append(f",{''.join([str(dom) for dom in cmd.domain])}")
+            s = []
+            if cmd.t_domain != set():
+                out = [f"[{','.join([str(dom) for dom in cmd.t_domain])}]"] + out
+            s.append(f"{node}")
+            if cmd.plane != Plane.XY:
+                s.append(f"{cmd.plane.name}")
+            if cmd.angle != 0.:
+                s.append(f"{_angle_to_str(cmd.angle)}")
+
+            out.append(f"({','.join(s)})")
+
+            if cmd.s_domain != set():
+                out.append(f"[{','.join([str(dom) for dom in cmd.s_domain])}]")
+
+        elif isinstance(cmd, (X, Z, S, T)):
+            s = [node]
+            if cmd.domain != set():
+                s.append(f"{{{','.join([str(dom) for dom in cmd.domain])}}}")
+            out.append(f"({','.join(s)})")
+        else:
+            out.append(f"({node})")
+
     elif isinstance(cmd, E):
         out.append(f"({cmd.nodes[0]},{cmd.nodes[1]})")
 
-    return "".join(out)
+    return f"{''.join(out)}"
 
 
 def command_to_unicode(cmd: Command) -> str:
@@ -64,13 +116,31 @@ def command_to_unicode(cmd: Command) -> str:
         return str(number).translate(subscripts)
 
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
-        out.append(_get_subscript_from_number(cmd.node))
+        node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
-            out.append(f",{cmd.plane.name},{cmd.angle:.2f}")
-        if isinstance(cmd, (X, Z, S, T)):
-            out.append(f",{','.join([_get_subscript_from_number(dom) for dom in cmd.domain])}")
+            if cmd.t_domain != set():
+                out = [f"[{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}]"] + out
+            out.append(node)
+            if cmd.plane != Plane.XY or cmd.angle != 0. or cmd.s_domain != set():
+                s = []
+                if cmd.plane != Plane.XY:
+                    s.append(f"{cmd.plane.name}")
+                if cmd.angle != 0.:
+                    s.append(f"{_angle_to_str(cmd.angle)}")
+                if s != []:
+                    out.append(f"({','.join(s)})")
+
+                if cmd.s_domain != set():
+                    out.append(f"[{','.join([_get_subscript_from_number(dom) for dom in cmd.s_domain])}]")
+        
+        elif isinstance(cmd, (X, Z, S, T)):
+            out.append(node)
+            out.append(f"[{','.join([_get_subscript_from_number(dom) for dom in cmd.domain])}]")
+        else:
+            out.append(node)
+
     elif isinstance(cmd, E):
-        out.append(f"{_get_subscript_from_number(cmd.nodes[0])},{_get_subscript_from_number(cmd.nodes[1])}")
+        out.append(f"{_get_subscript_from_number(cmd.nodes[0])}₋{_get_subscript_from_number(cmd.nodes[1])}")
 
     return "".join(out)
 
