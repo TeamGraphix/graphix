@@ -151,3 +151,21 @@ def test_circuit_draw_latex() -> None:
         circuit.draw("latex_source")
     except Exception as e:
         pytest.fail(str(e))
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 5
+    depth = 4
+    circuit = rand_circuit(nqubits, depth, rng)
+    qasm = circuit.to_qasm3()
+    import pyzx as zx
+    from graphix.opengraph import OpenGraph
+    print(qasm)
+    z = zx.qasm(qasm)
+    g = z.to_graph()
+    og = OpenGraph.from_pyzx_graph(g)
+    pattern = to_pattern(og)
+    state = circuit.simulate_statevector().statevec
+    state_mbqc = pattern.simulate_pattern()
+    assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)

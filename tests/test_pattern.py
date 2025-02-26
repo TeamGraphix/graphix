@@ -688,3 +688,25 @@ def test_draw_pattern_latex() -> None:
         randpat.draw("png")
     except Exception as e:
         pytest.fail(str(e))
+
+def test_draw_pattern_j_alpha() -> None:
+    p = Pattern()
+    p.add(N(1))
+    p.add(N(2))
+    p.add(E((1, 2)))
+    p.add(M(1))
+    p.add(X(2, domain={1}))
+    assert str(p) == "N(1) N(2) E(1,2) M(1) X(2,{1})"
+    assert p.to_unicode(reverse_composition=False) == "N₁ N₂ E₁₋₂ M₁ X₂¹"
+    assert p.to_latex(reverse_composition=False) == r"\(N_{1} N_{2} E_{1,2} M_{1} X_{2}^{1}\)"
+
+def test_draw_pattern_measure() -> None:
+    p = Pattern()
+    p.add(N(1))
+    p.add(N(2))
+    p.add(M(1, Plane.YZ, 0.5))
+    p.add(M(2, Plane.XZ, -0.25))
+    p.add(M(3, Plane.XY, 0.1, s_domain={1}, t_domain={2}))
+    assert str(p) == "N(1) N(2) M(1,YZ,pi/2) M(2,XZ,-pi/4) [1]M(3,0.31)[2]"
+    assert p.to_unicode() == "N₁ N₂ M₁(YZ,π/2) M₂(XZ,-π/4) ₁M₃(0.31)²"
+    assert p.to_latex() == r"\(N_{1} N_{2} E_{1,2} M_{1}^{YZ,\frac{\pi}{2}} M_{2}^{XZ,-\frac{\pi}{4}} {}_1[M_{3}^{0.31}]^2\)"
