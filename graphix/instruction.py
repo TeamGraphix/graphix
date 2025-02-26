@@ -25,10 +25,9 @@ def to_qasm3(instruction: Instruction) -> str:
     if isinstance(instruction, M):
         out.append(f"b[{instruction.target}] = measure q[{instruction.target}]")
     elif isinstance(instruction, (H, I, S, X, Y, Z)):
-        if isinstance(instruction, (RX, RY, RZ)):
+        out.append(f"q[{instruction.target}]")
+    elif isinstance(instruction, (RX, RY, RZ)):
             out.append(f"({instruction.angle}) q[{instruction.target}]")
-        else:
-            out.append(f"q[{instruction.target}]")
     elif isinstance(instruction, (CNOT, RZZ, SWAP)):
         if isinstance(instruction, SWAP):
             out.append(f"q[{instruction.targets[0]}], q[{instruction.targets[1]}]")
