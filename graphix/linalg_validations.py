@@ -15,6 +15,12 @@ def is_square(matrix: npt.NDArray[_T]) -> bool:
     if matrix.ndim != 2:
         return False
     rows, cols = matrix.shape
+    # Circumvent a regression in numpy 2.1.
+    # Note that this regression is already fixed in numpy 2.2.
+    # reveal_type(rows) -> Any
+    # reveal_type(cols) -> Any
+    assert isinstance(rows, int)
+    assert isinstance(cols, int)
     return rows == cols
 
 
@@ -23,6 +29,10 @@ def is_qubitop(matrix: npt.NDArray[_T]) -> bool:
     if not is_square(matrix):
         return False
     size, _ = matrix.shape
+    # Circumvent a regression in numpy 2.1.
+    # Note that this regression is already fixed in numpy 2.2.
+    # reveal_type(size) -> Any
+    assert isinstance(size, int)
     return size > 0 and size & (size - 1) == 0
 
 
