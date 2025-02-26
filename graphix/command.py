@@ -44,30 +44,35 @@ def command_to_latex(cmd: Command) -> str:
 
         if isinstance(cmd, M):
             if cmd.t_domain != set():
-                out = [f"{{}}_{{{[str(dom) for dom in cmd.t_domain]}}}["] + out
-            out.append(f"_{{{cmd.node}}}")
+                out = [f"{{}}_[{','.join([str(dom) for dom in cmd.t_domain])}]["] + out
+            if cmd.s_domain != set():
+                out = ["["] + out
+
+            out.append(f"_{{{node}}}")
             if cmd.plane != Plane.XY or cmd.angle != 0. or cmd.s_domain != set():
                 s = []
                 if cmd.plane != Plane.XY:
                     s.append(cmd.plane.name)
                 if cmd.angle != 0.:
                     s.append(_angle_to_str(cmd.angle))
-
-                if cmd.t_domain != set():
-                    s.append("]")
                 out.append(f"^{{{''.join(s)}}}")
 
                 if cmd.s_domain != set():
-                    s.append(f"^{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
+                    out.append(f"]^{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
+            if cmd.t_domain != set() and cmd.s_domain == set():
+                out.append("]")
 
-        if isinstance(cmd, (X, Z, S, T)):
+        elif isinstance(cmd, (X, Z, S, T)):
+            out.append(f"_{{{node}}}")
             if cmd.domain != set():
-                out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
+                out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")            
+        else:
+            out.append(f"_{{{node}}}")
 
     elif isinstance(cmd, E):
         out.append(f"_{{{cmd.nodes[0]},{cmd.nodes[1]}}}")
 
-    return f"{kind.name}{''.join(out)}"
+    return f"{''.join(out)}"
 
 
 def command_to_str(cmd: Command) -> str:
