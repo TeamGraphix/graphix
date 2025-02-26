@@ -262,7 +262,7 @@ class Pattern:
 
         return _trim(PIL.Image.open(base.with_suffix(".png")))
 
-    def to_latex(self, reverse_composition: bool) -> str:
+    def to_latex(self, reverse_composition: bool = False) -> str:
         """Return a string containing the latex representation of the pattern.
 
         Parameters
@@ -307,7 +307,7 @@ class Pattern:
 
         return contents
 
-    def to_png(self, reverse_composition: bool) -> PIL.Image.Image:
+    def to_png(self, reverse_composition: bool = False) -> PIL.Image.Image:
         """Generate a PNG image of the latex representation of the pattern.
 
         Parameters
@@ -329,9 +329,9 @@ class Pattern:
 
     def __str__(self) -> str:
         """Return a string representation of the pattern."""
-        return self.to_ascii(reverse_composition=False)
+        return self.to_ascii()
 
-    def to_ascii(self, reverse_composition: bool) -> str:
+    def to_ascii(self, reverse_composition: bool = False) -> str:
         """Return the ascii string representation of the pattern.
 
         Parameters
@@ -342,7 +342,7 @@ class Pattern:
         seq = self.__seq[::-1] if reverse_composition else self.__seq
         return " ".join([command_to_str(cmd) for cmd in seq])
 
-    def to_unicode(self, reverse_composition: bool) -> str:
+    def to_unicode(self, reverse_composition: bool = False) -> str:
         """Return the unicode string representation of the pattern.
 
         Parameters
