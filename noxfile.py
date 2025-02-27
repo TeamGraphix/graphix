@@ -18,4 +18,4 @@ def tests_minimal(session: Session) -> None:
 def tests(session: Session) -> None:
     """Run the test suite with full dependencies."""
     session.install("-e", ".[dev]")
-    session.run("pytest --doctest-modules")
+    session.run("pytest", "--doctest-modules")
