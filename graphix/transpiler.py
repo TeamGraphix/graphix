@@ -8,20 +8,21 @@ from __future__ import annotations
 
 import dataclasses
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
-from graphix import command, instruction
+from graphix import command, instruction, parameter
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.ops import Ops
+from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 from graphix.pattern import Pattern
 from graphix.sim import base_backend
 from graphix.sim.statevec import Data, Statevec
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 
 @dataclasses.dataclass
@@ -48,6 +49,9 @@ class SimulateResult:
 
     statevec: Statevec
     classical_measures: tuple[int, ...]
+
+
+Angle = ExpressionOrSupportsFloat
 
 
 class Circuit:
@@ -161,46 +165,46 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Z(target=qubit))
 
-    def rx(self, qubit: int, angle: float):
+    def rx(self, qubit: int, angle: Angle):
         """Apply an X rotation gate.
 
         Parameters
         ----------
         qubit : int
             target qubit
-        angle : float
+        angle : Angle
             rotation angle in radian
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
-    def ry(self, qubit: int, angle: float):
+    def ry(self, qubit: int, angle: Angle):
         """Apply a Y rotation gate.
 
         Parameters
         ----------
         qubit : int
             target qubit
-        angle : float
+        angle : Angle
             angle in radian
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
-    def rz(self, qubit: int, angle: float):
+    def rz(self, qubit: int, angle: Angle):
         """Apply a Z rotation gate.
 
         Parameters
         ----------
         qubit : int
             target qubit
-        angle : float
+        angle : Angle
             rotation angle in radian
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
-    def rzz(self, control: int, target: int, angle: float):
+    def rzz(self, control: int, target: int, angle: Angle):
         r"""Apply a ZZ-rotation gate.
 
         Equivalent to the sequence
@@ -217,7 +221,7 @@ class Circuit:
             control qubit
         target : int
             target qubit
-        angle : float
+        angle : Angle
             rotation angle in radian
         """
         assert control in self.active_qubits
@@ -255,7 +259,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.I(target=qubit))
 
-    def m(self, qubit: int, plane: Plane, angle: float):
+    def m(self, qubit: int, plane: Plane, angle: Angle):
         """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
@@ -265,7 +269,7 @@ class Circuit:
         qubit : int
             target qubit
         plane : Plane
-        angle : float
+        angle : Angle
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.M(target=qubit, plane=plane, angle=angle))
@@ -404,7 +408,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _m_command(cls, input_node: int, plane: Plane, angle: float):
+    def _m_command(cls, input_node: int, plane: Plane, angle: Angle):
         """MBQC commands for measuring qubit.
 
         Parameters
@@ -413,7 +417,7 @@ class Circuit:
             target node on graph
         plane : Plane
             plane of the measure
-        angle : float
+        angle : Angle
             angle of the measure (unit: pi radian)
 
         Returns
@@ -565,7 +569,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(cls, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _rx_command(cls, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
         """MBQC commands for X rotation gate.
 
         Parameters
@@ -574,7 +578,7 @@ class Circuit:
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
-        angle : float
+        angle : Angle
             measurement angle in radian
 
         Returns
@@ -595,7 +599,7 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(cls, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _ry_command(cls, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
         """MBQC commands for Y rotation gate.
 
         Parameters
@@ -604,7 +608,7 @@ class Circuit:
             input node index
         ancilla : list of four ints
             ancilla node indices to be added to graph
-        angle : float
+        angle : Angle
             rotation angle in radian
 
         Returns
@@ -630,7 +634,7 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(cls, input_node: int, ancilla: Sequence[int], angle: float) -> tuple[int, list[command.Command]]:
+    def _rz_command(cls, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
         """MBQC commands for Z rotation gate.
 
         Parameters
@@ -639,7 +643,7 @@ class Circuit:
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
-        angle : float
+        angle : Angle
             measurement angle in radian
 
         Returns
@@ -899,8 +903,27 @@ class Circuit:
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")
-
         return SimulateResult(state, classical_measures)
+
+    def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:
+        """Apply `f` to all angles that occur in the circuit."""
+        result = Circuit(self.width)
+        for instr in self.instruction:
+            angle = getattr(instr, "angle", None)
+            if angle is None:
+                result.instruction.append(instr)
+            else:
+                new_instr = dataclasses.replace(instr, angle=f(angle))
+                result.instruction.append(new_instr)
+        return result
+
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Circuit:
+        """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
+        return self.map_angle(lambda angle: parameter.subs(angle, variable, substitute))
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Circuit:
+        """Return a copy of the circuit where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
+        return self.map_angle(lambda angle: parameter.xreplace(angle, assignment))
 
 
 def _extend_domain(measure: M, domain: set[int]) -> None:
