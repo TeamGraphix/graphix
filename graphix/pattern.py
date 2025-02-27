@@ -273,7 +273,8 @@ class Pattern:
         output = io.StringIO()
 
         seq = self.__seq[::-1] if reverse_composition else self.__seq
-        output.write(f"\({' '.join([command_to_latex(cmd) for cmd in seq])}\)")
+        sep = "\,"
+        output.write(f"\({sep.join([command_to_latex(cmd) for cmd in seq])}\)")
 
         contents = output.getvalue()
         output.close()
