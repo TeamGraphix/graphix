@@ -29,12 +29,13 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     Example
     -------
     >>> import networkx as nx
+    >>> from graphix.pyzx import to_pyzx_graph
     >>> g = nx.Graph([(0, 1), (1, 2)])
     >>> inputs = [0]
     >>> outputs = [2]
     >>> measurements = {0: Measurement(0, Plane.XY), 1: Measurement(1, Plane.YZ)}
     >>> og = OpenGraph(g, measurements, inputs, outputs)
-    >>> reconstructed_pyzx_graph = og.to_pyzx_graph()
+    >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
     # check pyzx availability and version
     try:
@@ -123,10 +124,10 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
     Example
     -------
     >>> import pyzx as zx
-    >>> from graphix.opengraph import OpenGraph
+    >>> from graphix.pyzx import from_pyzx_graph
     >>> circ = zx.qasm("qreg q[2]; h q[1]; cx q[0], q[1]; h q[1];")
     >>> g = circ.to_graph()
-    >>> og = OpenGraph.from_pyzx_graph(g)
+    >>> og = from_pyzx_graph(g)
     """
     zx.simplify.to_graph_like(g)
 
