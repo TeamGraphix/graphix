@@ -122,7 +122,7 @@ class Circuit:
 
         qasm_lines.extend([f"{instruction.to_qasm3(instr)};" for instr in self.instruction])
 
-        return '\n'.join(qasm_lines) + '\n'
+        return "\n".join(qasm_lines) + "\n"
 
     def cnot(self, control: int, target: int):
         """Apply a CNOT gate.
