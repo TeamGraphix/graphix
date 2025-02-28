@@ -161,14 +161,15 @@ def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     circuit = rand_circuit(nqubits, depth, rng)
     qasm = circuit.to_qasm3()
     import pyzx as zx
-
-    from graphix.opengraph import OpenGraph
+    from graphix.pyzx import from_pyzx_graph
 
     print(qasm)
     z = zx.qasm(qasm)
     g = z.to_graph()
-    og = OpenGraph.from_pyzx_graph(g)
-    pattern = to_pattern(og)
+    og = from_pyzx_graph(g)
+    pattern = og.to_pattern()
+    pattern.minimize_space()
+    print(pattern.draw('unicode'))
     state = circuit.simulate_statevector().statevec
     state_mbqc = pattern.simulate_pattern()
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
