@@ -81,13 +81,14 @@ class Circuit:
         self.active_qubits = set(range(width))
 
     def __repr__(self) -> str:
+        """Return a representation of the Circuit."""
         return f"Circuit(width={self.width}, instructions={self.instruction})"
 
     def __str__(self) -> str:
         """Return a string representation of the Circuit."""
         try:
             return self.draw()
-        except Exception as e:
+        except Exception:
             return repr(self)
 
     def draw(self, output: str = "text") -> TextDrawing | matplotlib.figure | PIL.Image | str:

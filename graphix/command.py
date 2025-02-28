@@ -22,13 +22,13 @@ Node = int
 
 def _angle_to_str(angle: float, latex: bool = False) -> str:
     angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
-    angle_map_latex = {np.pi: "\pi", np.pi / 2: "\\frac{\pi}{2}", np.pi / 4: "\\frac{\pi}{4}"}
+    angle_map_latex = {np.pi: "\\pi", np.pi / 2: "\\frac{\\pi}{2}", np.pi / 4: "\\frac{\\pi}{4}"}
 
-    map = angle_map_latex if latex else angle_map
+    current_map = angle_map_latex if latex else angle_map
     rad = angle * np.pi
     tol = 1e-9
     sign = -1 if angle < 0 else 1
-    for value, s in map.items():
+    for value, s in current_map.items():
         if abs(rad * sign - value) < tol:
             return f"-{s}" if sign == -1 else f"{s}"
     return f"{rad:.2f}"
@@ -44,7 +44,7 @@ def command_to_latex(cmd: Command) -> str:
 
         if isinstance(cmd, M):
             if cmd.t_domain != set():
-                out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}["] + out
+                out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}[", *out]
 
             out.append(f"_{{{node}}}")
             if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
@@ -83,7 +83,7 @@ def command_to_str(cmd: Command) -> str:
         if isinstance(cmd, M):
             s = []
             if cmd.t_domain != set():
-                out = [f"[{','.join([str(dom) for dom in cmd.t_domain])}]"] + out
+                out = [f"[{','.join([str(dom) for dom in cmd.t_domain])}]", *out]
             s.append(f"{node}")
             if cmd.plane != Plane.XY:
                 s.append(f"{cmd.plane.name}")
@@ -126,7 +126,7 @@ def command_to_unicode(cmd: Command) -> str:
         node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
             if cmd.t_domain != set():
-                out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}"] + out
+                out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}", *out]
             out.append(node)
             if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
                 s = []

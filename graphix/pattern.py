@@ -273,8 +273,8 @@ class Pattern:
         output = io.StringIO()
 
         seq = self.__seq[::-1] if not left_to_right else self.__seq
-        sep = "\,"
-        output.write(f"\({sep.join([command_to_latex(cmd) for cmd in seq])}\)")
+        sep = "\\,"
+        output.write(f"\\({sep.join([command_to_latex(cmd) for cmd in seq])}\\)")
 
         contents = output.getvalue()
         output.close()
