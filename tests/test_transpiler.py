@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import sys
 from shutil import which
 
 import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
-import sys
 
 from graphix.fundamentals import Plane
 from graphix.random_objects import rand_circuit, rand_gate
@@ -133,6 +133,7 @@ class TestTranspilerUnitGates:
         nb_shots = 10000
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20
+
 
 @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
 def test_circuit_draw() -> None:
