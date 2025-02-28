@@ -19,17 +19,10 @@ from graphix.states import BasicStates, State
 
 Node = int
 
+
 def _angle_to_str(angle: float, latex: bool = False) -> str:
-    angle_map = {
-        np.pi: "π",
-        np.pi / 2: "π/2",
-        np.pi / 4: "π/4"
-    }
-    angle_map_latex = {
-        np.pi: "\pi",
-        np.pi / 2: "\\frac{\pi}{2}",
-        np.pi / 4: "\\frac{\pi}{4}"
-    }
+    angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
+    angle_map_latex = {np.pi: "\pi", np.pi / 2: "\\frac{\pi}{2}", np.pi / 4: "\\frac{\pi}{4}"}
 
     map = angle_map_latex if latex else angle_map
     rad = angle * np.pi
@@ -54,11 +47,11 @@ def command_to_latex(cmd: Command) -> str:
                 out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}["] + out
 
             out.append(f"_{{{node}}}")
-            if cmd.plane != Plane.XY or cmd.angle != 0. or cmd.s_domain != set():
+            if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
                 s = []
                 if cmd.plane != Plane.XY:
                     s.append(cmd.plane.name)
-                if cmd.angle != 0.:
+                if cmd.angle != 0.0:
                     s.append(_angle_to_str(cmd.angle, latex=True))
                 out.append(f"^{{{','.join(s)}}}")
 
@@ -70,7 +63,7 @@ def command_to_latex(cmd: Command) -> str:
         elif isinstance(cmd, (X, Z, S, T)):
             out.append(f"_{{{node}}}")
             if cmd.domain != set():
-                out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")            
+                out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
         else:
             out.append(f"_{{{node}}}")
 
@@ -94,7 +87,7 @@ def command_to_str(cmd: Command) -> str:
             s.append(f"{node}")
             if cmd.plane != Plane.XY:
                 s.append(f"{cmd.plane.name}")
-            if cmd.angle != 0.:
+            if cmd.angle != 0.0:
                 s.append(f"{_angle_to_str(cmd.angle)}")
 
             out.append(f"({','.join(s)})")
@@ -135,18 +128,18 @@ def command_to_unicode(cmd: Command) -> str:
             if cmd.t_domain != set():
                 out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}"] + out
             out.append(node)
-            if cmd.plane != Plane.XY or cmd.angle != 0. or cmd.s_domain != set():
+            if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
                 s = []
                 if cmd.plane != Plane.XY:
                     s.append(f"{cmd.plane.name}")
-                if cmd.angle != 0.:
+                if cmd.angle != 0.0:
                     s.append(f"{_angle_to_str(cmd.angle)}")
                 if s != []:
                     out.append(f"({','.join(s)})")
 
                 if cmd.s_domain != set():
                     out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.s_domain])}")
-        
+
         elif isinstance(cmd, (X, Z, S, T)):
             out.append(node)
             out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")

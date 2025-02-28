@@ -152,6 +152,7 @@ def test_circuit_draw_latex() -> None:
     except Exception as e:
         pytest.fail(str(e))
 
+
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
@@ -160,7 +161,9 @@ def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     circuit = rand_circuit(nqubits, depth, rng)
     qasm = circuit.to_qasm3()
     import pyzx as zx
+
     from graphix.opengraph import OpenGraph
+
     print(qasm)
     z = zx.qasm(qasm)
     g = z.to_graph()
