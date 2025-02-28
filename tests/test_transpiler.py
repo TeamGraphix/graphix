@@ -133,7 +133,7 @@ class TestTranspilerUnitGates:
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20
 
-
+@pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
 def test_circuit_draw() -> None:
     circuit = Circuit(10)
     try:
@@ -144,6 +144,7 @@ def test_circuit_draw() -> None:
 
 
 @pytest.mark.skipif(which("latex") is None, reason="latex not installed")
+@pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
 def test_circuit_draw_latex() -> None:
     circuit = Circuit(10)
     try:
