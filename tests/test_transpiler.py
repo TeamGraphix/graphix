@@ -136,6 +136,7 @@ class TestTranspilerUnitGates:
 
 
 @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
+@pytest.mark.skipif(sys.modules.get("qiskit_qasm3_import") is None, reason="qiskit_qasm3 not installed")    # Since it is optional
 def test_circuit_draw() -> None:
     circuit = Circuit(10)
     try:
@@ -145,8 +146,9 @@ def test_circuit_draw() -> None:
         pytest.fail(str(e))
 
 
-@pytest.mark.skipif(which("latex") is None, reason="latex not installed")
+@pytest.mark.skipif(which("latex") is None, reason="latex not installed")   # Since it is optional
 @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
+@pytest.mark.skipif(sys.modules.get("qiskit_qasm3_import") is None, reason="qiskit_qasm3 not installed")    # Since it is optional
 def test_circuit_draw_latex() -> None:
     circuit = Circuit(10)
     try:
