@@ -262,17 +262,17 @@ class Pattern:
 
         return _trim(PIL.Image.open(base.with_suffix(".png")))
 
-    def to_latex(self, reverse_composition: bool = False) -> str:
+    def to_latex(self, left_to_right: bool = True) -> str:
         """Return a string containing the latex representation of the pattern.
 
         Parameters
         ----------
-        reverse_composition: bool
-            whether or not represent the pattern in reverse order
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
         output = io.StringIO()
 
-        seq = self.__seq[::-1] if reverse_composition else self.__seq
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
         sep = "\,"
         output.write(f"\({sep.join([command_to_latex(cmd) for cmd in seq])}\)")
 
@@ -280,13 +280,13 @@ class Pattern:
         output.close()
         return contents
 
-    def _to_latex_document(self, reverse_composition: bool) -> str:
+    def _to_latex_document(self, left_to_right: bool) -> str:
         """Generate a latex document with the latex representation of the pattern written in it.
 
         Parameters
         ----------
-        reverse_composition: bool
-            whether or not represent the pattern in reverse order
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
         header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
@@ -300,7 +300,7 @@ class Pattern:
         output.write(header_1)
         output.write(header_2)
 
-        output.write(self.to_latex(reverse_composition))
+        output.write(self.to_latex(left_to_right))
 
         output.write("\n\\end{document}")
         contents = output.getvalue()
@@ -308,13 +308,13 @@ class Pattern:
 
         return contents
 
-    def to_png(self, reverse_composition: bool = False) -> PIL.Image.Image:
+    def to_png(self, left_to_right: bool = True) -> PIL.Image.Image:
         """Generate a PNG image of the latex representation of the pattern.
 
         Parameters
         ----------
-        reverse_composition: bool
-            whether or not represent the pattern in reverse order
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
         tmpfilename = "pattern"
 
@@ -323,7 +323,7 @@ class Pattern:
             tmppath = tmppath.with_suffix(".tex")
 
             with open(tmppath, "w") as latex_file:
-                contents = self._to_latex_document(reverse_composition)
+                contents = self._to_latex_document(left_to_right)
                 latex_file.write(contents)
 
             return self._latex_file_to_image(tmpdirname, tmpfilename)
@@ -332,26 +332,26 @@ class Pattern:
         """Return a string representation of the pattern."""
         return self.to_ascii()
 
-    def to_ascii(self, reverse_composition: bool = False) -> str:
+    def to_ascii(self, left_to_right: bool = True) -> str:
         """Return the ascii string representation of the pattern.
 
         Parameters
         ----------
-        reverse_composition: bool
-            whether or not represent the pattern in reverse order
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
-        seq = self.__seq[::-1] if reverse_composition else self.__seq
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
         return " ".join([command_to_str(cmd) for cmd in seq])
 
-    def to_unicode(self, reverse_composition: bool = False) -> str:
+    def to_unicode(self, left_to_right: bool = True) -> str:
         """Return the unicode string representation of the pattern.
 
         Parameters
         ----------
-        reverse_composition: bool
-            whether or not represent the pattern in reverse order
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
-        seq = self.__seq[::-1] if reverse_composition else self.__seq
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
         return " ".join([command_to_unicode(cmd) for cmd in seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
@@ -409,23 +409,23 @@ class Pattern:
             )
 
     def draw(
-        self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii", reverse_composition: bool = False
+        self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii", left_to_right: bool = True
     ) -> str | PIL.Image.Image:
         """Return the appropriate visualization object.
 
         Parameters
         ----------
-        reverse_composition: bool
+        left_to_right: bool
 
         """
         if output == "ascii":
-            return self.to_ascii(reverse_composition)
+            return self.to_ascii(left_to_right)
         if output == "png":
-            return self.to_png(reverse_composition)
+            return self.to_png(left_to_right)
         if output == "latex":
-            return self.to_latex(reverse_composition)
+            return self.to_latex(left_to_right)
         if output == "unicode":
-            return self.to_unicode(reverse_composition)
+            return self.to_unicode(left_to_right)
         raise ValueError("Unknown argument value for pattern drawing.")
 
     def standardize(self, method="direct"):
