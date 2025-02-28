@@ -1,2 +1,4 @@
+pylatexenc
 graphix-ibmq
 graphix-perceval
+qiskit_qasm3_import
