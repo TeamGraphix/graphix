@@ -5,6 +5,7 @@ from shutil import which
 import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
+import sys
 
 from graphix.fundamentals import Plane
 from graphix.random_objects import rand_circuit, rand_gate
