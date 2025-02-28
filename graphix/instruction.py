@@ -8,6 +8,8 @@ import sys
 from enum import Enum
 from typing import ClassVar, Literal, Union
 
+import numpy as np
+
 from graphix import utils
 from graphix.fundamentals import Plane
 
@@ -27,7 +29,8 @@ def to_qasm3(instruction: Instruction) -> str:
     elif isinstance(instruction, (H, I, S, X, Y, Z)):
         out.append(f"q[{instruction.target}]")
     elif isinstance(instruction, (RX, RY, RZ)):
-        out[-1] += f"({instruction.angle}) q[{instruction.target}]"
+        rad = instruction.angle / np.pi
+        out[-1] += f"({rad}*pi) q[{instruction.target}]"
     elif isinstance(instruction, (CNOT, RZZ, SWAP)):
         if isinstance(instruction, SWAP):
             out.append(f"q[{instruction.targets[0]}], q[{instruction.targets[1]}]")

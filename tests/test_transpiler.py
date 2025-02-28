@@ -157,25 +157,40 @@ def test_circuit_draw_latex() -> None:
     except Exception as e:
         pytest.fail(str(e))
 
-
 @pytest.mark.parametrize("jumps", range(1, 11))
-def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
+def test_to_qasm3_consistency(fx_bg: PCG64, jumps: int) -> None:    # Assert qasm converter is consistent with pyzx one.
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 4
     circuit = rand_circuit(nqubits, depth, rng)
     qasm = circuit.to_qasm3()
     import pyzx as zx
+    z = zx.qasm(qasm)
+    assert z.to_qasm(version=3) == qasm
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:    # Consistency in the state simulation by generating qasm3
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 2
+    depth = 1
+    circuit = rand_circuit(nqubits, depth, rng)
+    qasm = circuit.to_qasm3()
+    print(qasm)
+    import pyzx as zx
 
     from graphix.pyzx import from_pyzx_graph
-
-    print(qasm)
+    
     z = zx.qasm(qasm)
     g = z.to_graph()
     og = from_pyzx_graph(g)
     pattern = og.to_pattern()
-    pattern.minimize_space()
-    print(pattern.draw("unicode"))
-    state = circuit.simulate_statevector().statevec
+    circuit_pat = circuit.transpile().pattern
+
+    print(repr(pattern))
+    print(repr(circuit_pat))
+    assert pattern == circuit_pat   # Ensure with get the same pattern ?
+
+    state = circuit_pat.simulate_pattern()
     state_mbqc = pattern.simulate_pattern()
+    
     assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
