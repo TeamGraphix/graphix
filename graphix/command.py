@@ -19,6 +19,8 @@ from graphix.states import BasicStates, State
 
 Node = int
 
+SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+SUPERSCRIPTS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 def _angle_to_str(angle: float, latex: bool = False) -> str:
     angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
@@ -108,20 +110,16 @@ def command_to_str(cmd: Command) -> str:
 
     return f"{''.join(out)}"
 
+def _get_subscript_from_number(number: int) -> str:
+    return str(number).translate(SUBSCRIPTS)
+
+def _get_superscript_from_number(number: int) -> str:
+    return str(number).translate(SUPERSCRIPTS)
 
 def command_to_unicode(cmd: Command) -> str:
     """Get the unicode representation of a command."""
     kind = cmd.kind
     out = [kind.name]
-
-    def _get_subscript_from_number(number: int) -> str:
-        subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
-        return str(number).translate(subscripts)
-
-    def _get_superscript_from_number(number: int) -> str:
-        superscripts = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
-        return str(number).translate(superscripts)
-
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
         node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
