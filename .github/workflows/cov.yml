@@ -18,6 +18,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Setup TeX Live
+        uses: teatimeguest/setup-texlive-action@v3
+        with:
+          packages: |
+            scheme-basic
+            standalone
+            xypic
+            qcircuit
+
+      - name: Update and install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+          sudo apt-get install -y poppler-utils
+
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 

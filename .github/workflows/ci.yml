@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,6 +28,33 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+
+      - name: Setup TeX Live
+        uses: teatimeguest/setup-texlive-action@v3
+        with:
+          packages: |
+            scheme-basic
+            standalone
+            xypic
+            qcircuit
+
+      - name: Update and install dependencies on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+          sudo apt-get install -y poppler-utils
+      
+      - name: Update and install dependencies on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install poppler
+        
+      - name: Update and install dependencies on Windows
+        if: runner.os == 'Windows'
+        run: |
+          choco install poppler
 
       - run: python -m pip install --upgrade pip
 

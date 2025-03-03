@@ -37,6 +37,7 @@ def modify_statevector(statevector: npt.ArrayLike, output_qubit: Collection[int]
 
 class TestPatternRunner:
     @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
+    @pytest.mark.skip(reason="graphix-ibmq support is broken #251")
     def test_ibmq_backend(self, mocker: MockerFixture) -> None:
         # circuit in qiskit
         qc = qiskit.QuantumCircuit(3)

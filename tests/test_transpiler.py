@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+from shutil import which
+
 import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
@@ -130,3 +133,71 @@ class TestTranspilerUnitGates:
         nb_shots = 10000
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20
+
+
+@pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
+@pytest.mark.skipif(
+    sys.modules.get("qiskit_qasm3_import") is None, reason="qiskit_qasm3 not installed"
+)  # Since it is optional
+def test_circuit_draw() -> None:
+    circuit = Circuit(10)
+    try:
+        circuit.draw("text")
+        circuit.draw("mpl")
+    except Exception as e:
+        pytest.fail(str(e))
+
+
+@pytest.mark.skipif(which("latex") is None, reason="latex not installed")  # Since it is optional
+@pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
+@pytest.mark.skipif(
+    sys.modules.get("qiskit_qasm3_import") is None, reason="qiskit_qasm3 not installed"
+)  # Since it is optional
+def test_circuit_draw_latex() -> None:
+    circuit = Circuit(10)
+    try:
+        circuit.draw("latex")
+        circuit.draw("latex_source")
+    except Exception as e:
+        pytest.fail(str(e))
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_to_qasm3_consistency(fx_bg: PCG64, jumps: int) -> None:  # Assert qasm converter is consistent with pyzx one.
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 5
+    depth = 4
+    circuit = rand_circuit(nqubits, depth, rng)
+    qasm = circuit.to_qasm3()
+    import pyzx as zx
+
+    z = zx.qasm(qasm)
+    assert z.to_qasm(version=3) == qasm
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_to_qasm3(fx_bg: PCG64, jumps: int) -> None:  # Consistency in the state simulation by generating qasm3
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 2
+    depth = 1
+    circuit = rand_circuit(nqubits, depth, rng)
+    qasm = circuit.to_qasm3()
+    print(qasm)
+    import pyzx as zx
+
+    from graphix.pyzx import from_pyzx_graph
+
+    z = zx.qasm(qasm)
+    g = z.to_graph()
+    og = from_pyzx_graph(g)
+    pattern = og.to_pattern()
+    circuit_pat = circuit.transpile().pattern
+
+    print(repr(pattern))
+    print(repr(circuit_pat))
+    assert pattern == circuit_pat  # Ensure with get the same pattern ?
+
+    state = circuit_pat.simulate_pattern()
+    state_mbqc = pattern.simulate_pattern()
+
+    assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
