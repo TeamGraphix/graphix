@@ -19,8 +19,8 @@ from graphix.states import BasicStates, State
 
 Node = int
 
-SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
-SUPERSCRIPTS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+SUBSCRIPTS = str.maketrans("0123456789+", "₀₁₂₃₄₅₆₇₈₉₊")
+SUPERSCRIPTS = str.maketrans("0123456789+", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺")
 
 def _angle_to_str(angle: float, latex: bool = False) -> str:
     angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
@@ -45,8 +45,13 @@ def command_to_latex(cmd: Command) -> str:
         node = str(cmd.node)
 
         if isinstance(cmd, M):
+            hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
+            
+            if hasDomain:
+                out = ['[', *out]
+
             if cmd.t_domain != set():
-                out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}[", *out]
+                out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}", *out]
 
             out.append(f"_{{{node}}}")
             if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
@@ -57,8 +62,11 @@ def command_to_latex(cmd: Command) -> str:
                     s.append(_angle_to_str(cmd.angle, latex=True))
                 out.append(f"^{{{','.join(s)}}}")
 
+                if hasDomain:
+                    out.append("]")
+
                 if cmd.s_domain != set():
-                    out.append(f"]^{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
+                    out.append(f"^{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
             if cmd.t_domain != set() and cmd.s_domain == set():
                 out.append("]")
 
@@ -83,9 +91,14 @@ def command_to_str(cmd: Command) -> str:
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
         node = str(cmd.node)
         if isinstance(cmd, M):
+            hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
+            if hasDomain:
+                out = ['[', *out]
+
             s = []
             if cmd.t_domain != set():
-                out = [f"[{','.join([str(dom) for dom in cmd.t_domain])}]", *out]
+                out = [f"{{{','.join([str(dom) for dom in cmd.t_domain])}}}", *out]
+
             s.append(f"{node}")
             if cmd.plane != Plane.XY:
                 s.append(f"{cmd.plane.name}")
@@ -94,8 +107,11 @@ def command_to_str(cmd: Command) -> str:
 
             out.append(f"({','.join(s)})")
 
+            if hasDomain:
+                out.append(']')
+
             if cmd.s_domain != set():
-                out.append(f"[{','.join([str(dom) for dom in cmd.s_domain])}]")
+                out.append(f"{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
 
         elif isinstance(cmd, (X, Z, S, T)):
             s = [node]
@@ -123,6 +139,9 @@ def command_to_unicode(cmd: Command) -> str:
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
         node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
+            hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
+            if hasDomain:
+                out = ['[', *out]
             if cmd.t_domain != set():
                 out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}", *out]
             out.append(node)
@@ -135,12 +154,15 @@ def command_to_unicode(cmd: Command) -> str:
                 if s != []:
                     out.append(f"({','.join(s)})")
 
+                if hasDomain:
+                    out.append(']')                
                 if cmd.s_domain != set():
                     out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.s_domain])}")
 
         elif isinstance(cmd, (X, Z, S, T)):
             out.append(node)
-            out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")
+            if cmd.domain != []:
+                out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")
         else:
             out.append(node)
 
