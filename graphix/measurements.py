@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from typing import NamedTuple
+from typing import NamedTuple, SupportsInt
 
 from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign
+
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 
 
 @dataclasses.dataclass
@@ -52,10 +55,10 @@ class PauliMeasurement(NamedTuple):
     sign: Sign
 
     @staticmethod
-    def try_from(plane: Plane, angle: float) -> PauliMeasurement | None:
+    def try_from(plane: Plane, angle: ExpressionOrFloat) -> PauliMeasurement | None:
         """Return the Pauli measurement description if a given measure is Pauli."""
         angle_double = 2 * angle
-        if not utils.is_integer(angle_double):
+        if not isinstance(angle_double, SupportsInt) or not utils.is_integer(angle_double):
             return None
         angle_double_mod_4 = int(angle_double) % 4
         axis = plane.cos if angle_double_mod_4 % 2 == 0 else plane.sin

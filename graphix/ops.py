@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from functools import reduce
 from itertools import product
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, overload
 
 import numpy as np
 import numpy.typing as npt
 
 from graphix import utils
+from graphix.parameter import Expression, cos_sin, exp
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
 
 
 class Ops:
@@ -67,8 +73,34 @@ class Ops:
         )
     )
 
+    @overload
     @staticmethod
-    def rx(theta: float) -> npt.NDArray[np.complex128]:
+    def _cast_array(array: Iterable[Iterable[complex]], theta: float) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def _cast_array(
+        array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
+    ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def _cast_array(
+        array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
+    ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+        if isinstance(theta, Expression):
+            return np.asarray(array, dtype=np.object_)
+        return np.asarray(array, dtype=np.complex128)
+
+    @overload
+    @staticmethod
+    def rx(theta: float) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def rx(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def rx(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """X rotation.
 
         Parameters
@@ -80,13 +112,22 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return np.asarray(
-            [[np.cos(theta / 2), -1j * np.sin(theta / 2)], [-1j * np.sin(theta / 2), np.cos(theta / 2)]],
-            dtype=np.complex128,
+        cos, sin = cos_sin(theta / 2)
+        return Ops._cast_array(
+            [[cos, -1j * sin], [-1j * sin, cos]],
+            theta,
         )
 
+    @overload
     @staticmethod
-    def ry(theta: float) -> npt.NDArray[np.complex128]:
+    def ry(theta: float) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def ry(theta: Expression) -> npt.NDArray[np.object_]: ...
+
+    @staticmethod
+    def ry(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """Y rotation.
 
         Parameters
@@ -98,12 +139,19 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return np.asarray(
-            [[np.cos(theta / 2), -np.sin(theta / 2)], [np.sin(theta / 2), np.cos(theta / 2)]], dtype=np.complex128
-        )
+        cos, sin = cos_sin(theta / 2)
+        return Ops._cast_array([[cos, -sin], [sin, cos]], theta)
+
+    @overload
+    @staticmethod
+    def rz(theta: float) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def rz(theta: Expression) -> npt.NDArray[np.object_]: ...
 
     @staticmethod
-    def rz(theta: float) -> npt.NDArray[np.complex128]:
+    def rz(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """Z rotation.
 
         Parameters
@@ -115,10 +163,18 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return np.asarray([[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]], dtype=np.complex128)
+        return Ops._cast_array([[exp(-1j * theta / 2), 0], [0, exp(1j * theta / 2)]], theta)
+
+    @overload
+    @staticmethod
+    def rzz(theta: float) -> npt.NDArray[np.complex128]: ...
+
+    @overload
+    @staticmethod
+    def rzz(theta: Expression) -> npt.NDArray[np.object_]: ...
 
     @staticmethod
-    def rzz(theta: float) -> npt.NDArray[np.complex128]:
+    def rzz(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """zz-rotation.
 
         Equivalent to the sequence
@@ -135,7 +191,7 @@ class Ops:
         -------
         operator : 4*4 np.asarray
         """
-        return np.asarray(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, dtype=np.complex128)
+        return Ops._cast_array(Ops.CNOT @ np.kron(Ops.I, Ops.rz(theta)) @ Ops.CNOT, theta)
 
     @staticmethod
     def build_tensor_pauli_ops(n_qubits: int) -> npt.NDArray[np.complex128]:

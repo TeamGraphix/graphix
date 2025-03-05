@@ -63,7 +63,7 @@ class TestDensityMatrix:
             # l = 2 ** fx_rng.integers(2, 5) # fx_rng.integers(2, 20)
             DensityMatrix(data=fx_rng.uniform(size=(3, 2)))
         # check higher dimensional matrix
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             DensityMatrix(data=fx_rng.uniform(size=(2, 2, 3)))
         # check square and hermitian but with incorrect dimension (non-qubit type)
         data = randobj.rand_herm(5, fx_rng)

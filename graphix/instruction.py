@@ -11,6 +11,9 @@ from typing import ClassVar, Literal, Union
 from graphix import utils
 from graphix.fundamentals import Plane
 
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+
 
 class InstructionKind(Enum):
     """Tag for instruction kind."""
@@ -57,7 +60,7 @@ class RZZ(_KindChecker):
 
     target: int
     control: int
-    angle: float
+    angle: ExpressionOrFloat
     # FIXME: Remove `| None` from `meas_index`
     # - `None` makes codes messy/type-unsafe
     meas_index: int | None = None
@@ -135,7 +138,7 @@ class M(_KindChecker):
 
     target: int
     plane: Plane
-    angle: float
+    angle: ExpressionOrFloat
     kind: ClassVar[Literal[InstructionKind.M]] = dataclasses.field(default=InstructionKind.M, init=False)
 
 
@@ -144,7 +147,7 @@ class RX(_KindChecker):
     """X rotation circuit instruction."""
 
     target: int
-    angle: float
+    angle: ExpressionOrFloat
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RX]] = dataclasses.field(default=InstructionKind.RX, init=False)
 
@@ -154,7 +157,7 @@ class RY(_KindChecker):
     """Y rotation circuit instruction."""
 
     target: int
-    angle: float
+    angle: ExpressionOrFloat
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RY]] = dataclasses.field(default=InstructionKind.RY, init=False)
 
@@ -164,7 +167,7 @@ class RZ(_KindChecker):
     """Z rotation circuit instruction."""
 
     target: int
-    angle: float
+    angle: ExpressionOrFloat
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZ]] = dataclasses.field(default=InstructionKind.RZ, init=False)
 

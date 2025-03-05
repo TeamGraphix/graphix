@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
 import numpy as np
@@ -325,25 +325,7 @@ class GraphVisualizer:
                     arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                 )
 
-        # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.graph.nodes():
-            color = "black"  # default color for 'other' nodes
-            inner_color = "white"
-            if node in self.v_in:
-                color = "red"
-            if node in self.v_out:
-                inner_color = "lightgray"
-            elif (
-                show_pauli_measurement
-                and self.meas_angles is not None
-                and (
-                    2 * self.meas_angles[node] == int(2 * self.meas_angles[node])
-                )  # measurement angle is integer or half-integer
-            ):
-                inner_color = "lightblue"
-            plt.scatter(
-                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
-            )  # Draw the nodes manually with scatter()
+        self.__draw_nodes_role(pos, show_pauli_measurement)
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
@@ -383,6 +365,36 @@ class GraphVisualizer:
         if save:
             plt.savefig(filename)
         plt.show()
+
+    def __draw_nodes_role(self, pos: dict[int, tuple[float, float]], show_pauli_measurement: bool = False) -> None:
+        """
+        Draw the nodes with different colors based on their role (input, output, or other).
+
+        Parameters
+        ----------
+        pos : dict[int, tuple[float, float]]
+            dictionary of node positions.
+        show_pauli_measurement : bool
+            If True, the nodes with Pauli measurement angles are colored light blue.
+        """
+        for node in self.graph.nodes():
+            color = "black"  # default color for 'other' nodes
+            inner_color = "white"
+            if node in self.v_in:
+                color = "red"
+            if node in self.v_out:
+                inner_color = "lightgray"
+            elif (
+                show_pauli_measurement
+                and isinstance(self.meas_angles, SupportsFloat)
+                and (
+                    2 * self.meas_angles[node] == int(2 * self.meas_angles[node])
+                )  # measurement angle is integer or half-integer
+            ):
+                inner_color = "lightblue"
+            plt.scatter(
+                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
+            )  # Draw the nodes manually with scatter()
 
     def visualize_w_gflow(
         self,
@@ -479,25 +491,7 @@ class GraphVisualizer:
                     arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                 )
 
-        # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.graph.nodes():
-            color = "black"  # default color for 'other' nodes
-            inner_color = "white"
-            if node in self.v_in:
-                color = "red"
-            if node in self.v_out:
-                inner_color = "lightgray"
-            elif (
-                show_pauli_measurement
-                and self.meas_angles is not None
-                and (
-                    2 * self.meas_angles[node] == int(2 * self.meas_angles[node])
-                )  # measurement angle is integer or half-integer
-            ):
-                inner_color = "lightblue"
-            plt.scatter(
-                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
-            )  # Draw the nodes manually with scatter()
+        self.__draw_nodes_role(pos, show_pauli_measurement)
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
@@ -590,25 +584,7 @@ class GraphVisualizer:
                 curve = self._bezier_curve(edge_path[edge], t)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.graph.nodes():
-            color = "black"  # default color for 'other' nodes
-            inner_color = "white"
-            if node in self.v_in:
-                color = "red"
-            if node in self.v_out:
-                inner_color = "lightgray"
-            elif (
-                show_pauli_measurement
-                and self.meas_angles is not None
-                and (
-                    2 * self.meas_angles[node] == int(2 * self.meas_angles[node])
-                )  # measurement angle is integer or half-integer
-            ):
-                inner_color = "lightblue"
-            plt.scatter(
-                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
-            )  # Draw the nodes manually with scatter()
+        self.__draw_nodes_role(pos, show_pauli_measurement)
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():
@@ -741,23 +717,7 @@ class GraphVisualizer:
                     arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
                 )
 
-        # Draw the nodes with different colors based on their role (input, output, or other)
-        for node in self.graph.nodes():
-            color = "black"
-            inner_color = "white"
-            if node in self.v_in:
-                color = "red"
-            if node in self.v_out:
-                inner_color = "lightgray"
-            elif (
-                show_pauli_measurement
-                and self.meas_angles is not None
-                and (
-                    2 * self.meas_angles[node] == int(2 * self.meas_angles[node])
-                )  # measurement angle is integer or half-integer
-            ):
-                inner_color = "lightblue"
-            plt.scatter(*pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2)
+        self.__draw_nodes_role(pos, show_pauli_measurement)
 
         if show_local_clifford and self.local_clifford is not None:
             for node in self.graph.nodes():

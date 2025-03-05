@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import enum
-import math
 import sys
 import typing
 from enum import Enum
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload
 
 import typing_extensions
 
 from graphix.ops import Ops
+from graphix.parameter import cos_sin
 
 if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
+
+    from graphix.parameter import Expression, ExpressionOrFloat
 
 
 if sys.version_info >= (3, 10):
@@ -282,15 +284,24 @@ class Plane(Enum):
             return Axis.X  # former convention was Z
         typing_extensions.assert_never(self)
 
-    def polar(self, angle: float) -> tuple[float, float, float]:
+    @overload
+    def polar(self, angle: float) -> tuple[float, float, float]: ...
+
+    @overload
+    def polar(self, angle: Expression) -> tuple[Expression, Expression, Expression]: ...
+
+    def polar(
+        self, angle: ExpressionOrFloat
+    ) -> tuple[float, float, float] | tuple[ExpressionOrFloat, ExpressionOrFloat, ExpressionOrFloat]:
         """Return the Cartesian coordinates of the point of module 1 at the given angle, following the conventional orientation for cos and sin."""
         pp = (self.cos, self.sin)
+        cos, sin = cos_sin(angle)
         if pp == (Axis.X, Axis.Y):
-            return (math.cos(angle), math.sin(angle), 0)
+            return (cos, sin, 0)
         if pp == (Axis.Z, Axis.Y):
-            return (0, math.sin(angle), math.cos(angle))
+            return (0, sin, cos)
         if pp == (Axis.Z, Axis.X):
-            return (math.sin(angle), 0, math.cos(angle))
+            return (sin, 0, cos)
         raise RuntimeError("Unreachable.")  # pragma: no cover
 
     @staticmethod
