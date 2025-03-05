@@ -125,8 +125,6 @@ class S(_KindChecker):
 class T(_KindChecker):
     """T command."""
 
-    node: Node
-    domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
 
