@@ -197,9 +197,12 @@ class Pattern:
     # TODO: This is not an evaluable representation. Should be __str__?
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
-        return (
-            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
-        )
+        r = [
+            f"Pattern({'' if not self.input_nodes else f'input_nodes={str(self.input_nodes)}'})",
+            f"self.__seq = {self.__seq}"
+
+        ]
+        return "\n".join(r)
 
     def __eq__(self, other: Pattern) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
