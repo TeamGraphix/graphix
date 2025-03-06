@@ -201,6 +201,8 @@ class N(_KindChecker):
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
+    def __repr__(self) -> str:
+        return f"N(node={self.node})"
 
 @dataclasses.dataclass
 class M(_KindChecker):
@@ -228,6 +230,18 @@ class M(_KindChecker):
             domains.t_domain,
         )
 
+    def __repr__(self) -> str:
+        d = [f"node={self.node}"]
+        if self.plane != Plane.XY:
+            d.append(f"plane={self.plane.name}")
+        if self.angle != 0.0:
+            d.append(f"angle={self.angle}")
+        if self.s_domain != set():
+            d.append(f"s_domain={{{','.join([str(dom) for dom in self.s_domain])}}}")
+        if self.t_domain != set():
+            d.append(f"t_domain={{{','.join([str(dom) for dom in self.t_domain])}}}")
+        return f"M({','.join(d)})"
+
 
 @dataclasses.dataclass
 class E(_KindChecker):
@@ -235,6 +249,9 @@ class E(_KindChecker):
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
+
+    def __repr__(self) -> str:
+        return f"E(nodes={self.nodes})"
 
 
 @dataclasses.dataclass
@@ -245,6 +262,9 @@ class C(_KindChecker):
     clifford: Clifford
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
+    def __repr__(self) -> str:
+        return f"C(node={self.node}, clifford={self.clifford})"
+
 
 @dataclasses.dataclass
 class X(_KindChecker):
@@ -253,6 +273,9 @@ class X(_KindChecker):
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
+
+    def __repr__(self) -> str:
+        return f"X(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
 
 
 @dataclasses.dataclass
@@ -263,6 +286,9 @@ class Z(_KindChecker):
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
+    def __repr__(self) -> str:
+        return f"Z(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
+
 
 @dataclasses.dataclass
 class S(_KindChecker):
@@ -272,6 +298,9 @@ class S(_KindChecker):
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
+    def __repr__(self) -> str:
+        return f"S(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
+
 
 @dataclasses.dataclass
 class T(_KindChecker):
@@ -280,6 +309,9 @@ class T(_KindChecker):
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
+
+    def __repr__(self) -> str:
+        return f"T(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
 
 
 if sys.version_info >= (3, 10):
