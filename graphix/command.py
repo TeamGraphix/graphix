@@ -42,7 +42,7 @@ def command_to_latex(cmd: Command) -> str:
     kind = cmd.kind
     out = [kind.name]
 
-    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+    if isinstance(cmd, (N, M, C, X, Z, S)):
         node = str(cmd.node)
 
         if isinstance(cmd, M):
@@ -71,7 +71,7 @@ def command_to_latex(cmd: Command) -> str:
             if cmd.t_domain != set() and cmd.s_domain == set():
                 out.append("]")
 
-        elif isinstance(cmd, (X, Z, S, T)):
+        elif isinstance(cmd, (X, Z, S)):
             out.append(f"_{{{node}}}")
             if cmd.domain != set():
                 out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
