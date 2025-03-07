@@ -22,6 +22,7 @@ Node = int
 SUBSCRIPTS = str.maketrans("0123456789+", "₀₁₂₃₄₅₆₇₈₉₊")
 SUPERSCRIPTS = str.maketrans("0123456789+", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺")
 
+
 def _angle_to_str(angle: float, latex: bool = False) -> str:
     angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
     angle_map_latex = {np.pi: "\\pi", np.pi / 2: "\\frac{\\pi}{2}", np.pi / 4: "\\frac{\\pi}{4}"}
@@ -46,9 +47,9 @@ def command_to_latex(cmd: Command) -> str:
 
         if isinstance(cmd, M):
             hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
-            
+
             if hasDomain:
-                out = ['[', *out]
+                out = ["[", *out]
 
             if cmd.t_domain != set():
                 out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}", *out]
@@ -93,7 +94,7 @@ def command_to_str(cmd: Command) -> str:
         if isinstance(cmd, M):
             hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
             if hasDomain:
-                out = ['[', *out]
+                out = ["[", *out]
 
             s = []
             if cmd.t_domain != set():
@@ -108,7 +109,7 @@ def command_to_str(cmd: Command) -> str:
             out.append(f"({','.join(s)})")
 
             if hasDomain:
-                out.append(']')
+                out.append("]")
 
             if cmd.s_domain != set():
                 out.append(f"{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
@@ -126,11 +127,14 @@ def command_to_str(cmd: Command) -> str:
 
     return f"{''.join(out)}"
 
+
 def _get_subscript_from_number(number: int) -> str:
     return str(number).translate(SUBSCRIPTS)
 
+
 def _get_superscript_from_number(number: int) -> str:
     return str(number).translate(SUPERSCRIPTS)
+
 
 def command_to_unicode(cmd: Command) -> str:
     """Get the unicode representation of a command."""
@@ -141,7 +145,7 @@ def command_to_unicode(cmd: Command) -> str:
         if isinstance(cmd, M):
             hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
             if hasDomain:
-                out = ['[', *out]
+                out = ["[", *out]
             if cmd.t_domain != set():
                 out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}", *out]
             out.append(node)
@@ -155,13 +159,13 @@ def command_to_unicode(cmd: Command) -> str:
                     out.append(f"({','.join(s)})")
 
                 if hasDomain:
-                    out.append(']')                
+                    out.append("]")
                 if cmd.s_domain != set():
                     out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.s_domain])}")
 
         elif isinstance(cmd, (X, Z, S, T)):
             out.append(node)
-            if cmd.domain != []:
+            if cmd.domain != set():
                 out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")
         else:
             out.append(node)
@@ -203,6 +207,7 @@ class N(_KindChecker):
 
     def __repr__(self) -> str:
         return f"N(node={self.node})"
+
 
 @dataclasses.dataclass
 class M(_KindChecker):
