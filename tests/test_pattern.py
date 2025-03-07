@@ -4,6 +4,7 @@ import copy
 import itertools
 import sys
 import typing
+from shutil import which
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -668,3 +669,51 @@ class TestMCOps:
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
     return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))
+
+
+def test_draw_pattern() -> None:
+    randpat = rand_circuit(5, 5).transpile().pattern
+    try:
+        randpat.draw("ascii")
+        randpat.draw("unicode")
+    except Exception as e:
+        pytest.fail(str(e))
+
+
+@pytest.mark.skipif(which("latex") is None, reason="latex not installed")
+def test_draw_pattern_latex() -> None:
+    randpat = rand_circuit(5, 5).transpile().pattern
+    try:
+        randpat.draw("latex")
+        randpat.draw("png")
+    except Exception as e:
+        pytest.fail(str(e))
+
+
+def test_draw_pattern_j_alpha() -> None:
+    p = Pattern()
+    p.add(N(1))
+    p.add(N(2))
+    p.add(E((1, 2)))
+    p.add(M(1))
+    p.add(X(2, domain={1}))
+    assert str(p) == "N(1) N(2) E(1,2) M(1) X(2,{1})"
+    assert p.to_unicode() == "N₁ N₂ E₁₋₂ M₁ X₂¹"
+    assert p.to_latex() == r"\(N_{1}\,N_{2}\,E_{1,2}\,M_{1}\,X_{2}^{1}\)"
+
+
+def test_draw_pattern_measure() -> None:
+    p = Pattern()
+    p.add(N(1))
+    p.add(N(2))
+    p.add(N(3))
+    p.add(E((1, 2)))
+    p.add(M(1, Plane.YZ, 0.5))
+    p.add(M(2, Plane.XZ, -0.25))
+    p.add(M(3, Plane.XY, 0.1, s_domain={1}, t_domain={2}))
+    assert str(p) == "N(1) N(2) N(3) E(1,2) M(1,YZ,π/2) M(2,XZ,-π/4) {2}[M(3,0.31)]{1}"
+    assert p.to_unicode() == "N₁ N₂ N₃ E₁₋₂ M₁(YZ,π/2) M₂(XZ,-π/4) ₂[M₃(0.31)]¹"
+    assert (
+        p.to_latex()
+        == r"\(N_{1}\,N_{2}\,N_{3}\,E_{1,2}\,M_{1}^{YZ,\frac{\pi}{2}}\,M_{2}^{XZ,-\frac{\pi}{4}}\,{}_2[M_{3}^{0.31}]^{1}\)"
+    )

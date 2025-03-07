@@ -23,6 +23,10 @@ from graphix.sim.statevec import Data, Statevec
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import matplotlib.figure
+    import PIL.Image.Image
+    import TextDrawing
+
 
 @dataclasses.dataclass
 class TranspileResult:
@@ -75,6 +79,50 @@ class Circuit:
         self.width = width
         self.instruction: list[instruction.Instruction] = []
         self.active_qubits = set(range(width))
+
+    def __repr__(self) -> str:
+        """Return a representation of the Circuit."""
+        return f"Circuit(width={self.width}, instructions={self.instruction})"
+
+    def __str__(self) -> str:
+        """Return a string representation of the Circuit."""
+        try:
+            return self.draw()
+        except Exception:
+            return repr(self)
+
+    def draw(self, output: str = "text") -> TextDrawing | matplotlib.figure | PIL.Image | str:
+        """Return the appropriate visualization object of a Circuit based on Qiskit.
+
+        Generate the corresponding qasm3 code, load a `qiskit.QuantumCircuit` and call `QuantumCircuit.draw()`.
+        """
+        from qiskit.qasm3 import loads
+
+        qasm_circuit = self.to_qasm3()
+        qiskit_circuit = loads(qasm_circuit)
+        if output == "text":
+            return qiskit_circuit.draw("text").single_string()
+        return qiskit_circuit.draw(output=output)
+
+    def to_qasm3(self) -> str:
+        """Export circuit instructions to OpenQASM 3.0 file.
+
+        Returns
+        -------
+        str
+            The OpenQASM 3.0 string representation of the circuit.
+        """
+        qasm_lines = []
+
+        qasm_lines.append("OPENQASM 3;")
+        qasm_lines.append('include "stdgates.inc";')
+        qasm_lines.append(f"qubit[{self.width}] q;")
+        if self.instruction.count(instruction.M) > 0:
+            qasm_lines.append(f"bit[{self.width}] b;")
+
+        qasm_lines.extend([f"{instruction.to_qasm3(instr)};" for instr in self.instruction])
+
+        return "\n".join(qasm_lines) + "\n"
 
     def cnot(self, control: int, target: int):
         """Apply a CNOT gate.

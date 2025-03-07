@@ -6,15 +6,21 @@ ref: V. Danos, E. Kashefi and P. Panangaden. J. ACM 54.2 8 (2007)
 from __future__ import annotations
 
 import dataclasses
+import io
+import subprocess
+import tempfile
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
 
 import networkx as nx
 import typing_extensions
 
 from graphix import command
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind
+from graphix.command import Command, CommandKind, command_to_latex, command_to_str, command_to_unicode
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -26,6 +32,8 @@ from graphix.visualization import GraphVisualizer
 
 if typing_extensions.TYPE_CHECKING:
     from collections.abc import Iterator
+
+    import PIL.Image.Image
 
 
 class NodeAlreadyPreparedError(Exception):
@@ -189,9 +197,11 @@ class Pattern:
     # TODO: This is not an evaluable representation. Should be __str__?
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
-        return (
-            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
-        )
+        r = [
+            f"Pattern({'' if not self.input_nodes else f'input_nodes={self.input_nodes}'})",
+            f"self.__seq = {self.__seq}",
+        ]
+        return "\n".join(r)
 
     def __eq__(self, other: Pattern) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
@@ -200,6 +210,151 @@ class Pattern:
             and self.input_nodes == other.input_nodes
             and self.output_nodes == other.output_nodes
         )
+
+    def _latex_file_to_image(self, tmpdirname, tmpfilename) -> PIL.Image.Image:
+        """Convert a latex file located in `tmpdirname/tmpfilename` to an image representation."""
+        import PIL
+
+        try:
+            subprocess.run(
+                [
+                    "pdflatex",
+                    "-halt-on-error",
+                    f"-output-directory={tmpdirname}",
+                    f"{tmpfilename}.tex",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+        except OSError as exc:
+            # OSError should generally not occur, because it's usually only triggered if `pdflatex`
+            # doesn't exist as a command, but we've already checked that.
+            raise Exception("`pdflatex` command could not be run.") from exc
+        except subprocess.CalledProcessError as exc:
+            with open("latex_error.log", "wb") as error_file:
+                error_file.write(exc.stdout)
+            warnings.warn(
+                "Unable to compile LaTeX. Perhaps you are missing the `qcircuit` package."
+                " The output from the `pdflatex` command is in `latex_error.log`.",
+                stacklevel=2,
+            )
+            raise Exception("`pdflatex` call did not succeed: see `latex_error.log`.") from exc
+
+        base = Path(tmpdirname) / tmpfilename
+        try:
+            subprocess.run(
+                ["pdftocairo", "-singlefile", "-png", "-q", base.with_suffix(".pdf"), base],
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            message = "`pdftocairo` failed to produce an image."
+            warnings.warn(message, stacklevel=2)
+            raise Exception(message) from exc
+
+        def _trim(image) -> PIL.Image.Image:
+            """Trim a PIL image and remove white space."""
+            background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
+            diff = PIL.ImageChops.difference(image, background)
+            diff = PIL.ImageChops.add(diff, diff, 2.0, -100)
+            bbox = diff.getbbox()
+            if bbox:
+                image = image.crop(bbox)
+            return image
+
+        return _trim(PIL.Image.open(base.with_suffix(".png")))
+
+    def to_latex(self, left_to_right: bool = True) -> str:
+        """Return a string containing the latex representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        output = io.StringIO()
+
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
+        sep = "\\,"
+        output.write(f"\\({sep.join([command_to_latex(cmd) for cmd in seq])}\\)")
+
+        contents = output.getvalue()
+        output.close()
+        return contents
+
+    def _to_latex_document(self, left_to_right: bool) -> str:
+        """Generate a latex document with the latex representation of the pattern written in it.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
+
+        header_2 = r"""
+\usepackage{graphicx}
+
+\begin{document}
+"""
+
+        output = io.StringIO()
+        output.write(header_1)
+        output.write(header_2)
+
+        output.write(self.to_latex(left_to_right))
+
+        output.write("\n\\end{document}")
+        contents = output.getvalue()
+        output.close()
+
+        return contents
+
+    def to_png(self, left_to_right: bool = True) -> PIL.Image.Image:
+        """Generate a PNG image of the latex representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        tmpfilename = "pattern"
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmppath = Path(tmpdirname) / tmpfilename
+            tmppath = tmppath.with_suffix(".tex")
+
+            with open(tmppath, "w") as latex_file:
+                contents = self._to_latex_document(left_to_right)
+                latex_file.write(contents)
+
+            return self._latex_file_to_image(tmpdirname, tmpfilename)
+
+    def __str__(self) -> str:
+        """Return a string representation of the pattern."""
+        return self.to_ascii()
+
+    def to_ascii(self, left_to_right: bool = True) -> str:
+        """Return the ascii string representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
+        return " ".join([command_to_str(cmd) for cmd in seq])
+
+    def to_unicode(self, left_to_right: bool = True) -> str:
+        """Return the unicode string representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
+        return " ".join([command_to_unicode(cmd) for cmd in seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
@@ -254,6 +409,26 @@ class Pattern:
             print(
                 f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
             )
+
+    def draw(
+        self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii", left_to_right: bool = True
+    ) -> str | PIL.Image.Image:
+        """Return the appropriate visualization object.
+
+        Parameters
+        ----------
+        left_to_right: bool
+
+        """
+        if output == "ascii":
+            return self.to_ascii(left_to_right)
+        if output == "png":
+            return self.to_png(left_to_right)
+        if output == "latex":
+            return self.to_latex(left_to_right)
+        if output == "unicode":
+            return self.to_unicode(left_to_right)
+        raise ValueError("Unknown argument value for pattern drawing.")
 
     def standardize(self, method="direct"):
         """Execute standardization of the pattern.
