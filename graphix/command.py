@@ -89,7 +89,7 @@ def command_to_str(cmd: Command) -> str:
     kind = cmd.kind
     out = [kind.name]
 
-    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+    if isinstance(cmd, (N, M, C, X, Z, S)):
         node = str(cmd.node)
         if isinstance(cmd, M):
             has_domain = cmd.s_domain != set() or cmd.t_domain != set()
@@ -114,7 +114,7 @@ def command_to_str(cmd: Command) -> str:
             if cmd.s_domain != set():
                 out.append(f"{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
 
-        elif isinstance(cmd, (X, Z, S, T)):
+        elif isinstance(cmd, (X, Z, S)):
             s = [node]
             if cmd.domain != set():
                 s.append(f"{{{','.join([str(dom) for dom in cmd.domain])}}}")
@@ -140,7 +140,7 @@ def command_to_unicode(cmd: Command) -> str:
     """Get the unicode representation of a command."""
     kind = cmd.kind
     out = [kind.name]
-    if isinstance(cmd, (N, M, C, X, Z, S, T)):
+    if isinstance(cmd, (N, M, C, X, Z, S)):
         node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
             has_domain = cmd.s_domain != set() or cmd.t_domain != set()
@@ -163,7 +163,7 @@ def command_to_unicode(cmd: Command) -> str:
                 if cmd.s_domain != set():
                     out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.s_domain])}")
 
-        elif isinstance(cmd, (X, Z, S, T)):
+        elif isinstance(cmd, (X, Z, S)):
             out.append(node)
             if cmd.domain != set():
                 out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")
