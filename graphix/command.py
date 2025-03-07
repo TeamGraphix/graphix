@@ -322,7 +322,7 @@ class T(_KindChecker):
 
     def __repr__(self) -> str:
         """Return the representation of a T command."""
-        return f"T()"
+        return "T()"
 
 
 if sys.version_info >= (3, 10):
