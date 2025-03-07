@@ -322,7 +322,7 @@ class T(_KindChecker):
 
     def __repr__(self) -> str:
         """Return the representation of a T command."""
-        return f"T(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
+        return f"T()"
 
 
 if sys.version_info >= (3, 10):
