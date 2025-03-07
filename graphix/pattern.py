@@ -198,7 +198,7 @@ class Pattern:
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
         r = [
-            f"Pattern({'' if not self.input_nodes else f'input_nodes={str(self.input_nodes)}'})",
+            f"Pattern({'' if not self.input_nodes else f'input_nodes={self.input_nodes}'})",
             f"self.__seq = {self.__seq}",
         ]
         return "\n".join(r)

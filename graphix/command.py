@@ -46,9 +46,9 @@ def command_to_latex(cmd: Command) -> str:
         node = str(cmd.node)
 
         if isinstance(cmd, M):
-            hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
+            has_domain = cmd.s_domain != set() or cmd.t_domain != set()
 
-            if hasDomain:
+            if has_domain:
                 out = ["[", *out]
 
             if cmd.t_domain != set():
@@ -63,7 +63,7 @@ def command_to_latex(cmd: Command) -> str:
                     s.append(_angle_to_str(cmd.angle, latex=True))
                 out.append(f"^{{{','.join(s)}}}")
 
-                if hasDomain:
+                if has_domain:
                     out.append("]")
 
                 if cmd.s_domain != set():
@@ -92,8 +92,8 @@ def command_to_str(cmd: Command) -> str:
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
         node = str(cmd.node)
         if isinstance(cmd, M):
-            hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
-            if hasDomain:
+            has_domain = cmd.s_domain != set() or cmd.t_domain != set()
+            if has_domain:
                 out = ["[", *out]
 
             s = []
@@ -108,7 +108,7 @@ def command_to_str(cmd: Command) -> str:
 
             out.append(f"({','.join(s)})")
 
-            if hasDomain:
+            if has_domain:
                 out.append("]")
 
             if cmd.s_domain != set():
@@ -143,8 +143,8 @@ def command_to_unicode(cmd: Command) -> str:
     if isinstance(cmd, (N, M, C, X, Z, S, T)):
         node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
-            hasDomain = cmd.s_domain != set() or cmd.t_domain != set()
-            if hasDomain:
+            has_domain = cmd.s_domain != set() or cmd.t_domain != set()
+            if has_domain:
                 out = ["[", *out]
             if cmd.t_domain != set():
                 out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}", *out]
@@ -158,7 +158,7 @@ def command_to_unicode(cmd: Command) -> str:
                 if s != []:
                     out.append(f"({','.join(s)})")
 
-                if hasDomain:
+                if has_domain:
                     out.append("]")
                 if cmd.s_domain != set():
                     out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.s_domain])}")
@@ -206,6 +206,7 @@ class N(_KindChecker):
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a N command."""
         return f"N(node={self.node})"
 
 
@@ -236,6 +237,7 @@ class M(_KindChecker):
         )
 
     def __repr__(self) -> str:
+        """Return the representation of a M command."""
         d = [f"node={self.node}"]
         if self.plane != Plane.XY:
             d.append(f"plane={self.plane.name}")
@@ -256,6 +258,7 @@ class E(_KindChecker):
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a E command."""
         return f"E(nodes={self.nodes})"
 
 
@@ -268,6 +271,7 @@ class C(_KindChecker):
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a C command."""
         return f"C(node={self.node}, clifford={self.clifford})"
 
 
@@ -280,6 +284,7 @@ class X(_KindChecker):
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a X command."""
         return f"X(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
 
 
@@ -292,6 +297,7 @@ class Z(_KindChecker):
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a Z command."""
         return f"Z(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
 
 
@@ -304,6 +310,7 @@ class S(_KindChecker):
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a S command."""
         return f"S(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
 
 
@@ -316,6 +323,7 @@ class T(_KindChecker):
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
     def __repr__(self) -> str:
+        """Return the representation of a T command."""
         return f"T(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
 
 
