@@ -250,6 +250,8 @@ class Pattern:
         except (OSError, subprocess.CalledProcessError) as exc:
             message = "`pdftocairo` failed to produce an image."
             warnings.warn(message, stacklevel=2)
+            with open("latex_error.log", "r") as f:
+                print(f.readlines())
             raise Exception(message) from exc
 
         def _trim(image) -> PIL.Image.Image:
