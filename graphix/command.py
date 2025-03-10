@@ -14,6 +14,9 @@ from graphix import utils
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane, Sign
 from graphix.measurements import Domains
+
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
 from graphix.states import BasicStates, State
 
@@ -56,7 +59,7 @@ class M(_KindChecker):
 
     node: Node
     plane: Plane = Plane.XY
-    angle: float = 0.0
+    angle: ExpressionOrFloat = 0.0
     s_domain: set[Node] = dataclasses.field(default_factory=set)
     t_domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)

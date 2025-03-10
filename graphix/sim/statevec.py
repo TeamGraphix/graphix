@@ -4,41 +4,30 @@ from __future__ import annotations
 
 import copy
 import functools
-import numbers
-import sys
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 import numpy.typing as npt
 
-from graphix import states, utils
+from graphix import parameter, states, utils
+from graphix.parameter import Expression, ExpressionOrSupportsComplex
 from graphix.sim.base_backend import Backend, State
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     import collections
+    from collections.abc import Mapping
 
-    from numpy.random import Generator
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 
 
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
-    def __init__(self, input_state: Data = BasicStates.PLUS, pr_calc=True, rng: Generator | None = None) -> None:
-        """
-        Construct a state vector backend.
-
-        Parameters
-        ----------
-        input_state: same syntax as `graphix.statevec.Statevec` constructor.
-        pr_calc: bool
-            whether or not to compute the probability distribution before choosing the measurement result.
-            if False, measurements yield results 0/1 with 50% probabilities each.
-        rng: :class:`np.random.Generator` (default: `None`)
-            random number generator to use for measurements
-        """
-        super().__init__(Statevec(nqubit=0), pr_calc=pr_calc, rng=rng)
+    def __init__(self, **kwargs) -> None:
+        """Construct a state vector backend."""
+        super().__init__(Statevec(nqubit=0), **kwargs)
 
 
 CZ_TENSOR = np.array(
@@ -120,8 +109,9 @@ class Statevec(State):
             tmp_psi = functools.reduce(np.kron, list_of_sv)
             # reshape
             self.psi = tmp_psi.reshape((2,) * nqubit)
-        elif isinstance(input_list[0], numbers.Number):
-            utils.check_list_elements(input_list, numbers.Number)
+        # `SupportsFloat` is needed because `numpy.float64` is not an instance of `SupportsComplex`!
+        elif isinstance(input_list[0], (Expression, SupportsComplex, SupportsFloat)):
+            utils.check_list_elements(input_list, (Expression, SupportsComplex, SupportsFloat))
             if nqubit is None:
                 length = len(input_list)
                 if length & (length - 1):
@@ -130,7 +120,8 @@ class Statevec(State):
             elif nqubit != len(input_list).bit_length() - 1:
                 raise ValueError("Mismatch between nqubit and length of input state")
             psi = np.array(input_list)
-            if not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
+            # check only if the matrix is not symbolic
+            if psi.dtype != "O" and not np.allclose(np.sqrt(np.sum(np.abs(psi) ** 2)), 1):
                 raise ValueError("Input state is not normalized")
             self.psi = psi.reshape((2,) * nqubit)
         else:
@@ -249,9 +240,16 @@ class Statevec(State):
         qarg : int
             qubit index
         """
-        assert not np.isclose(_get_statevec_norm(self.psi), 0)
+        norm = _get_statevec_norm(self.psi)
+        if isinstance(norm, SupportsFloat):
+            assert not np.isclose(norm, 0)
         psi = self.psi.take(indices=0, axis=qarg)
-        self.psi = psi if not np.isclose(_get_statevec_norm(psi), 0) else self.psi.take(indices=1, axis=qarg)
+        norm = _get_statevec_norm(psi)
+        self.psi = (
+            psi
+            if not isinstance(norm, SupportsFloat) or not np.isclose(norm, 0)
+            else self.psi.take(indices=1, axis=qarg)
+        )
         self.normalize()
 
     def entangle(self, edge: tuple[int, int]) -> None:
@@ -314,7 +312,7 @@ class Statevec(State):
         norm = _get_statevec_norm(self.psi)
         self.psi = self.psi / norm
 
-    def flatten(self):
+    def flatten(self) -> npt.NDArray:
         """Return flattened statevector."""
         return self.psi.flatten()
 
@@ -358,16 +356,28 @@ class Statevec(State):
         st1.evolve(op, qargs)
         return np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten())
 
+    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
+        """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
+        result = Statevec()
+        result.psi = np.vectorize(lambda value: parameter.subs(value, variable, substitute))(self.psi)
+        return result
+
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Statevec:
+        """Return a copy of the state vector where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
+        result = Statevec()
+        result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
+        return result
+
 
 def _get_statevec_norm(psi):
     """Return norm of the state."""
     return np.sqrt(np.sum(psi.flatten().conj() * psi.flatten()))
 
 
-if sys.version_info >= (3, 10):
+if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    Data = states.State | Statevec | Iterable[states.State] | Iterable[numbers.Number]
+    Data = states.State | Statevec | Iterable[states.State] | Iterable[ExpressionOrSupportsComplex]
 else:
     from collections.abc import Iterable
     from typing import Union
@@ -376,5 +386,5 @@ else:
         states.State,
         Statevec,
         Iterable[states.State],
-        Iterable[numbers.Number],
+        Iterable[ExpressionOrSupportsComplex],
     ]
