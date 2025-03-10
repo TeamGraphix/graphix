@@ -1,7 +1,7 @@
 # Lint/format
 mypy
 pyright
-ruff==0.9.2
+ruff==0.9.10
 
 # Stubs
 types-networkx
@@ -9,7 +9,7 @@ types-psutil
 
 # Tests
 # Keep in sync with CI
-nox==2024.10.09
+nox==2025.2.9
 psutil
 pytest
 pytest-cov
