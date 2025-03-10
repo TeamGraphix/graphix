@@ -10,32 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-### Fixed
-
-### Changed
-
-## [0.3.0] - 2025-02-04
-
-### Changed
-
-- Now variables, functions, and classes are named based on PEP8.
-- `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
-- Deprecated support for Python 3.8.
-- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules. 
-  - Removed `opt` option for `Circuit.transpile` method.
-  - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
-  
-
-## [0.2.16] - 2024-08-26
-
-This version introduces several important interface changes, aimed at secure expression and improved code maintainability.
-
-### Added
-
-- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable.
-- The following changes were made (#155):
-  - Added `class Command` and all its child classes that represent all the pattern commands.
-  - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
 - Parameterized circuits and patterns: angles in instructions and
   measures can be expressions with parameters created with
   `parameter.Placeholder` class.  Parameterized circuits can be
@@ -50,8 +24,36 @@ This version introduces several important interface changes, aimed at secure exp
   computed symbolically, so `pr_calc=False` should be passed to
   simulators for symbolic computation, and an arbitrary path will be
   computed).
+
+### Fixed
+
+- #254: Fix examples in `opengraph` and `pyzx` modules
+
+### Changed
+
+## [0.3.0] - 2025-02-04
+
+### Changed
+
+- Now variables, functions, and classes are named based on PEP8.
+- `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
+- Deprecated support for Python 3.8.
+- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules. 
+  - Removed `opt` option for `Circuit.transpile` method.
+  - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
 - Simulator back-ends have an additional optional argument `rng`,
   to specify the random generator to use during the simulation.
+
+## [0.2.16] - 2024-08-26
+
+This version introduces several important interface changes, aimed at secure expression and improved code maintainability.
+
+### Added
+
+- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable.
+- The following changes were made (#155):
+  - Added `class Command` and all its child classes that represent all the pattern commands.
+  - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
 - `class graphix.OpenGraph` to transpile between graphix patterns and pyzx graphs.
 - `class graphix.pauli.PauliMeasurement` as a new Pauli measurement checks (used in `pattern.perform_pauli_measurements`).
 
