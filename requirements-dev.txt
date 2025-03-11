@@ -1,7 +1,7 @@
 # Lint/format
 mypy
 pyright
-ruff==0.9.9
+ruff==0.9.10
 
 # Stubs
 types-networkx
