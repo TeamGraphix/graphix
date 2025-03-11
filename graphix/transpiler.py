@@ -11,6 +11,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
+from qiskit.qasm3 import loads
 
 from graphix import command, instruction
 from graphix.command import CommandKind, E, M, N, X, Z
@@ -96,7 +97,6 @@ class Circuit:
 
         Generate the corresponding qasm3 code, load a `qiskit.QuantumCircuit` and call `QuantumCircuit.draw()`.
         """
-        from qiskit.qasm3 import loads
 
         qasm_circuit = self.to_qasm3()
         qiskit_circuit = loads(qasm_circuit)

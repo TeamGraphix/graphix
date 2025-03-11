@@ -136,9 +136,6 @@ class TestTranspilerUnitGates:
 
 
 @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
-@pytest.mark.skipif(
-    sys.modules.get("qiskit_qasm3_import") is None, reason="qiskit_qasm3 not installed"
-)  # Since it is optional
 def test_circuit_draw() -> None:
     circuit = Circuit(10)
     try:
@@ -150,9 +147,6 @@ def test_circuit_draw() -> None:
 
 @pytest.mark.skipif(which("latex") is None, reason="latex not installed")  # Since it is optional
 @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
-@pytest.mark.skipif(
-    sys.modules.get("qiskit_qasm3_import") is None, reason="qiskit_qasm3 not installed"
-)  # Since it is optional
 def test_circuit_draw_latex() -> None:
     circuit = Circuit(10)
     try:
@@ -162,7 +156,6 @@ def test_circuit_draw_latex() -> None:
         pytest.fail(str(e))
 
 
-@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_to_qasm3_consistency(fx_bg: PCG64, jumps: int) -> None:  # Assert qasm converter is consistent with pyzx one.
     rng = Generator(fx_bg.jumped(jumps))
