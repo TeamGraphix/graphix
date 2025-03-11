@@ -29,6 +29,7 @@ class OpenGraph:
     Example
     -------
     >>> import networkx as nx
+    >>> from graphix.fundamentals import Plane
     >>> from graphix.opengraph import OpenGraph, Measurement
     >>>
     >>> inside_graph = nx.Graph([(0, 1), (1, 2), (2, 0)])

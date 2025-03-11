@@ -9,7 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Parameterized circuits and patterns: angles in instructions and
+  measures can be expressions with parameters created with
+  `parameter.Placeholder` class.  Parameterized circuits can be
+  transpiled and parameterized patterns can be optimized
+  (standardization, minimization, signal shifting and Pauli
+  preprocessing) before being instantiated with the method `subs`.  An
+  additional package,
+  [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic),
+  provides parameters that suppor symbolic simulation, and the
+  resulting (symbolic) state vector or density matrix can be
+  instantiated with the method `subs` (probabilities cannot be
+  computed symbolically, so `pr_calc=False` should be passed to
+  simulators for symbolic computation, and an arbitrary path will be
+  computed).
+
 ### Fixed
+
+- #254: Fix examples in `opengraph` and `pyzx` modules
 
 ### Changed
 
@@ -41,7 +58,8 @@ This version brings nice ways to visualize both circuit and patterns.
 - Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules. 
   - Removed `opt` option for `Circuit.transpile` method.
   - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
-  
+- Simulator back-ends have an additional optional argument `rng`,
+  to specify the random generator to use during the simulation.
 
 ## [0.2.16] - 2024-08-26
 
