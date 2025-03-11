@@ -11,11 +11,11 @@ import io
 import subprocess
 import tempfile
 import warnings
-from pathlib import Path
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat, Literal
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, SupportsFloat
 
 import networkx as nx
 import typing_extensions
@@ -35,10 +35,10 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from abc.collections import Iterator, Mapping
 
+    import PIL.Image.Image
+
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
-
-    import PIL.Image.Image
 
 
 class NodeAlreadyPreparedError(Exception):
@@ -434,7 +434,6 @@ class Pattern:
         if output == "unicode":
             return self.to_unicode(left_to_right)
         raise ValueError("Unknown argument value for pattern drawing.")
-
 
     def standardize(self, method="direct") -> None:
         """Execute standardization of the pattern.
