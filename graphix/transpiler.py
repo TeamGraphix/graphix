@@ -97,7 +97,6 @@ class Circuit:
 
         Generate the corresponding qasm3 code, load a `qiskit.QuantumCircuit` and call `QuantumCircuit.draw()`.
         """
-
         qasm_circuit = self.to_qasm3()
         qiskit_circuit = loads(qasm_circuit)
         if output == "text":
