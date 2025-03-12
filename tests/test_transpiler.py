@@ -156,6 +156,7 @@ def test_circuit_draw_latex() -> None:
         pytest.fail(str(e))
 
 
+@pytest.mark.skipif(sys.modules.get("pyzx") is None, reason="pyzx not installed")
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_to_qasm3_consistency(fx_bg: PCG64, jumps: int) -> None:  # Assert qasm converter is consistent with pyzx one.
     rng = Generator(fx_bg.jumped(jumps))
