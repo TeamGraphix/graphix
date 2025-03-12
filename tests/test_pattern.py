@@ -681,6 +681,7 @@ def test_draw_pattern() -> None:
 
 
 @pytest.mark.skipif(which("latex") is None, reason="latex not installed")
+@pytest.mark.skipif(which("pdftocairo") is None, reason="pdftocairo not installed")
 def test_draw_pattern_latex() -> None:
     randpat = rand_circuit(5, 5).transpile().pattern
     try:

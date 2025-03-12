@@ -54,12 +54,7 @@ jobs:
       - name: Update and install dependencies on Windows
         if: runner.os == 'Windows'
         run: |
-          curl https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip -o \Users\Default\tmp.zip
-          tar -m -xf \Users\Default\tmp.zip
-          $addPath = '\Users\Default\poppler-24.08.0\Library\bin'
-          $regexAddPath = [regex]::Escape($addPath)
-          $arrPath = $env:Path -split ';' | Where-Object {$_ -notMatch "^$regexAddPath\\?"}
-          $env:Path = ($arrPath + $addPath) -join ';'
+          choco install poppler -y
 
       - run: python -m pip install --upgrade pip
 
