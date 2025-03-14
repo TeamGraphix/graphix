@@ -58,7 +58,7 @@ jobs:
         run: |
           choco install curl -y
           curl -Uri https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip -OutFile .\Release-24.08.0-0.zip
-          tar -xf .\Release-24.08.0-0.zip
+          Expand-Archive -Path .\Release-24.08.0-0.zip -DestinationPath .\
 
           $addPath = (Resolve-Path .\poppler-24.08.0\Library\bin).Path
           $regexAddPath = [regex]::Escape($addPath)
