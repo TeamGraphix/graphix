@@ -56,9 +56,10 @@ jobs:
         # Download latest binary of poppler-windows
         # Update PATH with poppler's binary folder
         run: |
-          git clone https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip
-          tar -xf .\Release-24.08.0-0.zip
-          $InstallLocation = ".\poppler-24.08.0/Library/bin"
+          choco install curl
+          curl https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip C:\Release-24.08.0-0.zip
+          tar -xf C:\Release-24.08.0-0.zip
+          $InstallLocation = "C:\poppler-24.08.0/Library/bin"
           $persistedPath = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::Machine) -split ';'
             if ($persistedPath -notcontains $InstallLocation) {
                 $persistedPath = $persistedPath + $InstallLocation | where { $_ }
