@@ -56,8 +56,8 @@ jobs:
         # Download latest binary of poppler-windows
         # Update PATH with poppler's binary folder
         run: |
-          choco install curl -y
-          curl -Uri https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip -OutFile .\Release-24.08.0-0.zip
+          Write-Host "Downloading Poppler..."
+          Invoke-RestMethod -Uri https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip -OutFile .\Release-24.08.0-0.zip
           Expand-Archive -Path .\Release-24.08.0-0.zip -DestinationPath .\
 
           $addPath = (Resolve-Path .\poppler-24.08.0\Library\bin).Path
