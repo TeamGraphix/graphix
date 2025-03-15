@@ -69,6 +69,8 @@ jobs:
 
           [System.Environment]::SetEnvironmentVariable('Path', $env:Path, [System.EnvironmentVariableTarget]::User)
 
+          $env:Path -split ';'
+          pdftocairo.exe -v
           
       - run: python -m pip install --upgrade pip
 
