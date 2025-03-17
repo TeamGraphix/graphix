@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import sys
 from shutil import which
 
@@ -145,6 +146,7 @@ def test_circuit_draw() -> None:
         pytest.fail(str(e))
 
 
+@pytest.mark.skipif(platform.system() == "Windows")
 @pytest.mark.skipif(which("latex") is None, reason="latex not installed")  # Since it is optional
 @pytest.mark.skipif(sys.modules.get("qiskit") is None, reason="qiskit not installed")
 def test_circuit_draw_latex() -> None:
