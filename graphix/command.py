@@ -26,7 +26,10 @@ SUBSCRIPTS = str.maketrans("0123456789+", "₀₁₂₃₄₅₆₇₈₉₊")
 SUPERSCRIPTS = str.maketrans("0123456789+", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺")
 
 
-def _angle_to_str(angle: float, latex: bool = False) -> str:
+def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
+    if not isinstance(angle, float):
+        return str(angle)
+        
     angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
     angle_map_latex = {np.pi: "\\pi", np.pi / 2: "\\frac{\\pi}{2}", np.pi / 4: "\\frac{\\pi}{4}"}
 
