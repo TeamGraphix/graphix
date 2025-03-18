@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: python -m pip install -c ruff requirements-dev.txt 
+        run: python -m pip install ruff -c requirements-dev.txt 
 
       - name: Run Ruff Linter
         run: ruff check --output-format=github
