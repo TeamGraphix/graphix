@@ -70,7 +70,7 @@ class GraphVisualizer:
         self.v_in = v_in
         self.v_out = v_out
         if meas_plane is None:
-            self.meas_planes = {i: Plane.XY for i in iter(g.nodes)}
+            self.meas_planes = dict.fromkeys(g.nodes, Plane.XY)
         else:
             self.meas_planes = meas_plane
         self.meas_angles = meas_angles
@@ -1047,7 +1047,7 @@ class GraphVisualizer:
 
         for component in connected_components:
             subgraph = self.graph.subgraph(component)
-            initial_pos = {node: (0, 0) for node in component}
+            initial_pos = dict.fromkeys(component, (0, 0))
 
             if len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) == 0:
                 pos = nx.spring_layout(subgraph)

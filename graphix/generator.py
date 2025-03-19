@@ -54,7 +54,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
     if meas_planes is None:
-        meas_planes = {i: Plane.XY for i in measuring_nodes}
+        meas_planes = dict.fromkeys(measuring_nodes, Plane.XY)
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
