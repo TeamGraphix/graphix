@@ -1,125 +1,42 @@
-"""Quantum hardware device interface.
-
-Runs MBQC command sequence on quantum hardware.
-"""
-
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
+from abc import ABC, abstractmethod
+from typing import Any, Optional
+from graphix.pattern import Pattern
 
 
-class PatternRunner:
-    """MBQC pattern runner.
+class JobHandle(ABC):
+    @abstractmethod
+    def get_id(self) -> str:
+        pass
 
-    Executes the measurement pattern.
-    """
+    @abstractmethod
+    def is_done(self) -> bool:
+        pass
 
-    def __init__(self, pattern: Pattern, backend: str = "ibmq", **kwargs) -> None:
-        """Instantiate a pattern runner.
+    @abstractmethod
+    def cancel(self) -> None:
+        pass
 
-        Parameters
-        ----------
-        pattern: :class:`graphix.pattern.Pattern` object
-            MBQC pattern to be executed.
-        backend: str
-            execution backend (optional, default is 'ibmq')
-        kwargs: dict
-            keyword args for specified backend.
-        """
+
+class CompileOptions(ABC):
+    """Base class for compile options."""
+    pass
+
+
+class DeviceBackend(ABC):
+    def __init__(self) -> None:
+        self.pattern: Optional[Pattern] = None
+
+    def set_pattern(self, pattern: Pattern) -> None:
         self.pattern = pattern
-        self.backend_name = backend
 
-        if self.backend_name == "ibmq":
-            try:
-                from graphix_ibmq.runner import IBMQBackend
-            except Exception as e:
-                raise ImportError(
-                    "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix-ibmq`."
-                ) from e
-            self.backend = IBMQBackend(pattern)
-            try:
-                instance = kwargs.get("instance", "ibm-q/open/main")
-                resource = kwargs.get("resource")
-                save_statevector = kwargs.get("save_statevector", False)
-                optimization_level = kwargs.get("optimizer_level", 1)
+    @abstractmethod
+    def compile(self, options: Optional[CompileOptions] = None) -> None:
+        pass
 
-                self.backend.get_backend(instance, resource)
-                self.backend.to_qiskit(save_statevector)
-                self.backend.transpile(optimization_level)
-                self.shots = kwargs.get("shots", 1024)
-            except Exception:
-                save_statevector = kwargs.get("save_statevector", False)
-                optimization_level = kwargs.get("optimizer_level", 1)
-                self.backend.to_qiskit(save_statevector)
-                self.shots = kwargs.get("shots", 1024)
-        else:
-            raise ValueError("unknown backend")
+    @abstractmethod
+    def submit_job(self, shots: int) -> JobHandle:
+        pass
 
-    def simulate(self, **kwargs) -> Any:
-        """Perform the simulation.
-
-        Parameters
-        ----------
-        kwargs: dict
-            keyword args for specified backend.
-
-        Returns
-        -------
-        result: Any
-            the simulation result,
-            in the representation depending on the backend used.
-        """
-        if self.backend_name == "ibmq":
-            shots = kwargs.get("shots", self.shots)
-            noise_model = kwargs.get("noise_model")
-            format_result = kwargs.get("format_result", True)
-
-            result = self.backend.simulate(shots=shots, noise_model=noise_model, format_result=format_result)
-
-        return result
-
-    def run(self, **kwargs) -> Any:
-        """Perform the execution.
-
-        Parameters
-        ----------
-        kwargs: dict
-            keyword args for specified backend.
-
-        Returns
-        -------
-        result: Any
-            the measurement result,
-            in the representation depending on the backend used.
-        """
-        if self.backend_name == "ibmq":
-            shots = kwargs.get("shots", self.shots)
-            format_result = kwargs.get("format_result", True)
-            optimization_level = kwargs.get("optimizer_level", 1)
-
-            result = self.backend.run(shots=shots, format_result=format_result, optimization_level=optimization_level)
-
-        return result
-
-    def retrieve_result(self, **kwargs) -> Any:
-        """Retrieve the execution result.
-
-        Parameters
-        ----------
-        kwargs: dict
-            keyword args for specified backend.
-
-        Returns
-        -------
-        result: Any
-            the measurement result,
-            in the representation depending on the backend used.
-        """
-        if self.backend_name == "ibmq":
-            job_id = kwargs.get("job_id")
-            result = self.backend.retrieve_result(job_id)
-
-        return result
+    @abstractmethod
+    def retrieve_result(self, job_handle: JobHandle) -> Any:
+        pass
