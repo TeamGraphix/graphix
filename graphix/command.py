@@ -291,7 +291,7 @@ class X(_KindChecker):
 
     def __repr__(self) -> str:
         """Return the representation of a X command."""
-        return f"X(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
+        return f"X(node={self.node}, domain={str(self.domain) if len(self.domain) != 0 else ''})"
 
 
 @dataclasses.dataclass
@@ -304,7 +304,7 @@ class Z(_KindChecker):
 
     def __repr__(self) -> str:
         """Return the representation of a Z command."""
-        return f"Z(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
+        return f"Z(node={self.node}, domain={str(self.domain) if len(self.domain) != 0 else ''})"
 
 
 @dataclasses.dataclass
@@ -317,7 +317,7 @@ class S(_KindChecker):
 
     def __repr__(self) -> str:
         """Return the representation of a S command."""
-        return f"S(node={self.node}, {'domain=' + str(self.domain) if self.domain != set() else ''})"
+        return f"S({self.node=}, domain={str(self.domain) if len(self.domain) != 0 else ''})"
 
 
 @dataclasses.dataclass
