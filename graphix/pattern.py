@@ -358,7 +358,7 @@ class Pattern:
         left_to_right: bool
             whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
-        seq = self.__seq[::-1] if not left_to_right else self.__seq
+        seq = reversed(self.__seq) if not left_to_right else self.__seq
         return " ".join([command_to_unicode(cmd) for cmd in seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
