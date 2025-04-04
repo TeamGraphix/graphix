@@ -52,16 +52,16 @@ def command_to_latex(cmd: Command) -> str:
         node = str(cmd.node)
 
         if isinstance(cmd, M):
-            has_domain = cmd.s_domain != set() or cmd.t_domain != set()
+            has_domain = len(cmd.s_domain) != 0 or len(cmd.t_domain) != 0
 
             if has_domain:
                 out = ["[", *out]
 
-            if cmd.t_domain != set():
+            if len(cmd.t_domain) != 0:
                 out = [f"{{}}_{','.join([str(dom) for dom in cmd.t_domain])}", *out]
 
             out.append(f"_{{{node}}}")
-            if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
+            if cmd.plane != Plane.XY or cmd.angle != 0.0 or len(cmd.s_domain) != 0:
                 s = []
                 if cmd.plane != Plane.XY:
                     s.append(cmd.plane.name)
@@ -72,14 +72,14 @@ def command_to_latex(cmd: Command) -> str:
                 if has_domain:
                     out.append("]")
 
-                if cmd.s_domain != set():
+                if len(cmd.s_domain) != 0:
                     out.append(f"^{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
-            if cmd.t_domain != set() and cmd.s_domain == set():
+            if len(cmd.t_domain) != 0 and len(cmd.s_domain) == 0:
                 out.append("]")
 
         elif isinstance(cmd, (X, Z, S)):
             out.append(f"_{{{node}}}")
-            if cmd.domain != set():
+            if len(cmd.domain) != 0:
                 out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
         else:
             out.append(f"_{{{node}}}")
@@ -98,12 +98,12 @@ def command_to_str(cmd: Command) -> str:
     if isinstance(cmd, (N, M, C, X, Z, S)):
         node = str(cmd.node)
         if isinstance(cmd, M):
-            has_domain = cmd.s_domain != set() or cmd.t_domain != set()
+            has_domain = len(cmd.s_domain) != 0 or len(cmd.t_domain) != 0
             if has_domain:
                 out = ["[", *out]
 
             s = []
-            if cmd.t_domain != set():
+            if len(cmd.t_domain) != 0:
                 out = [f"{{{','.join([str(dom) for dom in cmd.t_domain])}}}", *out]
 
             s.append(f"{node}")
@@ -117,12 +117,12 @@ def command_to_str(cmd: Command) -> str:
             if has_domain:
                 out.append("]")
 
-            if cmd.s_domain != set():
+            if len(cmd.s_domain) != 0:
                 out.append(f"{{{','.join([str(dom) for dom in cmd.s_domain])}}}")
 
         elif isinstance(cmd, (X, Z, S)):
             s = [node]
-            if cmd.domain != set():
+            if len(cmd.domain) != 0:
                 s.append(f"{{{','.join([str(dom) for dom in cmd.domain])}}}")
             out.append(f"({','.join(s)})")
         else:
@@ -149,13 +149,13 @@ def command_to_unicode(cmd: Command) -> str:
     if isinstance(cmd, (N, M, C, X, Z, S)):
         node = _get_subscript_from_number(cmd.node)
         if isinstance(cmd, M):
-            has_domain = cmd.s_domain != set() or cmd.t_domain != set()
+            has_domain = len(cmd.s_domain) != 0 or len(cmd.t_domain) != 0
             if has_domain:
                 out = ["[", *out]
-            if cmd.t_domain != set():
+            if len(cmd.t_domain) != 0:
                 out = [f"{','.join([_get_subscript_from_number(dom) for dom in cmd.t_domain])}", *out]
             out.append(node)
-            if cmd.plane != Plane.XY or cmd.angle != 0.0 or cmd.s_domain != set():
+            if cmd.plane != Plane.XY or cmd.angle != 0.0 or len(cmd.s_domain) != 0:
                 s = []
                 if cmd.plane != Plane.XY:
                     s.append(f"{cmd.plane.name}")
@@ -166,12 +166,12 @@ def command_to_unicode(cmd: Command) -> str:
 
                 if has_domain:
                     out.append("]")
-                if cmd.s_domain != set():
+                if len(cmd.s_domain) != 0:
                     out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.s_domain])}")
 
         elif isinstance(cmd, (X, Z, S)):
             out.append(node)
-            if cmd.domain != set():
+            if len(cmd.domain) != 0:
                 out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")
         else:
             out.append(node)
@@ -249,9 +249,9 @@ class M(_KindChecker):
             d.append(f"plane={self.plane.name}")
         if self.angle != 0.0:
             d.append(f"angle={self.angle}")
-        if self.s_domain != set():
+        if len(self.s_domain) != 0:
             d.append(f"s_domain={{{','.join([str(dom) for dom in self.s_domain])}}}")
-        if self.t_domain != set():
+        if len(self.t_domain) != 0:
             d.append(f"t_domain={{{','.join([str(dom) for dom in self.t_domain])}}}")
         return f"M({','.join(d)})"
 
