@@ -75,6 +75,7 @@ extend-select = [
   "UP",
   "W",
   "YTT",
+  "PTH"
 ]
 extend-ignore = [
   "E74",     # Ambiguous name
