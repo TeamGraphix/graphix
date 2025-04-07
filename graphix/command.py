@@ -56,17 +56,13 @@ def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
 
         return f"{sign}\\frac{{{num}\\pi}}{{{den}}}"
 
-    else:
-        if den == 1:
-            if num == 1:
-                return f"{sign}π"
-
-            return f"{sign}{num}π"
-
+    if den == 1:
         if num == 1:
-            return f"{sign}π/{den}"
-
-        return f"{sign}{num}π/{den}"
+            return f"{sign}π"
+        return f"{sign}{num}π"
+    if num == 1:
+        return f"{sign}π/{den}"
+    return f"{sign}{num}π/{den}"
 
 
 def command_to_latex(cmd: Command) -> str:
