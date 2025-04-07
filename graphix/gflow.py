@@ -267,7 +267,7 @@ def find_flow(
     edges = set(graph.edges)
 
     if meas_planes is None:
-        meas_planes = dict.fromkeys(list(nodes - oset), Plane.XY)
+        meas_planes = dict.fromkeys(nodes - oset, Plane.XY)
 
     for plane in meas_planes.values():
         if plane != Plane.XY:
