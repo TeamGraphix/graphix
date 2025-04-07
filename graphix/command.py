@@ -52,9 +52,9 @@ def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
             return f"{sign}{num}\\pi"
 
         if num == 1:
-            return f"{sign}\\frac{{\\pi}}/{{{den}}}"
+            return f"{sign}\\frac{{\\pi}}{{{den}}}"
 
-        return f"{sign}\\frac{{{num}\\pi}}/{{{den}}}"
+        return f"{sign}\\frac{{{num}\\pi}}{{{den}}}"
 
     else:
         if den == 1:
