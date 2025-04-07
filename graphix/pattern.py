@@ -87,7 +87,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes: list[int] | None = None) -> None:
+    def __init__(self, input_nodes: list[int] | None = None, seq: list[Command] | None = None) -> None:
         """
         Construct a pattern.
 
@@ -101,6 +101,8 @@ class Pattern:
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq: list[Command] = []
+        if seq is not None:
+            self.extend(seq)
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
 
@@ -202,11 +204,7 @@ class Pattern:
     # TODO: This is not an evaluable representation. Should be __str__?
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
-        r = [
-            f"Pattern({'' if not self.input_nodes else f'input_nodes={self.input_nodes}'})",
-            f"self.__seq = {self.__seq}",
-        ]
-        return "\n".join(r)
+        return f"Pattern({'' if not self.input_nodes else f'input_nodes={self.input_nodes}'}, seq={self.__seq})"
 
     def __eq__(self, other: Pattern) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
