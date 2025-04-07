@@ -267,13 +267,13 @@ def find_flow(
     edges = set(graph.edges)
 
     if meas_planes is None:
-        meas_planes = {i: Plane.XY for i in (nodes - oset)}
+        meas_planes = dict.fromkeys(nodes - oset, Plane.XY)
 
     for plane in meas_planes.values():
         if plane != Plane.XY:
             return None, None
 
-    l_k = {i: 0 for i in nodes}
+    l_k = dict.fromkeys(nodes, 0)
     f = {}
     k = 1
     v_c = oset - iset
