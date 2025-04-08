@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import itertools
-import sys
 import typing
 from typing import TYPE_CHECKING
 
