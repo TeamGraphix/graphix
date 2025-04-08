@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 
+from graphix import utils
 from graphix.clifford import Clifford
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
@@ -308,7 +309,7 @@ class NXGraphState(nx.Graph[int]):
                 self.equivalent_graph_e1(node)
                 return 0
             # node = hollow and loopless
-            if len(list(self.neighbors(node))) == 0:
+            if utils.iter_empty(self.neighbors(node)):
                 return 1
             for i in self.neighbors(node):
                 if not self.nodes[i]["loop"]:
@@ -319,7 +320,7 @@ class NXGraphState(nx.Graph[int]):
             self.equivalent_graph_e1(i)  # this gives loop to node.
             self.equivalent_graph_e1(node)
             return 0
-        if len(list(self.neighbors(node))) == 0:
+        if utils.iter_empty(self.neighbors(node)):
             return 2
         return 0
 
@@ -344,7 +345,7 @@ class NXGraphState(nx.Graph[int]):
         if choice not in {0, 1}:
             raise ValueError("choice must be 0 or 1")
         # check if isolated
-        if len(list(self.neighbors(node))) == 0:
+        if utils.iter_empty(self.neighbors(node)):
             if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
                 choice_ = choice
             elif self.nodes[node]["sign"]:  # isolated and state is |->
