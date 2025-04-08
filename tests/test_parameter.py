@@ -148,9 +148,7 @@ def test_density_matrix_xreplace() -> None:
 
 @pytest.mark.parametrize("jumps", range(1, 11))
 @pytest.mark.parametrize("use_xreplace", [False, True])
-def test_random_circuit_with_parameters(
-    fx_rng: Generator, jumps: int, use_xreplace: bool, use_rustworkx: bool = True
-) -> None:
+def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_xreplace: bool) -> None:
     nqubits = 5
     depth = 5
     alpha = Placeholder("alpha")
@@ -159,7 +157,7 @@ def test_random_circuit_with_parameters(
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+    pattern.perform_pauli_measurements()
     pattern.minimize_space()
     assignment: dict[Parameter, float] = {alpha: fx_rng.uniform(high=2), beta: fx_rng.uniform(high=2)}
     if use_xreplace:

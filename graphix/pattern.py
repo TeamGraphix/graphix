@@ -1303,9 +1303,7 @@ class Pattern:
         exe = PatternRunner(self, backend=backend, **kwargs)
         return exe.run()
 
-    def perform_pauli_measurements(
-        self, leave_input: bool = False, use_rustworkx: bool = False, ignore_pauli_with_deps: bool = False
-    ) -> None:
+    def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
@@ -1313,10 +1311,6 @@ class Pattern:
         leave_input : bool
             Optional (`False` by default).
             If `True`, measurements on input nodes are preserved as-is in the pattern.
-        use_rustworkx : bool
-            Optional (`False` by default).
-            If `True`, `rustworkx` is used for fast graph processing.
-            If `False`, `networkx` is used.
         ignore_pauli_with_deps : bool
             Optional (`False` by default).
             If `True`, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1327,7 +1321,7 @@ class Pattern:
         """
         if not ignore_pauli_with_deps:
             self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
+        measure_pauli(self, leave_input, copy=False)
 
     def draw_graph(
         self,
