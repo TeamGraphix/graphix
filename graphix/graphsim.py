@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import networkx as nx
@@ -23,7 +24,8 @@ class MBQCGraphNode(TypedDict):
     hollow: bool
 
 
-class NXGraphState(nx.Graph[int]):
+@dataclasses.dataclass
+class NXGraphState:
     """Graph state simulator implemented with networkx.
 
     Performs Pauli measurements on graph states.
@@ -37,10 +39,12 @@ class NXGraphState(nx.Graph[int]):
         :`loop`: True if node has loop (local S operator)
     """
 
+    data: nx.Graph[int]
+
     @property
     def _nodes(self) -> MutableMapping[int, MBQCGraphNode]:
         """Return the node data with more specific annotation."""
-        return super().nodes  # type: ignore[return-value]
+        return self.data.nodes  # type: ignore[return-value]
 
     def __init__(
         self,
@@ -59,11 +63,15 @@ class NXGraphState(nx.Graph[int]):
         vops : Mapping[int, Clifford]
             dict of local Clifford gates with keys for node indices and Cliffords
         """
-        super().__init__()
+        self.data = nx.Graph()
         if nodes is not None:
-            self.add_nodes_from(nodes)
+            self.data.add_nodes_from(nodes)
         if edges is not None:
-            self.add_edges_from(edges)
+            self.data.add_edges_from(edges)
+        for v in self._nodes.values():
+            v["sign"] = False
+            v["loop"] = False
+            v["hollow"] = False
         if vops is not None:
             self.apply_vops(vops)
 
@@ -72,10 +80,10 @@ class NXGraphState(nx.Graph[int]):
 
         See :meth:`BaseGraphState.local_complement`.
         """
-        g = self.subgraph(self.neighbors(node))
+        g = self.data.subgraph(self.data.neighbors(node))
         g_new: nx.Graph[int] = nx.complement(g)
-        self.remove_edges_from(g.edges)
-        self.add_edges_from(g_new.edges)
+        self.data.remove_edges_from(g.edges)
+        self.data.add_edges_from(g_new.edges)
 
     def apply_vops(self, vops: Mapping[int, Clifford]) -> None:
         """Apply local Clifford operators to the graph state from a dictionary.
@@ -205,14 +213,14 @@ class NXGraphState(nx.Graph[int]):
                 self.flip_fill(node)
                 self._nodes[node]["loop"] = False
                 self.local_complement(node)
-                for i in self.neighbors(node):
+                for i in self.data.neighbors(node):
                     self.advance(i)
             else:
                 self.local_complement(node)
-                for i in self.neighbors(node):
+                for i in self.data.neighbors(node):
                     self.advance(i)
                 if self._nodes[node]["sign"]:
-                    for i in self.neighbors(node):
+                    for i in self.data.neighbors(node):
                         self.flip_sign(i)
         else:  # solid
             self.advance(node)
@@ -230,7 +238,7 @@ class NXGraphState(nx.Graph[int]):
         None
         """
         if self._nodes[node]["hollow"]:
-            for i in self.neighbors(node):
+            for i in self.data.neighbors(node):
                 self.flip_sign(i)
             if self._nodes[node]["loop"]:
                 self.flip_sign(node)
@@ -255,11 +263,11 @@ class NXGraphState(nx.Graph[int]):
             raise ValueError("node must have loop")
         self.flip_fill(node)
         self.local_complement(node)
-        for i in self.neighbors(node):
+        for i in self.data.neighbors(node):
             self.advance(i)
         self.flip_sign(node)
         if self._nodes[node]["sign"]:
-            for i in self.neighbors(node):
+            for i in self.data.neighbors(node):
                 self.flip_sign(i)
 
     def equivalent_graph_e2(self, node1: int, node2: int) -> None:
@@ -276,7 +284,7 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        if (node1, node2) not in self.edges and (node2, node1) not in self.edges:
+        if (node1, node2) not in self.data.edges and (node2, node1) not in self.data.edges:
             raise ValueError("nodes must be connected by an edge")
         if self._nodes[node1]["loop"] or self._nodes[node2]["loop"]:
             raise ValueError("nodes must not have loop")
@@ -288,15 +296,15 @@ class NXGraphState(nx.Graph[int]):
         self.local_complement(node1)
         self.local_complement(node2)
         self.local_complement(node1)
-        for i in iter(set(self.neighbors(node1)) & set(self.neighbors(node2))):
+        for i in iter(set(self.data.neighbors(node1)) & set(self.data.neighbors(node2))):
             self.flip_sign(i)
         if sg1:
             self.flip_sign(node1)
-            for i in self.neighbors(node1):
+            for i in self.data.neighbors(node1):
                 self.flip_sign(i)
         if sg2:
             self.flip_sign(node2)
-            for i in self.neighbors(node2):
+            for i in self.data.neighbors(node2):
                 self.flip_sign(i)
 
     def equivalent_fill_node(self, node: int) -> int:
@@ -322,18 +330,18 @@ class NXGraphState(nx.Graph[int]):
                 self.equivalent_graph_e1(node)
                 return 0
             # node = hollow and loopless
-            if utils.iter_empty(self.neighbors(node)):
+            if utils.iter_empty(self.data.neighbors(node)):
                 return 1
-            for i in self.neighbors(node):
+            for i in self.data.neighbors(node):
                 if not self._nodes[i]["loop"]:
                     self.equivalent_graph_e2(node, i)
                     return 0
             # if all neighbor has loop, pick one and apply E1, then E1 to the node.
-            i = next(self.neighbors(node))
+            i = next(self.data.neighbors(node))
             self.equivalent_graph_e1(i)  # this gives loop to node.
             self.equivalent_graph_e1(node)
             return 0
-        if utils.iter_empty(self.neighbors(node)):
+        if utils.iter_empty(self.data.neighbors(node)):
             return 2
         return 0
 
@@ -358,14 +366,14 @@ class NXGraphState(nx.Graph[int]):
         if choice not in {0, 1}:
             raise ValueError("choice must be 0 or 1")
         # check if isolated
-        if utils.iter_empty(self.neighbors(node)):
+        if utils.iter_empty(self.data.neighbors(node)):
             if self._nodes[node]["hollow"] or self._nodes[node]["loop"]:
                 choice_ = choice
             elif self._nodes[node]["sign"]:  # isolated and state is |->
                 choice_ = 1
             else:  # isolated and state is |+>
                 choice_ = 0
-            self.remove_node(node)
+            self.data.remove_node(node)
             return choice_
         self.h(node)
         return self.measure_z(node, choice=choice)
@@ -417,10 +425,10 @@ class NXGraphState(nx.Graph[int]):
             raise ValueError("choice must be 0 or 1")
         isolated = self.equivalent_fill_node(node)
         if choice:
-            for i in self.neighbors(node):
+            for i in self.data.neighbors(node):
                 self.flip_sign(i)
         result = choice if not isolated else int(self._nodes[node]["sign"])
-        self.remove_node(node)
+        self.data.remove_node(node)
         return result
 
     def draw(self, fill_color: str = "C0", **kwargs: dict[str, Any]) -> None:
@@ -437,7 +445,7 @@ class NXGraphState(nx.Graph[int]):
         """
         nqubit = len(self._nodes)
         nodes = list(self._nodes)
-        edges: list[tuple[int, int]] = list(self.edges)
+        edges: list[tuple[int, int]] = list(self.data.edges)
         labels = {i: i for i in iter(self._nodes)}
         colors = [fill_color for _ in range(nqubit)]
         for i in range(nqubit):
@@ -460,7 +468,7 @@ class NXGraphState(nx.Graph[int]):
         # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
         imapping = {node_list[i]: i for i in range(nqubit)}
         mapping = [node_list[i] for i in range(nqubit)]
-        for i, j in self.edges:
+        for i, j in self.data.edges:
             gstate.entangle((imapping[i], imapping[j]))
         for i in range(nqubit):
             if self._nodes[mapping[i]]["sign"]:
@@ -472,6 +480,13 @@ class NXGraphState(nx.Graph[int]):
             if self._nodes[mapping[i]]["hollow"]:
                 gstate.evolve_single(Ops.H, i)
         return gstate
+
+    def get_isolates(self) -> list[int]:
+        """Return a list of isolated nodes (nodes with no edges).
+
+        See :meth:`BaseGraphState.get_isolates`.
+        """
+        return list(nx.isolates(self.data))
 
 
 GraphState = NXGraphState
