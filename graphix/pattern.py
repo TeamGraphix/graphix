@@ -28,7 +28,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from abc.collections import Iterator, Mapping
+    from collections.abc import Iterator, Mapping
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
