@@ -1,4 +1,4 @@
-"""Graph state simulator implemented with networkx."""
+"""Graph simulator."""
 
 from __future__ import annotations
 
