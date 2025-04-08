@@ -998,7 +998,7 @@ class Pattern:
             ind += 1
         return meas_cmds
 
-    def get_meas_plane(self):
+    def get_meas_plane(self) -> dict[int, Plane]:
         """Get measurement plane from the pattern.
 
         Returns
@@ -1041,7 +1041,7 @@ class Pattern:
         degree = g.degree()
         return max(list(dict(degree).values()))
 
-    def get_graph(self):
+    def get_graph(self) -> tuple[list[int], list[tuple[int, int]]]:
         """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
 
         Returns

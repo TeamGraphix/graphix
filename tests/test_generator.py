@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
 import numpy as np
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class TestGenerator:
     def test_pattern_generation_determinism_flow(self, fx_rng: Generator) -> None:
-        graph = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
+        graph: nx.Graph[int] = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
         inputs = {0, 1, 2}
         outputs = {6, 7, 8}
         angles = fx_rng.normal(size=6)
@@ -35,7 +35,7 @@ class TestGenerator:
             assert abs(inner_product) == pytest.approx(1)
 
     def test_pattern_generation_determinism_gflow(self, fx_rng: Generator) -> None:
-        graph = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
+        graph: nx.Graph[int] = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
         angles = fx_rng.normal(size=6)
@@ -64,13 +64,14 @@ class TestGenerator:
         pattern.shift_signals()
         # get the graph and generate pattern again with flow algorithm
         nodes, edges = pattern.get_graph()
-        g = nx.Graph()
+        g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         input_list = [0, 1, 2]
-        angles = {}
+        angles: dict[int, float] = {}
         for cmd in pattern.get_measurement_commands():
-            angles[cmd.node] = cmd.angle
+            assert isinstance(cmd.angle, SupportsFloat)
+            angles[cmd.node] = float(cmd.angle)
         meas_planes = pattern.get_meas_plane()
         pattern2 = generate_from_graph(g, angles, input_list, pattern.output_nodes, meas_planes)
         # check that the new one runs and returns correct result
