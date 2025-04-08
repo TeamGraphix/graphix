@@ -342,7 +342,7 @@ class NXGraphState(nx.Graph[int]):
         result : int
             measurement outcome. 0 or 1.
         """
-        if choice not in [0, 1]:
+        if choice not in {0, 1}:
             raise ValueError("choice must be 0 or 1")
         # check if isolated
         if len(list(self.neighbors(node))) == 0:
@@ -375,7 +375,7 @@ class NXGraphState(nx.Graph[int]):
         result : int
             measurement outcome. 0 or 1.
         """
-        if choice not in [0, 1]:
+        if choice not in {0, 1}:
             raise ValueError("choice must be 0 or 1")
         self.s(node)
         self.z(node)
@@ -400,7 +400,7 @@ class NXGraphState(nx.Graph[int]):
         result : int
             measurement outcome. 0 or 1.
         """
-        if choice not in [0, 1]:
+        if choice not in {0, 1}:
             raise ValueError("choice must be 0 or 1")
         isolated = self.equivalent_fill_node(node)
         if choice:
