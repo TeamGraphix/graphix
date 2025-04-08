@@ -21,7 +21,7 @@ from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
-from graphix.graphsim.graphstate import GraphState
+from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -1536,7 +1536,7 @@ class Pattern:
         self.__seq = new_seq
 
 
-def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
+def measure_pauli(pattern, leave_input, copy=False):
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform
@@ -1568,7 +1568,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
