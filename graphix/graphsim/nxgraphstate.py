@@ -472,3 +472,6 @@ class NXGraphState(nx.Graph[int]):
             if self._nodes[mapping[i]]["hollow"]:
                 gstate.evolve_single(Ops.H, i)
         return gstate
+
+
+GraphState = NXGraphState

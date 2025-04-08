@@ -1,5 +1,5 @@
 """Graph simulator."""
 
-from graphix.graphsim.nxgraphstate import NXGraphState
+from graphix.graphsim.nxgraphstate import GraphState
 
-__all__ = ["NXGraphState"]
+__all__ = ["GraphState"]
