@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import networkx as nx
 
@@ -12,7 +12,15 @@ from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Mapping, MutableMapping
+
+
+class MBQCGraphNode(TypedDict):
+    """MBQC graph node attributes."""
+
+    sign: bool
+    loop: bool
+    hollow: bool
 
 
 class NXGraphState(nx.Graph[int]):
@@ -28,6 +36,11 @@ class NXGraphState(nx.Graph[int]):
         :`sign`: True if node has negative sign (local Z operator)
         :`loop`: True if node has loop (local S operator)
     """
+
+    @property
+    def _nodes(self) -> MutableMapping[int, MBQCGraphNode]:
+        """Return the node data with more specific annotation."""
+        return super().nodes  # type: ignore[return-value]
 
     def __init__(
         self,
@@ -96,13 +109,13 @@ class NXGraphState(nx.Graph[int]):
                 dict containing node indices as keys and local Cliffords
         """
         vops: dict[int, Clifford] = {}
-        for i in self.nodes:
+        for i in self._nodes:
             vop = Clifford.I
-            if self.nodes[i]["sign"]:
+            if self._nodes[i]["sign"]:
                 vop = Clifford.Z @ vop
-            if self.nodes[i]["loop"]:
+            if self._nodes[i]["loop"]:
                 vop = Clifford.S @ vop
-            if self.nodes[i]["hollow"]:
+            if self._nodes[i]["hollow"]:
                 vop = Clifford.H @ vop
             vops[i] = vop
         return vops
@@ -119,7 +132,7 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        self.nodes[node]["hollow"] = not self.nodes[node]["hollow"]
+        self._nodes[node]["hollow"] = not self._nodes[node]["hollow"]
 
     def flip_sign(self, node: int) -> None:
         """Flip the sign (local Z) of a node.
@@ -136,7 +149,7 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        self.nodes[node]["sign"] = not self.nodes[node]["sign"]
+        self._nodes[node]["sign"] = not self._nodes[node]["sign"]
 
     def advance(self, node: int) -> None:
         """Flip the loop (local S) of a node.
@@ -155,11 +168,11 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        if self.nodes[node]["loop"]:
-            self.nodes[node]["loop"] = False
+        if self._nodes[node]["loop"]:
+            self._nodes[node]["loop"] = False
             self.flip_sign(node)
         else:
-            self.nodes[node]["loop"] = True
+            self._nodes[node]["loop"] = True
 
     def h(self, node: int) -> None:
         """Apply H gate to a qubit (node).
@@ -187,10 +200,10 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        if self.nodes[node]["hollow"]:
-            if self.nodes[node]["loop"]:
+        if self._nodes[node]["hollow"]:
+            if self._nodes[node]["loop"]:
                 self.flip_fill(node)
-                self.nodes[node]["loop"] = False
+                self._nodes[node]["loop"] = False
                 self.local_complement(node)
                 for i in self.neighbors(node):
                     self.advance(i)
@@ -198,7 +211,7 @@ class NXGraphState(nx.Graph[int]):
                 self.local_complement(node)
                 for i in self.neighbors(node):
                     self.advance(i)
-                if self.nodes[node]["sign"]:
+                if self._nodes[node]["sign"]:
                     for i in self.neighbors(node):
                         self.flip_sign(i)
         else:  # solid
@@ -216,10 +229,10 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        if self.nodes[node]["hollow"]:
+        if self._nodes[node]["hollow"]:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-            if self.nodes[node]["loop"]:
+            if self._nodes[node]["loop"]:
                 self.flip_sign(node)
         else:  # solid
             self.flip_sign(node)
@@ -238,14 +251,14 @@ class NXGraphState(nx.Graph[int]):
         -------
         None
         """
-        if not self.nodes[node]["loop"]:
+        if not self._nodes[node]["loop"]:
             raise ValueError("node must have loop")
         self.flip_fill(node)
         self.local_complement(node)
         for i in self.neighbors(node):
             self.advance(i)
         self.flip_sign(node)
-        if self.nodes[node]["sign"]:
+        if self._nodes[node]["sign"]:
             for i in self.neighbors(node):
                 self.flip_sign(i)
 
@@ -265,10 +278,10 @@ class NXGraphState(nx.Graph[int]):
         """
         if (node1, node2) not in self.edges and (node2, node1) not in self.edges:
             raise ValueError("nodes must be connected by an edge")
-        if self.nodes[node1]["loop"] or self.nodes[node2]["loop"]:
+        if self._nodes[node1]["loop"] or self._nodes[node2]["loop"]:
             raise ValueError("nodes must not have loop")
-        sg1 = self.nodes[node1]["sign"]
-        sg2 = self.nodes[node2]["sign"]
+        sg1 = self._nodes[node1]["sign"]
+        sg2 = self._nodes[node2]["sign"]
         self.flip_fill(node1)
         self.flip_fill(node2)
         # local complement along edge between node1, node2
@@ -304,15 +317,15 @@ class NXGraphState(nx.Graph[int]):
             if filled and isolated, 2.
             otherwise it is 0.
         """
-        if self.nodes[node]["hollow"]:
-            if self.nodes[node]["loop"]:
+        if self._nodes[node]["hollow"]:
+            if self._nodes[node]["loop"]:
                 self.equivalent_graph_e1(node)
                 return 0
             # node = hollow and loopless
             if utils.iter_empty(self.neighbors(node)):
                 return 1
             for i in self.neighbors(node):
-                if not self.nodes[i]["loop"]:
+                if not self._nodes[i]["loop"]:
                     self.equivalent_graph_e2(node, i)
                     return 0
             # if all neighbor has loop, pick one and apply E1, then E1 to the node.
@@ -346,9 +359,9 @@ class NXGraphState(nx.Graph[int]):
             raise ValueError("choice must be 0 or 1")
         # check if isolated
         if utils.iter_empty(self.neighbors(node)):
-            if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
+            if self._nodes[node]["hollow"] or self._nodes[node]["loop"]:
                 choice_ = choice
-            elif self.nodes[node]["sign"]:  # isolated and state is |->
+            elif self._nodes[node]["sign"]:  # isolated and state is |->
                 choice_ = 1
             else:  # isolated and state is |+>
                 choice_ = 0
@@ -406,7 +419,7 @@ class NXGraphState(nx.Graph[int]):
         if choice:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-        result = choice if not isolated else int(self.nodes[node]["sign"])
+        result = choice if not isolated else int(self._nodes[node]["sign"])
         self.remove_node(node)
         return result
 
@@ -422,17 +435,17 @@ class NXGraphState(nx.Graph[int]):
         kwargs :
             optional, additional arguments to supply networkx.draw().
         """
-        nqubit = len(self.nodes)
-        nodes = list(self.nodes)
-        edges = list(self.edges)
-        labels = {i: i for i in iter(self.nodes)}
+        nqubit = len(self._nodes)
+        nodes = list(self._nodes)
+        edges: list[tuple[int, int]] = list(self.edges)
+        labels = {i: i for i in iter(self._nodes)}
         colors = [fill_color for _ in range(nqubit)]
         for i in range(nqubit):
-            if self.nodes[nodes[i]]["loop"]:
+            if self._nodes[nodes[i]]["loop"]:
                 edges.append((nodes[i], nodes[i]))
-            if self.nodes[nodes[i]]["hollow"]:
+            if self._nodes[nodes[i]]["hollow"]:
                 colors[i] = "white"
-            if self.nodes[nodes[i]]["sign"]:
+            if self._nodes[nodes[i]]["sign"]:
                 labels[nodes[i]] = -1 * labels[nodes[i]]
         g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
@@ -441,8 +454,8 @@ class NXGraphState(nx.Graph[int]):
 
     def to_statevector(self) -> Statevec:
         """Convert the graph state into a state vector."""
-        node_list = list(self.nodes)
-        nqubit = len(self.nodes)
+        node_list = list(self._nodes)
+        nqubit = len(self._nodes)
         gstate = Statevec(nqubit=nqubit)
         # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
         imapping = {node_list[i]: i for i in range(nqubit)}
@@ -450,12 +463,12 @@ class NXGraphState(nx.Graph[int]):
         for i, j in self.edges:
             gstate.entangle((imapping[i], imapping[j]))
         for i in range(nqubit):
-            if self.nodes[mapping[i]]["sign"]:
+            if self._nodes[mapping[i]]["sign"]:
                 gstate.evolve_single(Ops.Z, i)
         for i in range(nqubit):
-            if self.nodes[mapping[i]]["loop"]:
+            if self._nodes[mapping[i]]["loop"]:
                 gstate.evolve_single(Ops.S, i)
         for i in range(nqubit):
-            if self.nodes[mapping[i]]["hollow"]:
+            if self._nodes[mapping[i]]["hollow"]:
                 gstate.evolve_single(Ops.H, i)
         return gstate
