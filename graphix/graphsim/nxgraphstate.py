@@ -60,7 +60,7 @@ class NXGraphState(nx.Graph[int]):
         See :meth:`BaseGraphState.local_complement`.
         """
         g = self.subgraph(self.neighbors(node))
-        g_new = nx.complement(g)
+        g_new: nx.Graph[int] = nx.complement(g)
         self.remove_edges_from(g.edges)
         self.add_edges_from(g_new.edges)
 
