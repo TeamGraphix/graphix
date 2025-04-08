@@ -32,7 +32,7 @@ class NXGraphState(nx.Graph[int]):
         self,
         nodes: Iterable[int] | None = None,
         edges: Iterable[tuple[int, int]] | None = None,
-        vops: Mapping[int, int] | None = None,
+        vops: Mapping[int, Clifford] | None = None,
     ):
         """Instantiate a graph simulator.
 
@@ -42,9 +42,8 @@ class NXGraphState(nx.Graph[int]):
             A container of nodes (list, dict, etc)
         edges : Iterable[tuple[int, int]]
             list of tuples (i,j) for pairs to be entangled.
-        vops : Mapping[int, int]
-            dict of local Clifford gates with keys for node indices and
-            values for Clifford index (see graphix.clifford.CLIFFORD)
+        vops : Mapping[int, Clifford]
+            dict of local Clifford gates with keys for node indices and Cliffords
         """
         super().__init__()
         if nodes is not None:
@@ -64,46 +63,46 @@ class NXGraphState(nx.Graph[int]):
         self.remove_edges_from(g.edges)
         self.add_edges_from(g_new.edges)
 
-    def apply_vops(self, vops: Mapping[int, int]) -> None:
+    def apply_vops(self, vops: Mapping[int, Clifford]) -> None:
         """Apply local Clifford operators to the graph state from a dictionary.
 
         Parameters
         ----------
-        vops : Mapping[int, int]
-            dict containing node indices as keys and
-            local Clifford indices as values (see graphix.clifford.CLIFFORD)
+        vops : Mapping[int, Clifford]
+            dict containing node indices as keys and local Clifford
 
         Returns
         -------
         None
         """
         for node, vop in vops.items():
-            for lc in reversed(Clifford(vop).hsz):
+            for lc in reversed(vop.hsz):
                 if lc == Clifford.Z:
                     self.z(node)
                 elif lc == Clifford.H:
                     self.h(node)
                 elif lc == Clifford.S:
                     self.s(node)
+                else:
+                    raise RuntimeError
 
-    def get_vops(self) -> dict[int, int]:
+    def get_vops(self) -> dict[int, Clifford]:
         """Apply local Clifford operators to the graph state from a dictionary.
 
-        Parameters
-        ----------
-            vops : dict
-                dict containing node indices as keys and
-                local Clifford indices as values (see graphix.clifford.CLIFFORD)
+        Returns
+        -------
+            vops : dict[int, Clifford]
+                dict containing node indices as keys and local Cliffords
         """
-        vops = {}
+        vops: dict[int, Clifford] = {}
         for i in self.nodes:
-            vop: int = 0
+            vop = Clifford.I
             if self.nodes[i]["sign"]:
-                vop = (Clifford.Z @ Clifford(vop)).value
+                vop = Clifford.Z @ vop
             if self.nodes[i]["loop"]:
-                vop = (Clifford.S @ Clifford(vop)).value
+                vop = Clifford.S @ vop
             if self.nodes[i]["hollow"]:
-                vop = (Clifford.H @ Clifford(vop)).value
+                vop = Clifford.H @ vop
             vops[i] = vop
         return vops
 
