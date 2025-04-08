@@ -9,8 +9,8 @@ class TestExtraction:
         gs = GraphState()
         nodes = [0, 1, 2, 3, 4]
         edges = [(0, 1), (0, 2), (0, 3), (0, 4)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
         assert len(clusters) == 1
@@ -21,8 +21,8 @@ class TestExtraction:
         gs = GraphState()
         nodes = [0, 1, 2]
         edges = [(0, 1), (1, 2)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
         assert len(clusters) == 1
@@ -33,8 +33,8 @@ class TestExtraction:
         gs = GraphState()
         nodes = [0, 1]
         edges = [(0, 1)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
         assert len(clusters) == 1
@@ -44,8 +44,8 @@ class TestExtraction:
         gs = GraphState()
         nodes = [0, 1, 2, 3, 4, 5, 6]
         edges = [(0, 1), (1, 2), (2, 3), (5, 4), (4, 6), (6, 0)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
 
         assert len(clusters) == 1
@@ -55,19 +55,19 @@ class TestExtraction:
         gs = GraphState()
         nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         edges = [(0, 1), (0, 2), (0, 3), (0, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
         assert len(clusters) == 2
 
         clusters_expected = []
         lin_cluster = GraphState()
-        lin_cluster.add_nodes_from([4, 5, 6, 7, 8, 9])
-        lin_cluster.add_edges_from([(4, 5), (5, 6), (6, 7), (7, 8), (8, 9)])
+        lin_cluster.data.add_nodes_from([4, 5, 6, 7, 8, 9])
+        lin_cluster.data.add_edges_from([(4, 5), (5, 6), (6, 7), (7, 8), (8, 9)])
         clusters_expected.append(extraction.ResourceGraph(extraction.ResourceType.LINEAR, lin_cluster))
         ghz_cluster = GraphState()
-        ghz_cluster.add_nodes_from([0, 1, 2, 3, 4])
-        ghz_cluster.add_edges_from([(0, 1), (0, 2), (0, 3), (0, 4)])
+        ghz_cluster.data.add_nodes_from([0, 1, 2, 3, 4])
+        ghz_cluster.data.add_edges_from([(0, 1), (0, 2), (0, 3), (0, 4)])
         clusters_expected.append(extraction.ResourceGraph(extraction.ResourceType.GHZ, ghz_cluster))
 
         assert (clusters[0] == clusters_expected[0] and clusters[1] == clusters_expected[1]) or (
@@ -78,8 +78,8 @@ class TestExtraction:
         gs = GraphState()
         nodes = [0, 1, 2, 3, 4]
         edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
         assert len(clusters) == 2
         assert (
@@ -87,20 +87,20 @@ class TestExtraction:
         ) or (
             clusters[0].cltype == extraction.ResourceType.LINEAR and clusters[1].cltype == extraction.ResourceType.GHZ
         )
-        assert (len(clusters[0].graph.nodes) == 3 and len(clusters[1].graph.nodes) == 4) or (
-            len(clusters[0].graph.nodes) == 4 and len(clusters[1].graph.nodes) == 3
+        assert (len(clusters[0].graph.data.nodes) == 3 and len(clusters[1].graph.data.nodes) == 4) or (
+            len(clusters[0].graph.data.nodes) == 4 and len(clusters[1].graph.data.nodes) == 3
         )
 
     def test_cluster_extraction_one_plus_two(self) -> None:
         gs = GraphState()
         nodes = [0, 1, 2]
         edges = [(0, 1)]
-        gs.add_nodes_from(nodes)
-        gs.add_edges_from(edges)
+        gs.data.add_nodes_from(nodes)
+        gs.data.add_edges_from(edges)
         clusters = extraction.get_fusion_network_from_graph(gs)
         assert len(clusters) == 2
         assert clusters[0].cltype == extraction.ResourceType.GHZ
         assert clusters[1].cltype == extraction.ResourceType.GHZ
-        assert (len(clusters[0].graph.nodes) == 2 and len(clusters[1].graph.nodes) == 1) or (
-            len(clusters[0].graph.nodes) == 1 and len(clusters[1].graph.nodes) == 2
+        assert (len(clusters[0].graph.data.nodes) == 2 and len(clusters[1].graph.data.nodes) == 1) or (
+            len(clusters[0].graph.data.nodes) == 1 and len(clusters[1].graph.data.nodes) == 2
         )
