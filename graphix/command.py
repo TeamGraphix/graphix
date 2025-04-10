@@ -6,6 +6,7 @@ import dataclasses
 import enum
 import sys
 from enum import Enum
+from fractions import Fraction
 from typing import ClassVar, Literal, Union
 
 import numpy as np
@@ -30,17 +31,38 @@ def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
     if not isinstance(angle, float):
         return str(angle)
 
-    angle_map = {np.pi: "π", np.pi / 2: "π/2", np.pi / 4: "π/4"}
-    angle_map_latex = {np.pi: "\\pi", np.pi / 2: "\\frac{\\pi}{2}", np.pi / 4: "\\frac{\\pi}{4}"}
-
-    current_map = angle_map_latex if latex else angle_map
-    rad = angle * np.pi
     tol = 1e-9
-    sign = -1 if angle < 0 else 1
-    for value, s in current_map.items():
-        if abs(rad * sign - value) < tol:
-            return f"-{s}" if sign == -1 else f"{s}"
-    return f"{rad:.2f}"
+
+    frac = Fraction(angle).limit_denominator(1000)
+
+    if abs(angle - float(frac)) > tol:
+        rad = angle * np.pi
+
+        return f"{rad:.2f}"
+
+    num, den = frac.numerator, frac.denominator
+    sign = "-" if num < 0 else ""
+    num = abs(num)
+
+    if latex:
+        if den == 1:
+            if num == 1:
+                return f"{sign}\\pi"
+
+            return f"{sign}{num}\\pi"
+
+        if num == 1:
+            return f"{sign}\\frac{{\\pi}}{{{den}}}"
+
+        return f"{sign}\\frac{{{num}\\pi}}{{{den}}}"
+
+    if den == 1:
+        if num == 1:
+            return f"{sign}π"
+        return f"{sign}{num}π"
+    if num == 1:
+        return f"{sign}π/{den}"
+    return f"{sign}{num}π/{den}"
 
 
 def command_to_latex(cmd: Command) -> str:

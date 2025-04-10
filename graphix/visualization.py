@@ -70,7 +70,7 @@ class GraphVisualizer:
         self.v_in = v_in
         self.v_out = v_out
         if meas_plane is None:
-            self.meas_planes = dict.fromkeys(g.nodes, Plane.XY)
+            self.meas_planes = dict.fromkeys(iter(g.nodes), Plane.XY)
         else:
             self.meas_planes = meas_plane
         self.meas_angles = meas_angles
