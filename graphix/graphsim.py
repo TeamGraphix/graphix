@@ -25,7 +25,7 @@ class MBQCGraphNode(TypedDict):
 
 
 @dataclasses.dataclass
-class NXGraphState:
+class GraphState:
     """Graph state simulator implemented with networkx.
 
     Performs Pauli measurements on graph states.
@@ -481,6 +481,3 @@ class NXGraphState:
     def get_isolates(self) -> list[int]:
         """Return a list of isolated nodes (nodes with no edges)."""
         return list(nx.isolates(self.data))
-
-
-GraphState = NXGraphState
