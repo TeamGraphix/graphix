@@ -26,8 +26,8 @@ from graphix.extraction import get_fusion_network_from_graph
 gs = graphix.GraphState()
 nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 edges = [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (0, 5), (4, 5), (5, 6), (6, 7), (7, 0), (7, 8), (8, 1)]
-gs.data.add_nodes_from(nodes)
-gs.data.add_edges_from(edges)
+gs.add_nodes(nodes)
+gs.add_edges(edges)
 gs.draw()
 
 # %%

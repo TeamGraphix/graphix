@@ -1611,18 +1611,18 @@ def measure_pauli(pattern, leave_input, copy=False):
     isolates = graph_state.get_isolates()
     for node in non_pauli_meas:
         if (node in isolates) and (node not in pattern.output_nodes):
-            graph_state.data.remove_node(node)
+            graph_state.remove_node(node)
             results[node] = 0
 
     # update command sequence
     vops = graph_state.get_vops()
     new_seq = []
-    new_seq.extend(command.N(node=index) for index in set(graph_state.data.nodes) - set(new_inputs))
-    new_seq.extend(command.E(nodes=edge) for edge in graph_state.data.edges)
+    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
+    new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
         cmd.clifford(Clifford(vops[cmd.node]))
         for cmd in pattern
-        if cmd.kind == CommandKind.M and cmd.node in graph_state.data.nodes
+        if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
         command.C(node=index, clifford=Clifford(vops[index])) for index in pattern.output_nodes if vops[index] != 0
@@ -1634,7 +1634,7 @@ def measure_pauli(pattern, leave_input, copy=False):
     output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
     pat.reorder_output_nodes(output_nodes)
-    assert pat.n_node == len(graph_state.data.nodes)
+    assert pat.n_node == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True
     return pat

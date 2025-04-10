@@ -161,8 +161,8 @@ def create_resource_graph(node_ids: list[int], root: int | None = None) -> Resou
         edges = [(node_ids[i], node_ids[i + 1]) for i in range(len(node_ids)) if i + 1 < len(node_ids)]
         cluster_type = ResourceType.LINEAR
     tmp_graph = GraphState()
-    tmp_graph.data.add_nodes_from(node_ids)
-    tmp_graph.data.add_edges_from(edges)
+    tmp_graph.add_nodes(node_ids)
+    tmp_graph.add_edges(edges)
     return ResourceGraph(cltype=cluster_type, graph=tmp_graph)
 
 
