@@ -27,7 +27,7 @@ SUBSCRIPTS = str.maketrans("0123456789+", "₀₁₂₃₄₅₆₇₈₉₊")
 SUPERSCRIPTS = str.maketrans("0123456789+", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺")
 
 
-def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
+def _angle_to_str(angle: ExpressionOrFloat, mode: Union["latex", "ascii", "unicode"]) -> str:
     if not isinstance(angle, float):
         return str(angle)
 
@@ -44,7 +44,7 @@ def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
     sign = "-" if num < 0 else ""
     num = abs(num)
 
-    if latex:
+    if mode == "latex":
         if den == 1:
             if num == 1:
                 return f"{sign}\\pi"
@@ -56,13 +56,17 @@ def _angle_to_str(angle: ExpressionOrFloat, latex: bool = False) -> str:
 
         return f"{sign}\\frac{{{num}\\pi}}{{{den}}}"
 
+    pi = "π"
+    if mode == "ascii":
+        pi = "pi"
+
     if den == 1:
         if num == 1:
-            return f"{sign}π"
-        return f"{sign}{num}π"
+            return f"{sign}{pi}"
+        return f"{sign}{num}{pi}"
     if num == 1:
-        return f"{sign}π/{den}"
-    return f"{sign}{num}π/{den}"
+        return f"{sign}{pi}/{den}"
+    return f"{sign}{num}{pi}/{den}"
 
 
 def command_to_latex(cmd: Command) -> str:
