@@ -339,7 +339,7 @@ class S(_KindChecker):
 
     def __repr__(self) -> str:
         """Return the representation of a S command."""
-        return f"S({self.node=}, domain={str(self.domain) if len(self.domain) != 0 else ''})"
+        return f"S({self.node=}{', domain=' + str(self.domain) if len(self.domain) != 0 else ''})"
 
 
 @dataclasses.dataclass
