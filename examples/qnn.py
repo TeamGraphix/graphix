@@ -10,6 +10,7 @@ Firstly, let us import relevant modules:
 """
 
 # %%
+from __future__ import annotations
 
 from functools import reduce
 from time import time

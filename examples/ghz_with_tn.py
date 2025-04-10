@@ -9,6 +9,7 @@ Firstly, let us import relevant modules:
 """
 
 # %%
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import networkx as nx

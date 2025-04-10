@@ -7,6 +7,8 @@ Here we generate and optimize pattern for QAOA circuit.
 """
 
 # %%
+from __future__ import annotations
+
 import networkx as nx
 import numpy as np
 

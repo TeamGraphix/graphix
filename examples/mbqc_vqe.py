@@ -19,10 +19,12 @@ We will build a parameterized quantum circuit and optimize its parameters to min
 the expectation value of the Hamiltonian, effectively finding the ground state energy.
 """
 
+from __future__ import annotations
+
 import itertools
 import sys
-from collections.abc import Iterable
 from timeit import timeit
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -30,9 +32,13 @@ from scipy.optimize import minimize
 
 from graphix import Circuit
 from graphix.parameter import Placeholder
-from graphix.pattern import Pattern
 from graphix.simulator import PatternSimulator
-from graphix.transpiler import Angle
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from graphix.pattern import Pattern
+    from graphix.transpiler import Angle
 
 Z = np.array([[1, 0], [0, -1]])
 X = np.array([[0, 1], [1, 0]])

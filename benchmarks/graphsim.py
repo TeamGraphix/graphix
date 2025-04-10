@@ -12,6 +12,7 @@ While networkx is a pure Python package, rustworkx is a Rust package with Python
 
 # %%
 # Firstly, let us import relevant modules:
+from __future__ import annotations
 
 from copy import copy
 from time import perf_counter

@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import importlib.util
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 import numpy as np
 import pytest
-from numpy.random import Generator
 
 import graphix
 import graphix.command
@@ -16,6 +17,8 @@ from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
+    from numpy.random import Generator
+
     from graphix.parameter import Parameter
 
 

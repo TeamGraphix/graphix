@@ -8,6 +8,7 @@ Firstly, let's import the relevant modules:
 """
 
 # %%
+from __future__ import annotations
 
 from functools import reduce
 
