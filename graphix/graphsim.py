@@ -57,7 +57,7 @@ class NXGraphState:
         Parameters
         ----------
         nodes : Iterable[int]
-            A container of nodes (list, dict, etc)
+            A container of nodes
         edges : Iterable[tuple[int, int]]
             list of tuples (i,j) for pairs to be entangled.
         vops : Mapping[int, Clifford]
@@ -76,10 +76,7 @@ class NXGraphState:
             self.apply_vops(vops)
 
     def local_complement(self, node: int) -> None:
-        """Perform local complementation of a graph.
-
-        See :meth:`BaseGraphState.local_complement`.
-        """
+        """Perform local complementation of a graph."""
         g = self.data.subgraph(self.data.neighbors(node))
         g_new: nx.Graph[int] = nx.complement(g)
         self.data.remove_edges_from(g.edges)
@@ -482,10 +479,7 @@ class NXGraphState:
         return gstate
 
     def get_isolates(self) -> list[int]:
-        """Return a list of isolated nodes (nodes with no edges).
-
-        See :meth:`BaseGraphState.get_isolates`.
-        """
+        """Return a list of isolated nodes (nodes with no edges)."""
         return list(nx.isolates(self.data))
 
 
