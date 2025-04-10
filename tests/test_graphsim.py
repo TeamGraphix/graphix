@@ -13,21 +13,21 @@ from graphix.sim.statevec import Statevec
 
 
 def get_state(g: GraphState) -> Statevec:
-    node_list = list(g.data.nodes)
-    nqubit = len(g.data.nodes)
+    node_list = list(g.nodes)
+    nqubit = len(g.nodes)
     gstate = Statevec(nqubit=nqubit)
     imapping = {node_list[i]: i for i in range(nqubit)}
     mapping = [node_list[i] for i in range(nqubit)]
-    for i, j in g.data.edges:
+    for i, j in g.edges:
         gstate.entangle((imapping[i], imapping[j]))
     for i in range(nqubit):
-        if g.data.nodes[mapping[i]]["sign"]:
+        if g.nodes[mapping[i]]["sign"]:
             gstate.evolve_single(Ops.Z, i)
     for i in range(nqubit):
-        if g.data.nodes[mapping[i]]["loop"]:
+        if g.nodes[mapping[i]]["loop"]:
             gstate.evolve_single(Ops.S, i)
     for i in range(nqubit):
-        if g.data.nodes[mapping[i]]["hollow"]:
+        if g.nodes[mapping[i]]["hollow"]:
             gstate.evolve_single(Ops.H, i)
     return gstate
 
@@ -128,7 +128,7 @@ class TestGraphSim:
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
-        g.data.nodes[3]["loop"] = True
+        g.nodes[3]["loop"] = True
         gstate = get_state(g)
         g.equivalent_graph_e1(3)
 
