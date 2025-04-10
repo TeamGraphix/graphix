@@ -15,6 +15,8 @@ from graphix.sim.statevec import Statevec
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
 
+    from networkx.classes.reportviews import OutEdgeView
+
 
 class MBQCGraphNode(TypedDict):
     """MBQC graph node attributes."""
@@ -24,8 +26,76 @@ class MBQCGraphNode(TypedDict):
     hollow: bool
 
 
+class CRUDMixin:
+    """Forward CRUD operations to networkx instance."""
+
+    data: nx.Graph[int]
+
+    # Create
+
+    def _init_nodeattrs(self, node: int) -> None:
+        self.nodes[node]["sign"] = False
+        self.nodes[node]["loop"] = False
+        self.nodes[node]["hollow"] = False
+
+    def add_node(self, node: int) -> None:
+        """Add a single node to the graph."""
+        self.data.add_node(node)
+        self._init_nodeattrs(node)
+
+    def add_nodes(self, nodes: Iterable[int]) -> None:
+        """Add nodes to the graph."""
+        nodes = list(nodes)
+        self.data.add_nodes_from(nodes)
+        for v in nodes:
+            self._init_nodeattrs(v)
+
+    def add_edge(self, u: int, v: int) -> None:
+        """Add a single edge to the graph."""
+        self.data.add_edge(u, v)
+
+    def add_edges(self, edges: Iterable[tuple[int, int]]) -> None:
+        """Add edges to the graph."""
+        self.data.add_edges_from(edges)
+
+    # Read/Update
+
+    @property
+    def nodes(self) -> MutableMapping[int, MBQCGraphNode]:
+        """Return the node data.
+
+        Notes
+        -----
+        Type annotation is intentionally overridden for UX.
+        """
+        return self.data.nodes  # type: ignore[return-value]
+
+    @property
+    def edges(self) -> OutEdgeView[int]:
+        """Return the edge data."""
+        return self.data.edges
+
+    # Delete
+
+    def remove_node(self, node: int) -> None:
+        """Remove a single node from the graph."""
+        self.data.remove_node(node)
+
+    def remove_nodes(self, nodes: Iterable[int]) -> None:
+        """Remove nodes from the graph."""
+        self.data.remove_nodes_from(nodes)
+
+    def remove_edge(self, u: int, v: int) -> None:
+        """Remove a single edge from the graph."""
+        self.data.remove_edge(u, v)
+
+    def remove_edges(self, edges: Iterable[tuple[int, int]]) -> None:
+        """Remove edges from the graph."""
+        self.data.remove_edges_from(edges)
+
+
 @dataclasses.dataclass
-class GraphState:
+class GraphState(CRUDMixin):
     """Graph state simulator implemented with networkx.
 
     Performs Pauli measurements on graph states.
@@ -38,13 +108,6 @@ class GraphState:
         :`sign`: True if node has negative sign (local Z operator)
         :`loop`: True if node has loop (local S operator)
     """
-
-    data: nx.Graph[int]
-
-    @property
-    def _nodes(self) -> MutableMapping[int, MBQCGraphNode]:
-        """Return the node data with more specific annotation."""
-        return self.data.nodes  # type: ignore[return-value]
 
     def __init__(
         self,
@@ -65,13 +128,9 @@ class GraphState:
         """
         self.data = nx.Graph()
         if nodes is not None:
-            self.data.add_nodes_from(nodes)
+            self.add_nodes(nodes)
         if edges is not None:
-            self.data.add_edges_from(edges)
-        for v in self._nodes.values():
-            v["sign"] = False
-            v["loop"] = False
-            v["hollow"] = False
+            self.add_edges(edges)
         if vops is not None:
             self.apply_vops(vops)
 
@@ -79,8 +138,8 @@ class GraphState:
         """Perform local complementation of a graph."""
         g = self.data.subgraph(self.data.neighbors(node))
         g_new: nx.Graph[int] = nx.complement(g)
-        self.data.remove_edges_from(g.edges)
-        self.data.add_edges_from(g_new.edges)
+        self.remove_edges(g.edges)
+        self.add_edges(g_new.edges)
 
     def apply_vops(self, vops: Mapping[int, Clifford]) -> None:
         """Apply local Clifford operators to the graph state from a dictionary.
@@ -114,13 +173,13 @@ class GraphState:
                 dict containing node indices as keys and local Cliffords
         """
         vops: dict[int, Clifford] = {}
-        for i in self._nodes:
+        for i in self.nodes:
             vop = Clifford.I
-            if self._nodes[i]["sign"]:
+            if self.nodes[i]["sign"]:
                 vop = Clifford.Z @ vop
-            if self._nodes[i]["loop"]:
+            if self.nodes[i]["loop"]:
                 vop = Clifford.S @ vop
-            if self._nodes[i]["hollow"]:
+            if self.nodes[i]["hollow"]:
                 vop = Clifford.H @ vop
             vops[i] = vop
         return vops
@@ -137,7 +196,7 @@ class GraphState:
         -------
         None
         """
-        self._nodes[node]["hollow"] = not self._nodes[node]["hollow"]
+        self.nodes[node]["hollow"] = not self.nodes[node]["hollow"]
 
     def flip_sign(self, node: int) -> None:
         """Flip the sign (local Z) of a node.
@@ -154,7 +213,7 @@ class GraphState:
         -------
         None
         """
-        self._nodes[node]["sign"] = not self._nodes[node]["sign"]
+        self.nodes[node]["sign"] = not self.nodes[node]["sign"]
 
     def advance(self, node: int) -> None:
         """Flip the loop (local S) of a node.
@@ -173,11 +232,11 @@ class GraphState:
         -------
         None
         """
-        if self._nodes[node]["loop"]:
-            self._nodes[node]["loop"] = False
+        if self.nodes[node]["loop"]:
+            self.nodes[node]["loop"] = False
             self.flip_sign(node)
         else:
-            self._nodes[node]["loop"] = True
+            self.nodes[node]["loop"] = True
 
     def h(self, node: int) -> None:
         """Apply H gate to a qubit (node).
@@ -205,10 +264,10 @@ class GraphState:
         -------
         None
         """
-        if self._nodes[node]["hollow"]:
-            if self._nodes[node]["loop"]:
+        if self.nodes[node]["hollow"]:
+            if self.nodes[node]["loop"]:
                 self.flip_fill(node)
-                self._nodes[node]["loop"] = False
+                self.nodes[node]["loop"] = False
                 self.local_complement(node)
                 for i in self.data.neighbors(node):
                     self.advance(i)
@@ -216,7 +275,7 @@ class GraphState:
                 self.local_complement(node)
                 for i in self.data.neighbors(node):
                     self.advance(i)
-                if self._nodes[node]["sign"]:
+                if self.nodes[node]["sign"]:
                     for i in self.data.neighbors(node):
                         self.flip_sign(i)
         else:  # solid
@@ -234,10 +293,10 @@ class GraphState:
         -------
         None
         """
-        if self._nodes[node]["hollow"]:
+        if self.nodes[node]["hollow"]:
             for i in self.data.neighbors(node):
                 self.flip_sign(i)
-            if self._nodes[node]["loop"]:
+            if self.nodes[node]["loop"]:
                 self.flip_sign(node)
         else:  # solid
             self.flip_sign(node)
@@ -256,14 +315,14 @@ class GraphState:
         -------
         None
         """
-        if not self._nodes[node]["loop"]:
+        if not self.nodes[node]["loop"]:
             raise ValueError("node must have loop")
         self.flip_fill(node)
         self.local_complement(node)
         for i in self.data.neighbors(node):
             self.advance(i)
         self.flip_sign(node)
-        if self._nodes[node]["sign"]:
+        if self.nodes[node]["sign"]:
             for i in self.data.neighbors(node):
                 self.flip_sign(i)
 
@@ -281,12 +340,12 @@ class GraphState:
         -------
         None
         """
-        if (node1, node2) not in self.data.edges and (node2, node1) not in self.data.edges:
+        if (node1, node2) not in self.edges and (node2, node1) not in self.edges:
             raise ValueError("nodes must be connected by an edge")
-        if self._nodes[node1]["loop"] or self._nodes[node2]["loop"]:
+        if self.nodes[node1]["loop"] or self.nodes[node2]["loop"]:
             raise ValueError("nodes must not have loop")
-        sg1 = self._nodes[node1]["sign"]
-        sg2 = self._nodes[node2]["sign"]
+        sg1 = self.nodes[node1]["sign"]
+        sg2 = self.nodes[node2]["sign"]
         self.flip_fill(node1)
         self.flip_fill(node2)
         # local complement along edge between node1, node2
@@ -322,15 +381,15 @@ class GraphState:
             if filled and isolated, 2.
             otherwise it is 0.
         """
-        if self._nodes[node]["hollow"]:
-            if self._nodes[node]["loop"]:
+        if self.nodes[node]["hollow"]:
+            if self.nodes[node]["loop"]:
                 self.equivalent_graph_e1(node)
                 return 0
             # node = hollow and loopless
             if utils.iter_empty(self.data.neighbors(node)):
                 return 1
             for i in self.data.neighbors(node):
-                if not self._nodes[i]["loop"]:
+                if not self.nodes[i]["loop"]:
                     self.equivalent_graph_e2(node, i)
                     return 0
             # if all neighbor has loop, pick one and apply E1, then E1 to the node.
@@ -364,13 +423,13 @@ class GraphState:
             raise ValueError("choice must be 0 or 1")
         # check if isolated
         if utils.iter_empty(self.data.neighbors(node)):
-            if self._nodes[node]["hollow"] or self._nodes[node]["loop"]:
+            if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
                 choice_ = choice
-            elif self._nodes[node]["sign"]:  # isolated and state is |->
+            elif self.nodes[node]["sign"]:  # isolated and state is |->
                 choice_ = 1
             else:  # isolated and state is |+>
                 choice_ = 0
-            self.data.remove_node(node)
+            self.remove_node(node)
             return choice_
         self.h(node)
         return self.measure_z(node, choice=choice)
@@ -424,8 +483,8 @@ class GraphState:
         if choice:
             for i in self.data.neighbors(node):
                 self.flip_sign(i)
-        result = choice if not isolated else int(self._nodes[node]["sign"])
-        self.data.remove_node(node)
+        result = choice if not isolated else int(self.nodes[node]["sign"])
+        self.remove_node(node)
         return result
 
     def draw(self, fill_color: str = "C0", **kwargs: dict[str, Any]) -> None:
@@ -440,17 +499,17 @@ class GraphState:
         kwargs :
             optional, additional arguments to supply networkx.draw().
         """
-        nqubit = len(self._nodes)
-        nodes = list(self._nodes)
-        edges: list[tuple[int, int]] = list(self.data.edges)
-        labels = {i: i for i in iter(self._nodes)}
+        nqubit = len(self.nodes)
+        nodes = list(self.nodes)
+        edges: list[tuple[int, int]] = list(self.edges)
+        labels = {i: i for i in iter(self.nodes)}
         colors = [fill_color for _ in range(nqubit)]
         for i in range(nqubit):
-            if self._nodes[nodes[i]]["loop"]:
+            if self.nodes[nodes[i]]["loop"]:
                 edges.append((nodes[i], nodes[i]))
-            if self._nodes[nodes[i]]["hollow"]:
+            if self.nodes[nodes[i]]["hollow"]:
                 colors[i] = "white"
-            if self._nodes[nodes[i]]["sign"]:
+            if self.nodes[nodes[i]]["sign"]:
                 labels[nodes[i]] = -1 * labels[nodes[i]]
         g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
@@ -459,22 +518,22 @@ class GraphState:
 
     def to_statevector(self) -> Statevec:
         """Convert the graph state into a state vector."""
-        node_list = list(self._nodes)
-        nqubit = len(self._nodes)
+        node_list = list(self.nodes)
+        nqubit = len(self.nodes)
         gstate = Statevec(nqubit=nqubit)
         # map graph node indices into 0 - (nqubit-1) for qubit indexing in statevec
         imapping = {node_list[i]: i for i in range(nqubit)}
         mapping = [node_list[i] for i in range(nqubit)]
-        for i, j in self.data.edges:
+        for i, j in self.edges:
             gstate.entangle((imapping[i], imapping[j]))
         for i in range(nqubit):
-            if self._nodes[mapping[i]]["sign"]:
+            if self.nodes[mapping[i]]["sign"]:
                 gstate.evolve_single(Ops.Z, i)
         for i in range(nqubit):
-            if self._nodes[mapping[i]]["loop"]:
+            if self.nodes[mapping[i]]["loop"]:
                 gstate.evolve_single(Ops.S, i)
         for i in range(nqubit):
-            if self._nodes[mapping[i]]["hollow"]:
+            if self.nodes[mapping[i]]["hollow"]:
                 gstate.evolve_single(Ops.H, i)
         return gstate
 
