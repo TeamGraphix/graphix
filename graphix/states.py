@@ -31,7 +31,7 @@ class State(ABC):
     def get_densitymatrix(self) -> npt.NDArray[np.complex128]:
         """Return the density matrix."""
         # return DM in 2**n x 2**n dim (2x2 here)
-        return np.outer(self.get_statevector(), self.get_statevector().conj())
+        return np.outer(self.get_statevector(), self.get_statevector().conj()).astype(np.complex128, copy=False)
 
 
 @pydantic.dataclasses.dataclass

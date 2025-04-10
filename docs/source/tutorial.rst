@@ -28,7 +28,7 @@ For any gate network, we can use the :class:`~graphix.transpiler.Circuit` class 
     pattern = circuit.transpile().pattern
 
 the :class:`~graphix.pattern.Pattern` object contains the sequence of commands according to the measurement calculus framework [#Danos2007]_.
-Let us print the pattern (command sequence) that we generated, 
+Let us print the pattern (command sequence) that we generated,
 
 >>> pattern.print_pattern() # show the command sequence (pattern)
 N, node = 1
@@ -142,7 +142,7 @@ As an example, let us prepare a pattern to rotate two qubits in :math:`|+\rangle
     circuit.cnot(0, 1)
     pattern = circuit.transpile().pattern
 
-This produces a rather long and complicated command sequence. 
+This produces a rather long and complicated command sequence.
 
 >>> pattern.print_pattern() # show the command sequence (pattern)
 N, node = 2
@@ -227,8 +227,8 @@ This reveals the graph structure of the resource state which we can inspect:
     import networkx as nx
     nodes, edges = pattern.get_graph()
     g = nx.Graph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
+    g.add_nodes(nodes)
+    g.add_edges(edges)
     pos = {0: (0, 0), 1: (0, -0.5), 2: (1, 0), 3: (4, 0), 4: (1, -0.5), 5: (2, -0.5), 6: (3, -0.5), 7: (4, -0.5)}
     graph_params = {'node_size': 240, 'node_color': 'w', 'edgecolors': 'k', 'with_labels': True}
     nx.draw(g, pos=pos, **graph_params)
@@ -514,5 +514,3 @@ References
 ----------
 
 .. [#Danos2007] `V. Danos, E Kashefi and P. Panangaden, "The Measurement Calculus", Journal of the ACM 54, 2 (2007) <https://doi.org/10.48550/arXiv.0704.1263>`_
-
-
