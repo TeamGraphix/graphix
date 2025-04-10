@@ -29,6 +29,16 @@ class MBQCGraphNode(TypedDict):
 class CRUDMixin:
     """Forward CRUD operations to networkx instance."""
 
+    # Developer Note:
+    #
+    # This class is introduced to mimic "generics inheritance" in Python:
+    #
+    # ```py
+    # # We cannot do this, sadly
+    # class GraphState(nx.Graph[int]):
+    #     ...
+    # ```
+
     data: nx.Graph[int]
 
     # Create
