@@ -1,5 +1,4 @@
-import pytest
-from graphix.device_interface import MBQCBackend, JobHandle, CompileOptions
+from graphix.device_interface import CompileOptions, DeviceBackend, JobHandle
 from graphix.pattern import Pattern
 
 
@@ -13,7 +12,7 @@ class DummyJob(JobHandle):
     def cancel(self): pass
 
 
-class DummyBackend(MBQCBackend):
+class DummyBackend(DeviceBackend):
     def compile(self, options: CompileOptions = None): pass
     def submit_job(self, shots: int) -> JobHandle: return DummyJob()
     def retrieve_result(self, job_handle: JobHandle): return "ok"

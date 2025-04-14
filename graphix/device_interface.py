@@ -1,7 +1,12 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Optional
+"""Abstract base class for quantum device backends and job handlers."""
 
-from graphix.pattern import Pattern
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, ClassVar
+
+if TYPE_CHECKING:
+    from graphix.pattern import Pattern
 
 
 class JobHandler(ABC):
@@ -38,15 +43,19 @@ class CompileOptions(ABC):
     To be extended by concrete implementations.
     """
 
+    @abstractmethod
+    def __repr__(self) -> str:
+        """Define a dummy abstract method to satisfy ABC requirements."""
+
 
 class DeviceBackend(ABC):
     """Abstract base class representing a quantum device backend (hardware or simulator)."""
 
-    VALID_MODES: set[str] = {"hardware", "simulator"}
+    VALID_MODES: ClassVar[set[str]] = {"hardware", "simulator"}
 
     def __init__(self) -> None:
         """Initialize the backend with no assigned pattern."""
-        self.pattern: Optional[Pattern] = None
+        self.pattern: Pattern | None = None
 
     def set_pattern(self, pattern: Pattern) -> None:
         """Assign a pattern to be compiled and executed on the backend.
@@ -59,7 +68,7 @@ class DeviceBackend(ABC):
         self.pattern = pattern
 
     @abstractmethod
-    def compile(self, options: Optional[CompileOptions] = None) -> None:
+    def compile(self, options: CompileOptions | None = None) -> None:
         """Compile the pattern using given compile options.
 
         Parameters
@@ -84,7 +93,7 @@ class DeviceBackend(ABC):
         """
 
     @abstractmethod
-    def retrieve_result(self, job_handle: JobHandler) -> Dict[str, int]:
+    def retrieve_result(self, job_handle: JobHandler) -> dict[str, int]:
         """Retrieve the result from a completed job.
 
         Parameters

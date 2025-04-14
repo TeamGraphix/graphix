@@ -18,6 +18,7 @@ import typing_extensions
 from graphix import command, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
+
 # from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
