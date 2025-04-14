@@ -716,7 +716,7 @@ def test_draw_pattern_measure() -> None:
     p.add(M(2, Plane.XZ, -0.25))
     p.add(M(10, Plane.XZ, -0.25))
     p.add(M(3, Plane.XY, 0.1, s_domain={1, 10}, t_domain={2}))
-    assert str(p) == "N(1) N(2) N(3) N(10) E(1,2) M(1,YZ,π/2) M(2,XZ,-π/4) M(10,XZ,-π/4) {2}[M(3,π/10)]{1,10}"
+    assert str(p) == "N(1) N(2) N(3) N(10) E(1,2) M(1,YZ,pi/2) M(2,XZ,-pi/4) M(10,XZ,-pi/4) {2}[M(3,pi/10)]{1,10}"
     assert p.to_unicode() == "N₁ N₂ N₃ N₁₀ E₁₋₂ M₁(YZ,π/2) M₂(XZ,-π/4) M₁₀(XZ,-π/4) ₂[M₃(π/10)]¹,¹⁰"
     assert (
         p.to_latex()

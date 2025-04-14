@@ -92,7 +92,7 @@ def command_to_latex(cmd: Command) -> str:
                 if cmd.plane != Plane.XY:
                     s.append(cmd.plane.name)
                 if cmd.angle != 0.0:
-                    s.append(_angle_to_str(cmd.angle, latex=True))
+                    s.append(_angle_to_str(cmd.angle, mode="latex"))
                 out.append(f"^{{{','.join(s)}}}")
 
                 if has_domain:
@@ -136,7 +136,7 @@ def command_to_str(cmd: Command) -> str:
             if cmd.plane != Plane.XY:
                 s.append(f"{cmd.plane.name}")
             if cmd.angle != 0.0:
-                s.append(f"{_angle_to_str(cmd.angle)}")
+                s.append(_angle_to_str(cmd.angle, mode="ascii"))
 
             out.append(f"({','.join(s)})")
 
@@ -186,7 +186,7 @@ def command_to_unicode(cmd: Command) -> str:
                 if cmd.plane != Plane.XY:
                     s.append(f"{cmd.plane.name}")
                 if cmd.angle != 0.0:
-                    s.append(f"{_angle_to_str(cmd.angle)}")
+                    s.append(_angle_to_str(cmd.angle, mode="unicode"))
                 if s != []:
                     out.append(f"({','.join(s)})")
 
