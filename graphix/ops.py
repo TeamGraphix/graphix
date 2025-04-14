@@ -208,5 +208,7 @@ class Ops:
         else:
             raise TypeError(f"The number of qubits must be an integer and not {n_qubits}.")
 
-        # TODO: Refactor this
-        return np.array([reduce(np.kron, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)])
+        def _reducer(lhs: npt.NDArray[np.complex128], rhs: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
+            return np.kron(lhs, rhs).astype(np.complex128, copy=False)
+
+        return np.array([reduce(_reducer, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)])
