@@ -126,6 +126,7 @@ files = [
   "graphix/measurements.py",
   "graphix/ops.py",
   "graphix/parameter.py",
+  "graphix/pattern.py",
   "graphix/pauli.py",
   "graphix/pyzx.py",
   "graphix/rng.py",
