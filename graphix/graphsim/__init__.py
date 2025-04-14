@@ -1,5 +1,7 @@
 """Graph simulator."""
 
+from __future__ import annotations
+
 from graphix.graphsim.basegraphstate import BaseGraphState
 from graphix.graphsim.graphstate import GraphState
 from graphix.graphsim.nxgraphstate import NXGraphState
