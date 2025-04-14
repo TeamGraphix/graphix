@@ -27,7 +27,10 @@ SUBSCRIPTS = str.maketrans("0123456789+", "₀₁₂₃₄₅₆₇₈₉₊")
 SUPERSCRIPTS = str.maketrans("0123456789+", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺")
 
 
-def _angle_to_str(angle: ExpressionOrFloat, mode: Union["latex", "ascii", "unicode"]) -> str:
+def angle_to_str(angle: ExpressionOrFloat, mode: str) -> str:
+    """Return the string of an angle according to the given format."""
+    assert mode in {"latex", "ascii", "unicode"}
+
     if not isinstance(angle, float):
         return str(angle)
 
@@ -92,7 +95,7 @@ def command_to_latex(cmd: Command) -> str:
                 if cmd.plane != Plane.XY:
                     s.append(cmd.plane.name)
                 if cmd.angle != 0.0:
-                    s.append(_angle_to_str(cmd.angle, mode="latex"))
+                    s.append(angle_to_str(cmd.angle, mode="latex"))
                 out.append(f"^{{{','.join(s)}}}")
 
                 if has_domain:
@@ -136,7 +139,7 @@ def command_to_str(cmd: Command) -> str:
             if cmd.plane != Plane.XY:
                 s.append(f"{cmd.plane.name}")
             if cmd.angle != 0.0:
-                s.append(_angle_to_str(cmd.angle, mode="ascii"))
+                s.append(angle_to_str(cmd.angle, mode="ascii"))
 
             out.append(f"({','.join(s)})")
 
@@ -186,7 +189,7 @@ def command_to_unicode(cmd: Command) -> str:
                 if cmd.plane != Plane.XY:
                     s.append(f"{cmd.plane.name}")
                 if cmd.angle != 0.0:
-                    s.append(_angle_to_str(cmd.angle, mode="unicode"))
+                    s.append(angle_to_str(cmd.angle, mode="unicode"))
                 if s != []:
                     out.append(f"({','.join(s)})")
 

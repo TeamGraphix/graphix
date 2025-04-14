@@ -8,9 +8,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import io
-import subprocess
 import tempfile
-import warnings
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
@@ -240,7 +238,7 @@ class Pattern:
         left_to_right: bool
             whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
         """
-        from graphix.draw_pattern import pattern_to_latex_document, latex_file_to_image
+        from graphix.draw_pattern import latex_file_to_image, pattern_to_latex_document
 
         tmpfilename = "pattern"
 

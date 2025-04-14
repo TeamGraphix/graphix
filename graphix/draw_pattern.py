@@ -1,8 +1,14 @@
-from graphix import Pattern
-import PIL
-from pathlib import Path
+"""Helper module for drawing pattern."""
+
 import io
 import subprocess
+import warnings
+from pathlib import Path
+
+import PIL
+
+from graphix import Pattern
+
 
 def latex_file_to_image(tmpdirname: Path, tmpfilename: Path) -> PIL.Image.Image:
     """Convert a latex file located in `tmpdirname/tmpfilename` to an image representation."""
@@ -41,7 +47,7 @@ def latex_file_to_image(tmpdirname: Path, tmpfilename: Path) -> PIL.Image.Image:
         message = "`pdftocairo` failed to produce an image."
         warnings.warn(message, stacklevel=2)
         raise Exception(message) from exc
-    
+
     def trim(image) -> PIL.Image.Image:
         """Trim a PIL image and remove white space."""
         background = PIL.Image.new(image.mode, image.size, image.getpixel((0, 0)))
@@ -54,30 +60,31 @@ def latex_file_to_image(tmpdirname: Path, tmpfilename: Path) -> PIL.Image.Image:
 
     return trim(PIL.Image.open(base.with_suffix(".png")))
 
+
 def pattern_to_latex_document(pattern: Pattern, left_to_right: bool) -> str:
-        """Generate a latex document with the latex representation of the pattern written in it.
+    """Generate a latex document with the latex representation of the pattern written in it.
 
-        Parameters
-        ----------
-        left_to_right: bool
-            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
-        """
-        header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
+    Parameters
+    ----------
+    left_to_right: bool
+        whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+    """
+    header_1 = r"\documentclass[border=2px]{standalone}" + "\n"
 
-        header_2 = r"""
+    header_2 = r"""
 \usepackage{graphicx}
 
 \begin{document}
 """
 
-        output = io.StringIO()
-        output.write(header_1)
-        output.write(header_2)
+    output = io.StringIO()
+    output.write(header_1)
+    output.write(header_2)
 
-        output.write(pattern.to_latex(left_to_right))
+    output.write(pattern.to_latex(left_to_right))
 
-        output.write("\n\\end{document}")
-        contents = output.getvalue()
-        output.close()
+    output.write("\n\\end{document}")
+    contents = output.getvalue()
+    output.close()
 
-        return contents
+    return contents
