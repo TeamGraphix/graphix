@@ -1,125 +1,108 @@
-"""Quantum hardware device interface.
-
-Runs MBQC command sequence on quantum hardware.
-"""
+"""Abstract base class for quantum device backends and job handlers."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
 
-class PatternRunner:
-    """MBQC pattern runner.
+class JobHandler(ABC):
+    """Abstract base class representing a quantum job handle."""
 
-    Executes the measurement pattern.
+    @abstractmethod
+    def get_id(self) -> str:
+        """Return the unique ID of the job.
+
+        Returns
+        -------
+        str
+            Unique job ID.
+        """
+
+    @abstractmethod
+    def is_done(self) -> bool:
+        """Check whether the job has completed.
+
+        Returns
+        -------
+        bool
+            True if the job is done, False otherwise.
+        """
+
+    @abstractmethod
+    def cancel(self) -> None:
+        """Cancel the job."""
+
+
+class CompileOptions(ABC):
+    """Abstract base class for specifying compilation options.
+
+    To be extended by concrete implementations.
     """
 
-    def __init__(self, pattern: Pattern, backend: str = "ibmq", **kwargs) -> None:
-        """Instantiate a pattern runner.
+    @abstractmethod
+    def __repr__(self) -> str:
+        """Define a dummy abstract method to satisfy ABC requirements."""
+
+
+class DeviceBackend(ABC):
+    """Abstract base class representing a quantum device backend (hardware or simulator)."""
+
+    VALID_MODES: ClassVar[set[str]] = {"hardware", "simulator"}
+
+    def __init__(self) -> None:
+        """Initialize the backend with no assigned pattern."""
+        self.pattern: Pattern | None = None
+
+    def set_pattern(self, pattern: Pattern) -> None:
+        """Assign a pattern to be compiled and executed on the backend.
 
         Parameters
         ----------
-        pattern: :class:`graphix.pattern.Pattern` object
-            MBQC pattern to be executed.
-        backend: str
-            execution backend (optional, default is 'ibmq')
-        kwargs: dict
-            keyword args for specified backend.
+        pattern : Pattern
+            The pattern to assign.
         """
         self.pattern = pattern
-        self.backend_name = backend
 
-        if self.backend_name == "ibmq":
-            try:
-                from graphix_ibmq.runner import IBMQBackend
-            except Exception as e:
-                raise ImportError(
-                    "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix-ibmq`."
-                ) from e
-            self.backend = IBMQBackend(pattern)
-            try:
-                instance = kwargs.get("instance", "ibm-q/open/main")
-                resource = kwargs.get("resource")
-                save_statevector = kwargs.get("save_statevector", False)
-                optimization_level = kwargs.get("optimizer_level", 1)
-
-                self.backend.get_backend(instance, resource)
-                self.backend.to_qiskit(save_statevector)
-                self.backend.transpile(optimization_level)
-                self.shots = kwargs.get("shots", 1024)
-            except Exception:
-                save_statevector = kwargs.get("save_statevector", False)
-                optimization_level = kwargs.get("optimizer_level", 1)
-                self.backend.to_qiskit(save_statevector)
-                self.shots = kwargs.get("shots", 1024)
-        else:
-            raise ValueError("unknown backend")
-
-    def simulate(self, **kwargs) -> Any:
-        """Perform the simulation.
+    @abstractmethod
+    def compile(self, options: CompileOptions | None = None) -> None:
+        """Compile the pattern using given compile options.
 
         Parameters
         ----------
-        kwargs: dict
-            keyword args for specified backend.
-
-        Returns
-        -------
-        result: Any
-            the simulation result,
-            in the representation depending on the backend used.
+        options : CompileOptions, optional
+            Options for compilation.
         """
-        if self.backend_name == "ibmq":
-            shots = kwargs.get("shots", self.shots)
-            noise_model = kwargs.get("noise_model")
-            format_result = kwargs.get("format_result", True)
 
-            result = self.backend.simulate(shots=shots, noise_model=noise_model, format_result=format_result)
-
-        return result
-
-    def run(self, **kwargs) -> Any:
-        """Perform the execution.
+    @abstractmethod
+    def submit_job(self, shots: int = 1024) -> JobHandler:
+        """Submit a compiled job to the backend.
 
         Parameters
         ----------
-        kwargs: dict
-            keyword args for specified backend.
+        shots : int, optional
+            Number of shots/samples to execute. Defaults to 1024.
 
         Returns
         -------
-        result: Any
-            the measurement result,
-            in the representation depending on the backend used.
+        JobHandler
+            Handle to monitor or retrieve job result.
         """
-        if self.backend_name == "ibmq":
-            shots = kwargs.get("shots", self.shots)
-            format_result = kwargs.get("format_result", True)
-            optimization_level = kwargs.get("optimizer_level", 1)
 
-            result = self.backend.run(shots=shots, format_result=format_result, optimization_level=optimization_level)
-
-        return result
-
-    def retrieve_result(self, **kwargs) -> Any:
-        """Retrieve the execution result.
+    @abstractmethod
+    def retrieve_result(self, job_handle: JobHandler) -> dict[str, int]:
+        """Retrieve the result from a completed job.
 
         Parameters
         ----------
-        kwargs: dict
-            keyword args for specified backend.
+        job_handle : JobHandler
+            The handle of the submitted job.
 
         Returns
         -------
-        result: Any
-            the measurement result,
-            in the representation depending on the backend used.
+        Any
+            Result of the job execution.
         """
-        if self.backend_name == "ibmq":
-            job_id = kwargs.get("job_id")
-            result = self.backend.retrieve_result(job_id)
-
-        return result
