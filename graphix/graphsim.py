@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import networkx as nx
@@ -30,7 +29,6 @@ class MBQCGraphNode(TypedDict):
     hollow: bool
 
 
-@dataclasses.dataclass
 class GraphState(Graph):
     """Graph state simulator implemented with networkx.
 
