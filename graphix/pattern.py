@@ -7,17 +7,20 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import io
+import tempfile
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsFloat
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, SupportsFloat
 
 import networkx as nx
 import typing_extensions
 
 from graphix import command, parameter
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind
+from graphix.command import Command, CommandKind, command_to_latex, command_to_str, command_to_unicode
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
@@ -29,6 +32,8 @@ from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from abc.collections import Iterator, Mapping
+
+    import PIL.Image.Image
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
@@ -80,7 +85,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes: list[int] | None = None) -> None:
+    def __init__(self, input_nodes: list[int] | None = None, seq: list[Command] | None = None) -> None:
         """
         Construct a pattern.
 
@@ -94,6 +99,8 @@ class Pattern:
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq: list[Command] = []
+        if seq is not None:
+            self.extend(seq)
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
 
@@ -195,9 +202,7 @@ class Pattern:
     # TODO: This is not an evaluable representation. Should be __str__?
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
-        return (
-            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
-        )
+        return f"Pattern({'' if not self.input_nodes else f'input_nodes={self.input_nodes}'}, seq={self.__seq})"
 
     def __eq__(self, other: Pattern) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
@@ -206,6 +211,72 @@ class Pattern:
             and self.input_nodes == other.input_nodes
             and self.output_nodes == other.output_nodes
         )
+
+    def to_latex(self, left_to_right: bool = True) -> str:
+        """Return a string containing the latex representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        output = io.StringIO()
+
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
+        sep = "\\,"
+        output.write(f"\\({sep.join([command_to_latex(cmd) for cmd in seq])}\\)")
+
+        contents = output.getvalue()
+        output.close()
+        return contents
+
+    def to_png(self, left_to_right: bool = True) -> PIL.Image.Image:
+        """Generate a PNG image of the latex representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        from graphix.draw_pattern import latex_file_to_image, pattern_to_latex_document
+
+        tmpfilename = "pattern"
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmppath = Path(tmpdirname) / tmpfilename
+            tmppath = tmppath.with_suffix(".tex")
+
+            with tmppath.open("w") as latex_file:
+                contents = pattern_to_latex_document(self, left_to_right)
+                latex_file.write(contents)
+
+            return latex_file_to_image(tmpdirname, tmpfilename)
+
+    def __str__(self) -> str:
+        """Return a string representation of the pattern."""
+        return self.to_ascii()
+
+    def to_ascii(self, left_to_right: bool = True) -> str:
+        """Return the ascii string representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        seq = self.__seq[::-1] if not left_to_right else self.__seq
+        return " ".join([command_to_str(cmd) for cmd in seq])
+
+    def to_unicode(self, left_to_right: bool = True) -> str:
+        """Return the unicode string representation of the pattern.
+
+        Parameters
+        ----------
+        left_to_right: bool
+            whether or not represent the pattern from left to right representation. Default is left to right, otherwise it's right to left
+        """
+        seq = reversed(self.__seq) if not left_to_right else self.__seq
+        return " ".join([command_to_unicode(cmd) for cmd in seq])
 
     def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
@@ -260,6 +331,26 @@ class Pattern:
             print(
                 f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
             )
+
+    def draw(
+        self, output: Literal["ascii", "latex", "unicode", "png"] = "ascii", left_to_right: bool = True
+    ) -> str | PIL.Image.Image:
+        """Return the appropriate visualization object.
+
+        Parameters
+        ----------
+        left_to_right: bool
+
+        """
+        if output == "ascii":
+            return self.to_ascii(left_to_right)
+        if output == "png":
+            return self.to_png(left_to_right)
+        if output == "latex":
+            return self.to_latex(left_to_right)
+        if output == "unicode":
+            return self.to_unicode(left_to_right)
+        raise ValueError("Unknown argument value for pattern drawing.")
 
     def standardize(self, method="direct") -> None:
         """Execute standardization of the pattern.
@@ -1408,7 +1499,7 @@ class Pattern:
         filename : str
             file name to export to. example: "filename.qasm"
         """
-        with open(filename + ".qasm", "w") as file:
+        with Path(filename + ".qasm").open("w") as file:
             file.write("// generated by graphix\n")
             file.write("OPENQASM 3;\n")
             file.write('include "stdgates.inc";\n')

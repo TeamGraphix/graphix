@@ -75,6 +75,7 @@ extend-select = [
   "UP",
   "W",
   "YTT",
+  "PTH"
 ]
 extend-ignore = [
   "E74",     # Ambiguous name
@@ -122,6 +123,7 @@ files = [
   "graphix/channels.py",
   "graphix/clifford.py",
   "graphix/command.py",
+  "graphix/draw_pattern.py",
   "graphix/fundamentals.py",
   "graphix/instruction.py",
   "graphix/linalg_validations.py",
