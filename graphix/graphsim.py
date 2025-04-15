@@ -13,9 +13,13 @@ from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, MutableMapping
+    from collections.abc import Iterable, Mapping
 
-    from networkx.classes.reportviews import OutEdgeView
+
+if TYPE_CHECKING:
+    Graph = nx.Graph[int]
+else:
+    Graph = nx.Graph
 
 
 class MBQCGraphNode(TypedDict):
@@ -26,86 +30,8 @@ class MBQCGraphNode(TypedDict):
     hollow: bool
 
 
-class CRUDMixin:
-    """Forward CRUD operations to networkx instance."""
-
-    # Developer Note:
-    #
-    # This class is introduced to mimic "generics inheritance" in Python:
-    #
-    # ```py
-    # # We cannot do this, sadly
-    # class GraphState(nx.Graph[int]):
-    #     ...
-    # ```
-
-    data: nx.Graph[int]
-
-    # Create
-
-    def _init_nodeattrs(self, node: int) -> None:
-        self.nodes[node]["sign"] = False
-        self.nodes[node]["loop"] = False
-        self.nodes[node]["hollow"] = False
-
-    def add_node(self, node: int) -> None:
-        """Add a single node to the graph."""
-        self.data.add_node(node)
-        self._init_nodeattrs(node)
-
-    def add_nodes(self, nodes: Iterable[int]) -> None:
-        """Add nodes to the graph."""
-        nodes = list(nodes)
-        self.data.add_nodes_from(nodes)
-        for v in nodes:
-            self._init_nodeattrs(v)
-
-    def add_edge(self, u: int, v: int) -> None:
-        """Add a single edge to the graph."""
-        self.data.add_edge(u, v)
-
-    def add_edges(self, edges: Iterable[tuple[int, int]]) -> None:
-        """Add edges to the graph."""
-        self.data.add_edges_from(edges)
-
-    # Read/Update
-
-    @property
-    def nodes(self) -> MutableMapping[int, MBQCGraphNode]:
-        """Return the node data.
-
-        Notes
-        -----
-        Type annotation is intentionally overridden for UX.
-        """
-        return self.data.nodes  # type: ignore[return-value]
-
-    @property
-    def edges(self) -> OutEdgeView[int]:
-        """Return the edge data."""
-        return self.data.edges
-
-    # Delete
-
-    def remove_node(self, node: int) -> None:
-        """Remove a single node from the graph."""
-        self.data.remove_node(node)
-
-    def remove_nodes(self, nodes: Iterable[int]) -> None:
-        """Remove nodes from the graph."""
-        self.data.remove_nodes_from(nodes)
-
-    def remove_edge(self, u: int, v: int) -> None:
-        """Remove a single edge from the graph."""
-        self.data.remove_edge(u, v)
-
-    def remove_edges(self, edges: Iterable[tuple[int, int]]) -> None:
-        """Remove edges from the graph."""
-        self.data.remove_edges_from(edges)
-
-
 @dataclasses.dataclass
-class GraphState(CRUDMixin):
+class GraphState(Graph):
     """Graph state simulator implemented with networkx.
 
     Performs Pauli measurements on graph states.
@@ -136,20 +62,41 @@ class GraphState(CRUDMixin):
         vops : Mapping[int, Clifford]
             dict of local Clifford gates with keys for node indices and Cliffords
         """
-        self.data = nx.Graph()
+        super().__init__()
         if nodes is not None:
-            self.add_nodes(nodes)
+            self.add_nodes_from(nodes)
         if edges is not None:
-            self.add_edges(edges)
+            self.add_edges_from(edges)
         if vops is not None:
             self.apply_vops(vops)
 
+    def add_nodes_from(
+        self,
+        nodes_for_adding: Iterable[int | tuple[int, dict[str, MBQCGraphNode]]],
+        **attr: Any,
+    ) -> None:
+        """Wrap `networkx.Graph.add_nodes_from` to initialize MBQCGraphNode attributes."""
+        nodes_for_adding = list(nodes_for_adding)
+        super().add_nodes_from(nodes_for_adding, **attr)
+        for data in nodes_for_adding:
+            u, mp = data if isinstance(data, tuple) else (data, MBQCGraphNode(sign=False, hollow=False, loop=False))
+            for k, v in mp.items():
+                self.nodes[u][k] = v
+
+    def add_node(
+        self,
+        node_for_adding: int,
+        **attr: Any,
+    ) -> None:
+        """Wrap `networkx.Graph.add_node` to initialize MBQCGraphNode attributes."""
+        self.add_nodes_from((node_for_adding,), **attr)
+
     def local_complement(self, node: int) -> None:
         """Perform local complementation of a graph."""
-        g = self.data.subgraph(self.data.neighbors(node))
+        g = self.subgraph(self.neighbors(node))
         g_new: nx.Graph[int] = nx.complement(g)
-        self.remove_edges(g.edges)
-        self.add_edges(g_new.edges)
+        self.remove_edges_from(g.edges)
+        self.add_edges_from(g_new.edges)
 
     def apply_vops(self, vops: Mapping[int, Clifford]) -> None:
         """Apply local Clifford operators to the graph state from a dictionary.
@@ -279,14 +226,14 @@ class GraphState(CRUDMixin):
                 self.flip_fill(node)
                 self.nodes[node]["loop"] = False
                 self.local_complement(node)
-                for i in self.data.neighbors(node):
+                for i in self.neighbors(node):
                     self.advance(i)
             else:
                 self.local_complement(node)
-                for i in self.data.neighbors(node):
+                for i in self.neighbors(node):
                     self.advance(i)
                 if self.nodes[node]["sign"]:
-                    for i in self.data.neighbors(node):
+                    for i in self.neighbors(node):
                         self.flip_sign(i)
         else:  # solid
             self.advance(node)
@@ -304,7 +251,7 @@ class GraphState(CRUDMixin):
         None
         """
         if self.nodes[node]["hollow"]:
-            for i in self.data.neighbors(node):
+            for i in self.neighbors(node):
                 self.flip_sign(i)
             if self.nodes[node]["loop"]:
                 self.flip_sign(node)
@@ -329,11 +276,11 @@ class GraphState(CRUDMixin):
             raise ValueError("node must have loop")
         self.flip_fill(node)
         self.local_complement(node)
-        for i in self.data.neighbors(node):
+        for i in self.neighbors(node):
             self.advance(i)
         self.flip_sign(node)
         if self.nodes[node]["sign"]:
-            for i in self.data.neighbors(node):
+            for i in self.neighbors(node):
                 self.flip_sign(i)
 
     def equivalent_graph_e2(self, node1: int, node2: int) -> None:
@@ -362,15 +309,15 @@ class GraphState(CRUDMixin):
         self.local_complement(node1)
         self.local_complement(node2)
         self.local_complement(node1)
-        for i in iter(set(self.data.neighbors(node1)) & set(self.data.neighbors(node2))):
+        for i in iter(set(self.neighbors(node1)) & set(self.neighbors(node2))):
             self.flip_sign(i)
         if sg1:
             self.flip_sign(node1)
-            for i in self.data.neighbors(node1):
+            for i in self.neighbors(node1):
                 self.flip_sign(i)
         if sg2:
             self.flip_sign(node2)
-            for i in self.data.neighbors(node2):
+            for i in self.neighbors(node2):
                 self.flip_sign(i)
 
     def equivalent_fill_node(self, node: int) -> int:
@@ -396,18 +343,18 @@ class GraphState(CRUDMixin):
                 self.equivalent_graph_e1(node)
                 return 0
             # node = hollow and loopless
-            if utils.iter_empty(self.data.neighbors(node)):
+            if utils.iter_empty(self.neighbors(node)):
                 return 1
-            for i in self.data.neighbors(node):
+            for i in self.neighbors(node):
                 if not self.nodes[i]["loop"]:
                     self.equivalent_graph_e2(node, i)
                     return 0
             # if all neighbor has loop, pick one and apply E1, then E1 to the node.
-            i = next(self.data.neighbors(node))
+            i = next(self.neighbors(node))
             self.equivalent_graph_e1(i)  # this gives loop to node.
             self.equivalent_graph_e1(node)
             return 0
-        if utils.iter_empty(self.data.neighbors(node)):
+        if utils.iter_empty(self.neighbors(node)):
             return 2
         return 0
 
@@ -432,7 +379,7 @@ class GraphState(CRUDMixin):
         if choice not in {0, 1}:
             raise ValueError("choice must be 0 or 1")
         # check if isolated
-        if utils.iter_empty(self.data.neighbors(node)):
+        if utils.iter_empty(self.neighbors(node)):
             if self.nodes[node]["hollow"] or self.nodes[node]["loop"]:
                 choice_ = choice
             elif self.nodes[node]["sign"]:  # isolated and state is |->
@@ -491,7 +438,7 @@ class GraphState(CRUDMixin):
             raise ValueError("choice must be 0 or 1")
         isolated = self.equivalent_fill_node(node)
         if choice:
-            for i in self.data.neighbors(node):
+            for i in self.neighbors(node):
                 self.flip_sign(i)
         result = choice if not isolated else int(self.nodes[node]["sign"])
         self.remove_node(node)
@@ -549,4 +496,4 @@ class GraphState(CRUDMixin):
 
     def get_isolates(self) -> list[int]:
         """Return a list of isolated nodes (nodes with no edges)."""
-        return list(nx.isolates(self.data))
+        return list(nx.isolates(self))
