@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
