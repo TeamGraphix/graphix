@@ -96,7 +96,8 @@ def command_to_latex(cmd: Command) -> str:
                     s.append(cmd.plane.name)
                 if cmd.angle != 0.0:
                     s.append(angle_to_str(cmd.angle, mode="latex"))
-                out.append(f"^{{{','.join(s)}}}")
+                if len(s) != 0:
+                    out.append(f"^{{{','.join(s)}}}")
 
                 if has_domain:
                     out.append("]")
@@ -112,6 +113,8 @@ def command_to_latex(cmd: Command) -> str:
                 out.append(f"^{{{''.join([str(dom) for dom in cmd.domain])}}}")
         else:
             out.append(f"_{{{node}}}")
+            if isinstance(cmd, C):
+                out.append(f"^{{{cmd.clifford}}}")
 
     if isinstance(cmd, E):
         out.append(f"_{{{cmd.nodes[0]},{cmd.nodes[1]}}}")
@@ -154,6 +157,8 @@ def command_to_str(cmd: Command) -> str:
             if len(cmd.domain) != 0:
                 s.append(f"{{{','.join([str(dom) for dom in cmd.domain])}}}")
             out.append(f"({','.join(s)})")
+        elif isinstance(cmd, C):
+            out.append(f"({node},{cmd.clifford})")
         else:
             out.append(f"({node})")
 
@@ -202,6 +207,9 @@ def command_to_unicode(cmd: Command) -> str:
             out.append(node)
             if len(cmd.domain) != 0:
                 out.append(f"{','.join([_get_superscript_from_number(dom) for dom in cmd.domain])}")
+        elif isinstance(cmd, C):
+            out.append(node)
+            out.append(f"({cmd.clifford})")
         else:
             out.append(node)
 
