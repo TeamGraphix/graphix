@@ -1106,7 +1106,7 @@ class Pattern:
                     vops[cmd.node] = cmd.clifford
         for out in self.output_nodes:
             if out not in vops and include_identity:
-                vops[out] = 0
+                vops[out] = Clifford.I
         return vops
 
     def connected_nodes(self, node, prepared=None):
