@@ -13,11 +13,3 @@ This provides an efficient graph state simulator using the decorated graph metho
 .. autoclass:: GraphState
     :members:
     :undoc-members:
-
-.. autoclass:: MBQCGraphNode
-    :members:
-    :undoc-members:
-
-.. autoclass:: CRUDMixin
-    :members:
-    :undoc-members:
