@@ -81,8 +81,4 @@ def iter_empty(it: Iterator[_T]) -> bool:
     -----
     This function consumes the iterator.
     """
-    try:
-        next(it)
-    except StopIteration:
-        return True
-    return False
+    return all(False for _ in it)
