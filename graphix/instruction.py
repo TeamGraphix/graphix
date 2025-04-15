@@ -14,33 +14,58 @@ from graphix import utils
 from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
-from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+from graphix.parameter import ExpressionOrFloat, Expression  # noqa: TC001
 
+from fractions import Fraction
 
 def to_qasm3(instruction: Instruction) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
-    out = []
-    kind = instruction.kind
-
-    if kind == InstructionKind.CNOT:
-        out.append("cx")
-    elif kind != InstructionKind.M:
-        out.append(kind.name.lower())
-
-    if isinstance(instruction, M):
-        out.append(f"b[{instruction.target}] = measure q[{instruction.target}]")
-    elif isinstance(instruction, (H, I, S, X, Y, Z)):
-        out.append(f"q[{instruction.target}]")
-    elif isinstance(instruction, (RX, RY, RZ)):
-        rad = instruction.angle / np.pi
-        out[-1] += f"({rad}*pi) q[{instruction.target}]"
-    elif isinstance(instruction, (CNOT, RZZ, SWAP)):
-        if isinstance(instruction, SWAP):
-            out.append(f"q[{instruction.targets[0]}], q[{instruction.targets[1]}]")
+    if instruction.kind == InstructionKind.M:
+        return f"b[{instruction.target}] = measure q[{instruction.target}]"
+    # Use of `==` here for mypy
+    if (
+        instruction.kind == InstructionKind.RX
+        or instruction.kind == InstructionKind.RY
+        or instruction.kind == InstructionKind.RZ
+    ):  # noqa: PLR1714
+        if isinstance(instruction.angle, Expression):
+            raise ValueError("QASM export of symbolic pattern is not supported")
+        rad_over_pi = instruction.angle / np.pi
+        tol = 1e-9
+        frac = Fraction(rad_over_pi).limit_denominator(1000)
+        if abs(rad_over_pi - float(frac)) > tol:
+            angle = f"{rad_over_pi}*pi"
+        num, den = frac.numerator, frac.denominator
+        sign = "-" if num < 0 else ""
+        num = abs(num)
+        if den == 1:
+            angle = f"{sign}pi" if num == 1 else f"{sign}{num}*pi"
         else:
-            out.append(f"q[{instruction.control}], q[{instruction.target}]")
+            angle = f"{sign}pi/{den}" if num == 1 else f"{sign}{num}*pi/{den}"
+        return f"{instruction.kind.name.lower()}({angle}) q[{instruction.target}]"
 
-    return " ".join(out)
+    # Use of `==` here for mypy
+    if (
+        instruction.kind == InstructionKind.H  # noqa: PLR1714
+        or instruction.kind == InstructionKind.I
+        or instruction.kind == InstructionKind.S
+        or instruction.kind == InstructionKind.X
+        or instruction.kind == InstructionKind.Y
+        or instruction.kind == InstructionKind.Z
+    ):
+        return f"{instruction.kind.name.lower()} q[{instruction.target}]"
+    if instruction.kind == InstructionKind.CNOT:
+        return f"cx q[{instruction.control}], q[{instruction.target}]"
+    if instruction.kind == InstructionKind.SWAP:
+        return f"swap q[{instruction.targets[0]}], q[{instruction.targets[1]}]"
+    if instruction.kind == InstructionKind.RZZ:
+        return f"rzz q[{instruction.control}], q[{instruction.target}]"
+    if instruction.kind == InstructionKind.CCX:
+        return f"ccx q[{instruction.controls[0]}], q[{instruction.controls[1]}], q[{instruction.target}]"
+    # Use of `==` here for mypy
+    if instruction.kind == InstructionKind._XC or instruction.kind == InstructionKind._ZC:  # noqa: PLR1714
+        raise ValueError("Internal instruction should not appear")
+    assert_never(instruction.kind)
 
 
 class InstructionKind(Enum):
