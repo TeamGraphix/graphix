@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import networkx as nx
+import typing_extensions
 
 from graphix import utils
 from graphix.clifford import Clifford
@@ -68,6 +69,7 @@ class GraphState(Graph):
         if vops is not None:
             self.apply_vops(vops)
 
+    @typing_extensions.override
     def add_nodes_from(
         self,
         nodes_for_adding: Iterable[int | tuple[int, dict[str, MBQCGraphNode]]],
@@ -81,6 +83,7 @@ class GraphState(Graph):
             for k, v in mp.items():
                 self.nodes[u][k] = v
 
+    @typing_extensions.override
     def add_node(
         self,
         node_for_adding: int,
