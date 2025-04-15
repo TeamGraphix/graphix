@@ -6,28 +6,26 @@ import dataclasses
 import enum
 import sys
 from enum import Enum
+from fractions import Fraction
 from typing import ClassVar, Literal, Union
 
 import numpy as np
+from typing_extensions import assert_never
 
 from graphix import utils
 from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
-from graphix.parameter import ExpressionOrFloat, Expression  # noqa: TC001
+from graphix.parameter import Expression, ExpressionOrFloat
 
-from fractions import Fraction
 
 def to_qasm3(instruction: Instruction) -> str:
     """Get the qasm3 representation of a single circuit instruction."""
-    if instruction.kind == InstructionKind.M:
+    kind = instruction.kind
+    if kind == InstructionKind.M:
         return f"b[{instruction.target}] = measure q[{instruction.target}]"
     # Use of `==` here for mypy
-    if (
-        instruction.kind == InstructionKind.RX
-        or instruction.kind == InstructionKind.RY
-        or instruction.kind == InstructionKind.RZ
-    ):  # noqa: PLR1714
+    if kind in {InstructionKind.RX, InstructionKind.RY, InstructionKind.RZ}:
         if isinstance(instruction.angle, Expression):
             raise ValueError("QASM export of symbolic pattern is not supported")
         rad_over_pi = instruction.angle / np.pi
@@ -42,30 +40,30 @@ def to_qasm3(instruction: Instruction) -> str:
             angle = f"{sign}pi" if num == 1 else f"{sign}{num}*pi"
         else:
             angle = f"{sign}pi/{den}" if num == 1 else f"{sign}{num}*pi/{den}"
-        return f"{instruction.kind.name.lower()}({angle}) q[{instruction.target}]"
+        return f"{kind.name.lower()}({angle}) q[{instruction.target}]"
 
     # Use of `==` here for mypy
     if (
-        instruction.kind == InstructionKind.H  # noqa: PLR1714
-        or instruction.kind == InstructionKind.I
-        or instruction.kind == InstructionKind.S
-        or instruction.kind == InstructionKind.X
-        or instruction.kind == InstructionKind.Y
-        or instruction.kind == InstructionKind.Z
+        kind == InstructionKind.H  # noqa: PLR1714
+        or kind == InstructionKind.I
+        or kind == InstructionKind.S
+        or kind == InstructionKind.X
+        or kind == InstructionKind.Y
+        or kind == InstructionKind.Z
     ):
-        return f"{instruction.kind.name.lower()} q[{instruction.target}]"
-    if instruction.kind == InstructionKind.CNOT:
+        return f"{kind.name.lower()} q[{instruction.target}]"
+    if kind == InstructionKind.CNOT:
         return f"cx q[{instruction.control}], q[{instruction.target}]"
-    if instruction.kind == InstructionKind.SWAP:
+    if kind == InstructionKind.SWAP:
         return f"swap q[{instruction.targets[0]}], q[{instruction.targets[1]}]"
-    if instruction.kind == InstructionKind.RZZ:
+    if kind == InstructionKind.RZZ:
         return f"rzz q[{instruction.control}], q[{instruction.target}]"
-    if instruction.kind == InstructionKind.CCX:
+    if kind == InstructionKind.CCX:
         return f"ccx q[{instruction.controls[0]}], q[{instruction.controls[1]}], q[{instruction.target}]"
     # Use of `==` here for mypy
-    if instruction.kind == InstructionKind._XC or instruction.kind == InstructionKind._ZC:  # noqa: PLR1714
+    if kind == InstructionKind._XC or kind == InstructionKind._ZC:  # noqa: PLR1714
         raise ValueError("Internal instruction should not appear")
-    assert_never(instruction.kind)
+    assert_never(kind)
 
 
 class InstructionKind(Enum):
