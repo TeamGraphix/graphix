@@ -13,6 +13,7 @@ from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
+    import functools
     from collections.abc import Iterable, Mapping
 
 
@@ -44,6 +45,8 @@ class GraphState(Graph):
         :`loop`: True if node has loop (local S operator)
     """
 
+    nodes: functools.cached_property[Mapping[int, MBQCGraphNode]]  # type: ignore[assignment]
+
     def __init__(
         self,
         nodes: Iterable[int] | None = None,
@@ -70,18 +73,29 @@ class GraphState(Graph):
             self.apply_vops(vops)
 
     @typing_extensions.override
-    def add_nodes_from(
+    def add_nodes_from(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
-        nodes_for_adding: Iterable[int | tuple[int, dict[str, MBQCGraphNode]]],
+        nodes_for_adding: Iterable[int | tuple[int, MBQCGraphNode]],  # type: ignore[override]
         **attr: Any,
     ) -> None:
         """Wrap `networkx.Graph.add_nodes_from` to initialize MBQCGraphNode attributes."""
         nodes_for_adding = list(nodes_for_adding)
-        super().add_nodes_from(nodes_for_adding, **attr)
+        super().add_nodes_from(nodes_for_adding, **attr)  # type: ignore[arg-type]
         for data in nodes_for_adding:
             u, mp = data if isinstance(data, tuple) else (data, MBQCGraphNode(sign=False, hollow=False, loop=False))
-            for k, v in mp.items():
-                self.nodes[u][k] = v
+            for k, v_ in mp.items():
+                dst = self.nodes[u]
+                v = bool(v_)
+                # Need to use literal inside brackets
+                if k == "sign":
+                    dst["sign"] = v
+                elif k == "hollow":
+                    dst["hollow"] = v
+                elif k == "loop":
+                    dst["loop"] = v
+                else:
+                    msg = "Invalid node attribute."
+                    raise ValueError(msg)
 
     @typing_extensions.override
     def add_node(
