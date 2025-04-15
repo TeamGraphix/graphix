@@ -70,7 +70,7 @@ class TestGenerator:
         input_list = [0, 1, 2]
         angles: dict[int, float] = {}
         for cmd in pattern.get_measurement_commands():
-            assert isinstance(cmd.angle, SupportsFloat)
+            assert isinstance(cmd.angle, float)
             angles[cmd.node] = float(cmd.angle)
         meas_planes = pattern.get_meas_plane()
         pattern2 = generate_from_graph(g, angles, input_list, pattern.output_nodes, meas_planes)
