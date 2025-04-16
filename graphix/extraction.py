@@ -124,7 +124,7 @@ def get_fusion_network_from_graph(
         # If a cycle exists in the graph, extract one 3-qubit ghz cluster from the cycle.
         for v, va in adjdict.items():
             if len(va) == 2:
-                neighbors = list(adjdict[v].keys())
+                neighbors = list(va.keys())
                 nodes = [v, *neighbors]
                 del adjdict[neighbors[0]][v]
                 del adjdict[neighbors[1]][v]

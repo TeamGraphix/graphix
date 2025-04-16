@@ -1416,8 +1416,7 @@ class Pattern:
                     file.write("bit c" + str(i) + " = " + str(res) + ";\n")
                     file.write("\n")
             for cmd in self.__seq:
-                for line in cmd_to_qasm3(cmd):
-                    file.write(line)
+                file.writelines(cmd_to_qasm3(cmd))
 
     def is_parameterized(self) -> bool:
         """
