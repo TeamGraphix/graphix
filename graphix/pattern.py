@@ -21,14 +21,14 @@ from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
-from graphix.graphsim.graphstate import GraphState
+from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from abc.collections import Iterator, Mapping
+    from collections.abc import Iterator, Mapping
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
@@ -998,7 +998,7 @@ class Pattern:
             ind += 1
         return meas_cmds
 
-    def get_meas_plane(self):
+    def get_meas_plane(self) -> dict[int, Plane]:
         """Get measurement plane from the pattern.
 
         Returns
@@ -1041,7 +1041,7 @@ class Pattern:
         degree = g.degree()
         return max(list(dict(degree).values()))
 
-    def get_graph(self):
+    def get_graph(self) -> tuple[list[int], list[tuple[int, int]]]:
         """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
 
         Returns
@@ -1106,7 +1106,7 @@ class Pattern:
                     vops[cmd.node] = cmd.clifford
         for out in self.output_nodes:
             if out not in vops and include_identity:
-                vops[out] = 0
+                vops[out] = Clifford.I
         return vops
 
     def connected_nodes(self, node, prepared=None):
@@ -1303,9 +1303,7 @@ class Pattern:
         exe = PatternRunner(self, backend=backend, **kwargs)
         return exe.run()
 
-    def perform_pauli_measurements(
-        self, leave_input: bool = False, use_rustworkx: bool = False, ignore_pauli_with_deps: bool = False
-    ) -> None:
+    def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
@@ -1313,10 +1311,6 @@ class Pattern:
         leave_input : bool
             Optional (`False` by default).
             If `True`, measurements on input nodes are preserved as-is in the pattern.
-        use_rustworkx : bool
-            Optional (`False` by default).
-            If `True`, `rustworkx` is used for fast graph processing.
-            If `False`, `networkx` is used.
         ignore_pauli_with_deps : bool
             Optional (`False` by default).
             If `True`, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1327,7 +1321,7 @@ class Pattern:
         """
         if not ignore_pauli_with_deps:
             self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False, use_rustworkx=use_rustworkx)
+        measure_pauli(self, leave_input, copy=False)
 
     def draw_graph(
         self,
@@ -1536,7 +1530,7 @@ class Pattern:
         self.__seq = new_seq
 
 
-def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
+def measure_pauli(pattern, leave_input, copy=False):
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform
@@ -1568,7 +1562,7 @@ def measure_pauli(pattern, leave_input, copy=False, use_rustworkx=False):
         pattern.standardize()
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init, use_rustworkx=use_rustworkx)
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
     results = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:

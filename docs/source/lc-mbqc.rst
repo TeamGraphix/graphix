@@ -65,7 +65,7 @@ Because this is not a full quantum state simulation, we can easily simulate `man
 
     from graphix import GraphState
     g = GraphState()
-    g.add_nodes_from([i for i in range(int(1e6))])
+    g.add_nodes_from(i for i in range(int(1e6)))
     edges = [(i,i+1) for i in range(int(1e6-1))]
     g.add_edges_from(edges)
     g.measure_x(10000) # measure node with index 10000
