@@ -34,7 +34,7 @@ def check_meas_planes(meas_planes: dict[int, Plane]) -> None:
     """Check that all planes are valid planes."""
     for node, plane in meas_planes.items():
         if not isinstance(plane, Plane):
-            raise ValueError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
+            raise TypeError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
 
 
 def find_gflow(
@@ -673,8 +673,8 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k:
-        l_k[node] = lmax - l_k[node] + 1
+    for node, val in l_k.items():
+        l_k[node] = lmax - val + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
 
@@ -722,8 +722,8 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k:
-        l_k[node] = lmax - l_k[node] + 1
+    for node, val in l_k.items():
+        l_k[node] = lmax - val + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
 
@@ -948,8 +948,8 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     """
     d = get_min_depth(l_k)
     layers = {k: set() for k in range(d + 1)}
-    for i in l_k:
-        layers[l_k[i]] |= {i}
+    for i, val in l_k.items():
+        layers[val] |= {i}
     return d, layers
 
 

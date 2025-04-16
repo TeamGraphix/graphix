@@ -157,7 +157,7 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     rng = ensure_rng(rng)
 
     if not isinstance(dim, int):
-        raise ValueError(f"The dimension must be an integer and not {dim}.")
+        raise TypeError(f"The dimension must be an integer and not {dim}.")
 
     if not dim & (dim - 1) == 0:
         raise ValueError(f"The dimension must be a power of 2 and not {dim}.")
