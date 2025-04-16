@@ -253,7 +253,7 @@ class DensityMatrix(State):
 
     def normalize(self) -> None:
         """Normalize density matrix."""
-        self.rho = self.rho / np.trace(self.rho)
+        self.rho /= np.trace(self.rho)
 
     def remove_qubit(self, loc) -> None:
         """Remove a qubit."""

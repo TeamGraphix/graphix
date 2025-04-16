@@ -49,12 +49,12 @@ class TestClifford:
         m = re.match(r"\((.*)\)", rep)
         rep = m.group(1) if m is not None else rep
         for term in rep.split(" @ "):
-            assert term in [
+            assert term in {
                 "Clifford.I",
                 "Clifford.H",
                 "Clifford.S",
                 "Clifford.Z",
-            ]
+            }
 
     @pytest.mark.parametrize(
         ("c", "p"),

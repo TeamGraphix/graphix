@@ -166,7 +166,7 @@ def gflowaux(
         elif meas_planes[node] == Plane.XZ:
             vec.data[i_row] = 1
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
-            vec = vec + vec_add
+            vec += vec_add
         elif meas_planes[node] == Plane.YZ:
             vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
@@ -184,7 +184,7 @@ def gflowaux(
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
             g[non_out_node] = {node_order_col[col_permutation.index(i)] for i in sol_index}
-            if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
+            if meas_planes[non_out_node] in {Plane.XZ, Plane.YZ}:
                 g[non_out_node] |= {non_out_node}
 
         elif mode == "all":
@@ -195,7 +195,7 @@ def gflowaux(
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = {node_order_col[col_permutation.index(i)] for i in sol_index}
-                if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
+                if meas_planes[non_out_node] in {Plane.XZ, Plane.YZ}:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
@@ -205,7 +205,7 @@ def gflowaux(
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
-            if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
+            if meas_planes[non_out_node] in {Plane.XZ, Plane.YZ}:
                 g[non_out_node][non_out_node] = sp.true
 
         l_k[non_out_node] = k
@@ -334,8 +334,8 @@ def flowaux(
             (p,) = p_set
             f[p] = {q}
             l_k[p] = k
-            v_out_prime = v_out_prime | {p}
-            c_prime = c_prime | {q}
+            v_out_prime |= {p}
+            c_prime |= {q}
     # determine whether there exists flow
     if not v_out_prime:
         if oset == nodes:
@@ -729,7 +729,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in [Plane.XZ, Plane.YZ]:
+        if plane in {Plane.XZ, Plane.YZ}:
             if node not in xflow:
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -887,9 +887,9 @@ def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     nb = set()
     for edge in edges:
         if node == edge[0]:
-            nb = nb | {edge[1]}
+            nb |= {edge[1]}
         elif node == edge[1]:
-            nb = nb | {edge[0]}
+            nb |= {edge[0]}
     return nb
 
 

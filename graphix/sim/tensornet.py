@@ -59,7 +59,7 @@ class TensorNetworkBackend(Backend):
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
-        if graph_prep in ["parallel", "sequential"]:
+        if graph_prep in {"parallel", "sequential"}:
             self.graph_prep = graph_prep
         elif graph_prep == "opt":
             self.graph_prep = "parallel"
@@ -161,7 +161,7 @@ class TensorNetworkBackend(Backend):
         if node in self._isolated_nodes:
             vector = self.state.get_open_tensor_from_index(node)
             probs = np.abs(vector) ** 2
-            probs = probs / (np.sum(probs))
+            probs /= (np.sum(probs))
             result = self.__rng.choice([0, 1], p=probs)
             self.results[node] = result
             buffer = 1 / probs[result] ** 0.5
@@ -188,7 +188,7 @@ class TensorNetworkBackend(Backend):
         measure_method : MeasureMethod
             The measure method to use
         """
-        if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
+        if np.mod(sum(measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
             op = Ops.X if isinstance(cmd, command.X) else Ops.Z
             self.state.evolve_single(cmd.node, op, cmd.kind)
 
