@@ -45,6 +45,7 @@ line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
+preview = true
 select = ["ALL"]
 extend-ignore = [
   "C90",     # Complexity
@@ -53,18 +54,23 @@ extend-ignore = [
   "FBT",     # Boolean positional arguments
   "FIX",     # Fixme
   "PLR091",  # Too many XXX
+  "PLR0904", # Too many public methods
   "PLR2004", # Magic vavlue comparison
   "S101",    # assert
   "T20",     # print
   "TD",      # Todo
 
   # Tentative ignores
-  "ANN",    # Missing annotations
-  "E501",   # Line too long
-  "EM10",   # Raise string
-  "PT011",  # pytest raises too broad
-  "SLF001", # Private access
-  "TRY003", # Raise vanilla args
+  "ANN",     # Missing annotations
+  "CPY",     # Copyright
+  "DOC",     # Docstring
+  "E501",    # Line too long
+  "EM10",    # Raise string
+  "PLC0415", # Import not at the top level
+  "PLR1702", # Too many nests
+  "PT011",   # pytest raises too broad
+  "SLF001",  # Private access
+  "TRY003",  # Raise vanilla args
 
   # Conflicts with ruff format
   "COM812",
@@ -101,7 +107,8 @@ docstring-code-format = true
   "INP",  # Missing __init__.py
 ]
 "tests/*.py" = [
-  "D10", # Allow undocumented items
+  "D10",     # Allow undocumented items
+  "PLR6301", # self not used
 ]
 
 [tool.ruff.lint.pydocstyle]
