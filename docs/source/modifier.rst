@@ -32,8 +32,6 @@ Pattern Manipulation
 
     .. automethod:: connected_nodes
 
-    .. automethod:: run_pattern
-
     .. automethod:: perform_pauli_measurements
 
     .. automethod:: print_pattern

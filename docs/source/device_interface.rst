@@ -5,14 +5,23 @@ Device Interface
 ++++++++++++++++++++++++++++++++++++++
 
 .. automodule:: graphix.device_interface
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 .. currentmodule:: graphix.device_interface
 
-.. autoclass:: PatternRunner
+.. autoclass:: JobHandler
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
-    .. automethod:: __init__
+.. autoclass:: CompileOptions
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
-    .. automethod:: run
-
-    .. automethod:: retrieve_result
-
+.. autoclass:: DeviceBackend
+    :members:
+    :undoc-members:
+    :show-inheritance:
