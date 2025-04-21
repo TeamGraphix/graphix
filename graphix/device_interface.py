@@ -12,16 +12,7 @@ if TYPE_CHECKING:
 class Job(ABC):
     """Abstract base class representing a quantum job handle."""
 
-    @abstractmethod
-    def get_id(self) -> str:
-        """Return the unique ID of the job.
-
-        Returns
-        -------
-        str
-            Unique job ID.
-        """
-
+    @property
     @abstractmethod
     def is_done(self) -> bool:
         """Check whether the job has completed.
@@ -40,14 +31,9 @@ class Job(ABC):
     def retrieve_result(self) -> dict[str, int]:
         """Retrieve the result from a completed job.
 
-        Parameters
-        ----------
-        job : Job
-            The handle of the submitted job.
-
         Returns
         -------
-        Any
+        Dict[str, int]
             Result of the job execution.
         """
 
@@ -58,29 +44,17 @@ class CompileOptions(ABC):
     To be extended by concrete implementations.
     """
 
-    @abstractmethod
-    def __init__(self) -> str:
+    def __init__(self) -> None:
         """Define a dummy abstract method to satisfy ABC requirements."""
 
 
 class DeviceBackend(ABC):
     """Abstract base class representing a quantum device backend (hardware or simulator)."""
 
-    VALID_MODES: ClassVar[set[str]] = {"hardware", "simulator"}
+    VALID_MODES: ClassVar[frozenset[str]] = frozenset({"hardware", "simulator"})
 
     def __init__(self) -> None:
-        """Initialize the backend with no assigned pattern."""
-        self.pattern: Pattern | None = None
-
-    def set_pattern(self, pattern: Pattern) -> None:
-        """Assign a pattern to be compiled and executed on the backend.
-
-        Parameters
-        ----------
-        pattern : Pattern
-            The pattern to assign.
-        """
-        self.pattern = pattern
+        """Initialize the backend."""
 
     @abstractmethod
     def compile(self, options: CompileOptions | None = None) -> None:

@@ -10,18 +10,3 @@ Device Interface
     :show-inheritance:
 
 .. currentmodule:: graphix.device_interface
-
-.. autoclass:: Job
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. autoclass:: CompileOptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. autoclass:: DeviceBackend
-    :members:
-    :undoc-members:
-    :show-inheritance:
