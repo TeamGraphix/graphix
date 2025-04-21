@@ -3,8 +3,8 @@ from graphix.pattern import Pattern
 
 
 class DummyOptions(CompileOptions):
-    def __repr__(self) -> str:
-        return "DummyOptions()"
+    def __init__(self) -> str:
+        """Define a dummy abstract method to satisfy ABC requirements."""
 
 
 class DummyJob(Job):
@@ -16,6 +16,9 @@ class DummyJob(Job):
 
     def cancel(self):
         pass
+    
+    def retrieve_result(self):
+        return {"result": "dummy_result"}
 
 
 class DummyBackend(DeviceBackend):
@@ -25,9 +28,6 @@ class DummyBackend(DeviceBackend):
     def submit_job(self, shots: int) -> Job:
         return DummyJob()
 
-    def retrieve_result(self, job_handle: Job):
-        return "ok"
-
 
 def test_dummy_backend_can_be_instantiated():
     backend = DummyBackend()
@@ -36,5 +36,5 @@ def test_dummy_backend_can_be_instantiated():
     backend.compile(DummyOptions())
     job = backend.submit_job(shots=100)
     assert isinstance(job, Job)
-    result = backend.retrieve_result(job)
-    assert result == "ok"
+    result = job.retrieve_result()
+    assert result == {"result": "dummy_result"}
