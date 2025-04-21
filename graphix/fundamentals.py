@@ -175,8 +175,6 @@ class ComplexUnit(Enum):
         """Multiply the complex unit with a number."""
         if isinstance(other, ComplexUnit):
             return ComplexUnit((self.value + other.value) % 4)
-        if other_ := ComplexUnit.try_from(other):
-            return self.__mul__(other_)
         return NotImplemented
 
     def __rmul__(self, other: SupportsComplexCtor) -> ComplexUnit:
