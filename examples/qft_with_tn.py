@@ -8,6 +8,8 @@ Firstly, let us import relevant modules and define the circuit:
 """
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 
 from graphix import Circuit
@@ -59,9 +61,9 @@ print(f"Number of nodes: {len(nodes)}")
 print(f"Number of edges: {len(edges)}")
 
 # %%
-# Using efficient graph state simulator `graphix.GraphSim`, we can classically preprocess Pauli measurements.
+# Using efficient graph state simulator `graphix.graphsim`, we can classically preprocess Pauli measurements.
 # We are currently improving the speed of this process by using rust-based graph manipulation backend.
-pattern.perform_pauli_measurements(use_rustworkx=True)
+pattern.perform_pauli_measurements()
 
 
 # %%

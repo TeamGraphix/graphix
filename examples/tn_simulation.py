@@ -8,6 +8,7 @@ Firstly, let's import the relevant modules:
 """
 
 # %%
+from __future__ import annotations
 
 from functools import reduce
 
@@ -69,7 +70,7 @@ print(f"Number of edges: {len(edges)}")
 # %%
 # Optimizing by performing Pauli measurements in the pattern using efficient stabilizer simulator.
 
-pattern.perform_pauli_measurements(use_rustworkx=True)
+pattern.perform_pauli_measurements()
 
 # %%
 # Simulate using the TN backend of graphix, which will return an MBQCTensorNet object.
@@ -179,7 +180,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.perform_pauli_measurements(use_rustworkx=True)
+    pattern.perform_pauli_measurements()
     mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
     exp_val = 0
     for op in ham:

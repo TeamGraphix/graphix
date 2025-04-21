@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
 
 _T = TypeVar("_T")
 
@@ -72,3 +72,13 @@ def lock(data: npt.NDArray[Any], dtype: type = np.complex128) -> npt.NDArray[Any
     v = m.view()
     assert not v.flags.writeable
     return v
+
+
+def iter_empty(it: Iterator[_T]) -> bool:
+    """Check if an iterable is empty.
+
+    Notes
+    -----
+    This function consumes the iterator.
+    """
+    return all(False for _ in it)

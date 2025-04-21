@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import itertools
-import sys
 import typing
 from typing import TYPE_CHECKING
 
@@ -80,8 +79,7 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize("use_rustworkx", [False, True])
-    def test_pauli_non_contiguous(self, use_rustworkx: bool) -> None:
+    def test_pauli_non_contiguous(self) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.extend(
             [
@@ -90,10 +88,10 @@ class TestPattern:
                 M(node=0, plane=Plane.XY, angle=0.0, s_domain=set(), t_domain=set()),
             ]
         )
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.perform_pauli_measurements()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_minimize_space_with_gflow(self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True) -> None:
+    def test_minimize_space_with_gflow(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -102,7 +100,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="mc")
         pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
@@ -170,9 +168,7 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
-    def test_pauli_measurement_random_circuit(
-        self, fx_bg: PCG64, jumps: int, backend: Backend, use_rustworkx: bool = True
-    ) -> None:
+    def test_pauli_measurement_random_circuit(self, fx_bg: PCG64, jumps: int, backend: Backend) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -180,7 +176,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="mc")
         pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(backend, rng=rng)
@@ -189,7 +185,7 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("ignore_pauli_with_deps", (False, True))
     def test_pauli_measurement_random_circuit_all_paulis(
-        self, fx_bg: PCG64, jumps: int, ignore_pauli_with_deps: bool, use_rustworkx: bool = True
+        self, fx_bg: PCG64, jumps: int, ignore_pauli_with_deps: bool
     ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
@@ -198,27 +194,25 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="mc")
         pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        pattern.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         assert ignore_pauli_with_deps or not any(
             PauliMeasurement.try_from(cmd.plane, cmd.angle) for cmd in pattern if cmd.kind == CommandKind.M
         )
 
     @pytest.mark.parametrize("plane", Plane)
     @pytest.mark.parametrize("angle", [0.0, 0.5, 1.0, 1.5])
-    def test_pauli_measurement_single(self, plane: Plane, angle: float, use_rustworkx: bool = True) -> None:
+    def test_pauli_measurement_single(self, plane: Plane, angle: float) -> None:
         pattern = Pattern(input_nodes=[0, 1])
         pattern.add(E(nodes=[0, 1]))
         pattern.add(M(node=0, plane=plane, angle=angle))
         pattern_ref = pattern.copy()
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.perform_pauli_measurements()
         state = pattern.simulate_pattern()
         state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator([0]))
         assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurement_leave_input_random_circuit(
-        self, fx_bg: PCG64, jumps: int, use_rustworkx: bool = True
-    ) -> None:
+    def test_pauli_measurement_leave_input_random_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -226,23 +220,13 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="mc")
         pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
+        pattern.perform_pauli_measurements(leave_input=True)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_pauli_measurement(self, use_rustworkx: bool) -> None:
+    def test_pauli_measurement(self) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -262,7 +246,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="mc")
         pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.perform_pauli_measurements()
 
         isolated_nodes = pattern.get_isolated_nodes()
         # 48-node is the isolated and output node.
@@ -270,17 +254,7 @@ class TestPattern:
 
         assert isolated_nodes == isolated_nodes_ref
 
-    @pytest.mark.parametrize(
-        "use_rustworkx",
-        [
-            False,
-            pytest.param(
-                True,
-                marks=pytest.mark.skipif(sys.modules.get("rustworkx") is None, reason="rustworkx not installed"),
-            ),
-        ],
-    )
-    def test_pauli_measurement_leave_input(self, use_rustworkx: bool) -> None:
+    def test_pauli_measurement_leave_input(self) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
         for i in range(3):
@@ -300,7 +274,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize(method="mc")
         pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx, leave_input=True)
+        pattern.perform_pauli_measurements(leave_input=True)
 
         isolated_nodes = pattern.get_isolated_nodes()
         # There is no isolated node.
@@ -391,15 +365,13 @@ class TestPattern:
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("method", ["mc", "direct"])
-    def test_pauli_measurement_then_standardize(
-        self, fx_bg: PCG64, jumps: int, method: str, use_rustworkx: bool = True
-    ) -> None:
+    def test_pauli_measurement_then_standardize(self, fx_bg: PCG64, jumps: int, method: str) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
-        pattern.perform_pauli_measurements(use_rustworkx=use_rustworkx)
+        pattern.perform_pauli_measurements()
         pattern.standardize(method=method)
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec

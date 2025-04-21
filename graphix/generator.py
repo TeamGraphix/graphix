@@ -2,13 +2,28 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
 from graphix.pattern import Pattern
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
 
-def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
+    import networkx as nx
+    import numpy as np
+    import numpy.typing as npt
+
+
+def generate_from_graph(
+    graph: nx.Graph[int],
+    angles: Mapping[int, float] | Sequence[float] | npt.NDArray[np.float64],
+    inputs: Iterable[int],
+    outputs: Iterable[int],
+    meas_planes: Mapping[int, Plane] | None = None,
+) -> Pattern:
     r"""Generate the measurement pattern from open graph and measurement angles.
 
     This function takes an open graph G = (nodes, edges, input, outputs),
@@ -51,10 +66,11 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
     pattern : graphix.pattern.Pattern
         constructed pattern.
     """
+    inputs = list(inputs)
+    outputs = list(outputs)
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
-    if meas_planes is None:
-        meas_planes = dict.fromkeys(measuring_nodes, Plane.XY)
+    meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if meas_planes is None else dict(meas_planes)
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -72,7 +88,7 @@ def generate_from_graph(graph, angles, inputs, outputs, meas_planes=None):
             for j in layers[i]:
                 measured.append(j)
                 pattern.add(M(node=j, angle=angles[j]))
-                neighbors = set()
+                neighbors: set[int] = set()
                 for k in f[j]:
                     neighbors = neighbors | set(graph.neighbors(k))
                 for k in neighbors - {j}:
