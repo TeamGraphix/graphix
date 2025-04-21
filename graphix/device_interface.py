@@ -1,4 +1,4 @@
-"""Abstract base class for quantum device backends and job handlers."""
+"""Abstract base class for quantum device backends and jobs."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
 
-class JobHandler(ABC):
+class Job(ABC):
     """Abstract base class representing a quantum job handle."""
 
     @abstractmethod
@@ -36,6 +36,21 @@ class JobHandler(ABC):
     def cancel(self) -> None:
         """Cancel the job."""
 
+    @abstractmethod
+    def retrieve_result(self) -> dict[str, int]:
+        """Retrieve the result from a completed job.
+
+        Parameters
+        ----------
+        job : Job
+            The handle of the submitted job.
+
+        Returns
+        -------
+        Any
+            Result of the job execution.
+        """
+
 
 class CompileOptions(ABC):
     """Abstract base class for specifying compilation options.
@@ -44,7 +59,7 @@ class CompileOptions(ABC):
     """
 
     @abstractmethod
-    def __repr__(self) -> str:
+    def __init__(self) -> str:
         """Define a dummy abstract method to satisfy ABC requirements."""
 
 
@@ -78,7 +93,7 @@ class DeviceBackend(ABC):
         """
 
     @abstractmethod
-    def submit_job(self, shots: int = 1024) -> JobHandler:
+    def submit_job(self, shots: int = 1024) -> Job:
         """Submit a compiled job to the backend.
 
         Parameters
@@ -88,21 +103,6 @@ class DeviceBackend(ABC):
 
         Returns
         -------
-        JobHandler
-            Handle to monitor or retrieve job result.
-        """
-
-    @abstractmethod
-    def retrieve_result(self, job_handle: JobHandler) -> dict[str, int]:
-        """Retrieve the result from a completed job.
-
-        Parameters
-        ----------
-        job_handle : JobHandler
-            The handle of the submitted job.
-
-        Returns
-        -------
-        Any
-            Result of the job execution.
+        Job
+            Monitor or retrieve job result.
         """
