@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from graphix.device_interface import CompileOptions, DeviceBackend, Job
 from graphix.pattern import Pattern
 
@@ -16,7 +18,7 @@ class DummyJob(Job):
 
     def cancel(self):
         pass
-    
+
     def retrieve_result(self):
         return {"result": "dummy_result"}
 
