@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  python: 3.12
+  python: "3.12"
 
 jobs:
   check-doc:
