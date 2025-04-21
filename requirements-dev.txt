@@ -6,6 +6,7 @@ ruff==0.11.5
 # Stubs
 types-networkx
 types-psutil
+types-setuptools
 
 # Tests
 # Keep in sync with CI
