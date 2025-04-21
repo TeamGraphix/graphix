@@ -34,3 +34,15 @@ jobs:
 
       - name: Make docs
         run: make -C docs html SPHINXOPTS="--fail-on-warning"
+
+  lint-text:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run language-agnostic linters
+        uses: pre-commit/action@v3.0.1
