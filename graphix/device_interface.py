@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar
-
-if TYPE_CHECKING:
-    from graphix.pattern import Pattern
+from typing import ClassVar
 
 
 class Job(ABC):
@@ -44,7 +41,8 @@ class CompileOptions(ABC):
     To be extended by concrete implementations.
     """
 
-    def __init__(self) -> None:
+    @abstractmethod
+    def __repr__(self) -> str:
         """Define a dummy abstract method to satisfy ABC requirements."""
 
 
@@ -52,9 +50,6 @@ class DeviceBackend(ABC):
     """Abstract base class representing a quantum device backend (hardware or simulator)."""
 
     VALID_MODES: ClassVar[frozenset[str]] = frozenset({"hardware", "simulator"})
-
-    def __init__(self) -> None:
-        """Initialize the backend."""
 
     @abstractmethod
     def compile(self, options: CompileOptions | None = None) -> None:

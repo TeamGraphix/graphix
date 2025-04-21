@@ -5,8 +5,9 @@ from graphix.pattern import Pattern
 
 
 class DummyOptions(CompileOptions):
-    def __init__(self) -> str:
+    def __repr__(self) -> str:
         """Define a dummy abstract method to satisfy ABC requirements."""
+        return "DummyOptions"
 
 
 class DummyJob(Job):
@@ -24,7 +25,7 @@ class DummyJob(Job):
 
 
 class DummyBackend(DeviceBackend):
-    def compile(self, options: CompileOptions = None):
+    def compile(self, pattern: Pattern, options: CompileOptions = None):
         pass
 
     def submit_job(self, shots: int) -> Job:
@@ -34,8 +35,7 @@ class DummyBackend(DeviceBackend):
 def test_dummy_backend_can_be_instantiated():
     backend = DummyBackend()
     pattern = Pattern()
-    backend.set_pattern(pattern)
-    backend.compile(DummyOptions())
+    backend.compile(pattern, DummyOptions())
     job = backend.submit_job(shots=100)
     assert isinstance(job, Job)
     result = job.retrieve_result()
