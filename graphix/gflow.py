@@ -975,10 +975,7 @@ def get_dependence_flow(
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    try:  # if inputs is not empty
-        dependence_flow = {u: set() for u in inputs}
-    except Exception:
-        dependence_flow = {}
+    dependence_flow = {u: set() for u in inputs}
     # concatenate flow and odd_flow
     combined_flow = {}
     for node, corrections in flow.items():

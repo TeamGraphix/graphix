@@ -1191,7 +1191,8 @@ class GraphVisualizer:
             curve += np.outer(comb(n, i) * ((1 - t) ** (n - i)) * (t**i), np.array(point))
         return curve
 
-    def _check_path(self, path, target_node_pos=None):
+    @staticmethod
+    def _check_path(path, target_node_pos=None):
         """If there is an acute angle in the path, merge points."""
         path = np.array(path)
         acute = True

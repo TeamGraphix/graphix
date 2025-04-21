@@ -131,10 +131,7 @@ class ComplexUnit(Enum):
         """Return the ComplexUnit instance if the value is compatible, None otherwise."""
         if isinstance(value, ComplexUnit):
             return value
-        try:
-            value = complex(value)
-        except Exception:
-            return None
+        value = complex(value)
         if value == 1:
             return ComplexUnit.ONE
         if value == -1:

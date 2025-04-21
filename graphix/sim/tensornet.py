@@ -56,6 +56,9 @@ class TensorNetworkBackend(Backend):
             random number generator to use for measurements
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
+        if input_state != BasicStates.PLUS:
+            msg = "TensorNetworkBackend currently only supports BasicStates.PLUS as input state."
+            raise NotImplementedError(msg)
         self.pattern = pattern
         self.output_nodes = pattern.output_nodes
         self.results = deepcopy(pattern.results)
@@ -161,7 +164,7 @@ class TensorNetworkBackend(Backend):
         if node in self._isolated_nodes:
             vector = self.state.get_open_tensor_from_index(node)
             probs = np.abs(vector) ** 2
-            probs /= (np.sum(probs))
+            probs /= np.sum(probs)
             result = self.__rng.choice([0, 1], p=probs)
             self.results[node] = result
             buffer = 1 / probs[result] ** 0.5

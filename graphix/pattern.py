@@ -779,7 +779,8 @@ class Pattern:
                 dependency[cmd.node] |= cmd.domain
         return dependency
 
-    def update_dependency(self, measured, dependency):
+    @staticmethod
+    def update_dependency(measured, dependency):
         """Remove measured nodes from the 'dependency'.
 
         Parameters
@@ -846,7 +847,8 @@ class Pattern:
             meas_order.extend(l_k[i])
         return meas_order
 
-    def connected_edges(self, node, edges):
+    @staticmethod
+    def connected_edges(node, edges):
         """Search not activated edges connected to the specified node.
 
         Returns
