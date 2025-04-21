@@ -46,3 +46,9 @@ jobs:
 
       - name: Run language-agnostic linters
         uses: pre-commit/action@v3.0.1
+
+      - uses: actions/setup-node@v4
+
+      - run: |
+          corepack enable pnpm
+          pnpm dlx prettier --check .
