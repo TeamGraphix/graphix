@@ -68,6 +68,7 @@ extend-ignore = [
   "EM10",    # Raise string
   "PLC0415", # Import not at the top level
   "PLR1702", # Too many nests
+  "PLW1641", # __hash__ missing
   "PT011",   # pytest raises too broad
   "SLF001",  # Private access
   "TRY003",  # Raise vanilla args
@@ -108,6 +109,7 @@ docstring-code-format = true
 ]
 "tests/*.py" = [
   "D10",     # Allow undocumented items
+  "PLC2701", # Allow private imports
   "PLR6301", # self not used
 ]
 
