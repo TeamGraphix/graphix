@@ -11,7 +11,7 @@ Device Interface
 
 .. currentmodule:: graphix.device_interface
 
-.. autoclass:: JobHandler
+.. autoclass:: Job
     :members:
     :undoc-members:
     :show-inheritance:
