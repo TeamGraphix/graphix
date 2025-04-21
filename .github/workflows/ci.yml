@@ -33,6 +33,6 @@ jobs:
 
       - name: Setup nox
         # Keep in sync with requirements-dev.txt
-        uses: wntrblm/nox@2024.10.09
+        uses: wntrblm/nox@2025.02.09
 
       - run: nox --python ${{ matrix.python }}
