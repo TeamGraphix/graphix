@@ -2,63 +2,89 @@
 
 from __future__ import annotations
 
-import abc
-from typing import TYPE_CHECKING
+import dataclasses
+import sys
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar, Literal
+
+from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
 
 if TYPE_CHECKING:
     from graphix.channels import KrausChannel
-    from graphix.simulator import PatternSimulator
 
 
-class NoiseModel(abc.ABC):
+class Noise(ABC):
+    """Abstract base class for noise."""
+
+    @abstractmethod
+    def nqubits(self) -> int:
+        """Return the number of qubits targetted by the noise."""
+
+    @abstractmethod
+    def to_kraus_channel(self) -> KrausChannel:
+        """Return the Kraus channel describing the noise."""
+
+
+@dataclass
+class A(_KindChecker):
+    """Apply noise command."""
+
+    kind: ClassVar[Literal[CommandKind.A]] = dataclasses.field(default=CommandKind.A, init=False)
+    noise: Noise
+    nodes: list[Node]
+
+
+if sys.version_info >= (3, 10):
+    CommandOrNoise = Command | A
+else:
+    from typing import Union
+
+    CommandOrNoise = Union[Command, A]
+
+
+NoiseCommands = list[CommandOrNoise]
+
+
+class NoiseModel(ABC):
     """Abstract base class for all noise models."""
 
-    data: PatternSimulator
+    @abstractmethod
+    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+        """Return the noise to apply to input nodes."""
 
-    # shared by all objects of the child class.
-    def assign_simulator(self, simulator: PatternSimulator) -> None:
-        """Assign a simulator to the noise model."""
-        self.simulator = simulator
+    @abstractmethod
+    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+        """Return the noise to apply to the command `cmd`."""
 
-    @abc.abstractmethod
-    def prepare_qubit(self) -> KrausChannel:
-        """Return qubit to be added with preparation errors."""
-        ...
-
-    @abc.abstractmethod
-    def entangle(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the CZ gate process."""
-        ...
-
-    @abc.abstractmethod
-    def measure(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the measurement process."""
-        ...
-
-    @abc.abstractmethod
-    def confuse_result(self, result: bool) -> bool:
+    @abstractmethod
+    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
         """Assign wrong measurement result."""
 
-    @abc.abstractmethod
-    def byproduct_x(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the X gate process."""
-        ...
+    def transpile(self, sequence: NoiseCommands) -> NoiseCommands:
+        """Apply the noise to a sequence of commands and return the resulting sequence."""
+        return [n_cmd for cmd in sequence for n_cmd in self.command(cmd)]
 
-    @abc.abstractmethod
-    def byproduct_z(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the Z gate process."""
-        ...
 
-    @abc.abstractmethod
-    def clifford(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the Clifford gate process."""
-        # NOTE might be different depending on the gate.
-        ...
+@dataclass(frozen=True)
+class ComposeNoiseModel(NoiseModel):
+    """Compose noise models."""
 
-    @abc.abstractmethod
-    def tick_clock(self) -> None:
-        """Notion of time in real devices - this is where we apply effect of T1 and T2.
+    models: list[NoiseModel]
 
-        We assume commands that lie between 'T' commands run simultaneously on the device.
-        """
-        ...
+    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+        """Return the noise to apply to input nodes."""
+        return [n_cmd for m in self.models for n_cmd in m.input_nodes(nodes)]
+
+    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+        """Return the noise to apply to the command `cmd`."""
+        sequence = [cmd]
+        for model in self.models:
+            sequence = model.transpile(sequence)
+        return sequence
+
+    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
+        """Assign wrong measurement result."""
+        for m in self.l:
+            result = m.confuse_result(cmd, result)
+        return result

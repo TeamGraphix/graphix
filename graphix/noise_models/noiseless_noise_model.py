@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import numpy as np
-import typing_extensions
+from typing import TYPE_CHECKING
 
-from graphix.channels import KrausChannel, KrausData
-from graphix.noise_models.noise_model import NoiseModel
+from graphix.noise_models.noise_model import CommandOrNoise, NoiseCommands, NoiseModel
+
+if TYPE_CHECKING:
+    from graphix.command import BaseM
 
 
 class NoiselessNoiseModel(NoiseModel):
@@ -15,44 +16,14 @@ class NoiselessNoiseModel(NoiseModel):
     Only return the identity channel.
     """
 
-    @typing_extensions.override
-    def prepare_qubit(self) -> KrausChannel:
-        """Return the channel to apply after clean single-qubit preparation. Here just identity."""
-        return KrausChannel([KrausData(1.0, np.eye(2))])
+    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+        """Return the noise to apply to input nodes."""
+        return []
 
-    @typing_extensions.override
-    def entangle(self) -> KrausChannel:
-        """Return noise model to qubits that happens after the CZ gates."""
-        return KrausChannel([KrausData(1.0, np.eye(4))])
+    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+        """Return the noise to apply to the command `cmd`."""
+        return [cmd]
 
-    @typing_extensions.override
-    def measure(self) -> KrausChannel:
-        """Apply noise to qubit to be measured."""
-        return KrausChannel([KrausData(1.0, np.eye(2))])
-
-    @typing_extensions.override
-    def confuse_result(self, result: bool) -> bool:
+    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
         """Assign wrong measurement result."""
         return result
-
-    @typing_extensions.override
-    def byproduct_x(self) -> KrausChannel:
-        """Apply noise to qubits after X gate correction."""
-        return KrausChannel([KrausData(1.0, np.eye(2))])
-
-    @typing_extensions.override
-    def byproduct_z(self) -> KrausChannel:
-        """Apply noise to qubits after Z gate correction."""
-        return KrausChannel([KrausData(1.0, np.eye(2))])
-
-    @typing_extensions.override
-    def clifford(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the Clifford gate process."""
-        return KrausChannel([KrausData(1.0, np.eye(2))])
-
-    @typing_extensions.override
-    def tick_clock(self) -> None:
-        """Notion of time in real devices - this is where we apply effect of T1 and T2.
-
-        See :meth:`NoiseModel.tick_clock`.
-        """

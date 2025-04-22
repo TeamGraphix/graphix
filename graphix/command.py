@@ -35,6 +35,7 @@ class CommandKind(Enum):
     Z = enum.auto()
     S = enum.auto()
     T = enum.auto()
+    A = enum.auto()  # see noise_models/noise_model.py
 
 
 class _KindChecker:

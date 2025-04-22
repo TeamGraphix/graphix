@@ -33,13 +33,10 @@ class MeasureMethod(abc.ABC):
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
-    def measure(self, backend: Backend, cmd, noise_model=None) -> None:
+    def measure(self, backend: Backend, cmd) -> bool:
         """Perform a measure."""
         description = self.get_measurement_description(cmd)
-        result = backend.measure(cmd.node, description)
-        if noise_model is not None:
-            result = noise_model.confuse_result(result)
-        self.set_measure_result(cmd.node, result)
+        return backend.measure(cmd.node, description)
 
     @abc.abstractmethod
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
@@ -118,7 +115,6 @@ class PatternSimulator:
             self.backend = StatevectorBackend(**kwargs)
         elif backend == "densitymatrix":
             if noise_model is None:
-                self.noise_model = None
                 self.backend = DensityMatrixBackend(**kwargs)
                 warnings.warn(
                     "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
@@ -127,8 +123,7 @@ class PatternSimulator:
             else:
                 self.backend = DensityMatrixBackend(pr_calc=True, **kwargs)
                 self.set_noise_model(noise_model)
-        elif backend in {"tensornetwork", "mps"} and noise_model is None:
-            self.noise_model = None
+        elif backend in {"tensornetwork", "mps"}:
             self.backend = TensorNetworkBackend(pattern, **kwargs)
         else:
             raise ValueError("Unknown backend.")
@@ -150,9 +145,6 @@ class PatternSimulator:
 
     def set_noise_model(self, model):
         """Set a noise model."""
-        if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
-            self.noise_model = None  # if not initialized yet
-            raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
     def run(self, input_state=BasicStates.PLUS) -> None:
@@ -167,49 +159,32 @@ class PatternSimulator:
         if input_state is not None:
             self.backend.add_nodes(self.pattern.input_nodes, input_state)
         if self.noise_model is None:
-            for cmd in self.pattern:
-                if cmd.kind == CommandKind.N:
-                    self.backend.add_nodes(nodes=[cmd.node], data=cmd.state)
-                elif cmd.kind == CommandKind.E:
-                    self.backend.entangle_nodes(edge=cmd.nodes)
-                elif cmd.kind == CommandKind.M:
-                    self.__measure_method.measure(self.backend, cmd)
-                elif cmd.kind in {CommandKind.X, CommandKind.Z}:
-                    self.backend.correct_byproduct(cmd, self.__measure_method)
-                elif cmd.kind == CommandKind.C:
-                    self.backend.apply_clifford(cmd.node, cmd.clifford)
-                else:
-                    raise ValueError("invalid commands")
-            self.backend.finalize(output_nodes=self.pattern.output_nodes)
+            pattern = self.pattern
         else:
-            self.noise_model.assign_simulator(self)
-            for node in self.pattern.input_nodes:
-                self.backend.apply_channel(self.noise_model.prepare_qubit(), [node])
-            for cmd in self.pattern:
-                if cmd.kind == CommandKind.N:
-                    self.backend.add_nodes([cmd.node])
-                    self.backend.apply_channel(self.noise_model.prepare_qubit(), [cmd.node])
-                elif cmd.kind == CommandKind.E:
-                    self.backend.entangle_nodes(cmd.nodes)
-                    self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
-                elif cmd.kind == CommandKind.M:
-                    self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
-                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
-                elif cmd.kind == CommandKind.X:
-                    self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
-                        self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
-                elif cmd.kind == CommandKind.Z:
-                    self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
-                        self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
-                elif cmd.kind == CommandKind.C:
-                    self.backend.apply_clifford(cmd.node, cmd.clifford)
-                    self.backend.apply_channel(self.noise_model.clifford(), [cmd.node])
-                elif cmd.kind == CommandKind.T:
-                    # T command is a flag for one clock cycle in simulated experiment,
-                    # to be added via hardware-agnostic pattern modifier
+            pattern = self.noise_model.input_nodes(self.pattern.input_nodes) if input_state is not None else []
+            pattern.extend(self.noise_model.transpile(self.pattern))
+        for cmd in pattern:
+            if cmd.kind == CommandKind.N:
+                self.backend.add_nodes(nodes=[cmd.node], data=cmd.state)
+            elif cmd.kind == CommandKind.E:
+                self.backend.entangle_nodes(edge=cmd.nodes)
+            elif cmd.kind == CommandKind.M:
+                result = self.__measure_method.measure(self.backend, cmd)
+                if self.noise_model is not None:
+                    result = self.noise_model.confuse_result(cmd, result)
+                self.__measure_method.set_measure_result(cmd.node, result)
+            # Use of `==` here for mypy
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
+                self.backend.correct_byproduct(cmd, self.__measure_method)
+            elif cmd.kind == CommandKind.C:
+                self.backend.apply_clifford(cmd.node, cmd.clifford)
+            elif cmd.kind == CommandKind.T:
+                # T command is a flag for one clock cycle in simulated experiment,
+                # to be added via hardware-agnostic pattern modifier
+                if self.noise_model is not None:
                     self.noise_model.tick_clock()
-                else:
-                    raise ValueError("Invalid commands.")
-            self.backend.finalize(self.pattern.output_nodes)
+            elif cmd.kind == CommandKind.A:
+                self.backend.apply_noise(cmd.nodes, cmd.noise)
+            else:
+                raise ValueError("invalid commands")
+        self.backend.finalize(output_nodes=self.pattern.output_nodes)
