@@ -16,7 +16,7 @@ class NoiselessNoiseModel(NoiseModel):
     Only return the identity channel.
     """
 
-    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
         """Return the noise to apply to input nodes."""
         return []
 
