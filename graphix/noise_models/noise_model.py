@@ -8,6 +8,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Literal
 
+import typing_extensions
+
 from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
 
 if TYPE_CHECKING:
@@ -75,10 +77,12 @@ class ComposeNoiseModel(NoiseModel):
 
     models: list[NoiseModel]
 
+    @typing_extensions.override
     def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
         """Return the noise to apply to input nodes."""
         return [n_cmd for m in self.models for n_cmd in m.input_nodes(nodes)]
 
+    @typing_extensions.override
     def command(self, cmd: CommandOrNoise) -> NoiseCommands:
         """Return the noise to apply to the command `cmd`."""
         sequence = [cmd]
@@ -86,6 +90,7 @@ class ComposeNoiseModel(NoiseModel):
             sequence = model.transpile(sequence)
         return sequence
 
+    @typing_extensions.override
     def confuse_result(self, cmd: BaseM, result: bool) -> bool:
         """Assign wrong measurement result."""
         for m in self.models:

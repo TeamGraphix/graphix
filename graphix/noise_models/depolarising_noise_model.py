@@ -25,10 +25,12 @@ class DepolarisingNoise(Noise):
     prob: float
 
     @property
+    @typing_extensions.override
     def nqubits(self) -> int:
         """Return the number of qubits targetted by the noise element."""
         return 1
 
+    @typing_extensions.override
     def to_kraus_channel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise element."""
         return depolarising_channel(self.prob)
@@ -41,10 +43,12 @@ class TwoQubitDepolarisingNoise(Noise):
     prob: float
 
     @property
+    @typing_extensions.override
     def nqubits(self) -> int:
         """Return the number of qubits targetted by the noise element."""
         return 2
 
+    @typing_extensions.override
     def to_kraus_channel(self) -> KrausChannel:
         """Return the Kraus channel describing the noise element."""
         return two_qubit_depolarising_channel(self.prob)
@@ -77,10 +81,12 @@ class DepolarisingNoiseModel(NoiseModel):
         self.measure_channel_prob = measure_channel_prob
         self.rng = ensure_rng(rng)
 
+    @typing_extensions.override
     def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
         """Return the noise to apply to input nodes."""
         return [A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
 
+    @typing_extensions.override
     def command(self, cmd: CommandOrNoise) -> NoiseCommands:
         """Return the noise to apply to the command `cmd`."""
         if cmd.kind == CommandKind.N:
@@ -100,6 +106,7 @@ class DepolarisingNoiseModel(NoiseModel):
             raise ValueError("Unexpected signal!")
         typing_extensions.assert_never(cmd.kind)
 
+    @typing_extensions.override
     def confuse_result(self, cmd: BaseM, result: bool) -> bool:
         """Assign wrong measurement result cmd = "M"."""
         if self.rng.uniform() < self.measure_error_prob:
