@@ -11,6 +11,7 @@ from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depol
 from graphix.command import BaseM, CommandKind
 from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseCommands, NoiseModel
 from graphix.rng import ensure_rng
+from graphix.utils import Probability
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -22,7 +23,8 @@ if TYPE_CHECKING:
 class DepolarisingNoise(Noise):
     """One-qubit depolarising noise with probabibity `prob`."""
 
-    prob: float
+    # Probability is a descriptor
+    prob: Probability = Probability()  # noqa: RUF009
 
     @property
     @typing_extensions.override
@@ -40,7 +42,8 @@ class DepolarisingNoise(Noise):
 class TwoQubitDepolarisingNoise(Noise):
     """Two-qubits depolarising noise with probabibity `prob`."""
 
-    prob: float
+    # Probability is a descriptor
+    prob: Probability = Probability()  # noqa: RUF009
 
     @property
     @typing_extensions.override

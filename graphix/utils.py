@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import sys
 import typing
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, SupportsInt, TypeVar
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+import typing_extensions
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -82,3 +85,58 @@ def iter_empty(it: Iterator[_T]) -> bool:
     This function consumes the iterator.
     """
     return all(False for _ in it)
+
+
+ValueT = TypeVar("ValueT")
+
+
+class Validator(ABC, Generic[ValueT]):
+    """Descriptor to validate value.
+
+    https://docs.python.org/3/howto/descriptor.html#custom-validators
+    """
+
+    def __set_name__(self, owner: object, name: str) -> None:
+        """Set private field name."""
+        self.private_name = "_" + name
+
+    def __get__(self, obj: object, objtype: object = None) -> ValueT:
+        """Get the validated value from the private field."""
+        return cast(ValueT, getattr(obj, self.private_name))
+
+    def __set__(self, obj: object, value: ValueT) -> None:
+        """Validate and set the value in the private field."""
+        self.validate(value)
+        setattr(obj, self.private_name, value)
+
+    @abstractmethod
+    def validate(self, value: ValueT) -> None:
+        """Validate the assigned value."""
+
+
+@dataclass
+class Number(Validator[float]):
+    """Descriptor to validate numbers with given bounds.
+
+    https://docs.python.org/3/howto/descriptor.html#custom-validators
+    """
+
+    minvalue: float | None = None
+    maxvalue: float | None = None
+
+    @typing_extensions.override
+    def validate(self, value: object) -> None:
+        """Validate the assigned value."""
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"Expected {value!r} to be an int or float")
+        if self.minvalue is not None and value < self.minvalue:
+            raise ValueError(f"Expected {value!r} to be at least {self.minvalue!r}")
+        if self.maxvalue is not None and value > self.maxvalue:
+            raise ValueError(f"Expected {value!r} to be no more than {self.maxvalue!r}")
+
+
+class Probability(Number):
+    """Descriptor for probability (between 0 and 1)."""
+
+    def __init__(self) -> None:
+        super().__init__(minvalue=0, maxvalue=1)
