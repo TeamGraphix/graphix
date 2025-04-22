@@ -50,7 +50,7 @@ class NoiseModel(ABC):
     """Abstract base class for all noise models."""
 
     @abstractmethod
-    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
         """Return the noise to apply to input nodes."""
 
     @abstractmethod
