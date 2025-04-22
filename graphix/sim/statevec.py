@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 class StatevectorBackend(Backend):
     """MBQC simulator with statevector method."""
 
+    state: Statevec
+
     def __init__(self, **kwargs) -> None:
         """Construct a state vector backend."""
         super().__init__(Statevec(nqubit=0), **kwargs)

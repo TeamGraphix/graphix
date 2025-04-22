@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.parameter import Parameter
-    from graphix.sim.density_matrix import DensityMatrix
 
 
 def rand_herm(sz: int, rng: Generator | None = None) -> npt.NDArray:
@@ -42,9 +41,7 @@ def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray:
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(
-    dim: int, rng: Generator | None = None, rank: int | None = None, dm_dtype=True
-) -> DensityMatrix | npt.NDArray:
+def rand_dm(dim: int, rng: Generator | None = None, rank: int | None = None) -> npt.NDArray:
     """Generate random density matrices (positive semi-definite matrices with unit trace).
 
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
@@ -77,14 +74,7 @@ def rand_dm(
     dm = np.diag(padded_evals / np.sum(padded_evals))
 
     rand_u = rand_unit(dim)
-    dm = rand_u @ dm @ rand_u.transpose().conj()
-
-    if dm_dtype:
-        from graphix.sim.density_matrix import DensityMatrix  # circumvent circular import
-
-        # will raise an error if incorrect dimension
-        return DensityMatrix(data=dm)
-    return dm
+    return rand_u @ dm @ rand_u.transpose().conj()
 
 
 def rand_gauss_cpx_mat(dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:

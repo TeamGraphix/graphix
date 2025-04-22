@@ -109,7 +109,7 @@ class TestUtilities:
 
     def test_rand_dm(self, fx_rng: Generator) -> None:
         # needs to be power of 2 dimension since builds a DM object
-        dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rng=fx_rng)
+        dm = DensityMatrix(randobj.rand_dm(2 ** fx_rng.integers(2, 5), rng=fx_rng))
 
         assert isinstance(dm, DensityMatrix)
         assert lv.is_qubitop(dm.rho)
@@ -120,11 +120,11 @@ class TestUtilities:
     # try with incorrect dimension
     def test_rand_dm_fail(self, fx_rng: Generator) -> None:
         with pytest.raises(ValueError):
-            _ = randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1, rng=fx_rng)
+            _ = DensityMatrix(randobj.rand_dm(2 ** fx_rng.integers(2, 5) + 1, rng=fx_rng))
 
     def test_rand_dm_rank(self, fx_rng: Generator) -> None:
         rk = 3
-        dm = randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk, rng=fx_rng)
+        dm = DensityMatrix(randobj.rand_dm(2 ** fx_rng.integers(2, 5), rank=rk, rng=fx_rng))
 
         assert isinstance(dm, DensityMatrix)
         assert lv.is_qubitop(dm.rho)

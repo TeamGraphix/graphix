@@ -85,6 +85,6 @@ class ComposeNoiseModel(NoiseModel):
 
     def confuse_result(self, cmd: BaseM, result: bool) -> bool:
         """Assign wrong measurement result."""
-        for m in self.l:
+        for m in self.models:
             result = m.confuse_result(cmd, result)
         return result

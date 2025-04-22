@@ -106,7 +106,7 @@ class DensityMatrix(State):
         """Return a string description."""
         return f"DensityMatrix object, with density matrix {self.rho} and shape {self.dims()}."
 
-    def add_nodes(self, nqubit, data) -> None:
+    def add_nodes(self, nqubit: int, data: Data) -> None:
         """Add nodes to the density matrix."""
         dm_to_add = DensityMatrix(nqubit=nqubit, data=data)
         self.tensor(dm_to_add)
@@ -204,7 +204,7 @@ class DensityMatrix(State):
 
         return np.trace(rho_tensor.reshape((2**self.nqubit, 2**self.nqubit)))
 
-    def dims(self) -> list[int]:
+    def dims(self) -> tuple[int, ...]:
         """Return the dimensions of the density matrix."""
         return self.rho.shape
 
@@ -353,6 +353,8 @@ class DensityMatrix(State):
 
 class DensityMatrixBackend(Backend):
     """MBQC simulator with density matrix method."""
+
+    state: DensityMatrix
 
     def __init__(self, **kwargs) -> None:
         """Construct a density matrix backend."""
