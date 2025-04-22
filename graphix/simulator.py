@@ -57,7 +57,7 @@ class MeasureMethod(abc.ABC):
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
-    def __init__(self, results=None):
+    def __init__(self, results: dict[int, bool] | None = None) -> None:
         if results is None:
             results = {}
         self.results = results

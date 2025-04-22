@@ -63,7 +63,7 @@ class DepolarisingNoiseModel(NoiseModel):
         entanglement_error_prob: float = 0.0,
         measure_channel_prob: float = 0.0,
         measure_error_prob: float = 0.0,
-        rng: Generator = None,
+        rng: Generator | None = None,
     ) -> None:
         self.prepare_error_prob = prepare_error_prob
         self.x_error_prob = x_error_prob
@@ -79,21 +79,22 @@ class DepolarisingNoiseModel(NoiseModel):
 
     def command(self, cmd: CommandOrNoise) -> NoiseCommands:
         """Return the noise to apply to the command `cmd`."""
-        kind = cmd.kind
-        if kind == CommandKind.N:
+        if cmd.kind == CommandKind.N:
             return [cmd, A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
-        if kind == CommandKind.E:
-            return [cmd, A(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=cmd.nodes)]
-        if kind == CommandKind.M:
+        if cmd.kind == CommandKind.E:
+            return [cmd, A(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes))]
+        if cmd.kind == CommandKind.M:
             return [A(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
-        if kind == CommandKind.X:
+        if cmd.kind == CommandKind.X:
             return [cmd, A(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node])]
-        if kind == CommandKind.Z:
+        if cmd.kind == CommandKind.Z:
             return [cmd, A(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node])]
         # Use of `==` here for mypy
-        if kind == CommandKind.C or kind == CommandKind.T or kind == CommandKind.A:  # noqa: PLR1714
+        if cmd.kind == CommandKind.C or cmd.kind == CommandKind.T or cmd.kind == CommandKind.A:  # noqa: PLR1714
             return [cmd]
-        typing_extensions.assert_never(kind)
+        if cmd.kind == CommandKind.S:
+            raise ValueError("Unexpected signal!")
+        typing_extensions.assert_never(cmd.kind)
 
     def confuse_result(self, cmd: BaseM, result: bool) -> bool:
         """Assign wrong measurement result cmd = "M"."""

@@ -9,6 +9,7 @@ import pytest
 from graphix.noise_models.depolarising_noise_model import DepolarisingNoiseModel
 from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
+from graphix.sim.density_matrix import DensityMatrix
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ class TestNoisyDensityMatrixBackend:
     """Test for Noisy DensityMatrixBackend simultation."""
 
     @staticmethod
-    def rz_exact_res(alpha: float) -> npt.NDArray:
+    def rz_exact_res(alpha: float) -> npt.NDArray[np.float128]:
         return 0.5 * np.array([[1, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1]])
 
     @staticmethod
@@ -47,8 +48,10 @@ class TestNoisyDensityMatrixBackend:
             noise_model=NoiselessNoiseModel(),
             rng=fx_rng,
         )
+        assert isinstance(noiselessres, DensityMatrix)
         assert np.allclose(noiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
         # result should be |0>
+        assert isinstance(noisynoiselessres, DensityMatrix)
         assert np.allclose(noisynoiselessres.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
 
     # test measurement confuse outcome
@@ -60,6 +63,7 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
         # result should be |1>
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 
         # arbitrary probability
@@ -69,6 +73,7 @@ class TestNoisyDensityMatrixBackend:
             backend="densitymatrix", noise_model=DepolarisingNoiseModel(measure_error_prob=measure_error_pr), rng=fx_rng
         )
         # result should be |1>
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
             res.rho,
             np.array([[0.0, 0.0], [0.0, 1.0]]),
@@ -85,6 +90,7 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
         # just TP the depolarizing channel
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             np.array([[1 - 2 * measure_channel_pr / 3.0, 0.0], [0.0, 2 * measure_channel_pr / 3.0]]),
@@ -104,6 +110,7 @@ class TestNoisyDensityMatrixBackend:
         # analytical result since deterministic pattern output is |0>.
         # if no X applied, no noise. If X applied X noise on |0><0|
 
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
             res.rho,
             np.array([[1 - 2 * x_error_pr / 3.0, 0.0], [0.0, 2 * x_error_pr / 3.0]]),
@@ -130,6 +137,7 @@ class TestNoisyDensityMatrixBackend:
         # )
 
         # analytical result for true 2-qubit depolarizing channel
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             np.array(
@@ -151,6 +159,7 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
         # analytical result
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]]),
@@ -170,11 +179,13 @@ class TestNoisyDensityMatrixBackend:
             noise_model=DepolarisingNoiseModel(),
             rng=fx_rng,
         )  # NoiselessNoiseModel()
+        assert isinstance(noiselessres, DensityMatrix)
         assert np.allclose(
             noiselessres.rho,
             0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
         )
         # result should be |0>
+        assert isinstance(noisynoiselessres, DensityMatrix)
         assert np.allclose(
             noisynoiselessres.rho,
             0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
@@ -192,6 +203,7 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
         # analytical result
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             0.5
@@ -246,6 +258,7 @@ class TestNoisyDensityMatrixBackend:
         # )
 
         # analytical result for true 2-qubit depolarizing channel
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             0.5
@@ -275,6 +288,7 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
 
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             0.5
@@ -310,6 +324,7 @@ class TestNoisyDensityMatrixBackend:
 
         # only two cases: if no X correction, Z or no Z correction but exact result.
         # If X correction the noise result is the same with or without the PERFECT Z correction.
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
@@ -338,6 +353,7 @@ class TestNoisyDensityMatrixBackend:
 
         # only two cases: if no Z correction, X or no X correction but exact result.
         # If Z correction the noise result is the same with or without the PERFECT X correction.
+        assert isinstance(res, DensityMatrix)
         assert np.allclose(
             res.rho,
             0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
@@ -367,6 +383,7 @@ class TestNoisyDensityMatrixBackend:
         )
 
         # 4 cases : no corr, noisy X, noisy Z, noisy XZ.
+        assert isinstance(res, DensityMatrix)
         assert (
             np.allclose(res.rho, 0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]))
             or np.allclose(
@@ -413,6 +430,7 @@ class TestNoisyDensityMatrixBackend:
 
         exact = self.rz_exact_res(alpha)
 
+        assert isinstance(res, DensityMatrix)
         assert (
             np.allclose(res.rho, Ops.X @ exact @ Ops.X)
             or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
@@ -428,6 +446,7 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
         # just add the case without readout errors
+        assert isinstance(res, DensityMatrix)
         assert (
             np.allclose(res.rho, exact)
             or np.allclose(res.rho, Ops.X @ exact @ Ops.X)
