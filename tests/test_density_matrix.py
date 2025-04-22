@@ -952,10 +952,10 @@ class TestDensityMatrixBackend:
         result = measure_method.measure(backend, m)
         measure_method.set_measure_result(m.node, result)
         bp = pattern[-2]
-        assert isinstance(bp, command.X | command.Z)
+        assert isinstance(bp, (command.X, command.Z))
         backend.correct_byproduct(bp, measure_method)
         bp = pattern[-1]
-        assert isinstance(bp, command.X | command.Z)
+        assert isinstance(bp, (command.X, command.Z))
         backend.correct_byproduct(bp, measure_method)
         backend.finalize(pattern.output_nodes)
         rho = backend.state.rho
@@ -975,10 +975,10 @@ class TestDensityMatrixBackend:
         result = measure_method.measure(sv_backend, m)
         measure_method.set_measure_result(m.node, result)
         bp = pattern[-2]
-        assert isinstance(bp, command.X | command.Z)
+        assert isinstance(bp, (command.X, command.Z))
         sv_backend.correct_byproduct(bp, measure_method)
         bp = pattern[-1]
-        assert isinstance(bp, command.X | command.Z)
+        assert isinstance(bp, (command.X, command.Z))
         sv_backend.correct_byproduct(bp, measure_method)
         sv_backend.finalize(pattern.output_nodes)
         psi = sv_backend.state.psi
