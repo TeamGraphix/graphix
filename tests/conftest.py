@@ -42,7 +42,7 @@ def hadamardpattern() -> Pattern:
 
 @pytest.fixture
 def nqb(fx_rng: Generator) -> int:
-    return fx_rng.integers(2, 5)
+    return int(fx_rng.integers(2, 5))
 
 
 @pytest.fixture
