@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from graphix.noise_models.noise_model import CommandOrNoise, NoiseCommands, NoiseModel
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from graphix.command import BaseM
 
 

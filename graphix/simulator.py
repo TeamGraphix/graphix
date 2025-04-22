@@ -22,6 +22,8 @@ from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from graphix.pattern import Pattern
 
 
@@ -57,10 +59,10 @@ class MeasureMethod(abc.ABC):
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
-    def __init__(self, results: dict[int, bool] | None = None) -> None:
+    def __init__(self, results: Mapping[int, bool] | None = None) -> None:
         if results is None:
             results = {}
-        self.results = results
+        self.results = dict(results)
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a given measure command (cannot be blind in the case of DefaultMeasureMethod)."""

@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from graphix.channels import KrausChannel
 
 
@@ -73,7 +75,7 @@ class ComposeNoiseModel(NoiseModel):
 
     models: list[NoiseModel]
 
-    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
         """Return the noise to apply to input nodes."""
         return [n_cmd for m in self.models for n_cmd in m.input_nodes(nodes)]
 
