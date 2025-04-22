@@ -22,6 +22,7 @@ class DepolarisingNoise(Noise):
 
     prob: float
 
+    @property
     def nqubits(self) -> int:
         """Return the number of qubits targetted by the noise element."""
         return 1
@@ -37,6 +38,7 @@ class TwoQubitDepolarisingNoise(Noise):
 
     prob: float
 
+    @property
     def nqubits(self) -> int:
         """Return the number of qubits targetted by the noise element."""
         return 2
