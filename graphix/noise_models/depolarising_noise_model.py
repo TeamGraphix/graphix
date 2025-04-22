@@ -57,8 +57,6 @@ class TwoQubitDepolarisingNoise(Noise):
 class DepolarisingNoiseModel(NoiseModel):
     """Depolarising noise model.
 
-    Only return the identity channel.
-
     :param NoiseModel: Parent abstract class class:`graphix.noise_model.NoiseModel`
     :type NoiseModel: class
     """
