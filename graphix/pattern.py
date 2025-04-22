@@ -774,7 +774,7 @@ class Pattern:
         dependency = {i: set() for i in nodes}
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
-                dependency[cmd.node] = dependency[cmd.node] | cmd.s_domain | cmd.t_domain
+                dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
             elif cmd.kind in {CommandKind.X, CommandKind.Z}:
                 dependency[cmd.node] |= cmd.domain
         return dependency
