@@ -13,6 +13,8 @@ from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseComm
 from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from numpy.random import Generator
 
 
