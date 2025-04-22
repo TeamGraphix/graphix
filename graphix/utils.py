@@ -102,7 +102,7 @@ class Validator(ABC, Generic[ValueT]):
 
     def __get__(self, obj: object, objtype: object = None) -> ValueT:
         """Get the validated value from the private field."""
-        return cast(ValueT, getattr(obj, self.private_name))
+        return cast("ValueT", getattr(obj, self.private_name))
 
     def __set__(self, obj: object, value: ValueT) -> None:
         """Validate and set the value in the private field."""
