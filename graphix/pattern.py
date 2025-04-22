@@ -320,10 +320,10 @@ class Pattern:
                     new_cmd = new_cmd.clifford(clifford_gate)
                 if t_domain := z_dict.pop(cmd.node, None):
                     # The original domain should not be mutated
-                    new_cmd.t_domain ^= t_domain
+                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain  # noqa: PLR6104
                 if s_domain := x_dict.pop(cmd.node, None):
                     # The original domain should not be mutated
-                    new_cmd.s_domain ^= s_domain
+                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain  # noqa: PLR6104
                 m_list.append(new_cmd)
             elif cmd.kind == CommandKind.Z:
                 add_correction_domain(z_dict, cmd.node, cmd.domain)
