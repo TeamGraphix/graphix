@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 class Noise(ABC):
     """Abstract base class for noise."""
 
+    @property
     @abstractmethod
     def nqubits(self) -> int:
         """Return the number of qubits targetted by the noise."""
