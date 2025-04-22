@@ -73,7 +73,7 @@ class DepolarisingNoiseModel(NoiseModel):
         self.measure_channel_prob = measure_channel_prob
         self.rng = ensure_rng(rng)
 
-    def input_nodes(self, nodes: list[int]) -> NoiseCommands:
+    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
         """Return the noise to apply to input nodes."""
         return [A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
 
