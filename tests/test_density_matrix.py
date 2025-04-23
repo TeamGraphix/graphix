@@ -53,14 +53,14 @@ class TestDensityMatrix:
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
-            DensityMatrix(data=randobj.rand_herm(2 ** fx_rng.integers(2, 5), fx_rng))
+            DensityMatrix(data=randobj.rand_herm(2 ** int(fx_rng.integers(2, 5)), fx_rng))
         # check with non hermitian dm but unit trace
-        tmp = _randdm_raw(fx_rng.integers(2, 5), fx_rng)
+        tmp = _randdm_raw(int(fx_rng.integers(2, 5)), fx_rng)
         with pytest.raises(ValueError):
             DensityMatrix(data=tmp / np.trace(tmp))
         # check with non hermitian dm and not unit trace
         with pytest.raises(ValueError):
-            DensityMatrix(data=_randdm_raw(fx_rng.integers(2, 5), fx_rng))
+            DensityMatrix(data=_randdm_raw(int(fx_rng.integers(2, 5)), fx_rng))
         # check not square matrix
         with pytest.raises(ValueError):
             # l = 2 ** fx_rng.integers(2, 5) # fx_rng.integers(2, 20)
@@ -100,7 +100,7 @@ class TestDensityMatrix:
         # both "numerical" statevec and Statevec object
         # relies on Statevec constructor validation
 
-        nqb = fx_rng.integers(2, 5)
+        nqb = int(fx_rng.integers(2, 5))
         print(f"nqb is {nqb}")
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
@@ -130,7 +130,7 @@ class TestDensityMatrix:
         # both "numerical" statevec and Statevec object
         # relies on Statevec constructor validation
 
-        nqb = fx_rng.integers(2, 5)
+        nqb = int(fx_rng.integers(2, 5))
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
@@ -144,7 +144,7 @@ class TestDensityMatrix:
         assert np.allclose(dm.rho, expected_dm)
 
         sv_list = [state.get_statevector() for state in states]
-        sv = functools.reduce(np.kron, sv_list)
+        sv = functools.reduce(np.kron, sv_list)  # type: ignore[arg-type]
 
         # input with a statevector DATA (not Statevec object)
         dm2 = DensityMatrix(data=sv)
@@ -157,7 +157,7 @@ class TestDensityMatrix:
     def test_init_with_densitymatrix_sucess(self, fx_rng: Generator) -> None:
         # both "numerical" densitymatrix and DensityMatrix object
 
-        nqb = fx_rng.integers(2, 5)
+        nqb = int(fx_rng.integers(2, 5))
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         print("planes", rand_planes)
@@ -167,7 +167,7 @@ class TestDensityMatrix:
 
         # input with a huge density matrix
         dm_list = [state.get_densitymatrix() for state in states]
-        num_dm = functools.reduce(np.kron, dm_list)
+        num_dm = functools.reduce(np.kron, dm_list)  # type: ignore[arg-type]
 
         dm = DensityMatrix(data=num_dm)
 
@@ -225,9 +225,9 @@ class TestDensityMatrix:
 
     def test_expectation_single_success(self, fx_rng: Generator) -> None:
         """Compare with pure states."""
-        nqb = fx_rng.integers(1, 4)
+        nqb = int(fx_rng.integers(1, 4))
         # NOTE a statevector object so can't use its methods
-        target_qubit = fx_rng.integers(0, nqb)
+        target_qubit = int(fx_rng.integers(low=0, high=nqb))
 
         psi = _randstate_raw(nqb, fx_rng)
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
@@ -297,19 +297,19 @@ class TestDensityMatrix:
         assert np.allclose(dm_cnot.rho, dm.rho)
 
         # test on 2 qubits only
-        psi = _randstate_raw(2, fx_rng)
+        psi: npt.NDArray[np.complex128] = _randstate_raw(2, fx_rng)
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
         edge = (0, 1)
         dm.cnot(edge)
         psi = psi.reshape((2, 2))
-        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
+        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix2 = np.outer(psi, psi.conj())
         assert np.allclose(dm.rho, expected_matrix2)
 
         # test on arbitrary number of qubits and random pair
-        n = fx_rng.integers(2, 4)
+        n = int(fx_rng.integers(2, 4))
         psi = _randstate_raw(n, fx_rng)
         psi /= np.sqrt(np.sum(np.abs(psi) ** 2))
         dm = DensityMatrix(data=np.outer(psi, psi.conj()))
@@ -321,7 +321,7 @@ class TestDensityMatrix:
         edge = (u, v)
         dm.cnot(edge)
         psi = psi.reshape((2,) * n)
-        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))
+        psi = np.tensordot(CNOT_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix3 = np.outer(psi, psi.conj())
         assert np.allclose(dm.rho, expected_matrix3)
@@ -355,7 +355,7 @@ class TestDensityMatrix:
         dm.swap(edge)
         rho = dm.rho
         psi = psi.reshape((2, 2))
-        psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), edge))
+        psi = np.tensordot(SWAP_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix2 = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix2)
@@ -393,7 +393,7 @@ class TestDensityMatrix:
         dm.entangle(edge)
         rho = dm.rho
         psi = psi.reshape((2, 2))
-        psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))
+        psi = np.tensordot(CZ_TENSOR, psi, ((2, 3), edge))  # type: ignore[assignment]
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix2 = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix2)
@@ -402,7 +402,7 @@ class TestDensityMatrix:
         # single-qubit gate
         # check against evolve_single
 
-        nqubits = fx_rng.integers(2, 4)
+        nqubits = int(fx_rng.integers(2, 4))
         nqubits_op = 1
 
         # random statevector
@@ -413,7 +413,7 @@ class TestDensityMatrix:
         init_dm = DensityMatrix(data=np.outer(psi, psi.conj()))
 
         op = randobj.rand_unit(2**nqubits_op, fx_rng)
-        i = fx_rng.integers(0, nqubits)
+        i = int(fx_rng.integers(0, nqubits))
 
         # need a list format for a single target
         dm = copy.copy(init_dm)
@@ -425,7 +425,7 @@ class TestDensityMatrix:
 
         # 2-qubit gate
 
-        nqubits = fx_rng.integers(2, 4)
+        nqubits = int(fx_rng.integers(2, 4))
         nqubits_op = 2
 
         # random unitary
@@ -444,13 +444,13 @@ class TestDensityMatrix:
         rho = dm.rho
 
         psi = psi.reshape((2,) * nqubits)
-        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((2, 3), edge))
+        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((2, 3), edge))  # type: ignore[assignment]
         psi = np.moveaxis(psi, (0, 1), edge)
         expected_matrix = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix)
 
         # 3-qubit gate
-        nqubits = fx_rng.integers(3, 5)
+        nqubits = int(fx_rng.integers(3, 5))
         nqubits_op = 3
 
         # random unitary
@@ -469,14 +469,14 @@ class TestDensityMatrix:
         rho = dm.rho
 
         psi = psi.reshape((2,) * nqubits)
-        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((3, 4, 5), targets))
+        psi = np.tensordot(op.reshape((2,) * 2 * nqubits_op), psi, ((3, 4, 5), targets))  # type: ignore[assignment]
         psi = np.moveaxis(psi, (0, 1, 2), targets)
         expected_matrix = np.outer(psi, psi.conj())
         assert np.allclose(rho, expected_matrix)
 
     def test_evolve_fail(self, fx_rng: Generator) -> None:
         # test on 3-qubit gate just in case.
-        nqubits = fx_rng.integers(3, 5)
+        nqubits = int(fx_rng.integers(3, 5))
         nqubits_op = 3
 
         # random unitary
@@ -511,7 +511,7 @@ class TestDensityMatrix:
     # TODO: the test for normalization is done at initialization with data.
     # Now check that all operations conserve the norm.
     def test_normalize(self, fx_rng: Generator) -> None:
-        data = randobj.rand_dm(2 ** fx_rng.integers(2, 4), rng=fx_rng)
+        data = randobj.rand_dm(2 ** int(fx_rng.integers(2, 4)), rng=fx_rng)
 
         dm = DensityMatrix(data / data.trace())
         dm.normalize()
@@ -592,9 +592,9 @@ class TestDensityMatrix:
         assert np.allclose(expected_dm.trace(), 1.0)
         assert np.allclose(dm.rho, expected_dm)
 
-        nqubits = fx_rng.integers(2, 5)
+        nqubits = int(fx_rng.integers(2, 5))
 
-        i = fx_rng.integers(0, nqubits)
+        i = int(fx_rng.integers(0, nqubits))
 
         # create random density matrix from statevector
 
@@ -675,10 +675,10 @@ class TestDensityMatrix:
         # chek against statevector backend by hand for now.
         # create random density matrix
 
-        nqubits = fx_rng.integers(2, 5)
+        nqubits = int(fx_rng.integers(2, 5))
 
         # target qubit index
-        i = fx_rng.integers(0, nqubits)
+        i = int(fx_rng.integers(0, nqubits))
 
         # create random density matrix from statevector
 
@@ -741,11 +741,11 @@ class TestDensityMatrix:
         # check against statevector backend by hand for now.
         # create random density matrix
 
-        nqubits = fx_rng.integers(2, 5)
+        nqubits = int(fx_rng.integers(2, 5))
         # identity = np.array([[1.0, 0.0], [0.0, 1.0]])
 
         # target qubit index
-        i = fx_rng.integers(0, nqubits)
+        i = int(fx_rng.integers(0, nqubits))
 
         # create random density matrix from statevector
 
@@ -786,7 +786,7 @@ class TestDensityMatrix:
 
     def test_apply_random_channel_two_qubits(self, fx_rng: Generator) -> None:
         """Test random 2-qubit channel on a rank 1 dm (pure state)."""
-        nqubits = fx_rng.integers(2, 5)
+        nqubits = int(fx_rng.integers(2, 5))
 
         # target qubits indices
         qubits = tuple(random.sample(range(nqubits), 2))
@@ -825,7 +825,7 @@ class TestDensityMatrix:
 
     def test_apply_channel_fail(self, fx_rng: Generator) -> None:
         """Test apply a channel that is not a Channel object."""
-        nqubits = fx_rng.integers(2, 5)
+        nqubits = int(fx_rng.integers(2, 5))
         # i = fx_rng.integers(0, nqubits)
 
         psi = _randstate_raw(nqubits, fx_rng)
