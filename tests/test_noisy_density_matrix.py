@@ -22,7 +22,7 @@ class TestNoisyDensityMatrixBackend:
     """Test for Noisy DensityMatrixBackend simultation."""
 
     @staticmethod
-    def rz_exact_res(alpha: float) -> npt.NDArray[np.float128]:
+    def rz_exact_res(alpha: float) -> npt.NDArray[np.float64]:
         return 0.5 * np.array([[1, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1]])
 
     @staticmethod
