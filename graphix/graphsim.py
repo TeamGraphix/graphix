@@ -52,7 +52,7 @@ class GraphState(Graph):
         nodes: Iterable[int] | None = None,
         edges: Iterable[tuple[int, int]] | None = None,
         vops: Mapping[int, Clifford] | None = None,
-    ):
+    ) -> None:
         """Instantiate a graph simulator.
 
         Parameters
