@@ -20,6 +20,7 @@ import numpy as np
 
 from graphix import Circuit, Statevec
 from graphix.ops import Ops
+from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.states import BasicStates
 
 rng = np.random.default_rng()
@@ -46,7 +47,7 @@ circuit.rx(1, theta[1])
 # This returns :class:`~graphix.pattern.Pattern` object containing measurement pattern:
 
 pattern = circuit.transpile().pattern
-pattern.print_pattern(lim=10)
+print(pattern_to_str(pattern, output=OutputFormat.ASCII, left_to_right=True, limit=10))
 
 # %%
 # We can plot the graph state to run the above pattern.
