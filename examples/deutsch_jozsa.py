@@ -18,6 +18,7 @@ import numpy as np
 
 from graphix import Circuit
 from graphix.command import CommandKind
+from graphix.pretty_print import OutputFormat, pattern_to_str
 
 # %%
 # Now we implement the algorithm with quantum circuit, which we can transpile into MBQC.
