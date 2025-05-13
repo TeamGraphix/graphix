@@ -13,6 +13,7 @@ from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+from graphix.pretty_print import pretty_repr_dataclass
 
 
 class InstructionKind(Enum):
@@ -53,6 +54,10 @@ class CCX(_KindChecker):
     controls: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.CCX]] = dataclasses.field(default=InstructionKind.CCX, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of a CCX instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class RZZ(_KindChecker):
@@ -66,6 +71,10 @@ class RZZ(_KindChecker):
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZZ]] = dataclasses.field(default=InstructionKind.RZZ, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of an RZZ instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class CNOT(_KindChecker):
@@ -75,6 +84,10 @@ class CNOT(_KindChecker):
     control: int
     kind: ClassVar[Literal[InstructionKind.CNOT]] = dataclasses.field(default=InstructionKind.CNOT, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of a CNOT instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class SWAP(_KindChecker):
@@ -82,6 +95,10 @@ class SWAP(_KindChecker):
 
     targets: tuple[int, int]
     kind: ClassVar[Literal[InstructionKind.SWAP]] = dataclasses.field(default=InstructionKind.SWAP, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of a SWAP instruction."""
+        return pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -91,6 +108,10 @@ class H(_KindChecker):
     target: int
     kind: ClassVar[Literal[InstructionKind.H]] = dataclasses.field(default=InstructionKind.H, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of an H instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class S(_KindChecker):
@@ -98,6 +119,10 @@ class S(_KindChecker):
 
     target: int
     kind: ClassVar[Literal[InstructionKind.S]] = dataclasses.field(default=InstructionKind.S, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of an S instruction."""
+        return pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -107,6 +132,10 @@ class X(_KindChecker):
     target: int
     kind: ClassVar[Literal[InstructionKind.X]] = dataclasses.field(default=InstructionKind.X, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of an X instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class Y(_KindChecker):
@@ -114,6 +143,10 @@ class Y(_KindChecker):
 
     target: int
     kind: ClassVar[Literal[InstructionKind.Y]] = dataclasses.field(default=InstructionKind.Y, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of a Y instruction."""
+        return pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -123,6 +156,10 @@ class Z(_KindChecker):
     target: int
     kind: ClassVar[Literal[InstructionKind.Z]] = dataclasses.field(default=InstructionKind.Z, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of a Z instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class I(_KindChecker):
@@ -130,6 +167,10 @@ class I(_KindChecker):
 
     target: int
     kind: ClassVar[Literal[InstructionKind.I]] = dataclasses.field(default=InstructionKind.I, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of a I instruction."""
+        return pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -141,6 +182,10 @@ class M(_KindChecker):
     angle: ExpressionOrFloat
     kind: ClassVar[Literal[InstructionKind.M]] = dataclasses.field(default=InstructionKind.M, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of an M instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class RX(_KindChecker):
@@ -150,6 +195,10 @@ class RX(_KindChecker):
     angle: ExpressionOrFloat
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RX]] = dataclasses.field(default=InstructionKind.RX, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of an RX instruction."""
+        return pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -161,6 +210,10 @@ class RY(_KindChecker):
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RY]] = dataclasses.field(default=InstructionKind.RY, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of an RY instruction."""
+        return pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class RZ(_KindChecker):
@@ -170,6 +223,10 @@ class RZ(_KindChecker):
     angle: ExpressionOrFloat
     meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZ]] = dataclasses.field(default=InstructionKind.RZ, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of an RZ instruction."""
+        return pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass

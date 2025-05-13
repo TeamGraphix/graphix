@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex,
 
 import typing_extensions
 
+import graphix.pretty_print
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
 
@@ -39,6 +40,10 @@ class Sign(Enum):
         if self == Sign.PLUS:
             return "+"
         return "-"
+
+    def __repr__(self) -> str:
+        """Return a representation of a sign."""
+        return graphix.pretty_print.pretty_repr_enum(self)
 
     @staticmethod
     def plus_if(b: bool) -> Sign:
@@ -165,11 +170,15 @@ class ComplexUnit(Enum):
         return ret
 
     def __str__(self) -> str:
-        """Return a string representation of the unit."""
+        """Return a human-readable representation of the unit."""
         result = "1j" if self.is_imag else "1"
         if self.sign == Sign.MINUS:
             result = "-" + result
         return result
+
+    def __repr__(self) -> str:
+        """Return an evaluable representation of the unit."""
+        return graphix.pretty_print.pretty_repr_enum(self)
 
     def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> ComplexUnit:
         """Multiply the complex unit with a number."""
@@ -220,6 +229,10 @@ class Axis(Enum):
     Y = enum.auto()
     Z = enum.auto()
 
+    def __repr__(self) -> str:
+        """Return an evaluable representation of the axis."""
+        return graphix.pretty_print.pretty_repr_enum(self)
+
     @property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix representation."""
@@ -239,6 +252,10 @@ class Plane(Enum):
     XY = enum.auto()
     YZ = enum.auto()
     XZ = enum.auto()
+
+    def __repr__(self) -> str:
+        """Return an evaluable representation of the plane."""
+        return graphix.pretty_print.pretty_repr_enum(self)
 
     @property
     def axes(self) -> tuple[Axis, Axis]:

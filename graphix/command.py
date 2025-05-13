@@ -10,6 +10,7 @@ from typing import ClassVar, Literal, Union
 
 import numpy as np
 
+import graphix.pretty_print
 from graphix import utils
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane, Sign
@@ -52,6 +53,10 @@ class N(_KindChecker):
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of a N command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class M(_KindChecker):
@@ -79,6 +84,10 @@ class M(_KindChecker):
             domains.t_domain,
         )
 
+    def __repr__(self) -> str:
+        """Return the representation of an M command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self, unit_of_pi=True)
+
 
 @dataclasses.dataclass
 class E(_KindChecker):
@@ -86,6 +95,10 @@ class E(_KindChecker):
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of an E command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -96,6 +109,10 @@ class C(_KindChecker):
     clifford: Clifford
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of a C command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class X(_KindChecker):
@@ -104,6 +121,10 @@ class X(_KindChecker):
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of an X command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
@@ -114,6 +135,10 @@ class Z(_KindChecker):
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
+    def __repr__(self) -> str:
+        """Return the representation of a Z command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self)
+
 
 @dataclasses.dataclass
 class S(_KindChecker):
@@ -122,6 +147,10 @@ class S(_KindChecker):
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
+
+    def __repr__(self) -> str:
+        """Return the representation of an S command."""
+        return graphix.pretty_print.pretty_repr_dataclass(self)
 
 
 @dataclasses.dataclass
