@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import warnings
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
@@ -30,7 +31,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Container, Iterator, Mapping
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
@@ -223,17 +224,43 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
-    def to_ascii(self) -> str:
+    def to_ascii(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
         """Return the ASCII string representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.ASCII)
+        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
 
-    def to_latex(self) -> str:
+    def to_latex(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
         """Return a string containing the LaTeX representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.LaTeX)
+        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
 
-    def to_unicode(self) -> str:
+    def to_unicode(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
         """Return the Unicode string representation of the pattern."""
-        return pattern_to_str(self, OutputFormat.Unicode)
+        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
+
+    def print_pattern(self, lim: int = 40, target: Container[CommandKind] | None = None) -> None:
+        """Print the pattern sequence (Pattern.seq).
+
+        This method is deprecated.
+        See :meth:`to_ascii`, :meth:`to_latex`, :meth:`to_unicode` and :func:`graphix.pretty_print.pattern_to_str`.
+
+        Parameters
+        ----------
+        lim: int, optional
+            maximum number of commands to show
+        target : list of CommandKind, optional
+            show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
+        """
+        warnings.warn(
+            "Method `print_pattern` is deprecated. Use one of the methods `to_ascii`, `to_latex`, `to_unicode`, or the function `graphix.pretty_print.pattern_to_str`.",
+            DeprecationWarning,
+            stacklevel=1,
+        )
+        print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
 
     def standardize(self, method="direct") -> None:
         """Execute standardization of the pattern.
