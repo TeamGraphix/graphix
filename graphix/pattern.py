@@ -31,7 +31,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Iterator, Mapping
+    from collections.abc import Container, Iterable, Iterator, Mapping
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
@@ -83,7 +83,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes: list[int] | None = None, cmds: list[Command] | None = None) -> None:
+    def __init__(self, input_nodes: list[int] | None = None, cmds: Iterable[Command] | None = None) -> None:
         """
         Construct a pattern.
 
@@ -127,7 +127,7 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: list[Command]) -> None:
+    def extend(self, cmds: Iterable[Command]) -> None:
         """Add a list of commands.
 
         :param cmds: list of commands
