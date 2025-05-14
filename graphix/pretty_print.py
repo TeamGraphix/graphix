@@ -11,7 +11,6 @@ from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
 from graphix import command
-from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     from collections.abc import Container
@@ -104,6 +103,9 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
     output: OutputFormat
         The expected format.
     """
+    # Circumvent circular import
+    from graphix.fundamentals import Plane
+
     out = [cmd.kind.name]
 
     if cmd.kind == command.CommandKind.E:
@@ -255,26 +257,27 @@ class DataclassMixin:
         return f"{cls_name}({arguments_str})"
 
 
-def pretty_repr_enum(value: Enum) -> str:
-    """Return a "pretty" representation of an Enum member.
-
-    This returns the display string for `value` in the form
-    `ClassName.MEMBER_NAME`, which is a valid Python expression
-    (assuming `ClassName` is in scope) to recreate that member.
-
-    By contrast, the default Enum repr is
-    `<ClassName.MEMBER_NAME: value>`, which isn't directly
-    evaluable as Python code.
-
-    Parameters
-    ----------
-        value: An instance of `Enum`.
-
-    Returns
-    -------
-        A string in the form `ClassName.MEMBER_NAME`.
+class EnumMixin:
     """
-    # Equivalently (as of Python 3.12), `str(value)` also produces
-    # "ClassName.MEMBER_NAME", but we build it explicitly here for
-    # clarity.
-    return f"{value.__class__.__name__}.{value.name}"
+    Mixin to provide a concise, eval-friendly repr for Enum members.
+
+    Compared to the default `<ClassName.MEMBER_NAME: value>`, this mixin's `__repr__`
+    returns `ClassName.MEMBER_NAME`, which can be evaluated in Python (assuming the
+    enum class is in scope) to retrieve the same member.
+    """
+
+    def __repr__(self) -> str:
+        """
+        Return a representation string of an Enum member.
+
+        Returns
+        -------
+        str
+            A string in the form `ClassName.MEMBER_NAME`.
+        """
+        # Equivalently (as of Python 3.12), `str(value)` also produces
+        # "ClassName.MEMBER_NAME", but we build it explicitly here for
+        # clarity.
+        # Mypy ignores that the instance is a field and hence has a name.
+        name = self.name  # type: ignore[attr-defined]
+        return f"{self.__class__.__name__}.{name}"

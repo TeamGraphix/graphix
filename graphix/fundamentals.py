@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex,
 
 import typing_extensions
 
-import graphix.pretty_print
+from graphix import pretty_print
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
 
@@ -29,7 +29,7 @@ else:  # pragma: no cover
     SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
 
 
-class Sign(Enum):
+class Sign(pretty_print.EnumMixin, Enum):
     """Sign, plus or minus."""
 
     PLUS = 1
@@ -40,10 +40,6 @@ class Sign(Enum):
         if self == Sign.PLUS:
             return "+"
         return "-"
-
-    def __repr__(self) -> str:
-        """Return a representation of a sign."""
-        return graphix.pretty_print.pretty_repr_enum(self)
 
     @staticmethod
     def plus_if(b: bool) -> Sign:
@@ -116,7 +112,7 @@ class Sign(Enum):
         return complex(self.value)
 
 
-class ComplexUnit(Enum):
+class ComplexUnit(pretty_print.EnumMixin, Enum):
     """
     Complex unit: 1, -1, j, -j.
 
@@ -176,10 +172,6 @@ class ComplexUnit(Enum):
             result = "-" + result
         return result
 
-    def __repr__(self) -> str:
-        """Return an evaluable representation of the unit."""
-        return graphix.pretty_print.pretty_repr_enum(self)
-
     def __mul__(self, other: ComplexUnit | SupportsComplexCtor) -> ComplexUnit:
         """Multiply the complex unit with a number."""
         if isinstance(other, ComplexUnit):
@@ -222,16 +214,12 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
-class Axis(Enum):
+class Axis(pretty_print.EnumMixin, Enum):
     """Axis: `X`, `Y` or `Z`."""
 
     X = enum.auto()
     Y = enum.auto()
     Z = enum.auto()
-
-    def __repr__(self) -> str:
-        """Return an evaluable representation of the axis."""
-        return graphix.pretty_print.pretty_repr_enum(self)
 
     @property
     def matrix(self) -> npt.NDArray[np.complex128]:
@@ -245,17 +233,13 @@ class Axis(Enum):
         typing_extensions.assert_never(self)
 
 
-class Plane(Enum):
+class Plane(pretty_print.EnumMixin, Enum):
     # TODO: Refactor using match
     """Plane: `XY`, `YZ` or `XZ`."""
 
     XY = enum.auto()
     YZ = enum.auto()
     XZ = enum.auto()
-
-    def __repr__(self) -> str:
-        """Return an evaluable representation of the plane."""
-        return graphix.pretty_print.pretty_repr_enum(self)
 
     @property
     def axes(self) -> tuple[Axis, Axis]:
