@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import warnings
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
@@ -23,12 +24,13 @@ from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
+from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Container, Iterable, Iterator, Mapping
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
@@ -80,11 +82,16 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes: list[int] | None = None) -> None:
+    def __init__(self, input_nodes: list[int] | None = None, cmds: Iterable[Command] | None = None) -> None:
         """
         Construct a pattern.
 
-        :param input_nodes:  optional, list of input qubits
+        Parameters
+        ----------
+        input_nodes : list[int] | None
+            Optional. List of input qubits.
+        cmds : list[Command] | None
+            Optional. List of initial commands.
         """
         if input_nodes is None:
             input_nodes = []
@@ -96,6 +103,9 @@ class Pattern:
         self.__seq: list[Command] = []
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
+
+        if cmds:
+            self.extend(cmds)
 
     def add(self, cmd: Command) -> None:
         """Add command to the end of the pattern.
@@ -116,7 +126,7 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: list[Command]) -> None:
+    def extend(self, cmds: Iterable[Command]) -> None:
         """Add a list of commands.
 
         :param cmds: list of commands
@@ -192,12 +202,18 @@ class Pattern:
         assert_permutation(self.__input_nodes, input_nodes)
         self.__input_nodes = list(input_nodes)
 
-    # TODO: This is not an evaluable representation. Should be __str__?
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
-        return (
-            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
-        )
+        arguments = []
+        if self.input_nodes:
+            arguments.append(f"input_nodes={self.input_nodes}")
+        if self.__seq:
+            arguments.append(f"cmds={self.__seq}")
+        return f"Pattern({', '.join(arguments)})"
+
+    def __str__(self) -> str:
+        """Return a human-readable string of the pattern."""
+        return self.to_ascii()
 
     def __eq__(self, other: Pattern) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
@@ -207,8 +223,29 @@ class Pattern:
             and self.output_nodes == other.output_nodes
         )
 
-    def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
+    def to_ascii(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return the ASCII string representation of the pattern."""
+        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
+
+    def to_latex(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return a string containing the LaTeX representation of the pattern."""
+        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
+
+    def to_unicode(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return the Unicode string representation of the pattern."""
+        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
+
+    def print_pattern(self, lim: int = 40, target: Container[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
+
+        This method is deprecated.
+        See :meth:`to_ascii`, :meth:`to_latex`, :meth:`to_unicode` and :func:`graphix.pretty_print.pattern_to_str`.
 
         Parameters
         ----------
@@ -217,49 +254,12 @@ class Pattern:
         target : list of CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
-        nmax = min(lim, len(self.__seq))
-        if target is None:
-            target = [
-                CommandKind.N,
-                CommandKind.E,
-                CommandKind.M,
-                CommandKind.X,
-                CommandKind.Z,
-                CommandKind.C,
-            ]
-        count = 0
-        i = -1
-        while count < nmax:
-            i = i + 1
-            if i == len(self.__seq):
-                break
-            cmd = self.__seq[i]
-            if cmd.kind == CommandKind.N and (CommandKind.N in target):
-                count += 1
-                print(f"N, node = {cmd.node}")
-            elif cmd.kind == CommandKind.E and (CommandKind.E in target):
-                count += 1
-                print(f"E, nodes = {cmd.nodes}")
-            elif cmd.kind == CommandKind.M and (CommandKind.M in target):
-                count += 1
-                print(
-                    f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
-                    f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
-                )
-            elif cmd.kind == CommandKind.X and (CommandKind.X in target):
-                count += 1
-                print(f"X byproduct, node = {cmd.node}, domain = {cmd.domain}")
-            elif cmd.kind == CommandKind.Z and (CommandKind.Z in target):
-                count += 1
-                print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
-            elif cmd.kind == CommandKind.C and (CommandKind.C in target):
-                count += 1
-                print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
-
-        if len(self.__seq) > i + 1:
-            print(
-                f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
-            )
+        warnings.warn(
+            "Method `print_pattern` is deprecated. Use one of the methods `to_ascii`, `to_latex`, `to_unicode`, or the function `graphix.pretty_print.pattern_to_str`.",
+            DeprecationWarning,
+            stacklevel=1,
+        )
+        print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
 
     def standardize(self, method="direct") -> None:
         """Execute standardization of the pattern.
