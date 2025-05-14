@@ -2,18 +2,34 @@
 
 from __future__ import annotations
 
-import dataclasses
 import enum
+import math
 import sys
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Literal, Union
+from typing import ClassVar, Literal, SupportsFloat, Union
 
-from graphix import utils
+from graphix import pretty_print, utils
 from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
-from graphix.pretty_print import pretty_repr_dataclass
+
+
+def repr_angle(angle: ExpressionOrFloat) -> str:
+    """
+    Return the representation string of an angle in radians.
+
+    This is used for pretty-printing instructions with `angle` parameters.
+    Delegates to :func:`pretty_print.angle_to_str`.
+    """
+    # Non-float-supporting objects are returned as-is
+    if not isinstance(angle, SupportsFloat):
+        return str(angle)
+
+    # Convert to float, express in π units, and format in ASCII/plain mode
+    pi_units = float(angle) / math.pi
+    return pretty_print.angle_to_str(pi_units, pretty_print.OutputFormat.ASCII)
 
 
 class InstructionKind(Enum):
@@ -46,205 +62,149 @@ class _KindChecker:
         utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
-@dataclasses.dataclass
-class CCX(_KindChecker):
+@dataclass(repr=False)
+class CCX(_KindChecker, pretty_print.DataclassMixin):
     """Toffoli circuit instruction."""
 
     target: int
     controls: tuple[int, int]
-    kind: ClassVar[Literal[InstructionKind.CCX]] = dataclasses.field(default=InstructionKind.CCX, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of a CCX instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.CCX]] = field(default=InstructionKind.CCX, init=False)
 
 
-@dataclasses.dataclass
-class RZZ(_KindChecker):
+@dataclass(repr=False)
+class RZZ(_KindChecker, pretty_print.DataclassMixin):
     """RZZ circuit instruction."""
 
     target: int
     control: int
-    angle: ExpressionOrFloat
+    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
     # FIXME: Remove `| None` from `meas_index`
     # - `None` makes codes messy/type-unsafe
     meas_index: int | None = None
-    kind: ClassVar[Literal[InstructionKind.RZZ]] = dataclasses.field(default=InstructionKind.RZZ, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an RZZ instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
 
-@dataclasses.dataclass
-class CNOT(_KindChecker):
+@dataclass(repr=False)
+class CNOT(_KindChecker, pretty_print.DataclassMixin):
     """CNOT circuit instruction."""
 
     target: int
     control: int
-    kind: ClassVar[Literal[InstructionKind.CNOT]] = dataclasses.field(default=InstructionKind.CNOT, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of a CNOT instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
 
 
-@dataclasses.dataclass
-class SWAP(_KindChecker):
+@dataclass(repr=False)
+class SWAP(_KindChecker, pretty_print.DataclassMixin):
     """SWAP circuit instruction."""
 
     targets: tuple[int, int]
-    kind: ClassVar[Literal[InstructionKind.SWAP]] = dataclasses.field(default=InstructionKind.SWAP, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of a SWAP instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.SWAP]] = field(default=InstructionKind.SWAP, init=False)
 
 
-@dataclasses.dataclass
-class H(_KindChecker):
+@dataclass(repr=False)
+class H(_KindChecker, pretty_print.DataclassMixin):
     """H circuit instruction."""
 
     target: int
-    kind: ClassVar[Literal[InstructionKind.H]] = dataclasses.field(default=InstructionKind.H, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an H instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.H]] = field(default=InstructionKind.H, init=False)
 
 
-@dataclasses.dataclass
-class S(_KindChecker):
+@dataclass(repr=False)
+class S(_KindChecker, pretty_print.DataclassMixin):
     """S circuit instruction."""
 
     target: int
-    kind: ClassVar[Literal[InstructionKind.S]] = dataclasses.field(default=InstructionKind.S, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an S instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.S]] = field(default=InstructionKind.S, init=False)
 
 
-@dataclasses.dataclass
-class X(_KindChecker):
+@dataclass(repr=False)
+class X(_KindChecker, pretty_print.DataclassMixin):
     """X circuit instruction."""
 
     target: int
-    kind: ClassVar[Literal[InstructionKind.X]] = dataclasses.field(default=InstructionKind.X, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an X instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.X]] = field(default=InstructionKind.X, init=False)
 
 
-@dataclasses.dataclass
-class Y(_KindChecker):
+@dataclass(repr=False)
+class Y(_KindChecker, pretty_print.DataclassMixin):
     """Y circuit instruction."""
 
     target: int
-    kind: ClassVar[Literal[InstructionKind.Y]] = dataclasses.field(default=InstructionKind.Y, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of a Y instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.Y]] = field(default=InstructionKind.Y, init=False)
 
 
-@dataclasses.dataclass
-class Z(_KindChecker):
+@dataclass(repr=False)
+class Z(_KindChecker, pretty_print.DataclassMixin):
     """Z circuit instruction."""
 
     target: int
-    kind: ClassVar[Literal[InstructionKind.Z]] = dataclasses.field(default=InstructionKind.Z, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of a Z instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.Z]] = field(default=InstructionKind.Z, init=False)
 
 
-@dataclasses.dataclass
-class I(_KindChecker):
+@dataclass(repr=False)
+class I(_KindChecker, pretty_print.DataclassMixin):
     """I circuit instruction."""
 
     target: int
-    kind: ClassVar[Literal[InstructionKind.I]] = dataclasses.field(default=InstructionKind.I, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of a I instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.I]] = field(default=InstructionKind.I, init=False)
 
 
-@dataclasses.dataclass
-class M(_KindChecker):
+@dataclass(repr=False)
+class M(_KindChecker, pretty_print.DataclassMixin):
     """M circuit instruction."""
 
     target: int
     plane: Plane
-    angle: ExpressionOrFloat
-    kind: ClassVar[Literal[InstructionKind.M]] = dataclasses.field(default=InstructionKind.M, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an M instruction."""
-        return pretty_repr_dataclass(self)
+    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    kind: ClassVar[Literal[InstructionKind.M]] = field(default=InstructionKind.M, init=False)
 
 
-@dataclasses.dataclass
-class RX(_KindChecker):
+@dataclass(repr=False)
+class RX(_KindChecker, pretty_print.DataclassMixin):
     """X rotation circuit instruction."""
 
     target: int
-    angle: ExpressionOrFloat
+    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
     meas_index: int | None = None
-    kind: ClassVar[Literal[InstructionKind.RX]] = dataclasses.field(default=InstructionKind.RX, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an RX instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.RX]] = field(default=InstructionKind.RX, init=False)
 
 
-@dataclasses.dataclass
-class RY(_KindChecker):
+@dataclass(repr=False)
+class RY(_KindChecker, pretty_print.DataclassMixin):
     """Y rotation circuit instruction."""
 
     target: int
-    angle: ExpressionOrFloat
+    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
     meas_index: int | None = None
-    kind: ClassVar[Literal[InstructionKind.RY]] = dataclasses.field(default=InstructionKind.RY, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an RY instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.RY]] = field(default=InstructionKind.RY, init=False)
 
 
-@dataclasses.dataclass
-class RZ(_KindChecker):
+@dataclass(repr=False)
+class RZ(_KindChecker, pretty_print.DataclassMixin):
     """Z rotation circuit instruction."""
 
     target: int
-    angle: ExpressionOrFloat
+    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
     meas_index: int | None = None
-    kind: ClassVar[Literal[InstructionKind.RZ]] = dataclasses.field(default=InstructionKind.RZ, init=False)
-
-    def __repr__(self) -> str:
-        """Return the representation of an RZ instruction."""
-        return pretty_repr_dataclass(self)
+    kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
 
 
-@dataclasses.dataclass
+@dataclass
 class _XC(_KindChecker):
     """X correction circuit instruction. Used internally by the transpiler."""
 
     target: int
     domain: set[int]
-    kind: ClassVar[Literal[InstructionKind._XC]] = dataclasses.field(default=InstructionKind._XC, init=False)
+    kind: ClassVar[Literal[InstructionKind._XC]] = field(default=InstructionKind._XC, init=False)
 
 
-@dataclasses.dataclass
+@dataclass
 class _ZC(_KindChecker):
     """Z correction circuit instruction. Used internally by the transpiler."""
 
     target: int
     domain: set[int]
-    kind: ClassVar[Literal[InstructionKind._ZC]] = dataclasses.field(default=InstructionKind._ZC, init=False)
+    kind: ClassVar[Literal[InstructionKind._ZC]] = field(default=InstructionKind._ZC, init=False)
 
 
 if sys.version_info >= (3, 10):
