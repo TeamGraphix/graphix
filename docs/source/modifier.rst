@@ -36,7 +36,11 @@ Pattern Manipulation
 
     .. automethod:: perform_pauli_measurements
 
-    .. automethod:: print_pattern
+    .. automethod:: to_ascii
+
+    .. automethod:: to_unicode
+
+    .. automethod:: to_latex
 
     .. automethod:: standardize
 
