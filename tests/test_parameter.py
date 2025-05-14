@@ -149,9 +149,8 @@ def test_density_matrix_xreplace() -> None:
     assert np.allclose(dm.xreplace({alpha: 1, beta: 2}).rho, np.array([[1, 2], [1, 2]]))
 
 
-@pytest.mark.parametrize("jumps", range(1, 11))
 @pytest.mark.parametrize("use_xreplace", [False, True])
-def test_random_circuit_with_parameters(fx_rng: Generator, jumps: int, use_xreplace: bool) -> None:
+def test_random_circuit_with_parameters(fx_rng: Generator, use_xreplace: bool) -> None:
     nqubits = 5
     depth = 5
     alpha = Placeholder("alpha")

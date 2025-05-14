@@ -50,7 +50,7 @@ class PatternRunner:
                 self.backend.to_qiskit(save_statevector)
                 self.backend.transpile(optimization_level)
                 self.shots = kwargs.get("shots", 1024)
-            except Exception:
+            except Exception:  # noqa: BLE001 # TODO: Resolve this
                 save_statevector = kwargs.get("save_statevector", False)
                 optimization_level = kwargs.get("optimizer_level", 1)
                 self.backend.to_qiskit(save_statevector)

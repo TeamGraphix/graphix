@@ -2,6 +2,11 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+from __future__ import annotations
+from typing import Any, Literal
+
+from sphinx.application import Sphinx
+
 import os
 import sys
 
@@ -22,7 +27,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
-    "sphinx_gallery.gen_gallery"
+    "sphinx_gallery.gen_gallery",
 ]
 
 templates_path = ["_templates"]
@@ -36,13 +41,20 @@ intersphinx_mapping = {
 sys.path.insert(0, os.path.abspath("../../"))
 
 
-def skip(app, what, name, obj, would_skip, options):
+def skip(
+    app: Sphinx,
+    what: Literal["module", "class", "exception", "function", "method", "attribute"],
+    name: str,
+    obj: Any,
+    would_skip: bool,
+    options: dict[str, bool],
+) -> bool:
     if name == "__init__":
         return False
     return would_skip
 
 
-def setup(app):
+def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip)
 
 

@@ -19,9 +19,9 @@ Pattern Manipulation
     .. automethod:: replace
 
     .. automethod:: reorder_output_nodes
-    
+
     .. automethod:: reorder_input_nodes
-        
+
     .. automethod:: simulate_pattern
 
     .. automethod:: get_max_degree
@@ -60,4 +60,3 @@ Pattern Manipulation
 
 
 .. autofunction:: measure_pauli
-

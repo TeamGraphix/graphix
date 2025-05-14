@@ -875,8 +875,8 @@ class TestDensityMatrixBackend:
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
 
         # test init from State Iterable with incorrect size
+        backend = DensityMatrixBackend()
         with pytest.raises(ValueError):
-            backend = DensityMatrixBackend()
             backend.add_nodes(randpattern.input_nodes, data=states)
 
     def test_init_success_2(self) -> None:

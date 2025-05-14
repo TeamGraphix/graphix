@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
 
 ### Added
@@ -20,10 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Parameterized circuits and patterns: angles in instructions and
   measures can be expressions with parameters created with
-  `parameter.Placeholder` class.  Parameterized circuits can be
+  `parameter.Placeholder` class. Parameterized circuits can be
   transpiled and parameterized patterns can be optimized
   (standardization, minimization, signal shifting and Pauli
-  preprocessing) before being instantiated with the method `subs`.  An
+  preprocessing) before being instantiated with the method `subs`. An
   additional package,
   [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic),
   provides parameters that suppor symbolic simulation, and the
@@ -49,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Now variables, functions, and classes are named based on PEP8.
 - `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
 - Deprecated support for Python 3.8.
-- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules. 
+- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules.
   - Removed `opt` option for `Circuit.transpile` method.
   - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
 - Simulator back-ends have an additional optional argument `rng`,

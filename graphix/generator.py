@@ -90,7 +90,7 @@ def generate_from_graph(
                 pattern.add(M(node=j, angle=angles[j]))
                 neighbors: set[int] = set()
                 for k in f[j]:
-                    neighbors = neighbors | set(graph.neighbors(k))
+                    neighbors |= set(graph.neighbors(k))
                 for k in neighbors - {j}:
                     # if k not in measured:
                     pattern.add(Z(node=k, domain={j}))
