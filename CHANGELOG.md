@@ -9,9 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Methods for pretty-printing `Pattern`: `to_ascii`, `to_unicode`,
+  `to_latex`.
+
 ### Fixed
 
+- The result of `repr()` for `Pattern`, `Circuit`, `Command`,
+  `Instruction`, `Plane`, `Axis` and `Sign` is now a valid Python
+  expression and is more readable.
+
 ### Changed
+
+- The method `Pattern.print_pattern` is now deprecated.
 
 ## [0.3.1] - 2025-04-21
 
