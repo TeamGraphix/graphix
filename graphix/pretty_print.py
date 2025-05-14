@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import math
 from dataclasses import MISSING
 from enum import Enum
@@ -25,9 +26,9 @@ if TYPE_CHECKING:
 class OutputFormat(Enum):
     """Enumeration of the output format for pretty-printing."""
 
-    ASCII = "ASCII"
-    LaTeX = "LaTeX"
-    Unicode = "Unicode"
+    ASCII = enum.auto()
+    LaTeX = enum.auto()
+    Unicode = enum.auto()
 
 
 def angle_to_str(angle: float, output: OutputFormat) -> str:
