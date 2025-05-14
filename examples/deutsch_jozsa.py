@@ -18,7 +18,6 @@ import numpy as np
 
 from graphix import Circuit
 from graphix.command import CommandKind
-from graphix.pretty_print import OutputFormat, pattern_to_str
 
 # %%
 # Now we implement the algorithm with quantum circuit, which we can transpile into MBQC.
@@ -59,7 +58,7 @@ circuit.h(2)
 # Now let us transpile into MBQC measurement pattern and inspect the pattern sequence and graph state
 
 pattern = circuit.transpile().pattern
-print(pattern_to_str(pattern, output=OutputFormat.ASCII, left_to_right=True, limit=15))
+print(pattern.to_ascii(left_to_right=True, limit=15))
 pattern.draw_graph(flow_from_pattern=False)
 
 # %%
@@ -69,13 +68,19 @@ pattern.draw_graph(flow_from_pattern=False)
 
 pattern.standardize()
 pattern.shift_signals()
-print(pattern_to_str(pattern, output=OutputFormat.ASCII, left_to_right=True, limit=15))
+print(pattern.to_ascii(left_to_right=True, limit=15))
 
 # %%
 # Now we preprocess all Pauli measurements
 
 pattern.perform_pauli_measurements()
-print(pattern_to_str(pattern, output=OutputFormat.ASCII, left_to_right=True, limit=16, target=[CommandKind.N, CommandKind.M, CommandKind.C]))
+print(
+    pattern.to_ascii(
+        left_to_right=True,
+        limit=16,
+        target=[CommandKind.N, CommandKind.M, CommandKind.C],
+    )
+)
 pattern.draw_graph(flow_from_pattern=True)
 
 # %%
