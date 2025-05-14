@@ -45,21 +45,17 @@ class _KindChecker:
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
-@dataclasses.dataclass
-class N(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class N(_KindChecker, graphix.pretty_print.DataclassMixin):
     """Preparation command."""
 
     node: Node
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
-    def __repr__(self) -> str:
-        """Return the representation of a N command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self)
 
-
-@dataclasses.dataclass
-class M(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class M(_KindChecker, graphix.pretty_print.DataclassMixin):
     """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
 
     node: Node
@@ -84,76 +80,52 @@ class M(_KindChecker):
             domains.t_domain,
         )
 
-    def __repr__(self) -> str:
-        """Return the representation of an M command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self, unit_of_pi=True)
 
-
-@dataclasses.dataclass
-class E(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class E(_KindChecker, graphix.pretty_print.DataclassMixin):
     """Entanglement command."""
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
-    def __repr__(self) -> str:
-        """Return the representation of an E command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self)
 
-
-@dataclasses.dataclass
-class C(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class C(_KindChecker, graphix.pretty_print.DataclassMixin):
     """Clifford command."""
 
     node: Node
     clifford: Clifford
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
-    def __repr__(self) -> str:
-        """Return the representation of a C command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self)
 
-
-@dataclasses.dataclass
-class X(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class X(_KindChecker, graphix.pretty_print.DataclassMixin):
     """X correction command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
-    def __repr__(self) -> str:
-        """Return the representation of an X command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self)
 
-
-@dataclasses.dataclass
-class Z(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class Z(_KindChecker, graphix.pretty_print.DataclassMixin):
     """Z correction command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
-    def __repr__(self) -> str:
-        """Return the representation of a Z command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self)
 
-
-@dataclasses.dataclass
-class S(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class S(_KindChecker, graphix.pretty_print.DataclassMixin):
     """S command."""
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
-    def __repr__(self) -> str:
-        """Return the representation of an S command."""
-        return graphix.pretty_print.pretty_repr_dataclass(self)
 
-
-@dataclasses.dataclass
+@dataclasses.dataclass(repr=False)
 class T(_KindChecker):
     """T command."""
 

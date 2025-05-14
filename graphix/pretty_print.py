@@ -17,8 +17,6 @@ if TYPE_CHECKING:
     from collections.abc import Container
 
     # these live only in the stub package, not at runtime
-    from _typeshed import DataclassInstance
-
     from graphix.command import Node
     from graphix.pattern import Pattern
 
@@ -31,21 +29,29 @@ class OutputFormat(Enum):
     Unicode = enum.auto()
 
 
-def angle_to_str(angle: float, output: OutputFormat) -> str:
-    """Return the string of an angle according to the given format.
+def angle_to_str(angle: float, output: OutputFormat, max_denominator: int = 1000) -> str:
+    r"""
+    Return a string representation of an angle given in units of π.
+
+    - If the angle is a "simple" fraction of π (within the given max_denominator and a small tolerance),
+      it returns a fractional string, e.g. "π/2", "2π", or "-3π/4".
+    - Otherwise, it returns the angle in radians (angle * π) formatted to two decimal places.
 
     Parameters
     ----------
-    angle: float
-        The input angle, in unit of π.
-    output: OutputFormat
-        The expected format.
-    """
-    # We check whether the angle is close to a "simple" fraction of π,
-    # where "simple" is defined has "having a denominator less than
-    # or equal to 1000.
+    angle : float
+        The angle in multiples of π (e.g., 0.5 means π/2).
+    output : OutputFormat
+        Desired formatting style: Unicode (π symbol), LaTeX (\pi), or ASCII ("pi").
+    max_denominator : int, optional
+        Maximum denominator for detecting a simple fraction (default: 1000).
 
-    frac = Fraction(angle).limit_denominator(1000)
+    Returns
+    -------
+    str
+        The formatted angle.
+    """
+    frac = Fraction(angle).limit_denominator(max_denominator)
 
     if not math.isclose(angle, float(frac)):
         rad = angle * math.pi
@@ -68,6 +74,8 @@ def angle_to_str(angle: float, output: OutputFormat) -> str:
             return f"{num}/{den}"
 
     if den == 1:
+        if num == 0:
+            return "0"
         if num == 1:
             return f"{sign}{pi}"
         return f"{sign}{num}{pi}"
@@ -212,31 +220,39 @@ def pattern_to_str(
     return result
 
 
-def pretty_repr_dataclass(instance: DataclassInstance, unit_of_pi: bool = False) -> str:
-    """Return a representation string for a dataclass."""
-    cls_name = type(instance).__name__
-    arguments = []
-    saw_omitted = False
-    for field in dataclasses.fields(instance):
-        if field.name == "kind":
-            continue
-        value = getattr(instance, field.name)
-        if field.default is not MISSING or field.default_factory is not MISSING:
-            default = field.default_factory() if field.default_factory is not MISSING else field.default
-            if value == default:
-                saw_omitted = True
-                continue
-        if field.name == "angle" and not unit_of_pi:
-            angle: float = instance.angle  # type: ignore[attr-defined]
-            value_str = angle_to_str(angle / math.pi, OutputFormat.ASCII)
-        else:
-            value_str = repr(value)
-        if saw_omitted:
-            arguments.append(f"{field.name}={value_str}")
-        else:
-            arguments.append(value_str)
-    arguments_str = ", ".join(arguments)
-    return f"{cls_name}({arguments_str})"
+class DataclassMixin:
+    """
+    Mixin for a concise, eval-friendly `repr` of dataclasses.
+
+    Compared to the default dataclass `repr`:
+      - Class variables are omitted (dataclasses.fields only returns actual fields).
+      - Fields whose values equal their defaults are omitted.
+      - Field names are only shown when preceding fields have been omitted, ensuring positional listings when possible.
+
+    Use with `@dataclass(repr=False)` on the target class.
+    """
+
+    def __repr__(self) -> str:
+        """Return a representation string for a dataclass."""
+        cls_name = type(self).__name__
+        arguments = []
+        saw_omitted = False
+        # Mypy will see `self` as a non-dataclass, so ignore arg-type here
+        for field in dataclasses.fields(self):  # type: ignore[arg-type]
+            value = getattr(self, field.name)
+            if field.default is not MISSING or field.default_factory is not MISSING:
+                default = field.default_factory() if field.default_factory is not MISSING else field.default
+                if value == default:
+                    saw_omitted = True
+                    continue
+            custom_repr = field.metadata.get("repr")
+            value_str = custom_repr(value) if custom_repr else repr(value)
+            if saw_omitted:
+                arguments.append(f"{field.name}={value_str}")
+            else:
+                arguments.append(value_str)
+        arguments_str = ", ".join(arguments)
+        return f"{cls_name}({arguments_str})"
 
 
 def pretty_repr_enum(value: Enum) -> str:
