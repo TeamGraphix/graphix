@@ -78,7 +78,7 @@ def angle_to_str(angle: float, output: OutputFormat) -> str:
 
 def domain_to_str(domain: set[Node]) -> str:
     """Return the string representation of a domain."""
-    return f"{{{','.join([str(node) for node in domain])}}}"
+    return f"{{{','.join(str(node) for node in domain)}}}"
 
 
 SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
@@ -155,22 +155,22 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
             out = ["[", *out, "]"]
             if cmd.t_domain:
                 if output == OutputFormat.LaTeX:
-                    t_domain_str = f"{{}}_{{{','.join([str(node) for node in cmd.t_domain])}}}"
+                    t_domain_str = f"{{}}_{{{','.join(str(node) for node in cmd.t_domain)}}}"
                 elif output == OutputFormat.Unicode:
                     t_domain_subscripts = [str(node).translate(SUBSCRIPTS) for node in cmd.t_domain]
                     t_domain_str = "₊".join(t_domain_subscripts)
                 else:
-                    t_domain_str = f"{{{','.join([str(node) for node in cmd.t_domain])}}}"
+                    t_domain_str = f"{{{','.join(str(node) for node in cmd.t_domain)}}}"
                 out = [t_domain_str, *out]
             command_domain = cmd.s_domain
         if command_domain:
             if output == OutputFormat.LaTeX:
-                domain_str = f"^{{{','.join([str(node) for node in command_domain])}}}"
+                domain_str = f"^{{{','.join(str(node) for node in command_domain)}}}"
             elif output == OutputFormat.Unicode:
                 domain_superscripts = [str(node).translate(SUPERSCRIPTS) for node in command_domain]
                 domain_str = "⁺".join(domain_superscripts)
             else:
-                domain_str = f"{{{','.join([str(node) for node in command_domain])}}}"
+                domain_str = f"{{{','.join(str(node) for node in command_domain)}}}"
             out.append(domain_str)
     return f"{''.join(out)}"
 
