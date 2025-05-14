@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+## [0.3.1] - 2025-04-21
+
+### Added
+
 - Parameterized circuits and patterns: angles in instructions and
   measures can be expressions with parameters created with
   `parameter.Placeholder` class. Parameterized circuits can be
@@ -27,8 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - #254: Fix examples in `opengraph` and `pyzx` modules
+- #264: Fixed type warnings
 
 ### Changed
+
+- #262: Simplify `graphsim` and deprecated `rustworkx` support for simplicity.
 
 ## [0.3.0] - 2025-02-04
 
