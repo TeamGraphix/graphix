@@ -45,41 +45,49 @@ line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-extend-select = [
-  "A",
-  "B",
-  "C4",
-  "D",
-  "FA",
-  "FLY",
-  "FURB",
-  "ICN",
-  "INT",
-  "ISC",
-  "I",
-  "NPY",
-  "N",
-  "PERF",
-  "PGH",
-  "PIE",
-  "PLE",
-  "PLR",
-  "PLW",
-  "PYI",
-  "RET",
-  "RUF",
-  "SIM",
-  "TC",
-  "TID",
-  "TID",
-  "UP",
-  "W",
-  "YTT",
-]
+preview = true
+select = ["ALL"]
 extend-ignore = [
+  "C90",     # Complexity
   "E74",     # Ambiguous name
+  "ERA",     # Commmented out code
+  "FBT",     # Boolean positional arguments
+  "FIX",     # Fixme
   "PLR091",  # Too many XXX
+  "PLR0904", # Too many public methods
   "PLR2004", # Magic vavlue comparison
+  "S101",    # assert
+  "T20",     # print
+  "TD",      # Todo
+
+  # Tentative ignores
+  "ANN",     # Missing annotations
+  "CPY",     # Copyright
+  "DOC",     # Docstring
+  "E501",    # Line too long
+  "EM10",    # Raise string
+  "PLC0415", # Import not at the top level
+  "PLR1702", # Too many nests
+  "PLW1641", # __hash__ missing
+  "PT011",   # pytest raises too broad
+  "SLF001",  # Private access
+  "TRY003",  # Raise vanilla args
+
+  # Conflicts with ruff format
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "ISC001",
+  "ISC002",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "W191",
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
 allowed-confusables = ["α"]
@@ -88,19 +96,21 @@ allowed-confusables = ["α"]
 docstring-code-format = true
 
 [tool.ruff.lint.extend-per-file-ignores]
-"__init__.py" = [
-  "F401", # Unused import
-]
 "benchmarks/*.py" = [
-  "D", # Benchmarks follow Sphinx doc conventions
+  "D",   # Benchmarks follow Sphinx doc conventions
+  "INP", # Missing __init__.py
 ]
 "examples/*.py" = [
+  "ARG",  # Unused arguments
   "B018", # Useless expression
   "D",    # Examples follow Sphinx doc conventions
   "E402", # Import not at top of file
+  "INP",  # Missing __init__.py
 ]
 "tests/*.py" = [
-  "D10", # Allow undocumented items
+  "D10",     # Allow undocumented items
+  "PLC2701", # Allow private imports
+  "PLR6301", # self not used
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -113,6 +123,7 @@ ban-relative-imports = "all"
 required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]
+addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks"]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
 

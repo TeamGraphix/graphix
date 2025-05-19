@@ -78,7 +78,10 @@ class OpenGraph:
         if set(self.measurements.keys()) != set(other.measurements.keys()):
             return False
 
-        return all(m.isclose(other.measurements[node]) for node, m in self.measurements.items())
+        return all(
+            m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
+            for node, m in self.measurements.items()
+        )
 
     @classmethod
     def from_pattern(cls, pattern: Pattern) -> OpenGraph:

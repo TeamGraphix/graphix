@@ -131,10 +131,7 @@ class ComplexUnit(Enum):
         """Return the ComplexUnit instance if the value is compatible, None otherwise."""
         if isinstance(value, ComplexUnit):
             return value
-        try:
-            value = complex(value)
-        except Exception:
-            return None
+        value = complex(value)
         if value == 1:
             return ComplexUnit.ONE
         if value == -1:
@@ -178,7 +175,10 @@ class ComplexUnit(Enum):
         """Multiply the complex unit with a number."""
         if isinstance(other, ComplexUnit):
             return ComplexUnit((self.value + other.value) % 4)
-        if other_ := ComplexUnit.try_from(other):
+        if isinstance(
+            other,
+            (SupportsComplex, SupportsFloat, SupportsIndex, complex),
+        ) and (other_ := ComplexUnit.try_from(other)):
             return self.__mul__(other_)
         return NotImplemented
 

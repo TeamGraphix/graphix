@@ -81,7 +81,8 @@ class QNN:
         self.obs = reduce(np.kron, operator)
         self.cost_values = []  # to store cost values during optimization
 
-    def rotation_layer(self, circuit, qubit, params, input_params):
+    @staticmethod
+    def rotation_layer(circuit, qubit, params, input_params):
         """
         Apply otation gates around the x, y, and z axes to a specified qubit in a
         quantum circuit.
@@ -97,7 +98,8 @@ class QNN:
         circuit.ry(qubit, z[1])
         circuit.rz(qubit, z[2])
 
-    def entangling_layer(self, circuit, n_qubits):
+    @staticmethod
+    def entangling_layer(circuit, n_qubits):
         """
         Linear entanglement between qubits in a given circuit.
 

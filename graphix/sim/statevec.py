@@ -310,7 +310,7 @@ class Statevec(State):
     def normalize(self) -> None:
         """Normalize the state in-place."""
         norm = _get_statevec_norm(self.psi)
-        self.psi = self.psi / norm
+        self.psi /= norm
 
     def flatten(self) -> npt.NDArray:
         """Return flattened statevector."""

@@ -25,7 +25,7 @@ def tests(session: Session) -> None:
 def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
     session.install("-e", ".[dev]")
-    ## If you need a specific branch:
+    # If you need a specific branch:
     # session.run("git", "clone", "-b", "branch-name", "https://github.com/TeamGraphix/graphix-symbolic")
     session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
     session.cd("graphix-symbolic")
