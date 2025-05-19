@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -45,10 +46,23 @@ jobs:
           python-version: "3.12"
 
       - name: Run language-agnostic linters
-        uses: pre-commit/action@v3.0.1
+        run: |
+          pip install pre-commit
+
+          # Non-fixable
+          pre-commit run -a check-case-conflict
+          pre-commit run -a check-yaml
+
+          # Fixable
+          pre-commit run -a end-of-file-fixer || true
+          pre-commit run -a fix-byte-order-marker || true
+          pre-commit run -a mixed-line-ending || true
+          pre-commit run -a trailing-whitespace || true
 
       - uses: actions/setup-node@v4
 
       - run: |
           corepack enable pnpm
-          pnpm dlx prettier --check .
+          pnpm dlx prettier --write .
+
+      - uses: reviewdog/action-suggester@v1
