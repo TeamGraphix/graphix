@@ -31,7 +31,7 @@ the :class:`~graphix.pattern.Pattern` object contains the sequence of commands a
 Let us print the pattern (command sequence) that we generated,
 
 >>> pattern
-Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), X(1, {0})])
+Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), X(1, {0})], output_nodes=[1])
 
 The command sequence represents the following sequence:
 
@@ -85,7 +85,7 @@ As a more complex example than above, we show measurement patterns and graph sta
 +------------------------------------------------------------------------------+
 | >>> cnot_pattern                                                             |
 | Pattern(cmds=[N(0), N(1), N(2), N(3), E((1, 2)), E((0, 2)), E((2, 3)), M(1), |
-|     M(2), X(3, {2}), Z(3, {1}), Z(0, {1})])                                  |
+|     M(2), X(3, {2}), Z(3, {1}), Z(0, {1})], output_nodes=[0, 3])             |
 +------------------------------------------------------------------------------+
 | **general rotation (an example with Euler angles 0.2pi, 0.15pi and 0.1 pi)** |
 +------------------------------------------------------------------------------+
@@ -98,7 +98,7 @@ As a more complex example than above, we show measurement patterns and graph sta
 |>>> euler_rot_pattern                                                         |
 | Pattern(cmds=[N(0), N(1), N(2), N(3), N(4), M(0, angle=-0.2),                |
 |     M(1, angle=-0.15, s_domain={0}), M(2, angle=-0.1, s_domain={1}),         |
-|     M(3), Z(4, domain={0, 2}), X(4, domain={1, 3})])                         |
+|     M(3), Z(4, domain={0, 2}), X(4, domain={1, 3})], output_nodes=[4])       |
 +------------------------------------------------------------------------------+
 
 
@@ -124,7 +124,7 @@ As an example, let us prepare a pattern to rotate two qubits in :math:`|+\rangle
 This produces a rather long and complicated command sequence.
 
 >>> pattern
-Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), E((0, 2)), E((2, 3)), M(0,angle=-0.031569000286694626), M(2), X(3, domain={2}), Z(3, domain={0}), N(4), N(5), E((1, 4)), E((4, 5)), M(1,angle=-0.023050077614447762), M(4), X(5, domain={4}), Z(5, domain={1}), N(6), N(7), E((5, 6)), E((3, 6)), E((6, 7)), M(5), M(6), X(7, domain={6}), Z(7, domain={5}), Z(3, domain={5})])
+Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), E((0, 2)), E((2, 3)), M(0, angle=-0.08131311068764493), M(2), X(3, {2}), Z(3, {0}), N(4), N(5), E((1, 4)), E((4, 5)), M(1, angle=-0.2242107876075538), M(4), X(5, {4}), Z(5, {1}), N(6), N(7), E((5, 6)), E((3, 6)), E((6, 7)), M(5), M(6), X(7, {6}), Z(7, {5}), Z(3, {5})], output_nodes=[3, 7])
 
 .. figure:: ./../imgs/pattern_visualization_2.png
     :scale: 60 %
@@ -145,7 +145,7 @@ These can be called with :meth:`~graphix.pattern.Pattern.standardize` and :meth:
 >>> pattern.standardize()
 >>> pattern.shift_signals()
 >>> pattern
-Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), N(4), N(5), N(6), N(7), E((0, 2)), E((2, 3)), E((1, 4)), E((4, 5)), E((5, 6)), E((3, 6)), E((6, 7)), M(0, angle=-0.22152331776994327), M(2), M(1, angle=-0.18577010991028864), M(4), M(5, s_domain={4}), M(6), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})])
+Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), N(4), N(5), N(6), N(7), E((0, 2)), E((2, 3)), E((1, 4)), E((4, 5)), E((5, 6)), E((3, 6)), E((6, 7)), M(0, angle=-0.22152331776994327), M(2), M(1, angle=-0.18577010991028864), M(4), M(5, s_domain={4}), M(6), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 .. figure:: ./../imgs/pattern_visualization_3.png
     :scale: 60 %
@@ -183,7 +183,7 @@ We get an updated measurement pattern without Pauli measurements as follows:
 
 >>> pattern.perform_pauli_measurements()
 >>> pattern
-Pattern(input_nodes=[0, 1], cmds=[N(3), N(7), E((0, 3)), E((1, 3)), E((1, 7)), M(0, Plane.YZ, 0.2907266109187514), M(1, Plane.YZ, 0.01258854060311348), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})])
+Pattern(input_nodes=[0, 1], cmds=[N(3), N(7), E((0, 3)), E((1, 3)), E((1, 7)), M(0, Plane.YZ, 0.2907266109187514), M(1, Plane.YZ, 0.01258854060311348), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 
 Notice that all measurements with angle=0 (Pauli X measurements) disappeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
@@ -213,7 +213,7 @@ We can simply call :meth:`~graphix.pattern.Pattern.minimize_space()` to reduce t
 
 >>> pattern.minimize_space()
 >>> pattern
-Pattern(input_nodes=[0, 1], cmds=[N(3), E((0, 3)), M(0, Plane.YZ, 0.11120090987081546), E((1, 3)), N(7), E((1, 7)), M(1, Plane.YZ, 0.230565199664617), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})])
+Pattern(input_nodes=[0, 1], cmds=[N(3), E((0, 3)), M(0, Plane.YZ, 0.11120090987081546), E((1, 3)), N(7), E((1, 7)), M(1, Plane.YZ, 0.230565199664617), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 
 With the original measurement pattern, the simulation should have proceeded as follows, with maximum of four qubits on the memory.
