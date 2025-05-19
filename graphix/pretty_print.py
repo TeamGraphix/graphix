@@ -68,7 +68,7 @@ def angle_to_str(angle: float, output: OutputFormat, max_denominator: int = 1000
         pi = r"\pi"
 
         def mkfrac(num: str, den: str) -> str:
-            return f"\\frac{{{num}}}{{{den}}}"
+            return rf"\frac{{{num}}}{{{den}}}"
     else:
         pi = "π" if output == OutputFormat.Unicode else "pi"
 
