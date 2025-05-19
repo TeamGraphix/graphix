@@ -17,7 +17,7 @@ from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
-    from numpy.random import Generator
+    from numpy.random import PCG64
 
     from graphix.parameter import Parameter
 
@@ -149,19 +149,21 @@ def test_density_matrix_xreplace() -> None:
     assert np.allclose(dm.xreplace({alpha: 1, beta: 2}).rho, np.array([[1, 2], [1, 2]]))
 
 
+@pytest.mark.parametrize("jumps", range(1, 11))
 @pytest.mark.parametrize("use_xreplace", [False, True])
-def test_random_circuit_with_parameters(fx_rng: Generator, use_xreplace: bool) -> None:
+def test_random_circuit_with_parameters(fx_bg: PCG64, jumps: int, use_xreplace: bool) -> None:
+    rng = np.random.Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 5
     alpha = Placeholder("alpha")
     beta = Placeholder("beta")
-    circuit = rand_circuit(nqubits, depth, fx_rng, parameters=[alpha, beta])
+    circuit = rand_circuit(nqubits, depth, rng, parameters=[alpha, beta])
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
-    assignment: dict[Parameter, float] = {alpha: fx_rng.uniform(high=2), beta: fx_rng.uniform(high=2)}
+    assignment: dict[Parameter, float] = {alpha: rng.uniform(high=2), beta: rng.uniform(high=2)}
     if use_xreplace:
         state = circuit.xreplace(assignment).simulate_statevector().statevec
         state_mbqc = pattern.xreplace(assignment).simulate_pattern()
