@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Container
 
     # these live only in the stub package, not at runtime
+    from _typeshed import DataclassInstance
     from graphix.command import Node
     from graphix.pattern import Pattern
 
@@ -234,13 +235,12 @@ class DataclassMixin:
     Use with `@dataclass(repr=False)` on the target class.
     """
 
-    def __repr__(self) -> str:
+    def __repr__(self: DataclassInstance) -> str:
         """Return a representation string for a dataclass."""
         cls_name = type(self).__name__
         arguments = []
         saw_omitted = False
-        # Mypy will see `self` as a non-dataclass, so ignore arg-type here
-        for field in dataclasses.fields(self):  # type: ignore[arg-type]
+        for field in dataclasses.fields(self):
             value = getattr(self, field.name)
             if field.default is not MISSING or field.default_factory is not MISSING:
                 default = field.default_factory() if field.default_factory is not MISSING else field.default
