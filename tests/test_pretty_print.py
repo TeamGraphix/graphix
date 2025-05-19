@@ -25,7 +25,7 @@ def j_alpha() -> Pattern:
 
 def test_pattern_repr_j_alpha() -> None:
     p = j_alpha()
-    assert repr(p) == "Pattern(input_nodes=[1], cmds=[N(2), E((1, 2)), M(1), X(2, {1})])"
+    assert repr(p) == "Pattern(input_nodes=[1], cmds=[N(2), E((1, 2)), M(1), X(2, {1})], output_nodes=[2])"
 
 
 def test_pattern_pretty_print_j_alpha() -> None:

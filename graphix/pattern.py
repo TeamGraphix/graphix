@@ -83,30 +83,41 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes: list[int] | None = None, cmds: Iterable[Command] | None = None) -> None:
+    def __init__(
+        self,
+        input_nodes: Iterable[int] | None = None,
+        cmds: Iterable[Command] | None = None,
+        output_nodes: Iterable[int] | None = None,
+    ) -> None:
         """
         Construct a pattern.
 
         Parameters
         ----------
-        input_nodes : list[int] | None
+        input_nodes : Iterable[int] | None
             Optional. List of input qubits.
-        cmds : list[Command] | None
+        cmds : Iterable[Command] | None
             Optional. List of initial commands.
+        output_nodes : Iterable[int] | None
+            Optional. List of output qubits.
         """
-        if input_nodes is None:
-            input_nodes = []
         self.results = {}  # measurement results from the graph state simulator
-        self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
-        self.__n_node = len(input_nodes)  # total number of nodes in the graph state
+        if input_nodes is None:
+            self.__input_nodes = []
+        else:
+            self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
+        self.__n_node = len(self.__input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq: list[Command] = []
-        # output nodes are initially input nodes, since none are measured yet
-        self.__output_nodes = list(input_nodes)
+        # output nodes are initially a copy input nodes, since none are measured yet
+        self.__output_nodes = list(self.__input_nodes)
 
         if cmds is not None:
             self.extend(cmds)
+
+        if output_nodes is not None:
+            self.reorder_output_nodes(output_nodes)
 
     def add(self, cmd: Command) -> None:
         """Add command to the end of the pattern.
@@ -180,36 +191,39 @@ class Pattern:
         """Count of nodes that are either `input_nodes` or prepared with `N` commands."""
         return self.__n_node
 
-    def reorder_output_nodes(self, output_nodes: list[int]):
+    def reorder_output_nodes(self, output_nodes: Iterable[int]) -> None:
         """Arrange the order of output_nodes.
 
         Parameters
         ----------
-        output_nodes: list of int
+        output_nodes: iterable of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
         output_nodes = list(output_nodes)  # make our own copy (allow iterators to be passed)
         assert_permutation(self.__output_nodes, output_nodes)
         self.__output_nodes = output_nodes
 
-    def reorder_input_nodes(self, input_nodes: list[int]):
+    def reorder_input_nodes(self, input_nodes: Iterable[int]):
         """Arrange the order of input_nodes.
 
         Parameters
         ----------
-        input_nodes: list of int
+        input_nodes: iterable of int
             input nodes order determined by user. each index corresponds to that of logical qubits.
         """
+        input_nodes = list(input_nodes)  # make our own copy (allow iterators to be passed)
         assert_permutation(self.__input_nodes, input_nodes)
-        self.__input_nodes = list(input_nodes)
+        self.__input_nodes = input_nodes
 
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
         arguments = []
-        if self.input_nodes:
-            arguments.append(f"input_nodes={self.input_nodes}")
+        if self.__input_nodes:
+            arguments.append(f"input_nodes={self.__input_nodes}")
         if self.__seq:
             arguments.append(f"cmds={self.__seq}")
+        if self.__output_nodes:
+            arguments.append(f"output_nodes={self.__output_nodes}")
         return f"Pattern({', '.join(arguments)})"
 
     def __str__(self) -> str:
@@ -220,8 +234,8 @@ class Pattern:
         """Return `True` if the two patterns are equal, `False` otherwise."""
         return (
             self.__seq == other.__seq
-            and self.input_nodes == other.input_nodes
-            and self.output_nodes == other.output_nodes
+            and self.__input_nodes == other.__input_nodes
+            and self.__output_nodes == other.__output_nodes
         )
 
     def to_ascii(
