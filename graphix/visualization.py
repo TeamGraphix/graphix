@@ -1171,7 +1171,7 @@ class GraphVisualizer:
     @staticmethod
     def _control_point(start, end, node_pos, distance=0.6):
         """Generate a control point to bend the edge around a node."""
-        edge_vector = np.fromiter((e - s for s, e in zip(start, end)), dtype=np.float64)
+        edge_vector = np.asarray(end, dtype=np.float64) - np.asarray(start, dtype=np.float64)
         # Rotate the edge vector 90 degrees or -90 degrees according to the node position
         cross = np.cross(edge_vector, np.array(node_pos) - np.array(start))
         if cross > 0:
