@@ -5,8 +5,8 @@ import random
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
-import pytest
 import numpy as np
+import pytest
 from numpy.random import PCG64, Generator
 
 from graphix.opengraph import OpenGraph
@@ -78,6 +78,7 @@ def test_random_clifford_t() -> None:
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
+
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 5
