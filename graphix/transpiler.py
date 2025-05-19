@@ -83,7 +83,7 @@ class Circuit:
         self.width = width
         self.instruction: list[Instruction] = []
         self.active_qubits = set(range(width))
-        if instr:
+        if instr is not None:
             self.extend(instr)
 
     def add(self, instr: Instruction) -> None:

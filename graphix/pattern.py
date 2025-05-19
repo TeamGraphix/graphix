@@ -105,7 +105,7 @@ class Pattern:
         # output nodes are initially input nodes, since none are measured yet
         self.__output_nodes = list(input_nodes)
 
-        if cmds:
+        if cmds is not None:
             self.extend(cmds)
 
     def add(self, cmd: Command) -> None:
