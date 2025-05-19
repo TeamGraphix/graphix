@@ -211,7 +211,7 @@ def pattern_to_str(
     """
     separator = r"\," if output == OutputFormat.LaTeX else " "
     command_list = list(pattern)
-    if target:
+    if target is not None:
         command_list = [command for command in command_list if command.kind in target]
     if not left_to_right:
         command_list.reverse()
