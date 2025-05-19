@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     # these live only in the stub package, not at runtime
     from _typeshed import DataclassInstance
+
     from graphix.command import Node
     from graphix.pattern import Pattern
 
