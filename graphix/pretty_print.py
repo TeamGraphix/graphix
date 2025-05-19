@@ -278,6 +278,7 @@ class EnumMixin:
         # Equivalently (as of Python 3.12), `str(value)` also produces
         # "ClassName.MEMBER_NAME", but we build it explicitly here for
         # clarity.
-        # Mypy ignores that the instance is a field and hence has a name.
-        name = self.name  # type: ignore[attr-defined]
-        return f"{self.__class__.__name__}.{name}"
+        if not isinstance(self, Enum):
+            msg = "EnumMixin can only be used with Enum classes."
+            raise TypeError(msg)
+        return f"{self.__class__.__name__}.{self.name}"
