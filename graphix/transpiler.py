@@ -69,7 +69,7 @@ class Circuit:
         List containing the gate sequence applied.
     """
 
-    def __init__(self, width: int, instr: Iterable[Instruction] | None = None):
+    def __init__(self, width: int, instr: Iterable[Instruction] | None = None) -> None:
         """
         Construct a circuit.
 
