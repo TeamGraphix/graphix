@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex,
 
 import typing_extensions
 
-from graphix import pretty_print
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
+from graphix.pretty_print import EnumPrettyPrintMixin
 
 if TYPE_CHECKING:
     import numpy as np
@@ -29,7 +29,7 @@ else:  # pragma: no cover
     SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
 
 
-class Sign(pretty_print.EnumMixin, Enum):
+class Sign(EnumPrettyPrintMixin, Enum):
     """Sign, plus or minus."""
 
     PLUS = 1
@@ -112,7 +112,7 @@ class Sign(pretty_print.EnumMixin, Enum):
         return complex(self.value)
 
 
-class ComplexUnit(pretty_print.EnumMixin, Enum):
+class ComplexUnit(EnumPrettyPrintMixin, Enum):
     """
     Complex unit: 1, -1, j, -j.
 
@@ -214,7 +214,7 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
-class Axis(pretty_print.EnumMixin, Enum):
+class Axis(EnumPrettyPrintMixin, Enum):
     """Axis: `X`, `Y` or `Z`."""
 
     X = enum.auto()
@@ -233,7 +233,7 @@ class Axis(pretty_print.EnumMixin, Enum):
         typing_extensions.assert_never(self)
 
 
-class Plane(pretty_print.EnumMixin, Enum):
+class Plane(EnumPrettyPrintMixin, Enum):
     # TODO: Refactor using match
     """Plane: `XY`, `YZ` or `XZ`."""
 

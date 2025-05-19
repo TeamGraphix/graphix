@@ -225,7 +225,7 @@ def pattern_to_str(
     return result
 
 
-class DataclassMixin:
+class DataclassPrettyPrintMixin:
     """
     Mixin for a concise, eval-friendly `repr` of dataclasses.
 
@@ -259,7 +259,7 @@ class DataclassMixin:
         return f"{cls_name}({arguments_str})"
 
 
-class EnumMixin:
+class EnumPrettyPrintMixin:
     """
     Mixin to provide a concise, eval-friendly repr for Enum members.
 

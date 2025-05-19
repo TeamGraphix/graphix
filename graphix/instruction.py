@@ -9,11 +9,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import ClassVar, Literal, SupportsFloat, Union
 
-from graphix import pretty_print, utils
+from graphix import utils
 from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+from graphix.pretty_print import DataclassPrettyPrintMixin, OutputFormat, angle_to_str
 
 
 def repr_angle(angle: ExpressionOrFloat) -> str:
@@ -29,7 +30,7 @@ def repr_angle(angle: ExpressionOrFloat) -> str:
 
     # Convert to float, express in π units, and format in ASCII/plain mode
     pi_units = float(angle) / math.pi
-    return pretty_print.angle_to_str(pi_units, pretty_print.OutputFormat.ASCII)
+    return angle_to_str(pi_units, OutputFormat.ASCII)
 
 
 class InstructionKind(Enum):
@@ -63,7 +64,7 @@ class _KindChecker:
 
 
 @dataclass(repr=False)
-class CCX(_KindChecker, pretty_print.DataclassMixin):
+class CCX(_KindChecker, DataclassPrettyPrintMixin):
     """Toffoli circuit instruction."""
 
     target: int
@@ -72,7 +73,7 @@ class CCX(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class RZZ(_KindChecker, pretty_print.DataclassMixin):
+class RZZ(_KindChecker, DataclassPrettyPrintMixin):
     """RZZ circuit instruction."""
 
     target: int
@@ -85,7 +86,7 @@ class RZZ(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class CNOT(_KindChecker, pretty_print.DataclassMixin):
+class CNOT(_KindChecker, DataclassPrettyPrintMixin):
     """CNOT circuit instruction."""
 
     target: int
@@ -94,7 +95,7 @@ class CNOT(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class SWAP(_KindChecker, pretty_print.DataclassMixin):
+class SWAP(_KindChecker, DataclassPrettyPrintMixin):
     """SWAP circuit instruction."""
 
     targets: tuple[int, int]
@@ -102,7 +103,7 @@ class SWAP(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class H(_KindChecker, pretty_print.DataclassMixin):
+class H(_KindChecker, DataclassPrettyPrintMixin):
     """H circuit instruction."""
 
     target: int
@@ -110,7 +111,7 @@ class H(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class S(_KindChecker, pretty_print.DataclassMixin):
+class S(_KindChecker, DataclassPrettyPrintMixin):
     """S circuit instruction."""
 
     target: int
@@ -118,7 +119,7 @@ class S(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class X(_KindChecker, pretty_print.DataclassMixin):
+class X(_KindChecker, DataclassPrettyPrintMixin):
     """X circuit instruction."""
 
     target: int
@@ -126,7 +127,7 @@ class X(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class Y(_KindChecker, pretty_print.DataclassMixin):
+class Y(_KindChecker, DataclassPrettyPrintMixin):
     """Y circuit instruction."""
 
     target: int
@@ -134,7 +135,7 @@ class Y(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class Z(_KindChecker, pretty_print.DataclassMixin):
+class Z(_KindChecker, DataclassPrettyPrintMixin):
     """Z circuit instruction."""
 
     target: int
@@ -142,7 +143,7 @@ class Z(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class I(_KindChecker, pretty_print.DataclassMixin):
+class I(_KindChecker, DataclassPrettyPrintMixin):
     """I circuit instruction."""
 
     target: int
@@ -150,7 +151,7 @@ class I(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class M(_KindChecker, pretty_print.DataclassMixin):
+class M(_KindChecker, DataclassPrettyPrintMixin):
     """M circuit instruction."""
 
     target: int
@@ -160,7 +161,7 @@ class M(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class RX(_KindChecker, pretty_print.DataclassMixin):
+class RX(_KindChecker, DataclassPrettyPrintMixin):
     """X rotation circuit instruction."""
 
     target: int
@@ -170,7 +171,7 @@ class RX(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class RY(_KindChecker, pretty_print.DataclassMixin):
+class RY(_KindChecker, DataclassPrettyPrintMixin):
     """Y rotation circuit instruction."""
 
     target: int
@@ -180,7 +181,7 @@ class RY(_KindChecker, pretty_print.DataclassMixin):
 
 
 @dataclass(repr=False)
-class RZ(_KindChecker, pretty_print.DataclassMixin):
+class RZ(_KindChecker, DataclassPrettyPrintMixin):
     """Z rotation circuit instruction."""
 
     target: int

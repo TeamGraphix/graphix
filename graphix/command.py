@@ -10,7 +10,6 @@ from typing import ClassVar, Literal, Union
 
 import numpy as np
 
-import graphix.pretty_print
 from graphix import utils
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane, Sign
@@ -19,6 +18,7 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
+from graphix.pretty_print import DataclassPrettyPrintMixin
 from graphix.states import BasicStates, State
 
 Node = int
@@ -46,7 +46,7 @@ class _KindChecker:
 
 
 @dataclasses.dataclass(repr=False)
-class N(_KindChecker, graphix.pretty_print.DataclassMixin):
+class N(_KindChecker, DataclassPrettyPrintMixin):
     """Preparation command."""
 
     node: Node
@@ -55,7 +55,7 @@ class N(_KindChecker, graphix.pretty_print.DataclassMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class M(_KindChecker, graphix.pretty_print.DataclassMixin):
+class M(_KindChecker, DataclassPrettyPrintMixin):
     """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
 
     node: Node
@@ -82,7 +82,7 @@ class M(_KindChecker, graphix.pretty_print.DataclassMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class E(_KindChecker, graphix.pretty_print.DataclassMixin):
+class E(_KindChecker, DataclassPrettyPrintMixin):
     """Entanglement command."""
 
     nodes: tuple[Node, Node]
@@ -90,7 +90,7 @@ class E(_KindChecker, graphix.pretty_print.DataclassMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class C(_KindChecker, graphix.pretty_print.DataclassMixin):
+class C(_KindChecker, DataclassPrettyPrintMixin):
     """Clifford command."""
 
     node: Node
@@ -99,7 +99,7 @@ class C(_KindChecker, graphix.pretty_print.DataclassMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class X(_KindChecker, graphix.pretty_print.DataclassMixin):
+class X(_KindChecker, DataclassPrettyPrintMixin):
     """X correction command."""
 
     node: Node
@@ -108,7 +108,7 @@ class X(_KindChecker, graphix.pretty_print.DataclassMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class Z(_KindChecker, graphix.pretty_print.DataclassMixin):
+class Z(_KindChecker, DataclassPrettyPrintMixin):
     """Z correction command."""
 
     node: Node
@@ -117,7 +117,7 @@ class Z(_KindChecker, graphix.pretty_print.DataclassMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class S(_KindChecker, graphix.pretty_print.DataclassMixin):
+class S(_KindChecker, DataclassPrettyPrintMixin):
     """S command."""
 
     node: Node
