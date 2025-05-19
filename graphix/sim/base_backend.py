@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from graphix import command
     from graphix.fundamentals import Plane
     from graphix.measurements import Measurement
+    from graphix.noise_models.noise_model import Noise
+    from graphix.sim.density_matrix import Data
     from graphix.simulator import MeasureMethod
 
 
@@ -185,7 +187,7 @@ class Backend:
         """Return whether the backend supports symbolic computation."""
         return self.__symbolic
 
-    def add_nodes(self, nodes, data=BasicStates.PLUS) -> None:
+    def add_nodes(self, nodes, data: Data = BasicStates.PLUS) -> None:
         """Add new qubit(s) to statevector in argument and assign the corresponding node number to list self.node_index.
 
         Parameters
@@ -229,7 +231,7 @@ class Backend:
         self.state.remove_qubit(loc)
         return result
 
-    def correct_byproduct(self, cmd: command.M, measure_method: MeasureMethod) -> None:
+    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
         if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
             if cmd.kind == CommandKind.X:
@@ -247,6 +249,10 @@ class Backend:
         """Apply single-qubit Clifford gate, specified by vop index specified in graphix.clifford.CLIFFORD."""
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
+
+    def apply_noise(self, nodes: list[int], noise: Noise) -> None:
+        """Apply noise."""
+        raise ValueError("Noise not supported by this backend.")
 
     def sort_qubits(self, output_nodes: Iterable[int]) -> None:
         """Sort the qubit order in internal statevector."""
