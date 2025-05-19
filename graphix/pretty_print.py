@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import math
+import string
 from dataclasses import MISSING
 from enum import Enum
 from fractions import Fraction
@@ -91,8 +92,8 @@ def domain_to_str(domain: set[Node]) -> str:
     return f"{{{','.join(str(node) for node in domain)}}}"
 
 
-SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
-SUPERSCRIPTS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+SUBSCRIPTS = str.maketrans(string.digits, "₀₁₂₃₄₅₆₇₈₉")
+SUPERSCRIPTS = str.maketrans(string.digits, "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
 def command_to_str(cmd: command.Command, output: OutputFormat) -> str:

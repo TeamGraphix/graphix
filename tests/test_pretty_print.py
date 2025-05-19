@@ -84,7 +84,4 @@ def test_pattern_pretty_print_example() -> None:
 def test_pattern_pretty_print_random(fx_bg: PCG64, jumps: int, output: OutputFormat) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     rand_pat = rand_circuit(5, 5, rng=rng).transpile().pattern
-    try:
-        pattern_to_str(rand_pat, output)
-    except Exception as e:
-        pytest.fail(str(e))
+    pattern_to_str(rand_pat, output)
