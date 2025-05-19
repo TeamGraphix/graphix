@@ -95,7 +95,7 @@ class Circuit:
         elif instr.kind == InstructionKind.CNOT:
             self.cnot(instr.control, instr.target)
         elif instr.kind == InstructionKind.SWAP:
-            self.swap(instr.targets[0], self.targets[1])
+            self.swap(instr.targets[0], instr.targets[1])
         elif instr.kind == InstructionKind.H:
             self.h(instr.target)
         elif instr.kind == InstructionKind.S:

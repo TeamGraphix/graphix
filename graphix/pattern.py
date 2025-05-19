@@ -1785,7 +1785,8 @@ def cmd_to_qasm3(cmd):
 def assert_permutation(original: list[int], user: list[int]) -> None:
     """Check that the provided `user` node list is a permutation from `original`."""
     node_set = set(user)
-    assert node_set == set(original), f"{node_set} != {set(original)}"
+    if node_set != set(original):
+        raise ValueError(f"{node_set} != {set(original)}")
     for node in user:
         if node in node_set:
             node_set.remove(node)
