@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
+from graphix.transpiler import Circuit
 from graphix.opengraph import OpenGraph
 from graphix.random_objects import rand_circuit
 
@@ -95,3 +96,22 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     pattern2.minimize_space()
     state2 = pattern2.simulate_pattern()
     assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+
+
+def test_simple_circuit() -> None:
+    import pyzx as zx
+    from graphix.pyzx import from_pyzx_graph
+    circuit = Circuit(1)
+    circuit.rz(0, np.pi / 4)
+    pattern = circuit.transpile().pattern
+    circ = zx.qasm("qreg q[1]; rz(pi/4) q[0];")
+    g = circ.to_graph()
+    print(g)
+    og = from_pyzx_graph(g)
+    print(og)
+    pattern_zx = og.to_pattern()
+    print(list(pattern))
+    print(list(pattern_zx))
+    state = pattern.simulate_pattern()
+    state_zx = pattern_zx.simulate_pattern()
+    assert np.abs(np.dot(state_zx.flatten().conjugate(), state.flatten())) == pytest.approx(1)
