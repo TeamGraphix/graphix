@@ -74,7 +74,7 @@ def generate_from_graph(
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-    if f:
+    if f is not None:
         # flow found
         depth, layers = get_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
@@ -98,7 +98,7 @@ def generate_from_graph(
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-        if g:
+        if g is not None:
             # gflow found
             depth, layers = get_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
