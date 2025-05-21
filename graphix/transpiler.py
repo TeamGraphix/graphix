@@ -11,10 +11,12 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Callable
 
 import numpy as np
+from typing_extensions import assert_never
 
 from graphix import command, instruction, parameter
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
+from graphix.instruction import Instruction, InstructionKind
 from graphix.ops import Ops
 from graphix.parameter import ExpressionOrSupportsFloat, Parameter
 from graphix.pattern import Pattern
@@ -22,7 +24,7 @@ from graphix.sim import base_backend
 from graphix.sim.statevec import Data, Statevec
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
 
 @dataclasses.dataclass
@@ -67,7 +69,7 @@ class Circuit:
         List containing the gate sequence applied.
     """
 
-    def __init__(self, width: int):
+    def __init__(self, width: int, instr: Iterable[Instruction] | None = None) -> None:
         """
         Construct a circuit.
 
@@ -75,10 +77,59 @@ class Circuit:
         ----------
         width : int
             number of logical qubits for the gate network
+        instr : list[instruction.Instruction] | None
+            Optional. List of initial instructions.
         """
         self.width = width
-        self.instruction: list[instruction.Instruction] = []
+        self.instruction: list[Instruction] = []
         self.active_qubits = set(range(width))
+        if instr is not None:
+            self.extend(instr)
+
+    def add(self, instr: Instruction) -> None:
+        """Add an instruction to the circuit."""
+        if instr.kind == InstructionKind.CCX:
+            self.ccx(instr.controls[0], instr.controls[1], instr.target)
+        elif instr.kind == InstructionKind.RZZ:
+            self.rzz(instr.control, instr.target, instr.angle)
+        elif instr.kind == InstructionKind.CNOT:
+            self.cnot(instr.control, instr.target)
+        elif instr.kind == InstructionKind.SWAP:
+            self.swap(instr.targets[0], instr.targets[1])
+        elif instr.kind == InstructionKind.H:
+            self.h(instr.target)
+        elif instr.kind == InstructionKind.S:
+            self.s(instr.target)
+        elif instr.kind == InstructionKind.X:
+            self.x(instr.target)
+        elif instr.kind == InstructionKind.Y:
+            self.y(instr.target)
+        elif instr.kind == InstructionKind.Z:
+            self.z(instr.target)
+        elif instr.kind == InstructionKind.I:
+            self.i(instr.target)
+        elif instr.kind == InstructionKind.M:
+            self.m(instr.target, instr.plane, instr.angle)
+        elif instr.kind == InstructionKind.RX:
+            self.rx(instr.target, instr.angle)
+        elif instr.kind == InstructionKind.RY:
+            self.ry(instr.target, instr.angle)
+        elif instr.kind == InstructionKind.RZ:
+            self.rz(instr.target, instr.angle)
+        # Use of `==` here for mypy
+        elif instr.kind == InstructionKind._XC or instr.kind == InstructionKind._ZC:  # noqa: PLR1714
+            raise ValueError(f"Unsupported instruction: {instr}")
+        else:
+            assert_never(instr.kind)
+
+    def extend(self, instrs: Iterable[Instruction]) -> None:
+        """Add instructions to the circuit."""
+        for instr in instrs:
+            self.add(instr)
+
+    def __repr__(self) -> str:
+        """Return a representation of the Circuit."""
+        return f"Circuit(width={self.width}, instr={self.instruction})"
 
     def cnot(self, control: int, target: int):
         """Apply a CNOT gate.

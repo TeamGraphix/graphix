@@ -144,6 +144,7 @@ files = [
   "graphix/ops.py",
   "graphix/parameter.py",
   "graphix/pauli.py",
+  "graphix/pretty_print.py",
   "graphix/pyzx.py",
   "graphix/rng.py",
   "graphix/states.py",
@@ -162,6 +163,7 @@ files = [
   "tests/test_kraus.py",
   "tests/test_parameter.py",
   "tests/test_pauli.py",
+  "tests/test_pretty_print.py",
   "tests/test_pyzx.py",
   "tests/test_rng.py",
 ]
@@ -186,6 +188,7 @@ include = [
   "graphix/ops.py",
   "graphix/parameter.py",
   "graphix/pauli.py",
+  "graphix/pretty_print.py",
   "graphix/pyzx.py",
   "graphix/rng.py",
   "graphix/states.py",
@@ -204,6 +207,7 @@ include = [
   "tests/test_kraus.py",
   "tests/test_parameter.py",
   "tests/test_pauli.py",
+  "tests/test_pretty_print.py",
   "tests/test_pyzx.py",
   "tests/test_rng.py",
 ]

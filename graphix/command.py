@@ -18,6 +18,7 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
+from graphix.pretty_print import DataclassPrettyPrintMixin
 from graphix.states import BasicStates, State
 
 Node = int
@@ -44,8 +45,8 @@ class _KindChecker:
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
-@dataclasses.dataclass
-class N(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class N(_KindChecker, DataclassPrettyPrintMixin):
     """Preparation command."""
 
     node: Node
@@ -53,8 +54,8 @@ class N(_KindChecker):
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
 
-@dataclasses.dataclass
-class M(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class M(_KindChecker, DataclassPrettyPrintMixin):
     """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
 
     node: Node
@@ -80,16 +81,16 @@ class M(_KindChecker):
         )
 
 
-@dataclasses.dataclass
-class E(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class E(_KindChecker, DataclassPrettyPrintMixin):
     """Entanglement command."""
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
 
-@dataclasses.dataclass
-class C(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class C(_KindChecker, DataclassPrettyPrintMixin):
     """Clifford command."""
 
     node: Node
@@ -97,8 +98,8 @@ class C(_KindChecker):
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
 
-@dataclasses.dataclass
-class X(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class X(_KindChecker, DataclassPrettyPrintMixin):
     """X correction command."""
 
     node: Node
@@ -106,8 +107,8 @@ class X(_KindChecker):
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
 
-@dataclasses.dataclass
-class Z(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class Z(_KindChecker, DataclassPrettyPrintMixin):
     """Z correction command."""
 
     node: Node
@@ -115,8 +116,8 @@ class Z(_KindChecker):
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
 
-@dataclasses.dataclass
-class S(_KindChecker):
+@dataclasses.dataclass(repr=False)
+class S(_KindChecker, DataclassPrettyPrintMixin):
     """S command."""
 
     node: Node
@@ -124,7 +125,7 @@ class S(_KindChecker):
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(repr=False)
 class T(_KindChecker):
     """T command."""
 
