@@ -83,7 +83,7 @@ class TestGenerator:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_pattern_generation_no_internal_nodes(self) -> None:
-        g = nx.Graph()
+        g: nx.Graph[int] = nx.Graph()
         g.add_edges_from([(0, 1), (1, 2)])
         pattern = generate_from_graph(g, {}, {0, 1, 2}, {0, 1, 2}, {})
         assert pattern.get_graph() == ([0, 1, 2], [(0, 1), (1, 2)])
