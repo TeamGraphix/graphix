@@ -98,6 +98,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
 
 
+@pytest.mark.skipif(_pyzx_notfound(), reason="pyzx not installed")
 def test_rz() -> None:
     import pyzx as zx
 
