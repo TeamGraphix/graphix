@@ -49,12 +49,26 @@ class IterGenerator:
 
 
 class TestPattern:
-    # this fails without behaviour modification
     def test_manual_generation(self) -> None:
         pattern = Pattern()
         pattern.add(N(node=0))
         pattern.add(N(node=1))
         pattern.add(M(node=0))
+
+    def test_init(self) -> None:
+        pattern = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[2, 0])
+        assert pattern.input_nodes == [1, 0]
+        assert pattern.output_nodes == [2, 0]
+        with pytest.raises(ValueError):
+            Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[0, 1, 2])
+
+    def test_eq(self) -> None:
+        pattern1 = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[2, 0])
+        pattern2 = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[2, 0])
+        assert pattern1 == pattern2
+        pattern1 = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)])
+        pattern2 = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[2, 0])
+        assert pattern1 != pattern2
 
     def test_standardize(self, fx_rng: Generator) -> None:
         nqubits = 2

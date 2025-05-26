@@ -46,7 +46,7 @@ circuit.rx(1, theta[1])
 # This returns :class:`~graphix.pattern.Pattern` object containing measurement pattern:
 
 pattern = circuit.transpile().pattern
-pattern.print_pattern(lim=10)
+print(pattern.to_ascii(left_to_right=True, limit=10))
 
 # %%
 # We can plot the graph state to run the above pattern.
