@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Moved all device interface functionalities to an external library and removed their implementation from this library.
+
 ## [0.3.0] - 2025-02-04
 
 ### Changed
