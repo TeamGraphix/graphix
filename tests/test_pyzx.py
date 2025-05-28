@@ -104,10 +104,10 @@ def test_rz() -> None:
 
     from graphix.pyzx import from_pyzx_graph
 
-    circuit = Circuit(1)
+    circuit = Circuit(2)
     circuit.rz(0, np.pi / 4)
     pattern = circuit.transpile().pattern
-    circ = zx.qasm("qreg q[1]; rz(pi/4) q[0];")  # type: ignore[attr-defined]
+    circ = zx.qasm("qreg q[2]; rz(pi / 4) q[0];")  # type: ignore[attr-defined]
     g = circ.to_graph()
     og = from_pyzx_graph(g)
     pattern_zx = og.to_pattern()
