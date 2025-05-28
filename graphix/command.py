@@ -56,7 +56,21 @@ class N(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class M(_KindChecker, DataclassPrettyPrintMixin):
-    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
+    r"""Measurement command.
+
+    Parameters
+    ----------
+    node : int
+        Node index of the measured qubit.
+    plane : Plane, optional
+        Measurement plane, defaults to :class:`~graphix.fundamentals.Plane.XY`.
+    angle : ExpressionOrFloat, optional
+        Rotation angle divided by :math:`\pi`.
+    s_domain : set[int], optional
+        Domain for the X byproduct operator.
+    t_domain : set[int], optional
+        Domain for the Z byproduct operator.
+    """
 
     node: Node
     plane: Plane = Plane.XY
@@ -66,9 +80,17 @@ class M(_KindChecker, DataclassPrettyPrintMixin):
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
     def clifford(self, clifford_gate: Clifford) -> M:
-        """Apply a Clifford gate to the measure command.
+        r"""Return a new measurement command with a Clifford applied.
 
-        The returned `M` command is equivalent to the pattern `MC`.
+        Parameters
+        ----------
+        clifford_gate : graphix.clifford.Clifford
+            Clifford gate to apply before the measurement.
+
+        Returns
+        -------
+        M
+            Equivalent command representing the pattern ``MC``.
         """
         domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
