@@ -8,5 +8,3 @@ updates:
       python-packages:
         patterns:
           - "*"
-    ignore:
-      - dependency-name: "pyzx"
