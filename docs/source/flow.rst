@@ -4,8 +4,10 @@ flow and gflow
 :mod:`graphix.gflow` module
 +++++++++++++++++++++++++++++++++++
 
-This provides functions to find flow structures (causal flow, gflow, Pauli flow) in a graph, 
-to verify if a given flow structure is valid, and to extract flow structures from a given pattern. 
+This provides functions to find flow structures (causal flow, gflow, Pauli flow) in a graph,
+to verify if a given flow structure is valid, and to extract flow structures from a given pattern.
+
+.. automodule:: graphix.gflow
 
 .. currentmodule:: graphix.gflow
 

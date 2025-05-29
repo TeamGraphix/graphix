@@ -5,26 +5,116 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
+
 ### Added
+
+- Methods for pretty-printing `Pattern`: `to_ascii`, `to_unicode`,
+  `to_latex`.
+
+### Fixed
+
+- The result of `repr()` for `Pattern`, `Circuit`, `Command`,
+  `Instruction`, `Plane`, `Axis` and `Sign` is now a valid Python
+  expression and is more readable.
+
+### Changed
+
+- The method `Pattern.print_pattern` is now deprecated.
+
+## [0.3.1] - 2025-04-21
+
+### Added
+
+- Parameterized circuits and patterns: angles in instructions and
+  measures can be expressions with parameters created with
+  `parameter.Placeholder` class. Parameterized circuits can be
+  transpiled and parameterized patterns can be optimized
+  (standardization, minimization, signal shifting and Pauli
+  preprocessing) before being instantiated with the method `subs`. An
+  additional package,
+  [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic),
+  provides parameters that suppor symbolic simulation, and the
+  resulting (symbolic) state vector or density matrix can be
+  instantiated with the method `subs` (probabilities cannot be
+  computed symbolically, so `pr_calc=False` should be passed to
+  simulators for symbolic computation, and an arbitrary path will be
+  computed).
+
+### Fixed
+
+- #254: Fix examples in `opengraph` and `pyzx` modules
+- #264: Fixed type warnings
+
+### Changed
+
+- #262: Simplify `graphsim` and deprecated `rustworkx` support for simplicity.
+
+## [0.3.0] - 2025-02-04
+
+### Changed
+
+- Now variables, functions, and classes are named based on PEP8.
+- `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
+- Deprecated support for Python 3.8.
+- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules.
+  - Removed `opt` option for `Circuit.transpile` method.
+  - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
+- Simulator back-ends have an additional optional argument `rng`,
+  to specify the random generator to use during the simulation.
+
+## [0.2.16] - 2024-08-26
+
+This version introduces several important interface changes, aimed at secure expression and improved code maintainability.
+
+### Added
+
+- Added classes for a standardized definition of pattern commands and circuit instructions (`graphix.commands`, `graphix.instructions`). This is for data validation, readability and maintainability purposes. Preiously, the commands and instructions were represented as raw data inside lists, which are prone to errors and not readable.
+- The following changes were made (#155):
+  - Added `class Command` and all its child classes that represent all the pattern commands.
+  - Added `class Instruction` for the gate network expression in quantum circuit model. Every instruction can be instanciated using this class by passing its name as defined in the Enum `InstructionName`.
+- `class graphix.OpenGraph` to transpile between graphix patterns and pyzx graphs.
+- `class graphix.pauli.PauliMeasurement` as a new Pauli measurement checks (used in `pattern.perform_pauli_measurements`).
 
 ### Fixed
 
 ### Changed
 
-## [0.2.12] - 2024-05-11
+- Entire package was updated to follow the new data classes, e.g. `pattern.add(["M", 0, "XY", 0, [], []])` -> `pattern.add(M(node=0))`.
+- Measure commands do no longer carry vertex operators (`vop`): Clifford gates can still be applied to measures with the method `M.clifford`, which returns a new measure commands where plane, angle and domains has been updated.
+- X- and Z-domains for measures and domain for correction commands are now set of nodes (instead of lists).
+- Migrated style checks to `ruff`, and corresponding CI is set up.
+- Codecov is now set up for coverage report on each PR and CI is set up.
+
+## [0.2.15] - 2024-06-21
+
+### Added
+
+- python 3.12 support
+- Arbitrary states now allowed for initializing input nodes in state vector
+  and density matrix backends. use `input_state` optional argument in `Statevector` and `DensityMatrix` backends.
+- Simple planar state class `graphix.states.PlanarState` for states on one of the three planes (XY, XZ, YZ).
+
+### Fixed
+
+### Changed
+
+- Basic states such as |0>, |+> states are now defined in `states.BasicStates` and no longer
+  in `ops.States`.
+
+## [0.2.14] - 2024-05-11
 
 ### Added
 
 - Transpiled circuits can now have "measure" gates, introduced with
-  the `circ.m(qubit, plane, angle)` method.  The measured qubit cannot
+  the `circ.m(qubit, plane, angle)` method. The measured qubit cannot
   be used in any subsequent gate.
 - Added `gflow.find_pauliflow`, `gflow.verify_pauliflow` and `pauliflow_from_pattern` methods (#117)
 - Pauli-flow finding algorithm (#117)
 - workflow for isort, codecov (#148, #147)
 
 ### Fixed
+
 - Fix output node order sorting bug in Pauli preprocessing `measure_pauli` (#145)
 
 ### Changed
@@ -40,6 +130,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   empty output set.
 - Completely migrated to pytest, no `unittest` usage remains (#134)
 
+## [0.2.12, 0.2.13] - pypi build failed, not available in `pip`
+
+- 0.2.12 yanked on `pypi`
+
 ## [0.2.11] - 2024-03-16
 
 ### Added
@@ -47,11 +141,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added flow and gflow verifiers ([#99](https://github.com/TeamGraphix/graphix/issues/99)).
 - Added `gflow.flow_from_pattern` method.
 - Added noisy MBQC simulation backend.
-    - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
-    - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
-    - `channels` module, defining `KrausChannel` class.
-    - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
-
+  - `sim.density_matrix` module added for density matrix simulation backend, which is incorporated into the `simulator.PatternSimulator` interface.
+  - `noise_models` module, containing abstractclass `NoiseModel` and a simplified model (no noise) `NoiseLessNoiseModel`, to define operaion-specfic channels (e.g. 'N' and 'E' commands have separate noise models expressed by Kraus channels).
+  - `channels` module, defining `KrausChannel` class.
+  - `random_objects` and `linalg_validations` module for math support: random state, random unitary, random maps, matrix validations for channel definition.
 
 ### Fixed
 
@@ -62,12 +155,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed methods; `gflow.flow` and `gflow.gflow` are now `gflow.find_flow` and `gflow.find_gflow`, respectively.
 - `Pattern.seq` is renamed into a private field `Pattern.__seq` and
-  `Pattern.Nnode` is now a read-only property.  `Pattern` constructor
+  `Pattern.Nnode` is now a read-only property. `Pattern` constructor
   now only takes an optional list of `input_nodes`, and can only be
   updated via `add` and `extend`. `Pattern` are now iterable and `len`
   is now defined for patterns: we should write `for command in pattern:`
   instead of `for command in pattern.seq:` and `len(pattern)` instead
-  of `len(pattern.seq)`.  `N` commands are no longer added by `Pattern`
+  of `len(pattern.seq)`. `N` commands are no longer added by `Pattern`
   constructor and should be added explicitly after the instantiation.
 - Changed the behavior of visualization in the `GraphVisualizer` class.
   Prepared a `visualize` method that visualizes based on the graph only,
@@ -84,8 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `rustworkx` as a backend for the graph state simulator
   - Only `networkx` backend was available for pattern optimization.
-  By setting the `use_rustworkx` option to True while using `Pattern.perform_pauli_measurements()`,
-  graphix will run pattern optimization using `rustworkx` (#98)
+    By setting the `use_rustworkx` option to True while using `Pattern.perform_pauli_measurements()`,
+    graphix will run pattern optimization using `rustworkx` (#98)
 - Added `.ccx` and `.swap` methods to `graphix.Circuit`.
 
 ### Fixed
@@ -139,7 +232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- bump networkx version to 3.* (#82)
+- bump networkx version to 3.\* (#82)
 
 ## [0.2.5] - 2023-08-17
 
@@ -226,7 +319,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- nested array error in numpy 1.24 (deprecated from 1.23.*) fixed and numpy version changed in requirements.txt (#7)
+- nested array error in numpy 1.24 (deprecated from 1.23.\*) fixed and numpy version changed in requirements.txt (#7)
 - circuit.standardize_and_transpile() error fixed (#9)
 
 ## [0.1.0] - 2022-12-15

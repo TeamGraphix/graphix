@@ -2,6 +2,11 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+from __future__ import annotations
+from typing import Any, Literal
+
+from sphinx.application import Sphinx
+
 import os
 import sys
 
@@ -16,6 +21,7 @@ author = "Shinichi Sunami"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
@@ -28,31 +34,51 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autosectionlabel_prefix_document = True
 
+intersphinx_mapping = {
+    "networkx": ("https://networkx.github.io/documentation/stable/", None),
+}
 
-sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../../"))
 
 
-def skip(app, what, name, obj, would_skip, options):
+def skip(
+    app: Sphinx,
+    what: Literal["module", "class", "exception", "function", "method", "attribute"],
+    name: str,
+    obj: Any,
+    would_skip: bool,
+    options: dict[str, bool],
+) -> bool:
     if name == "__init__":
         return False
     return would_skip
 
 
-def setup(app):
+def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip)
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+html_theme = "furo"
 
-html_theme = "sphinx_rtd_theme"
-# html_theme = 'pydata_sphinx_theme'
+html_title = " "  # title for documentation (shown in sidebar, kept empty)
+
 html_static_path = ["_static"]
-html_logo = "../logo/white_with_text.png"
+
+html_context = {
+    "mode": "production",
+}
+
+# code highlighting for light and dark themes
+pygments_style = "sphinx"
+pygments_dark_style = "monokai"
+
+# customizing theme options
 html_theme_options = {
-    "logo_only": True,
-    "display_version": False,
+    "light_logo": "black_with_name.png",
+    "dark_logo": "white_with_text.png",
 }
 
 sphinx_gallery_conf = {
@@ -63,17 +89,5 @@ sphinx_gallery_conf = {
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
 }
-html_context = {
-    "css_files": [
-        "_static/basic.css",
-        "_static/pygments.css",
-        "_static/sg_gallery-binder.css",
-        "_static/sg_gallery-dataframe.css",
-        "_static/sg_gallery-rendered-html.css",
-        "_static/sg_gallery.css",
-        "_static/css/badge_only.css",
-        "_static/css/theme.css",
-        "_static/css/my_theme.css",
-        "_static/css/custom.css",
-    ],
-}
+
+suppress_warnings = ["config.cache"]

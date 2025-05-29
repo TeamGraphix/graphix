@@ -4,6 +4,8 @@ Pattern Generation
 :mod:`graphix.transpiler` module
 ++++++++++++++++++++++++++++++++
 
+.. automodule:: graphix.transpiler
+
 .. currentmodule:: graphix.transpiler
 
 .. autoclass:: Circuit
@@ -11,8 +13,6 @@ Pattern Generation
     .. automethod:: __init__
 
     .. automethod:: transpile
-
-    .. automethod:: standardize_and_transpile
 
     .. automethod:: simulate_statevector
 
@@ -44,6 +44,8 @@ Pattern Generation
 
 :mod:`graphix.generator` module
 +++++++++++++++++++++++++++++++
+
+.. automodule:: graphix.generator
 
 .. currentmodule:: graphix.generator
 

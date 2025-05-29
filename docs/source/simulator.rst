@@ -26,8 +26,6 @@ Tensor Network
 
 .. autofunction:: gen_str
 
-.. autofunction:: proj_basis
-
 .. autofunction:: outer_product
 
 Statevector
@@ -37,8 +35,6 @@ Statevector
 
 .. autoclass:: StatevectorBackend
     :members:
-
-.. autofunction:: meas_op
 
 .. autoclass:: Statevec
     :members:
