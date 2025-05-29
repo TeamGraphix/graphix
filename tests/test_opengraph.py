@@ -10,7 +10,7 @@ from graphix.opengraph import OpenGraph
 # Tests whether an open graph can be converted to and from a pattern and be
 # successfully reconstructed.
 def test_open_graph_to_pattern() -> None:
-    g = nx.Graph([(0, 1), (1, 2)])
+    g = nx.Graph[int]([(0, 1), (1, 2)])
     inputs = [0]
     outputs = [2]
     meas = {0: Measurement(0, Plane.XY), 1: Measurement(0, Plane.XY)}
@@ -24,7 +24,7 @@ def test_open_graph_to_pattern() -> None:
     # 0 -- 1 -- 2
     #      |
     # 3 -- 4 -- 5
-    g = nx.Graph([(0, 1), (1, 2), (1, 4), (3, 4), (4, 5)])
+    g = nx.Graph[int]([(0, 1), (1, 2), (1, 4), (3, 4), (4, 5)])
     inputs = [0, 3]
     outputs = [2, 5]
     meas = {

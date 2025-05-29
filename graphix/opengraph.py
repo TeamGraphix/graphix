@@ -40,7 +40,7 @@ class OpenGraph:
     >>> og = OpenGraph(inside_graph, measurements, inputs, outputs)
     """
 
-    inside: nx.Graph
+    inside: nx.Graph[int]
     measurements: dict[int, Measurement]
     inputs: list[int]  # Inputs are ordered
     outputs: list[int]  # Outputs are ordered
@@ -69,7 +69,7 @@ class OpenGraph:
         This doesn't check they are equal up to an isomorphism.
 
         """
-        if not nx.utils.graphs_equal(self.inside, other.inside):
+        if not nx.utils.graphs_equal(self.inside, other.inside):  # type: ignore[no-untyped-call]
             return False
 
         if self.inputs != other.inputs or self.outputs != other.outputs:
@@ -83,10 +83,10 @@ class OpenGraph:
             for node, m in self.measurements.items()
         )
 
-    @classmethod
-    def from_pattern(cls, pattern: Pattern) -> OpenGraph:
+    @staticmethod
+    def from_pattern(pattern: Pattern) -> OpenGraph:
         """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
-        g = nx.Graph()
+        g = nx.Graph[int]()
         nodes, edges = pattern.get_graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
@@ -98,7 +98,7 @@ class OpenGraph:
         meas_angles = pattern.get_angles()
         meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
 
-        return cls(g, meas, inputs, outputs)
+        return OpenGraph(g, meas, inputs, outputs)
 
     def to_pattern(self) -> Pattern:
         """Convert the `OpenGraph` into a `Pattern`.
