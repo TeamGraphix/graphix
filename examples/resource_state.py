@@ -1,4 +1,5 @@
-# %%
+"""Resource graph analysis and extraction tools."""
+
 from __future__ import annotations
 
 import itertools
@@ -14,12 +15,12 @@ from graphix import GraphState
 from graphix.extraction import get_fusion_network_from_graph
 
 
-# %%
 @dataclass
 class ResourceGraphInfo:
     """
-    Data class for resource graph information.
+    Information about a resource graph.
     """
+
     type: Optional[str] = None
     attributes: list[str] = field(default_factory=list)
     nodes: Optional[int] = None
@@ -39,10 +40,9 @@ class ResourceGraphInfo:
     pairable_ratio: Optional[float] = None
 
 
-# %%
 def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
     """
-    Analyze a resource graph object and extract basic information.
+    Analyze a resource graph object and extract basic metadata.
 
     Parameters
     ----------
@@ -74,7 +74,6 @@ def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
     return info
 
 
-# %%
 class GraphStateExtractor:
     """
     Extract and analyze target graph states from cluster states.
@@ -160,73 +159,29 @@ class GraphStateExtractor:
 
     def compute_local_equivalence_invariants(self, gs: GraphState) -> ResourceGraphInfo:
         """
-        Compute local equivalence invariants of a graph state.
+        Compute invariants for local graph state equivalence.
 
         Parameters
         ----------
         gs : GraphState
+            Graph state to analyze.
 
         Returns
         -------
         ResourceGraphInfo
+            Extracted invariants.
         """
-        start = time.perf_counter()
+        info = ResourceGraphInfo()
+        graph = nx.Graph(gs.edges)
 
-        graph = nx.Graph()
-        graph.add_nodes_from(gs.nodes)
-        graph.add_edges_from(gs.edges)
+        info.nodes = graph.number_of_nodes()
+        info.edges = graph.number_of_edges()
+        info.degree_sequence = sorted([d for _, d in graph.degree()])
+        info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
+        info.triangles = sum(nx.triangles(graph).values()) // 3
+        info.is_connected = nx.is_connected(graph)
+        info.num_components = nx.number_connected_components(graph)
+        info.max_degree = max(info.degree_sequence) if info.degree_sequence else None
+        info.min_degree = min(info.degree_sequence) if info.degree_sequence else None
 
-        info = ResourceGraphInfo(
-            nodes=len(gs.nodes),
-            edges=len(gs.edges),
-            degree_sequence=sorted(dict(graph.degree()).values()),
-            max_degree=max(dict(graph.degree()).values(), default=0),
-            min_degree=min(dict(graph.degree()).values(), default=0),
-            triangles=sum(nx.triangles(graph).values()) // 3,
-            is_connected=nx.is_connected(graph),
-            num_components=nx.number_connected_components(graph),
-        )
-
-        if gs.nodes:
-            adj = nx.adjacency_matrix(graph).todense()
-            eigenvals = np.linalg.eigvals(adj)
-            info.spectrum = sorted(np.round(eigenvals.real, 6))
-
-        self.equivalence_times.append(time.perf_counter() - start)
         return info
-
-    @staticmethod
-    def analyze_k_pairable_structure(gs: GraphState, k: int = 2) -> ResourceGraphInfo:
-        """
-        Analyze k-pairable structure of the graph.
-
-        Parameters
-        ----------
-        gs : GraphState
-        k : int
-
-        Returns
-        -------
-        ResourceGraphInfo
-        """
-        graph = nx.Graph()
-        graph.add_nodes_from(gs.nodes)
-        graph.add_edges_from(gs.edges)
-
-        nodes = list(gs.nodes)
-        k_subsets = list(itertools.combinations(nodes, min(k, len(nodes))))
-        pairable_subsets = []
-
-        for subset in k_subsets:
-            sub = graph.subgraph(subset)
-            if len(subset) % 2 == 0:
-                matching = nx.max_weight_matching(sub)
-                if nx.is_perfect_matching(sub, matching):
-                    pairable_subsets.append(subset)
-
-        return ResourceGraphInfo(
-            k=k,
-            total_k_subsets=len(k_subsets),
-            pairable_subsets=len(pairable_subsets),
-            pairable_ratio=len(pairable_subsets) / len(k_subsets) if k_subsets else 0.0,
-        )
