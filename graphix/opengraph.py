@@ -86,7 +86,7 @@ class OpenGraph:
     @staticmethod
     def from_pattern(pattern: Pattern) -> OpenGraph:
         """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
-        g = nx.Graph[int]()
+        g: nx.Graph[int] = nx.Graph()
         nodes, edges = pattern.get_graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
