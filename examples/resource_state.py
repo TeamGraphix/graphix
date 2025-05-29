@@ -13,11 +13,11 @@ from graphix import GraphState
 from graphix.extraction import get_fusion_network_from_graph
 
 if TYPE_CHECKING:
-    from typing import List, Optional, Set, Tuple
+    from typing import List, Optional, Tuple
 
 
-class ResourceGraphInfo(TypedDict):
-    """Type definition for resource graph analysis results."""
+class ResourceGraphInfo(TypedDict, total=False):
+    """Type definition for resource graph information."""
     type: str
     attributes: List[str]
     nodes: int
@@ -41,11 +41,6 @@ def analyze_resource_graph(resource_graph: Any) -> ResourceGraphInfo:
     """
     info: ResourceGraphInfo = {
         "type": type(resource_graph).__name__,
-        "attributes": [attr for attr in dir(resource_graph) if not attr.startswith("_")],
-        "nodes": 0,
-        "edges": 0,
-        "kind": "",
-        "resource_type": "",
     }
 
     # Try to get size information
@@ -192,22 +187,23 @@ class GraphStateExtractor:
         graph.add_nodes_from(gs.nodes)
         graph.add_edges_from(gs.edges)
 
-        invariants: ResourceGraphInfo = {
-            "type": "LocalEquivalenceInvariants",
-            "attributes": [],
-            "nodes": len(gs.nodes),
-            "edges": len(gs.edges),
-            "kind": "",
-            "resource_type": "",
-        }
+        invariants: ResourceGraphInfo = {}
+
+        # Basic graph properties
+        invariants["num_nodes"] = len(gs.nodes)
+        invariants["num_edges"] = len(gs.edges)
 
         # Degree sequence (sorted)
         degrees = sorted(graph.degree(node) for node in graph.nodes())
-        invariants["attributes"].extend([
-            f"degree_sequence_{degrees}",
-            f"max_degree_{max(degrees) if degrees else 0}",
-            f"min_degree_{min(degrees) if degrees else 0}",
-        ])
+        invariants["degree_sequence"] = degrees
+
+        # Local complementation invariants
+        # Two graphs are LC-equivalent if one can be obtained from the other
+        # by a sequence of local complementations
+
+        # Compute orbit-stabilizer information
+        invariants["max_degree"] = max(degrees) if degrees else 0
+        invariants["min_degree"] = min(degrees) if degrees else 0
 
         # Spectral properties of adjacency matrix
         if len(gs.nodes) > 0:
@@ -215,27 +211,16 @@ class GraphStateExtractor:
             eigenvals = np.linalg.eigvals(adj_matrix)
             # Sort eigenvalues and round to handle numerical precision
             eigenvals_real = sorted(np.round(eigenvals.real, 6))
-            rank = np.linalg.matrix_rank(adj_matrix)
-            invariants["attributes"].extend([
-                f"spectrum_{eigenvals_real}",
-                f"rank_{rank}",
-            ])
+            invariants["spectrum"] = eigenvals_real
+            invariants["rank"] = np.linalg.matrix_rank(adj_matrix)
 
-        # Triangle count and clustering properties  
-        triangles = sum(nx.triangles(graph).values()) // 3
-        clustering_coeffs = sorted(nx.clustering(graph).values())
-        invariants["attributes"].extend([
-            f"triangles_{triangles}",
-            f"clustering_coeffs_{clustering_coeffs}",
-        ])
+        # Triangle count and clustering properties
+        invariants["triangles"] = sum(nx.triangles(graph).values()) // 3
+        invariants["clustering_coeffs"] = sorted(nx.clustering(graph).values())
 
         # Connectedness properties
-        is_connected = nx.is_connected(graph)
-        num_components = nx.number_connected_components(graph)
-        invariants["attributes"].extend([
-            f"is_connected_{is_connected}",
-            f"num_components_{num_components}",
-        ])
+        invariants["is_connected"] = nx.is_connected(graph)
+        invariants["num_components"] = nx.number_connected_components(graph)
 
         equivalence_time = time.perf_counter() - start_time
         self.equivalence_times.append(equivalence_time)
@@ -263,14 +248,7 @@ class GraphStateExtractor:
         graph.add_nodes_from(gs.nodes)
         graph.add_edges_from(gs.edges)
 
-        results: ResourceGraphInfo = {
-            "type": "KPairableAnalysis",
-            "attributes": [],
-            "nodes": len(gs.nodes),
-            "edges": len(gs.edges),
-            "kind": f"k_{k}_pairable",
-            "resource_type": "analysis",
-        }
+        results: ResourceGraphInfo = {}
 
         # Find all possible k-vertex subsets
         nodes = list(gs.nodes)
@@ -287,12 +265,12 @@ class GraphStateExtractor:
                 if nx.is_perfect_matching(subgraph, matching):
                     pairable_subsets.append(subset)
 
-        results["attributes"] = [
-            f"k_{k}",
-            f"total_k_subsets_{len(k_subsets)}",
-            f"pairable_subsets_{len(pairable_subsets)}",
-            f"pairable_ratio_{len(pairable_subsets) / len(k_subsets) if k_subsets else 0}",
-        ]
+        results["k"] = k
+        results["total_k_subsets"] = len(k_subsets)
+        results["pairable_subsets"] = len(pairable_subsets)
+        results["pairable_ratio"] = (
+            len(pairable_subsets) / len(k_subsets) if k_subsets else 0
+        )
 
         return results
 
@@ -340,53 +318,53 @@ def run_scalability_analysis() -> Tuple[List[int], List[float], List[float], Lis
 
         # Time the fusion network generation
         start_time = time.perf_counter()
-        fusion_time = 0
+        fusion_network = None
         try:
-            _ = get_fusion_network_from_graph(target_gs)
+            fusion_network = get_fusion_network_from_graph(target_gs)
             fusion_time = time.perf_counter() - start_time
+            fusion_times.append(fusion_time)
         except Exception as e:  # noqa: BLE001
             print(f"  Warning: Fusion network generation failed: {e}")
-        
-        fusion_times.append(fusion_time)
+            fusion_time = 0
+            fusion_times.append(fusion_time)
 
         print(f"  Extraction: {extraction_time:.4f}s")
         print(f"  Equivalence: {equivalence_time:.4f}s")
         print(f"  Fusion: {fusion_time:.4f}s")
 
     # Plot results using OOP style
-    if plt.get_backend() != 'Agg':  # Only plot if display is available
-        fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    if all(t >= 0 for t in extraction_times + equivalence_times + fusion_times):
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 
-        node_counts = [s * s for s in sizes]
+        ax1.plot([s * s for s in sizes], extraction_times, "o-", label="Extraction")
+        ax1.set_xlabel("Number of nodes")
+        ax1.set_ylabel("Time (s)")
+        ax1.set_title("Graph State Extraction Scaling")
+        ax1.set_yscale("log")
+        ax1.set_xscale("log")
+        ax1.grid(True)
 
-        axes[0].plot(node_counts, extraction_times, "o-", label="Extraction")
-        axes[0].set_xlabel("Number of nodes")
-        axes[0].set_ylabel("Time (s)")
-        axes[0].set_title("Graph State Extraction Scaling")
-        axes[0].set_yscale("log")
-        axes[0].set_xscale("log")
-        axes[0].grid(True)
+        ax2.plot([s * s for s in sizes], equivalence_times, "o-", label="Equivalence", color="orange")
+        ax2.set_xlabel("Number of nodes")
+        ax2.set_ylabel("Time (s)")
+        ax2.set_title("Local Equivalence Analysis Scaling")
+        ax2.set_yscale("log")
+        ax2.set_xscale("log")
+        ax2.grid(True)
 
-        axes[1].plot(node_counts, equivalence_times, "o-", label="Equivalence", color="orange")
-        axes[1].set_xlabel("Number of nodes")
-        axes[1].set_ylabel("Time (s)")
-        axes[1].set_title("Local Equivalence Analysis Scaling")
-        axes[1].set_yscale("log")
-        axes[1].set_xscale("log")
-        axes[1].grid(True)
+        ax3.plot([s * s for s in sizes], fusion_times, "o-", label="Fusion Network", color="green")
+        ax3.set_xlabel("Number of nodes")
+        ax3.set_ylabel("Time (s)")
+        ax3.set_title("Fusion Network Generation Scaling")
+        ax3.set_yscale("log")
+        ax3.set_xscale("log")
+        ax3.grid(True)
 
-        axes[2].plot(node_counts, fusion_times, "o-", label="Fusion Network", color="green")
-        axes[2].set_xlabel("Number of nodes")
-        axes[2].set_ylabel("Time (s)")
-        axes[2].set_title("Fusion Network Generation Scaling")
-        axes[2].set_yscale("log")
-        axes[2].set_xscale("log")
-        axes[2].grid(True)
-
-        fig.tight_layout()
+        plt.tight_layout()
         plt.show()
     else:
-        print("Display not available, printing raw timing data:")
+        print("Plotting skipped due to invalid timing data")
+        print("Raw timing data:")
         for i, size in enumerate(sizes):
             print(
                 f"Size {size}x{size}: "
@@ -436,25 +414,30 @@ def demonstrate_graph_state_extraction() -> Tuple[GraphState, ResourceGraphInfo,
     # Analyze local equivalence
     print("\n2. Local equivalence analysis")
     invariants = extractor.compute_local_equivalence_invariants(target_gs)
-    print(f"   Node count: {invariants['nodes']}")
-    print(f"   Edge count: {invariants['edges']}")
-    print(f"   Analysis type: {invariants['type']}")
+    print(f"   Degree sequence: {invariants['degree_sequence']}")
+    print(f"   Spectrum: {invariants['spectrum'][:5]}...")  # Show first 5 eigenvalues
+    print(f"   Number of triangles: {invariants['triangles']}")
+    print(f"   Connected: {invariants['is_connected']}")
 
     # k-pairable analysis
     print("\n3. k-pairable structure analysis")
     k_analysis = extractor.analyze_k_pairable_structure(target_gs, k=2)
-    print(f"   Analysis kind: {k_analysis['kind']}")
-    print(f"   Resource type: {k_analysis['resource_type']}")
+    print(
+        f"   2-pairable subsets: "
+        f"{k_analysis['pairable_subsets']}/{k_analysis['total_k_subsets']}"
+    )
+    print(f"   Pairable ratio: {k_analysis['pairable_ratio']:.3f}")
 
     # Fusion network analysis
     print("\n4. Fusion network decomposition")
+    fusion_network = None
     try:
         fusion_network = get_fusion_network_from_graph(target_gs)
         print(f"   Number of resource states: {len(fusion_network)}")
 
         for i, resource_state in enumerate(fusion_network):
             info = analyze_resource_graph(resource_state)
-            if info["nodes"] > 0 and info["edges"] > 0:
+            if "nodes" in info and "edges" in info:
                 print(
                     f"   Resource state {i}: "
                     f"{info['nodes']} nodes, {info['edges']} edges"
@@ -462,9 +445,9 @@ def demonstrate_graph_state_extraction() -> Tuple[GraphState, ResourceGraphInfo,
             else:
                 print(f"   Resource state {i}: {info['type']}")
 
-            if info["kind"]:
+            if "kind" in info:
                 print(f"     Type: {info['kind']}")
-            elif info["resource_type"]:
+            elif "resource_type" in info:
                 print(f"     Type: {info['resource_type']}")
 
     except Exception as e:  # noqa: BLE001
@@ -491,7 +474,7 @@ def analyze_local_equivalence_classes() -> dict[Tuple[Any, ...], List[Tuple[str,
     Returns
     -------
     dict[Tuple[Any, ...], List[Tuple[str, int, GraphState]]]
-        Dictionary mapping equivalence class signatures to lists of graphs
+        Equivalence classes dictionary
     """
     print("\nLocal Equivalence Class Analysis")
     print("=" * 32)
@@ -533,11 +516,12 @@ def analyze_local_equivalence_classes() -> dict[Tuple[Any, ...], List[Tuple[str,
     for graph_type, n, gs in test_graphs:
         invariants = extractor.compute_local_equivalence_invariants(gs)
 
-        # Create a simplified signature for equivalence class
+        # Create a signature for equivalence class
         signature = (
-            invariants["type"],
-            invariants["nodes"],
-            invariants["edges"],
+            tuple(invariants["degree_sequence"]),
+            tuple(np.round(invariants["spectrum"], 3)),
+            invariants["triangles"],
+            invariants["is_connected"],
         )
 
         if signature not in equivalence_classes:
@@ -548,7 +532,7 @@ def analyze_local_equivalence_classes() -> dict[Tuple[Any, ...], List[Tuple[str,
     print(f"Found {len(equivalence_classes)} distinct equivalence classes:")
     for i, (signature, graphs) in enumerate(equivalence_classes.items()):
         print(f"\nClass {i+1}: {len(graphs)} graphs")
-        print(f"  Signature: {signature}")
+        print(f"  Degree sequence: {signature[0]}")
         print(f"  Representative graphs: {[(g[0], g[1]) for g in graphs[:3]]}")
 
     return equivalence_classes
@@ -575,43 +559,33 @@ def main() -> None:
 
     # Compute scaling exponents with error handling
     if len(sizes) > 2 and all(t > 0 for t in extraction_times):
-        try:
-            extraction_exp = np.polyfit(
-                np.log([s * s for s in sizes]), np.log(extraction_times), 1
-            )[0]
-            print(f"- Extraction time scaling: O(n^{extraction_exp:.2f})")
-        except (ValueError, np.linalg.LinAlgError):
-            print("- Extraction time scaling: insufficient valid data")
+        extraction_exp = np.polyfit(
+            np.log([s * s for s in sizes]), np.log(extraction_times), 1
+        )[0]
+        print(f"- Extraction time scaling: O(n^{extraction_exp:.2f})")
     else:
         print("- Extraction time scaling: insufficient data")
 
     if len(sizes) > 2 and all(t > 0 for t in equivalence_times):
-        try:
-            equivalence_exp = np.polyfit(
-                np.log([s * s for s in sizes]), np.log(equivalence_times), 1
-            )[0]
-            print(f"- Equivalence analysis scaling: O(n^{equivalence_exp:.2f})")
-        except (ValueError, np.linalg.LinAlgError):
-            print("- Equivalence analysis scaling: insufficient valid data")
+        equivalence_exp = np.polyfit(
+            np.log([s * s for s in sizes]), np.log(equivalence_times), 1
+        )[0]
+        print(f"- Equivalence analysis scaling: O(n^{equivalence_exp:.2f})")
     else:
         print("- Equivalence analysis scaling: insufficient data")
 
     if len(sizes) > 2 and all(t > 0 for t in fusion_times):
-        try:
-            fusion_exp = np.polyfit(
-                np.log([s * s for s in sizes]), np.log(fusion_times), 1
-            )[0]
-            print(f"- Fusion network scaling: O(n^{fusion_exp:.2f})")
-        except (ValueError, np.linalg.LinAlgError):
-            print("- Fusion network scaling: insufficient valid data")
+        fusion_exp = np.polyfit(
+            np.log([s * s for s in sizes]), np.log(fusion_times), 1
+        )[0]
+        print(f"- Fusion network scaling: O(n^{fusion_exp:.2f})")
     else:
         print("- Fusion network scaling: insufficient data")
 
     print(f"\nLocal Equivalence Classes:")
     print(f"- Found {len(equivalence_classes)} distinct classes among test graphs")
     class_sizes = [len(graphs) for graphs in equivalence_classes.values()]
-    if class_sizes:
-        print(f"- Average graphs per class: {np.mean(class_sizes):.1f}")
+    print(f"- Average graphs per class: {np.mean(class_sizes):.1f}")
 
     print(f"\nPotential Graphix Improvements:")
     improvements = [
