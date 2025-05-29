@@ -1,22 +1,4 @@
 """
-Extracting target graph states from 2D cluster states and analyzing local equivalence
-====================================================================================
-
-This example demonstrates how to extract specific target graph states from larger 2D cluster states
-using local measurements, following the approach described in quantum measurement-based computing.
-We also analyze the local equivalence properties of the extracted graph states and study their
-k-pairable structure.
-
-The extraction process simulates the protocol where specific measurement patterns on cluster states
-can produce desired graph states, which is fundamental for universal quantum computation.
-Local equivalence analysis helps classify graph states that can be transformed into each other
-through local Clifford operations.
-
-References:
-[1] Raussendorf and Briegel, A One-Way Quantum Computer, Phys. Rev. Lett. 86, 5188 (2001)
-[2] Van den Nest et al., Local equivalence of stabilizer states, Phys. Rev. A 72, 022328 (2005)
-[3] Claudet et al., Small k-pairable graphs, Discrete Applied Mathematics 158, 1365-1373 (2010)
-"""
 
 # %%
 from __future__ import annotations
@@ -29,27 +11,29 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-import graphix
 from graphix import GraphState
 from graphix.extraction import get_fusion_network_from_graph
 
 if TYPE_CHECKING:
-    from typing import List, Optional, Tuple
+    from typing import Optional
+
 
 # %%
 class ResourceGraphInfo(TypedDict, total=False):
     """Type definition for resource graph information."""
+
     type: str
-    attributes: List[str]
+    attributes: list[str]
     nodes: int
     edges: int
     kind: str
     resource_type: str
-    degree_sequence: List[int]
-    spectrum: List[float]
+    degree_sequence: list[int]
+    spectrum: list[float]
     triangles: int
     is_connected: bool
     num_components: int
+
 
 # %%
 def analyze_resource_graph(resource_graph: Any) -> ResourceGraphInfo:
@@ -89,6 +73,7 @@ def analyze_resource_graph(resource_graph: Any) -> ResourceGraphInfo:
 
     return info
 
+
 # %%
 class GraphStateExtractor:
     """Extract target graph states from 2D cluster states and analyze local equivalence."""
@@ -98,7 +83,8 @@ class GraphStateExtractor:
         self.extraction_times = []
         self.equivalence_times = []
 
-    def create_2d_cluster_state(self, rows: int, cols: int) -> GraphState:
+    @staticmethod
+    def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
         """Create a 2D cluster state (grid graph) with given dimensions.
 
         Parameters
@@ -146,9 +132,9 @@ class GraphStateExtractor:
     def extract_target_graph_state(
         self,
         cluster_state: GraphState,
-        target_edges: List[Tuple[int, int]],
-        target_nodes: Optional[List[int]] = None,
-    ) -> Tuple[GraphState, List[int]]:
+        target_edges: list[tuple[int, int]],
+        target_nodes: list[int] | None = None,
+    ) -> tuple[GraphState, list[int]]:
         """Extract a target graph state from a 2D cluster state using local measurements.
 
         This simulates the process where specific measurement patterns on cluster states
@@ -159,14 +145,14 @@ class GraphStateExtractor:
         ----------
         cluster_state : GraphState
             The source 2D cluster state
-        target_edges : List[Tuple[int, int]]
+        target_edges : list[tuple[int, int]]
             Desired edges in the target graph state
-        target_nodes : Optional[List[int]], optional
+        target_nodes : list[int] | None, optional
             Nodes to keep in target state (if None, infer from edges)
 
         Returns
         -------
-        Tuple[GraphState, List[int]]
+        tuple[GraphState, list[int]]
             Tuple of (extracted graph state, list of measured nodes)
         """
         start_time = time.perf_counter()
@@ -246,7 +232,8 @@ class GraphStateExtractor:
 
         return invariants
 
-    def analyze_k_pairable_structure(self, gs: GraphState, k: int = 2) -> ResourceGraphInfo:
+    @staticmethod
+    def analyze_k_pairable_structure(gs: GraphState, k: int = 2) -> ResourceGraphInfo:
         """Analyze k-pairable structure of the graph state.
 
         Based on the concept of small k-pairable states, which are important for
@@ -292,6 +279,7 @@ class GraphStateExtractor:
         )
 
         return results
+
 
 # %%
 # Let's start by creating a 2D cluster state and extracting a target graph state
@@ -356,14 +344,14 @@ print("Decomposing extracted graph state with fusion network...")
 try:
     fusion_network = get_fusion_network_from_graph(target_gs)
     print(f"Number of resource states in fusion network: {len(fusion_network)}")
-    
+
     for i, resource_state in enumerate(fusion_network):
         info = analyze_resource_graph(resource_state)
         if "nodes" in info and "edges" in info:
             print(f"Resource state {i}: {info['nodes']} nodes, {info['edges']} edges")
         else:
             print(f"Resource state {i}: {info['type']}")
-        
+
         if "kind" in info:
             print(f"  Type: {info['kind']}")
         elif "resource_type" in info:
@@ -374,23 +362,21 @@ except Exception as e:
 
 # %%
 # Analyze fusion connections between resource states
-if 'fusion_network' in locals():
+if "fusion_network" in locals():
     print("Analyzing fusion connections between resource states...")
     from graphix.extraction import get_fusion_nodes
-    
+
     for idx1, idx2 in itertools.combinations(range(len(fusion_network)), 2):
         fusion_nodes = get_fusion_nodes(fusion_network[idx1], fusion_network[idx2])
         if fusion_nodes:
             print(f"Fusion nodes between resource state {idx1} and {idx2}: {fusion_nodes}")
 
-# %%
-# Generate and compare different graph types for local equivalence analysis
-print("Comparing local equivalence classes of different graph types...")
 
+# %%
 def create_test_graphs():
     """Create various small graph states for comparison."""
     test_graphs = []
-    
+
     # Path graphs
     for n in range(3, 6):
         gs = GraphState()
@@ -399,7 +385,7 @@ def create_test_graphs():
         gs.add_nodes_from(nodes)
         gs.add_edges_from(edges)
         test_graphs.append(("path", n, gs))
-    
+
     # Cycle graphs
     for n in range(3, 6):
         gs = GraphState()
@@ -408,7 +394,7 @@ def create_test_graphs():
         gs.add_nodes_from(nodes)
         gs.add_edges_from(edges)
         test_graphs.append(("cycle", n, gs))
-    
+
     # Complete graphs
     for n in range(3, 5):
         gs = GraphState()
@@ -417,8 +403,12 @@ def create_test_graphs():
         gs.add_nodes_from(nodes)
         gs.add_edges_from(edges)
         test_graphs.append(("complete", n, gs))
-    
+
     return test_graphs
+
+
+# Generate and compare different graph types for local equivalence analysis
+print("Comparing local equivalence classes of different graph types...")
 
 test_graphs = create_test_graphs()
 equivalence_classes = {}
@@ -426,7 +416,7 @@ equivalence_classes = {}
 # Analyze each test graph
 for graph_type, n, gs in test_graphs:
     invariants = extractor.compute_local_equivalence_invariants(gs)
-    
+
     # Create a signature for equivalence class identification
     signature = (
         tuple(invariants["degree_sequence"]),
@@ -434,39 +424,37 @@ for graph_type, n, gs in test_graphs:
         invariants["triangles"],
         invariants["is_connected"],
     )
-    
+
     if signature not in equivalence_classes:
         equivalence_classes[signature] = []
-    
+
     equivalence_classes[signature].append((graph_type, n, gs))
 
 print(f"Found {len(equivalence_classes)} distinct local equivalence classes:")
 for i, (signature, graphs) in enumerate(equivalence_classes.items()):
-    print(f"  Class {i+1}: {len(graphs)} graphs")
+    print(f"  Class {i + 1}: {len(graphs)} graphs")
     print(f"    Degree sequence: {signature[0]}")
     print(f"    Representative graphs: {[(g[0], g[1]) for g in graphs[:3]]}")
 
-# %%
-# Perform scalability analysis
-print("Running scalability analysis for different cluster state sizes...")
 
+# %%
 def run_scalability_analysis():
     """Analyze scalability of graph state extraction and analysis."""
     sizes = [3, 4, 5, 6]  # Smaller sizes for demonstration
     extraction_times = []
     equivalence_times = []
     fusion_times = []
-    
+
     for size in sizes:
         print(f"  Analyzing {size}x{size} cluster state...")
-        
+
         # Create cluster state
         cluster_state = extractor.create_2d_cluster_state(size, size)
-        
+
         # Define target (small cycle)
         target_nodes = list(range(min(6, len(cluster_state.nodes))))
         target_edges = [(i, (i + 1) % len(target_nodes)) for i in range(len(target_nodes))]
-        
+
         # Time extraction
         start_time = time.perf_counter()
         target_gs, _ = extractor.extract_target_graph_state(
@@ -474,13 +462,13 @@ def run_scalability_analysis():
         )
         extraction_time = time.perf_counter() - start_time
         extraction_times.append(extraction_time)
-        
+
         # Time equivalence analysis
         start_time = time.perf_counter()
         _ = extractor.compute_local_equivalence_invariants(target_gs)
         equivalence_time = time.perf_counter() - start_time
         equivalence_times.append(equivalence_time)
-        
+
         # Time fusion network generation
         start_time = time.perf_counter()
         try:
@@ -489,12 +477,18 @@ def run_scalability_analysis():
         except Exception:
             fusion_time = 0
         fusion_times.append(fusion_time)
-        
-        print(f"    Extraction: {extraction_time:.6f}s, "
-              f"Equivalence: {equivalence_time:.6f}s, "
-              f"Fusion: {fusion_time:.6f}s")
-    
+
+        print(
+            f"    Extraction: {extraction_time:.6f}s, "
+            f"Equivalence: {equivalence_time:.6f}s, "
+            f"Fusion: {fusion_time:.6f}s"
+        )
+
     return sizes, extraction_times, equivalence_times, fusion_times
+
+
+# Perform scalability analysis
+print("Running scalability analysis for different cluster state sizes...")
 
 sizes, extraction_times, equivalence_times, fusion_times = run_scalability_analysis()
 
@@ -502,30 +496,30 @@ sizes, extraction_times, equivalence_times, fusion_times = run_scalability_analy
 # Plot scalability results
 if all(t >= 0 for t in extraction_times + equivalence_times + fusion_times):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
-    
+
     node_counts = [s * s for s in sizes]
-    
+
     ax1.plot(node_counts, extraction_times, "o-", label="Extraction", color="blue")
     ax1.set_xlabel("Number of nodes")
     ax1.set_ylabel("Time (s)")
     ax1.set_title("Graph State Extraction Scaling")
     ax1.grid(True, alpha=0.3)
     ax1.legend()
-    
+
     ax2.plot(node_counts, equivalence_times, "o-", label="Equivalence", color="orange")
     ax2.set_xlabel("Number of nodes")
     ax2.set_ylabel("Time (s)")
     ax2.set_title("Local Equivalence Analysis Scaling")
     ax2.grid(True, alpha=0.3)
     ax2.legend()
-    
+
     ax3.plot(node_counts, fusion_times, "o-", label="Fusion Network", color="green")
     ax3.set_xlabel("Number of nodes")
     ax3.set_ylabel("Time (s)")
     ax3.set_title("Fusion Network Generation Scaling")
     ax3.grid(True, alpha=0.3)
     ax3.legend()
-    
+
     plt.tight_layout()
     plt.show()
 else:
@@ -534,9 +528,9 @@ else:
 # %%
 print("\nSummary of Graph State Extraction and Local Equivalence Analysis:")
 print("=" * 70)
-print(f"• Successfully extracted target graph states from 2D cluster states")
-print(f"• Analyzed local equivalence invariants including degree sequences and spectra")
-print(f"• Investigated k-pairable structure properties")
-print(f"• Decomposed graph states into fusion networks for resource analysis")
+print("• Successfully extracted target graph states from 2D cluster states")
+print("• Analyzed local equivalence invariants including degree sequences and spectra")
+print("• Investigated k-pairable structure properties")
+print("• Decomposed graph states into fusion networks for resource analysis")
 print(f"• Identified {len(equivalence_classes)} distinct local equivalence classes")
-print(f"• Demonstrated scalability analysis for different cluster state sizes")
+print("• Demonstrated scalability analysis for different cluster state sizes")
