@@ -5,14 +5,10 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
-import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
 
 from graphix import GraphState
-from graphix.extraction import get_fusion_network_from_graph
 
 
 @dataclass
@@ -21,38 +17,28 @@ class ResourceGraphInfo:
     Information about a resource graph.
     """
 
-    type: Optional[str] = None
+    type: str | None = None
     attributes: list[str] = field(default_factory=list)
-    nodes: Optional[int] = None
-    edges: Optional[int] = None
-    kind: Optional[str] = None
-    resource_type: Optional[str] = None
+    nodes: int | None = None
+    edges: int | None = None
+    kind: str | None = None
+    resource_type: str | None = None
     degree_sequence: list[int] = field(default_factory=list)
     spectrum: list[float] = field(default_factory=list)
-    triangles: Optional[int] = None
-    is_connected: Optional[bool] = None
-    num_components: Optional[int] = None
-    max_degree: Optional[int] = None
-    min_degree: Optional[int] = None
-    k: Optional[int] = None
-    total_k_subsets: Optional[int] = None
-    pairable_subsets: Optional[int] = None
-    pairable_ratio: Optional[float] = None
+    triangles: int | None = None
+    is_connected: bool | None = None
+    num_components: int | None = None
+    max_degree: int | None = None
+    min_degree: int | None = None
+    k: int | None = None
+    total_k_subsets: int | None = None
+    pairable_subsets: int | None = None
+    pairable_ratio: float | None = None
 
 
 def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
     """
     Analyze a resource graph object and extract basic metadata.
-
-    Parameters
-    ----------
-    resource_graph : object
-        A ResourceGraph object from `graphix.extraction`.
-
-    Returns
-    -------
-    ResourceGraphInfo
-        Extracted graph info.
     """
     info = ResourceGraphInfo(type=type(resource_graph).__name__)
 
@@ -80,9 +66,6 @@ class GraphStateExtractor:
     """
 
     def __init__(self) -> None:
-        """
-        Initialize the extractor with timing records.
-        """
         self.extraction_times: list[float] = []
         self.equivalence_times: list[float] = []
 
@@ -90,18 +73,6 @@ class GraphStateExtractor:
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
         """
         Create a 2D cluster state.
-
-        Parameters
-        ----------
-        rows : int
-            Number of rows.
-        cols : int
-            Number of columns.
-
-        Returns
-        -------
-        GraphState
-            Generated cluster state.
         """
         gs = GraphState()
         nodes = [i * cols + j for i in range(rows) for j in range(cols)]
@@ -123,24 +94,10 @@ class GraphStateExtractor:
         self,
         cluster_state: GraphState,
         target_edges: list[tuple[int, int]],
-        target_nodes: Optional[list[int]] = None,
+        target_nodes: list[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
         """
         Extract a target graph state using local measurements.
-
-        Parameters
-        ----------
-        cluster_state : GraphState
-            Source 2D cluster state.
-        target_edges : list[tuple[int, int]]
-            Edges to preserve.
-        target_nodes : list[int], optional
-            Nodes to retain.
-
-        Returns
-        -------
-        tuple[GraphState, list[int]]
-            Extracted graph and list of measured-out nodes.
         """
         start = time.perf_counter()
 
@@ -157,19 +114,10 @@ class GraphStateExtractor:
         self.extraction_times.append(time.perf_counter() - start)
         return target_gs, nodes_to_measure
 
-    def compute_local_equivalence_invariants(self, gs: GraphState) -> ResourceGraphInfo:
+    @staticmethod
+    def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
         """
         Compute invariants for local graph state equivalence.
-
-        Parameters
-        ----------
-        gs : GraphState
-            Graph state to analyze.
-
-        Returns
-        -------
-        ResourceGraphInfo
-            Extracted invariants.
         """
         info = ResourceGraphInfo()
         graph = nx.Graph(gs.edges)
