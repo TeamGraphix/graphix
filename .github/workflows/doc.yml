@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  python: "3.12"
+  python: "3.13"
 
 jobs:
   check-doc:
@@ -43,7 +43,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Run language-agnostic linters
         run: |
