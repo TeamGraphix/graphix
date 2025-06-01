@@ -1,8 +1,6 @@
 furo
-graphix
 ipython
 matplotlib
-numpy
 scikit-learn
 seaborn
 sphinx
