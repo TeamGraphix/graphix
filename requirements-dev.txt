@@ -22,4 +22,4 @@ qiskit>=1.0
 qiskit-aer
 
 # Optional dependency. Pinned due to version changes often being incompatible
-pyzx==0.8.0
+pyzx==0.9.0
