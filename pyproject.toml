@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=66.1", "wheel", "setuptools_scm"]
+requires = ["setuptools>=77", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ authors = [{ name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" }]
 maintainers = [
   { name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" },
 ]
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 description = "Optimize and simulate measurement-based quantum computation"
 readme = "README.md"
 classifiers = [
@@ -20,7 +20,6 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering :: Physics",
 ]
