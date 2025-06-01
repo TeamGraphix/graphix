@@ -6,5 +6,4 @@ numpy
 scikit-learn
 seaborn
 sphinx
-sphinxawesome-theme
 sphinx-gallery
