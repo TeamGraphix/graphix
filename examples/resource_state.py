@@ -1,17 +1,16 @@
-"""Resource graph analysis and extraction tools."""
-
 from __future__ import annotations
 
-import itertools
-import time
-from dataclasses import dataclass, field
-
-from graphix import GraphState
-
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    import networkx as nx
 
+
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
+    import networkx as nx
+    import numpy as np
+    import numpy.typing as npt
 
 
 @dataclass
