@@ -1,2 +1,3 @@
-graphix-ibmq
-graphix-perceval
+#graphix-ibmq
+#graphix-perceval
+pyzx==0.9.0
