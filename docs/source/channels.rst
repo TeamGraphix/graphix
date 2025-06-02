@@ -27,10 +27,30 @@ Noise model classes
 
 .. currentmodule:: graphix.noise_models.noise_model
 
+.. autoclass:: Noise
+    :members:
+
+.. autoclass:: A
+    :members:
+
 .. autoclass:: NoiseModel
+    :members:
+
+.. autoclass:: ComposeNoiseModel
     :members:
 
 .. currentmodule:: graphix.noise_models.noiseless_noise_model
 
 .. autoclass:: NoiselessNoiseModel
+    :members:
+
+.. currentmodule:: graphix.noise_models.depolarising_noise_model
+
+.. autoclass:: DepolarisingNoise
+    :members:
+
+.. autoclass:: TwoQubitDepolarisingNoise
+    :members:
+
+.. autoclass:: DepolarisingNoiseModel
     :members:

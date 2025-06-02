@@ -246,56 +246,51 @@ We can simulate the MBQC pattern with various noise models to understand their e
 
     out_state = pattern.simulate_pattern(backend="statevector")
 
-With the simulated pattern, we can define a noise model. We specify Kraus channels for each of the command executions, and we apply dephasing noise to the qubit preparation.
+The statevector backend simulates the pattern ideally, without any noise. To run noisy simulations, we d:class:`Noise` class, which essentially defines a Kraus channel. In the following example, we apply dephasing noise to qubit preparation commands (denoted by `N`).
 
 .. code-block:: python
-
+    from dataclasses import dataclass
+    from typing import Iterable
+    import typing_extensions
+    from graphix.command import BaseM, CommandKind
     from graphix.channels import KrausChannel, dephasing_channel
-    from graphix.noise_models.noise_model import NoiseModel
-    from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
+    from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseCommands, NoiseModel
+    from graphix.utils import Probability
 
+    @dataclass
+    class DephasingNoise(Noise):
+        prob: Probability = Probability()
+
+        @property
+        @typing_extensions.override
+        def nqubits(self) -> int:
+            return 1
+
+        @typing_extensions.override
+        def to_kraus_channel(self) -> KrausChannel:
+            return dephasing_channel(self.prob)
+
+    @dataclass
     class NoisyGraphState(NoiseModel):
+        p_z: Probability = Probability()
 
-        def __init__(self, p_z=0.1):
-            self.p_z = p_z
+        @typing_extensions.override
+        def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
+            """Return the noise to apply to input nodes."""
+            return []
 
-        def prepare_qubit(self):
-            """return the channel to apply after clean single-qubit preparation. Here just we prepare dephased qubits."""
-            return dephasing_channel(self.p_z)
+        @typing_extensions.override
+        def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+            """Return the noise to apply to the command `cmd`."""
+            if cmd.kind == CommandKind.N:
+                return [cmd, A(noise=DephasingNoise(self.p_z), nodes=[cmd.node])]
+            else:
+                return [cmd]
 
-        def entangle(self):
-            """return noise model to qubits that happens after the CZ gate. just identity no noise for this noise model."""
-            return KrausChannel([{"coef": 1.0, "operator": np.eye(4)}])
-
-        def measure(self):
-            """apply noise to qubit to be measured."""
-            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
-
-        def confuse_result(self, cmd):
-            """imperfect measurement effect. here we do nothing (no error).
-            cmd = "M"
-            """
-            pass
-
-        def byproduct_x(self):
-            """apply noise to qubits after X gate correction. here no error (identity)."""
-            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
-
-        def byproduct_z(self):
-            """apply noise to qubits after Z gate correction. here no error (identity)."""
-            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
-
-        def clifford(self):
-            """apply noise to qubits that happens in the Clifford gate process. here no error (identity)."""
-            return KrausChannel([{"coef": 1.0, "operator": np.eye(2)}])
-
-        def tick_clock(self):
-            """notion of time in real devices - this is where we apply effect of T1 and T2.
-            we assume commands that lie between 'T' commands run simultaneously on the device.
-
-            here we assume no idle error.
-            """
-            pass
+        @typing_extensions.override
+        def confuse_result(self, cmd: BaseM, result: bool) -> bool:
+            """Assign wrong measurement result."""
+            return result
 
 With the noise model written, we can simulate it.
 
