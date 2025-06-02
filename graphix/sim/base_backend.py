@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
+import typing_extensions
 
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
@@ -250,7 +251,8 @@ class Backend:
         loc = self.node_index.index(node)
         self.state.evolve_single(clifford.matrix, loc)
 
-    def apply_noise(self, nodes: list[int], noise: Noise) -> None:
+    @typing_extensions.override
+    def apply_noise(self, _nodes: list[int], _noise: Noise) -> None:
         """Apply noise."""
         raise ValueError("Noise not supported by this backend.")
 
