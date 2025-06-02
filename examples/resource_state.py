@@ -9,7 +9,7 @@ import warnings
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore", message="networkx backend defined more than once: nx-loopback")
-    import networkx as nx
+import networkx as nx
     
 from graphix import GraphState
 
