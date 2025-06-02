@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- #277: Methods for pretty-printing `Pattern`: `to_ascii`,
-  `to_unicode`, `to_latex`.
+- #271: New noise-model API via transpilation: noise-models can now
+  add or change the commands in the pattern. The API now includes a
+  depolarising noise model and a noise model composer.
+
+- #277: Methods for pretty-printing `Pattern`: `to_ascii`, `to_unicode`,
+  `to_latex`.
 
 ### Fixed
 

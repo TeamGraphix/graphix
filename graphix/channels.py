@@ -13,7 +13,7 @@ from graphix import linalg_validations as lv
 from graphix.ops import Ops
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
 
 _T = TypeVar("_T", bound=np.generic)
 
@@ -129,6 +129,10 @@ class KrausChannel:
     def __getitem__(self, index: SupportsIndex | slice, /) -> KrausData | list[KrausData]:
         """Return the Kraus operator at the given index."""
         return self.__data[index]
+
+    def __iter__(self) -> Iterator[KrausData]:
+        """Return an iterator on Kraus operators."""
+        return iter(self.__data)
 
     def __len__(self) -> int:
         """Return the number of Kraus operators."""
