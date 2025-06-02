@@ -249,6 +249,7 @@ We can simulate the MBQC pattern with various noise models to understand their e
 The statevector backend simulates the pattern ideally, without any noise. To run noisy simulations, we d:class:`Noise` class, which essentially defines a Kraus channel. In the following example, we apply dephasing noise to qubit preparation commands (denoted by `N`).
 
 .. code-block:: python
+
     from dataclasses import dataclass
     from typing import Iterable
     import typing_extensions
