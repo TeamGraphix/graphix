@@ -5,12 +5,9 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-import warnings
 
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", message="networkx backend defined more than once: nx-loopback")
 import networkx as nx
-    
+
 from graphix import GraphState
 
 
