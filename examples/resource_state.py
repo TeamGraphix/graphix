@@ -1,21 +1,20 @@
 """Resource graph analysis and extraction tools."""
-
 from __future__ import annotations
 
 import itertools
 import time
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import networkx as nx
 
-from graphix import GraphState
+if TYPE_CHECKING:
+    from graphix import GraphState
 
 
 @dataclass
 class ResourceGraphInfo:
-    """
-    Information about a resource graph.
-    """
+    """Information about a resource graph."""
 
     type: str | None = None
     attributes: list[str] = field(default_factory=list)
@@ -37,9 +36,7 @@ class ResourceGraphInfo:
 
 
 def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
-    """
-    Analyze a resource graph object and extract basic metadata.
-    """
+    """Analyze a resource graph object and extract basic metadata."""
     info = ResourceGraphInfo(type=type(resource_graph).__name__)
 
     if hasattr(resource_graph, "graph"):
@@ -61,9 +58,7 @@ def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
 
 
 class GraphStateExtractor:
-    """
-    Extract and analyze target graph states from cluster states.
-    """
+    """Extract and analyze target graph states from cluster states."""
 
     def __init__(self) -> None:
         self.extraction_times: list[float] = []
@@ -71,9 +66,7 @@ class GraphStateExtractor:
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
-        """
-        Create a 2D cluster state.
-        """
+        """Create a 2D cluster state."""
         gs = GraphState()
         nodes = [i * cols + j for i in range(rows) for j in range(cols)]
         gs.add_nodes_from(nodes)
@@ -96,9 +89,7 @@ class GraphStateExtractor:
         target_edges: list[tuple[int, int]],
         target_nodes: list[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
-        """
-        Extract a target graph state using local measurements.
-        """
+        """Extract a target graph state using local measurements."""
         start = time.perf_counter()
 
         if target_nodes is None:
@@ -116,9 +107,7 @@ class GraphStateExtractor:
 
     @staticmethod
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
-        """
-        Compute invariants for local graph state equivalence.
-        """
+        """Compute invariants for local graph state equivalence."""
         info = ResourceGraphInfo()
         graph = nx.Graph(gs.edges)
 
