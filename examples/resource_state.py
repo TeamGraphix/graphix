@@ -9,9 +9,7 @@ from dataclasses import dataclass, field
 import networkx as nx
 
 from graphix import GraphState
-# Suppress specific NetworkX warnings that might cause doc-check issues
-warnings.filterwarnings("ignore", category=FutureWarning, module="networkx")
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="networkx")
+
 
 @dataclass
 class ResourceGraphInfo:
