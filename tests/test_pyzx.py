@@ -114,3 +114,29 @@ def test_rz() -> None:
     state = pattern.simulate_pattern()
     state_zx = pattern_zx.simulate_pattern()
     assert np.abs(np.dot(state_zx.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+
+
+# Issue #235
+@pytest.mark.skipif(_pyzx_notfound(), reason="pyzx not installed")
+def test_full_reduce_toffoli() -> None:
+    import pyzx as zx
+
+    from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
+
+    c = Circuit(3)
+    c.ccx(0, 1, 2)
+    p = c.transpile().pattern
+    og = OpenGraph.from_pattern(p)
+    pyg = to_pyzx_graph(og)
+    pyg.normalize()
+    pyg_copy = deepcopy(pyg)
+    zx.simplify.full_reduce(pyg)
+    pyg.normalize()
+    t = zx.tensorfy(pyg)
+    t2 = zx.tensorfy(pyg_copy)
+    assert zx.compare_tensors(t, t2)
+    og2 = from_pyzx_graph(pyg)
+    p2 = og2.to_pattern()
+    s = p.simulate_pattern()
+    s2 = p2.simulate_pattern()
+    print(np.abs(np.dot(s.flatten().conj(), s2.flatten())))
