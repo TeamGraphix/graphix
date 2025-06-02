@@ -17,7 +17,7 @@ def tests_minimal(session: Session) -> None:
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
 def tests(session: Session) -> None:
     """Run the test suite with full dependencies."""
-    session.install("-e", ".[dev]")
+    session.install("-e", ".[dev,extra]")
     session.run("pytest", "--doctest-modules")
 
 
