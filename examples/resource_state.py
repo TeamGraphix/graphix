@@ -6,9 +6,12 @@ import itertools
 import time
 from dataclasses import dataclass, field
 
-import networkx as nx
-
 from graphix import GraphState
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import networkx as nx
+
 
 
 @dataclass
