@@ -6,4 +6,7 @@ numpy
 graphix
 matplotlib
 
+# For parallel builds
+joblib
+
 -r ../benchmarks/requirements.txt
