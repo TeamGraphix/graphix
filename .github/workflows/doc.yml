@@ -34,7 +34,7 @@ jobs:
         run: pip install -r requirements.txt -r requirements-dev.txt -r docs/requirements.txt
 
       - name: Make docs
-        run: sphinx-build -W docs/source docs/build
+        run: sphinx-build -W docs/source docs/build -j auto
 
   lint-text:
     runs-on: ubuntu-latest
