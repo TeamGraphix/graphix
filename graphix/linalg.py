@@ -313,3 +313,25 @@ class MatGF2:
         x = np.array(x).T
 
         return x, kernels
+
+    def right_inverse(self) -> MatGF2:
+        r"""Return any right inverse of the matrix.
+
+        A right inverse B of a matrix A satisfies AB = I where I is
+        the identity matrix. It is assumed that the right inverse
+        exists.
+
+        Returns
+        -------
+        rinv: Any right inverse of the matrix.
+        """
+        # If matrix is square, return inverse
+        if self.data.shape[0] == self.data.shape[1]:
+            return MatGF2(np.linalg.inv(self.data))
+        # Row reduce A to get [I X]B = C
+        # Then B = [C 0].T is a right inverse
+        ident = galois.GF2.Identity(self.data.shape[0])
+        aug = np.hstack([self.data, ident])
+        red = aug.row_reduce(ncols=self.data.shape[1])
+        rinv = np.vstack([red[:, self.data.shape[1]:], galois.GF2.Zeros((self.data.shape[1] - self.data.shape[0], self.data.shape[0]))])
+        return MatGF2(rinv)

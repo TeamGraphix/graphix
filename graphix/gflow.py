@@ -25,6 +25,8 @@ from graphix.command import CommandKind
 from graphix.fundamentals import Plane
 from graphix.linalg import MatGF2
 
+from galois import GF2
+
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
@@ -639,6 +641,192 @@ def pauliflowaux(
     bset = solved_nodes | solved_update
     return pauliflowaux(graph, iset, oset, meas_planes, k + 1, bset, bset, l_k, p, (l_x, l_y, l_z), mode)
 
+def find_pauliflow_fast(
+    graph: nx.Graph,
+    iset: set[int],
+    oset: set[int],
+    meas_planes: dict[int, Plane],
+    meas_angles: dict[int, float],
+) -> tuple[dict[int, set[int]], dict[int, int]]:
+    """Maximally delayed Pauli flow finding algorithm.
+
+    For open graph g with input, output, measurement planes and measurement angles, this returns maximally delayed Pauli flow.
+
+    Pauli flow consist of function p(i) where i is the qubit labels,
+    and strict partial ordering < or layers labels l_k where each element
+    specify the order of qubits to be measured to maintain determinism in MBQC.
+    In practice, we must measure qubits in order specified in array l_k (increasing order
+    of l_k from 1), and for each measurements of qubit i we must perform corrections on
+    qubits in p(i), depending on the measurement outcome.
+
+    For more details of Pauli flow and the finding algorithm used in this method,
+    see arxiv:2410.23439.
+
+    Parameters
+    ----------
+    graph: nx.Graph
+        graph (incl. in and out)
+    iset: set
+        set of node labels for input
+    oset: set
+        set of node labels for output
+    meas_planes: dict
+        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
+    meas_angles: dict
+        measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
+
+    Returns
+    -------
+    p: dict
+        Pauli flow function. p[i] is the set of qubits to be corrected for the measurement of qubit i.
+    l_k: dict
+        layers obtained by  Pauli flow algorithm. l_k[d] is a node set of depth d.
+    """
+    check_meas_planes(meas_planes)
+    l_k = dict()
+    p = dict()
+    l_x, l_y, l_z = get_pauli_nodes(meas_planes, meas_angles)
+    nodes, non_input_nodes, non_output_nodes = get_node_lists(graph, iset, oset)
+    # Map non inputs/outputs to row/col index
+    non_input_idx = np.searchsorted(nodes, non_input_nodes)
+    non_output_idx = np.searchsorted(nodes, non_output_nodes)
+    non_input_map = {v: i for v, i in zip(non_input_nodes, non_input_idx)}
+    non_output_map = {v: i for v, i in zip(non_output_nodes, non_output_idx)}
+    n, nI, nO = len(nodes), len(iset), len(oset)
+    adj_mat = nx.to_numpy_array(graph, nodes)
+    # Construct flow-demand matrix
+    flow_demand_matrix = np.zeros((n, n), dtype=np.int8)
+    for v in non_output_nodes:
+        i = non_output_map[v]
+        if v in l_x:
+            flow_demand_matrix[i, :] = adj_mat[i, :]
+            flow_demand_matrix[i, i] = 0
+        elif v in l_y:
+            flow_demand_matrix[i, :] = adj_mat[i, :]
+            flow_demand_matrix[i, i] = 1
+        elif v in l_z:
+            flow_demand_matrix[i, i] = 1
+        elif meas_planes[v] == Plane.XY:
+            flow_demand_matrix[i, :] = adj_mat[i, :]
+            flow_demand_matrix[i, i] = 0
+        elif meas_planes[v] == Plane.XZ:
+            flow_demand_matrix[i, i] = 1
+        elif meas_planes[v] == Plane.YZ:
+            flow_demand_matrix[i, i] = 1
+    flow_demand_matrix = GF2(flow_demand_matrix[np.ix_(non_output_idx, non_input_idx)])
+    # Construct order-demand matrix
+    order_demand_matrix = np.zeros((n, n), dtype=np.int8)
+    for v in non_output_nodes:
+        i = non_output_map[v]
+        if v in l_x or v in l_y or v in l_z:
+            pass
+        elif meas_planes[v] == Plane.YZ:
+            order_demand_matrix[i, :] = adj_mat[i, :]
+            order_demand_matrix[i, i] = 0
+        elif meas_planes[v] == Plane.XZ:
+            order_demand_matrix[i, :] = adj_mat[i, :]
+            order_demand_matrix[i, i] = 1
+        elif meas_planes[v] == Plane.XY:
+            order_demand_matrix[i, i] = 1
+    order_demand_matrix = GF2(order_demand_matrix[np.ix_(non_output_idx, non_input_idx)])
+    # If rank is not n - nO, Pauli flow does not exist
+    if MatGF2(flow_demand_matrix).get_rank() < n - nO:
+        raise ValueError("Pauli flow does not exist")
+    # Compute correction matrix
+    # Branch based on number of input and output nodes
+    correction_matrix = None
+    if nI == nO:
+        correction_matrix = MatGF2(flow_demand_matrix).right_inverse().data
+    else:
+        # Verbatim implementation of Algorithm 3 in the reference
+        C0 = MatGF2(flow_demand_matrix).right_inverse().data
+        F = flow_demand_matrix.null_space().T
+        C_p = np.hstack([C0, F])
+        N_B = order_demand_matrix @ C_p
+        N_L = N_B[:, :n - nO].copy()
+        N_R = N_B[:, n - nO:].copy()
+        K_ILS = np.hstack([N_R, N_L, GF2.Identity(n - nO)])
+        K_LS = K_ILS.copy()
+        K_LS = K_LS.row_reduce(ncols=N_R.shape[1])
+        S = set()
+        P = GF2.Zeros((nO - nI, n - nO))
+        non_output_set = set(non_output_nodes)
+        while S != non_output_set:
+            r_z = 0
+            for i in range(K_LS.shape[0]):
+                if all(K_LS[i, :nO - nI] == 0):
+                    r_z = i
+                    break
+            L = set()
+            for v in non_output_set - S:
+                i = non_output_map[v]
+                if all(K_LS[r_z:, nO - nI + i] == 0):
+                    L.add(v)
+            if not L:
+                raise ValueError("Pauli flow does not exist")
+            for v in L:
+                i = non_output_map[v]
+                # Solve the linear system
+                lin_sys = np.hstack([K_LS[:, :nO - nI], K_LS[:, nO - nI + i].reshape(-1, 1)])
+                lin_sys = lin_sys.row_reduce(ncols=nO - nI)
+                # Ensure solution exists (overdetermined system)
+                if any(lin_sys[nO - nI:, -1] == 1):
+                    raise ValueError("Pauli flow does not exist")
+                P[:, i] = lin_sys[:nO - nI, -1]
+            for v in L:
+                S.add(v)
+                R = []
+                j = non_output_map[v]
+                for i in range(n - nO):
+                    if K_LS[i, n - nI + j] == 1:
+                        R.append(i)
+                r_last = R[-1]
+                for r in R[:-1]:
+                    K_LS[r, :] += K_LS[r_last, :]
+                K_LS[r_last, :] += K_ILS[j, :]
+                for r in range(n - nO):
+                    if r == r_last:
+                        continue
+                    if all(K_LS[r, :nO - nI] == 0):
+                        break
+                    y = 0
+                    for j in range(K_LS.shape[1]):
+                        if K_LS[r, j] == 1:
+                            y = j
+                            break
+                    if K_LS[r_last, y] == 1:
+                        K_LS[r_last, :] += K_LS[r, :]
+                # Not sure if doing this step (step 12(d)vi)
+                # this way makes the runtime worse
+                # If it does, then this step has to be done manually
+                K_LS = K_LS.row_reduce(ncols=nO - nI)
+        C_B = np.vstack([GF2.Identity(n - nO), P])
+        correction_matrix = C_p @ C_B
+    # Compute induced relation matrix
+    induced_relation_matrix = order_demand_matrix @ correction_matrix
+    # Extract data from correction matrix and induced relation matrix
+##    for j in range(n - nO):
+##        p[non_output_nodes[j]] = set()
+##        for i in range(n - nI):
+##            if correction_matrix.data[i, j] == 1:
+##                p[non_output_nodes[j]].add(non_input_nodes[i])
+##    return p
+
+def get_node_lists(
+    graph: nx.Graph,
+    iset: set[int],
+    oset: set[int],
+) -> tuple[list[int], list[int], list[int]]:
+    """
+    Get ordered lists of all nodes, non-input nodes, and non-output nodes.
+    """
+    nodes = list(graph.nodes)
+    non_input_nodes = list(graph.nodes - iset)
+    non_output_nodes = list(graph.nodes - oset)
+    nodes.sort()
+    non_input_nodes.sort()
+    non_output_nodes.sort()
+    return nodes, non_input_nodes, non_output_nodes
 
 def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Check if the pattern has a valid flow. If so, return the flow and layers.
