@@ -1,9 +1,10 @@
 """Resource graph analysis and extraction tools."""
 
 from __future__ import annotations
-
+from typing import TYPE_CHECKING
 import itertools
 import time
+import numpy as np
 from dataclasses import dataclass, field
 
 import networkx as nx
