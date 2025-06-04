@@ -1,7 +1,5 @@
 furo
-ipython
+joblib  # For parallel builds
 matplotlib
-scikit-learn
-seaborn
 sphinx
 sphinx-gallery

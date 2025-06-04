@@ -1030,7 +1030,7 @@ class Pattern:
                 meas_plane[cmd.node] = cmd.plane
         return meas_plane
 
-    def get_angles(self):
+    def get_angles(self) -> dict[int, float]:
         """Get measurement angles of the pattern.
 
         Returns

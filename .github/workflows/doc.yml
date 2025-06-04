@@ -33,7 +33,7 @@ jobs:
         run: pip install -e ".[dev,doc]"
 
       - name: Make docs
-        run: sphinx-build -W docs/source docs/build
+        run: sphinx-build -W docs/source docs/build -j auto
 
   lint-text:
     runs-on: ubuntu-latest
