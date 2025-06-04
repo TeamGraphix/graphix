@@ -7,14 +7,32 @@ import time
 from dataclasses import dataclass, field
 
 import networkx as nx
-
 from graphix import GraphState
 
 
 @dataclass
 class ResourceGraphInfo:
     """
-    Information about a resource graph.
+    Metadata extracted from a graph state or resource graph.
+
+    Attributes:
+        type: Type of the graph object (e.g., GraphState).
+        attributes: List of custom or additional attributes found in the object.
+        nodes: Number of nodes in the graph.
+        edges: Number of edges in the graph.
+        kind: Type/kind label for graph state (e.g., linear, cluster, etc.).
+        resource_type: Higher-level classification for the resource.
+        degree_sequence: Sorted list of node degrees.
+        spectrum: Sorted real part of adjacency matrix eigenvalues.
+        triangles: Number of triangles in the graph.
+        is_connected: Whether the graph is connected.
+        num_components: Number of connected components.
+        max_degree: Maximum degree in the graph.
+        min_degree: Minimum degree in the graph.
+        k: Subset size for additional analysis (if applicable).
+        total_k_subsets: Number of total k-subsets analyzed.
+        pairable_subsets: Number of k-subsets satisfying pairability.
+        pairable_ratio: Fraction of pairable subsets.
     """
 
     type: str | None = None
@@ -38,10 +56,11 @@ class ResourceGraphInfo:
 
 def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
     """
-    Analyze a resource graph object and extract basic metadata.
+    Extract high-level structural metadata from a resource graph object.
     """
     info = ResourceGraphInfo(type=type(resource_graph).__name__)
 
+    # Basic node/edge count
     if hasattr(resource_graph, "graph"):
         graph = resource_graph.graph
         info.nodes = len(graph.nodes) if hasattr(graph, "nodes") else None
@@ -52,6 +71,7 @@ def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
     elif hasattr(resource_graph, "n_node"):
         info.nodes = resource_graph.n_node
 
+    # Type or kind
     if hasattr(resource_graph, "kind"):
         info.kind = resource_graph.kind
     elif hasattr(resource_graph, "type"):
@@ -62,7 +82,7 @@ def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
 
 class GraphStateExtractor:
     """
-    Extract and analyze target graph states from cluster states.
+    Tools for creating and analyzing graph states via extraction from cluster states.
     """
 
     def __init__(self) -> None:
@@ -72,7 +92,14 @@ class GraphStateExtractor:
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
         """
-        Create a 2D cluster state.
+        Create a rectangular 2D cluster state graph.
+
+        Args:
+            rows: Number of rows in the grid.
+            cols: Number of columns in the grid.
+
+        Returns:
+            GraphState: The corresponding 2D cluster state.
         """
         gs = GraphState()
         nodes = [i * cols + j for i in range(rows) for j in range(cols)]
@@ -97,7 +124,17 @@ class GraphStateExtractor:
         target_nodes: list[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
         """
-        Extract a target graph state using local measurements.
+        Extract a desired graph state from a cluster state using measurement pattern.
+
+        Args:
+            cluster_state: Original cluster state graph.
+            target_edges: List of target edges in extracted graph.
+            target_nodes: Optional list of target nodes.
+
+        Returns:
+            A tuple containing:
+                - Extracted GraphState.
+                - List of measured nodes used in the extraction.
         """
         start = time.perf_counter()
 
@@ -117,7 +154,13 @@ class GraphStateExtractor:
     @staticmethod
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
         """
-        Compute invariants for local graph state equivalence.
+        Compute local-equivalence invariants for the given graph state.
+
+        Args:
+            gs: GraphState to analyze.
+
+        Returns:
+            ResourceGraphInfo containing graph invariants.
         """
         info = ResourceGraphInfo()
         graph = nx.Graph(gs.edges)
@@ -133,3 +176,4 @@ class GraphStateExtractor:
         info.min_degree = min(info.degree_sequence) if info.degree_sequence else None
 
         return info
+
