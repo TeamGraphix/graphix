@@ -1278,7 +1278,7 @@ class Pattern:
         return n_list
 
     def simulate_pattern(
-        self, backend: str = "statevector", input_state: BasicStates = BasicStates.PLUS, **kwargs
+        self, backend: str = "statevector", input_state: BasicStates = BasicStates.PLUS, postselect: dict = None, **kwargs
     ) -> State:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
@@ -1288,6 +1288,9 @@ class Pattern:
         ----------
         backend : str
             optional parameter to select simulator backend.
+        postselect : dict
+            Optional. Dictionary mapping node indices to forced measurement outcomes (0 or 1).
+            If provided, measurements on these nodes will be post-selected to the specified outcome.
         kwargs: keyword args for specified backend.
 
         Returns
@@ -1297,7 +1300,7 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        sim = PatternSimulator(self, backend=backend, **kwargs)
+        sim = PatternSimulator(self, backend=backend, postselect=postselect, **kwargs)
         sim.run(input_state)
         return sim.backend.state
 

@@ -207,24 +207,33 @@ class Backend:
         control = self.node_index.index(edge[1])
         self.state.entangle((target, control))
 
-    def measure(self, node: int, measurement: Measurement) -> bool:
+    def measure(self, node: int, measurement: Measurement, forced_result: int = None) -> bool:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
         measurement: Measurement
+        forced_result: int or None
+            If provided, force the measurement result to this value (0 or 1).
         """
         loc = self.node_index.index(node)
-        result = perform_measure(
-            loc,
-            measurement.plane,
-            measurement.angle,
-            self.state,
-            rng=self.__rng,
-            pr_calc=self.__pr_calc,
-            symbolic=self.__symbolic,
-        )
+        if forced_result is not None:
+            # Use the forced result
+            vec = measurement.plane.polar(measurement.angle)
+            op_mat = _op_mat_from_result(vec, forced_result, symbolic=self.symbolic)
+            self.state.evolve_single(op_mat, loc)
+            result = forced_result
+        else:
+            result = perform_measure(
+                loc,
+                measurement.plane,
+                measurement.angle,
+                self.state,
+                rng=self.__rng,
+                pr_calc=self.__pr_calc,
+                symbolic=self.__symbolic,
+            )
         self.node_index.remove(node)
         self.state.remove_qubit(loc)
         return result
