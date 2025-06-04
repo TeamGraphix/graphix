@@ -133,4 +133,3 @@ class GraphStateExtractor:
         info.min_degree = min(info.degree_sequence) if info.degree_sequence else None
 
         return info
-
