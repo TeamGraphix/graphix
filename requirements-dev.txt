@@ -2,7 +2,7 @@
 mypy
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.11.11
+ruff==0.11.12
 
 # Stubs
 types-networkx
@@ -20,6 +20,3 @@ pytest-mock
 # Optional dependencies
 qiskit>=1.0
 qiskit-aer
-
-# Optional dependency. Pinned due to version changes often being incompatible
-pyzx==0.8.0
