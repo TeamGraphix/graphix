@@ -7,15 +7,14 @@ import time
 from dataclasses import dataclass, field
 
 import networkx as nx
+from networkx.classes.reportviews import DiDegreeView
 
 from graphix import GraphState
 
 
 @dataclass
 class ResourceGraphInfo:
-    """
-    Information about a resource graph.
-    """
+    """Information about a resource graph."""
 
     type: str | None = None
     attributes: list[str] = field(default_factory=list)
@@ -37,15 +36,17 @@ class ResourceGraphInfo:
 
 
 def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
-    """
-    Analyze a resource graph object and extract basic metadata.
-    """
+    """Analyze a resource graph object and extract basic metadata."""
     info = ResourceGraphInfo(type=type(resource_graph).__name__)
+
+    graph: Graph | None = None
 
     if hasattr(resource_graph, "graph"):
         graph = resource_graph.graph
-        info.nodes = len(graph.nodes) if hasattr(graph, "nodes") else None
-        info.edges = len(graph.edges) if hasattr(graph, "edges") else None
+        if hasattr(graph, "nodes"):
+            info.nodes = len(graph.nodes)
+        if hasattr(graph, "edges"):
+            info.edges = len(graph.edges)
     elif hasattr(resource_graph, "nodes") and hasattr(resource_graph, "edges"):
         info.nodes = len(resource_graph.nodes)
         info.edges = len(resource_graph.edges)
@@ -61,9 +62,7 @@ def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
 
 
 class GraphStateExtractor:
-    """
-    Extract and analyze target graph states from cluster states.
-    """
+    """Extract and analyze target graph states from cluster states."""
 
     def __init__(self) -> None:
         self.extraction_times: list[float] = []
@@ -71,9 +70,7 @@ class GraphStateExtractor:
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
-        """
-        Create a 2D cluster state.
-        """
+        """Create a 2D cluster state."""
         gs = GraphState()
         nodes = [i * cols + j for i in range(rows) for j in range(cols)]
         gs.add_nodes_from(nodes)
@@ -96,9 +93,7 @@ class GraphStateExtractor:
         target_edges: list[tuple[int, int]],
         target_nodes: list[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
-        """
-        Extract a target graph state using local measurements.
-        """
+        """Extract a target graph state using local measurements."""
         start = time.perf_counter()
 
         if target_nodes is None:
@@ -116,16 +111,24 @@ class GraphStateExtractor:
 
     @staticmethod
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
-        """
-        Compute invariants for local graph state equivalence.
-        """
+        """Compute invariants for local graph state equivalence."""
         info = ResourceGraphInfo()
-        graph = nx.Graph(gs.edges)
+
+        # Build graph with nodes and edges
+        graph: Graph = nx.Graph()
+        graph.add_nodes_from(gs.nodes)
+        graph.add_edges_from(gs.edges)
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        info.degree_sequence = sorted([d for _, d in graph.degree()])
-        info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
+
+        # Fix: explicit typing and proper handling of degree
+        degree_seq: list[int] = [int(deg) for _, deg in graph.degree()]
+        info.degree_sequence = sorted(degree_seq)
+
+        spectrum = nx.adjacency_spectrum(graph)
+        info.spectrum = sorted([float(val.real) for val in spectrum])
+
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
         info.num_components = nx.number_connected_components(graph)
