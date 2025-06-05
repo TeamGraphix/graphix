@@ -109,13 +109,18 @@ class GraphStateExtractor:
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
         """Compute invariants for local graph state equivalence."""
         info = ResourceGraphInfo()
-        graph: Graph[int] = nx.Graph(gs.edges)
+
+        # Build graph with nodes and edges
+        graph = nx.Graph()
+        graph.add_nodes_from(gs.nodes)
+        graph.add_edges_from(gs.edges)
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
 
-        # FIXED: Avoid error with ambiguous type
-        info.degree_sequence = sorted([deg for _, deg in graph.degree()])
+        # Use explicit typing to fix mypy error
+        degree_seq: list[int] = [int(deg) for _, deg in graph.degree()]
+        info.degree_sequence = sorted(degree_seq)
 
         spectrum = nx.adjacency_spectrum(graph)
         info.spectrum = sorted([float(val.real) for val in spectrum])
