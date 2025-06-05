@@ -124,14 +124,7 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        
-        # Fix: Properly handle degree sequence extraction with type safety
-        if graph.number_of_nodes() > 0:
-            degree_dict = dict(graph.degree())
-            info.degree_sequence = sorted([int(degree) for degree in degree_dict.values()])
-        else:
-            info.degree_sequence = []
-            
+        info.degree_sequence = sorted([d for _, d in graph.degree()])
         info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
