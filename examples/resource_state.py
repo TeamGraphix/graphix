@@ -124,7 +124,11 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        info.degree_sequence = sorted([int(d) for _, d in graph.degree()])
+
+        degree_view = graph.degree()
+        if hasattr(degree_view, "__iter__"):
+            info.degree_sequence = sorted([int(d) for _, d in degree_view])
+
         info.spectrum = [float(x) for x in sorted(nx.adjacency_spectrum(graph).real)]
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
