@@ -114,12 +114,8 @@ class GraphStateExtractor:
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
 
-        degrees = graph.degree()
-        degree_sequence = []
-        for node_degree in degrees:
-            _, degree = node_degree
-            degree_sequence.append(int(degree))
-        info.degree_sequence = sorted(degree_sequence)
+        # FIXED: Avoid error with ambiguous type
+        info.degree_sequence = sorted([deg for _, deg in graph.degree()])
 
         spectrum = nx.adjacency_spectrum(graph)
         info.spectrum = sorted([float(val.real) for val in spectrum])
