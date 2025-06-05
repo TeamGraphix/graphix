@@ -343,10 +343,10 @@ class GraphVisualizer:
             fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
         nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
-        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.graph.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.graph.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.graph.nodes()])  # Get the maximum y coordinate
+        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
+        x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
+        y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
+        y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
 
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
@@ -509,10 +509,10 @@ class GraphVisualizer:
             fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
         nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
-        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.graph.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.graph.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.graph.nodes()])  # Get the maximum y coordinate
+        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
+        x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
+        y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
+        y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
 
         # Draw the vertical lines to separate different layers
         for layer in range(min(l_k.values()), max(l_k.values())):
@@ -602,10 +602,10 @@ class GraphVisualizer:
             fontsize = fontsize * 2 / len(str(max(self.graph.nodes())))
         nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
-        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.graph.nodes()])  # Get the maximum x coordinate
-        y_min = min([pos[node][1] for node in self.graph.nodes()])  # Get the minimum y coordinate
-        y_max = max([pos[node][1] for node in self.graph.nodes()])  # Get the maximum y coordinate
+        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
+        x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
+        y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
+        y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
@@ -741,10 +741,10 @@ class GraphVisualizer:
         plt.plot([], [], color="tab:green", label="zflow")
         plt.plot([], [], color="tab:brown", label="xflow and zflow")
 
-        x_min = min([pos[node][0] for node in self.graph.nodes()])  # Get the minimum x coordinate
-        x_max = max([pos[node][0] for node in self.graph.nodes()])
-        y_min = min([pos[node][1] for node in self.graph.nodes()])
-        y_max = max([pos[node][1] for node in self.graph.nodes()])
+        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
+        x_max = max(pos[node][0] for node in self.graph.nodes())
+        y_min = min(pos[node][1] for node in self.graph.nodes())
+        y_max = max(pos[node][1] for node in self.graph.nodes())
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 3.5 * node_distance[0]
@@ -1171,14 +1171,14 @@ class GraphVisualizer:
     @staticmethod
     def _control_point(start, end, node_pos, distance=0.6):
         """Generate a control point to bend the edge around a node."""
-        edge_vector = np.array(end) - np.array(start)
+        edge_vector = np.asarray(end, dtype=np.float64) - np.asarray(start, dtype=np.float64)
         # Rotate the edge vector 90 degrees or -90 degrees according to the node position
         cross = np.cross(edge_vector, np.array(node_pos) - np.array(start))
         if cross > 0:
             dir_vector = np.array([edge_vector[1], -edge_vector[0]])  # Rotate the edge vector 90 degrees
         else:
             dir_vector = np.array([-edge_vector[1], edge_vector[0]])
-        dir_vector = dir_vector / np.linalg.norm(dir_vector)  # Normalize the vector
+        dir_vector /= np.linalg.norm(dir_vector)  # Normalize the vector
         control = node_pos + distance * dir_vector
         return control.tolist()
 
@@ -1191,7 +1191,8 @@ class GraphVisualizer:
             curve += np.outer(comb(n, i) * ((1 - t) ** (n - i)) * (t**i), np.array(point))
         return curve
 
-    def _check_path(self, path, target_node_pos=None):
+    @staticmethod
+    def _check_path(path, target_node_pos=None):
         """If there is an acute angle in the path, merge points."""
         path = np.array(path)
         acute = True

@@ -197,11 +197,11 @@ class PatternSimulator:
                     self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
                 elif cmd.kind == CommandKind.Z:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)

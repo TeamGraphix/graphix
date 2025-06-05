@@ -130,3 +130,22 @@ class TestTranspilerUnitGates:
         nb_shots = 10000
         count = sum(1 for _ in range(nb_shots) if simulate_and_measure())
         assert abs(count - nb_shots / 2) < nb_shots / 20
+
+    def test_add_extend(self) -> None:
+        circuit = Circuit(3)
+        circuit.ccx(0, 1, 2)
+        circuit.rzz(0, 1, 2)
+        circuit.cnot(0, 1)
+        circuit.swap(0, 1)
+        circuit.h(0)
+        circuit.s(0)
+        circuit.x(0)
+        circuit.y(0)
+        circuit.z(0)
+        circuit.i(0)
+        circuit.m(0, Plane.XY, 0.5)
+        circuit.rx(1, 0.5)
+        circuit.ry(2, 0.5)
+        circuit.rz(1, 0.5)
+        circuit2 = Circuit(3, instr=circuit.instruction)
+        assert circuit.instruction == circuit2.instruction

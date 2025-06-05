@@ -74,11 +74,10 @@ def generate_from_graph(
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-    if f:
+    if f is not None:
         # flow found
         depth, layers = get_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
-        # pattern.extend([["N", i] for i in inputs])
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
         for e in graph.edges:
@@ -90,7 +89,7 @@ def generate_from_graph(
                 pattern.add(M(node=j, angle=angles[j]))
                 neighbors: set[int] = set()
                 for k in f[j]:
-                    neighbors = neighbors | set(graph.neighbors(k))
+                    neighbors |= set(graph.neighbors(k))
                 for k in neighbors - {j}:
                     # if k not in measured:
                     pattern.add(Z(node=k, domain={j}))
@@ -98,11 +97,10 @@ def generate_from_graph(
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-        if g:
+        if g is not None:
             # gflow found
             depth, layers = get_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
-            # pattern.extend([["N", i] for i in inputs])
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(N(node=i))
             for e in graph.edges:
@@ -118,4 +116,5 @@ def generate_from_graph(
         else:
             raise ValueError("no flow or gflow found")
 
+    pattern.reorder_output_nodes(outputs)
     return pattern

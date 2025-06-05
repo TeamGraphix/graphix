@@ -15,4 +15,3 @@ Device Interface
     .. automethod:: run
 
     .. automethod:: retrieve_result
-

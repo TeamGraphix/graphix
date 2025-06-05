@@ -8,14 +8,13 @@ value assignment.
 
 from __future__ import annotations
 
+import cmath
 import math
 import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeVar, overload
-
-import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -411,7 +410,4 @@ def exp(z: ExpressionOrComplex) -> ExpressionOrComplex:
         if isinstance(z, ExpressionWithTrigonometry):
             return z.exp()
         raise PlaceholderOperationError
-    e = np.exp(z)
-    # Result type of np.exp is Any!
-    assert isinstance(e, (complex, float))
-    return e
+    return cmath.exp(z)

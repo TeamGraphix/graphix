@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import warnings
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
@@ -23,12 +25,13 @@ from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
+from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Container, Iterable, Iterator, Mapping
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
@@ -80,22 +83,41 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    def __init__(self, input_nodes: list[int] | None = None) -> None:
+    def __init__(
+        self,
+        input_nodes: Iterable[int] | None = None,
+        cmds: Iterable[Command] | None = None,
+        output_nodes: Iterable[int] | None = None,
+    ) -> None:
         """
         Construct a pattern.
 
-        :param input_nodes:  optional, list of input qubits
+        Parameters
+        ----------
+        input_nodes : Iterable[int] | None
+            Optional. List of input qubits.
+        cmds : Iterable[Command] | None
+            Optional. List of initial commands.
+        output_nodes : Iterable[int] | None
+            Optional. List of output qubits.
         """
-        if input_nodes is None:
-            input_nodes = []
         self.results = {}  # measurement results from the graph state simulator
-        self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
-        self.__n_node = len(input_nodes)  # total number of nodes in the graph state
+        if input_nodes is None:
+            self.__input_nodes = []
+        else:
+            self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
+        self.__n_node = len(self.__input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq: list[Command] = []
-        # output nodes are initially input nodes, since none are measured yet
-        self.__output_nodes = list(input_nodes)
+        # output nodes are initially a copy input nodes, since none are measured yet
+        self.__output_nodes = list(self.__input_nodes)
+
+        if cmds is not None:
+            self.extend(cmds)
+
+        if output_nodes is not None:
+            self.reorder_output_nodes(output_nodes)
 
     def add(self, cmd: Command) -> None:
         """Add command to the end of the pattern.
@@ -116,7 +138,7 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: list[Command]) -> None:
+    def extend(self, cmds: Iterable[Command]) -> None:
         """Add a list of commands.
 
         :param cmds: list of commands
@@ -169,46 +191,76 @@ class Pattern:
         """Count of nodes that are either `input_nodes` or prepared with `N` commands."""
         return self.__n_node
 
-    def reorder_output_nodes(self, output_nodes: list[int]):
+    def reorder_output_nodes(self, output_nodes: Iterable[int]) -> None:
         """Arrange the order of output_nodes.
 
         Parameters
         ----------
-        output_nodes: list of int
+        output_nodes: iterable of int
             output nodes order determined by user. each index corresponds to that of logical qubits.
         """
         output_nodes = list(output_nodes)  # make our own copy (allow iterators to be passed)
         assert_permutation(self.__output_nodes, output_nodes)
         self.__output_nodes = output_nodes
 
-    def reorder_input_nodes(self, input_nodes: list[int]):
+    def reorder_input_nodes(self, input_nodes: Iterable[int]):
         """Arrange the order of input_nodes.
 
         Parameters
         ----------
-        input_nodes: list of int
+        input_nodes: iterable of int
             input nodes order determined by user. each index corresponds to that of logical qubits.
         """
+        input_nodes = list(input_nodes)  # make our own copy (allow iterators to be passed)
         assert_permutation(self.__input_nodes, input_nodes)
-        self.__input_nodes = list(input_nodes)
+        self.__input_nodes = input_nodes
 
-    # TODO: This is not an evaluable representation. Should be __str__?
     def __repr__(self) -> str:
         """Return a representation string of the pattern."""
-        return (
-            f"graphix.pattern.Pattern object with {len(self.__seq)} commands and {len(self.output_nodes)} output qubits"
-        )
+        arguments = []
+        if self.__input_nodes:
+            arguments.append(f"input_nodes={self.__input_nodes}")
+        if self.__seq:
+            arguments.append(f"cmds={self.__seq}")
+        if self.__output_nodes:
+            arguments.append(f"output_nodes={self.__output_nodes}")
+        return f"Pattern({', '.join(arguments)})"
+
+    def __str__(self) -> str:
+        """Return a human-readable string of the pattern."""
+        return self.to_ascii()
 
     def __eq__(self, other: Pattern) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
         return (
             self.__seq == other.__seq
-            and self.input_nodes == other.input_nodes
-            and self.output_nodes == other.output_nodes
+            and self.__input_nodes == other.__input_nodes
+            and self.__output_nodes == other.__output_nodes
         )
 
-    def print_pattern(self, lim=40, target: list[CommandKind] | None = None) -> None:
+    def to_ascii(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return the ASCII string representation of the pattern."""
+        return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
+
+    def to_latex(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return a string containing the LaTeX representation of the pattern."""
+        return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
+
+    def to_unicode(
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+    ) -> str:
+        """Return the Unicode string representation of the pattern."""
+        return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
+
+    def print_pattern(self, lim: int = 40, target: Container[CommandKind] | None = None) -> None:
         """Print the pattern sequence (Pattern.seq).
+
+        This method is deprecated.
+        See :meth:`to_ascii`, :meth:`to_latex`, :meth:`to_unicode` and :func:`graphix.pretty_print.pattern_to_str`.
 
         Parameters
         ----------
@@ -217,49 +269,12 @@ class Pattern:
         target : list of CommandKind, optional
             show only specified commands, e.g. [CommandKind.M, CommandKind.X, CommandKind.Z]
         """
-        nmax = min(lim, len(self.__seq))
-        if target is None:
-            target = [
-                CommandKind.N,
-                CommandKind.E,
-                CommandKind.M,
-                CommandKind.X,
-                CommandKind.Z,
-                CommandKind.C,
-            ]
-        count = 0
-        i = -1
-        while count < nmax:
-            i = i + 1
-            if i == len(self.__seq):
-                break
-            cmd = self.__seq[i]
-            if cmd.kind == CommandKind.N and (CommandKind.N in target):
-                count += 1
-                print(f"N, node = {cmd.node}")
-            elif cmd.kind == CommandKind.E and (CommandKind.E in target):
-                count += 1
-                print(f"E, nodes = {cmd.nodes}")
-            elif cmd.kind == CommandKind.M and (CommandKind.M in target):
-                count += 1
-                print(
-                    f"M, node = {cmd.node}, plane = {cmd.plane}, angle(pi) = {cmd.angle}, "
-                    f"s_domain = {cmd.s_domain}, t_domain = {cmd.t_domain}"
-                )
-            elif cmd.kind == CommandKind.X and (CommandKind.X in target):
-                count += 1
-                print(f"X byproduct, node = {cmd.node}, domain = {cmd.domain}")
-            elif cmd.kind == CommandKind.Z and (CommandKind.Z in target):
-                count += 1
-                print(f"Z byproduct, node = {cmd.node}, domain = {cmd.domain}")
-            elif cmd.kind == CommandKind.C and (CommandKind.C in target):
-                count += 1
-                print(f"Clifford, node = {cmd.node}, Clifford = {cmd.clifford}")
-
-        if len(self.__seq) > i + 1:
-            print(
-                f"{len(self.__seq) - lim} more commands truncated. Change lim argument of print_pattern() to show more"
-            )
+        warnings.warn(
+            "Method `print_pattern` is deprecated. Use one of the methods `to_ascii`, `to_latex`, `to_unicode`, or the function `graphix.pretty_print.pattern_to_str`.",
+            DeprecationWarning,
+            stacklevel=1,
+        )
+        print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
 
     def standardize(self, method="direct") -> None:
         """Execute standardization of the pattern.
@@ -319,10 +334,10 @@ class Pattern:
                     new_cmd = new_cmd.clifford(clifford_gate)
                 if t_domain := z_dict.pop(cmd.node, None):
                     # The original domain should not be mutated
-                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain
+                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain  # noqa: PLR6104
                 if s_domain := x_dict.pop(cmd.node, None):
                     # The original domain should not be mutated
-                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain
+                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain  # noqa: PLR6104
                 m_list.append(new_cmd)
             elif cmd.kind == CommandKind.Z:
                 add_correction_domain(z_dict, cmd.node, cmd.domain)
@@ -372,9 +387,10 @@ class Pattern:
             xzc = {CommandKind.X, CommandKind.Z, CommandKind.C}
             while kind in xzc:
                 kind = next(it).kind
-            return False
         except StopIteration:
             return True
+        else:
+            return False
 
     def shift_signals(self, method="direct") -> dict[int, list[int]]:
         """Perform signal shifting procedure.
@@ -772,12 +788,13 @@ class Pattern:
         dependency = {i: set() for i in nodes}
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
-                dependency[cmd.node] = dependency[cmd.node] | cmd.s_domain | cmd.t_domain
+                dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
             elif cmd.kind in {CommandKind.X, CommandKind.Z}:
-                dependency[cmd.node] = dependency[cmd.node] | cmd.domain
+                dependency[cmd.node] |= cmd.domain
         return dependency
 
-    def update_dependency(self, measured, dependency):
+    @staticmethod
+    def update_dependency(measured, dependency):
         """Remove measured nodes from the 'dependency'.
 
         Parameters
@@ -815,7 +832,7 @@ class Pattern:
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
-                not_measured = not_measured | {cmd.node}
+                not_measured |= {cmd.node}
         depth = 0
         l_k = {}
         k = 0
@@ -823,7 +840,7 @@ class Pattern:
             l_k[k] = set()
             for i in not_measured:
                 if not dependency[i]:
-                    l_k[k] = l_k[k] | {i}
+                    l_k[k] |= {i}
             dependency = self.update_dependency(l_k[k], dependency)
             not_measured -= l_k[k]
             k += 1
@@ -844,7 +861,8 @@ class Pattern:
             meas_order.extend(l_k[i])
         return meas_order
 
-    def connected_edges(self, node, edges):
+    @staticmethod
+    def connected_edges(node, edges):
         """Search not activated edges connected to the specified node.
 
         Returns
@@ -855,7 +873,7 @@ class Pattern:
         connected = set()
         for edge in edges:
             if edge[0] == node or edge[1] == node:
-                connected = connected | {edge}
+                connected |= {edge}
         return connected
 
     def _measurement_order_space(self):
@@ -1012,7 +1030,7 @@ class Pattern:
                 meas_plane[cmd.node] = cmd.plane
         return meas_plane
 
-    def get_angles(self):
+    def get_angles(self) -> dict[int, float]:
         """Get measurement angles of the pattern.
 
         Returns
@@ -1148,7 +1166,7 @@ class Pattern:
     def correction_commands(self):
         """Return the list of byproduct correction commands."""
         assert self.is_standard()
-        return [seqi for seqi in self.__seq if seqi.kind in (CommandKind.X, CommandKind.Z)]
+        return [seqi for seqi in self.__seq if seqi.kind in {CommandKind.X, CommandKind.Z}]
 
     def parallelize_pattern(self):
         """Optimize the pattern to reduce the depth of the computation by gathering measurement commands that can be performed simultaneously.
@@ -1402,7 +1420,7 @@ class Pattern:
         filename : str
             file name to export to. example: "filename.qasm"
         """
-        with open(filename + ".qasm", "w") as file:
+        with Path(filename + ".qasm").open("w", encoding="utf-8") as file:
             file.write("// generated by graphix\n")
             file.write("OPENQASM 3;\n")
             file.write('include "stdgates.inc";\n')
@@ -1414,8 +1432,7 @@ class Pattern:
                     file.write("bit c" + str(i) + " = " + str(res) + ";\n")
                     file.write("\n")
             for cmd in self.__seq:
-                for line in cmd_to_qasm3(cmd):
-                    file.write(line)
+                file.writelines(cmd_to_qasm3(cmd))
 
     def is_parameterized(self) -> bool:
         """
@@ -1576,12 +1593,12 @@ def measure_pauli(pattern, leave_input, copy=False):
         s_signal = 0
         t_signal = 0
         if measurement_basis.axis == Axis.X:  # X measurement is not affected by s_signal
-            t_signal = sum([results[j] for j in pattern_cmd.t_domain])
+            t_signal = sum(results[j] for j in pattern_cmd.t_domain)
         elif measurement_basis.axis == Axis.Y:
-            s_signal = sum([results[j] for j in pattern_cmd.s_domain])
-            t_signal = sum([results[j] for j in pattern_cmd.t_domain])
+            s_signal = sum(results[j] for j in pattern_cmd.s_domain)
+            t_signal = sum(results[j] for j in pattern_cmd.t_domain)
         elif measurement_basis.axis == Axis.Z:  # Z measurement is not affected by t_signal
-            s_signal = sum([results[j] for j in pattern_cmd.s_domain])
+            s_signal = sum(results[j] for j in pattern_cmd.s_domain)
         else:
             typing_extensions.assert_never(measurement_basis.axis)
 
@@ -1627,7 +1644,7 @@ def measure_pauli(pattern, leave_input, copy=False):
     new_seq.extend(
         command.C(node=index, clifford=Clifford(vops[index])) for index in pattern.output_nodes if vops[index] != 0
     )
-    new_seq.extend(cmd for cmd in pattern if cmd.kind in (CommandKind.X, CommandKind.Z))
+    new_seq.extend(cmd for cmd in pattern if cmd.kind in {CommandKind.X, CommandKind.Z})
 
     pat = Pattern() if copy else pattern
 
@@ -1768,7 +1785,8 @@ def cmd_to_qasm3(cmd):
 def assert_permutation(original: list[int], user: list[int]) -> None:
     """Check that the provided `user` node list is a permutation from `original`."""
     node_set = set(user)
-    assert node_set == set(original), f"{node_set} != {set(original)}"
+    if node_set != set(original):
+        raise ValueError(f"{node_set} != {set(original)}")
     for node in user:
         if node in node_set:
             node_set.remove(node)

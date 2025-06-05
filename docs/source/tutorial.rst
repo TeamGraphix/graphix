@@ -30,17 +30,14 @@ For any gate network, we can use the :class:`~graphix.transpiler.Circuit` class 
 the :class:`~graphix.pattern.Pattern` object contains the sequence of commands according to the measurement calculus framework [#Danos2007]_.
 Let us print the pattern (command sequence) that we generated,
 
->>> pattern.print_pattern() # show the command sequence (pattern)
-N, node = 1
-E, nodes = (0, 1)
-M, node = 0, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-X byproduct, node = 1, domain = [0]
+>>> pattern
+Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), X(1, {0})], output_nodes=[1])
 
 The command sequence represents the following sequence:
 
-    * starting with an input qubit :math:`|\psi_{in}\rangle_0`, we first prepare an ancilla qubit :math:`|+\rangle_1` with ['N', 1] command
-    * We then apply CZ-gate by ['E', (0, 1)] command to create entanglement.
-    * We measure the qubit 0 in Pauli X basis, by ['M'] command.
+    * starting with an input qubit :math:`|\psi_{in}\rangle_0`, we first prepare an ancilla qubit :math:`|+\rangle_1` with N(1) command
+    * We then apply CZ-gate by E((0, 1)) command to create entanglement.
+    * We measure the qubit 0 in Pauli X basis, by M(0) command.
     * If the measurement outcome is :math:`s_0 = 1` (i.e. if the qubit is projected to :math:`|-\rangle`, the Pauli X eigenstate with eigenvalue of :math:`(-1)^{s_0} = -1`), the 'X' command is applied to qubit 1 to 'correct' the measurement byproduct (see :doc:`intro`) that ensure deterministic computation.
     * Tracing out the qubit 0 (since the measurement is destructive), we have :math:`H|\psi_{in}\rangle_1` - the input qubit has teleported to qubit 1, while being transformed by Hadamard gate.
 
@@ -86,19 +83,9 @@ As a more complex example than above, we show measurement patterns and graph sta
 |                                                                              |
 |   control: input=0, output=0; target: input=1, output=3                      |
 +------------------------------------------------------------------------------+
-| >>> cnot_pattern.print_pattern()                                             |
-| N, node = 0                                                                  |
-| N, node = 1                                                                  |
-| N, node = 2                                                                  |
-| N, node = 3                                                                  |
-| E, nodes = (1, 2)                                                            |
-| E, nodes = (0, 2)                                                            |
-| E, nodes = (2, 3)                                                            |
-| M, node = 1, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []         |
-| M, node = 2, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []         |
-| X byproduct, node = 3, domain = [2]                                          |
-| Z byproduct, node = 3, domain = [1]                                          |
-| Z byproduct, node = 0, domain = [1]                                          |
+| >>> cnot_pattern                                                             |
+| Pattern(cmds=[N(0), N(1), N(2), N(3), E((1, 2)), E((0, 2)), E((2, 3)), M(1), |
+|     M(2), X(3, {2}), Z(3, {1}), Z(0, {1})], output_nodes=[0, 3])             |
 +------------------------------------------------------------------------------+
 | **general rotation (an example with Euler angles 0.2pi, 0.15pi and 0.1 pi)** |
 +------------------------------------------------------------------------------+
@@ -108,18 +95,10 @@ As a more complex example than above, we show measurement patterns and graph sta
 |                                                                              |
 |   input = 0, output = 4                                                      |
 +------------------------------------------------------------------------------+
-|>>> euler_rot_pattern.print_pattern()                                         |
-| N, node = 0                                                                  |
-| N, node = 1                                                                  |
-| N, node = 2                                                                  |
-| N, node = 3                                                                  |
-| N, node = 4                                                                  |
-| M, node = 0, plane = XY, angle(pi) = -0.2, s-domain = [], t_domain = []      |
-| M, node = 1, plane = XY, angle(pi) = -0.15, s-domain = [0], t_domain = []    |
-| M, node = 2, plane = XY, angle(pi) = -0.1, s-domain = [1], t_domain = []     |
-| M, node = 3, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []         |
-| Z byproduct, node = 4, domain = [0,2]                                        |
-| X byproduct, node = 4, domain = [1,3]                                        |
+|>>> euler_rot_pattern                                                         |
+| Pattern(cmds=[N(0), N(1), N(2), N(3), N(4), M(0, angle=-0.2),                |
+|     M(1, angle=-0.15, s_domain={0}), M(2, angle=-0.1, s_domain={1}),         |
+|     M(3), Z(4, domain={0, 2}), X(4, domain={1, 3})], output_nodes=[4])       |
 +------------------------------------------------------------------------------+
 
 
@@ -144,33 +123,8 @@ As an example, let us prepare a pattern to rotate two qubits in :math:`|+\rangle
 
 This produces a rather long and complicated command sequence.
 
->>> pattern.print_pattern() # show the command sequence (pattern)
-N, node = 2
-N, node = 3
-E, nodes = (0, 2)
-E, nodes = (2, 3)
-M, node = 0, plane = XY, angle(pi) = -0.2975038024267561, s-domain = [], t_domain = []
-M, node = 2, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-X byproduct, node = 3, domain = [2]
-Z byproduct, node = 3, domain = [0]
-N, node = 4
-N, node = 5
-E, nodes = (1, 4)
-E, nodes = (4, 5)
-M, node = 1, plane = XY, angle(pi) = -0.14788446865973076, s-domain = [], t_domain = []
-M, node = 4, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-X byproduct, node = 5, domain = [4]
-Z byproduct, node = 5, domain = [1]
-N, node = 6
-N, node = 7
-E, nodes = (5, 6)
-E, nodes = (3, 6)
-E, nodes = (6, 7)
-M, node = 5, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-M, node = 6, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-X byproduct, node = 7, domain = [6]
-Z byproduct, node = 7, domain = [5]
-Z byproduct, node = 3, domain = [5]
+>>> pattern
+Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), E((0, 2)), E((2, 3)), M(0, angle=-0.08131311068764493), M(2), X(3, {2}), Z(3, {0}), N(4), N(5), E((1, 4)), E((4, 5)), M(1, angle=-0.2242107876075538), M(4), X(5, {4}), Z(5, {1}), N(6), N(7), E((5, 6)), E((3, 6)), E((6, 7)), M(5), M(6), X(7, {6}), Z(7, {5}), Z(3, {5})], output_nodes=[3, 7])
 
 .. figure:: ./../imgs/pattern_visualization_2.png
     :scale: 60 %
@@ -190,30 +144,8 @@ These can be called with :meth:`~graphix.pattern.Pattern.standardize` and :meth:
 
 >>> pattern.standardize()
 >>> pattern.shift_signals()
->>> pattern.print_pattern()
-N, node = 2
-N, node = 3
-N, node = 4
-N, node = 5
-N, node = 6
-N, node = 7
-E, nodes = (0, 2)
-E, nodes = (2, 3)
-E, nodes = (1, 4)
-E, nodes = (4, 5)
-E, nodes = (5, 6)
-E, nodes = (6, 3)
-E, nodes = (6, 7)
-M, node = 0, plane = XY, angle(pi) = -0.2975038024267561, s-domain = [], t_domain = []
-M, node = 2, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-M, node = 1, plane = XY, angle(pi) = -0.14788446865973076, s-domain = [], t_domain = []
-M, node = 4, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-M, node = 5, plane = XY, angle(pi) = 0, s-domain = [4], t_domain = []
-M, node = 6, plane = XY, angle(pi) = 0, s-domain = [], t_domain = []
-X byproduct, node = 3, domain = [2]
-X byproduct, node = 7, domain = [2, 4, 6]
-Z byproduct, node = 3, domain = [0, 1, 5]
-Z byproduct, node = 7, domain = [1, 5]
+>>> pattern
+Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), N(4), N(5), N(6), N(7), E((0, 2)), E((2, 3)), E((1, 4)), E((4, 5)), E((5, 6)), E((3, 6)), E((6, 7)), M(0, angle=-0.22152331776994327), M(2), M(1, angle=-0.18577010991028864), M(4), M(5, s_domain={4}), M(6), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 .. figure:: ./../imgs/pattern_visualization_3.png
     :scale: 60 %
@@ -250,18 +182,8 @@ We can call this in a line by calling :meth:`~graphix.pattern.Pattern.perform_pa
 We get an updated measurement pattern without Pauli measurements as follows:
 
 >>> pattern.perform_pauli_measurements()
->>> pattern.print_pattern()
-N, node = 3
-N, node = 7
-E, nodes = (0, 3)
-E, nodes = (1, 3)
-E, nodes = (1, 7)
-M, node = 0, plane = XY, angle(pi) = -0.2975038024267561, s-domain = [], t_domain = [], Clifford index = 6
-M, node = 1, plane = XY, angle(pi) = -0.14788446865973076, s-domain = [], t_domain = [], Clifford index = 6
-X byproduct, node = 3, domain = [2]
-X byproduct, node = 7, domain = [2, 4, 6]
-Z byproduct, node = 3, domain = [0, 1, 5]
-Z byproduct, node = 7, domain = [1, 5]
+>>> pattern
+Pattern(input_nodes=[0, 1], cmds=[N(3), N(7), E((0, 3)), E((1, 3)), E((1, 7)), M(0, Plane.YZ, 0.2907266109187514), M(1, Plane.YZ, 0.01258854060311348), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 
 Notice that all measurements with angle=0 (Pauli X measurements) disappeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
@@ -290,18 +212,8 @@ We exploit this fact to minimize the `space` of the pattern, which is crucial fo
 We can simply call :meth:`~graphix.pattern.Pattern.minimize_space()` to reduce the `space`:
 
 >>> pattern.minimize_space()
->>> pattern.print_pattern(lim=20)
-N, node = 3
-E, nodes = (0, 3)
-M, node = 0, plane = XY, angle(pi) = -0.2975038024267561, s-domain = [], t_domain = [], Clifford index = 6
-E, nodes = (1, 3)
-N, node = 7
-E, nodes = (1, 7)
-M, node = 1, plane = XY, angle(pi) = -0.14788446865973076, s-domain = [], t_domain = [], Clifford index = 6
-X byproduct, node = 3, domain = [2]
-X byproduct, node = 7, domain = [2, 4, 6]
-Z byproduct, node = 3, domain = [0, 1, 5]
-Z byproduct, node = 7, domain = [1, 5]
+>>> pattern
+Pattern(input_nodes=[0, 1], cmds=[N(3), E((0, 3)), M(0, Plane.YZ, 0.11120090987081546), E((1, 3)), N(7), E((1, 7)), M(1, Plane.YZ, 0.230565199664617), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 
 With the original measurement pattern, the simulation should have proceeded as follows, with maximum of four qubits on the memory.

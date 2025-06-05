@@ -19,9 +19,9 @@ Pattern Manipulation
     .. automethod:: replace
 
     .. automethod:: reorder_output_nodes
-    
+
     .. automethod:: reorder_input_nodes
-        
+
     .. automethod:: simulate_pattern
 
     .. automethod:: get_max_degree
@@ -36,7 +36,11 @@ Pattern Manipulation
 
     .. automethod:: perform_pauli_measurements
 
-    .. automethod:: print_pattern
+    .. automethod:: to_ascii
+
+    .. automethod:: to_unicode
+
+    .. automethod:: to_latex
 
     .. automethod:: standardize
 
@@ -60,4 +64,3 @@ Pattern Manipulation
 
 
 .. autofunction:: measure_pauli
-
