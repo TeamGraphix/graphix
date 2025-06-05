@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Example script for graph state extraction and equivalence analysis: `create_2d_cluster_state`, `extract_target_graph_state`, `compute_local_equivalence_invariants`.
 
 ### Added
 
