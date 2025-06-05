@@ -5,8 +5,10 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
+from typing import cast
 
 import networkx as nx
+import numpy as np
 
 from graphix import GraphState
 
@@ -124,8 +126,15 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        info.degree_sequence = sorted([d for _, d in graph.degree()])
-        info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
+        
+        # Fix: Properly handle the degree sequence with explicit type conversion
+        degree_values = [degree for node, degree in graph.degree()]
+        info.degree_sequence = sorted(degree_values)
+        
+        # Fix: Handle the spectrum computation with proper type conversion
+        spectrum_array = nx.adjacency_spectrum(graph)
+        info.spectrum = sorted([float(val.real) for val in spectrum_array])
+        
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
         info.num_components = nx.number_connected_components(graph)
