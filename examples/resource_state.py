@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Any
 
 import networkx as nx
 
@@ -121,12 +121,18 @@ class GraphStateExtractor:
         Compute invariants for local graph state equivalence.
         """
         info = ResourceGraphInfo()
-        graph = cast(nx.Graph, nx.Graph(gs.edges))  # ensure correct type for type checkers
+        graph: nx.Graph = nx.Graph(gs.edges)
+
+        # Safely extract degree sequence with proper int coercion
+        degrees = list(graph.degree())
+        info.degree_sequence = sorted([int(degree) for _, degree in degrees])
+
+        # Compute spectrum, filter out complex components
+        spectrum = nx.adjacency_spectrum(graph)
+        info.spectrum = sorted([float(e.real) for e in spectrum])
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        info.degree_sequence = sorted([d for _, d in graph.degree()])
-        info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
         info.num_components = nx.number_connected_components(graph)
