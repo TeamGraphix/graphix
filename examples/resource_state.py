@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
+from typing import Protocol, runtime_checkable, Any
 
 import networkx as nx
 
@@ -16,7 +17,6 @@ class ResourceGraphInfo:
     """
     Information about a resource graph.
     """
-
     type: str | None = None
     attributes: list[str] = field(default_factory=list)
     nodes: int | None = None
@@ -36,7 +36,18 @@ class ResourceGraphInfo:
     pairable_ratio: float | None = None
 
 
-def analyze_resource_graph(resource_graph: object) -> ResourceGraphInfo:
+# Protocol describing the expected structure of resource graph
+@runtime_checkable
+class ResourceGraphLike(Protocol):
+    graph: Any
+    nodes: Any
+    edges: Any
+    kind: str
+    type: str
+    n_node: int
+
+
+def analyze_resource_graph(resource_graph: ResourceGraphLike) -> ResourceGraphInfo:
     """
     Analyze a resource graph object and extract basic metadata.
     """
@@ -124,11 +135,7 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-
-        degree_view = graph.degree()
-        if hasattr(degree_view, "__iter__"):
-            info.degree_sequence = sorted([int(d) for _, d in degree_view])
-
+        info.degree_sequence = sorted([int(d) for _, d in graph.degree()])
         info.spectrum = [float(x) for x in sorted(nx.adjacency_spectrum(graph).real)]
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
