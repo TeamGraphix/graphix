@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import List
 
 import networkx as nx
 from networkx import Graph
@@ -18,13 +18,13 @@ class ResourceGraphInfo:
     """Information about a resource graph."""
 
     type: str | None = None
-    attributes: list[str] = field(default_factory=list)
+    attributes: List[str] = field(default_factory=list)
     nodes: int | None = None
     edges: int | None = None
     kind: str | None = None
     resource_type: str | None = None
-    degree_sequence: list[int] = field(default_factory=list)
-    spectrum: list[float] = field(default_factory=list)
+    degree_sequence: List[int] = field(default_factory=list)
+    spectrum: List[float] = field(default_factory=list)
     triangles: int | None = None
     is_connected: bool | None = None
     num_components: int | None = None
@@ -62,8 +62,8 @@ class GraphStateExtractor:
     """Extract and analyze target graph states from cluster states."""
 
     def __init__(self) -> None:
-        self.extraction_times: list[float] = []
-        self.equivalence_times: list[float] = []
+        self.extraction_times: List[float] = []
+        self.equivalence_times: List[float] = []
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
@@ -115,7 +115,6 @@ class GraphStateExtractor:
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
 
-        # Ensure degree_sequence is typed as list[int]
         degrees = graph.degree()
         info.degree_sequence = sorted([int(deg) for _, deg in degrees])
 
