@@ -7,8 +7,6 @@ import time
 from dataclasses import dataclass, field
 
 import networkx as nx
-from networkx.classes.reportviews import DiDegreeView
-
 from graphix import GraphState
 
 
