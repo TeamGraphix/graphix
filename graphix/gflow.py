@@ -19,11 +19,12 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import numpy as np
 import sympy as sp
+from typing_extensions import assert_never
 
-from graphix import utils
 from graphix.command import CommandKind
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.linalg import MatGF2
+from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
@@ -1349,19 +1350,15 @@ def get_pauli_nodes(
     check_meas_planes(meas_planes)
     l_x, l_y, l_z = set(), set(), set()
     for node, plane in meas_planes.items():
-        if plane == Plane.XY:
-            if utils.is_integer(meas_angles[node]):  # measurement angle is integer
-                l_x |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):  # measurement angle is half integer
-                l_y |= {node}
-        elif plane == Plane.XZ:
-            if utils.is_integer(meas_angles[node]):
-                l_z |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):
-                l_x |= {node}
-        elif plane == Plane.YZ:
-            if utils.is_integer(meas_angles[node]):
-                l_y |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):
-                l_z |= {node}
+        pm = PauliMeasurement.try_from(plane, meas_angles[node])
+        if pm is None:
+            continue
+        if pm.axis == Axis.X:
+            l_x |= {node}
+        elif pm.axis == Axis.Y:
+            l_y |= {node}
+        elif pm.axis == Axis.Z:
+            l_z |= {node}
+        else:
+            assert_never(pm.axis)
     return l_x, l_y, l_z
