@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
+from typing import Union
 
 import networkx as nx
 
@@ -124,8 +125,8 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        info.degree_sequence = sorted([d for _, d in graph.degree()])
-        info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
+        info.degree_sequence = sorted([int(d) for _, d in list(graph.degree())])
+        info.spectrum = sorted([float(val.real) for val in nx.adjacency_spectrum(graph)])
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
         info.num_components = nx.number_connected_components(graph)
