@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable, Any
+from typing import Any
 
 import networkx as nx
 
@@ -17,6 +17,7 @@ class ResourceGraphInfo:
     """
     Information about a resource graph.
     """
+
     type: str | None = None
     attributes: list[str] = field(default_factory=list)
     nodes: int | None = None
@@ -36,27 +37,17 @@ class ResourceGraphInfo:
     pairable_ratio: float | None = None
 
 
-# Protocol describing the expected structure of resource graph
-@runtime_checkable
-class ResourceGraphLike(Protocol):
-    graph: Any
-    nodes: Any
-    edges: Any
-    kind: str
-    type: str
-    n_node: int
-
-
-def analyze_resource_graph(resource_graph: ResourceGraphLike) -> ResourceGraphInfo:
+def analyze_resource_graph(resource_graph: Any) -> ResourceGraphInfo:
     """
     Analyze a resource graph object and extract basic metadata.
     """
     info = ResourceGraphInfo(type=type(resource_graph).__name__)
 
-    if hasattr(resource_graph, "graph"):
-        graph = resource_graph.graph
-        info.nodes = len(graph.nodes) if hasattr(graph, "nodes") else None
-        info.edges = len(graph.edges) if hasattr(graph, "edges") else None
+    # Safely access attributes using getattr with default fallback
+    graph = getattr(resource_graph, "graph", None)
+    if graph is not None:
+        info.nodes = len(getattr(graph, "nodes", []))
+        info.edges = len(getattr(graph, "edges", []))
     elif hasattr(resource_graph, "nodes") and hasattr(resource_graph, "edges"):
         info.nodes = len(resource_graph.nodes)
         info.edges = len(resource_graph.edges)
@@ -135,7 +126,11 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-        info.degree_sequence = sorted([int(d) for _, d in graph.degree()])
+
+        # FIX: Cast to list to guarantee iterability
+        degree_view = list(graph.degree)
+        info.degree_sequence = sorted([int(d) for _, d in degree_view])
+
         info.spectrum = [float(x) for x in sorted(nx.adjacency_spectrum(graph).real)]
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
