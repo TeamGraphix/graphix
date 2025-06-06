@@ -1,4 +1,13 @@
-"""Resource graph analysis and extraction tools."""
+"""
+===============================
+Graph State Resource Extraction
+===============================
+
+This example demonstrates how to extract and analyze a resource graph from a
+2D cluster state using the GraphState class. It includes analysis of graph
+invariants, connectivity, and local equivalence.
+
+"""
 
 from __future__ import annotations
 
