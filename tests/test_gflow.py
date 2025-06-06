@@ -272,7 +272,7 @@ def _graph8() -> GraphForTest:
         2: Plane.XY,
         3: Plane.YZ,
     }
-    meas_angles = {0: 0.5, 1: 0, 2: 0.5, 3: 0}
+    meas_angles = {0: 0, 1: 0, 2: 0.5, 3: 0.5}
     return GraphForTest(
         graph,
         inputs,
@@ -301,7 +301,7 @@ def _graph9() -> GraphForTest:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {0: Plane.YZ, 1: Plane.XZ, 2: Plane.XY}
-    meas_angles = {0: 0.5, 1: 0.1, 2: 0.5}
+    meas_angles = {0: 0, 1: 0.1, 2: 0.5}
     return GraphForTest(
         graph,
         inputs,
