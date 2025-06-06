@@ -43,9 +43,9 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     except ModuleNotFoundError as e:
         msg = "Cannot find pyzx (optional dependency)."
         raise RuntimeError(msg) from e
-    if zx.__version__ != "0.8.0":
+    if zx.__version__ != "0.9.0":
         warnings.warn(
-            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.8.0 due to possible breaking changes in `pyzx`.",
+            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.9.0 due to possible breaking changes in `pyzx`.",
             stacklevel=1,
         )
     g = Graph()
