@@ -92,7 +92,7 @@ class PatternSimulator:
     """
 
     def __init__(
-        self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, **kwargs
+        self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, postselect=None, **kwargs
     ) -> None:
         """
         Construct a pattern simulator.
@@ -137,6 +137,7 @@ class PatternSimulator:
         if measure_method is None:
             measure_method = DefaultMeasureMethod(pattern.results)
         self.__measure_method = measure_method
+        self._postselect = postselect if postselect is not None else {}
 
     @property
     def pattern(self) -> Pattern:
@@ -173,7 +174,15 @@ class PatternSimulator:
                 elif cmd.kind == CommandKind.E:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 elif cmd.kind == CommandKind.M:
-                    self.__measure_method.measure(self.backend, cmd)
+                    # Post-selection logic
+                    if cmd.node in self._postselect:
+                        forced_result = self._postselect[cmd.node]
+                        self.__measure_method.set_measure_result(cmd.node, forced_result)
+                        # Still need to update backend with the forced measurement
+                        description = self.__measure_method.get_measurement_description(cmd)
+                        self.backend.measure(cmd.node, description, forced_result)
+                    else:
+                        self.__measure_method.measure(self.backend, cmd)
                 elif cmd.kind in {CommandKind.X, CommandKind.Z}:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                 elif cmd.kind == CommandKind.C:
@@ -194,7 +203,14 @@ class PatternSimulator:
                     self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
                 elif cmd.kind == CommandKind.M:
                     self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
-                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
+                    # Post-selection logic for noisy case
+                    if cmd.node in self._postselect:
+                        forced_result = self._postselect[cmd.node]
+                        self.__measure_method.set_measure_result(cmd.node, forced_result)
+                        description = self.__measure_method.get_measurement_description(cmd)
+                        self.backend.measure(cmd.node, description, forced_result)
+                    else:
+                        self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                     if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
@@ -207,8 +223,6 @@ class PatternSimulator:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)
                     self.backend.apply_channel(self.noise_model.clifford(), [cmd.node])
                 elif cmd.kind == CommandKind.T:
-                    # T command is a flag for one clock cycle in simulated experiment,
-                    # to be added via hardware-agnostic pattern modifier
                     self.noise_model.tick_clock()
                 else:
                     raise ValueError("Invalid commands.")
