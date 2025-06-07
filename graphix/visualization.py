@@ -23,8 +23,8 @@ class GraphVisualizer:
 
     Attributes
     ----------
-    g : networkx graph
-        the graph to be visualized
+    g : :class:`networkx.Graph`
+        The graph to be visualized
     v_in : list
         list of input nodes
     v_out : list
@@ -52,8 +52,8 @@ class GraphVisualizer:
 
         Parameters
         ----------
-        g : :class:`networkx.graph.Graph` object
-            networkx graph
+        g : :class:`networkx.Graph`
+            NetworkX graph instance
         v_in : list
             list of input nodes
         v_out : list

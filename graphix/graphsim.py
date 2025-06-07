@@ -32,7 +32,7 @@ class MBQCGraphNode(TypedDict):
 
 
 class GraphState(Graph):
-    """Graph state simulator implemented with networkx.
+    """Graph state simulator implemented with :mod:`networkx`.
 
     Performs Pauli measurements on graph states.
 
