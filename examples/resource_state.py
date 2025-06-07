@@ -1,4 +1,5 @@
-"""Graph State Resource Extraction
+"""
+Graph State Resource Extraction
 ===============================
 
 This module demonstrates how to extract and analyze a resource graph from a
@@ -11,9 +12,7 @@ import itertools
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
 import networkx as nx
-
 from graphix import GraphState
 
 if TYPE_CHECKING:
@@ -22,14 +21,52 @@ if TYPE_CHECKING:
 
 @dataclass
 class ResourceGraphInfo:
-    """Container for resource graph metrics."""
+    """
+    Container for resource graph metrics.
 
+    Attributes
+    ----------
+    graph_class : str or None
+        Class name of the graph object.
+    attributes : list of str
+        Extra attributes for descriptive purposes.
+    nodes : int or None
+        Number of nodes in the graph.
+    edges : int or None
+        Number of edges in the graph.
+    kind : str or None
+        Kind of graph or state.
+    resource_type : str or None
+        Type of resource (renamed from `type` to avoid conflict).
+    degree_sequence : list of int
+        Sorted sequence of node degrees.
+    spectrum : list of float
+        Adjacency spectrum of the graph.
+    triangles : int or None
+        Total number of triangles in the graph.
+    is_connected : bool or None
+        Whether the graph is connected.
+    num_components : int or None
+        Number of connected components.
+    max_degree : int or None
+        Maximum node degree.
+    min_degree : int or None
+        Minimum node degree.
+    k : int or None
+        Placeholder for k-subset analysis.
+    total_k_subsets : int or None
+        Placeholder for total k-subsets.
+    pairable_subsets : int or None
+        Placeholder for pairable subsets.
+    pairable_ratio : float or None
+        Placeholder for subset ratio.
+    """
     graph_class: str | None = None
     attributes: list[str] = field(default_factory=list)
     nodes: int | None = None
     edges: int | None = None
     kind: str | None = None
-    resource_type: str | None = None  # renamed from `type` to avoid conflict
+    resource_type: str | None = None
     degree_sequence: list[int] = field(default_factory=list)
     spectrum: list[float] = field(default_factory=list)
     triangles: int | None = None
@@ -45,7 +82,17 @@ class ResourceGraphInfo:
 
 def analyze_resource_graph(resource_graph: GraphState) -> ResourceGraphInfo:
     """
-    Analyze a GraphState object and return metadata.
+    Analyze a GraphState object and extract metadata.
+
+    Parameters
+    ----------
+    resource_graph : GraphState
+        The graph state to be analyzed.
+
+    Returns
+    -------
+    ResourceGraphInfo
+        A dataclass object containing structural information.
     """
     graph_nx = nx.Graph(resource_graph.edges)
 
@@ -64,14 +111,28 @@ class GraphStateExtractor:
     """
 
     def __init__(self) -> None:
-        """Initialize timing logs."""
+        """
+        Initialize internal logs for extraction and equivalence timings.
+        """
         self.extraction_times: list[float] = []
         self.equivalence_times: list[float] = []
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
         """
-        Create a 2D cluster state as a rectangular lattice.
+        Create a rectangular 2D cluster state.
+
+        Parameters
+        ----------
+        rows : int
+            Number of rows in the grid.
+        cols : int
+            Number of columns in the grid.
+
+        Returns
+        -------
+        GraphState
+            A graph state representing the cluster lattice.
         """
         gs = GraphState()
         nodes = [i * cols + j for i in range(rows) for j in range(cols)]
@@ -96,7 +157,23 @@ class GraphStateExtractor:
         target_nodes: Sequence[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
         """
-        Extract a graph state using local measurements.
+        Extract a subgraph (target graph state) from a larger cluster state.
+
+        Parameters
+        ----------
+        cluster_state : GraphState
+            The full 2D cluster state.
+        target_edges : Sequence of tuple of int
+            Edges defining the target subgraph.
+        target_nodes : Sequence of int, optional
+            Nodes to retain; inferred from edges if not provided.
+
+        Returns
+        -------
+        tuple
+            A tuple of:
+            - GraphState: the extracted target graph.
+            - list of int: the nodes measured (i.e., removed).
         """
         start = time.perf_counter()
 
@@ -116,7 +193,18 @@ class GraphStateExtractor:
     @staticmethod
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
         """
-        Compute local invariants of a graph state for equivalence testing.
+        Compute local graph invariants used to test local equivalence.
+
+        Parameters
+        ----------
+        gs : GraphState
+            Graph state whose invariants will be computed.
+
+        Returns
+        -------
+        ResourceGraphInfo
+            A dataclass object containing graph metrics like spectrum,
+            connectivity, triangle count, and degree statistics.
         """
         graph = nx.Graph(gs.edges)
 
