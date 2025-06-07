@@ -1,5 +1,4 @@
-"""
-Graph State Resource Extraction
+"""Graph State Resource Extraction
 ===============================
 
 This module demonstrates how to extract and analyze a resource graph from a
@@ -14,11 +13,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import networkx as nx
+
 from graphix import GraphState
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
 
 @dataclass
 class ResourceGraphInfo:
