@@ -19,6 +19,7 @@ from graphix import GraphState
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+
 @dataclass
 class ResourceGraphInfo:
     """Container for resource graph metrics."""
