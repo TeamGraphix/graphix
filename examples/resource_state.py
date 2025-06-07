@@ -138,7 +138,7 @@ class GraphStateExtractor:
 
         # FIX: Cast to list to guarantee iterability
         degree_view = list(graph.degree)
-        info.degree_sequence = sorted([int(d) for _, d in degree_view])
+        info.degree_sequence = sorted(int(d) for _, d in degree_view)
 
         info.spectrum = [float(x) for x in sorted(nx.adjacency_spectrum(graph).real)]
         info.triangles = sum(nx.triangles(graph).values()) // 3
