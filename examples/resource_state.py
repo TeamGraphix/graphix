@@ -44,23 +44,13 @@ class ResourceGraphInfo:
 
 def analyze_resource_graph(resource_graph: GraphState) -> ResourceGraphInfo:
     """Analyze a resource graph object and extract basic metadata."""
-    info = ResourceGraphInfo(type=type(resource_graph).__name__)
-
-    graph = getattr(resource_graph, "graph", None)
-    if graph is not None:
-        info.nodes = len(getattr(graph, "nodes", []))
-        info.edges = len(getattr(graph, "edges", []))
-    elif hasattr(resource_graph, "nodes") and hasattr(resource_graph, "edges"):
-        info.nodes = len(resource_graph.nodes)
-        info.edges = len(resource_graph.edges)
-    elif hasattr(resource_graph, "n_node"):
-        info.nodes = resource_graph.n_node
-
-    if hasattr(resource_graph, "kind"):
-        info.kind = resource_graph.kind
-    elif hasattr(resource_graph, "type"):
-        info.resource_type = resource_graph.type
-
+    info = ResourceGraphInfo(
+        type=type(resource_graph).__name__,
+        nodes=len(resource_graph.graph.nodes),
+        edges=len(resource_graph.graph.edges),
+        kind=resource_graph.kind if hasattr(resource_graph, "kind") else None,
+        resource_type=resource_graph.type if hasattr(resource_graph, "type") else None,
+    )
     return info
 
 
@@ -120,15 +110,13 @@ class GraphStateExtractor:
 
         info.nodes = graph.number_of_nodes()
         info.edges = graph.number_of_edges()
-
-        degree_view = list(graph.degree)
-        info.degree_sequence = sorted(int(d) for _, d in degree_view)
-
-        info.spectrum = [float(x) for x in sorted(nx.adjacency_spectrum(graph).real)]
+        info.degree_sequence = sorted(d for _, d in graph.degree)
+        info.spectrum = sorted(nx.adjacency_spectrum(graph).real)
         info.triangles = sum(nx.triangles(graph).values()) // 3
         info.is_connected = nx.is_connected(graph)
         info.num_components = nx.number_connected_components(graph)
-        info.max_degree = max(info.degree_sequence) if info.degree_sequence else None
-        info.min_degree = min(info.degree_sequence) if info.degree_sequence else None
+        if info.degree_sequence:
+            info.max_degree = max(info.degree_sequence)
+            info.min_degree = min(info.degree_sequence)
 
         return info
