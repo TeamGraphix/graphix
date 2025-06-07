@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import itertools
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import networkx as nx
@@ -25,7 +26,7 @@ class ResourceGraphInfo:
 
     Attributes
     ----------
-    type : str or None
+    graph_type : str or None
         The class name of the graph-like object.
     attributes : list of str
         Any string-based attributes to record (optional).
@@ -61,7 +62,7 @@ class ResourceGraphInfo:
         Ratio of pairable subsets to total.
     """
 
-    type: str | None = None
+    graph_type: str | None = None
     attributes: list[str] = field(default_factory=list)
     nodes: int | None = None
     edges: int | None = None
@@ -95,7 +96,7 @@ def analyze_resource_graph(resource_graph: GraphState) -> ResourceGraphInfo:
         Metadata including node/edge counts, type, and structure.
     """
     return ResourceGraphInfo(
-        type=type(resource_graph).__name__,
+        graph_type=type(resource_graph).__name__,
         nodes=len(resource_graph.graph.nodes),
         edges=len(resource_graph.graph.edges),
         kind=resource_graph.kind,
@@ -149,8 +150,8 @@ class GraphStateExtractor:
     def extract_target_graph_state(
         self,
         cluster_state: GraphState,
-        target_edges: list[tuple[int, int]],
-        target_nodes: list[int] | None = None,
+        target_edges: Sequence[tuple[int, int]],
+        target_nodes: Sequence[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
         """
         Extract a graph state using local measurements.
@@ -159,9 +160,9 @@ class GraphStateExtractor:
         ----------
         cluster_state : GraphState
             The source 2D cluster graph.
-        target_edges : list of tuple of int
+        target_edges : Sequence of tuple of int
             Edges to preserve in the target graph.
-        target_nodes : list of int or None
+        target_nodes : Sequence of int or None
             Nodes to preserve. If None, inferred from edges.
 
         Returns
@@ -172,6 +173,7 @@ class GraphStateExtractor:
         start = time.perf_counter()
 
         if target_nodes is None:
+            # Convert to set to remove duplicates, then to list for consistency
             target_nodes = list(set(itertools.chain.from_iterable(target_edges)))
 
         target_gs = GraphState()
@@ -201,10 +203,10 @@ class GraphStateExtractor:
         """
         graph = nx.Graph(gs.edges)
 
-        degree_view = list(graph.degree)
-        degree_sequence = sorted(int(d) for _, d in degree_view)
+        # DegreeView is iterable, no need to cast to list for iteration
+        degree_sequence = sorted(d for _, d in graph.degree)
 
-        return ResourceGraphInfo(
+        info = ResourceGraphInfo(
             nodes=graph.number_of_nodes(),
             edges=graph.number_of_edges(),
             degree_sequence=degree_sequence,
@@ -212,6 +214,43 @@ class GraphStateExtractor:
             triangles=sum(nx.triangles(graph).values()) // 3,
             is_connected=nx.is_connected(graph),
             num_components=nx.number_connected_components(graph),
-            max_degree=max(degree_sequence) if degree_sequence else None,
-            min_degree=min(degree_sequence) if degree_sequence else None,
         )
+        
+        # Set min/max degree from the already computed sequence
+        info.max_degree = max(info.degree_sequence) if info.degree_sequence else None
+        info.min_degree = min(info.degree_sequence) if info.degree_sequence else None
+        
+        return info
+
+
+# Example usage and testing code
+if __name__ == "__main__":
+    print("Testing Graph State Resource Extraction...")
+    
+    # Create a simple 3x3 cluster state
+    extractor = GraphStateExtractor()
+    cluster = extractor.create_2d_cluster_state(3, 3)
+    
+    print(f"Created 3x3 cluster state with {len(cluster.nodes)} nodes and {len(cluster.edges)} edges")
+    
+    # Extract a smaller target graph (triangle)
+    target_edges = [(0, 1), (1, 4), (4, 0)]
+    target_graph, measured_nodes = extractor.extract_target_graph_state(cluster, target_edges)
+    
+    print(f"Extracted target graph with {len(target_graph.nodes)} nodes")
+    print(f"Nodes to measure: {len(measured_nodes)}")
+    
+    # Analyze the target graph
+    analysis = extractor.compute_local_equivalence_invariants(target_graph)
+    print(f"Target graph analysis:")
+    print(f"  Nodes: {analysis.nodes}")
+    print(f"  Edges: {analysis.edges}")
+    print(f"  Degree sequence: {analysis.degree_sequence}")
+    print(f"  Connected: {analysis.is_connected}")
+    print(f"  Triangles: {analysis.triangles}")
+    
+    # Test the analyze_resource_graph function
+    resource_info = analyze_resource_graph(cluster)
+    print(f"Resource graph type: {resource_info.graph_type}")
+    
+    print("All tests completed successfully!")
