@@ -47,7 +47,15 @@ class _KindChecker:
 
 @dataclasses.dataclass(repr=False)
 class N(_KindChecker, DataclassPrettyPrintMixin):
-    """Preparation command."""
+    r"""Preparation command.
+
+    Parameters
+    ----------
+    node : int
+        Index of the qubit to prepare.
+    state : ~graphix.states.State, optional
+        Initial state, defaults to :class:`~graphix.states.BasicStates.PLUS`.
+    """
 
     node: Node
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
@@ -84,12 +92,12 @@ class M(_KindChecker, DataclassPrettyPrintMixin):
 
         Parameters
         ----------
-        clifford_gate : graphix.clifford.Clifford
+        clifford_gate : ~graphix.clifford.Clifford
             Clifford gate to apply before the measurement.
 
         Returns
         -------
-        M
+        :class:`~graphix.command.M`
             Equivalent command representing the pattern ``MC``.
         """
         domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
@@ -105,7 +113,13 @@ class M(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class E(_KindChecker, DataclassPrettyPrintMixin):
-    """Entanglement command."""
+    r"""Entanglement command between two qubits.
+
+    Parameters
+    ----------
+    nodes : tuple[int, int]
+        Pair of nodes to entangle.
+    """
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
@@ -113,7 +127,15 @@ class E(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class C(_KindChecker, DataclassPrettyPrintMixin):
-    """Clifford command."""
+    r"""Local Clifford gate command.
+
+    Parameters
+    ----------
+    node : int
+        Node index on which to apply the gate.
+    clifford : ~graphix.clifford.Clifford
+        Clifford operator to apply.
+    """
 
     node: Node
     clifford: Clifford
@@ -122,7 +144,15 @@ class C(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class X(_KindChecker, DataclassPrettyPrintMixin):
-    """X correction command."""
+    r"""X correction command.
+
+    Parameters
+    ----------
+    node : int
+        Node to correct.
+    domain : set[int], optional
+        Domain for the byproduct operator.
+    """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -131,7 +161,15 @@ class X(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class Z(_KindChecker, DataclassPrettyPrintMixin):
-    """Z correction command."""
+    r"""Z correction command.
+
+    Parameters
+    ----------
+    node : int
+        Node to correct.
+    domain : set[int], optional
+        Domain for the byproduct operator.
+    """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -140,7 +178,15 @@ class Z(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class S(_KindChecker, DataclassPrettyPrintMixin):
-    """S command."""
+    r"""S command.
+
+    Parameters
+    ----------
+    node : int
+        Node for the byproduct operator.
+    domain : set[int], optional
+        Domain on which to apply the operator.
+    """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
@@ -149,7 +195,13 @@ class S(_KindChecker, DataclassPrettyPrintMixin):
 
 @dataclasses.dataclass(repr=False)
 class T(_KindChecker):
-    """T command."""
+    r"""T command.
+
+    Parameters
+    ----------
+    None
+        The T command acts globally without parameters.
+    """
 
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
@@ -166,7 +218,17 @@ BaseM = M
 
 @dataclasses.dataclass
 class MeasureUpdate:
-    """Describe how a measure is changed by the signals and/or a vertex operator."""
+    r"""Describe how a measure is changed by signals and a vertex operator.
+
+    Parameters
+    ----------
+    new_plane : Plane
+        Updated measurement plane after commuting gates.
+    coeff : int
+        Coefficient by which the angle is multiplied.
+    add_term : float
+        Additional term to add to the measurement angle.
+    """
 
     new_plane: Plane
     coeff: int
@@ -174,7 +236,24 @@ class MeasureUpdate:
 
     @staticmethod
     def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
-        """Compute the update for a given plane, signals and vertex operator."""
+        r"""Compute the measurement update.
+
+        Parameters
+        ----------
+        plane : ~graphix.fundamentals.Plane
+            Measurement plane of the command.
+        s : bool
+            Whether an :math:`X` signal is present.
+        t : bool
+            Whether a :math:`Z` signal is present.
+        clifford_gate : ~graphix.clifford.Clifford
+            Vertex operator applied before the measurement.
+
+        Returns
+        -------
+        MeasureUpdate
+            Update describing the new measurement.
+        """
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford_gate = Clifford.X @ clifford_gate

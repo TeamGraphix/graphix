@@ -1,4 +1,10 @@
-"""Abstract base class for all noise models."""
+"""Abstract interface for noise models.
+
+This module defines :class:`NoiseModel`, the base class used by
+:class:`graphix.simulator.PatternSimulator` when running noisy
+simulations. Child classes implement concrete noise processes by
+overriding the abstract methods defined here.
+"""
 
 from __future__ import annotations
 
@@ -11,54 +17,109 @@ if TYPE_CHECKING:
 
 
 class NoiseModel(abc.ABC):
-    """Abstract base class for all noise models."""
+    """Base class for all noise models."""
 
     data: PatternSimulator
 
     # shared by all objects of the child class.
     def assign_simulator(self, simulator: PatternSimulator) -> None:
-        """Assign a simulator to the noise model."""
+        """Assign the running simulator.
+
+        Parameters
+        ----------
+        simulator : :class:`~graphix.simulator.PatternSimulator`
+            Simulator instance that will use this noise model.
+        """
         self.simulator = simulator
 
     @abc.abstractmethod
     def prepare_qubit(self) -> KrausChannel:
-        """Return qubit to be added with preparation errors."""
+        """Return the preparation channel.
+
+        Returns
+        -------
+        KrausChannel
+            Channel applied after single-qubit preparation.
+        """
         ...
 
     @abc.abstractmethod
     def entangle(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the CZ gate process."""
+        """Return the channel applied after entanglement.
+
+        Returns
+        -------
+        KrausChannel
+            Channel modeling noise during the CZ gate.
+        """
         ...
 
     @abc.abstractmethod
     def measure(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the measurement process."""
+        """Return the measurement channel.
+
+        Returns
+        -------
+        KrausChannel
+            Channel applied immediately before measurement.
+        """
         ...
 
     @abc.abstractmethod
     def confuse_result(self, result: bool) -> bool:
-        """Assign wrong measurement result."""
+        """Return a possibly flipped measurement outcome.
+
+        Parameters
+        ----------
+        result : bool
+            Ideal measurement result.
+
+        Returns
+        -------
+        bool
+            Possibly corrupted result.
+        """
 
     @abc.abstractmethod
     def byproduct_x(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the X gate process."""
+        """Return the channel for X by-product corrections.
+
+        Returns
+        -------
+        KrausChannel
+            Channel applied after an X correction.
+        """
         ...
 
     @abc.abstractmethod
     def byproduct_z(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the Z gate process."""
+        """Return the channel for Z by-product corrections.
+
+        Returns
+        -------
+        KrausChannel
+            Channel applied after a Z correction.
+        """
         ...
 
     @abc.abstractmethod
     def clifford(self) -> KrausChannel:
-        """Apply noise to qubits that happens in the Clifford gate process."""
+        """Return the channel for Clifford gates.
+
+        Returns
+        -------
+        KrausChannel
+            Channel modeling the noise of Clifford operations.
+        """
         # NOTE might be different depending on the gate.
         ...
 
     @abc.abstractmethod
     def tick_clock(self) -> None:
-        """Notion of time in real devices - this is where we apply effect of T1 and T2.
+        """Advance the simulator clock.
 
-        We assume commands that lie between 'T' commands run simultaneously on the device.
+        This accounts for idle errors such as :math:`T_1` and :math:`T_2`. All
+        commands between consecutive ``T`` instructions are considered
+        simultaneous.
         """
         ...
