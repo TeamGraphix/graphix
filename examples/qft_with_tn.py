@@ -4,15 +4,12 @@ Large-scale simulations with tensor network simulator
 
 In this example, we demonstrate simulation of MBQC involving 10k+ nodes.
 
-You can also run this code on your browser with `mybinder.org <https://mybinder.org/>`_ - click the badge below.
-
-.. image:: https://mybinder.org/badge_logo.svg
- :target: https://mybinder.org/v2/gh/TeamGraphix/graphix-examples/HEAD?labpath=qft_with_tn.ipynb
-
 Firstly, let us import relevant modules and define the circuit:
 """
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 
 from graphix import Circuit
@@ -56,7 +53,7 @@ for i in range(n):
 qft(circuit, n)
 
 # standardize pattern
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 nodes, edges = pattern.get_graph()
@@ -64,9 +61,9 @@ print(f"Number of nodes: {len(nodes)}")
 print(f"Number of edges: {len(edges)}")
 
 # %%
-# Using efficient graph state simulator `graphix.GraphSim`, we can classically preprocess Pauli measurements.
+# Using efficient graph state simulator `graphix.graphsim`, we can classically preprocess Pauli measurements.
 # We are currently improving the speed of this process by using rust-based graph manipulation backend.
-pattern.perform_pauli_measurements(use_rustworkx=True)
+pattern.perform_pauli_measurements()
 
 
 # %%

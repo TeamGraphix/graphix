@@ -19,10 +19,12 @@ with the pattern, graph or the (generalized-)flow.
 # - Nodes with blue color is the nodes that are measured in *Pauli basis*, one of *X*, *Y* or *Z* computational bases.
 # - Nodes in white are the ones measured in *non-Pauli basis*.
 #
+from __future__ import annotations
+
 import numpy as np
 
-import graphix.pauli
 from graphix import Circuit
+from graphix.fundamentals import Plane
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
@@ -44,7 +46,7 @@ pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_d
 
 # %%
 # Correction set ('xflow' and 'zflow' of pattern)
-# -------------------------------------------
+# -----------------------------------------------
 # next let us visualize the X and Z correction set in the pattern by :code:`flow_from_pattern=False` statement.
 #
 
@@ -74,7 +76,7 @@ outputs = {4, 5, 6}
 graph = nx.Graph()
 graph.add_nodes_from(nodes)
 graph.add_edges_from(edges)
-meas_planes = {1: graphix.pauli.Plane.XY, 2: graphix.pauli.Plane.XY, 3: graphix.pauli.Plane.XY}
+meas_planes = {1: Plane.XY, 2: Plane.XY, 3: Plane.XY}
 vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
 vis.visualize(show_measurement_planes=True)
 
@@ -89,10 +91,10 @@ graph = nx.Graph()
 graph.add_nodes_from(nodes)
 graph.add_edges_from(edges)
 meas_planes = {
-    0: graphix.pauli.Plane.XY,
-    1: graphix.pauli.Plane.XY,
-    2: graphix.pauli.Plane.XZ,
-    3: graphix.pauli.Plane.YZ,
+    0: Plane.XY,
+    1: Plane.XY,
+    2: Plane.XZ,
+    3: Plane.YZ,
 }
 vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
 vis.visualize(show_measurement_planes=True)

@@ -2,6 +2,11 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+from __future__ import annotations
+from typing import Any, Literal
+
+from sphinx.application import Sphinx
+
 import os
 import sys
 
@@ -16,30 +21,40 @@ author = "Shinichi Sunami"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.napoleon",
     "sphinx_gallery.gen_gallery",
-    "sphinxawesome_theme.highlighting",
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autosectionlabel_prefix_document = True
 
+intersphinx_mapping = {
+    "networkx": ("https://networkx.github.io/documentation/stable/", None),
+}
 
-sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../../"))
 
 
-def skip(app, what, name, obj, would_skip, options):
+def skip(
+    app: Sphinx,
+    what: Literal["module", "class", "exception", "function", "method", "attribute"],
+    name: str,
+    obj: Any,
+    would_skip: bool,
+    options: dict[str, bool],
+) -> bool:
     if name == "__init__":
         return False
     return would_skip
 
 
-def setup(app):
+def setup(app: Sphinx) -> None:
     app.connect("autodoc-skip-member", skip)
 
 
@@ -73,4 +88,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": ["gallery"],
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
+    "parallel": True,
 }
+
+suppress_warnings = ["config.cache"]

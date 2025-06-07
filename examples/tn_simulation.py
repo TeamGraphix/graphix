@@ -8,6 +8,7 @@ Firstly, let's import the relevant modules:
 """
 
 # %%
+from __future__ import annotations
 
 from functools import reduce
 
@@ -21,6 +22,8 @@ from scipy.optimize import minimize
 
 from graphix import Circuit
 
+rng = np.random.default_rng()
+
 # %%
 # This application will be for the QAOA (Quantum Approximate Optimization Algorithm),
 # which is an algorithm that can be used for example to solve combinatorical optimization problems.
@@ -31,12 +34,12 @@ from graphix import Circuit
 
 
 def ansatz(circuit, n, gamma, beta, iterations):
-    for j in range(0, iterations):
+    for j in range(iterations):
         for i in range(1, n):
             circuit.cnot(i, 0)
             circuit.rz(0, gamma[j])
             circuit.cnot(i, 0)
-        for i in range(0, n):
+        for i in range(n):
             circuit.rx(i, beta[j])
 
 
@@ -45,14 +48,14 @@ def ansatz(circuit, n, gamma, beta, iterations):
 
 n = 5  # This will result in a graph that would be too large for statevector simulation.
 iterations = 2  # Define the number of iterations in the quantum circuit.
-gamma = 2 * np.pi * np.random.rand(iterations)
-beta = 2 * np.pi * np.random.rand(iterations)
+gamma = 2 * np.pi * rng.random(iterations)
+beta = 2 * np.pi * rng.random(iterations)
 # Define the circuit.
 circuit = Circuit(n)
 ansatz(circuit, n, gamma, beta, iterations)
 
 # Transpile Circuit into pattern as it is needed for creating the TN.
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 # Optimizing according to standardization algorithm of graphix.
 pattern.standardize()
 pattern.shift_signals()
@@ -67,7 +70,7 @@ print(f"Number of edges: {len(edges)}")
 # %%
 # Optimizing by performing Pauli measurements in the pattern using efficient stabilizer simulator.
 
-pattern.perform_pauli_measurements(use_rustworkx=True)
+pattern.perform_pauli_measurements()
 
 # %%
 # Simulate using the TN backend of graphix, which will return an MBQCTensorNet object.
@@ -174,10 +177,10 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     beta = params[slice_index:]
     ansatz(circuit, n, gamma, beta, quantum_iter)
 
-    pattern = circuit.transpile(opt=True).pattern
+    pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
-    pattern.perform_pauli_measurements(use_rustworkx=True)
+    pattern.perform_pauli_measurements()
     mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
     exp_val = 0
     for op in ham:
@@ -205,7 +208,7 @@ class MyOptimizer(oe.paths.PathOptimizer):
 
 opt = MyOptimizer()
 # Define initial parameters, which will be optimized through running the algorithm.
-params = 2 * np.pi * np.random.rand(len(gamma) + len(beta))
+params = 2 * np.pi * rng.random(len(gamma) + len(beta))
 # Run the classical optimizer and simulate the quantum circuit with TN backend.
 res = minimize(cost, params, args=(n, ham, iterations, len(gamma), opt), method="COBYLA")
 print(res.message)
@@ -215,7 +218,7 @@ print(res.message)
 
 circuit = Circuit(n)
 ansatz(circuit, n, res.x[: len(gamma)], res.x[len(gamma) :], iterations)
-pattern = circuit.transpile(opt=True).pattern
+pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
 mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
@@ -226,7 +229,7 @@ mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel
 max_prob = 0
 most_prob_state = 0
 bars = []
-for i in range(0, 2**n):
+for i in range(2**n):
     value = mbqc_tn.get_basis_amplitude(i)
     bars.append(value)
 
@@ -234,8 +237,8 @@ for i in range(0, 2**n):
 # Plot the output.
 
 fig, ax = plt.subplots(figsize=(10, 5))
-ax.bar(range(0, 2**n), bars, color="maroon", width=0.2)
-ax.set_xticks(range(0, 2**n))
+ax.bar(range(2**n), bars, color="maroon", width=0.2)
+ax.set_xticks(range(2**n))
 ax.set_xlabel("States")
 ax.set_ylabel("Probabilites")
 ax.set_title("Measurement probabilities using the optimized parameters")

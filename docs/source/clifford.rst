@@ -3,11 +3,15 @@ Miscellaneous modules
 =====================
 
 :mod:`graphix.clifford` module
-+++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++
+
+.. automodule:: graphix.clifford
 
 .. currentmodule:: graphix.clifford
 
-.. data:: graphix.clifford.CLIFFORD
+.. autoclass:: graphix.clifford.Clifford
+
+.. data:: graphix.cliffford.CLIFFORD
 
     list of 24 unique single-qubit Clifford operators as numpy array.
 
@@ -18,5 +22,3 @@ Miscellaneous modules
 .. data:: graphix.clifford.CLIFFORD_MEASURE
 
     The mapping of Pauli operators under conjugation by single-qubit Clifford gates, expressed as a mapping into Pauli operator indices (in CLIFFORD) and sign.
-
-

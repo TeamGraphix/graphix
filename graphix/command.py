@@ -2,144 +2,171 @@
 
 from __future__ import annotations
 
-import abc
+import dataclasses
 import enum
-from typing import TYPE_CHECKING
+import sys
+from enum import Enum
+from typing import ClassVar, Literal, Union
 
 import numpy as np
-from pydantic import BaseModel
 
-import graphix.clifford
-from graphix.pauli import Plane
+from graphix import utils
+from graphix.clifford import Clifford
+from graphix.fundamentals import Plane, Sign
+from graphix.measurements import Domains
 
-if TYPE_CHECKING:
-    from graphix.clifford import Clifford
+# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
+from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+from graphix.pauli import Pauli
+from graphix.pretty_print import DataclassPrettyPrintMixin
+from graphix.states import BasicStates, State
 
 Node = int
 
 
-class CommandKind(enum.Enum):
-    N = "N"
-    M = "M"
-    E = "E"
-    C = "C"
-    X = "X"
-    Z = "Z"
-    T = "T"
-    S = "S"
+class CommandKind(Enum):
+    """Tag for command kind."""
+
+    N = enum.auto()
+    M = enum.auto()
+    E = enum.auto()
+    C = enum.auto()
+    X = enum.auto()
+    Z = enum.auto()
+    S = enum.auto()
+    T = enum.auto()
 
 
-class Command(BaseModel, abc.ABC):
-    """
-    Base command class.
-    """
+class _KindChecker:
+    """Enforce tag field declaration."""
 
-    kind: CommandKind = None
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
-class N(Command):
-    """
-    Preparation command.
-    """
+@dataclasses.dataclass(repr=False)
+class N(_KindChecker, DataclassPrettyPrintMixin):
+    """Preparation command."""
 
-    kind: CommandKind = CommandKind.N
     node: Node
+    state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
+    kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
 
-class M(Command):
-    """
-    Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop.
-    """
+@dataclasses.dataclass(repr=False)
+class M(_KindChecker, DataclassPrettyPrintMixin):
+    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
 
-    kind: CommandKind = CommandKind.M
     node: Node
     plane: Plane = Plane.XY
-    angle: float = 0.0
-    s_domain: set[Node] = set()
-    t_domain: set[Node] = set()
+    angle: ExpressionOrFloat = 0.0
+    s_domain: set[Node] = dataclasses.field(default_factory=set)
+    t_domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
-    def clifford(self, clifford: Clifford) -> M:
-        s_domain = self.s_domain
-        t_domain = self.t_domain
-        for gate in clifford.hsz:
-            if gate == graphix.clifford.I:
-                pass
-            elif gate == graphix.clifford.H:
-                t_domain, s_domain = s_domain, t_domain
-            elif gate == graphix.clifford.S:
-                t_domain ^= s_domain
-            elif gate == graphix.clifford.Z:
-                pass
-            else:
-                raise RuntimeError(f"{gate} should be either I, H, S or Z.")
-        update = graphix.pauli.MeasureUpdate.compute(self.plane, False, False, clifford)
+    def clifford(self, clifford_gate: Clifford) -> M:
+        """Apply a Clifford gate to the measure command.
+
+        The returned `M` command is equivalent to the pattern `MC`.
+        """
+        domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
+        update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
         return M(
-            node=self.node,
-            plane=update.new_plane,
-            angle=self.angle * update.coeff + update.add_term / np.pi,
-            s_domain=s_domain,
-            t_domain=t_domain,
+            self.node,
+            update.new_plane,
+            self.angle * update.coeff + update.add_term / np.pi,
+            domains.s_domain,
+            domains.t_domain,
         )
 
 
-class E(Command):
-    """
-    Entanglement command.
-    """
+@dataclasses.dataclass(repr=False)
+class E(_KindChecker, DataclassPrettyPrintMixin):
+    """Entanglement command."""
 
-    kind: CommandKind = CommandKind.E
     nodes: tuple[Node, Node]
+    kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
 
-class C(Command):
-    """
-    Clifford command.
-    """
-
-    kind: CommandKind = CommandKind.C
-    node: Node
-    cliff_index: int
-
-
-class Correction(Command):
-    """
-    Correction command.
-    Either X or Z.
-    """
+@dataclasses.dataclass(repr=False)
+class C(_KindChecker, DataclassPrettyPrintMixin):
+    """Clifford command."""
 
     node: Node
-    domain: set[Node] = set()
+    clifford: Clifford
+    kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
 
-class X(Correction):
-    """
-    X correction command.
-    """
+@dataclasses.dataclass(repr=False)
+class X(_KindChecker, DataclassPrettyPrintMixin):
+    """X correction command."""
 
-    kind: CommandKind = CommandKind.X
-
-
-class Z(Correction):
-    """
-    Z correction command.
-    """
-
-    kind: CommandKind = CommandKind.Z
-
-
-class S(Command):
-    """
-    S command
-    """
-
-    kind: CommandKind = CommandKind.S
     node: Node
-    domain: set[Node] = set()
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
 
-class T(Command):
-    """
-    T command
-    """
+@dataclasses.dataclass(repr=False)
+class Z(_KindChecker, DataclassPrettyPrintMixin):
+    """Z correction command."""
 
-    kind: CommandKind = CommandKind.T
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
+
+
+@dataclasses.dataclass(repr=False)
+class S(_KindChecker, DataclassPrettyPrintMixin):
+    """S command."""
+
+    node: Node
+    domain: set[Node] = dataclasses.field(default_factory=set)
+    kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
+
+
+@dataclasses.dataclass(repr=False)
+class T(_KindChecker):
+    """T command."""
+
+    kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
+
+
+if sys.version_info >= (3, 10):
+    Command = N | M | E | C | X | Z | S | T
+    Correction = X | Z
+else:
+    Command = Union[N, M, E, C, X, Z, S, T]
+    Correction = Union[X, Z]
+
+BaseM = M
+
+
+@dataclasses.dataclass
+class MeasureUpdate:
+    """Describe how a measure is changed by the signals and/or a vertex operator."""
+
+    new_plane: Plane
+    coeff: int
+    add_term: float
+
+    @staticmethod
+    def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
+        """Compute the update for a given plane, signals and vertex operator."""
+        gates = list(map(Pauli.from_axis, plane.axes))
+        if s:
+            clifford_gate = Clifford.X @ clifford_gate
+        if t:
+            clifford_gate = Clifford.Z @ clifford_gate
+        gates = list(map(clifford_gate.measure, gates))
+        new_plane = Plane.from_axes(*(gate.axis for gate in gates))
+        cos_pauli = clifford_gate.measure(Pauli.from_axis(plane.cos))
+        sin_pauli = clifford_gate.measure(Pauli.from_axis(plane.sin))
+        exchange = cos_pauli.axis != new_plane.cos
+        coeff = -1 if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign) else 1
+        add_term: float = 0
+        if cos_pauli.unit.sign == Sign.MINUS:
+            add_term += np.pi
+        if exchange:
+            add_term = np.pi / 2 - add_term
+        return MeasureUpdate(new_plane, coeff, add_term)

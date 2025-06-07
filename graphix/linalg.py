@@ -1,15 +1,18 @@
+"""Algorithms for linear algebra."""
+
 from __future__ import annotations
 
 import galois
 import numpy as np
+import numpy.typing as npt
 import sympy as sp
 
 
 class MatGF2:
-    """Matrix on GF2 field"""
+    """Matrix on GF2 field."""
 
     def __init__(self, data):
-        """constructor for matrix of GF2
+        """Construct a matrix of GF2.
 
         Parameters
         ----------
@@ -21,40 +24,48 @@ class MatGF2:
         else:
             self.data = galois.GF2(data)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the representation string of the matrix."""
+        return repr(self.data)
+
+    def __str__(self) -> str:
+        """Return the displayable string of the matrix."""
         return str(self.data)
 
-    def __str__(self):
-        return str(self.data)
-
-    def __eq__(self, other):
+    def __eq__(self, other: MatGF2) -> bool:
+        """Return `True` if two matrices are equal, `False` otherwise."""
         return np.all(self.data == other.data)
 
-    def __add__(self, other):
+    def __add__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Add two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data + other.data)
 
-    def __sub__(self, other):
+    def __sub__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Substract two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data - other.data)
 
-    def __mul__(self, other):
+    def __mul__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Compute the point-wise multiplication of two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data * other.data)
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: npt.NDArray | MatGF2) -> MatGF2:
+        """Multiply two matrices."""
         if isinstance(other, np.ndarray):
             other = MatGF2(other)
         return MatGF2(self.data @ other.data)
 
-    def copy(self):
+    def copy(self) -> MatGF2:
+        """Return a copy of the matrix."""
         return MatGF2(self.data.copy())
 
-    def add_row(self, array_to_add=None, row=None):
-        """add a row to the matrix
+    def add_row(self, array_to_add=None, row=None) -> None:
+        """Add a row to the matrix.
 
         Parameters
         ----------
@@ -70,8 +81,8 @@ class MatGF2:
         array_to_add = array_to_add.reshape((1, self.data.shape[1]))
         self.data = np.insert(self.data, row, array_to_add, axis=0)
 
-    def add_col(self, array_to_add=None, col=None):
-        """add a column to the matrix
+    def add_col(self, array_to_add=None, col=None) -> None:
+        """Add a column to the matrix.
 
         Parameters
         ----------
@@ -87,8 +98,8 @@ class MatGF2:
         array_to_add = array_to_add.reshape((1, self.data.shape[0]))
         self.data = np.insert(self.data, col, array_to_add, axis=1)
 
-    def concatenate(self, other, axis=1):
-        """concatinate two matrices
+    def concatenate(self, other: MatGF2, axis: int = 1) -> None:
+        """Concatinate two matrices.
 
         Parameters
         ----------
@@ -99,8 +110,8 @@ class MatGF2:
         """
         self.data = np.concatenate((self.data, other.data), axis=axis)
 
-    def remove_row(self, row):
-        """remove a row from the matrix
+    def remove_row(self, row: int) -> None:
+        """Remove a row from the matrix.
 
         Parameters
         ----------
@@ -109,8 +120,8 @@ class MatGF2:
         """
         self.data = np.delete(self.data, row, axis=0)
 
-    def remove_col(self, col):
-        """remove a column from the matrix
+    def remove_col(self, col: int) -> None:
+        """Remove a column from the matrix.
 
         Parameters
         ----------
@@ -119,8 +130,8 @@ class MatGF2:
         """
         self.data = np.delete(self.data, col, axis=1)
 
-    def swap_row(self, row1, row2):
-        """swap two rows
+    def swap_row(self, row1: int, row2: int) -> None:
+        """Swap two rows.
 
         Parameters
         ----------
@@ -131,8 +142,8 @@ class MatGF2:
         """
         self.data[[row1, row2]] = self.data[[row2, row1]]
 
-    def swap_col(self, col1, col2):
-        """swap two columns
+    def swap_col(self, col1: int, col2: int) -> None:
+        """Swap two columns.
 
         Parameters
         ----------
@@ -143,8 +154,8 @@ class MatGF2:
         """
         self.data[:, [col1, col2]] = self.data[:, [col2, col1]]
 
-    def permute_row(self, row_permutation):
-        """permute rows
+    def permute_row(self, row_permutation) -> None:
+        """Permute rows.
 
         Parameters
         ----------
@@ -153,8 +164,8 @@ class MatGF2:
         """
         self.data = self.data[row_permutation, :]
 
-    def permute_col(self, col_permutation):
-        """permute columns
+    def permute_col(self, col_permutation) -> None:
+        """Permute columns.
 
         Parameters
         ----------
@@ -163,8 +174,8 @@ class MatGF2:
         """
         self.data = self.data[:, col_permutation]
 
-    def is_canonical_form(self):
-        """check if the matrix is in a canonical(Row reduced echelon form) form
+    def is_canonical_form(self) -> bool:
+        """Check if the matrix is in a canonical form (row reduced echelon form).
 
         Returns
         -------
@@ -179,35 +190,28 @@ class MatGF2:
             if diag[nonzero_diag_index[i]] == 0:
                 if np.count_nonzero(diag[i:]) != 0:
                     break
-                else:
-                    return False
+                return False
 
         ref_array = MatGF2(np.diag(np.diagonal(self.data[:rank, :rank])))
         if np.count_nonzero(self.data[:rank, :rank] - ref_array.data) != 0:
             return False
 
-        if np.count_nonzero(self.data[rank:, :]) != 0:
-            return False
+        return np.count_nonzero(self.data[rank:, :]) == 0
 
-        return True
-
-    def get_rank(self):
-        """get the rank of the matrix
+    def get_rank(self) -> int:
+        """Get the rank of the matrix.
 
         Returns
         -------
         int: int
             rank of the matrix
         """
-        if not self.is_canonical_form():
-            A = self.forward_eliminate(copy=True)[0]
-        else:
-            A = self
-        nonzero_index = np.diag(A.data).nonzero()
+        mat_a = self.forward_eliminate(copy=True)[0] if not self.is_canonical_form() else self
+        nonzero_index = np.diag(mat_a.data).nonzero()
         return len(nonzero_index[0])
 
-    def forward_eliminate(self, b=None, copy=False):
-        r"""forward eliminate the matrix
+    def forward_eliminate(self, b=None, copy=False) -> tuple[MatGF2, MatGF2, list[int], list[int]]:
+        r"""Forward eliminate the matrix.
 
         |A B| --\ |I X|
         |C D| --/ |0 0|
@@ -222,7 +226,7 @@ class MatGF2:
 
         Returns
         -------
-        A: MatGF2
+        mat_a: MatGF2
             forward eliminated matrix
         b: MatGF2
             forward eliminated right hand side
@@ -231,27 +235,24 @@ class MatGF2:
         col_permutation: list
             column permutation
         """
-        if copy:
-            A = MatGF2(self.data)
-        else:
-            A = self
+        mat_a = MatGF2(self.data) if copy else self
         if b is None:
-            b = np.zeros((A.data.shape[0], 1), dtype=int)
+            b = np.zeros((mat_a.data.shape[0], 1), dtype=int)
         b = MatGF2(b)
         # Remember the row and column order
-        row_permutation = [i for i in range(A.data.shape[0])]
-        col_permutation = [i for i in range(A.data.shape[1])]
+        row_permutation = list(range(mat_a.data.shape[0]))
+        col_permutation = list(range(mat_a.data.shape[1]))
 
         # Gauss-Jordan Elimination
-        max_rank = min(A.data.shape)
+        max_rank = min(mat_a.data.shape)
         for row in range(max_rank):
-            if A.data[row, row] == 0:
-                pivot = A.data[row:, row:].nonzero()
+            if mat_a.data[row, row] == 0:
+                pivot = mat_a.data[row:, row:].nonzero()
                 if len(pivot[0]) == 0:
                     break
                 pivot_row = pivot[0][0] + row
                 if pivot_row != row:
-                    A.swap_row(row, pivot_row)
+                    mat_a.swap_row(row, pivot_row)
                     b.swap_row(row, pivot_row)
                     former_row = row_permutation.index(row)
                     former_pivot_row = row_permutation.index(pivot_row)
@@ -259,20 +260,20 @@ class MatGF2:
                     row_permutation[former_pivot_row] = row
                 pivot_col = pivot[1][0] + row
                 if pivot_col != row:
-                    A.swap_col(row, pivot_col)
+                    mat_a.swap_col(row, pivot_col)
                     former_col = col_permutation.index(row)
                     former_pivot_col = col_permutation.index(pivot_col)
                     col_permutation[former_col] = pivot_col
                     col_permutation[former_pivot_col] = row
-                assert A.data[row, row] == 1
-            eliminate_rows = set(A.data[:, row].nonzero()[0]) - {row}
+                assert mat_a.data[row, row] == 1
+            eliminate_rows = set(mat_a.data[:, row].nonzero()[0]) - {row}
             for eliminate_row in eliminate_rows:
-                A.data[eliminate_row, :] += A.data[row, :]
+                mat_a.data[eliminate_row, :] += mat_a.data[row, :]
                 b.data[eliminate_row, :] += b.data[row, :]
-        return A, b, row_permutation, col_permutation
+        return mat_a, b, row_permutation, col_permutation
 
-    def backward_substitute(self, b):
-        """backward substitute the matrix
+    def backward_substitute(self, b) -> tuple[npt.NDArray, list[sp.Symbol]]:
+        """Backward substitute the matrix.
 
         Parameters
         ----------
@@ -290,10 +291,10 @@ class MatGF2:
         """
         rank = self.get_rank()
         b = MatGF2(b)
-        x = list()
-        kernels = sp.symbols("x0:%d" % (self.data.shape[1] - rank))
+        x = []
+        kernels = sp.symbols(f"x0:{self.data.shape[1] - rank}")
         for col in range(b.data.shape[1]):
-            x_col = list()
+            x_col = []
             b_col = b.data[:, col]
             if np.count_nonzero(b_col[rank:]) != 0:
                 x_col = [sp.nan for i in range(self.data.shape[1])]
