@@ -849,6 +849,24 @@ class GraphVisualizer:
             if arrow[0] == arrow[1]:  # Self loop
 
                 def _point_from_node(pos, dist, angle):
+                    """Return a point at a given distance and angle from ``pos``.
+
+                    Parameters
+                    ----------
+                    pos : Sequence[float]
+                        Coordinate of the node.
+                    dist : float
+                        Distance from ``pos``.
+                    angle : float
+                        Angle in degrees measured counter-clockwise from the
+                        positive x-axis.
+
+                    Returns
+                    -------
+                    list[float]
+                        The new ``[x, y]`` coordinate.
+                    """
+
                     angle = np.deg2rad(angle)
                     return [pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle)]
 
