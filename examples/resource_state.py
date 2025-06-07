@@ -4,16 +4,19 @@ Graph State Resource Extraction
 
 This module demonstrates how to extract and analyze a resource graph from a
 2D cluster state using the GraphState class from the `graphix` library.
+
 """
 
 from __future__ import annotations
 
-import itertools
-import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+import itertools
+import time
+
 import networkx as nx
+
 from graphix import GraphState
 
 if TYPE_CHECKING:
@@ -22,7 +25,45 @@ if TYPE_CHECKING:
 
 @dataclass
 class ResourceGraphInfo:
-    """Container for resource graph metrics."""
+    """Container for resource graph metrics.
+
+    Attributes
+    ----------
+    graph_class : str or None
+        The class name of the graph-like object.
+    attributes : list of str
+        Any string-based attributes to record (optional).
+    nodes : int or None
+        Number of nodes in the graph.
+    edges : int or None
+        Number of edges in the graph.
+    kind : str or None
+        Additional kind/type info (optional).
+    resource_type : str or None
+        Explicit label of resource type, if available.
+    degree_sequence : list of int
+        Sorted list of node degrees.
+    spectrum : list of float
+        Real parts of eigenvalues of the adjacency matrix.
+    triangles : int or None
+        Number of triangles in the graph.
+    is_connected : bool or None
+        Whether the graph is fully connected.
+    num_components : int or None
+        Number of connected components.
+    max_degree : int or None
+        Maximum node degree.
+    min_degree : int or None
+        Minimum node degree.
+    k : int or None
+        Optional parameter for combinatorial analysis.
+    total_k_subsets : int or None
+        Number of subsets of size k (if analyzed).
+    pairable_subsets : int or None
+        Number of pairable k-subsets (if applicable).
+    pairable_ratio : float or None
+        Ratio of pairable subsets to total.
+    """
 
     graph_class: str | None = None
     attributes: list[str] = field(default_factory=list)
@@ -46,6 +87,16 @@ class ResourceGraphInfo:
 def analyze_resource_graph(resource_graph: GraphState) -> ResourceGraphInfo:
     """
     Analyze a GraphState object and return metadata.
+
+    Parameters
+    ----------
+    resource_graph : GraphState
+        The input graph state to analyze.
+
+    Returns
+    -------
+    ResourceGraphInfo
+        Metadata including node/edge counts, type, and structure.
     """
     graph_nx = nx.Graph(resource_graph.edges)
 
@@ -72,6 +123,18 @@ class GraphStateExtractor:
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
         """
         Create a 2D cluster state as a rectangular lattice.
+
+        Parameters
+        ----------
+        rows : int
+            Number of rows in the grid.
+        cols : int
+            Number of columns in the grid.
+
+        Returns
+        -------
+        GraphState
+            The constructed 2D cluster graph.
         """
         gs = GraphState()
         nodes = [i * cols + j for i in range(rows) for j in range(cols)]
@@ -97,6 +160,20 @@ class GraphStateExtractor:
     ) -> tuple[GraphState, list[int]]:
         """
         Extract a graph state using local measurements.
+
+        Parameters
+        ----------
+        cluster_state : GraphState
+            The source 2D cluster graph.
+        target_edges : sequence of tuple of int
+            Edges to preserve in the target graph.
+        target_nodes : sequence of int or None
+            Nodes to preserve. If None, inferred from edges.
+
+        Returns
+        -------
+        tuple of (GraphState, list of int)
+            Extracted target graph state and nodes to be measured.
         """
         start = time.perf_counter()
 
@@ -117,6 +194,16 @@ class GraphStateExtractor:
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
         """
         Compute local invariants of a graph state for equivalence testing.
+
+        Parameters
+        ----------
+        gs : GraphState
+            The graph state to analyze.
+
+        Returns
+        -------
+        ResourceGraphInfo
+            Information about degree distribution, triangle count, etc.
         """
         graph = nx.Graph(gs.edges)
 
