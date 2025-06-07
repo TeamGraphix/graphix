@@ -81,6 +81,8 @@ html_theme_options = {
     "dark_logo": "white_with_text.png",
 }
 
+default_role = "any"
+
 sphinx_gallery_conf = {
     # path to your example scripts
     "examples_dirs": ["../../examples"],

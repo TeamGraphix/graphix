@@ -20,7 +20,7 @@ class OpenGraph:
 
     This is the graph we wish to implement deterministically.
 
-    :param inside: the underlying graph state
+    :param inside: the underlying :class:`networkx.Graph` state
     :param measurements: a dictionary whose key is the ID of a node and the
         value is the measurement at that node
     :param inputs: an ordered list of node IDs that are inputs to the graph

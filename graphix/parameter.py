@@ -155,6 +155,19 @@ class AffineExpression(Expression):
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
     def _scale_non_null(self, k: float) -> AffineExpression:
+        """Return ``self`` scaled by ``k`` assuming ``k`` is non-zero.
+
+        Parameters
+        ----------
+        k : float
+            Scaling factor.
+
+        Returns
+        -------
+        AffineExpression
+            A new expression scaled by ``k``.
+        """
+
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
     def scale(self, k: float) -> ExpressionOrFloat:

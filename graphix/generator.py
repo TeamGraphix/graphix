@@ -26,8 +26,8 @@ def generate_from_graph(
 ) -> Pattern:
     r"""Generate the measurement pattern from open graph and measurement angles.
 
-    This function takes an open graph G = (nodes, edges, input, outputs),
-    specified by networks.Graph and two lists specifying input and output nodes.
+    This function takes an open graph ``G = (nodes, edges, input, outputs)``,
+    specified by :class:`networkx.Graph` and two lists specifying input and output nodes.
     Currently we support XY-plane measurements.
 
     Searches for the flow in the open graph using :func:`graphix.gflow.find_flow` and if found,
@@ -50,8 +50,8 @@ def generate_from_graph(
 
     Parameters
     ----------
-    graph : networkx.Graph
-        graph on which MBQC should be performed
+    graph : :class:`networkx.Graph`
+        Graph on which MBQC should be performed
     angles : dict
         measurement angles for each nodes on the graph (unit of pi), except output nodes
     inputs : list

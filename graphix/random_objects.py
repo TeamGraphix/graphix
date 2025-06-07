@@ -202,27 +202,85 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
 
 
 def _first_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
+    """Apply an initial random :math:`R_X` rotation to each qubit.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        Circuit to modify in place.
+    nqubits : int
+        Number of qubits.
+    rng : numpy.random.Generator
+        Random number generator used to sample rotation angles.
+    """
+
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
 
 
 def _mid_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
+    """Apply a random :math:`R_X` then :math:`R_Z` rotation to each qubit.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        Circuit to modify in place.
+    nqubits : int
+        Number of qubits.
+    rng : numpy.random.Generator
+        Random number generator used to sample rotation angles.
+    """
+
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
         circuit.rz(qubit, rng.random())
 
 
 def _last_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
+    """Apply a final random :math:`R_Z` rotation to each qubit.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        Circuit to modify in place.
+    nqubits : int
+        Number of qubits.
+    rng : numpy.random.Generator
+        Random number generator used to sample rotation angles.
+    """
+
     for qubit in range(nqubits):
         circuit.rz(qubit, rng.random())
 
 
 def _entangler(circuit: Circuit, pairs: Iterable[tuple[int, int]]) -> None:
+    """Apply CNOT gates between qubit pairs.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        Circuit to modify in place.
+    pairs : Iterable[tuple[int, int]]
+        Pairs of control and target qubits for CNOT operations.
+    """
+
     for a, b in pairs:
         circuit.cnot(a, b)
 
 
 def _entangler_rzz(circuit: Circuit, pairs: Iterable[tuple[int, int]], rng: Generator) -> None:
+    """Apply random :math:`R_{ZZ}` gates between qubit pairs.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        Circuit to modify in place.
+    pairs : Iterable[tuple[int, int]]
+        Pairs of qubits on which to apply the :math:`R_{ZZ}` gate.
+    rng : numpy.random.Generator
+        Random number generator used to sample rotation angles.
+    """
+
     for a, b in pairs:
         circuit.rzz(a, b, rng.random())
 
@@ -235,7 +293,27 @@ def rand_gate(
     *,
     use_rzz: bool = False,
 ) -> Circuit:
-    """Return a random gate."""
+    """Return a random gate composed of single-qubit rotations and entangling operations.
+
+    Parameters
+    ----------
+    nqubits : int
+        Number of qubits in the circuit.
+    depth : int
+        Depth of alternating rotation and entangling layers.
+    pairs : Iterable[tuple[int, int]]
+        Pairs of qubits used for entangling operations.
+    rng : numpy.random.Generator, optional
+        Random number generator used to sample rotation angles. If ``None``, a
+        default generator is created.
+    use_rzz : bool, optional
+        If ``True`` use :math:`R_{ZZ}` gates as entanglers instead of CNOT.
+
+    Returns
+    -------
+    Circuit
+        The generated random circuit.
+    """
     rng = ensure_rng(rng)
     circuit = Circuit(nqubits)
     _first_rotation(circuit, nqubits, rng)
@@ -251,6 +329,22 @@ def rand_gate(
 
 
 def _genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int]]:
+    """Yield random pairs of qubit indices.
+
+    Parameters
+    ----------
+    n_qubits : int
+        Number of available qubits.
+    count : int
+        Number of pairs to generate.
+    rng : numpy.random.Generator
+        Random number generator for selecting qubits.
+
+    Yields
+    ------
+    tuple[int, int]
+        Randomly selected qubit pair.
+    """
     choice = list(range(n_qubits))
     for _ in range(count):
         rng.shuffle(choice)
@@ -259,6 +353,22 @@ def _genpair(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, i
 
 
 def _gentriplet(n_qubits: int, count: int, rng: Generator) -> Iterator[tuple[int, int, int]]:
+    """Yield random triplets of qubit indices.
+
+    Parameters
+    ----------
+    n_qubits : int
+        Number of available qubits.
+    count : int
+        Number of triplets to generate.
+    rng : numpy.random.Generator
+        Random number generator for selecting qubits.
+
+    Yields
+    ------
+    tuple[int, int, int]
+        Randomly selected qubit triplet.
+    """
     choice = list(range(n_qubits))
     for _ in range(count):
         rng.shuffle(choice)
@@ -275,7 +385,28 @@ def rand_circuit(
     use_ccx: bool = False,
     parameters: Iterable[Parameter] | None = None,
 ) -> Circuit:
-    """Return a random circuit."""
+    """Return a random parameterized circuit used for testing or benchmarking.
+
+    Parameters
+    ----------
+    nqubits : int
+        Number of qubits in the circuit.
+    depth : int
+        Number of alternating entangling and single-qubit layers.
+    rng : numpy.random.Generator, optional
+        Random number generator. A default generator is created if ``None``.
+    use_rzz : bool, optional
+        If ``True`` add :math:`R_{ZZ}` gates in each layer.
+    use_ccx : bool, optional
+        If ``True`` add CCX gates in each layer.
+    parameters : Iterable[Parameter], optional
+        Parameters used for randomly chosen rotation gates.
+
+    Returns
+    -------
+    Circuit
+        The generated random circuit.
+    """
     rng = ensure_rng(rng)
     circuit = Circuit(nqubits)
     parametric_gate_choice = (

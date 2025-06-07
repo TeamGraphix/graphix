@@ -43,17 +43,47 @@ class MeasureMethod(abc.ABC):
 
     @abc.abstractmethod
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
-        """Return the description of the measurement performed by a given measure command (possibly blind)."""
+        """Return the description of the measurement performed by a command.
+
+        Parameters
+        ----------
+        cmd : BaseM
+            Measurement command whose description is required.
+
+        Returns
+        -------
+        Measurement
+            Plane and angle actually used by the backend.
+        """
         ...
 
     @abc.abstractmethod
     def get_measure_result(self, node: int) -> bool:
-        """Return the result of a previous measurement."""
+        """Return the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+
+        Returns
+        -------
+        bool
+            Recorded measurement outcome.
+        """
         ...
 
     @abc.abstractmethod
     def set_measure_result(self, node: int, result: bool) -> None:
-        """Store the result of a previous measurement."""
+        """Store the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+        result : bool
+            Measurement outcome to store.
+        """
         ...
 
 
@@ -61,12 +91,32 @@ class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
     def __init__(self, results=None):
+        """Initialize with an optional result dictionary.
+
+        Parameters
+        ----------
+        results : dict[int, bool] | None, optional
+            Mapping of previously measured nodes to their results. If ``None``,
+            an empty dictionary is created.
+        """
+
         if results is None:
             results = {}
         self.results = results
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
-        """Return the description of the measurement performed by a given measure command (cannot be blind in the case of DefaultMeasureMethod)."""
+        """Return the description of the measurement performed by ``cmd``.
+
+        Parameters
+        ----------
+        cmd : BaseM
+            Measurement command whose plane and angle should be updated.
+
+        Returns
+        -------
+        Measurement
+            Updated measurement specification.
+        """
         assert isinstance(cmd, M)
         angle = cmd.angle * np.pi
         # extract signals for adaptive angle
@@ -77,11 +127,30 @@ class DefaultMeasureMethod(MeasureMethod):
         return Measurement(angle, measure_update.new_plane)
 
     def get_measure_result(self, node: int) -> bool:
-        """Return the result of a previous measurement."""
+        """Return the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+
+        Returns
+        -------
+        bool
+            Stored measurement outcome.
+        """
         return self.results[node]
 
     def set_measure_result(self, node: int, result: bool) -> None:
-        """Store the result of a previous measurement."""
+        """Store the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+        result : bool
+            Measurement outcome to store.
+        """
         self.results[node] = result
 
 
