@@ -26,8 +26,6 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Any
-
 import networkx as nx
 
 from graphix import GraphState
@@ -76,33 +74,15 @@ class ResourceGraphInfo:
         Fraction of pairable subsets.
     """
 
-    type: str | None = None
-    attributes: list[str] = field(default_factory=list)
-    nodes: int | None = None
-    edges: int | None = None
-    kind: str | None = None
-    resource_type: str | None = None
-    degree_sequence: list[int] = field(default_factory=list)
-    spectrum: list[float] = field(default_factory=list)
-    triangles: int | None = None
-    is_connected: bool | None = None
-    num_components: int | None = None
-    max_degree: int | None = None
-    min_degree: int | None = None
-    k: int | None = None
-    total_k_subsets: int | None = None
-    pairable_subsets: int | None = None
-    pairable_ratio: float | None = None
 
-
-def analyze_resource_graph(resource_graph: Any) -> ResourceGraphInfo:
+def analyze_resource_graph(resource_graph: GraphState) -> ResourceGraphInfo:
     """
-    Analyze a resource graph object and extract structural metadata.
+    Analyze a GraphState object and extract structural metadata.
 
     Parameters
     ----------
-    resource_graph : Any
-        A graph-like object with node and edge attributes, such as GraphState.
+    resource_graph : GraphState
+        A graph-like object with node and edge attributes.
 
     Returns
     -------
@@ -132,6 +112,17 @@ def analyze_resource_graph(resource_graph: Any) -> ResourceGraphInfo:
 class GraphStateExtractor:
     """
     Extract and analyze target graph states from cluster states.
+
+    Methods
+    -------
+    create_2d_cluster_state(rows, cols)
+        Construct a rectangular cluster state as a graph.
+
+    extract_target_graph_state(cluster_state, target_edges, target_nodes)
+        Subset a cluster graph into a smaller target graph state.
+
+    compute_local_equivalence_invariants(gs)
+        Compute degree spectrum, connectivity, and triangle counts.
     """
 
     def __init__(self) -> None:
@@ -178,23 +169,23 @@ class GraphStateExtractor:
         target_nodes: list[int] | None = None,
     ) -> tuple[GraphState, list[int]]:
         """
-        Extract a target graph state using local measurements on a cluster state.
+        Extract a target graph state using local measurements.
 
         Parameters
         ----------
         cluster_state : GraphState
-            The original large graph (e.g., cluster state).
+            The original cluster graph.
         target_edges : list of tuple of int
-            List of edges to include in the extracted subgraph.
+            Edges in the extracted target graph.
         target_nodes : list of int, optional
-            Nodes to retain. If None, inferred from target_edges.
+            Node list for extraction. If None, inferred from edges.
 
         Returns
         -------
         tuple
             A tuple containing:
-            - GraphState: the extracted target subgraph
-            - list[int]: list of nodes measured during extraction
+            - GraphState: the extracted subgraph
+            - list[int]: list of measured-away nodes
         """
         start = time.perf_counter()
 
