@@ -51,7 +51,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     g = Graph()
 
     # Add vertices into the graph and set their type
-    def add_vertices(n: int, ty: VertexType.Type) -> list[VertexType]:
+    def add_vertices(n: int, ty: VertexType) -> list[VertexType]:
         verts = g.add_vertices(n)
         for vert in verts:
             g.set_type(vert, ty)
@@ -95,12 +95,12 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     for og_index, meas in og.measurements.items():
         # If it's an X measured node, then we handle it in the next loop
         if meas.plane == Plane.XY:
-            g.set_phase(map_to_pyzx[og_index], Fraction(meas.angle))
+            g.set_phase(map_to_pyzx[og_index], Fraction(-meas.angle))
 
     # Connect the X measured vertices
     for og_index, pyzx_index in zip(x_meas, x_meas_verts):
         g.add_edge((map_to_pyzx[og_index], pyzx_index), EdgeType.HADAMARD)
-        g.set_phase(pyzx_index, Fraction(og.measurements[og_index].angle))
+        g.set_phase(pyzx_index, Fraction(-og.measurements[og_index].angle))
 
     return g
 
@@ -165,7 +165,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement(_checked_float(g.phase(v)), Plane.YZ)
+            measurements[nbrs[0]] = Measurement(-_checked_float(g.phase(v)), Plane.YZ)
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1
@@ -189,6 +189,6 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
 
         # g.phase() may be a fractions.Fraction object, but Measurement
         # expects a float
-        measurements[v] = Measurement(_checked_float(g.phase(v)), Plane.XY)
+        measurements[v] = Measurement(-_checked_float(g.phase(v)), Plane.XY)
 
     return OpenGraph(g_nx, measurements, inputs, outputs)
