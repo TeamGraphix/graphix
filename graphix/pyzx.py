@@ -66,7 +66,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     body_verts = add_vertices(len(og.inside), VertexType.Z)
 
     # Add nodes for the phase gadgets. In OpenGraph we don't store the
-    # effect as a seperate node, it is instead just stored in the
+    # effect as a separate node, it is instead just stored in the
     # "measurement" attribute of the node it measures.
     x_meas = [i for i, m in og.measurements.items() if m.plane == Plane.YZ]
     x_meas_verts = add_vertices(len(x_meas), VertexType.Z)
