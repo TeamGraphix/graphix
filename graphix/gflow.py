@@ -405,6 +405,7 @@ def find_pauliflow(
     non_input_map = {v: i for v, i in zip(non_input_nodes, non_input_idx)}
     non_output_map = {v: i for v, i in zip(non_output_nodes, non_output_idx)}
     n, nI, nO = len(nodes), len(iset), len(oset)
+    # Get full adjacency matrix
     adj_mat = nx.to_numpy_array(graph, nodes)
     # Construct flow-demand matrix
     flow_demand_matrix = np.zeros((n, n), dtype=np.int8)
@@ -439,8 +440,11 @@ def find_pauliflow(
         elif meas_planes[v] == Plane.XY:
             order_demand_matrix[i, i] = 1
     order_demand_matrix = GF2(order_demand_matrix[np.ix_(non_output_idx, non_input_idx)])
+    # Re-initialize index maps
+    non_input_map = {v: i for i, v in enumerate(non_input_nodes)}
+    non_output_map = {v: i for i,v in enumerate(non_output_nodes)}
     # If rank is not n - nO, Pauli flow does not exist
-    if MatGF2(flow_demand_matrix).get_rank() < n - nO:
+    if np.linalg.matrix_rank(flow_demand_matrix) < n - nO:
         raise ValueError("Pauli flow does not exist")
     # Compute correction matrix
     # Branch based on number of input and output nodes
@@ -453,8 +457,11 @@ def find_pauliflow(
         F = flow_demand_matrix.null_space().T
         C_p = np.hstack([C0, F])
         N_B = order_demand_matrix @ C_p
-        N_L = N_B[:, : n - nO].copy()
-        N_R = N_B[:, n - nO :].copy()
+        # This reshape-copy appears because NumPy tends to drop dimension
+        # information if any axis has length 1, and also to avoid creating
+        # views: that may end up changing data elsewhere, which we don't want
+        N_L = N_B[:, : n - nO].reshape((-1, n - nO)).copy()
+        N_R = N_B[:, n - nO :].reshape((-1, nO - nI)).copy()
         K_ILS = np.hstack([N_R, N_L, GF2.Identity(n - nO)])
         K_LS = K_ILS.copy()
         K_LS = K_LS.row_reduce(ncols=N_R.shape[1])
@@ -477,7 +484,8 @@ def find_pauliflow(
             for v in L:
                 i = non_output_map[v]
                 # Solve the linear system
-                lin_sys = np.hstack([K_LS[:, : nO - nI], K_LS[:, nO - nI + i].reshape(-1, 1)])
+                lin_sys = np.hstack([K_LS[:, : nO - nI].reshape((-1, nO - nI)),
+                                     K_LS[:, nO - nI + i].reshape(-1, 1)])
                 lin_sys = lin_sys.row_reduce(ncols=nO - nI)
                 # Ensure solution exists (overdetermined system)
                 if any(lin_sys[nO - nI :, -1] == 1):

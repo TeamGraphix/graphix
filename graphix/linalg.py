@@ -328,10 +328,16 @@ class MatGF2:
         # If matrix is square, return inverse
         if self.data.shape[0] == self.data.shape[1]:
             return MatGF2(np.linalg.inv(self.data))
-        # Row reduce A to get [I X]B = C
-        # Then B = [C 0].T is a right inverse
         ident = galois.GF2.Identity(self.data.shape[0])
         aug = np.hstack([self.data, ident])
         red = aug.row_reduce(ncols=self.data.shape[1])
-        rinv = np.vstack([red[:, self.data.shape[1]:], galois.GF2.Zeros((self.data.shape[1] - self.data.shape[0], self.data.shape[0]))])
+        rinv = galois.GF2.Zeros((self.data.shape[1], self.data.shape[0]))
+        # for each row i, find the leading 1 col, let it be j, and set rinv[j, :] = C[i, :]
+        j = 0
+        for i in range(red.shape[0]):
+            for k in range(j, red.shape[1]):
+                if red[i, k] == 1:
+                    rinv[k, :] = red[i, self.data.shape[1]:]
+                    j = k + 1
+                    break
         return MatGF2(rinv)
