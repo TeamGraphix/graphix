@@ -5,8 +5,8 @@ sphinxawesome-theme==5.3.2
 numpy
 graphix
 matplotlib
-scikit-learn
-seaborn
-ipython
+
+# For parallel builds
+joblib
 
 -r ../benchmarks/requirements.txt

@@ -78,7 +78,6 @@ def generate_from_graph(
         # flow found
         depth, layers = get_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
-        # pattern.extend([["N", i] for i in inputs])
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
         for e in graph.edges:
@@ -102,7 +101,6 @@ def generate_from_graph(
             # gflow found
             depth, layers = get_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
-            # pattern.extend([["N", i] for i in inputs])
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(N(node=i))
             for e in graph.edges:
@@ -118,4 +116,5 @@ def generate_from_graph(
         else:
             raise ValueError("no flow or gflow found")
 
+    pattern.reorder_output_nodes(outputs)
     return pattern
