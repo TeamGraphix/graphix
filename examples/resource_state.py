@@ -7,9 +7,8 @@ This module demonstrates how to extract and analyze a resource graph from a
 
 from __future__ import annotations
 
-import itertools
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 from graphix import GraphState
@@ -77,7 +76,7 @@ class GraphStateExtractor:
         return target_gs, nodes_to_measure
 
     @staticmethod
-    def compute_local_equivalence_metrics(gs: GraphState) -> dict:
+    def compute_local_equivalence_metrics(gs: GraphState) -> dict[str, Any]:
         """
         Compute local graph-theoretic properties for analysis.
         """
@@ -85,7 +84,7 @@ class GraphStateExtractor:
         degrees = dict(graph.degree)
         degree_sequence = sorted(degrees.values())
 
-        metrics = {
+        return {
             "nodes": graph.number_of_nodes(),
             "edges": graph.number_of_edges(),
             "degree_sequence": degree_sequence,
@@ -96,7 +95,6 @@ class GraphStateExtractor:
             "max_degree": max(degree_sequence, default=None),
             "min_degree": min(degree_sequence, default=None),
         }
-        return metrics
 
 
 if __name__ == "__main__":
