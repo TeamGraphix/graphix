@@ -1,5 +1,5 @@
 """Graph State Resource Extraction
-=================================
+===============================
 
 This module demonstrates how to extract and analyze a resource graph from a
 2D cluster state using the GraphState class from the `graphix` library.
@@ -7,10 +7,13 @@ This module demonstrates how to extract and analyze a resource graph from a
 
 from __future__ import annotations
 
+import itertools
 import time
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import networkx as nx
+
 from graphix import GraphState
 
 if TYPE_CHECKING:
