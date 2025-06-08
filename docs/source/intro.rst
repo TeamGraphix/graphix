@@ -37,7 +37,7 @@ MBQC has several remarkable advantages that may motivate us to study further:
 One-way quantum computing
 -------------------------
 
-In one-way model, we perform quantum computation on the *resource state*, or equivalently the *graph state <https://en.wikipedia.org/wiki/Graph_state\>\*, defined on mathematical graph :math:`G = (N, E)` where :math:`N` is the set of nodes (qubits) and :math:`E` is a set of pairs of node indices, specifying graph edges, by
+In one-way model, we perform quantum computation on the *resource state*, or equivalently the *graph state <https://en.wikipedia.org/wiki/Graph_state>*, defined on mathematical graph :math:`G = (N, E)` where :math:`N` is the set of nodes (qubits) and :math:`E` is a set of pairs of node indices, specifying graph edges, by
 
 .. math::
 
@@ -211,7 +211,7 @@ References and footnotes
 
 .. [#backens] Backens *et al.*, `Quantum 5, 421 (2021) <https://arxiv.org/abs/2003.01664>`_.
 
-.. [#gktheorem] For example, we know that *a certain type of quantum gates are not so essential for quantum computations (efficiently simulatable on classical computers) <https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem\>\*\. However, in gate sequences these 'classical' parts are interleaved with 'quantum' parts of the algorithm. In fact, by translating the problem into MBQC, one can classically preprocess such a part - see :doc:`lc-mbqc`.
+.. [#gktheorem] For example, we know that *a certain type of quantum gates are not so essential for quantum computations (efficiently simulatable on classical computers)* <https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>. However, in gate sequences these 'classical' parts are interleaved with 'quantum' parts of the algorithm. In fact, by translating the problem into MBQC, one can classically preprocess such a part - see :doc:`lc-mbqc`.
 
 .. [#raussendorf] Raussendorf *et al.*, `PRL 86, 5188 (2001) <https://link.aps.org/doi/10.1103/PhysRevLett.86.5188>`_ and `PRA 68, 022312 (2003) <https://link.aps.org/doi/10.1103/PhysRevA.68.022312>`_. Here, by MBQC we refer to one-way quantum computing by Raussendorf among several measurement-based schemes.
 
