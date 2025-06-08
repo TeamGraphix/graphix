@@ -33,7 +33,7 @@ class TranspileResult:
     The result of a transpilation.
 
     pattern : :class:`graphix.pattern.Pattern` object
-    classical_outputs : tuple[int,...], index of nodes measured with `M` gates
+    classical_outputs : tuple[int,...], index of nodes measured with *M* gates
     """
 
     pattern: Pattern

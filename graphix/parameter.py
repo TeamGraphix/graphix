@@ -143,7 +143,7 @@ class PlaceholderOperationError(ValueError):
 class AffineExpression(Expression):
     """Affine expression.
 
-    An affine expression is of the form `a*x+b` where `a` and `b` are numbers and `x` is a parameter.
+    An affine expression is of the form *a*x+b* where *a* and *b* are numbers and *x* is a parameter.
     """
 
     a: float
@@ -151,7 +151,7 @@ class AffineExpression(Expression):
     b: float
 
     def offset(self, d: float) -> AffineExpression:
-        """Add `d` to the expression."""
+        """Add *d* to the expression."""
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
     def _scale_non_null(self, k: float) -> AffineExpression:

@@ -293,7 +293,7 @@ class Pattern:
         ----------
         method : str, optional
             'mc' corresponds to a conventional standardization defined in original measurement calculus paper, executed on Pattern class.
-            'direct' fast standardization implemented as `standardize_direct()`
+            'direct' fast standardization implemented as *standardize_direct()*
             defaults to 'direct'
         """
         if method == "direct":  # faster implementation
@@ -1353,12 +1353,12 @@ class Pattern:
         Parameters
         ----------
         leave_input : bool
-            Optional (`False` by default).
-            If `True`, measurements on input nodes are preserved as-is in the pattern.
+            Optional (*False* by default).
+            If *True*, measurements on input nodes are preserved as-is in the pattern.
         ignore_pauli_with_deps : bool
-            Optional (`False` by default).
-            If `True`, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
-            If `False`, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
+            Optional (*False* by default).
+            If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
+            If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
 
         .. seealso:: :func:`measure_pauli`
 

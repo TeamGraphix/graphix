@@ -58,13 +58,13 @@ class Statevec(State):
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
         - an iterable of scalars (A 2**n numerical statevector)
-        - a `graphix.statevec.Statevec` object
+        - a *graphix.statevec.Statevec* object
 
-        If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
+        If *nqubit* is not provided, the number of qubit is inferred from *data* and checked for consistency.
         If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
         in the tensor product state.
-        If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
-        If a `graphix.statevec.Statevec` is passed, returns a copy.
+        If both *nqubit* and *data* are provided, consistency of the dimensions is checked.
+        If a *graphix.statevec.Statevec* is passed, returns a copy.
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
@@ -201,7 +201,7 @@ class Statevec(State):
     def remove_qubit(self, qarg: int) -> None:
         r"""Remove a separable qubit from the system and assemble a statevector for remaining qubits.
 
-        This results in the same result as partial trace, if the qubit `qarg` is separable from the rest.
+        This results in the same result as partial trace, if the qubit *qarg* is separable from the rest.
 
         For a statevector :math:`\ket{\psi} = \sum c_i \ket{i}` with sum taken over
         :math:`i \in [ 0 \dots 00,\ 0\dots 01,\ \dots,\
@@ -226,7 +226,7 @@ class Statevec(State):
         :math:`0_{\mathrm{k}}` replaced with :math:`1_{\mathrm{k}}` .
 
         .. warning::
-            This method assumes the qubit with index `qarg` to be separable from the rest,
+            This method assumes the qubit with index *qarg* to be separable from the rest,
             and is implemented as a significantly faster alternative for partial trace to
             be used after single-qubit measurements.
             Care needs to be taken when using this method.

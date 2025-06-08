@@ -47,14 +47,14 @@ def rand_dm(
 ) -> DensityMatrix | npt.NDArray:
     """Generate random density matrices (positive semi-definite matrices with unit trace).
 
-    Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter `dm_dtype`.
+    Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter *dm_dtype*.
 
     :param dim: Linear dimension of the (square) matrix
     :type dim: int
     :param rank: Rank of the density matrix (1 = pure state). If not specified then sent to dim (maximal rank).
         Defaults to None
     :type rank: int, optional
-    :param dm_dtype: If `True` returns a :class:`graphix.sim.density_matrix.DensityMatrix` object. If `False`returns a :class:`np.ndarray`
+    :param dm_dtype: If *True* returns a :class:`graphix.sim.density_matrix.DensityMatrix` object. If *False* returns a :class:`np.ndarray`
     :type dm_dtype: bool, optional
     :return: the density matrix in the specified format.
     :rtype: DensityMatrix | np.ndarray
@@ -62,7 +62,7 @@ def rand_dm(
     .. note::
         Thanks to Ulysse Chabaud.
     .. warning::
-        Note that setting `dm_dtype=False` allows to generate "density matrices" inconsistent with qubits i.e. with dimensions not being powers of 2.
+        Note that setting *dm_dtype=False* allows to generate "density matrices" inconsistent with qubits i.e. with dimensions not being powers of 2.
     """
     rng = ensure_rng(rng)
 
@@ -123,8 +123,8 @@ def rand_channel_kraus(
         Linear dimension of the (square) matrix of each Kraus operator.
         Only square operators so far.
 
-    rank : int (default to full `rank dimension**2`)
-        Choi rank ie the number of Kraus operators. Must be between one and `dim**2`.
+    rank : int (default to full *rank dimension**2*)
+        Choi rank ie the number of Kraus operators. Must be between one and *dim**2*.
 
     sig : see rand_cpx
 

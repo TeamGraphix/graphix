@@ -40,9 +40,9 @@ class GraphState(Graph):
     and PRA 77, 042307 (2008)
 
     Each node has attributes:
-        :`hollow`: True if node is hollow (has local H operator)
-        :`sign`: True if node has negative sign (local Z operator)
-        :`loop`: True if node has loop (local S operator)
+        :*hollow*: True if node is hollow (has local H operator)
+        :*sign*: True if node has negative sign (local Z operator)
+        :*loop*: True if node has loop (local S operator)
     """
 
     nodes: functools.cached_property[Mapping[int, MBQCGraphNode]]  # type: ignore[assignment]
@@ -349,7 +349,7 @@ class GraphState(Graph):
         Returns
         -------
         result : int
-            if the selected node is hollow and isolated, `result` is 1.
+            if the selected node is hollow and isolated, *result* is 1.
             if filled and isolated, 2.
             otherwise it is 0.
         """

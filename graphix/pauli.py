@@ -28,10 +28,10 @@ class _PauliMeta(type):
 
 @dataclasses.dataclass(frozen=True)
 class Pauli(metaclass=_PauliMeta):
-    """Pauli gate: `u * {I, X, Y, Z}` where u is a complex unit.
+    r"""Pauli gate: *u \* {I, X, Y, Z}* where u is a complex unit.
 
-    Pauli gates can be multiplied with other Pauli gates (with `@`),
-    with complex units and unit constants (with `*`),
+    Pauli gates can be multiplied with other Pauli gates (with *@*),
+    with complex units and unit constants (with *\*),
     and can be negated.
     """
 
