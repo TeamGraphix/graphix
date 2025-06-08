@@ -63,10 +63,13 @@ class GraphStateExtractor:
     Utility class for creating and analyzing graph states.
     """
 
+    extraction_times: list[float]
+    equivalence_times: list[float]
+
     def __init__(self) -> None:
         """Initialize timing logs."""
-        self.extraction_times: list[float] = []
-        self.equivalence_times: list[float] = []
+        self.extraction_times = []
+        self.equivalence_times = []
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
