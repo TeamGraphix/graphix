@@ -1,5 +1,5 @@
 """Graph State Resource Extraction
-===============================
+=================================
 
 This module demonstrates how to extract and analyze a resource graph from a
 2D cluster state using the GraphState class from the `graphix` library.
@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import networkx as nx
-
 from graphix import GraphState
 
 if TYPE_CHECKING:
@@ -24,38 +23,23 @@ if TYPE_CHECKING:
 class ResourceGraphInfo:
     """Container for resource graph metrics."""
 
-    graph_class: str | None = None
+    graph_class: str = "GraphState"
     attributes: list[str] = field(default_factory=list)
-    nodes: int | None = None
-    edges: int | None = None
+    nodes: int = 0
+    edges: int = 0
     kind: str | None = None
-    resource_type: str | None = None  # renamed from `type` to avoid conflict
+    resource_type: str | None = None  # avoid conflict with Python built-in
     degree_sequence: list[int] = field(default_factory=list)
     spectrum: list[float] = field(default_factory=list)
-    triangles: int | None = None
-    is_connected: bool | None = None
-    num_components: int | None = None
-    max_degree: int | None = None
-    min_degree: int | None = None
+    triangles: int = 0
+    is_connected: bool = False
+    num_components: int = 1
+    max_degree: int = 0
+    min_degree: int = 0
     k: int | None = None
     total_k_subsets: int | None = None
     pairable_subsets: int | None = None
     pairable_ratio: float | None = None
-
-
-def analyze_resource_graph(resource_graph: GraphState) -> ResourceGraphInfo:
-    """
-    Analyze a GraphState object and return metadata.
-    """
-    graph_nx = nx.Graph(resource_graph.edges)
-
-    return ResourceGraphInfo(
-        graph_class=type(resource_graph).__name__,
-        nodes=graph_nx.number_of_nodes(),
-        edges=graph_nx.number_of_edges(),
-        kind=getattr(resource_graph, "kind", None),
-        resource_type=getattr(resource_graph, "type", None),
-    )
 
 
 class GraphStateExtractor:
@@ -63,13 +47,10 @@ class GraphStateExtractor:
     Utility class for creating and analyzing graph states.
     """
 
-    extraction_times: list[float]
-    equivalence_times: list[float]
-
     def __init__(self) -> None:
         """Initialize timing logs."""
-        self.extraction_times = []
-        self.equivalence_times = []
+        self.extraction_times: list[float] = []
+        self.equivalence_times: list[float] = []
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
@@ -83,11 +64,11 @@ class GraphStateExtractor:
         edges = []
         for i in range(rows):
             for j in range(cols):
-                current = i * cols + j
+                idx = i * cols + j
                 if j < cols - 1:
-                    edges.append((current, current + 1))
+                    edges.append((idx, idx + 1))
                 if i < rows - 1:
-                    edges.append((current, current + cols))
+                    edges.append((idx, idx + cols))
 
         gs.add_edges_from(edges)
         return gs
@@ -104,17 +85,16 @@ class GraphStateExtractor:
         start = time.perf_counter()
 
         if target_nodes is None:
-            target_nodes = list(set(itertools.chain.from_iterable(target_edges)))
+            target_nodes = list({n for edge in target_edges for n in edge})
 
         target_gs = GraphState()
         target_gs.add_nodes_from(target_nodes)
         target_gs.add_edges_from(target_edges)
 
-        all_nodes = set(cluster_state.nodes)
-        nodes_to_measure = list(all_nodes - set(target_nodes))
+        measured = list(set(cluster_state.nodes) - set(target_nodes))
 
         self.extraction_times.append(time.perf_counter() - start)
-        return target_gs, nodes_to_measure
+        return target_gs, measured
 
     @staticmethod
     def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
@@ -123,19 +103,19 @@ class GraphStateExtractor:
         """
         graph = nx.Graph(gs.edges)
 
-        degree_view = list(graph.degree)
-        degree_sequence = sorted(int(d) for _, d in degree_view)
+        degree_sequence = sorted(d for _, d in graph.degree)
+        spectrum = sorted(nx.adjacency_spectrum(graph).real)
 
         return ResourceGraphInfo(
             nodes=graph.number_of_nodes(),
             edges=graph.number_of_edges(),
             degree_sequence=degree_sequence,
-            spectrum=[float(x) for x in sorted(nx.adjacency_spectrum(graph).real)],
+            spectrum=[float(val) for val in spectrum],
             triangles=sum(nx.triangles(graph).values()) // 3,
             is_connected=nx.is_connected(graph),
             num_components=nx.number_connected_components(graph),
-            max_degree=max(degree_sequence) if degree_sequence else None,
-            min_degree=min(degree_sequence) if degree_sequence else None,
+            max_degree=max(degree_sequence, default=0),
+            min_degree=min(degree_sequence, default=0),
         )
 
 
