@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import itertools
 import time
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -19,38 +18,18 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-@dataclass
-class ResourceGraphInfo:
-    """Container for resource graph metrics."""
-
-    graph_class: str = "GraphState"
-    attributes: list[str] = field(default_factory=list)
-    nodes: int = 0
-    edges: int = 0
-    kind: str | None = None
-    resource_type: str | None = None  # avoid conflict with Python built-in
-    degree_sequence: list[int] = field(default_factory=list)
-    spectrum: list[float] = field(default_factory=list)
-    triangles: int = 0
-    is_connected: bool = False
-    num_components: int = 1
-    max_degree: int = 0
-    min_degree: int = 0
-    k: int | None = None
-    total_k_subsets: int | None = None
-    pairable_subsets: int | None = None
-    pairable_ratio: float | None = None
-
-
 class GraphStateExtractor:
     """
     Utility class for creating and analyzing graph states.
     """
 
+    extraction_times: list[float]
+    equivalence_times: list[float]
+
     def __init__(self) -> None:
         """Initialize timing logs."""
-        self.extraction_times: list[float] = []
-        self.equivalence_times: list[float] = []
+        self.extraction_times = []
+        self.equivalence_times = []
 
     @staticmethod
     def create_2d_cluster_state(rows: int, cols: int) -> GraphState:
@@ -64,11 +43,11 @@ class GraphStateExtractor:
         edges = []
         for i in range(rows):
             for j in range(cols):
-                idx = i * cols + j
+                current = i * cols + j
                 if j < cols - 1:
-                    edges.append((idx, idx + 1))
+                    edges.append((current, current + 1))
                 if i < rows - 1:
-                    edges.append((idx, idx + cols))
+                    edges.append((current, current + cols))
 
         gs.add_edges_from(edges)
         return gs
@@ -85,38 +64,39 @@ class GraphStateExtractor:
         start = time.perf_counter()
 
         if target_nodes is None:
+            # Use a set to eliminate duplicates; conversion to list handled once
             target_nodes = list({n for edge in target_edges for n in edge})
 
         target_gs = GraphState()
         target_gs.add_nodes_from(target_nodes)
         target_gs.add_edges_from(target_edges)
 
-        measured = list(set(cluster_state.nodes) - set(target_nodes))
+        nodes_to_measure = list(set(cluster_state.nodes) - set(target_nodes))
 
         self.extraction_times.append(time.perf_counter() - start)
-        return target_gs, measured
+        return target_gs, nodes_to_measure
 
     @staticmethod
-    def compute_local_equivalence_invariants(gs: GraphState) -> ResourceGraphInfo:
+    def compute_local_equivalence_metrics(gs: GraphState) -> dict:
         """
-        Compute local invariants of a graph state for equivalence testing.
+        Compute local graph-theoretic properties for analysis.
         """
         graph = nx.Graph(gs.edges)
+        degrees = dict(graph.degree)
+        degree_sequence = sorted(degrees.values())
 
-        degree_sequence = sorted(d for _, d in graph.degree)
-        spectrum = sorted(nx.adjacency_spectrum(graph).real)
-
-        return ResourceGraphInfo(
-            nodes=graph.number_of_nodes(),
-            edges=graph.number_of_edges(),
-            degree_sequence=degree_sequence,
-            spectrum=[float(val) for val in spectrum],
-            triangles=sum(nx.triangles(graph).values()) // 3,
-            is_connected=nx.is_connected(graph),
-            num_components=nx.number_connected_components(graph),
-            max_degree=max(degree_sequence, default=0),
-            min_degree=min(degree_sequence, default=0),
-        )
+        metrics = {
+            "nodes": graph.number_of_nodes(),
+            "edges": graph.number_of_edges(),
+            "degree_sequence": degree_sequence,
+            "spectrum": sorted(nx.adjacency_spectrum(graph).real.tolist()),
+            "triangles": sum(nx.triangles(graph).values()) // 3,
+            "is_connected": nx.is_connected(graph),
+            "components": nx.number_connected_components(graph),
+            "max_degree": max(degree_sequence, default=None),
+            "min_degree": min(degree_sequence, default=None),
+        }
+        return metrics
 
 
 if __name__ == "__main__":
@@ -126,15 +106,8 @@ if __name__ == "__main__":
     edges = [(0, 1), (1, 2)]
     target_graph, measured = extractor.extract_target_graph_state(cluster, edges)
 
-    info = extractor.compute_local_equivalence_invariants(target_graph)
+    info = extractor.compute_local_equivalence_metrics(target_graph)
 
     print("\nGraph Analysis:")
-    print("Nodes:", info.nodes)
-    print("Edges:", info.edges)
-    print("Degree sequence:", info.degree_sequence)
-    print("Connected:", info.is_connected)
-    print("Spectrum:", info.spectrum)
-    print("Triangles:", info.triangles)
-    print("Components:", info.num_components)
-    print("Max degree:", info.max_degree)
-    print("Min degree:", info.min_degree)
+    for key, value in info.items():
+        print(f"{key.replace('_', ' ').capitalize()}: {value}")
