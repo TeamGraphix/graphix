@@ -37,34 +37,11 @@ ruff check --select I --fix .
 ruff format .
 ```
 
-### Local checks
+To replicate the CI pipeline locally, install `nox` and run the tests:
 
-To replicate the CI pipeline locally, install `nox` and run the tests with
-coverage::
-
-    pip install -c requirements-dev.txt nox
-    nox --python 3.12
-
-With the development dependencies installed, run the test suite explicitly::
-
-    pip install .[dev]
-    pytest --cov=./graphix --cov-report=xml --cov-report=term
-
-### VS Code configuration
-
-If you use VS Code for development, add a ``.vscode/settings.json`` file to
-enable the linter and basic type checking on save::
-
-    {
-        "python.formatting.provider": "ruff",
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": true,
-            "source.fixAll": true
-        },
-        "python.analysis.typeCheckingMode": "basic"
-    }
-
-and you are ready to commit the changes.
+```bash
+pip install -c requirements-dev.txt nox
+nox
 
 ## Creating pull request
 
