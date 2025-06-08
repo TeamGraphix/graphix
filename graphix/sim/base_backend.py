@@ -39,7 +39,6 @@ class NodeIndex:
 
     def __init__(self) -> None:
         """Initialize an empty mapping between nodes and qubit indices."""
-
         self.__dict = {}
         self.__list = []
 
@@ -136,7 +135,7 @@ class State(ABC):
 
 
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic: bool = False) -> npt.NDArray:
-    """Return the operator :math:`\tfrac{1}{2}(I + (-1)^r \vec{v}\cdot\vec{\sigma})`.
+    r"""Return the operator :math:`\tfrac{1}{2}(I + (-1)^r \vec{v}\cdot\vec{\sigma})`.
 
     Parameters
     ----------
@@ -152,7 +151,6 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic:
     numpy.ndarray
         2x2 operator acting on the measured qubit.
     """
-
     dtype = "O" if symbolic else np.complex128
     op_mat = np.eye(2, dtype=dtype) / 2
     sign = (-1) ** result

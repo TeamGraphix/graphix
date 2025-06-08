@@ -968,7 +968,6 @@ def _extend_domain(measure: M, domain: set[int]) -> None:
     domain : set[int]
         Set of nodes to XOR into the appropriate domain of ``measure``.
     """
-
     if measure.plane == Plane.XY:
         measure.s_domain ^= domain
     else:

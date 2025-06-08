@@ -60,7 +60,6 @@ class _KindChecker:
 
     def __init_subclass__(cls) -> None:
         """Validate that subclasses define the ``kind`` attribute."""
-
         super().__init_subclass__()
         utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 

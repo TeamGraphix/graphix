@@ -470,7 +470,6 @@ class Pattern:
                 Set of nodes representing the current domain. This set is
                 modified in place by XORing any previously shifted domains.
             """
-
             for node in domain & signal_dict.keys():
                 domain ^= signal_dict[node]
 
@@ -1516,7 +1515,6 @@ class Pattern:
             domain : set[int]
                 Domain to update with any accumulated shift information.
             """
-
             for node in domain & shift_domains.keys():
                 domain ^= shift_domains[node]
 

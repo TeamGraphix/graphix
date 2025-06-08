@@ -167,7 +167,6 @@ class AffineExpression(Expression):
         AffineExpression
             A new expression scaled by ``k``.
         """
-
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
     def scale(self, k: float) -> ExpressionOrFloat:

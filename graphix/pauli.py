@@ -88,7 +88,6 @@ class Pauli(metaclass=_PauliMeta):
 
     def _repr_impl(self, prefix: str | None) -> str:
         """Return ``repr`` string with an optional prefix."""
-
         sym = self.symbol.name
         if prefix is not None:
             sym = f"{prefix}.{sym}"
@@ -112,8 +111,7 @@ class Pauli(metaclass=_PauliMeta):
 
     @staticmethod
     def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
-        """Internal multiplication ignoring the units."""
-
+        """Return the product of ``lhs`` and ``rhs`` ignoring units."""
         if lhs == IXYZ.I:
             return Pauli(rhs)
         if rhs == IXYZ.I:

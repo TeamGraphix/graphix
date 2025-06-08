@@ -866,7 +866,6 @@ class GraphVisualizer:
                     list[float]
                         The new ``[x, y]`` coordinate.
                     """
-
                     angle = np.deg2rad(angle)
                     return [pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle)]
 

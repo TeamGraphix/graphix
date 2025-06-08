@@ -99,7 +99,6 @@ class DefaultMeasureMethod(MeasureMethod):
             Mapping of previously measured nodes to their results. If ``None``,
             an empty dictionary is created.
         """
-
         if results is None:
             results = {}
         self.results = results

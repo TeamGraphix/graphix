@@ -213,7 +213,6 @@ def _first_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     rng : numpy.random.Generator
         Random number generator used to sample rotation angles.
     """
-
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
 
@@ -230,7 +229,6 @@ def _mid_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     rng : numpy.random.Generator
         Random number generator used to sample rotation angles.
     """
-
     for qubit in range(nqubits):
         circuit.rx(qubit, rng.random())
         circuit.rz(qubit, rng.random())
@@ -248,7 +246,6 @@ def _last_rotation(circuit: Circuit, nqubits: int, rng: Generator) -> None:
     rng : numpy.random.Generator
         Random number generator used to sample rotation angles.
     """
-
     for qubit in range(nqubits):
         circuit.rz(qubit, rng.random())
 
@@ -263,7 +260,6 @@ def _entangler(circuit: Circuit, pairs: Iterable[tuple[int, int]]) -> None:
     pairs : Iterable[tuple[int, int]]
         Pairs of control and target qubits for CNOT operations.
     """
-
     for a, b in pairs:
         circuit.cnot(a, b)
 
@@ -280,7 +276,6 @@ def _entangler_rzz(circuit: Circuit, pairs: Iterable[tuple[int, int]], rng: Gene
     rng : numpy.random.Generator
         Random number generator used to sample rotation angles.
     """
-
     for a, b in pairs:
         circuit.rzz(a, b, rng.random())
 

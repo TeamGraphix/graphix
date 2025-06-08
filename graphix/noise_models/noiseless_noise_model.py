@@ -109,4 +109,3 @@ class NoiselessNoiseModel(NoiseModel):
         internal state. See
         :meth:`~graphix.noise_models.noise_model.NoiseModel.tick_clock`.
         """
-        pass

@@ -31,7 +31,6 @@ def _ilog2(n: int) -> int:
     int
         ``floor(log2(n))`` for ``n > 0``.
     """
-
     if n <= 0:
         raise ValueError("n must be positive.")
     return (n - 1).bit_length()
@@ -92,7 +91,6 @@ class KrausChannel:
     @staticmethod
     def _nqubit(kraus_data: Iterable[KrausData]) -> int:
         """Return the number of qubits acted on by ``kraus_data``."""
-
         # MEMO: ``kraus_data`` is not empty.
         it = iter(kraus_data)
         nqubit = next(it).nqubit
