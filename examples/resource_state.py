@@ -7,10 +7,8 @@ This module demonstrates how to extract and analyze a resource graph from a
 
 from __future__ import annotations
 
-import itertools
 import time
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 
