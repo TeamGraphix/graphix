@@ -1,4 +1,4 @@
- Contributing
+# Contributing
 thank you for your interest in `Graphix`!
 ## Motivation
 The aim of `graphix` is to make the measurement-based quantum computing (MBQC) accessible by creating a one-stop environment to study and research MBQC.
