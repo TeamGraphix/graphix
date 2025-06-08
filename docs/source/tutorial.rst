@@ -9,8 +9,8 @@ We will explain the basics here along with the code, and you can go to :doc:`int
 Generating measurement patterns
 -------------------------------
 
-Graphix is centered around the measurement `pattern`, which is a sequence of commands such as qubit preparation, entanglement and single-qubit measurement commands.
-The most basic measurement pattern is that for realizing Hadamard gate, which we will use to see how `graphix` works.
+Graphix is centered around the measurement *pattern*, which is a sequence of commands such as qubit preparation, entanglement and single-qubit measurement commands.
+The most basic measurement pattern is that for realizing Hadamard gate, which we will use to see how *graphix* works.
 
 First, install ``graphix`` by
 
@@ -136,10 +136,10 @@ As we see below, we can simplify and optimize the pattern by calling various met
 Standardization and signal shifting
 +++++++++++++++++++++++++++++++++++
 
-The `standard` pattern is a pattern where the commands are sorted in the order of N, E, M, (X, Z, C) where X, Z and C commands in bracket can be in any order but must apply only to output nodes.
-Any command sequence has a standard form, which can be obtained by the `standardization` algorithm in [#Danos2007]_ that runs in polynomial time on the number of commands.
+The *standard* pattern is a pattern where the commands are sorted in the order of N, E, M, (X, Z, C) where X, Z and C commands in bracket can be in any order but must apply only to output nodes.
+Any command sequence has a standard form, which can be obtained by the *standardization* algorithm in [#Danos2007]_ that runs in polynomial time on the number of commands.
 
-An additional `signal shifting` procedure simplifies the dependence structure of the pattern to minimize the feedforward operations.
+An additional *signal shifting* procedure simplifies the dependence structure of the pattern to minimize the feedforward operations.
 These can be called with :meth:`~graphix.pattern.Pattern.standardize` and :meth:`~graphix.pattern.Pattern.shift_signals` and result in a simpler pattern sequence.
 
 >>> pattern.standardize()
@@ -186,7 +186,7 @@ We get an updated measurement pattern without Pauli measurements as follows:
 Pattern(input_nodes=[0, 1], cmds=[N(3), N(7), E((0, 3)), E((1, 3)), E((1, 7)), M(0, Plane.YZ, 0.2907266109187514), M(1, Plane.YZ, 0.01258854060311348), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 
-Notice that all measurements with angle=0 (Pauli X measurements) disappeared - this means that a part of quantum computation was `classically` (and efficiently) preprocessed such that we only need much smaller quantum resource.
+Notice that all measurements with angle=0 (Pauli X measurements) disappeared - this means that a part of quantum computation was *classically* (and efficiently) preprocessed such that we only need much smaller quantum resource.
 The additional Clifford commands, along with byproduct operations, can be dealt with by simply rotating the final readout measurements from the standard Z basis, so there is no downside in doing this preprocessing.
 
 As you can see below, the resource state has shrank significantly (factor of two reduction in the number of nodes), but again we know that they both serve as the quantum resource state for the same quantum computation task as defined above.
@@ -205,11 +205,11 @@ As we mention in :doc:`intro`, all Clifford gates translates into MBQC only cons
 Minimizing 'space' of a pattern
 +++++++++++++++++++++++++++++++
 
-The `space` of a pattern is the largest number of qubits that must be present in the graph state during the execution of the pattern.
+The *space* of a pattern is the largest number of qubits that must be present in the graph state during the execution of the pattern.
 For standard patterns, this is exactly the size of the resource graph state, since we prepare all ancilla qubits at the start of the computation.
 However, we do not always need to prepare all qubits at the start; in fact preparing all the adjacent (connected) qubits of the ones that you are about measure, is sufficient to run MBQC.
-We exploit this fact to minimize the `space` of the pattern, which is crucial for running statevector simulation of MBQC since they are typically limited by the available computer memory.
-We can simply call :meth:`~graphix.pattern.Pattern.minimize_space()` to reduce the `space`:
+We exploit this fact to minimize the *space* of the pattern, which is crucial for running statevector simulation of MBQC since they are typically limited by the available computer memory.
+We can simply call :meth:`~graphix.pattern.Pattern.minimize_space()` to reduce the *space*:
 
 >>> pattern.minimize_space()
 >>> pattern
@@ -234,7 +234,7 @@ With this, we only need the memory space for three qubits.
 This procedure is more effective when the resource state size is large compared to the logical input qubit count;
 for example, the three-qubit `quantum Fourier transform (QFT)
 <https://en.wikipedia.org/wiki/Quantum_Fourier_transform>`_ circuit requires 12 qubits in the resource state after :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` (see the code in :ref:`QFT example <sphx_glr_gallery_qft_with_tn.py>`); with the proper reordering of the commands, the max_space reduces to 4.
-In fact, for patterns transpiled from gate network, the minimum `space` we can realize is typically :math:`n_w+1` where :math:`n_w` is the width of the circuit.
+In fact, for patterns transpiled from gate network, the minimum *space* we can realize is typically :math:`n_w+1` where :math:`n_w` is the width of the circuit.
 
 
 Simulating noisy MBQC
