@@ -206,9 +206,16 @@ class MatGF2:
         int: int
             rank of the matrix
         """
-        mat_a = self.forward_eliminate(copy=True)[0] if not self.is_canonical_form() else self
-        nonzero_index = np.diag(mat_a.data).nonzero()
-        return len(nonzero_index[0])
+        # Get the row echelon form of the matrix
+        row_echelon_form = self.data.row_reduce()
+        # Count the number of non-zero rows
+        # Could be optimized, but going with the simplest option
+        nnz_rows = 0
+        for i in range(self.data.shape[0]):
+            if all(self.data[i, :] == 0):
+                break
+            nnz_rows += 1
+        return nnz_rows
 
     def forward_eliminate(self, b=None, copy=False) -> tuple[MatGF2, MatGF2, list[int], list[int]]:
         r"""Forward eliminate the matrix.
@@ -326,8 +333,6 @@ class MatGF2:
         rinv: Any right inverse of the matrix.
         """
         # If matrix is square, return inverse
-        if self.data.shape[0] == self.data.shape[1]:
-            return MatGF2(np.linalg.inv(self.data))
         ident = galois.GF2.Identity(self.data.shape[0])
         aug = np.hstack([self.data, ident])
         red = aug.row_reduce(ncols=self.data.shape[1])

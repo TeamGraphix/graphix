@@ -444,7 +444,7 @@ def find_pauliflow(
     non_input_map = {v: i for i, v in enumerate(non_input_nodes)}
     non_output_map = {v: i for i,v in enumerate(non_output_nodes)}
     # If rank is not n - nO, Pauli flow does not exist
-    if np.linalg.matrix_rank(flow_demand_matrix) < n - nO:
+    if MatGF2(flow_demand_matrix).get_rank() < n - nO:
         raise ValueError("Pauli flow does not exist")
     # Compute correction matrix
     # Branch based on number of input and output nodes
