@@ -25,6 +25,7 @@ pip install matplotlib
 ```
 
 For other depencencies for the docs build, see `docs/requirements.txt`.
+
 Before comitting the code, make sure to format with `ruff`.
 To format a python file, just run in the top level of the repository:
 
