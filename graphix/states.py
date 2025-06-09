@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 from abc import ABC
 from typing import ClassVar
 
 import numpy as np
 import numpy.typing as npt
-import pydantic.dataclasses
 import typing_extensions
 
 from graphix.fundamentals import Plane
@@ -34,7 +34,7 @@ class State(ABC):
         return np.outer(self.get_statevector(), self.get_statevector().conj()).astype(np.complex128, copy=False)
 
 
-@pydantic.dataclasses.dataclass
+@dataclasses.dataclass
 class PlanarState(State):
     """Light object used to instantiate backends.
 

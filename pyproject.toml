@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=66.1", "wheel", "setuptools_scm"]
+requires = ["setuptools>=77", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ authors = [{ name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" }]
 maintainers = [
   { name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" },
 ]
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 description = "Optimize and simulate measurement-based quantum computation"
 readme = "README.md"
 classifiers = [
@@ -19,11 +19,11 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering :: Physics",
 ]
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.14"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -39,6 +39,7 @@ dependencies = { file = ["requirements.txt"] }
 [tool.setuptools.dynamic.optional-dependencies]
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
+doc = { file = ["requirements-doc.txt"] }
 
 [tool.ruff]
 line-length = 120
