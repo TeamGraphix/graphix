@@ -61,8 +61,8 @@ def find_gflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -112,8 +112,8 @@ def gflowaux(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -245,8 +245,8 @@ def find_flow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -378,8 +378,8 @@ def find_pauliflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -437,8 +437,8 @@ def pauliflowaux(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -915,8 +915,8 @@ def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
 
     Parameters
     ----------
-    graph : nx.Graph
-        underlying graph.
+    graph : :class:`networkx.Graph`
+        Underlying graph
     vertices : set
         set of nodes indices to find odd neighbors
 
@@ -1096,12 +1096,18 @@ def get_layers_from_flow(
 def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
     """Get adjacency matrix of the graph.
 
+    Parameters
+    ----------
+    graph : :class:`networkx.Graph`
+        Graph whose adjacency matrix is computed.
+
     Returns
     -------
     adjacency_matrix: graphix.linalg.MatGF2
         adjacency matrix of the graph. the matrix is defined on GF(2) field.
     node_list: list
-        ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
+        ordered list of nodes. ``node_list[i]`` is the node label of the i-th
+        row/column of the adjacency matrix.
 
     """
     node_list = list(graph.nodes)
@@ -1122,8 +1128,8 @@ def verify_flow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     meas_planes: dict[int, str]
@@ -1173,8 +1179,8 @@ def verify_gflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -1231,8 +1237,8 @@ def verify_pauliflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set

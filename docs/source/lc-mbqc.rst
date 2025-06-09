@@ -2,7 +2,7 @@ Introduction to LC-MBQC
 =======================
 
 In :doc:`intro`, we looked at how to generate and optimize MBQC command sequence to realize universal quantum computations. Here, we further optimize the measurement pattern to significantly reduce the number of operations required. For this, we use efficient graph simulator :class:`~graphix.graphsim.GraphState` which we explain below.
-Note that this pattern simplification is very similar (and in fact a subset of) optimizations using `ZX calculus <https://zxcalculus.com/>`_; see for example, `this paper <https://arxiv.org/abs/2003.01664>`_.
+Note that this pattern simplification is very similar (and in fact a subset of) optimizations using *ZX calculus* <https://zxcalculus.com/\>_\; see for example, *this paper* <https://arxiv.org/abs/2003.01664\>_.
 
 Graph state simulator
 ---------------------
@@ -23,8 +23,8 @@ This feature can be used to efficiently simulate the Clifford operations and Pau
     |g\rangle = \prod_{i\in\mathcal{H}_g} H_i \prod_{j\in\mathcal{S}_g} S_j \prod_{k\in\mathcal{Z}_g} Z_k \prod_{(l,m) \in E} CZ_{l,m} \bigotimes_{n\in N} |+\rangle_n, \label{1}   \tag{1}
     \end{equation}
 
-where :math:`\mathcal{H}_g, \mathcal{S}_g, \mathcal{Z}_g` are the set of nodes with '`hollow`', '`loop`' and '`negative sign`' properties (decorations).
-For example, let us try the transformation rules in Elliot `et al.` [#el]_ with a complete graph with four nodes (left). Measurement of qubit 0 in X basis, with measurement outcome :math:`s=0`, results in the graph on the right, with qubit 1 getting the '`hollow`' property (indicated by white node color) and qubits 2 and 3 getting the '`negative sign`' properties (indicated by negative signs of node labels).
+where :math:`\mathcal{H}_g, \mathcal{S}_g, \mathcal{Z}_g` are the set of nodes with *hollow*, *loop* and *negative sign* properties (decorations).
+For example, let us try the transformation rules in Elliot *et al.* [#el]_ with a complete graph with four nodes (left). Measurement of qubit 0 in X basis, with measurement outcome :math:`s=0`, results in the graph on the right, with qubit 1 getting the *hollow* property (indicated by white node color) and qubits 2 and 3 getting the *negative sign* properties (indicated by negative signs of node labels).
 
 .. figure:: ./../imgs/graphsim.png
    :scale: 90 %
@@ -59,7 +59,7 @@ We can perform this with :class:`~graphix.graphsim.GraphState` class and then co
 overlap of states:  1.0
 
 So the graph state simulator returns a correct result.
-Because this is not a full quantum state simulation, we can easily simulate `many` qubits without overloading memory. For example, we can simulate a million qubits on modest resource such as laptops:
+Because this is not a full quantum state simulation, we can easily simulate *many* qubits without overloading memory. For example, we can simulate a million qubits on modest resource such as laptops:
 
 .. code-block:: python
 
@@ -73,7 +73,7 @@ Because this is not a full quantum state simulation, we can easily simulate `man
 Equivalent graphs
 +++++++++++++++++
 
-Furthermore, we can toggle through `equivalent graphs`, graph states with different underlying graphs and decorations representing exactly the same state. These four different graph states all represent same state, which we can check with the statevector simulator as shown below.
+Furthermore, we can toggle through *equivalent graphs*, graph states with different underlying graphs and decorations representing exactly the same state. These four different graph states all represent same state, which we can check with the statevector simulator as shown below.
 
 .. figure:: ./../imgs/graphsim2.png
    :scale: 75 %
@@ -143,4 +143,4 @@ References and notes
 
 .. [#graph] In fact, it is known that all stabilizer state can be represented by graph states up to local (single-qubit) Clifford operations.
 
-.. [#el]  Elliot `et al`., `J. Phys. A 43, 025301 (2010) <https://iopscience.iop.org/article/10.1088/1751-8113/43/2/025301/meta>`_  and `PRA 77, 042307 (2008) <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.77.042307>`_. We note that there are numerous stabilizer simulators available, but this graph simulator formulation by Elliot `et al.` is suitable for optimizing MBQC for three reasons: 1. this is a direct simulator of graph states, 2. the local-Clifford decoration is expressed by up to one H, S and Z gates, which are easier to handle than all 24 possible single-qubit Clifford gates, and 3. this has a method to toggle through all possible equivalent graphs (LC decorated graphs representing exactly the same stabilizer state), to minimize the connectivity of the graph state (to minimize the complexity of MBQC operation and classical simulation).
+.. [#el]  Elliot *et al*., `J. Phys. A 43, 025301 (2010) <https://iopscience.iop.org/article/10.1088/1751-8113/43/2/025301/meta>`_  and `PRA 77, 042307 (2008) <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.77.042307>`_. We note that there are numerous stabilizer simulators available, but this graph simulator formulation by Elliot *et al.* is suitable for optimizing MBQC for three reasons: 1. this is a direct simulator of graph states, 2. the local-Clifford decoration is expressed by up to one H, S and Z gates, which are easier to handle than all 24 possible single-qubit Clifford gates, and 3. this has a method to toggle through all possible equivalent graphs (LC decorated graphs representing exactly the same stabilizer state), to minimize the connectivity of the graph state (to minimize the complexity of MBQC operation and classical simulation).

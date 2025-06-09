@@ -41,6 +41,13 @@ class NodeAlreadyPreparedError(Exception):
     """Exception raised if a node is already prepared."""
 
     def __init__(self, node: int):
+        """Initialize the error with the offending node index.
+
+        Parameters
+        ----------
+        node : int
+            Index of the node that has already been prepared.
+        """
         self.__node = node
 
     @property
@@ -286,7 +293,7 @@ class Pattern:
         ----------
         method : str, optional
             'mc' corresponds to a conventional standardization defined in original measurement calculus paper, executed on Pattern class.
-            'direct' fast standardization implemented as `standardize_direct()`
+            'direct' fast standardization implemented as *standardize_direct()*
             defaults to 'direct'
         """
         if method == "direct":  # faster implementation
@@ -315,6 +322,17 @@ class Pattern:
         def add_correction_domain(
             domain_dict: dict[command.Node, command.Command], node: command.Node, domain: set[command.Node]
         ) -> None:
+            """Merge a correction domain into ``domain_dict`` for ``node``.
+
+            Parameters
+            ----------
+            domain_dict : dict[int, Command]
+                Mapping from node index to accumulated domain.
+            node : int
+                Target node whose domain should be updated.
+            domain : set[int]
+                Domain to merge with the existing one.
+            """
             if previous_domain := domain_dict.get(node):
                 previous_domain ^= domain
             else:
@@ -444,6 +462,14 @@ class Pattern:
         signal_dict = {}
 
         def expand_domain(domain: set[command.Node]) -> None:
+            """Expand ``domain`` with previously shifted signals.
+
+            Parameters
+            ----------
+            domain : set[int]
+                Set of nodes representing the current domain. This set is
+                modified in place by XORing any previously shifted domains.
+            """
             for node in domain & signal_dict.keys():
                 domain ^= signal_dict[node]
 
@@ -1327,12 +1353,12 @@ class Pattern:
         Parameters
         ----------
         leave_input : bool
-            Optional (`False` by default).
-            If `True`, measurements on input nodes are preserved as-is in the pattern.
+            Optional (*False* by default).
+            If *True*, measurements on input nodes are preserved as-is in the pattern.
         ignore_pauli_with_deps : bool
-            Optional (`False` by default).
-            If `True`, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
-            If `False`, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
+            Optional (*False* by default).
+            If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
+            If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
 
         .. seealso:: :func:`measure_pauli`
 
@@ -1482,6 +1508,13 @@ class Pattern:
         shift_domains = {}
 
         def expand_domain(domain: set[int]) -> None:
+            """Merge previously shifted domains into ``domain``.
+
+            Parameters
+            ----------
+            domain : set[int]
+                Domain to update with any accumulated shift information.
+            """
             for node in domain & shift_domains.keys():
                 domain ^= shift_domains[node]
 

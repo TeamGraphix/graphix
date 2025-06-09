@@ -52,7 +52,7 @@ class TensorNetworkBackend(Backend):
             'auto'(default) :
                 Automatically select a preparation strategy based on the max degree of a graph
         input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
-        rng: :class:`np.random.Generator` (default: `None`)
+        rng: :class:`np.random.Generator` (default: *None*)
             random number generator to use for measurements
         **kwargs : Additional keyword args to be passed to quimb.tensor.TensorNetwork.
         """
