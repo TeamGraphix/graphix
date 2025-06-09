@@ -332,7 +332,6 @@ class MatGF2:
         -------
         rinv: Any right inverse of the matrix.
         """
-        # If matrix is square, return inverse
         ident = galois.GF2.Identity(self.data.shape[0])
         aug = np.hstack([self.data, ident])
         red = aug.row_reduce(ncols=self.data.shape[1])

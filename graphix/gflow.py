@@ -404,7 +404,7 @@ def find_pauliflow(
     non_output_idx = np.searchsorted(nodes, non_output_nodes)
     non_input_map = {v: i for v, i in zip(non_input_nodes, non_input_idx)}
     non_output_map = {v: i for v, i in zip(non_output_nodes, non_output_idx)}
-    n, nI, nO = len(nodes), len(iset), len(oset)
+    n, ni, no = len(nodes), len(iset), len(oset)
     # Get full adjacency matrix
     adj_mat = nx.to_numpy_array(graph, nodes)
     # Construct flow-demand matrix
@@ -443,93 +443,93 @@ def find_pauliflow(
     # Re-initialize index maps
     non_input_map = {v: i for i, v in enumerate(non_input_nodes)}
     non_output_map = {v: i for i,v in enumerate(non_output_nodes)}
-    # If rank is not n - nO, Pauli flow does not exist
-    if MatGF2(flow_demand_matrix).get_rank() < n - nO:
+    # If rank is not n - no, Pauli flow does not exist
+    if MatGF2(flow_demand_matrix).get_rank() < n - no:
         raise ValueError("Pauli flow does not exist")
     # Compute correction matrix
     # Branch based on number of input and output nodes
     correction_matrix = None
-    if nI == nO:
+    if ni == no:
         correction_matrix = MatGF2(flow_demand_matrix).right_inverse().data
     else:
         # Verbatim implementation of Algorithm 3 in the reference
-        C0 = MatGF2(flow_demand_matrix).right_inverse().data
-        F = flow_demand_matrix.null_space().T
-        C_p = np.hstack([C0, F])
-        N_B = order_demand_matrix @ C_p
+        c0 = MatGF2(flow_demand_matrix).right_inverse().data
+        f = flow_demand_matrix.null_space().T
+        c_p = np.hstack([c0, f])
+        n_b = order_demand_matrix @ c_p
         # This reshape-copy appears because NumPy tends to drop dimension
         # information if any axis has length 1, and also to avoid creating
         # views: that may end up changing data elsewhere, which we don't want
-        N_L = N_B[:, : n - nO].reshape((-1, n - nO)).copy()
-        N_R = N_B[:, n - nO :].reshape((-1, nO - nI)).copy()
-        K_ILS = np.hstack([N_R, N_L, GF2.Identity(n - nO)])
-        K_LS = K_ILS.copy()
-        K_LS = K_LS.row_reduce(ncols=N_R.shape[1])
-        S = set()
-        P = GF2.Zeros((nO - nI, n - nO))
+        n_l = n_b[:, : n - no].reshape((-1, n - no)).copy()
+        n_r = n_b[:, n - no :].reshape((-1, no - ni)).copy()
+        k_ils = np.hstack([n_r, n_l, GF2.Identity(n - no)])
+        k_ls = k_ils.copy()
+        k_ls = k_ls.row_reduce(ncols=n_r.shape[1])
+        s = set()
+        p = GF2.Zeros((no - ni, n - no))
         non_output_set = set(non_output_nodes)
-        while non_output_set != S:
+        while non_output_set != s:
             r_z = 0
-            for i in range(K_LS.shape[0]):
-                if all(K_LS[i, : nO - nI] == 0):
+            for i in range(k_ls.shape[0]):
+                if all(k_ls[i, : no - ni] == 0):
                     r_z = i
                     break
-            L = set()
-            for v in non_output_set - S:
+            l = set()
+            for v in non_output_set - s:
                 i = non_output_map[v]
-                if all(K_LS[r_z:, nO - nI + i] == 0):
-                    L.add(v)
-            if not L:
+                if all(k_ls[r_z:, no - ni + i] == 0):
+                    l.add(v)
+            if not l:
                 raise ValueError("Pauli flow does not exist")
-            for v in L:
+            for v in l:
                 i = non_output_map[v]
                 # Solve the linear system
-                lin_sys = np.hstack([K_LS[:, : nO - nI].reshape((-1, nO - nI)),
-                                     K_LS[:, nO - nI + i].reshape(-1, 1)])
-                lin_sys = lin_sys.row_reduce(ncols=nO - nI)
+                lin_sys = np.hstack([k_ls[:, : no - ni].reshape((-1, no - ni)),
+                                     k_ls[:, no - ni + i].reshape(-1, 1)])
+                lin_sys = lin_sys.row_reduce(ncols=no - ni)
                 # Ensure solution exists (overdetermined system)
-                if any(lin_sys[nO - nI :, -1] == 1):
+                if any(lin_sys[no - ni :, -1] == 1):
                     raise ValueError("Pauli flow does not exist")
-                P[:, i] = lin_sys[: nO - nI, -1]
-            for v in L:
-                S.add(v)
-                R = []
+                p[:, i] = lin_sys[: no - ni, -1]
+            for v in l:
+                s.add(v)
+                r = []
                 j = non_output_map[v]
-                for i in range(n - nO):
-                    if K_LS[i, n - nI + j] == 1:
-                        R.append(i)
-                r_last = R[-1]
-                for r in R[:-1]:
-                    K_LS[r, :] += K_LS[r_last, :]
-                K_LS[r_last, :] += K_ILS[j, :]
-                for r in range(n - nO):
-                    if r == r_last:
+                for i in range(n - no):
+                    if k_ls[i, n - ni + j] == 1:
+                        r.append(i)
+                r_last = r[-1]
+                for rw in r[:-1]:
+                    k_ls[rw, :] += k_ls[r_last, :]
+                k_ls[r_last, :] += k_ils[j, :]
+                for rw in range(n - no):
+                    if rw == r_last:
                         continue
-                    if all(K_LS[r, : nO - nI] == 0):
+                    if all(k_ls[rw, : no - ni] == 0):
                         break
                     y = 0
-                    for j in range(K_LS.shape[1]):
-                        if K_LS[r, j] == 1:
+                    for j in range(k_ls.shape[1]):
+                        if k_ls[rw, j] == 1:
                             y = j
                             break
-                    if K_LS[r_last, y] == 1:
-                        K_LS[r_last, :] += K_LS[r, :]
+                    if k_ls[r_last, y] == 1:
+                        k_ls[r_last, :] += k_ls[rw, :]
                 # Not sure if doing this step (step 12(d)vi)
                 # this way makes the runtime worse
                 # If it does, then this step has to be done manually
-                K_LS = K_LS.row_reduce(ncols=nO - nI)
-        C_B = np.vstack([GF2.Identity(n - nO), P])
-        correction_matrix = C_p @ C_B
+                k_ls = k_ls.row_reduce(ncols=no - ni)
+        c_b = np.vstack([GF2.Identity(n - no), p])
+        correction_matrix = c_p @ c_b
     # Compute induced relation matrix
     induced_relation_matrix = order_demand_matrix @ correction_matrix
     # Extract data from correction matrix and induced relation matrix
     # The correlation function is encoded in the correction matrix (observation 3.7)
-    p = dict()
-    for j in range(n - nO):
-        p[non_output_nodes[j]] = set()
-        for i in range(n - nI):
+    pf = dict()
+    for j in range(n - no):
+        pf[non_output_nodes[j]] = set()
+        for i in range(n - ni):
             if correction_matrix.data[i, j] == 1:
-                p[non_output_nodes[j]].add(non_input_nodes[i])
+                pf[non_output_nodes[j]].add(non_input_nodes[i])
     # The induced relation matrix defines a directed acyclic graph on the non-output vertices
     # We construct a graph on the non output vertices from this matrix
     relation_graph = nx.from_numpy_array(induced_relation_matrix, create_using=nx.DiGraph, nodelist=non_output_nodes)
@@ -537,7 +537,7 @@ def find_pauliflow(
         raise ValueError("Pauli flow does not exist")
     # We topologically sort this graph to obtain the order of measurements
     l_k = {i: v for i, v in enumerate(nx.topological_sort(relation_graph))}
-    return p, l_k
+    return pf, l_k
 
 
 def get_node_lists(
