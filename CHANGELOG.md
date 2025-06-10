@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #277: Methods for pretty-printing `Pattern`: `to_ascii`,
   `to_unicode`, `to_latex`.
 
-- #299: Branch selection in simulation: in addition to
+- #300: Branch selection in simulation: in addition to
   `RandomBranchSelector` which corresponds to the strategy that was
   already implemented, the user can use `FixedBranchSelector`,
   `ConstBranchSelector`, or define a custom branch selection by
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #277: The method `Pattern.print_pattern` is now deprecated.
 
-- #299: `pr_calc` parameter is deprecated in back-end initializers.
+- #300: `pr_calc` parameter is deprecated in back-end initializers.
   The user can specify `pr_calc` in the constructor of
   `RandomBranchSelector` instead.
 
