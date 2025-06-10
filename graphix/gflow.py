@@ -364,7 +364,8 @@ def find_pauliflow(
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Focused Pauli flow finding algorithm.
 
-    For open graph g with input, output, measurement planes and measurement angles, this returns a focused Pauli flow.
+    For open graph g with input, output, measurement planes and measurement angles,
+    this returns a focused Pauli flow.
 
     Pauli flow consist of function p(i) where i is the qubit labels,
     and strict partial ordering < or layers labels l_k where each element
@@ -399,15 +400,16 @@ def find_pauliflow(
     check_meas_planes(meas_planes)
     l_x, l_y, l_z = get_pauli_nodes(meas_planes, meas_angles)
     nodes, non_input_nodes, non_output_nodes = get_node_lists(graph, iset, oset)
-    # Map non inputs/outputs to row/col index
+    # Construct index maps from non inputs/outputs to row/col index
     non_input_idx = np.searchsorted(nodes, non_input_nodes)
     non_output_idx = np.searchsorted(nodes, non_output_nodes)
     non_input_map = {v: i for v, i in zip(non_input_nodes, non_input_idx)}
     non_output_map = {v: i for v, i in zip(non_output_nodes, non_output_idx)}
+    # Total number of nodes, number of input nodes, number of output nodes
     n, ni, no = len(nodes), len(iset), len(oset)
     # Get full adjacency matrix
     adj_mat = nx.to_numpy_array(graph, nodes)
-    # Construct flow-demand matrix
+    # Step 1: Construct flow-demand matrix (Definition 3.4)
     flow_demand_matrix = np.zeros((n, n), dtype=np.int8)
     for v in non_output_nodes:
         i = non_output_map[v]
@@ -425,7 +427,7 @@ def find_pauliflow(
         elif meas_planes[v] == Plane.XZ or meas_planes[v] == Plane.YZ:
             flow_demand_matrix[i, i] = 1
     flow_demand_matrix = GF2(flow_demand_matrix[np.ix_(non_output_idx, non_input_idx)])
-    # Construct order-demand matrix
+    # Step 2: Construct order-demand matrix (Definition 3.5)
     order_demand_matrix = np.zeros((n, n), dtype=np.int8)
     for v in non_output_nodes:
         i = non_output_map[v]
@@ -440,47 +442,57 @@ def find_pauliflow(
         elif meas_planes[v] == Plane.XY:
             order_demand_matrix[i, i] = 1
     order_demand_matrix = GF2(order_demand_matrix[np.ix_(non_output_idx, non_input_idx)])
-    # Re-initialize index maps
+    # Re-initialize index maps since we now only have corresponding rows and cols
     non_input_map = {v: i for i, v in enumerate(non_input_nodes)}
-    non_output_map = {v: i for i,v in enumerate(non_output_nodes)}
-    # If rank is not n - no, Pauli flow does not exist
+    non_output_map = {v: i for i, v in enumerate(non_output_nodes)}
+    # Step 3: If rank is not n - no, Pauli flow does not exist
     if MatGF2(flow_demand_matrix).get_rank() < n - no:
         raise ValueError("Pauli flow does not exist")
     # Compute correction matrix
     # Branch based on number of input and output nodes
     correction_matrix = None
     if ni == no:
+        # Algorithm 2
         correction_matrix = MatGF2(flow_demand_matrix).right_inverse().data
     else:
-        # Verbatim implementation of Algorithm 3 in the reference
-        c0 = MatGF2(flow_demand_matrix).right_inverse().data
-        f = flow_demand_matrix.null_space().T
-        c_p = np.hstack([c0, f])
-        n_b = order_demand_matrix @ c_p
+        # Verbatim implementation of Algorithm 3
+        c0 = MatGF2(flow_demand_matrix).right_inverse().data  # Step 4: Construct c0
+        f = flow_demand_matrix.null_space().T  # Step 5: Construct f
+        c_p = np.hstack([c0, f])  # Step 6: Construct c_p
+        n_b = order_demand_matrix @ c_p  # Step 7: Construct n_b
+        # Step 8: Construct n_l and n_r
         # This reshape-copy appears because NumPy tends to drop dimension
         # information if any axis has length 1, and also to avoid creating
         # views: that may end up changing data elsewhere, which we don't want
         n_l = n_b[:, : n - no].reshape((-1, n - no)).copy()
         n_r = n_b[:, n - no :].reshape((-1, no - ni)).copy()
+        # Step 9: Construct k_ils and k_ls
         k_ils = np.hstack([n_r, n_l, GF2.Identity(n - no)])
         k_ls = k_ils.copy()
+        # Step 10: Row reduce first block of k_ls
         k_ls = k_ls.row_reduce(ncols=n_r.shape[1])
-        s = set()
-        p = GF2.Zeros((no - ni, n - no))
+        s = set()  # Step 11: Initialise s
+        p = GF2.Zeros((no - ni, n - no))  # Columns of p correspond to non-outputs
         non_output_set = set(non_output_nodes)
-        while non_output_set != s:
+        while non_output_set != s:  # Step 12
+            # Step 12a: Find the first row r_z in k_ls whose first ni - no entries are 0
             r_z = 0
             for i in range(k_ls.shape[0]):
                 if all(k_ls[i, : no - ni] == 0):
                     r_z = i
                     break
+            # Construct l according to definition in Algorithm 3
             l = set()
             for v in non_output_set - s:
                 i = non_output_map[v]
+                # This step is written incorrectly in Algorithm 3 in the paper:
+                # It should be the second block of k_ls, not the first.
+                # Check the worked example in the paper to see this.
                 if all(k_ls[r_z:, no - ni + i] == 0):
                     l.add(v)
             if not l:
                 raise ValueError("Pauli flow does not exist")
+            # Step 12b, 12c: Solve the linear systems associated with nodes in l
             for v in l:
                 i = non_output_map[v]
                 # Solve the linear system
@@ -491,17 +503,21 @@ def find_pauliflow(
                 if any(lin_sys[no - ni :, -1] == 1):
                     raise ValueError("Pauli flow does not exist")
                 p[:, i] = lin_sys[: no - ni, -1]
+            # Step 12d
             for v in l:
-                s.add(v)
+                s.add(v)  # Step 12d(i)
+                # Step 12d(ii)
                 r = []
                 j = non_output_map[v]
                 for i in range(n - no):
                     if k_ls[i, n - ni + j] == 1:
                         r.append(i)
                 r_last = r[-1]
+                # Step 12d(iii)
                 for rw in r[:-1]:
                     k_ls[rw, :] += k_ls[r_last, :]
-                k_ls[r_last, :] += k_ils[j, :]
+                k_ls[r_last, :] += k_ils[j, :]  # Step 12d(iv)
+                # Step 12d(v)
                 for rw in range(n - no):
                     if rw == r_last:
                         continue
@@ -514,15 +530,14 @@ def find_pauliflow(
                             break
                     if k_ls[r_last, y] == 1:
                         k_ls[r_last, :] += k_ls[rw, :]
-                # Not sure if doing this step (step 12(d)vi)
-                # this way makes the runtime worse
+                # Not sure if doing this step this way makes the runtime worse
                 # If it does, then this step has to be done manually
-                k_ls = k_ls.row_reduce(ncols=no - ni)
-        c_b = np.vstack([GF2.Identity(n - no), p])
-        correction_matrix = c_p @ c_b
+                k_ls = k_ls.row_reduce(ncols=no - ni)  # Step 12d(vi)
+        c_b = np.vstack([GF2.Identity(n - no), p])  # Step 13: Construct c_b
+        correction_matrix = c_p @ c_b  # Compute correction matrix
     # Compute induced relation matrix
     induced_relation_matrix = order_demand_matrix @ correction_matrix
-    # Extract data from correction matrix and induced relation matrix
+    # Extract data from correction matrix (Definition 3.6) and induced relation matrix
     # The correlation function is encoded in the correction matrix (observation 3.7)
     pf = dict()
     for j in range(n - no):
@@ -530,9 +545,10 @@ def find_pauliflow(
         for i in range(n - ni):
             if correction_matrix.data[i, j] == 1:
                 pf[non_output_nodes[j]].add(non_input_nodes[i])
-    # The induced relation matrix defines a directed acyclic graph on the non-output vertices
+    # The induced relation matrix defines a DAG on the non-output nodes (Theorem 3.1)
     # We construct a graph on the non output vertices from this matrix
-    relation_graph = nx.from_numpy_array(induced_relation_matrix, create_using=nx.DiGraph, nodelist=non_output_nodes)
+    relation_graph = nx.from_numpy_array(induced_relation_matrix,
+                                         create_using=nx.DiGraph, nodelist=non_output_nodes)
     if not nx.is_directed_acyclic_graph(relation_graph):
         raise ValueError("Pauli flow does not exist")
     # We topologically sort this graph to obtain the order of measurements
