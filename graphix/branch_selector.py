@@ -32,13 +32,19 @@ class BranchSelector(ABC):
 
     @abstractmethod
     def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
-        """
-        Return the measurement outcome of `qubit`.
+        """Return the measurement outcome of ``qubit``.
 
-        This method may use the function `compute_expectation_0` to
-        retrieve the expected probability of outcome 0. The probability is
-        computed only if this function is called (lazy computation),
-        ensuring no unnecessary computational cost.
+
+        Parameters
+        ----------
+        qubit : int
+            Index of qubit to measure
+
+        compute_expectation_0 : Callable[[], float]
+            A function that the method can use to retrieve the expected
+            probability of outcome 0. The probability is computed only if
+            this function is called (lazy computation), ensuring no
+            unnecessary computational cost.
         """
 
 
@@ -50,12 +56,12 @@ class RandomBranchSelector(BranchSelector):
     ----------
     pr_calc : bool, optional
         Whether to compute the probability distribution before selecting the measurement result.
-        If False, measurements yield 0/1 with equal probability (50% each).
-        Default is `True`.
+        If ``False``, measurements yield 0/1 with equal probability (50% each).
+        Default is ``True``.
     rng : Generator | None, optional
         Random-number generator for measurements.
-        If `None`, a default random-number generator is used.
-        Default is `None`.
+        If ``None``, a default random-number generator is used.
+        Default is ``None``.
     """
 
     pr_calc: bool = True
@@ -64,9 +70,9 @@ class RandomBranchSelector(BranchSelector):
     @override
     def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
         """
-        Return the measurement outcome of `qubit`.
+        Return the measurement outcome of ``qubit``.
 
-        If `pr_calc` is `True`, the measurement outcome is determined based on the
+        If ``pr_calc`` is ``True``, the measurement outcome is determined based on the
         computed probability of outcome 0. Otherwise, the result is randomly chosen
         with a 50% chance for either outcome.
         """
@@ -82,20 +88,20 @@ class RandomBranchSelector(BranchSelector):
 class FixedBranchSelector(BranchSelector):
     """Branch selector with predefined measurement outcomes.
 
-    The mapping is fixed in `results`. By default, an error is raised if
+    The mapping is fixed in ``results``. By default, an error is raised if
     a qubit is measured without a predefined outcome. However, another
-    branch selector can be specified in `default` to handle such cases.
+    branch selector can be specified in ``default`` to handle such cases.
 
     Parameters
     ----------
     results : Mapping[int, bool]
         A dictionary mapping qubits to their measurement outcomes.
-        If a qubit is not present in this mapping, the `default` branch
+        If a qubit is not present in this mapping, the ``default`` branch
         selector is used.
     default : BranchSelector | None, optional
-        Branch selector to use for qubits not present in `results`.
-        If `None`, an error is raised when an unmapped qubit is measured.
-        Default is `None`.
+        Branch selector to use for qubits not present in ``results``.
+        If ``None``, an error is raised when an unmapped qubit is measured.
+        Default is ``None``.
     """
 
     results: Mapping[int, bool]
@@ -104,9 +110,9 @@ class FixedBranchSelector(BranchSelector):
     @override
     def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
         """
-        Return the predefined measurement outcome of `qubit`, if available.
+        Return the predefined measurement outcome of ``qubit``, if available.
 
-        If the qubit is not present in `results`, the `default` branch selector
+        If the qubit is not present in ``results``, the ``default`` branch selector
         is used. If no default is provided, an error is raised.
         """
         result = self.results.get(qubit)
@@ -121,7 +127,7 @@ class FixedBranchSelector(BranchSelector):
 class ConstBranchSelector(BranchSelector):
     """Branch selector with a constant measurement outcome.
 
-    The value `result` is returned for every qubit.
+    The value ``result`` is returned for every qubit.
 
     Parameters
     ----------
@@ -133,5 +139,5 @@ class ConstBranchSelector(BranchSelector):
 
     @override
     def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
-        """Return the constant measurement outcome `result` for any qubit."""
+        """Return the constant measurement outcome ``result`` for any qubit."""
         return self.result
