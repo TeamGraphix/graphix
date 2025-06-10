@@ -14,6 +14,7 @@ import numpy as np
 from typing_extensions import assert_never
 
 from graphix import command, instruction, parameter
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.instruction import Instruction, InstructionKind
@@ -25,6 +26,8 @@ from graphix.sim.statevec import Data, Statevec
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
+
+    from numpy.random import Generator
 
 
 @dataclasses.dataclass
@@ -885,18 +888,34 @@ class Circuit:
             elif cmd.nodes in old_out:
                 cmd.nodes = output_nodes[old_out.index(cmd.nodes)]
 
-    def simulate_statevector(self, input_state: Data | None = None) -> SimulateResult:
+    def simulate_statevector(
+        self,
+        input_state: Data | None = None,
+        branch_selector: BranchSelector | None = None,
+        rng: Generator | None = None,
+    ) -> SimulateResult:
         """Run statevector simulation of the gate sequence.
 
         Parameters
         ----------
         input_state : :class:`graphix.sim.statevec.Statevec`
 
+        branch_selector: :class:`graphix.sim.base_backend.BranchSelector`
+            branch selector for measures (default: `graphix.sim.base_backend.RandomBranchSelector()`)
+
+        rng: :class:`np.random.Generator`
+            random number generator for `RandomBranchSelector` (should only be used with default branch selector)
+
         Returns
         -------
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
+        if branch_selector is None:
+            branch_selector = RandomBranchSelector(rng=rng)
+        elif rng is not None:
+            raise ValueError("Cannot specify both branch selector and rng")
+
         state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
@@ -931,7 +950,9 @@ class Circuit:
             elif kind == instruction.InstructionKind.CCX:
                 state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif kind == instruction.InstructionKind.M:
-                result = base_backend.perform_measure(instr.target, instr.plane, instr.angle * np.pi, state, np.random)
+                result = base_backend.perform_measure(
+                    instr.target, instr.target, instr.plane, instr.angle * np.pi, state, branch_selector
+                )
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")

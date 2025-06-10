@@ -12,6 +12,29 @@ Pattern Simulation
 
     .. automethod:: run
 
+Branch Selection (:mod:`graphix.branch_selector` module)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. currentmodule:: graphix.branch_selector
+
+.. autoclass:: BranchSelector
+
+    .. automethod:: measure
+
+.. autoclass:: RandomBranchSelector
+    :members:
+
+    .. automethod:: measure
+
+.. autoclass:: FixedBranchSelector
+    :members:
+
+    .. automethod:: measure
+
+.. autoclass:: ConstBranchSelector
+    :members:
+
+    .. automethod:: measure
 
 Simulator backends
 ++++++++++++++++++
