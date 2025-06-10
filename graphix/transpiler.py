@@ -7,7 +7,10 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
+import re
+import warnings
 from copy import deepcopy
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 import numpy as np
@@ -972,3 +975,184 @@ def _extend_domain(measure: M, domain: set[int]) -> None:
         measure.s_domain ^= domain
     else:
         measure.t_domain ^= domain
+
+
+# QASM3 parsing patterns - compiled once at module load
+_QUBIT_ARRAY_PATTERN = re.compile(r"qubit\s+q\[(\d+)\];")
+_QUBIT_SINGLE_PATTERN = re.compile(r"qubit\s+q(\d+);")
+_MEASURE_PATTERN = re.compile(r"measure\s+q\[(\d+)\];")
+_NON_GATE_PATTERN = re.compile(r"(OPENQASM|include|bit|float|int|//)", re.IGNORECASE)
+
+_GATE_PATTERNS = {
+    "h": re.compile(r"h\s+q\[(\d+)\];"),
+    "x": re.compile(r"x\s+q\[(\d+)\];"),
+    "y": re.compile(r"y\s+q\[(\d+)\];"),
+    "z": re.compile(r"z\s+q\[(\d+)\];"),
+    "s": re.compile(r"s\s+q\[(\d+)\];"),
+    "sdg": re.compile(r"sdg\s+q\[(\d+)\];"),
+    "rx": re.compile(r"rx\(([^)]+)\)\s+q\[(\d+)\];"),
+    "ry": re.compile(r"ry\(([^)]+)\)\s+q\[(\d+)\];"),
+    "rz": re.compile(r"rz\(([^)]+)\)\s+q\[(\d+)\];"),
+    "cx": re.compile(r"cx\s+q\[(\d+)\],\s*q\[(\d+)\];"),
+    "cnot": re.compile(r"cnot\s+q\[(\d+)\],\s*q\[(\d+)\];"),
+    "swap": re.compile(r"swap\s+q\[(\d+)\],\s*q\[(\d+)\];"),
+    "ccx": re.compile(r"ccx\s+q\[(\d+)\],\s*q\[(\d+)\],\s*q\[(\d+)\];"),
+    # Add more as needed
+}
+
+
+def _parse_angle(expr: str) -> float:
+    """Safely parse angle expressions like 'pi/2', '0.5', etc."""
+    # Only allow numbers, pi, and arithmetic ops
+    expr = expr.replace(" ", "")
+    allowed_ops = {"+", "-", "*", "/", "(", ")"}
+    # Check for invalid characters
+    for c in expr:
+        if not (c.isdigit() or c in ".e" or c in allowed_ops or c.isalpha()):
+            raise ValueError(f"Invalid character in angle expression: {c}")
+    # Replace 'pi' with its value
+    expr = expr.replace("pi", f"{np.pi}")
+    try:
+        # Only allow arithmetic expressions
+        return eval(expr, {"__builtins__": {}}, {})  # noqa: S307
+    except Exception as e:
+        raise ValueError(f"Invalid angle expression: {expr}") from e
+
+
+def pattern_from_qasm3(qasm: str | Path) -> Pattern:
+    """
+    Parse a QASM3 string or file and transpile it to a graphix Pattern.
+
+    Supports only the subset of QASM3 gates supported by graphix.transpiler.Circuit.
+    Unsupported features will raise a warning.
+
+    Parameters
+    ----------
+    qasm : str | Path
+        QASM3 program as a string, or a path to a QASM3 file.
+
+    Returns
+    -------
+    Pattern
+        The transpiled MBQC pattern.
+
+    Raises
+    ------
+    Warning
+        If unsupported QASM3 features are encountered.
+    """
+    if isinstance(qasm, Path) or (isinstance(qasm, str) and Path(qasm).exists()):
+
+        def line_iter():
+            with Path(qasm).open(encoding="utf-8") as f:
+                yield from f  #  This processes line-by-line
+
+        lines = line_iter()  #  Generator - doesn't load whole file into memory
+    else:
+        lines = qasm.splitlines()  # For string input
+
+    # Remove comments and empty lines
+    def clean_line(line: str) -> str:
+        return re.sub(r"//.*", "", line).strip()
+
+    # Qubit register mapping: q[0], q[1], ... -> integer indices
+    qubit_map = {}
+    n_qubits = 0
+    circuit = None
+
+    for raw_line in lines:  #  Processes one line at a time
+        line = clean_line(raw_line)
+        if not line:
+            continue
+
+        # Qubit register declaration
+        m = _QUBIT_ARRAY_PATTERN.match(line)
+        if m is not None:
+            n_qubits = int(m.group(1))
+            circuit = Circuit(n_qubits)
+            for i in range(n_qubits):
+                qubit_map[f"q[{i}]"] = i
+            continue
+
+        # Single qubit declaration (e.g., "qubit q0;")
+        m = _QUBIT_SINGLE_PATTERN.match(line)
+        if m is not None:
+            idx = int(m.group(1))
+            if idx + 1 > n_qubits:
+                n_qubits = idx + 1
+                if circuit is None:
+                    circuit = Circuit(n_qubits)
+            qubit_map[f"q{idx}"] = idx
+            continue
+
+        # Gate parsing
+        found = False
+        for gate, pat in _GATE_PATTERNS.items():
+            m = pat.match(line)
+            if m is not None:
+                found = True
+                if circuit is None:
+                    raise ValueError("Qubit register must be declared before gates.")
+                # Assign group values to variables for readability
+                if gate in {"h", "x", "y", "z", "s", "sdg"}:
+                    qubit_index = int(m.group(1))
+                if gate == "h":
+                    circuit.h(qubit_index)
+                elif gate == "x":
+                    circuit.x(qubit_index)
+                elif gate == "y":
+                    circuit.y(qubit_index)
+                elif gate == "z":
+                    circuit.z(qubit_index)
+                elif gate == "s":
+                    circuit.s(qubit_index)
+                elif gate == "sdg":
+                    warnings.warn("SDG not supported, skipping.", stacklevel=2)
+                elif gate == "rx":
+                    angle_str = m.group(1)
+                    qubit_index = int(m.group(2))
+                    angle = _parse_angle(angle_str)
+                    circuit.rx(qubit_index, angle)
+                elif gate == "ry":
+                    angle_str = m.group(1)
+                    qubit_index = int(m.group(2))
+                    angle = _parse_angle(angle_str)
+                    circuit.ry(qubit_index, angle)
+                elif gate == "rz":
+                    angle_str = m.group(1)
+                    qubit_index = int(m.group(2))
+                    angle = _parse_angle(angle_str)
+                    circuit.rz(qubit_index, angle)
+                elif gate in {"cx", "cnot"}:
+                    control = int(m.group(1))
+                    target = int(m.group(2))
+                    circuit.cnot(control, target)
+                elif gate == "swap":
+                    q1 = int(m.group(1))
+                    q2 = int(m.group(2))
+                    circuit.swap(q1, q2)
+                elif gate == "ccx":
+                    c1 = int(m.group(1))
+                    c2 = int(m.group(2))
+                    t = int(m.group(3))
+                    circuit.ccx(c1, c2, t)
+                break
+        if found:
+            continue
+
+        # Measurement (optional, not mapped to MBQC pattern directly)
+        if _MEASURE_PATTERN.match(line) is not None:
+            warnings.warn("Measurement statements are ignored in MBQC pattern import.", stacklevel=2)
+            continue
+
+        # Ignore known non-gate lines
+        if _NON_GATE_PATTERN.match(line) is not None:
+            continue
+
+        # If not matched, warn
+        warnings.warn(f"Unsupported or unrecognized QASM3 line: '{line}'", stacklevel=2)
+
+    if circuit is None:
+        raise ValueError("No qubit register found in QASM3 input.")
+
+    return circuit.transpile().pattern
