@@ -55,7 +55,7 @@ pattern.draw_graph(flow_from_pattern=True, show_measurement_planes=True, node_di
 
 # %%
 # Instead of the measurement planes, we can show the local Clifford of the resource graph.
-# see `clifford.py` for the details of the indices of each single-qubit Clifford operators.
+# see *clifford.py* for the details of the indices of each single-qubit Clifford operators.
 # 6 is the Hadamard and 8 is the :math:`\sqrt{iY}` operator.
 pattern.draw_graph(flow_from_pattern=True, show_local_clifford=True, node_distance=(0.7, 0.6))
 
