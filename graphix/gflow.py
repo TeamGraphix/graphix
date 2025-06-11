@@ -407,10 +407,9 @@ def find_pauliflow(
     non_output_idx = np.searchsorted(nodes, non_output_nodes)
     # Step 1: Construct flow-demand and order-demand matrices (Definitions 3.4, 3.5)
     flow_demand_matrix, order_demand_matrix = construct_flow_order_demand_matrices(
-        adj_mat, nodes, non_output_nodes, non_output_idx, non_input_idx, meas_planes, meas_angles
+        adj_mat, non_output_nodes, non_output_idx, non_input_idx, meas_planes, meas_angles
     )
     # Create index maps
-    non_input_map = {v: i for i, v in enumerate(non_input_nodes)}
     non_output_map = {v: i for i, v in enumerate(non_output_nodes)}
     # Step 3: If rank is not n - no, Pauli flow does not exist
     if MatGF2(flow_demand_matrix).get_rank() < n - no:
@@ -460,11 +459,8 @@ def find_pauliflow(
             for v in l:
                 s.add(v)  # Step 12d(i)
                 # Step 12d(ii)
-                r = []
                 j = non_output_map[v]
-                for i in range(n - no):
-                    if k_ls[i, n - ni + j] == 1:
-                        r.append(i)
+                r = [i for i in range(n - no) if k_ls[i, n - ni + j] == 1]
                 r_last = r[-1]
                 # Step 12d(iii)
                 for rw in r[:-1]:
@@ -499,9 +495,7 @@ def get_node_lists(
     iset: set[int],
     oset: set[int],
 ) -> tuple[list[int], list[int], list[int]]:
-    """
-    Get ordered lists of all nodes, non-input nodes, and non-output nodes.
-    """
+    """Get ordered lists of all nodes, non-input nodes, and non-output nodes."""
     nodes = list(graph.nodes)
     non_input_nodes = list(graph.nodes - iset)
     non_output_nodes = list(graph.nodes - oset)
@@ -513,16 +507,13 @@ def get_node_lists(
 
 def construct_flow_order_demand_matrices(
     adj_mat: np.ndarray,
-    nodes: list[int],
     non_output_nodes: list[int],
     non_output_idx: list[int],
     non_input_idx: list[int],
     meas_planes: dict[int, Plane],
     meas_angles: dict[int, float],
-) -> tuple[galois.GF2, galois.GF2]:
-    """
-    Construct the flow-demand and order-demand matrices as defined in Definitions 3.4 and 3.5 of arxiv:2410.23439.
-    """
+) -> tuple[GF2, GF2]:
+    """Construct the flow-demand and order-demand matrices as defined in Definitions 3.4 and 3.5 of arxiv:2410.23439."""
     l_x, l_y, l_z = get_pauli_nodes(meas_planes, meas_angles)
 
     flow_demand_matrix = np.zeros_like(adj_mat, dtype=np.int8)
@@ -559,9 +550,9 @@ def construct_flow_order_demand_matrices(
 
 
 def construct_aux_pauliflow_matrices(
-    flow_demand_matrix: galois.GF2,
-    order_demand_matrix: galois.GF2,
-) -> tuple[galois.GF2, galois.GF2, galois.GF2]:
+    flow_demand_matrix: GF2,
+    order_demand_matrix: GF2,
+) -> tuple[GF2, GF2, GF2]:
     """Construct and return the matrices required for Algorithm 3 of arxiv:2410.23439."""
     c0 = MatGF2(flow_demand_matrix).right_inverse().data  # Step 4: Construct c0
     f = flow_demand_matrix.null_space().T  # Step 5: Construct f
@@ -580,14 +571,14 @@ def construct_aux_pauliflow_matrices(
 
 
 def get_pauliflow_and_layers(
-    correction_matrix: galois.GF2,
-    induced_relation_matrix: galois.GF2,
+    correction_matrix: GF2,
+    induced_relation_matrix: GF2,
     non_input_nodes: list[int],
     non_output_nodes: list[int],
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
-    # Extract data from correction matrix (Definition 3.6) and induced relation matrix
-    # The correlation function is encoded in the correction matrix (observation 3.7)
-    pf = dict()
+    """Extract Pauli flow and layers from correction matrix and induced relation matrix."""
+    # The correction function is encoded in the correction matrix (observation 3.7)
+    pf = {}
     for j in range(len(non_output_nodes)):
         pf[non_output_nodes[j]] = set()
         for i in range(correction_matrix.shape[0]):
@@ -600,7 +591,7 @@ def get_pauliflow_and_layers(
     if not nx.is_directed_acyclic_graph(relation_graph):
         return None, None
     # We topologically sort this graph to obtain the order of measurements
-    l_k = {i: v for i, v in enumerate(nx.topological_sort(relation_graph))}
+    l_k = dict(enumerate(nx.topological_sort(relation_graph)))
     return pf, l_k
 
 
