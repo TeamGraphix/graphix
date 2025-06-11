@@ -73,7 +73,7 @@ def generate_from_graph(
     meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if meas_planes is None else dict(meas_planes)
 
     # search for flow first
-    f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
+    f, l_k = find_flow(graph, set(inputs), set(outputs))
     if f is not None:
         # flow found
         depth, layers = group_layers(l_k)
