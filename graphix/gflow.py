@@ -448,8 +448,7 @@ def find_pauliflow(
             for v in l:
                 i = non_output_map[v]
                 # Solve the linear system
-                lin_sys = np.hstack([k_ls[:, : no - ni].reshape((-1, no - ni)),
-                                     k_ls[:, no - ni + i].reshape(-1, 1)])
+                lin_sys = np.hstack([k_ls[:, : no - ni].reshape((-1, no - ni)), k_ls[:, no - ni + i].reshape(-1, 1)])
                 lin_sys = lin_sys.row_reduce(ncols=no - ni)
                 # Ensure solution exists (overdetermined system)
                 if any(lin_sys[no - ni :, -1] == 1):
@@ -486,8 +485,7 @@ def find_pauliflow(
         correction_matrix = c_p @ c_b  # Compute correction matrix
     # Compute induced relation matrix
     induced_relation_matrix = order_demand_matrix @ correction_matrix
-    return get_pauliflow_and_layers(correction_matrix, induced_relation_matrix,
-                                    non_input_nodes, non_output_nodes)
+    return get_pauliflow_and_layers(correction_matrix, induced_relation_matrix, non_input_nodes, non_output_nodes)
 
 
 def get_node_lists(
@@ -545,8 +543,10 @@ def construct_flow_order_demand_matrices(
         elif meas_planes[v] == Plane.XY:
             order_demand_matrix[i, i] = 1
 
-    return (GF2(flow_demand_matrix[np.ix_(non_output_idx, non_input_idx)]),
-            GF2(order_demand_matrix[np.ix_(non_output_idx, non_input_idx)]))
+    return (
+        GF2(flow_demand_matrix[np.ix_(non_output_idx, non_input_idx)]),
+        GF2(order_demand_matrix[np.ix_(non_output_idx, non_input_idx)]),
+    )
 
 
 def construct_aux_pauliflow_matrices(
@@ -560,8 +560,8 @@ def construct_aux_pauliflow_matrices(
     n_b = order_demand_matrix @ c_p  # Step 7: Construct n_b
     # Step 8: Construct n_l and n_r
     sz = flow_demand_matrix.shape[0]
-    n_l = n_b[:, : sz].reshape((-1, sz))
-    n_r = n_b[:, sz :].reshape((-1, n_b.shape[1] - sz))
+    n_l = n_b[:, :sz].reshape((-1, sz))
+    n_r = n_b[:, sz:].reshape((-1, n_b.shape[1] - sz))
     # Step 9: Construct k_ils and k_ls
     k_ils = np.hstack([n_r, n_l, GF2.Identity(sz)])
     k_ls = k_ils.copy()
@@ -586,8 +586,7 @@ def get_pauliflow_and_layers(
                 pf[non_output_nodes[j]].add(non_input_nodes[i])
     # The induced relation matrix defines a DAG on the non-output nodes (Theorem 3.1)
     # We construct a graph on the non output vertices from this matrix
-    relation_graph = nx.from_numpy_array(induced_relation_matrix,
-                                         create_using=nx.DiGraph, nodelist=non_output_nodes)
+    relation_graph = nx.from_numpy_array(induced_relation_matrix, create_using=nx.DiGraph, nodelist=non_output_nodes)
     if not nx.is_directed_acyclic_graph(relation_graph):
         return None, None
     # We topologically sort this graph to obtain the order of measurements

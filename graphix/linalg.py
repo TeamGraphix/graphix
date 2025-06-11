@@ -341,7 +341,7 @@ class MatGF2:
         for i in range(self.data.shape[0]):
             for k in range(j, self.data.shape[1]):
                 if red[i, k] == 1:
-                    rinv[k, :] = red[i, self.data.shape[1]:]
+                    rinv[k, :] = red[i, self.data.shape[1] :]
                     j = k + 1
                     break
         assert np.all(self.data @ rinv == galois.GF2.Identity(self.data.shape[0]))
