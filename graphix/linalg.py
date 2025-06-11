@@ -212,7 +212,7 @@ class MatGF2:
         # Could be optimized, but going with the simplest option
         nnz_rows = 0
         for i in range(self.data.shape[0]):
-            if all(self.data[i, :] == 0):
+            if all(row_echelon_form[i, :] == 0):
                 break
             nnz_rows += 1
         return nnz_rows
@@ -338,10 +338,11 @@ class MatGF2:
         rinv = galois.GF2.Zeros((self.data.shape[1], self.data.shape[0]))
         # for each row i, find the leading 1 col, let it be j, and set rinv[j, :] = C[i, :]
         j = 0
-        for i in range(red.shape[0]):
-            for k in range(j, red.shape[1]):
+        for i in range(self.data.shape[0]):
+            for k in range(j, self.data.shape[1]):
                 if red[i, k] == 1:
                     rinv[k, :] = red[i, self.data.shape[1]:]
                     j = k + 1
                     break
+        assert np.all(self.data @ rinv == galois.GF2.Identity(self.data.shape[0]))
         return MatGF2(rinv)

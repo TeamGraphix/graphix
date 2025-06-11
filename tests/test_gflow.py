@@ -555,6 +555,25 @@ class TestGflow:
 
         assert valid
 
+    def test_rand_circ_pauliflow(self, fx_rng: Generator) -> None:
+        # test for large graph
+        # graph transpiled from circuit always has a pauliflow
+        circ = rand_circuit(5, 5, fx_rng)
+        pattern = circ.transpile().pattern
+        nodes, edges = pattern.get_graph()
+        graph = nx.Graph()
+        graph.add_nodes_from(nodes)
+        graph.add_edges_from(edges)
+        input_ = set(pattern.input_nodes)
+        output = set(pattern.output_nodes)
+        meas_planes = pattern.get_meas_plane()
+        meas_angles = pattern.get_angles()
+        pf, _ = find_pauliflow(graph, input_, output, meas_planes, meas_angles)
+
+        valid = verify_pauliflow(graph, input_, output, pf, meas_planes, meas_angles)
+
+        assert valid
+
     @pytest.mark.parametrize("jumps", range(1, 51))
     def test_rand_graph_flow(self, fx_bg: PCG64, jumps: int) -> None:
         # test finding algorithm and verification for random graphs
