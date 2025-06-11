@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
-from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
+from graphix.gflow import find_flow, find_gflow, group_layers, odd_neighbor
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
@@ -76,7 +76,7 @@ def generate_from_graph(
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
     if f is not None:
         # flow found
-        depth, layers = get_layers(l_k)
+        depth, layers = group_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
@@ -99,7 +99,7 @@ def generate_from_graph(
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
         if g is not None:
             # gflow found
-            depth, layers = get_layers(l_k)
+            depth, layers = group_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(N(node=i))
@@ -108,7 +108,7 @@ def generate_from_graph(
             for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
                 for j in layers[i]:
                     pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
-                    odd_neighbors = find_odd_neighbor(graph, g[j])
+                    odd_neighbors = odd_neighbor(graph, g[j])
                     for k in odd_neighbors - {j}:
                         pattern.add(Z(node=k, domain={j}))
                     for k in g[j] - {j}:

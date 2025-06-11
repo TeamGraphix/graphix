@@ -139,7 +139,7 @@ def find_pauliflow(
     raise NotImplementedError
 
 
-def find_odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
+def odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
     """Return the set containing the odd neighbor of a set of vertices.
 
     Parameters
@@ -156,13 +156,12 @@ def find_odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[i
     """
     odd_neighbors: set[int] = set()
     for vertex in vertices:
-        neighbors = set(graph.neighbors(vertex))
-        odd_neighbors ^= neighbors
+        odd_neighbors.symmetric_difference_update(graph.neighbors(vertex))
     return odd_neighbors
 
 
-def get_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
-    """Get components of each layer.
+def group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
+    """Group nodes by their layers.
 
     Parameters
     ----------
@@ -179,7 +178,7 @@ def get_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
     d = min(l_k.values())
     layers: dict[int, set[int]] = {k: set() for k in range(d + 1)}
     for i, val in l_k.items():
-        layers[val] |= {i}
+        layers[val].add(i)
     return d, layers
 
 
