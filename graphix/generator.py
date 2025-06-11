@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
-from graphix.gflow import find_flow, find_gflow, group_layers, odd_neighbor
+from graphix.gflow import find_flow, find_gflow, odd_neighbor
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
@@ -15,6 +15,28 @@ if TYPE_CHECKING:
     import networkx as nx
     import numpy as np
     import numpy.typing as npt
+
+
+def group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
+    """Group nodes by their layers.
+
+    Parameters
+    ----------
+    l_k: dict
+        layers obtained by flow or gflow algorithms
+
+    Returns
+    -------
+    d: int
+        minimum depth of graph
+    layers: dict of set
+        components of each layer
+    """
+    d = min(l_k.values())
+    layers: dict[int, set[int]] = {k: set() for k in range(d + 1)}
+    for i, val in l_k.items():
+        layers[val].add(i)
+    return d, layers
 
 
 def generate_from_graph(
