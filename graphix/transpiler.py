@@ -33,7 +33,7 @@ class TranspileResult:
     The result of a transpilation.
 
     pattern : :class:`graphix.pattern.Pattern` object
-    classical_outputs : tuple[int,...], index of nodes measured with `M` gates
+    classical_outputs : tuple[int,...], index of nodes measured with *M* gates
     """
 
     pattern: Pattern
@@ -959,6 +959,15 @@ class Circuit:
 
 
 def _extend_domain(measure: M, domain: set[int]) -> None:
+    """Extend the correction domain of ``measure`` by ``domain``.
+
+    Parameters
+    ----------
+    measure : M
+        Measurement command to modify.
+    domain : set[int]
+        Set of nodes to XOR into the appropriate domain of ``measure``.
+    """
     if measure.plane == Plane.XY:
         measure.s_domain ^= domain
     else:

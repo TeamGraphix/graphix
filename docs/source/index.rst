@@ -13,6 +13,7 @@ Graphix - optimizing and simulating MBQC
    tutorial
    gallery/index
    references
+   contributing
 
 .. toctree::
    :maxdepth: 2

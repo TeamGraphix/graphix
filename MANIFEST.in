@@ -1,6 +1,7 @@
-include README.md
-include MANIFEST.in
-include LICENSE
-include graphix/version.py
-include requirements.txt
-prune docs/*
+global-exclude .*
+exclude noxfile.py CONTRIBUTING.md CODE_OF_CONDUCT.md CHANGELOG.md CITATION.cff
+prune benchmarks
+prune docs
+prune tests
+prune examples
+prune .github

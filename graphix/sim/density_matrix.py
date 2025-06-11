@@ -38,24 +38,24 @@ class DensityMatrix(State):
     ):
         """Initialize density matrix objects.
 
-        The behaviour builds on the one of `graphix.statevec.Statevec`.
+        The behaviour builds on the one of *graphix.statevec.Statevec*.
         `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
-        - an iterable of iterable of scalars (A `2**n x 2**n` numerical density matrix)
-        - a `graphix.statevec.DensityMatrix` object
-        - a `graphix.statevec.Statevector` object
+        - an iterable of iterable of scalars (A *2**n x 2**n* numerical density matrix)
+        - a *graphix.statevec.DensityMatrix* object
+        - a *graphix.statevec.Statevector* object
 
         If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
         If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
         in the tensor product state.
         If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
-        If a `graphix.statevec.Statevec` or `graphix.statevec.DensityMatrix` is passed, returns a copy.
+        If a *graphix.statevec.Statevec* or *graphix.statevec.DensityMatrix* is passed, returns a copy.
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
         :type data: Data
-        :param nqubit: number of qubits to prepare, defaults to `None`
+        :param nqubit: number of qubits to prepare, defaults to *None*
         :type nqubit: int, optional
         """
         if nqubit is not None and nqubit < 0:

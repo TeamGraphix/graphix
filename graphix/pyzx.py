@@ -1,7 +1,7 @@
-"""Functionality for converting between OpenGraphs and PyZX.
+"""Functionality for converting between OpenGraphs and :mod:`pyzx`.
 
 These functions are held in their own file rather than including them in the
-OpenGraph class because we want PyZX to be an optional dependency.
+OpenGraph class because we want :mod:`pyzx` to be an optional dependency.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
-    """Return a PyZX graph corresponding to the the open graph.
+    """Return a :mod:`pyzx` graph corresponding to the open graph.
 
     Example
     -------
@@ -43,9 +43,9 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     except ModuleNotFoundError as e:
         msg = "Cannot find pyzx (optional dependency)."
         raise RuntimeError(msg) from e
-    if zx.__version__ != "0.8.0":
+    if zx.__version__ != "0.9.0":
         warnings.warn(
-            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.8.0 due to possible breaking changes in `pyzx`.",
+            "`to_pyzx_graph` is guaranteed to work only with pyzx==0.9.0 due to possible breaking changes in `pyzx`.",
             stacklevel=1,
         )
     g = Graph()
@@ -66,7 +66,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     body_verts = add_vertices(len(og.inside), VertexType.Z)
 
     # Add nodes for the phase gadgets. In OpenGraph we don't store the
-    # effect as a seperate node, it is instead just stored in the
+    # effect as a separate node, it is instead just stored in the
     # "measurement" attribute of the node it measures.
     x_meas = [i for i, m in og.measurements.items() if m.plane == Plane.YZ]
     x_meas_verts = add_vertices(len(x_meas), VertexType.Z)
@@ -113,7 +113,7 @@ def _checked_float(x: FractionLike) -> float:
 
 
 def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
-    """Construct an Optyx Open Graph from a PyZX graph.
+    """Construct an :class:`OpenGraph` from a :mod:`pyzx` graph.
 
     This method may add additional nodes to the graph so that it adheres
     with the definition of an OpenGraph. For instance, if the final node on

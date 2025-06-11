@@ -43,14 +43,14 @@ class Sign(EnumPrettyPrintMixin, Enum):
 
     @staticmethod
     def plus_if(b: bool) -> Sign:
-        """Return `+` if `b` is `True`, `-` otherwise."""
+        """Return *+* if *b* is *True*, *-* otherwise."""
         if b:
             return Sign.PLUS
         return Sign.MINUS
 
     @staticmethod
     def minus_if(b: bool) -> Sign:
-        """Return `-` if `b` is `True`, `+` otherwise."""
+        """Return *-* if *b* is *True*, *+* otherwise."""
         if b:
             return Sign.MINUS
         return Sign.PLUS
@@ -157,7 +157,7 @@ class ComplexUnit(EnumPrettyPrintMixin, Enum):
 
     @property
     def is_imag(self) -> bool:
-        """Return `True` if `j` or `-j`."""
+        """Return *True* if *j* or *-j*."""
         return bool(self.value % 2)
 
     def __complex__(self) -> complex:
@@ -215,7 +215,7 @@ class IXYZ(Enum):
 
 
 class Axis(EnumPrettyPrintMixin, Enum):
-    """Axis: `X`, `Y` or `Z`."""
+    """Axis: *X*, *Y* or *Z*."""
 
     X = enum.auto()
     Y = enum.auto()
@@ -235,7 +235,7 @@ class Axis(EnumPrettyPrintMixin, Enum):
 
 class Plane(EnumPrettyPrintMixin, Enum):
     # TODO: Refactor using match
-    """Plane: `XY`, `YZ` or `XZ`."""
+    """Plane: *XY*, *YZ* or *XZ*."""
 
     XY = enum.auto()
     YZ = enum.auto()
