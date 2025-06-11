@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
+from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
@@ -22,7 +23,6 @@ from graphix.states import PlanarState
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
-    import collections.abc
     from collections.abc import Sequence
 
     from graphix.sim.base_backend import Backend
@@ -35,17 +35,6 @@ def compare_backend_result_with_statevec(backend: str, backend_state, statevec: 
     if backend == "densitymatrix":
         return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
     raise NotImplementedError(backend)
-
-
-Outcome = typing.Literal[0, 1]
-
-
-class IterGenerator:
-    def __init__(self, it: collections.abc.Iterable[Outcome]) -> None:
-        self.__it = iter(it)
-
-    def choice(self, _outcomes: list[Outcome]) -> Outcome:
-        return next(self.__it)
 
 
 class TestPattern:
@@ -222,7 +211,7 @@ class TestPattern:
         pattern_ref = pattern.copy()
         pattern.perform_pauli_measurements()
         state = pattern.simulate_pattern()
-        state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator([0]))
+        state_ref = pattern_ref.simulate_pattern(branch_selector=ConstBranchSelector(False))
         assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -341,12 +330,13 @@ class TestPattern:
         pattern.standardize(method="mc")
         signal_dict = pattern.shift_signals(method=method)
         # Test for every possible outcome of each measure
-        for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
-            state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
-            outcomes_p = shift_outcomes(dict(enumerate(outcomes_ref)), signal_dict)
-            state_p = pattern.simulate_pattern(
-                pr_calc=False, rng=IterGenerator(outcomes_p[i] for i in range(len(outcomes_p)))
-            )
+        for outcomes_ref_list in itertools.product(*([[0, 1]] * 3)):
+            outcomes_ref = dict(enumerate(outcomes_ref_list))
+            branch_selector = FixedBranchSelector(results=outcomes_ref)
+            state_ref = pattern_ref.simulate_pattern(branch_selector=branch_selector)
+            outcomes_p = shift_outcomes(outcomes_ref, signal_dict)
+            branch_selector = FixedBranchSelector(results=outcomes_p)
+            state_p = pattern.simulate_pattern(branch_selector=branch_selector)
             assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
