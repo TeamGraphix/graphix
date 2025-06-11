@@ -6,5 +6,4 @@ numpy>=2,<3
 opt_einsum
 quimb
 scipy
-sympy
 typing_extensions
