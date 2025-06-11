@@ -332,7 +332,6 @@ class PauliPlane(EnumPrettyPrintMixin, Enum):
 
     @staticmethod
     def _from_plane(plane: Plane) -> PauliPlane:
-        """Return the PauliPlane corresponding to the measurement plane."""
         if plane == Plane.XY:
             return PauliPlane.XY
         if plane == Plane.YZ:

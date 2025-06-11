@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
 
-def group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
+def _group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
     """Group nodes by their layers.
 
     Parameters
@@ -98,7 +98,7 @@ def generate_from_graph(
     f, l_k = find_flow(graph, set(inputs), set(outputs))
     if f is not None:
         # flow found
-        depth, layers = group_layers(l_k)
+        depth, layers = _group_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
@@ -121,7 +121,7 @@ def generate_from_graph(
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
         if g is not None:
             # gflow found
-            depth, layers = group_layers(l_k)
+            depth, layers = _group_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(N(node=i))

@@ -193,8 +193,6 @@ def verify_pauliflow(
         Pauli flow function. pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
     meas_planes: dict[int, Plane]
         measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
-    meas_angles: dict[int, float]
-        measurement angles for each qubits. meas_angles[i] is the measurement angle for qubit i.
 
     Returns
     -------
