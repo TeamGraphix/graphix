@@ -34,7 +34,6 @@ class BranchSelector(ABC):
     def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
         """Return the measurement outcome of ``qubit``.
 
-
         Parameters
         ----------
         qubit : int
