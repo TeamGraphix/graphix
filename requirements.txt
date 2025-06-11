@@ -1,3 +1,4 @@
+fastflow @ git+https://github.com/TeamGraphix/fastflow@master
 galois
 matplotlib
 networkx
