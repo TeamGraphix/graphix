@@ -901,10 +901,10 @@ class Circuit:
         input_state : :class:`graphix.sim.statevec.Statevec`
 
         branch_selector: :class:`graphix.branch_selector.BranchSelector`
-            branch selector for measures (default: `graphix.branch_selector.RandomBranchSelector()`)
+            branch selector for measures (default: :class:`graphix.branch_selector.RandomBranchSelector`)
 
         rng: :class:`np.random.Generator`
-            random number generator for `RandomBranchSelector` (should only be used with default branch selector)
+            random number generator for :class:`graphix.branch_selector.RandomBranchSelector` (should only be used with default branch selector)
 
         Returns
         -------
