@@ -19,13 +19,13 @@ import typing_extensions
 
 from graphix import command, parameter
 from graphix.clifford import Clifford
-from graphix.command import Command, CommandKind
+from graphix.command import Command, CommandKind, command_to_str
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
-from graphix.pretty_print import OutputFormat, pattern_to_str
+from graphix.pretty_print import OutputFormat
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
@@ -35,6 +35,42 @@ if TYPE_CHECKING:
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.base_backend import State
+
+
+def pattern_to_str(
+    pattern: Pattern,
+    output: OutputFormat,
+    left_to_right: bool = False,
+    limit: int = 40,
+    target: Container[command.CommandKind] | None = None,
+) -> str:
+    """Return the string representation of a pattern according to the given format.
+
+    Parameters
+    ----------
+    pattern: Pattern
+        The pattern to pretty print.
+    output: OutputFormat
+        The expected format.
+    left_to_right: bool
+        Optional. If `True`, the first command will appear on the beginning of
+        the resulting string. If `False` (the default), the first command will
+        appear at the end of the string.
+    """
+    separator = r"\," if output == OutputFormat.LaTeX else " "
+    command_list = list(pattern)
+    if target is not None:
+        command_list = [command for command in command_list if command.kind in target]
+    if not left_to_right:
+        command_list.reverse()
+    truncated = len(command_list) > limit
+    short_command_list = command_list[: limit - 1] if truncated else command_list
+    result = separator.join(command_to_str(command, output) for command in short_command_list)
+    if output == OutputFormat.LaTeX:
+        result = f"\\({result}\\)"
+    if truncated:
+        return f"{result}...({len(command_list) - limit + 1} more commands)"
+    return result
 
 
 class NodeAlreadyPreparedError(Exception):
