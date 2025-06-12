@@ -14,7 +14,8 @@ from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
-from graphix.pretty_print import DataclassPrettyPrintMixin, OutputFormat, angle_to_str
+from graphix.pretty_print import OutputFormat, angle_to_str
+from graphix.utils import DataclassPrettyPrintMixin
 
 
 def repr_angle(angle: ExpressionOrFloat) -> str:

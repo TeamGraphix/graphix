@@ -18,8 +18,8 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
-from graphix.pretty_print import DataclassPrettyPrintMixin
 from graphix.states import BasicStates, State
+from graphix.utils import DataclassPrettyPrintMixin
 
 Node = int
 
