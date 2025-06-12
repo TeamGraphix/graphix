@@ -114,7 +114,7 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        if (resf := gflow.find_flow(self.graph, set(self.v_in), set(self.v_out))) is not None:
+        if (resf := gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)) is not None:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
                 resf.f,

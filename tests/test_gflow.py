@@ -241,6 +241,12 @@ def randgraph_pp(rng: Generator, n: int, nio: int) -> tuple[nx.Graph[int], set[i
 
 class TestGflow:
     @pytest.mark.parametrize("gft", generate_gft())
+    def test_flow_default(self, gft: GraphForTest) -> None:
+        cmp = gflow.find_flow(gft.graph, gft.inputs, gft.outputs)
+        ref = gflow.find_flow(gft.graph, gft.inputs, gft.outputs, dict.fromkeys(gft.meas_planes, Plane.XY))
+        assert cmp == ref
+
+    @pytest.mark.parametrize("gft", generate_gft())
     def test_flow(self, gft: GraphForTest) -> None:
         if gft.flow_exist is None:
             pytest.skip("Contains non-XY measurements.")

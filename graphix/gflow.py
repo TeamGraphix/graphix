@@ -142,7 +142,9 @@ def group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
     return d, layers
 
 
-def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int]) -> Flow | None:
+def find_flow(
+    graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, Plane] | None = None
+) -> Flow | None:
     """Causal flow finding algorithm.
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
@@ -165,6 +167,9 @@ def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[in
     -------
     `Flow` if found, otherwise `None`.
     """
+    # meas_planes is left undocumented because it is essentially redundant.
+    if meas_planes is not None and any(p != Plane.XY for p in meas_planes.values()):
+        return None
     return flow_module.find(graph, iset, oset)
 
 

@@ -72,12 +72,9 @@ def generate_from_graph(
 
     if meas_planes is None:
         meas_planes = dict.fromkeys(measuring_nodes, Plane.XY)
-        all_xy = True
-    else:
-        all_xy = all(plane == Plane.XY for plane in meas_planes.values())
 
     # search for flow first
-    if all_xy and (fres := find_flow(graph, set(inputs), set(outputs))) is not None:
+    if (fres := find_flow(graph, set(inputs), set(outputs), meas_planes)) is not None:
         # flow found
         f = fres.f
         depth, layers = group_layers(fres.layer)

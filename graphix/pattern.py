@@ -953,7 +953,8 @@ class Pattern:
         g.add_edges_from(edges)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        if (res := find_flow(g, vin, vout)) is None:
+        meas_plane = self.get_meas_plane()
+        if (res := find_flow(g, vin, vout, meas_plane)) is None:
             return None
         l_k = res.layer
         depth, layer = group_layers(l_k)
