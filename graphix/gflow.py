@@ -135,7 +135,7 @@ def group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
     layers: dict of set
         components of each layer
     """
-    d = min(l_k.values())
+    d = max(l_k.values())
     layers: dict[int, set[int]] = {k: set() for k in range(d + 1)}
     for i, val in l_k.items():
         layers[val].add(i)
