@@ -22,7 +22,7 @@ from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
-from graphix.gflow import find_flow, find_gflow
+from graphix.gflow import find_flow, find_gflow, group_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
 from graphix.pretty_print import OutputFormat, pattern_to_str
@@ -953,11 +953,10 @@ class Pattern:
         g.add_edges_from(edges)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(g, vin, vout, meas_planes=meas_planes)
-        if f is None:
+        if (res := find_flow(g, vin, vout)) is None:
             return None
-        depth, layer = get_layers(l_k)
+        l_k = res.layer
+        depth, layer = group_layers(l_k)
         meas_order = []
         for i in range(depth):
             k = depth - i

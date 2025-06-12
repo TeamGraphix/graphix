@@ -354,3 +354,14 @@ class TestGflow:
                 assert gflow.verify_pauliflow(res, g, iset, oset, pplanes)
             else:
                 cnt[False] += 1
+
+    def test_odd_neighbor(self) -> None:
+        g = nx.complete_graph(4)
+        assert gflow.odd_neighbor(g, {0}) == {1, 2, 3}
+        assert gflow.odd_neighbor(g, {0, 1}) == {0, 1}
+        assert gflow.odd_neighbor(g, {0, 1, 2}) == {3}
+        assert gflow.odd_neighbor(g, {0, 1, 2, 3}) == {0, 1, 2, 3}
+
+    def test_group_layers(self) -> None:
+        l = {0: 3, 1: 0, 2: 1, 3: 2, 4: 2}
+        assert gflow.group_layers(l) == (3, {0: {1}, 1: {2}, 2: {3, 4}, 3: {0}})

@@ -19,6 +19,7 @@ def test_get_pos_from_flow():
     meas_angles = pattern.get_angles()
     local_clifford = pattern.get_vops()
     vis = visualization.GraphVisualizer(g, vin, vout, meas_planes, meas_angles, local_clifford)
-    f, l_k = gflow.find_flow(g, set(vin), set(vout), meas_planes)
-    pos = vis.get_pos_from_flow(f, l_k)
+    res = gflow.find_flow(g, set(vin), set(vout))
+    assert res is not None
+    pos = vis.get_pos_from_flow(res.f, res.layer)
     assert pos is not None

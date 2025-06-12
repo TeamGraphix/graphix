@@ -73,10 +73,11 @@ def generate_from_graph(
     meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if meas_planes is None else dict(meas_planes)
 
     # search for flow first
-    f, l_k = find_flow(graph, set(inputs), set(outputs))
-    if f is not None:
+    fres = find_flow(graph, set(inputs), set(outputs))
+    if fres is not None:
         # flow found
-        depth, layers = group_layers(l_k)
+        f = fres.f
+        depth, layers = group_layers(fres.layer)
         pattern = Pattern(input_nodes=inputs)
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
@@ -85,21 +86,22 @@ def generate_from_graph(
         measured = []
         for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
             for j in layers[i]:
+                fj = f[j]
                 measured.append(j)
                 pattern.add(M(node=j, angle=angles[j]))
                 neighbors: set[int] = set()
-                for k in f[j]:
-                    neighbors |= set(graph.neighbors(k))
+                neighbors |= set(graph.neighbors(fj))
                 for k in neighbors - {j}:
                     # if k not in measured:
                     pattern.add(Z(node=k, domain={j}))
-                pattern.add(X(node=f[j].pop(), domain={j}))
+                pattern.add(X(node=fj, domain={j}))
     else:
         # no flow found - we try gflow
-        g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-        if g is not None:
+        gres = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
+        if gres is not None:
             # gflow found
-            depth, layers = group_layers(l_k)
+            g = gres.f
+            depth, layers = group_layers(gres.layer)
             pattern = Pattern(input_nodes=inputs)
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(N(node=i))

@@ -987,14 +987,14 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-        values_union = set().union(*f.values())
+        values_union = set().union(f.values())
         start_nodes = self.graph.nodes() - values_union
         pos = {node: [0, 0] for node in self.graph.nodes()}
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             node = k
             while node in f:
-                node = next(iter(f[node]))
+                node = f[node]
                 pos[node][1] = i
 
         lmax = max(l_k.values())
