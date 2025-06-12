@@ -21,11 +21,11 @@ class GraphForTest:
     graph: nx.Graph[int]
     inputs: set[int]
     outputs: set[int]
-    meas_planes: dict[int, Plane] = dataclasses.field(kw_only=True)
-    meas_pplanes: dict[int, PauliPlane] = dataclasses.field(kw_only=True)
-    flow_exist: bool | None = dataclasses.field(kw_only=True)
-    gflow_exist: bool = dataclasses.field(kw_only=True)
-    pauliflow_exist: bool = dataclasses.field(kw_only=True)
+    meas_planes: dict[int, Plane]
+    meas_pplanes: dict[int, PauliPlane]
+    flow_exist: bool | None
+    gflow_exist: bool
+    pauliflow_exist: bool
 
 
 def generate_g1() -> GraphForTest:
