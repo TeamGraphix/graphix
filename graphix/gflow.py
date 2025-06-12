@@ -12,7 +12,7 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -22,11 +22,24 @@ if TYPE_CHECKING:
 
     from graphix.fundamentals import PauliPlane, Plane
 
-Flow = dict[int, int]
-GFlow = dict[int, set[int]]
-Layer = dict[int, int]
+# MEMO: We could add layer inference
 
-# TODO: Update docstring
+
+class Flow(NamedTuple):
+    """Flow function and layer."""
+
+    ffunc: dict[int, int]
+    layer: dict[int, int]
+
+
+class GFlow(NamedTuple):
+    """Generalized flow function and layer."""
+
+    ffunc: dict[int, set[int]]
+    layer: dict[int, int]
+
+
+PauliFlow = GFlow
 
 
 def odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
@@ -50,7 +63,7 @@ def odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
     return odd_neighbors
 
 
-def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int]) -> tuple[Flow, Layer] | None:
+def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int]) -> Flow | None:
     """Causal flow finding algorithm.
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
@@ -71,7 +84,7 @@ def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[in
 
 def find_gflow(
     graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, Plane]
-) -> tuple[GFlow, Layer] | None:
+) -> GFlow | None:
     """Maximally delayed gflow finding algorithm.
 
     For open graph g with input, output, and measurement planes, this returns maximally delayed gflow.
@@ -96,8 +109,8 @@ def find_gflow(
 
 
 def find_pauliflow(
-    graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, PauliPlane]
-) -> tuple[GFlow, Layer] | None:
+    graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_pplanes: Mapping[int, PauliPlane]
+) -> PauliFlow | None:
     """Maximally delayed Pauli flow finding algorithm.
 
     For open graph g with input, output, measurement planes and measurement angles, this returns maximally delayed Pauli flow.
@@ -121,82 +134,45 @@ def find_pauliflow(
     raise NotImplementedError
 
 
-def verify_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], flow: Mapping[int, int]) -> bool:
+def verify_flow(flow: Flow, graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int]) -> bool:
     """Check whether the flow is valid.
 
     Parameters
     ----------
-    graph: :class:`networkx.Graph`
-        Graph (incl. input and output)
-    flow: dict[int, set]
-        flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
-    meas_planes: dict[int, str]
-        optional: measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
     Returns
     -------
-    valid_flow: bool
-        True if the flow is valid. False otherwise.
     """
     raise NotImplementedError
 
 
 def verify_gflow(
-    graph: nx.Graph[int],
-    iset: AbstractSet[int],
-    oset: AbstractSet[int],
-    gflow: Mapping[int, AbstractSet[int]],
-    meas_planes: Mapping[int, Plane],
+    gflow: GFlow, graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, Plane]
 ) -> bool:
     """Check whether the gflow is valid.
 
     Parameters
     ----------
-    graph: :class:`networkx.Graph`
-        Graph (incl. input and output)
-    iset: set
-        set of node labels for input
-    oset: set
-        set of node labels for output
-    gflow: dict[int, set]
-        gflow function. gflow[i] is the set of qubits to be corrected for the measurement of qubit i.
-        .. seealso:: :func:`find_gflow`
-    meas_planes: dict[int, str]
-        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
     Returns
     -------
-    valid_gflow: bool
-        True if the gflow is valid. False otherwise.
     """
     raise NotImplementedError
 
 
 def verify_pauliflow(
+    pflow: PauliFlow,
     graph: nx.Graph[int],
     iset: AbstractSet[int],
     oset: AbstractSet[int],
-    pauliflow: Mapping[int, AbstractSet[int]],
-    meas_planes: Mapping[int, PauliPlane],
+    meas_pplanes: Mapping[int, PauliPlane],
 ) -> bool:
     """Check whether the Pauliflow is valid.
 
     Parameters
     ----------
-    graph: :class:`networkx.Graph`
-        Graph (incl. input and output)
-    iset: set
-        set of node labels for input
-    oset: set
-        set of node labels for output
-    pauliflow: dict[int, set]
-        Pauli flow function. pauliflow[i] is the set of qubits to be corrected for the measurement of qubit i.
-    meas_planes: dict[int, Plane]
-        measurement planes for each qubits. meas_planes[i] is the measurement plane for qubit i.
 
     Returns
     -------
-    valid_pauliflow: bool
-        True if the Pauliflow is valid. False otherwise.
     """
     raise NotImplementedError
