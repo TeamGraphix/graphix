@@ -29,7 +29,7 @@ from graphix.measurements import PauliMeasurement
 from graphix.pretty_print import EnumPrettyPrintMixin
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
     from collections.abc import Set as AbstractSet
 
     import networkx as nx
@@ -108,8 +108,8 @@ def _pp_convert(p: PauliPlane) -> PPlane_:
 _V = TypeVar("_V")
 
 
-def _default_constructt(graph: nx.Graph[int], default: _V) -> dict[int, _V]:
-    return dict.fromkeys(graph.nodes, default)
+def _default_construct(keys: Iterable[int], default: _V) -> dict[int, _V]:
+    return dict.fromkeys(keys, default)
 
 
 def odd_neighbor(graph: nx.Graph[int], vset: AbstractSet[int]) -> set[int]:
@@ -201,7 +201,7 @@ def find_gflow(
     `GFlow` if found, otherwise `None`.
     """
     if meas_planes is None:
-        meas_planes = _default_constructt(graph, Plane.XY)
+        meas_planes = _default_construct(graph.nodes - oset, Plane.XY)
     return gflow_module.find(graph, iset, oset, {k: _p_convert(v) for k, v in meas_planes.items()})
 
 
@@ -241,7 +241,7 @@ def find_pauliflow(
     `PauliFlow` if found, otherwise `None`.
     """
     if meas_pplanes is None:
-        meas_pplanes = _default_constructt(graph, PauliPlane.XY)
+        meas_pplanes = _default_construct(graph.nodes - oset, PauliPlane.XY)
     return pflow_module.find(graph, iset, oset, {k: _pp_convert(v) for k, v in meas_pplanes.items()})
 
 
@@ -313,7 +313,7 @@ def verify_gflow(
         Whether the gflow is valid.
     """
     if meas_planes is None:
-        meas_planes = _default_constructt(graph, Plane.XY)
+        meas_planes = _default_construct(graph.nodes - oset, Plane.XY)
     try:
         gflow_module.verify(gflow, graph, iset, oset, {k: _p_convert(v) for k, v in meas_planes.items()})
     except ValueError as e:
@@ -356,7 +356,7 @@ def verify_pauliflow(
         Whether the Pauliflow is valid.
     """
     if meas_pplanes is None:
-        meas_pplanes = _default_constructt(graph, PauliPlane.XY)
+        meas_pplanes = _default_construct(graph.nodes - oset, PauliPlane.XY)
     try:
         pflow_module.verify(pflow, graph, iset, oset, {k: _pp_convert(v) for k, v in meas_pplanes.items()})
     except ValueError as e:
