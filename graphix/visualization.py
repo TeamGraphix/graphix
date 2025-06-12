@@ -114,12 +114,11 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        f, l_k = gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
-        if f:
+        if (resf := gflow.find_flow(self.graph, set(self.v_in), set(self.v_out))) is not None:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
-                f,
-                l_k,
+                resf.f,
+                resf.layer,
                 show_pauli_measurement,
                 show_local_clifford,
                 show_measurement_planes,
@@ -128,33 +127,31 @@ class GraphVisualizer:
                 save,
                 filename,
             )
+        elif (resg := gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)) is not None:
+            print("Gflow detected in the graph. (flow not detected)")
+            self.visualize_w_gflow(
+                resg.f,
+                resg.layer,
+                show_pauli_measurement,
+                show_local_clifford,
+                show_measurement_planes,
+                show_loop,
+                node_distance,
+                figsize,
+                save,
+                filename,
+            )
         else:
-            g, l_k = gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
-            if g:
-                print("Gflow detected in the graph. (flow not detected)")
-                self.visualize_w_gflow(
-                    g,
-                    l_k,
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    show_loop,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
-            else:
-                print("No flow or gflow detected in the graph.")
-                self.visualize_wo_structure(
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
+            print("No flow or gflow detected in the graph.")
+            self.visualize_wo_structure(
+                show_pauli_measurement,
+                show_local_clifford,
+                show_measurement_planes,
+                node_distance,
+                figsize,
+                save,
+                filename,
+            )
 
     def visualize_from_pattern(
         self,
