@@ -335,7 +335,7 @@ T = TypeVar("T")
 
 
 @overload
-def subs(value: Expression, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Expression: ...
+def subs(value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrFloat: ...
 
 
 @overload
@@ -370,6 +370,16 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
             return c.real
         return c
     return new_value
+
+
+@overload
+def xreplace(
+    value: ExpressionOrFloat, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+) -> ExpressionOrFloat: ...
+
+
+@overload
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex: ...
 
 
 # The return type could be `T | Expression | complex` since `subs` returns `Expression` only

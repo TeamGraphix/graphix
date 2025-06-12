@@ -18,7 +18,7 @@ from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.instruction import Instruction, InstructionKind
 from graphix.ops import Ops
-from graphix.parameter import ExpressionOrSupportsFloat, Parameter
+from graphix.parameter import ExpressionOrFloat, Parameter
 from graphix.pattern import Pattern
 from graphix.sim import base_backend
 from graphix.sim.statevec import Data, Statevec
@@ -53,7 +53,7 @@ class SimulateResult:
     classical_measures: tuple[int, ...]
 
 
-Angle = ExpressionOrSupportsFloat
+Angle = ExpressionOrFloat
 
 
 class Circuit:
@@ -131,7 +131,7 @@ class Circuit:
         """Return a representation of the Circuit."""
         return f"Circuit(width={self.width}, instr={self.instruction})"
 
-    def cnot(self, control: int, target: int):
+    def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate.
 
         Parameters
@@ -146,7 +146,7 @@ class Circuit:
         assert control != target
         self.instruction.append(instruction.CNOT(control=control, target=target))
 
-    def swap(self, qubit1: int, qubit2: int):
+    def swap(self, qubit1: int, qubit2: int) -> None:
         """Apply a SWAP gate.
 
         Parameters
@@ -161,7 +161,7 @@ class Circuit:
         assert qubit1 != qubit2
         self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)))
 
-    def h(self, qubit: int):
+    def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
 
         Parameters
@@ -172,7 +172,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.H(target=qubit))
 
-    def s(self, qubit: int):
+    def s(self, qubit: int) -> None:
         """Apply an S gate.
 
         Parameters
@@ -183,7 +183,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.S(target=qubit))
 
-    def x(self, qubit):
+    def x(self, qubit: int) -> None:
         """Apply a Pauli X gate.
 
         Parameters
@@ -194,7 +194,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.X(target=qubit))
 
-    def y(self, qubit: int):
+    def y(self, qubit: int) -> None:
         """Apply a Pauli Y gate.
 
         Parameters
@@ -205,7 +205,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Y(target=qubit))
 
-    def z(self, qubit: int):
+    def z(self, qubit: int) -> None:
         """Apply a Pauli Z gate.
 
         Parameters
@@ -216,7 +216,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Z(target=qubit))
 
-    def rx(self, qubit: int, angle: Angle):
+    def rx(self, qubit: int, angle: Angle) -> None:
         """Apply an X rotation gate.
 
         Parameters
@@ -229,7 +229,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
-    def ry(self, qubit: int, angle: Angle):
+    def ry(self, qubit: int, angle: Angle) -> None:
         """Apply a Y rotation gate.
 
         Parameters
@@ -242,7 +242,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
-    def rz(self, qubit: int, angle: Angle):
+    def rz(self, qubit: int, angle: Angle) -> None:
         """Apply a Z rotation gate.
 
         Parameters
@@ -255,7 +255,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
-    def rzz(self, control: int, target: int, angle: Angle):
+    def rzz(self, control: int, target: int, angle: Angle) -> None:
         r"""Apply a ZZ-rotation gate.
 
         Equivalent to the sequence
@@ -279,7 +279,7 @@ class Circuit:
         assert target in self.active_qubits
         self.instruction.append(instruction.RZZ(control=control, target=target, angle=angle))
 
-    def ccx(self, control1: int, control2: int, target: int):
+    def ccx(self, control1: int, control2: int, target: int) -> None:
         r"""Apply a CCX (Toffoli) gate.
 
         Prameters
@@ -299,7 +299,7 @@ class Circuit:
         assert control2 != target
         self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
 
-    def i(self, qubit: int):
+    def i(self, qubit: int) -> None:
         """Apply an identity (teleportation) gate.
 
         Parameters
@@ -310,7 +310,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.I(target=qubit))
 
-    def m(self, qubit: int, plane: Plane, angle: Angle):
+    def m(self, qubit: int, plane: Plane, angle: Angle) -> None:
         """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
@@ -949,11 +949,11 @@ class Circuit:
                 result.instruction.append(new_instr)
         return result
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Circuit:
+    def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
         return self.map_angle(lambda angle: parameter.subs(angle, variable, substitute))
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Circuit:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         return self.map_angle(lambda angle: parameter.xreplace(angle, assignment))
 

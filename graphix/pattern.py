@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, SupportsFloat
 
 import networkx as nx
-import typing_extensions
+from typing_extensions import assert_never, override
 
 from graphix import command, parameter
 from graphix.clifford import Clifford
@@ -32,33 +32,25 @@ from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Iterator, Mapping
+    from collections.abc import Set as AbstractSet
+    from typing import Any, Literal
 
-    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
-    from graphix.sim.base_backend import State
+    from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
+    from graphix.sim.base_backend import Backend
+    from graphix.sim.base_backend import State as BackendState
+    from graphix.sim.density_matrix import Data
 
 
+@dataclass(frozen=True)
 class NodeAlreadyPreparedError(Exception):
     """Exception raised if a node is already prepared."""
 
-    def __init__(self, node: int):
-        """Initialize the error with the offending node index.
+    node: int
 
-        Parameters
-        ----------
-        node : int
-            Index of the node that has already been prepared.
-        """
-        self.__node = node
-
-    @property
-    def node(self):
-        """Return the node that is already prepared."""
-        return self.__node
-
-    @property
+    @override
     def __str__(self) -> str:
         """Return the message of the error."""
-        return f"Node already prepared: {self.__node}"
+        return f"Node already prepared: {self.node}"
 
 
 class Pattern:
@@ -108,7 +100,7 @@ class Pattern:
         output_nodes : Iterable[int] | None
             Optional. List of output qubits.
         """
-        self.results = {}  # measurement results from the graph state simulator
+        self.results: dict[int, int] = {}  # measurement results from the graph state simulator
         if input_nodes is None:
             self.__input_nodes = []
         else:
@@ -159,7 +151,7 @@ class Pattern:
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
 
-    def replace(self, cmds: list[Command], input_nodes=None) -> None:
+    def replace(self, cmds: list[Command], input_nodes: list[int] | None = None) -> None:
         """Replace pattern with a given sequence of pattern commands.
 
         :param cmds: list of commands
@@ -189,12 +181,12 @@ class Pattern:
         """Iterate over commands."""
         return iter(self.__seq)
 
-    def __getitem__(self, index) -> Command:
+    def __getitem__(self, index: int) -> Command:
         """Get the command at a given index."""
         return self.__seq[index]
 
     @property
-    def n_node(self):
+    def n_node(self) -> int:
         """Count of nodes that are either `input_nodes` or prepared with `N` commands."""
         return self.__n_node
 
@@ -210,7 +202,7 @@ class Pattern:
         assert_permutation(self.__output_nodes, output_nodes)
         self.__output_nodes = output_nodes
 
-    def reorder_input_nodes(self, input_nodes: Iterable[int]):
+    def reorder_input_nodes(self, input_nodes: Iterable[int]) -> None:
         """Arrange the order of input_nodes.
 
         Parameters
@@ -237,8 +229,10 @@ class Pattern:
         """Return a human-readable string of the pattern."""
         return self.to_ascii()
 
-    def __eq__(self, other: Pattern) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Return `True` if the two patterns are equal, `False` otherwise."""
+        if not isinstance(other, Pattern):
+            return NotImplemented
         return (
             self.__seq == other.__seq
             and self.__input_nodes == other.__input_nodes
@@ -283,7 +277,7 @@ class Pattern:
         )
         print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
 
-    def standardize(self, method="direct") -> None:
+    def standardize(self, method: str = "direct") -> None:
         """Execute standardization of the pattern.
 
         'standard' pattern is one where commands are sorted in the order of
@@ -315,12 +309,12 @@ class Pattern:
         n_list = []
         e_list = []
         m_list = []
-        c_dict = {}
-        z_dict = {}
-        x_dict = {}
+        c_dict: dict[int, Clifford] = {}
+        z_dict: dict[int, set[command.Node]] = {}
+        x_dict: dict[int, set[command.Node]] = {}
 
         def add_correction_domain(
-            domain_dict: dict[command.Node, command.Command], node: command.Node, domain: set[command.Node]
+            domain_dict: dict[command.Node, set[command.Node]], node: command.Node, domain: set[command.Node]
         ) -> None:
             """Merge a correction domain into ``domain_dict`` for ``node``.
 
@@ -385,7 +379,7 @@ class Pattern:
             *(command.X(node=node, domain=domain) for node, domain in x_dict.items()),
         ]
 
-    def is_standard(self):
+    def is_standard(self) -> bool:
         """Determine whether the command sequence is standard.
 
         Returns
@@ -410,7 +404,7 @@ class Pattern:
         else:
             return False
 
-    def shift_signals(self, method="direct") -> dict[int, list[int]]:
+    def shift_signals(self, method: str = "direct") -> dict[int, set[int]]:
         """Perform signal shifting procedure.
 
         Extract the t-dependence of the measurement into 'S' commands
@@ -428,7 +422,7 @@ class Pattern:
 
         Returns
         -------
-        signal_dict : dict[int, list[int]]
+        signal_dict : dict[int, set[int]]
             For each node, the signal that have been shifted.
         """
         if method == "direct":
@@ -459,7 +453,7 @@ class Pattern:
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure."""
-        signal_dict = {}
+        signal_dict: dict[int, set[int]] = {}
 
         def expand_domain(domain: set[command.Node]) -> None:
             """Expand ``domain`` with previously shifted signals.
@@ -505,14 +499,15 @@ class Pattern:
                     s_domain = set()
                 if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
                     self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
-            elif cmd.kind in {CommandKind.X, CommandKind.Z}:
+            # Use of `==` here for mypy
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                 domain = set(cmd.domain)
                 expand_domain(domain)
                 if domain != cmd.domain:
                     self.__seq[i] = dataclasses.replace(cmd, domain=domain)
         return signal_dict
 
-    def _find_op_to_be_moved(self, op: CommandKind, rev=False, skipnum=0):
+    def _find_op_to_be_moved(self, op: CommandKind, rev: bool = False, skipnum: int = 0) -> int | None:
         """Find a command.
 
         Parameters
@@ -539,7 +534,7 @@ class Pattern:
         # If no target found
         return None
 
-    def _commute_ex(self, target):
+    def _commute_ex(self, target: int) -> bool:
         """Perform the commutation of E and X.
 
         Parameters
@@ -548,10 +543,10 @@ class Pattern:
             target command index. this must point to
             a X command followed by E command
         """
-        assert self.__seq[target].kind == CommandKind.X
-        assert self.__seq[target + 1].kind == CommandKind.E
         x = self.__seq[target]
         e = self.__seq[target + 1]
+        assert x.kind == CommandKind.X
+        assert e.kind == CommandKind.E
         if e.nodes[0] == x.node:
             z = command.Z(node=e.nodes[1], domain=x.domain)
             self.__seq.pop(target + 1)  # del E
@@ -567,7 +562,7 @@ class Pattern:
         self._commute_with_following(target)
         return False
 
-    def _commute_mx(self, target):
+    def _commute_mx(self, target: int) -> bool:
         """Perform the commutation of M and X.
 
         Parameters
@@ -576,10 +571,10 @@ class Pattern:
             target command index. this must point to
             a X command followed by M command
         """
-        assert self.__seq[target].kind == CommandKind.X
-        assert self.__seq[target + 1].kind == CommandKind.M
         x = self.__seq[target]
         m = self.__seq[target + 1]
+        assert x.kind == CommandKind.X
+        assert m.kind == CommandKind.M
         if x.node == m.node:
             m.s_domain ^= x.domain
             self.__seq.pop(target)  # del X
@@ -587,7 +582,7 @@ class Pattern:
         self._commute_with_following(target)
         return False
 
-    def _commute_mz(self, target):
+    def _commute_mz(self, target: int) -> bool:
         """Perform the commutation of M and Z.
 
         Parameters
@@ -596,10 +591,10 @@ class Pattern:
             target command index. this must point to
             a Z command followed by M command
         """
-        assert self.__seq[target].kind == CommandKind.Z
-        assert self.__seq[target + 1].kind == CommandKind.M
         z = self.__seq[target]
         m = self.__seq[target + 1]
+        assert z.kind == CommandKind.Z
+        assert m.kind == CommandKind.M
         if z.node == m.node:
             m.t_domain ^= z.domain
             self.__seq.pop(target)  # del Z
@@ -607,7 +602,7 @@ class Pattern:
         self._commute_with_following(target)
         return False
 
-    def _commute_xs(self, target):
+    def _commute_xs(self, target: int) -> None:
         """Perform the commutation of X and S.
 
         Parameters
@@ -616,15 +611,15 @@ class Pattern:
             target command index. this must point to
             a S command followed by X command
         """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.X
         s = self.__seq[target]
         x = self.__seq[target + 1]
+        assert s.kind == CommandKind.S
+        assert x.kind == CommandKind.X
         if s.node in x.domain:
             x.domain ^= s.domain
         self._commute_with_following(target)
 
-    def _commute_zs(self, target):
+    def _commute_zs(self, target: int) -> None:
         """Perform the commutation of Z and S.
 
         Parameters
@@ -633,15 +628,15 @@ class Pattern:
             target command index. this must point to
             a S command followed by Z command
         """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.Z
         s = self.__seq[target]
         z = self.__seq[target + 1]
+        assert s.kind == CommandKind.S
+        assert z.kind == CommandKind.Z
         if s.node in z.domain:
             z.domain ^= s.domain
         self._commute_with_following(target)
 
-    def _commute_ms(self, target):
+    def _commute_ms(self, target: int) -> None:
         """Perform the commutation of M and S.
 
         Parameters
@@ -650,17 +645,17 @@ class Pattern:
             target command index. this must point to
             a S command followed by M command
         """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.M
         s = self.__seq[target]
         m = self.__seq[target + 1]
+        assert s.kind == CommandKind.S
+        assert m.kind == CommandKind.M
         if s.node in m.s_domain:
             m.s_domain ^= s.domain
         if s.node in m.t_domain:
             m.t_domain ^= s.domain
         self._commute_with_following(target)
 
-    def _commute_ss(self, target):
+    def _commute_ss(self, target: int) -> None:
         """Perform the commutation of two S commands.
 
         Parameters
@@ -669,15 +664,15 @@ class Pattern:
             target command index. this must point to
             a S command followed by S command
         """
-        assert self.__seq[target].kind == CommandKind.S
-        assert self.__seq[target + 1].kind == CommandKind.S
         s1 = self.__seq[target]
         s2 = self.__seq[target + 1]
+        assert s1.kind == CommandKind.S
+        assert s2.kind == CommandKind.S
         if s1.node in s2.domain:
             s2.domain ^= s1.domain
         self._commute_with_following(target)
 
-    def _commute_with_following(self, target):
+    def _commute_with_following(self, target: int) -> None:
         """Perform the commutation of two consecutive commands that commutes.
 
         commutes the target command with the following command.
@@ -691,7 +686,7 @@ class Pattern:
         self.__seq.pop(target + 1)
         self.__seq.insert(target, a)
 
-    def _commute_with_preceding(self, target):
+    def _commute_with_preceding(self, target: int) -> None:
         """Perform the commutation of two consecutive commands that commutes.
 
         commutes the target command with the preceding command.
@@ -705,7 +700,7 @@ class Pattern:
         self.__seq.pop(target - 1)
         self.__seq.insert(target, a)
 
-    def _move_n_to_left(self):
+    def _move_n_to_left(self) -> None:
         """Move all 'N' commands to the start of the sequence.
 
         N can be moved to the start of sequence without the need of considering
@@ -721,7 +716,7 @@ class Pattern:
         n_list.sort(key=lambda n_cmd: n_cmd.node)
         self.__seq = n_list + new_seq
 
-    def _move_byproduct_to_right(self):
+    def _move_byproduct_to_right(self) -> None:
         """Move the byproduct commands to the end of sequence, using the commutation relations implemented in graphix.Pattern class."""
         # First, we move all X commands to the end of sequence
         index = len(self.__seq) - 1
@@ -766,7 +761,7 @@ class Pattern:
                     index_z += 1
             index -= 1
 
-    def _move_e_after_n(self):
+    def _move_e_after_n(self) -> None:
         """Move all E commands to the start of sequence, before all N commands. assumes that _move_n_to_left() method was called."""
         moved_e = 0
         target = self._find_op_to_be_moved(CommandKind.E, skipnum=moved_e)
@@ -780,7 +775,7 @@ class Pattern:
             self._commute_with_preceding(target)
             target -= 1
 
-    def extract_signals(self) -> dict[int, list[int]]:
+    def extract_signals(self) -> dict[int, set[int]]:
         """Extract 't' domain of measurement commands, turn them into signal 'S' commands and add to the command sequence.
 
         This is used for shift_signals() method.
@@ -788,8 +783,8 @@ class Pattern:
         signal_dict = {}
         pos = 0
         while pos < len(self.__seq):
-            if self.__seq[pos].kind == CommandKind.M:
-                cmd: command.M = self.__seq[pos]
+            cmd = self.__seq[pos]
+            if cmd.kind == CommandKind.M:
                 extracted_signal = extract_signal(cmd.plane, cmd.s_domain, cmd.t_domain)
                 if extracted_signal.signal:
                     self.__seq.insert(pos + 1, command.S(node=cmd.node, domain=extracted_signal.signal))
@@ -800,7 +795,7 @@ class Pattern:
             pos += 1
         return signal_dict
 
-    def _get_dependency(self):
+    def _get_dependency(self) -> dict[int, set[int]]:
         """Get dependency (byproduct correction & dependent measurement) structure of nodes in the graph (resource) state, according to the pattern.
 
         This is used to determine the optimum measurement order.
@@ -811,16 +806,17 @@ class Pattern:
             index is node number. all nodes in the each set must be measured before measuring
         """
         nodes, _ = self.get_graph()
-        dependency = {i: set() for i in nodes}
+        dependency: dict[int, set[int]] = {i: set() for i in nodes}
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
                 dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
-            elif cmd.kind in {CommandKind.X, CommandKind.Z}:
+            # Use of `==` here for mypy
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                 dependency[cmd.node] |= cmd.domain
         return dependency
 
     @staticmethod
-    def update_dependency(measured, dependency):
+    def update_dependency(measured: AbstractSet[int], dependency: dict[int, set[int]]) -> None:
         """Remove measured nodes from the 'dependency'.
 
         Parameters
@@ -837,9 +833,8 @@ class Pattern:
         """
         for i in dependency:
             dependency[i] -= measured
-        return dependency
 
-    def get_layers(self):
+    def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.
 
         kth layer must be measured before measuring k+1th layer
@@ -854,26 +849,26 @@ class Pattern:
         """
         dependency = self._get_dependency()
         measured = self.results.keys()
-        dependency = self.update_dependency(measured, dependency)
+        self.update_dependency(measured, dependency)
         not_measured = set(self.__input_nodes)
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
                 not_measured |= {cmd.node}
         depth = 0
-        l_k = {}
+        l_k: dict[int, set[int]] = {}
         k = 0
         while not_measured:
             l_k[k] = set()
             for i in not_measured:
                 if not dependency[i]:
                     l_k[k] |= {i}
-            dependency = self.update_dependency(l_k[k], dependency)
+            self.update_dependency(l_k[k], dependency)
             not_measured -= l_k[k]
             k += 1
             depth = k
         return depth, l_k
 
-    def _measurement_order_depth(self):
+    def _measurement_order_depth(self) -> list[int]:
         """Obtain a measurement order which reduces the depth of a pattern.
 
         Returns
@@ -882,13 +877,13 @@ class Pattern:
             optimal measurement order for parallel computing
         """
         d, l_k = self.get_layers()
-        meas_order = []
+        meas_order: list[int] = []
         for i in range(d):
             meas_order.extend(l_k[i])
         return meas_order
 
     @staticmethod
-    def connected_edges(node, edges):
+    def connected_edges(node: int, edges: set[tuple[int, int]]) -> set[tuple[int, int]]:
         """Search not activated edges connected to the specified node.
 
         Returns
@@ -902,7 +897,7 @@ class Pattern:
                 connected |= {edge}
         return connected
 
-    def _measurement_order_space(self):
+    def _measurement_order_space(self) -> list[int]:
         """Determine measurement order that heuristically optimises the max_space of a pattern.
 
         Returns
@@ -911,12 +906,12 @@ class Pattern:
             sub-optimal measurement order for classical simulation
         """
         # NOTE calling get_graph
-        nodes, edges = self.get_graph()
-        nodes = set(nodes)
-        edges = set(edges)
+        nodes_list, edges_list = self.get_graph()
+        nodes = set(nodes_list)
+        edges = set(edges_list)
         not_measured = nodes - set(self.output_nodes)
         dependency = self._get_dependency()
-        dependency = self.update_dependency(self.results.keys(), dependency)
+        self.update_dependency(self.results.keys(), dependency)
         meas_order = []
         removable_edges = set()
         while not_measured:
@@ -933,12 +928,12 @@ class Pattern:
                 print(next_node)
             assert next_node > -1
             meas_order.append(next_node)
-            dependency = self.update_dependency({next_node}, dependency)
+            self.update_dependency({next_node}, dependency)
             not_measured -= {next_node}
             edges -= removable_edges
         return meas_order
 
-    def get_measurement_order_from_flow(self):
+    def get_measurement_order_from_flow(self) -> list[int]:
         """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
 
         Returns
@@ -947,10 +942,10 @@ class Pattern:
             measurement order
         """
         # NOTE calling get_graph
-        nodes, edges = self.get_graph()
-        g = nx.Graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
+        nodes_list, edges_list = self.get_graph()
+        g: nx.Graph[int] = nx.Graph()
+        g.add_nodes_from(nodes_list)
+        g.add_edges_from(edges_list)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
@@ -958,14 +953,14 @@ class Pattern:
         if f is None:
             return None
         depth, layer = get_layers(l_k)
-        meas_order = []
+        meas_order: list[int] = []
         for i in range(depth):
             k = depth - i
             nodes = layer[k]
             meas_order += nodes  # NOTE this is list concatenation
         return meas_order
 
-    def get_measurement_order_from_gflow(self):
+    def get_measurement_order_from_gflow(self) -> list[int]:
         """Return a list containing the node indices, in the order of measurements which can be performed with minimum depth.
 
         Returns
@@ -975,7 +970,7 @@ class Pattern:
         """
         # NOTE calling get_graph
         nodes, edges = self.get_graph()
-        g = nx.Graph()
+        g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         isolated = list(nx.isolates(g))
@@ -983,18 +978,18 @@ class Pattern:
             raise ValueError("The input graph must be connected")
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_plane = self.get_meas_plane()
-        g, l_k = find_gflow(g, vin, vout, meas_plane=meas_plane)
-        if not g:
+        meas_planes = self.get_meas_plane()
+        flow, l_k = find_gflow(g, vin, vout, meas_planes=meas_planes)
+        if not flow:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
-        meas_order = []
+        meas_order: list[int] = []
         while k > 0:
             meas_order.extend(layers[k])
             k -= 1
         return meas_order
 
-    def sort_measurement_commands(self, meas_order):
+    def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M]:
         """Convert measurement order to sequence of measurement commands.
 
         Parameters
@@ -1011,8 +1006,9 @@ class Pattern:
         for i in meas_order:
             target = 0
             while True:
-                if self.__seq[target].kind == CommandKind.M and (self.__seq[target].node == i):
-                    meas_cmds.append(self.__seq[target])
+                cmd = self.__seq[target]
+                if cmd.kind == CommandKind.M and (cmd.node == i):
+                    meas_cmds.append(cmd)
                     break
                 target += 1
         return meas_cmds
@@ -1056,7 +1052,7 @@ class Pattern:
                 meas_plane[cmd.node] = cmd.plane
         return meas_plane
 
-    def get_angles(self) -> dict[int, float]:
+    def get_angles(self) -> dict[int, ExpressionOrFloat]:
         """Get measurement angles of the pattern.
 
         Returns
@@ -1070,7 +1066,7 @@ class Pattern:
                 angles[cmd.node] = cmd.angle
         return angles
 
-    def get_max_degree(self):
+    def get_max_degree(self) -> int:
         """Get max degree of a pattern.
 
         Returns
@@ -1079,11 +1075,11 @@ class Pattern:
             max degree of a pattern
         """
         nodes, edges = self.get_graph()
-        g = nx.Graph()
+        g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         degree = g.degree()
-        return max(list(dict(degree).values()))
+        return int(max(list(dict(degree).values())))
 
     def get_graph(self) -> tuple[list[int], list[tuple[int, int]]]:
         """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
@@ -1106,7 +1102,7 @@ class Pattern:
                 edge_list.append(cmd.nodes)
         return node_list, edge_list
 
-    def get_isolated_nodes(self):
+    def get_isolated_nodes(self) -> set[int]:
         """Get isolated nodes.
 
         Returns
@@ -1121,7 +1117,7 @@ class Pattern:
             connected_node_set |= set(edge)
         return node_set - connected_node_set
 
-    def get_vops(self, conj=False, include_identity=False):
+    def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.
 
         Parameters
@@ -1153,7 +1149,7 @@ class Pattern:
                 vops[out] = Clifford.I
         return vops
 
-    def connected_nodes(self, node, prepared=None):
+    def connected_nodes(self, node: int, prepared: set[int] | None = None) -> list[int]:
         """Find nodes that are connected to a specified node.
 
         These nodes must be in the statevector when the specified
@@ -1175,6 +1171,8 @@ class Pattern:
         """
         if not self.is_standard():
             self.standardize()
+        if prepared is None:
+            prepared = set()
         node_list = []
         ind = self._find_op_to_be_moved(CommandKind.E)
         if ind is not None:  # end -> 'node' is isolated
@@ -1189,12 +1187,13 @@ class Pattern:
                 cmd = self.__seq[ind]
         return node_list
 
-    def correction_commands(self):
+    def correction_commands(self) -> list[command.X | command.Z]:
         """Return the list of byproduct correction commands."""
         assert self.is_standard()
-        return [seqi for seqi in self.__seq if seqi.kind in {CommandKind.X, CommandKind.Z}]
+        # Use of `==` here for mypy
+        return [seqi for seqi in self.__seq if seqi.kind == CommandKind.X or seqi.kind == CommandKind.Z]  # noqa: PLR1714
 
-    def parallelize_pattern(self):
+    def parallelize_pattern(self) -> None:
         """Optimize the pattern to reduce the depth of the computation by gathering measurement commands that can be performed simultaneously.
 
         This optimized pattern runs efficiently on GPUs and quantum hardwares with
@@ -1221,7 +1220,7 @@ class Pattern:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
 
-    def _reorder_pattern(self, meas_commands: list[command.M]):
+    def _reorder_pattern(self, meas_commands: list[command.M]) -> None:
         """Reorder the command sequence.
 
         Parameters
@@ -1230,9 +1229,10 @@ class Pattern:
             list of measurement ('M') commands
         """
         prepared = set(self.input_nodes)
-        measured = set()
-        new = []
+        measured: set[int] = set()
+        new: list[Command] = []
         c_list = []
+        cmd: Command
 
         for cmd in meas_commands:
             node = cmd.node
@@ -1284,7 +1284,7 @@ class Pattern:
             max_nodes = max(nodes, max_nodes)
         return max_nodes
 
-    def space_list(self):
+    def space_list(self) -> list[int]:
         """Return the list of the number of nodes present in the graph (space) during each step of execution of the pattern (for N and M commands).
 
         Returns
@@ -1304,8 +1304,8 @@ class Pattern:
         return n_list
 
     def simulate_pattern(
-        self, backend: str = "statevector", input_state: BasicStates = BasicStates.PLUS, **kwargs
-    ) -> State:
+        self, backend: Backend | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
+    ) -> BackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
         Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
@@ -1327,7 +1327,7 @@ class Pattern:
         sim.run(input_state)
         return sim.backend.state
 
-    def run_pattern(self, backend, **kwargs):
+    def run_pattern(self, backend: str, **kwargs: Any) -> Any:
         """Run the pattern on cloud-based quantum devices and their simulators.
 
         Available backend: ['ibmq']
@@ -1375,7 +1375,7 @@ class Pattern:
         show_measurement_planes: bool = False,
         show_loop: bool = True,
         node_distance: tuple[int, int] = (1, 1),
-        figsize: tuple | None = None,
+        figsize: tuple[int, int] | None = None,
         save: bool = False,
         filename: str | None = None,
     ) -> None:
@@ -1403,7 +1403,7 @@ class Pattern:
             Filename of the saved plot.
         """
         nodes, edges = self.get_graph()
-        g = nx.Graph()
+        g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         vin = self.input_nodes if self.input_nodes is not None else []
@@ -1438,15 +1438,15 @@ class Pattern:
                 filename=filename,
             )
 
-    def to_qasm3(self, filename):
+    def to_qasm3(self, filename: Path | str) -> None:
         """Export measurement pattern to OpenQASM 3.0 file.
 
         Parameters
         ----------
-        filename : str
+        filename : Path | str
             file name to export to. example: "filename.qasm"
         """
-        with Path(filename + ".qasm").open("w", encoding="utf-8") as file:
+        with Path(filename).with_suffix(".qasm").open("w", encoding="utf-8") as file:
             file.write("// generated by graphix\n")
             file.write("OPENQASM 3;\n")
             file.write('include "stdgates.inc";\n')
@@ -1505,7 +1505,7 @@ class Pattern:
             leave_nodes = set()
         self.standardize()
         pauli_nodes = {}
-        shift_domains = {}
+        shift_domains: dict[int, set[int]] = {}
 
         def expand_domain(domain: set[int]) -> None:
             """Merge previously shifted domains into ``domain``.
@@ -1519,7 +1519,8 @@ class Pattern:
                 domain ^= shift_domains[node]
 
         for cmd in self:
-            if cmd.kind in {CommandKind.X, CommandKind.Z}:
+            # Use of == for mypy
+            if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                 expand_domain(cmd.domain)
             if cmd.kind == CommandKind.M:
                 expand_domain(cmd.s_domain)
@@ -1558,13 +1559,13 @@ class Pattern:
                         #                = S^s M^{-Z}
                         shift_domains[cmd.node] = cmd.s_domain
                     else:
-                        typing_extensions.assert_never(pm.axis)
+                        assert_never(pm.axis)
                     cmd.s_domain = set()
                     cmd.t_domain = set()
                     pauli_nodes[cmd.node] = cmd
 
         # Create a new sequence with all Pauli nodes to the front
-        new_seq = []
+        new_seq: list[Command] = []
         pauli_nodes_inserted = False
         for cmd in self:
             if cmd.kind == CommandKind.M:
@@ -1580,7 +1581,7 @@ class Pattern:
         self.__seq = new_seq
 
 
-def measure_pauli(pattern, leave_input, copy=False):
+def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform
@@ -1613,15 +1614,15 @@ def measure_pauli(pattern, leave_input, copy=False):
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
-    results = {}
+    results: dict[int, int] = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
         new_inputs = []
     else:
         new_inputs = pattern.input_nodes
     for cmd in to_measure:
-        pattern_cmd: Command = cmd[0]
-        measurement_basis: PauliMeasurement = cmd[1]
+        pattern_cmd = cmd[0]
+        measurement_basis = cmd[1]
         # extract signals for adaptive angle.
         s_signal = 0
         t_signal = 0
@@ -1633,7 +1634,7 @@ def measure_pauli(pattern, leave_input, copy=False):
         elif measurement_basis.axis == Axis.Z:  # Z measurement is not affected by t_signal
             s_signal = sum(results[j] for j in pattern_cmd.s_domain)
         else:
-            typing_extensions.assert_never(measurement_basis.axis)
+            assert_never(measurement_basis.axis)
 
         if int(s_signal % 2) == 1:  # equivalent to X byproduct
             graph_state.h(pattern_cmd.node)
@@ -1649,7 +1650,7 @@ def measure_pauli(pattern, leave_input, copy=False):
         elif basis.axis == Axis.Z:
             measure = graph_state.measure_z
         else:
-            typing_extensions.assert_never(basis.axis)
+            assert_never(basis.axis)
         if basis.sign == Sign.PLUS:
             results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
         else:
@@ -1666,7 +1667,7 @@ def measure_pauli(pattern, leave_input, copy=False):
 
     # update command sequence
     vops = graph_state.get_vops()
-    new_seq = []
+    new_seq: list[Command] = []
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
@@ -1675,7 +1676,9 @@ def measure_pauli(pattern, leave_input, copy=False):
         if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
     )
     new_seq.extend(
-        command.C(node=index, clifford=Clifford(vops[index])) for index in pattern.output_nodes if vops[index] != 0
+        command.C(node=index, clifford=Clifford(vops[index]))
+        for index in pattern.output_nodes
+        if vops[index] != Clifford.I
     )
     new_seq.extend(cmd for cmd in pattern if cmd.kind in {CommandKind.X, CommandKind.Z})
 
@@ -1690,7 +1693,7 @@ def measure_pauli(pattern, leave_input, copy=False):
     return pat
 
 
-def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, PauliMeasurement]]:
+def pauli_nodes(pattern: Pattern, leave_input: bool) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
@@ -1701,7 +1704,8 @@ def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, Pa
     Returns
     -------
     pauli_node : list
-        list of node indices
+        list of measures
+    non_pauli_nodes : set[int]
     """
     if not pattern.is_standard():
         pattern.standardize()
@@ -1735,7 +1739,7 @@ def pauli_nodes(pattern: Pattern, leave_input: bool) -> list[tuple[command.M, Pa
     return pauli_node, non_pauli_node
 
 
-def cmd_to_qasm3(cmd):
+def cmd_to_qasm3(cmd: Command) -> Iterator[str]:
     """Convert a command in the pattern into OpenQASM 3.0 statement.
 
     Parameter
@@ -1749,21 +1753,20 @@ def cmd_to_qasm3(cmd):
         translated pattern commands in OpenQASM 3.0 language
 
     """
-    name = cmd.name
-    if name == "N":
+    if cmd.kind == CommandKind.N:
         qubit = cmd.node
         yield "// prepare qubit q" + str(qubit) + "\n"
         yield "qubit q" + str(qubit) + ";\n"
         yield "h q" + str(qubit) + ";\n"
         yield "\n"
 
-    elif name == "E":
+    elif cmd.kind == CommandKind.E:
         qubits = cmd.nodes
         yield "// entangle qubit q" + str(qubits[0]) + " and q" + str(qubits[1]) + "\n"
         yield "cz q" + str(qubits[0]) + ", q" + str(qubits[1]) + ";\n"
         yield "\n"
 
-    elif name == "M":
+    elif cmd.kind == CommandKind.M:
         qubit = cmd.node
         plane = cmd.plane
         alpha = cmd.angle
@@ -1790,7 +1793,8 @@ def cmd_to_qasm3(cmd):
             yield "p(theta" + str(qubit) + ") q" + str(qubit) + ";\n"
             yield "\n"
 
-    elif name in {"X", "Z"}:
+    # Use of == for mypy
+    elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
         qubit = cmd.node
         sdomain = cmd.domain
         yield "// byproduct correction on qubit q" + str(qubit) + "\n"
@@ -1798,13 +1802,13 @@ def cmd_to_qasm3(cmd):
         for sid in sdomain:
             yield "s" + str(qubit) + " += c" + str(sid) + ";\n"
         yield "if(s" + str(qubit) + " % 2 == 1){\n"
-        if name == "X":
+        if cmd.kind == CommandKind.X:
             yield "\t x q" + str(qubit) + ";\n}\n"
         else:
             yield "\t z q" + str(qubit) + ";\n}\n"
         yield "\n"
 
-    elif name == "C":
+    elif cmd.kind == CommandKind.C:
         qubit = cmd.node
         yield "// Clifford operations on qubit q" + str(qubit) + "\n"
         for op in cmd.clifford.qasm3:
@@ -1812,7 +1816,7 @@ def cmd_to_qasm3(cmd):
         yield "\n"
 
     else:
-        raise ValueError(f"invalid command {name}")
+        raise ValueError(f"invalid command {cmd}")
 
 
 def assert_permutation(original: list[int], user: list[int]) -> None:
@@ -1849,10 +1853,17 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
         return ExtractedSignal(s_domain=set(), t_domain=s_domain ^ t_domain, signal=s_domain)
     if plane == Plane.YZ:
         return ExtractedSignal(s_domain=set(), t_domain=t_domain, signal=s_domain)
-    typing_extensions.assert_never(plane)
+    assert_never(plane)
 
 
-def shift_outcomes(outcomes: dict[int, int], signal_dict: dict[int, set[int]]) -> dict[int, int]:
+def toggle_outcome(outcome: Literal[0, 1]) -> Literal[0, 1]:
+    """Toggle outcome."""
+    if outcome == 0:
+        return 1
+    return 0
+
+
+def shift_outcomes(outcomes: dict[int, Literal[0, 1]], signal_dict: dict[int, set[int]]) -> dict[int, Literal[0, 1]]:
     """Update outcomes with shifted signals.
 
     Shifted signals (as returned by the method
@@ -1879,6 +1890,6 @@ def shift_outcomes(outcomes: dict[int, int], signal_dict: dict[int, set[int]]) -
 
     """
     return {
-        node: 1 - outcome if sum(outcomes[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
+        node: toggle_outcome(outcome) if sum(outcomes[i] for i in signal_dict.get(node, [])) % 2 == 1 else outcome
         for node, outcome in outcomes.items()
     }

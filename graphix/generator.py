@@ -16,10 +16,12 @@ if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
 
+    from graphix.parameter import ExpressionOrFloat
+
 
 def generate_from_graph(
     graph: nx.Graph[int],
-    angles: Mapping[int, float] | Sequence[float] | npt.NDArray[np.float64],
+    angles: Mapping[int, ExpressionOrFloat] | Sequence[ExpressionOrFloat] | npt.NDArray[np.float64],
     inputs: Iterable[int],
     outputs: Iterable[int],
     meas_planes: Mapping[int, Plane] | None = None,
