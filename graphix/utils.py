@@ -37,7 +37,7 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
         # MEMO: `inspect.get_annotations` unavailable
         return
 
-    import inspect
+    import inspect  # noqa: PLC0415
 
     ann = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
     if ann is None:
