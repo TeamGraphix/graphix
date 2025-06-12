@@ -12,7 +12,21 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+import enum
+from enum import Enum
+from typing import TYPE_CHECKING, TypeVar
+
+import typing_extensions
+from fastflow import flow as flow_module
+from fastflow import gflow as gflow_module
+from fastflow import pflow as pflow_module
+from fastflow.common import FlowResult, GFlowResult
+from fastflow.common import Plane as Plane_
+from fastflow.common import PPlane as PPlane_
+
+from graphix.fundamentals import Axis, Plane
+from graphix.measurements import PauliMeasurement
+from graphix.pretty_print import EnumPrettyPrintMixin
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -20,47 +34,112 @@ if TYPE_CHECKING:
 
     import networkx as nx
 
-    from graphix.fundamentals import PauliPlane, Plane
+
+class PauliPlane(EnumPrettyPrintMixin, Enum):
+    """Plane or Pauli index: *XY*, *YZ*, *XZ*, *X*, *Y*, *Z*."""
+
+    XY = enum.auto()
+    YZ = enum.auto()
+    XZ = enum.auto()
+    X = enum.auto()
+    Y = enum.auto()
+    Z = enum.auto()
+
+    @staticmethod
+    def _from_plane(plane: Plane) -> PauliPlane:
+        if plane == Plane.XY:
+            return PauliPlane.XY
+        if plane == Plane.YZ:
+            return PauliPlane.YZ
+        if plane == Plane.XZ:
+            return PauliPlane.XZ
+        typing_extensions.assert_never(plane)
+
+    @staticmethod
+    def from_plane(plane: Plane, angle: float | None = None) -> PauliPlane:
+        """Return the PauliPlane corresponding to the measurement information."""
+        if angle is None:
+            return PauliPlane._from_plane(plane)
+        pm = PauliMeasurement.try_from(plane, angle)
+        if pm is None:
+            return PauliPlane._from_plane(plane)
+        if pm.axis == Axis.X:
+            return PauliPlane.X
+        if pm.axis == Axis.Y:
+            return PauliPlane.Y
+        if pm.axis == Axis.Z:
+            return PauliPlane.Z
+        typing_extensions.assert_never(pm.axis)
+
 
 # MEMO: We could add layer inference
 
-
-class Flow(NamedTuple):
-    """Flow function and layer."""
-
-    ffunc: dict[int, int]
-    layer: dict[int, int]
+Flow = FlowResult[int]
+GFlow = GFlowResult[int]
+PauliFlow = GFlowResult[int]
 
 
-class GFlow(NamedTuple):
-    """Generalized flow function and layer."""
+def _p_convert(p: Plane) -> Plane_:
+    if p == Plane.XY:
+        return Plane_.XY
+    if p == Plane.YZ:
+        return Plane_.YZ
+    if p == Plane.XZ:
+        return Plane_.XZ
+    typing_extensions.assert_never(p)
 
-    ffunc: dict[int, set[int]]
-    layer: dict[int, int]
+
+def _pp_convert(p: PauliPlane) -> PPlane_:
+    if p == PauliPlane.XY:
+        return PPlane_.XY
+    if p == PauliPlane.YZ:
+        return PPlane_.YZ
+    if p == PauliPlane.XZ:
+        return PPlane_.XZ
+    if p == PauliPlane.X:
+        return PPlane_.X
+    if p == PauliPlane.Y:
+        return PPlane_.Y
+    if p == PauliPlane.Z:
+        return PPlane_.Z
+    typing_extensions.assert_never(p)
 
 
-PauliFlow = GFlow
+_V = TypeVar("_V")
 
 
-def odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
-    """Return the set containing the odd neighbor of a set of vertices.
+def _default_constructt(graph: nx.Graph[int], default: _V) -> dict[int, _V]:
+    return dict.fromkeys(graph.nodes, default)
+
+
+def odd_neighbor(graph: nx.Graph[int], vset: AbstractSet[int]) -> set[int]:
+    """Return the odd neighbors of `vset` in `graph`."""
+    odd_neighbors: set[int] = set()
+    for vertex in vset:
+        odd_neighbors.symmetric_difference_update(graph.neighbors(vertex))
+    return odd_neighbors
+
+
+def group_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
+    """Group nodes by their layers.
 
     Parameters
     ----------
-    graph : :class:`networkx.Graph`
-        Underlying graph
-    vertices : set
-        set of nodes indices to find odd neighbors
+    l_k: dict
+        layers obtained by flow or gflow algorithms
 
     Returns
     -------
-    odd_neighbors : set
-        set of indices for odd neighbor of set `vertices`.
+    d: int
+        minimum depth of graph
+    layers: dict of set
+        components of each layer
     """
-    odd_neighbors: set[int] = set()
-    for vertex in vertices:
-        odd_neighbors.symmetric_difference_update(graph.neighbors(vertex))
-    return odd_neighbors
+    d = min(l_k.values())
+    layers: dict[int, set[int]] = {k: set() for k in range(d + 1)}
+    for i, val in l_k.items():
+        layers[val].add(i)
+    return d, layers
 
 
 def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int]) -> Flow | None:
@@ -75,15 +154,22 @@ def find_flow(graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[in
 
     Parameters
     ----------
+    graph : `networkx.Graph`
+        The underlying graph.
+    iset : `collections.abc.Set`
+        Input nodes.
+    oset : `collections.abc.Set`
+        Output nodes.
 
     Returns
     -------
+    `Flow` if found, otherwise `None`.
     """
-    raise NotImplementedError
+    return flow_module.find(graph, iset, oset)
 
 
 def find_gflow(
-    graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, Plane]
+    graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, Plane] | None = None
 ) -> GFlow | None:
     """Maximally delayed gflow finding algorithm.
 
@@ -101,15 +187,29 @@ def find_gflow(
 
     Parameters
     ----------
+    graph : `networkx.Graph`
+        The underlying graph.
+    iset : `collections.abc.Set`
+        Input nodes.
+    oset : `collections.abc.Set`
+        Output nodes.
+    meas_planes : `collections.abc.Mapping`, optional
+        Measurement planes for each qubit, by default all `Plane.XY`.
 
     Returns
     -------
+    `GFlow` if found, otherwise `None`.
     """
-    raise NotImplementedError
+    if meas_planes is None:
+        meas_planes = _default_constructt(graph, Plane.XY)
+    return gflow_module.find(graph, iset, oset, {k: _p_convert(v) for k, v in meas_planes.items()})
 
 
 def find_pauliflow(
-    graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_pplanes: Mapping[int, PauliPlane]
+    graph: nx.Graph[int],
+    iset: AbstractSet[int],
+    oset: AbstractSet[int],
+    meas_pplanes: Mapping[int, PauliPlane] | None = None,
 ) -> PauliFlow | None:
     """Maximally delayed Pauli flow finding algorithm.
 
@@ -127,37 +227,101 @@ def find_pauliflow(
 
     Parameters
     ----------
+    graph : `networkx.Graph`
+        The underlying graph.
+    iset : `collections.abc.Set`
+        Input nodes.
+    oset : `collections.abc.Set`
+        Output nodes.
+    meas_pplanes : `collections.abc.Mapping`, optional
+        Measurement specifications for each qubit, by default all `PauliPlane.XY`.
 
     Returns
     -------
+    `PauliFlow` if found, otherwise `None`.
     """
-    raise NotImplementedError
+    if meas_pplanes is None:
+        meas_pplanes = _default_constructt(graph, PauliPlane.XY)
+    return pflow_module.find(graph, iset, oset, {k: _pp_convert(v) for k, v in meas_pplanes.items()})
 
 
-def verify_flow(flow: Flow, graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int]) -> bool:
+def verify_flow(
+    flow: Flow,
+    graph: nx.Graph[int],
+    iset: AbstractSet[int],
+    oset: AbstractSet[int],
+    *,
+    allow_raise: bool = False,
+) -> bool:
     """Check whether the flow is valid.
 
     Parameters
     ----------
+    flow : `Flow`
+        The flow to verify.
+    graph : `networkx.Graph`
+        The underlying graph.
+    iset : `collections.abc.Set`
+        Input nodes.
+    oset : `collections.abc.Set`
+        Output nodes.
+    allow_raise : bool, optional
+        Whether to allow raising an exception on failure, by default `False`.
 
     Returns
     -------
+    bool
+        Whether the flow is valid.
     """
-    raise NotImplementedError
+    try:
+        flow_module.verify(flow, graph, iset, oset)
+    except ValueError as e:
+        if not allow_raise:
+            return False
+        msg = "Flow verification failed."
+        raise ValueError(msg) from e
+    return True
 
 
 def verify_gflow(
-    gflow: GFlow, graph: nx.Graph[int], iset: AbstractSet[int], oset: AbstractSet[int], meas_planes: Mapping[int, Plane]
+    gflow: GFlow,
+    graph: nx.Graph[int],
+    iset: AbstractSet[int],
+    oset: AbstractSet[int],
+    meas_planes: Mapping[int, Plane] | None = None,
+    *,
+    allow_raise: bool = False,
 ) -> bool:
     """Check whether the gflow is valid.
 
     Parameters
     ----------
+    gflow : `GFlow`
+        The gflow to verify.
+    graph : `networkx.Graph`
+        The underlying graph.
+    iset : `collections.abc.Set`
+        Input nodes.
+    oset : `collections.abc.Set`
+        Output nodes.
+    meas_planes : `collections.abc.Mapping`, optional
+        Measurement planes for each qubit, by default all `Plane.XY`.
 
     Returns
     -------
+    bool
+        Whether the gflow is valid.
     """
-    raise NotImplementedError
+    if meas_planes is None:
+        meas_planes = _default_constructt(graph, Plane.XY)
+    try:
+        gflow_module.verify(gflow, graph, iset, oset, {k: _p_convert(v) for k, v in meas_planes.items()})
+    except ValueError as e:
+        if not allow_raise:
+            return False
+        msg = "GFlow verification failed."
+        raise ValueError(msg) from e
+    return True
 
 
 def verify_pauliflow(
@@ -165,14 +329,39 @@ def verify_pauliflow(
     graph: nx.Graph[int],
     iset: AbstractSet[int],
     oset: AbstractSet[int],
-    meas_pplanes: Mapping[int, PauliPlane],
+    meas_pplanes: Mapping[int, PauliPlane] | None = None,
+    *,
+    allow_raise: bool = False,
 ) -> bool:
     """Check whether the Pauliflow is valid.
 
     Parameters
     ----------
+    pflow : `PauliFlow`
+        The Pauliflow to verify.
+    graph : `networkx.Graph`
+        The underlying graph.
+    iset : `collections.abc.Set`
+        Input nodes.
+    oset : `collections.abc.Set`
+        Output nodes.
+    meas_pplanes : `collections.abc.Mapping`, optional
+        Measurement planes for each qubit, by default all `PauliPlane.XY`.
+    allow_raise : bool, optional
+        Whether to allow raising an exception on failure, by default `False`.
 
     Returns
     -------
+    bool
+        Whether the Pauliflow is valid.
     """
-    raise NotImplementedError
+    if meas_pplanes is None:
+        meas_pplanes = _default_constructt(graph, PauliPlane.XY)
+    try:
+        pflow_module.verify(pflow, graph, iset, oset, {k: _pp_convert(v) for k, v in meas_pplanes.items()})
+    except ValueError as e:
+        if not allow_raise:
+            return False
+        msg = "PauliFlow verification failed."
+        raise ValueError(msg) from e
+    return True

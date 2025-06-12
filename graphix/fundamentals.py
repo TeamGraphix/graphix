@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex,
 
 import typing_extensions
 
-from graphix.measurements import PauliMeasurement
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
 from graphix.pretty_print import EnumPrettyPrintMixin
@@ -318,40 +317,3 @@ class Plane(EnumPrettyPrintMixin, Enum):
             return Plane.XZ
         assert a == b
         raise ValueError(f"Cannot make a plane giving the same axis {a} twice.")
-
-
-class PauliPlane(EnumPrettyPrintMixin, Enum):
-    """Plane or Pauli index: *XY*, *YZ*, *XZ*, *X*, *Y*, *Z*."""
-
-    XY = enum.auto()
-    YZ = enum.auto()
-    XZ = enum.auto()
-    X = enum.auto()
-    Y = enum.auto()
-    Z = enum.auto()
-
-    @staticmethod
-    def _from_plane(plane: Plane) -> PauliPlane:
-        if plane == Plane.XY:
-            return PauliPlane.XY
-        if plane == Plane.YZ:
-            return PauliPlane.YZ
-        if plane == Plane.XZ:
-            return PauliPlane.XZ
-        typing_extensions.assert_never(plane)
-
-    @staticmethod
-    def from_plane(plane: Plane, angle: float | None = None) -> PauliPlane:
-        """Return the PauliPlane corresponding to the measurement information."""
-        if angle is None:
-            return PauliPlane._from_plane(plane)
-        pm = PauliMeasurement.try_from(plane, angle)
-        if pm is None:
-            return PauliPlane._from_plane(plane)
-        if pm.axis == Axis.X:
-            return PauliPlane.X
-        if pm.axis == Axis.Y:
-            return PauliPlane.Y
-        if pm.axis == Axis.Z:
-            return PauliPlane.Z
-        typing_extensions.assert_never(pm.axis)
