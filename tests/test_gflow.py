@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -201,11 +202,41 @@ def generate_gft() -> list[GraphForTest]:
         generate_g3(),
         generate_g4(),
         generate_g5(),
-        generate_g4(),
+        generate_g6(),
         generate_g7(),
         generate_g8(),
         generate_g9(),
     ]
+
+
+def randgraph(rng: Generator, n: int, nio: int) -> tuple[nx.Graph[int], set[int], set[int]]:
+    """Generate a random graph and input/output sets."""
+    g: nx.Graph[int] = nx.fast_gnp_random_graph(n, 0.3, seed=42)
+    v = list(g.nodes)
+    rng.shuffle(v)
+    ni = rng.integers(0, nio + 1)
+    no = rng.integers(0, nio + 1)
+    iset = set(v[:ni])
+    oset = set(v[ni : ni + no])
+    return g, iset, oset
+
+
+def randgraph_p(rng: Generator, n: int, nio: int) -> tuple[nx.Graph[int], set[int], set[int], dict[int, Plane]]:
+    g, iset, oset = randgraph(rng, n, nio)
+    vset = set(g.nodes)
+    sel = list(Plane)
+    planes = {k: sel[rng.choice(len(sel))] for k in vset if k not in oset}
+    return g, iset, oset, planes
+
+
+def randgraph_pp(rng: Generator, n: int, nio: int) -> tuple[nx.Graph[int], set[int], set[int], dict[int, PauliPlane]]:
+    g, iset, oset = randgraph(rng, n, nio)
+    vset = set(g.nodes)
+    sel = list(PauliPlane)
+    pplanes: dict[int, PauliPlane] = {}
+    while not any(pp in {PauliPlane.X, PauliPlane.Y, PauliPlane.Z} for pp in pplanes.values()):
+        pplanes = {k: sel[rng.choice(len(sel))] for k in vset if k not in oset}
+    return g, iset, oset, pplanes
 
 
 class TestGflow:
@@ -219,11 +250,23 @@ class TestGflow:
             assert gflow.verify_flow(res, gft.graph, gft.inputs, gft.outputs)
 
     @pytest.mark.parametrize("gft", generate_gft())
+    def test_gflow_default(self, gft: GraphForTest) -> None:
+        cmp = gflow.find_gflow(gft.graph, gft.inputs, gft.outputs)
+        ref = gflow.find_gflow(gft.graph, gft.inputs, gft.outputs, dict.fromkeys(gft.meas_planes, Plane.XY))
+        assert cmp == ref
+
+    @pytest.mark.parametrize("gft", generate_gft())
     def test_gflow(self, gft: GraphForTest) -> None:
         res = gflow.find_gflow(gft.graph, gft.inputs, gft.outputs, gft.meas_planes)
         assert gft.gflow_exist == (res is not None)
         if res is not None:
             assert gflow.verify_gflow(res, gft.graph, gft.inputs, gft.outputs, gft.meas_planes)
+
+    @pytest.mark.parametrize("gft", generate_gft())
+    def test_pflow_default(self, gft: GraphForTest) -> None:
+        cmp = gflow.find_pauliflow(gft.graph, gft.inputs, gft.outputs)
+        ref = gflow.find_pauliflow(gft.graph, gft.inputs, gft.outputs, dict.fromkeys(gft.meas_pplanes, PauliPlane.XY))
+        assert cmp == ref
 
     @pytest.mark.parametrize("gft", generate_gft())
     def test_pflow(self, gft: GraphForTest) -> None:
@@ -232,7 +275,7 @@ class TestGflow:
         if res is not None:
             assert gflow.verify_pauliflow(res, gft.graph, gft.inputs, gft.outputs, gft.meas_pplanes)
 
-    def test_with_rand_circ(self, fx_rng: Generator) -> None:
+    def test_randcirc_flow(self, fx_rng: Generator) -> None:
         # test for large graph
         # graph transpiled from circuit always has a flow
         circ = rand_circuit(50, 50, fx_rng)
@@ -247,7 +290,7 @@ class TestGflow:
         assert res is not None
         assert gflow.verify_flow(res, graph, input_, output)
 
-    def test_rand_circ_gflow(self, fx_rng: Generator) -> None:
+    def test_randcirc_gflow(self, fx_rng: Generator) -> None:
         # test for large graph
         # pauli-node measured graph always has gflow
         circ = rand_circuit(30, 30, fx_rng)
@@ -262,3 +305,52 @@ class TestGflow:
         res = gflow.find_gflow(graph, set(), output, meas_planes)
         assert res is not None
         assert gflow.verify_gflow(res, graph, set(), output, meas_planes)
+
+    def test_randcirc_pflow(self, fx_rng: Generator) -> None:
+        circ = rand_circuit(20, 20, fx_rng)
+        pattern = circ.transpile().pattern
+        pattern.standardize()
+        pattern.shift_signals()
+        pattern.perform_pauli_measurements()
+        _, edges = pattern.get_graph()
+        graph = nx.Graph(edges)
+        output = set(pattern.output_nodes)
+        meas_planes = pattern.get_meas_plane()
+        meas_angles = pattern.get_angles()
+        meas_pplanes = {k: PauliPlane.from_plane(v, meas_angles[k]) for k, v in meas_planes.items()}
+        res = gflow.find_pauliflow(graph, set(), output, meas_pplanes)
+        assert res is not None
+        assert gflow.verify_pauliflow(res, graph, set(), output, meas_pplanes)
+
+    def test_randgraph_flow(self, fx_rng: Generator) -> None:
+        cnt: Counter[bool] = Counter()
+        while any(v < 5 for v in cnt.values()):
+            g, iset, oset = randgraph(fx_rng, 15, 4)
+            res = gflow.find_flow(g, iset, oset)
+            if res is not None:
+                cnt[True] += 1
+                assert gflow.verify_flow(res, g, iset, oset)
+            else:
+                cnt[False] += 1
+
+    def test_randgraph_gflow(self, fx_rng: Generator) -> None:
+        cnt: Counter[bool] = Counter()
+        while any(v < 5 for v in cnt.values()):
+            g, iset, oset, planes = randgraph_p(fx_rng, 15, 4)
+            res = gflow.find_gflow(g, iset, oset, planes)
+            if res is not None:
+                cnt[True] += 1
+                assert gflow.verify_gflow(res, g, iset, oset, planes)
+            else:
+                cnt[False] += 1
+
+    def test_randgraph_pflow(self, fx_rng: Generator) -> None:
+        cnt: Counter[bool] = Counter()
+        while any(v < 5 for v in cnt.values()):
+            g, iset, oset, pplanes = randgraph_pp(fx_rng, 15, 4)
+            res = gflow.find_pauliflow(g, iset, oset, pplanes)
+            if res is not None:
+                cnt[True] += 1
+                assert gflow.verify_pauliflow(res, g, iset, oset, pplanes)
+            else:
+                cnt[False] += 1
