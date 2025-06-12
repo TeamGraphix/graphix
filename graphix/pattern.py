@@ -983,10 +983,9 @@ class Pattern:
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = find_gflow(g, vin, vout, meas_plane=meas_plane)
-        if not g:
+        if (res := find_gflow(g, vin, vout, meas_plane=meas_plane)) is None:
             raise ValueError("No gflow found")
-        k, layers = get_layers(l_k)
+        k, layers = group_layers(res.layer)
         meas_order = []
         while k > 0:
             meas_order.extend(layers[k])
