@@ -12,7 +12,7 @@ import typing_extensions
 
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
-from graphix.utils import EnumPrettyPrintMixin
+from graphix.pretty_print import EnumPrettyPrintMixin
 
 if TYPE_CHECKING:
     import numpy as np

@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import math
+import string
 import sys
 from enum import Enum
 from typing import ClassVar, Literal, SupportsFloat, Union
@@ -19,9 +20,8 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
-from graphix.pretty_print import SUBSCRIPTS, SUPERSCRIPTS, OutputFormat, angle_to_str, domain_to_str
+from graphix.pretty_print import DataclassPrettyPrintMixin, OutputFormat, angle_to_str, domain_to_str
 from graphix.states import BasicStates, State
-from graphix.utils import DataclassPrettyPrintMixin
 
 Node = int
 
@@ -37,6 +37,10 @@ class CommandKind(Enum):
     Z = enum.auto()
     S = enum.auto()
     T = enum.auto()
+
+
+SUBSCRIPTS = str.maketrans(string.digits, "₀₁₂₃₄₅₆₇₈₉")
+SUPERSCRIPTS = str.maketrans(string.digits, "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
 def command_to_str(cmd: Command, output: OutputFormat) -> str:
