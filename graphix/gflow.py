@@ -165,7 +165,7 @@ def find_flow(
 
     Returns
     -------
-    `Flow` if found, otherwise `None`.
+    Flow function and layer if found, otherwise `None`.
     """
     # meas_planes is left undocumented because it is essentially redundant.
     if meas_planes is not None and any(p != Plane.XY for p in meas_planes.values()):
@@ -199,11 +199,11 @@ def find_gflow(
     oset : `collections.abc.Set`
         Output nodes.
     meas_planes : `collections.abc.Mapping`, optional
-        Measurement planes for each qubit, by default all `Plane.XY`.
+        Measurement planes for each qubit, by default all XY.
 
     Returns
     -------
-    `GFlow` if found, otherwise `None`.
+    Gflow function and layer if found, otherwise `None`.
     """
     if meas_planes is None:
         meas_planes = _default_construct(graph.nodes - oset, Plane.XY)
@@ -239,11 +239,11 @@ def find_pauliflow(
     oset : `collections.abc.Set`
         Output nodes.
     meas_pplanes : `collections.abc.Mapping`, optional
-        Measurement specifications for each qubit, by default all `PauliPlane.XY`.
+        Measurement specifications for each qubit, by default all XY.
 
     Returns
     -------
-    `PauliFlow` if found, otherwise `None`.
+    Pauli flow function and layer if found, otherwise `None`.
     """
     if meas_pplanes is None:
         meas_pplanes = _default_construct(graph.nodes - oset, PauliPlane.XY)
@@ -262,7 +262,7 @@ def verify_flow(
 
     Parameters
     ----------
-    flow : `Flow`
+    flow
         The flow to verify.
     graph : `networkx.Graph`
         The underlying graph.
@@ -301,7 +301,7 @@ def verify_gflow(
 
     Parameters
     ----------
-    gflow : `GFlow`
+    gflow
         The gflow to verify.
     graph : `networkx.Graph`
         The underlying graph.
@@ -310,7 +310,7 @@ def verify_gflow(
     oset : `collections.abc.Set`
         Output nodes.
     meas_planes : `collections.abc.Mapping`, optional
-        Measurement planes for each qubit, by default all `Plane.XY`.
+        Measurement planes for each qubit, by default all XY.
 
     Returns
     -------
@@ -342,7 +342,7 @@ def verify_pauliflow(
 
     Parameters
     ----------
-    pflow : `PauliFlow`
+    pflow
         The Pauliflow to verify.
     graph : `networkx.Graph`
         The underlying graph.
@@ -351,7 +351,7 @@ def verify_pauliflow(
     oset : `collections.abc.Set`
         Output nodes.
     meas_pplanes : `collections.abc.Mapping`, optional
-        Measurement planes for each qubit, by default all `PauliPlane.XY`.
+        Measurement planes for each qubit, by default all XY.
     allow_raise : bool, optional
         Whether to allow raising an exception on failure, by default `False`.
 

@@ -15,6 +15,8 @@ from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     # MEMO: Potential circular import
+    from collections.abc import Iterator
+
     from graphix.pattern import Pattern
 
 
@@ -802,11 +804,18 @@ class GraphVisualizer:
         arrow_path : dict
             dictionary of arrow paths.
         """
+
+        def _flat(obj: int | set[int]) -> Iterator[int]:
+            if isinstance(obj, int):
+                yield obj
+            else:
+                yield from obj
+
         max_iter = 5
         edge_path = {}
         arrow_path = {}
         edge_set = set(self.graph.edges())
-        flow_arrows = {(k, v) for k, values in flow.items() for v in values}
+        flow_arrows = {(k, v) for k, values in flow.items() for v in _flat(values)}
         # set of mid-points of the edges
         # mid_points = {(0.5 * (pos[k][0] + pos[v][0]), 0.5 * (pos[k][1] + pos[v][1])) for k, v in edge_set} - set(pos[node] for node in self.g.nodes())
 

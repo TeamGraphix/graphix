@@ -22,9 +22,3 @@ to verify if a given flow structure is valid, and to extract flow structures fro
 .. autofunction:: verify_gflow
 
 .. autofunction:: verify_pauliflow
-
-.. autofunction:: flow_from_pattern
-
-.. autofunction:: gflow_from_pattern
-
-.. autofunction:: pauliflow_from_pattern
