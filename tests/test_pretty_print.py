@@ -8,8 +8,8 @@ from numpy.random import PCG64, Generator
 from graphix import command, instruction
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane
-from graphix.pattern import Pattern
-from graphix.pretty_print import OutputFormat, pattern_to_str
+from graphix.pattern import Pattern, pattern_to_str
+from graphix.pretty_print import OutputFormat
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
 
