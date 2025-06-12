@@ -10,7 +10,7 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from graphix import gflow
+from graphix import gflow, gflow_shim
 from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
@@ -196,7 +196,7 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        f, l_k = gflow.flow_from_pattern(pattern)  # try flow
+        f, l_k = gflow_shim.flow_from_pattern(pattern)  # try flow
         if f:
             print("The pattern is consistent with flow structure.")
             self.visualize_w_flow(
@@ -211,7 +211,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.gflow_from_pattern(pattern)  # try gflow
+            g, l_k = gflow_shim.gflow_from_pattern(pattern)  # try gflow
             if g:
                 print("The pattern is consistent with gflow structure. (not with flow)")
                 self.visualize_w_gflow(
@@ -232,7 +232,7 @@ class GraphVisualizer:
                 layers = {element: key for key, value_set in layers.items() for element in value_set}
                 for output in pattern.output_nodes:
                     layers[output] = depth + 1
-                xflow, zflow = gflow.get_corrections_from_pattern(pattern)
+                xflow, zflow = gflow_shim.get_corrections_from_pattern(pattern)
                 self.visualize_all_correction(
                     layers,
                     xflow,
