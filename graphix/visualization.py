@@ -15,6 +15,8 @@ from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     # MEMO: Potential circular import
+    from graphix.clifford import Clifford
+    from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
 
 
@@ -43,9 +45,9 @@ class GraphVisualizer:
         g: nx.Graph,
         v_in: list[int],
         v_out: list[int],
-        meas_plane: dict[int, str] | None = None,
-        meas_angles: dict[int, float] | None = None,
-        local_clifford: dict[int, int] | None = None,
+        meas_plane: dict[int, Plane] | None = None,
+        meas_angles: dict[int, ExpressionOrFloat] | None = None,
+        local_clifford: dict[int, Clifford] | None = None,
     ):
         """
         Construct a graph visualizer.
