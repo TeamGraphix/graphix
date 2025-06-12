@@ -586,11 +586,11 @@ def get_pauliflow_and_layers(
                 pf[non_output_nodes[j]].add(non_input_nodes[i])
     # The induced relation matrix defines a DAG on the non-output nodes (Theorem 3.1)
     # We construct a graph on the non output vertices from this matrix
-    relation_graph = nx.from_numpy_array(induced_relation_matrix, create_using=nx.DiGraph, nodelist=non_output_nodes)
+    relation_graph = nx.from_numpy_array(induced_relation_matrix, create_using=nx.DiGraph)
     if not nx.is_directed_acyclic_graph(relation_graph):
         return None, None
     # We topologically sort this graph to obtain the order of measurements
-    l_k = dict(enumerate(nx.topological_sort(relation_graph)))
+    l_k = {i: non_output_nodes[v] for i, v in enumerate(nx.topological_sort(relation_graph))}
     return pf, l_k
 
 
