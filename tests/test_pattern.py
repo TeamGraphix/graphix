@@ -478,7 +478,7 @@ class TestMCOps:
         pattern = circuit.transpile().pattern
         nodes, edges = pattern.get_graph()
 
-        nodes_ref = list(np.arange(27))
+        nodes_ref = list(range(27))
         edges_ref = [
             (1, 3),
             (0, 3),

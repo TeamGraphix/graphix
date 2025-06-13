@@ -1079,6 +1079,7 @@ class Pattern:
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         degree = g.degree()
+        assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
         return int(max(list(dict(degree).values())))
 
     def get_graph(self) -> tuple[list[int], list[tuple[int, int]]]:
