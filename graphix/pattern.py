@@ -933,7 +933,7 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
-    def get_measurement_order_from_flow(self) -> list[int]:
+    def get_measurement_order_from_flow(self) -> list[int] | None:
         """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
 
         Returns
