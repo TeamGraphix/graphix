@@ -82,6 +82,13 @@ class Pattern:
         total number of nodes in the resource state
     """
 
+    results: dict[int, int]
+    __n_node: int
+    __input_nodes: list[int]
+    __output_nodes: list[int]
+    __seq: list[Command]
+    _pauli_preprocessed: bool
+
     def __init__(
         self,
         input_nodes: Iterable[int] | None = None,
@@ -100,7 +107,7 @@ class Pattern:
         output_nodes : Iterable[int] | None
             Optional. List of output qubits.
         """
-        self.results: dict[int, int] = {}  # measurement results from the graph state simulator
+        self.results = {}  # measurement results from the graph state simulator
         if input_nodes is None:
             self.__input_nodes = []
         else:
@@ -108,7 +115,7 @@ class Pattern:
         self.__n_node = len(self.__input_nodes)  # total number of nodes in the graph state
         self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
-        self.__seq: list[Command] = []
+        self.__seq = []
         # output nodes are initially a copy input nodes, since none are measured yet
         self.__output_nodes = list(self.__input_nodes)
 
