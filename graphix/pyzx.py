@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
-    if not isinstance(angle, float):
+    if not isinstance(angle, SupportsFloat):
         raise TypeError("Parametric angles are not supported by pyzx")
     return Fraction(angle)
 
