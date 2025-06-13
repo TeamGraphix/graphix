@@ -29,6 +29,7 @@ def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
     session.install("-e", ".[dev]")
     # Temporary directory, otherwise nox clones graphix-symbolic in the working directory
+    original_dir = Path.cwd()
     with TemporaryDirectory() as tmpdir:
         session.cd(tmpdir)
         # If you need a specific branch:
@@ -36,3 +37,6 @@ def tests_symbolic(session: Session) -> None:
         session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
         session.cd("graphix-symbolic")
         session.run("pytest")
+        # Leave the directory before exiting `with` so that the
+        # temporary directory can be deleted even on Windows
+        session.cd(original_dir)
