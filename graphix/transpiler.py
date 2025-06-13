@@ -69,6 +69,8 @@ class Circuit:
         List containing the gate sequence applied.
     """
 
+    instruction: list[Instruction]
+
     def __init__(self, width: int, instr: Iterable[Instruction] | None = None) -> None:
         """
         Construct a circuit.
@@ -81,7 +83,7 @@ class Circuit:
             Optional. List of initial instructions.
         """
         self.width = width
-        self.instruction: list[Instruction] = []
+        self.instruction = []
         self.active_qubits = set(range(width))
         if instr is not None:
             self.extend(instr)
