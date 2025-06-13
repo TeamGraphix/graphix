@@ -108,7 +108,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     # Connect the X measured vertices
     for og_index, pyzx_index in zip(x_meas, x_meas_verts):
         g.add_edge((map_to_pyzx[og_index], pyzx_index), EdgeType.HADAMARD)
-        g.set_phase(pyzx_index, -_fraction_of_angle(meas.angle))
+        g.set_phase(pyzx_index, -_fraction_of_angle(og.measurements[og_index].angle))
 
     return g
 
