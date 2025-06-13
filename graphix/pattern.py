@@ -22,7 +22,7 @@ from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
-from graphix.gflow import find_flow, find_gflow, get_layers
+from graphix.gflow import find_flow, find_gflow, group_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Domains, PauliMeasurement
 from graphix.pretty_print import OutputFormat, pattern_to_str
@@ -953,11 +953,11 @@ class Pattern:
         g.add_edges_from(edges)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(g, vin, vout, meas_planes=meas_planes)
-        if f is None:
+        meas_plane = self.get_meas_plane()
+        if (res := find_flow(g, vin, vout, meas_plane)) is None:
             return None
-        depth, layer = get_layers(l_k)
+        l_k = res.layer
+        depth, layer = group_layers(l_k)
         meas_order = []
         for i in range(depth):
             k = depth - i
@@ -984,10 +984,9 @@ class Pattern:
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_plane = self.get_meas_plane()
-        g, l_k = find_gflow(g, vin, vout, meas_plane=meas_plane)
-        if not g:
+        if (res := find_gflow(g, vin, vout, meas_plane=meas_plane)) is None:
             raise ValueError("No gflow found")
-        k, layers = get_layers(l_k)
+        k, layers = group_layers(res.layer)
         meas_order = []
         while k > 0:
             meas_order.extend(layers[k])

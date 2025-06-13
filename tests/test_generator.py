@@ -39,7 +39,7 @@ class TestGenerator:
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
         angles = fx_rng.normal(size=6)
-        meas_planes = dict.fromkeys(range(1, 6), Plane.XY)
+        meas_planes = dict.fromkeys({1, 3, 5}, Plane.XY)
         results = []
         repeats = 3  # for testing the determinism of a pattern
         for _ in range(repeats):

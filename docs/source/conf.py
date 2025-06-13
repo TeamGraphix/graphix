@@ -36,6 +36,7 @@ autosectionlabel_prefix_document = True
 
 intersphinx_mapping = {
     "networkx": ("https://networkx.github.io/documentation/stable/", None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 sys.path.insert(0, os.path.abspath("../../"))

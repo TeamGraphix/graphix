@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
-from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
+from graphix.gflow import find_flow, find_gflow, group_layers, odd_neighbor
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
@@ -70,13 +70,14 @@ def generate_from_graph(
     outputs = list(outputs)
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
-    meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if meas_planes is None else dict(meas_planes)
+    if meas_planes is None:
+        meas_planes = dict.fromkeys(measuring_nodes, Plane.XY)
 
     # search for flow first
-    f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-    if f is not None:
+    if (fres := find_flow(graph, set(inputs), set(outputs), meas_planes)) is not None:
         # flow found
-        depth, layers = get_layers(l_k)
+        f = fres.f
+        depth, layers = group_layers(fres.layer)
         pattern = Pattern(input_nodes=inputs)
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
@@ -85,36 +86,34 @@ def generate_from_graph(
         measured = []
         for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
             for j in layers[i]:
+                fj = f[j]
                 measured.append(j)
                 pattern.add(M(node=j, angle=angles[j]))
-                neighbors: set[int] = set()
-                for k in f[j]:
-                    neighbors |= set(graph.neighbors(k))
+                neighbors = set(graph.neighbors(fj))
                 for k in neighbors - {j}:
                     # if k not in measured:
                     pattern.add(Z(node=k, domain={j}))
-                pattern.add(X(node=f[j].pop(), domain={j}))
+                pattern.add(X(node=fj, domain={j}))
+    # no flow found - we try gflow
+    elif (gres := find_gflow(graph, set(inputs), set(outputs), meas_planes)) is not None:
+        # gflow found
+        g = gres.f
+        depth, layers = group_layers(gres.layer)
+        pattern = Pattern(input_nodes=inputs)
+        for i in set(graph.nodes) - set(inputs):
+            pattern.add(N(node=i))
+        for e in graph.edges:
+            pattern.add(E(nodes=e))
+        for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
+            for j in layers[i]:
+                pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
+                odd_neighbors = odd_neighbor(graph, g[j])
+                for k in odd_neighbors - {j}:
+                    pattern.add(Z(node=k, domain={j}))
+                for k in g[j] - {j}:
+                    pattern.add(X(node=k, domain={j}))
     else:
-        # no flow found - we try gflow
-        g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-        if g is not None:
-            # gflow found
-            depth, layers = get_layers(l_k)
-            pattern = Pattern(input_nodes=inputs)
-            for i in set(graph.nodes) - set(inputs):
-                pattern.add(N(node=i))
-            for e in graph.edges:
-                pattern.add(E(nodes=e))
-            for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
-                for j in layers[i]:
-                    pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
-                    odd_neighbors = find_odd_neighbor(graph, g[j])
-                    for k in odd_neighbors - {j}:
-                        pattern.add(Z(node=k, domain={j}))
-                    for k in g[j] - {j}:
-                        pattern.add(X(node=k, domain={j}))
-        else:
-            raise ValueError("no flow or gflow found")
+        raise ValueError("no flow or gflow found")
 
     pattern.reorder_output_nodes(outputs)
     return pattern

@@ -10,11 +10,13 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from graphix import gflow
+from graphix import gflow, gflow_shim
 from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     # MEMO: Potential circular import
+    from collections.abc import Iterator
+
     from graphix.pattern import Pattern
 
 
@@ -114,12 +116,11 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        f, l_k = gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
-        if f:
+        if (resf := gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)) is not None:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
-                f,
-                l_k,
+                resf.f,
+                resf.layer,
                 show_pauli_measurement,
                 show_local_clifford,
                 show_measurement_planes,
@@ -128,33 +129,31 @@ class GraphVisualizer:
                 save,
                 filename,
             )
+        elif (resg := gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)) is not None:
+            print("Gflow detected in the graph. (flow not detected)")
+            self.visualize_w_gflow(
+                resg.f,
+                resg.layer,
+                show_pauli_measurement,
+                show_local_clifford,
+                show_measurement_planes,
+                show_loop,
+                node_distance,
+                figsize,
+                save,
+                filename,
+            )
         else:
-            g, l_k = gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
-            if g:
-                print("Gflow detected in the graph. (flow not detected)")
-                self.visualize_w_gflow(
-                    g,
-                    l_k,
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    show_loop,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
-            else:
-                print("No flow or gflow detected in the graph.")
-                self.visualize_wo_structure(
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
+            print("No flow or gflow detected in the graph.")
+            self.visualize_wo_structure(
+                show_pauli_measurement,
+                show_local_clifford,
+                show_measurement_planes,
+                node_distance,
+                figsize,
+                save,
+                filename,
+            )
 
     def visualize_from_pattern(
         self,
@@ -196,7 +195,7 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        f, l_k = gflow.flow_from_pattern(pattern)  # try flow
+        f, l_k = gflow_shim.flow_from_pattern(pattern)  # try flow
         if f:
             print("The pattern is consistent with flow structure.")
             self.visualize_w_flow(
@@ -211,7 +210,7 @@ class GraphVisualizer:
                 filename,
             )
         else:
-            g, l_k = gflow.gflow_from_pattern(pattern)  # try gflow
+            g, l_k = gflow_shim.gflow_from_pattern(pattern)  # try gflow
             if g:
                 print("The pattern is consistent with gflow structure. (not with flow)")
                 self.visualize_w_gflow(
@@ -232,7 +231,7 @@ class GraphVisualizer:
                 layers = {element: key for key, value_set in layers.items() for element in value_set}
                 for output in pattern.output_nodes:
                     layers[output] = depth + 1
-                xflow, zflow = gflow.get_corrections_from_pattern(pattern)
+                xflow, zflow = gflow_shim.get_corrections_from_pattern(pattern)
                 self.visualize_all_correction(
                     layers,
                     xflow,
@@ -805,11 +804,18 @@ class GraphVisualizer:
         arrow_path : dict
             dictionary of arrow paths.
         """
+
+        def _flat(obj: int | set[int]) -> Iterator[int]:
+            if isinstance(obj, int):
+                yield obj
+            else:
+                yield from obj
+
         max_iter = 5
         edge_path = {}
         arrow_path = {}
         edge_set = set(self.graph.edges())
-        flow_arrows = {(k, v) for k, values in flow.items() for v in values}
+        flow_arrows = {(k, v) for k, values in flow.items() for v in _flat(values)}
         # set of mid-points of the edges
         # mid_points = {(0.5 * (pos[k][0] + pos[v][0]), 0.5 * (pos[k][1] + pos[v][1])) for k, v in edge_set} - set(pos[node] for node in self.g.nodes())
 
@@ -987,14 +993,14 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-        values_union = set().union(*f.values())
+        values_union = set().union(f.values())
         start_nodes = self.graph.nodes() - values_union
         pos = {node: [0, 0] for node in self.graph.nodes()}
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             node = k
             while node in f:
-                node = next(iter(f[node]))
+                node = f[node]
                 pos[node][1] = i
 
         lmax = max(l_k.values())
