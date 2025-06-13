@@ -170,7 +170,7 @@ class Statevec(State):
         )
         self.psi = np.moveaxis(psi, range(len(qargs)), qargs)
 
-    def dims(self):
+    def dims(self) -> tuple[int, ...]:
         """Return the dimensions."""
         return self.psi.shape
 

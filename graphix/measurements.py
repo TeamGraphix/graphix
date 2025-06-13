@@ -28,7 +28,7 @@ class Measurement(NamedTuple):
     :param plane: the measurement plane
     """
 
-    angle: float
+    angle: ExpressionOrFloat
     plane: Plane
 
     def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
@@ -45,7 +45,11 @@ class Measurement(NamedTuple):
         >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         False
         """
-        return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
+        return (
+            math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
+            if isinstance(self.angle, float) and isinstance(other.angle, float)
+            else self.angle == other.angle
+        ) and self.plane == other.plane
 
 
 class PauliMeasurement(NamedTuple):

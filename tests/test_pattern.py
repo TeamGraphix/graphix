@@ -17,6 +17,8 @@ from graphix.measurements import PauliMeasurement
 from graphix.pattern import Pattern, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
+from graphix.sim.statevec import Statevec
+from graphix.sim.tensornet import MBQCTensorNet
 from graphix.simulator import PatternSimulator
 from graphix.states import PlanarState
 from graphix.transpiler import Circuit
@@ -24,17 +26,17 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     import collections.abc
     from collections.abc import Sequence
+    from typing import Literal
 
-    from graphix.sim.base_backend import Backend
-    from graphix.sim.statevec import Statevec
+    from graphix.sim.base_backend import Backend, State
 
 
-def compare_backend_result_with_statevec(backend: str, backend_state, statevec: Statevec) -> float:
-    if backend == "statevector":
-        return np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten()))
-    if backend == "densitymatrix":
-        return np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
-    raise NotImplementedError(backend)
+def compare_backend_result_with_statevec(backend_state: State, statevec: Statevec) -> float:
+    if isinstance(backend_state, Statevec):
+        return float(np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten())))
+    if isinstance(backend_state, DensityMatrix):
+        return float(np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten())))
+    raise NotImplementedError(backend_state)
 
 
 Outcome = typing.Literal[0, 1]
@@ -131,13 +133,14 @@ class TestPattern:
         def simulate_and_measure() -> int:
             sim = PatternSimulator(pattern, backend_type)
             sim.run()
-            if backend_type == "statevector":
-                assert sim.backend.state.dims() == ()
-            elif backend_type == "densitymatrix":
-                assert sim.backend.state.dims() == (1, 1)
-            elif backend_type == "tensornetwork":
-                assert sim.backend.state.to_statevector().shape == (1,)
-            return sim.measure_method.results[0]
+            state = sim.backend.state
+            if isinstance(state, Statevec):
+                assert state.dims() == ()
+            elif isinstance(state, DensityMatrix):
+                assert state.dims() == (1, 1)
+            elif isinstance(state, MBQCTensorNet):
+                assert state.to_statevector().shape == (1,)
+            return sim.measure_method.get_measure_result(0)
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
@@ -194,7 +197,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(backend, rng=rng)
-        assert compare_backend_result_with_statevec(backend, state_mbqc, state) == pytest.approx(1)
+        assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("ignore_pauli_with_deps", [False, True])
@@ -217,7 +220,7 @@ class TestPattern:
     @pytest.mark.parametrize("angle", [0.0, 0.5, 1.0, 1.5])
     def test_pauli_measurement_single(self, plane: Plane, angle: float) -> None:
         pattern = Pattern(input_nodes=[0, 1])
-        pattern.add(E(nodes=[0, 1]))
+        pattern.add(E(nodes=(0, 1)))
         pattern.add(M(node=0, plane=plane, angle=angle))
         pattern_ref = pattern.copy()
         pattern.perform_pauli_measurements()
@@ -292,7 +295,7 @@ class TestPattern:
 
         isolated_nodes = pattern.get_isolated_nodes()
         # There is no isolated node.
-        isolated_nodes_ref = set()
+        isolated_nodes_ref: set[int] = set()
 
         assert isolated_nodes == isolated_nodes_ref
 
@@ -341,7 +344,9 @@ class TestPattern:
         pattern.standardize(method="mc")
         signal_dict = pattern.shift_signals(method=method)
         # Test for every possible outcome of each measure
-        for outcomes_ref in itertools.product(*([[0, 1]] * 3)):
+        zero_one: list[Literal[0, 1]] = [0, 1]
+        outcomes_ref: tuple[Literal[0, 1], ...]
+        for outcomes_ref in itertools.product(*([zero_one] * 3)):
             state_ref = pattern_ref.simulate_pattern(pr_calc=False, rng=IterGenerator(iter(outcomes_ref)))
             outcomes_p = shift_outcomes(dict(enumerate(outcomes_ref)), signal_dict)
             state_p = pattern.simulate_pattern(
@@ -390,7 +395,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
-        assert compare_backend_result_with_statevec("statevector", state_mbqc, state) == pytest.approx(1)
+        assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int) -> None:
@@ -473,7 +478,7 @@ class TestMCOps:
         pattern = circuit.transpile().pattern
         nodes, edges = pattern.get_graph()
 
-        nodes_ref = list(np.arange(27))
+        nodes_ref = list(range(27))
         edges_ref = [
             (1, 3),
             (0, 3),
@@ -632,7 +637,7 @@ class TestMCOps:
         randpattern = rand_circ.transpile().pattern
         out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
-        assert compare_backend_result_with_statevec(backend, out, out_circ) == pytest.approx(1)
+        assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi

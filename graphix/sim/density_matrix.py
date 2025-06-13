@@ -203,7 +203,7 @@ class DensityMatrix(State):
 
         return np.trace(rho_tensor.reshape((2**self.nqubit, 2**self.nqubit)))
 
-    def dims(self) -> list[int]:
+    def dims(self) -> tuple[int, ...]:
         """Return the dimensions of the density matrix."""
         return self.rho.shape
 
