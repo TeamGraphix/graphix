@@ -177,3 +177,44 @@ def test_compose_4() -> None:
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
     assert len(og.measurements) == len(outputs_c)
     assert set(og.measurements) == set(outputs_c)
+
+    # Overlap inputs/outputs
+
+
+# Inverse series composition
+def test_compose_5() -> None:
+
+    # Graph 1
+    # [1] -- (2)
+    #  |
+    # [3]
+    #
+    # Graph 2
+    # [3] -- (4)
+
+    g: nx.Graph[int]
+    g = nx.Graph([(1, 2), (1, 3)])
+    inputs = [1, 3]
+    outputs = [2]
+    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    og_1 = OpenGraph(g, meas, inputs, outputs)
+
+    g: nx.Graph[int]
+    g = nx.Graph([(3, 4)])
+    inputs = [3]
+    outputs = [4]
+    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    og_2 = OpenGraph(g, meas, inputs, outputs)
+
+    custom_mapping = {4: 1, 3: 300}
+
+    og = og_1.compose(og_2, custom_mapping)
+
+    assert og.inside.order() == 4
+    assert og.inside.size() == 3
+    assert og.inputs == [3, 300]
+    assert og.outputs == [2]  # the output character of node 17 is lost because node 1 (in G2) is not an output
+
+    outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
+    assert len(og.measurements) == len(outputs_c)
+    assert set(og.measurements) == set(outputs_c)
