@@ -141,13 +141,16 @@ class OpenGraph:
         Notes
         -----
         Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the open graph `og` and `{v:u}` an element of `custom_mapping`.
+
+        We define :math:`V, U` the set of nodes in `custom_mapping.keys()` and `custom_mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
+
         The open graph composition requires that
-        - :math:`v \in V_2`.
+        - :math:`V \subseteq V_2`.
         - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
-        Further:
-        - :math:`u \in I \iff v \in I_1, u \in I_2`,
-        - :math:`u \in O \iff v \in O_1, u \in O_2`,
-        - If only one node of the pair `{v:u}` is measured, this measure is kept in the resulting open graph.
+         The returned open graph follows this convention:
+        - :math:`I = [I_1 \setminus (I_1 \cap M)] \cup [I_2 \setminus (I_2 \cap M)] \cup (I_1 \cap I_2 \cap M)`,
+        - :math:`O = [O_1 \setminus (O_1 \cap M)] \cup [O_2 \setminus (O_2 \cap M)] \cup (O_1 \cap O_2 \cap M)`,
+        - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         """
         if not set(custom_mapping.keys()) <= set(other.inside.nodes):
             raise ValueError("Keys of custom_mapping must be correspond to nodes of other.")
