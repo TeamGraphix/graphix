@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import chain
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -60,7 +61,9 @@ class OpenGraph:
         if len(set(self.outputs)) != len(self.outputs):
             raise ValueError("Output nodes contain duplicates.")
 
-    def isclose(self, other: OpenGraph, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+    def isclose(
+        self, other: OpenGraph, rel_tol: float = 1e-09, abs_tol: float = 0.0
+    ) -> bool:
         """Return `True` if two open graphs implement approximately the same unitary operator.
 
         Ensures the structure of the graphs are the same and all
@@ -96,7 +99,10 @@ class OpenGraph:
 
         meas_planes = pattern.get_meas_plane()
         meas_angles = pattern.get_angles()
-        meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
+        meas = {
+            node: Measurement(meas_angles[node], meas_planes[node])
+            for node in meas_angles
+        }
 
         return OpenGraph(g, meas, inputs, outputs)
 
@@ -116,3 +122,70 @@ class OpenGraph:
         planes = {node: m.plane for node, m in meas.items()}
 
         return generate_from_graph(g, angles, inputs, outputs, planes)
+
+    def compose(self, other: OpenGraph, custom_mapping: dict[int, int]) -> OpenGraph:
+        r"""Composes two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
+
+        Parameters
+        ----------
+        other : OpenGraph
+            open graph to be composed with `self`.
+        custom_mapping: dict[int, int]
+            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the new and old node label, respectively.
+
+        Returns
+        -------
+        og: OpenGraph
+            composed open graph
+
+        Notes
+        -----
+        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the open graph `og` and `{v:u}` an element of `custom_mapping`.
+        The open graph composition requires that
+        - :math:`v \in V_2`.
+        - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
+        Further:
+        - :math:`u \in I \iff v \in I_1, u \in I_2`,
+        - :math:`u \in O \iff v \in O_1, u \in O_2`,
+        - If only one node of the pair `{v:u}` is measured, this measure is kept in the resulting open graph.
+        """
+        if not set(custom_mapping.keys()) <= set(other.inside.nodes):
+            raise ValueError("Keys of custom_mapping must be correspond to nodes of other.")
+        if len(custom_mapping.keys()) != len(set(custom_mapping.keys())):
+            raise ValueError("Keys in custom_mapping contain duplicates.")
+        if len(custom_mapping.values()) != len(set(custom_mapping.values())):
+            raise ValueError("Values in custom_mapping contain duplicates.")
+        for v, u in custom_mapping.items():
+            if v in other.measurements and u in self.measurements and not other.measurements[v].isclose(self.measurements[u]):
+                    raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
+
+        shift = max(chain(self.inside.nodes, custom_mapping.values())) + 1
+
+        mapping = {
+            node: shift + i
+            for i, node in enumerate(
+                filter(lambda node: node not in custom_mapping, other.inside.nodes)
+            )
+        }  # assigns new labels to nodes in other not specified in custom_mapping
+
+        mapping = {**custom_mapping, **mapping}
+
+        g2_shifted = nx.relabel_nodes(other.inside, mapping)
+        g = nx.compose(self.inside, g2_shifted)
+
+        merged = {i for i in custom_mapping.values() if i in self.inside.nodes()}
+
+        i1 = set(self.inputs)
+        i2 = {mapping[i] for i in other.inputs}
+        inputs = (i1 - (i1 & merged)) | (i2 - (i2 & merged)) | (i1 & i2 & merged)
+
+        o1 = set(self.outputs)
+        o2 = {mapping[i] for i in other.outputs}
+        outputs = (o1 - (o1 & merged)) | (o2 - (o2 & merged)) | (o1 & o2 & merged)
+
+        measurements_shifted = {
+            mapping[i]: meas for i, meas in other.measurements.items()
+        }
+        measurements = {**self.measurements, **measurements_shifted}
+
+        return OpenGraph(g, measurements, sorted(inputs), sorted(outputs))
