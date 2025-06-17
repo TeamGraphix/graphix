@@ -51,8 +51,12 @@ def test_compose_1() -> None:
     # Graph 1
     # [1] -- (2)
     #
-    #
     # Graph 2 = Graph 1
+    #
+    # Expected graph
+    #  [1]  --  (2)
+    #
+    # [100] -- (200)
 
     g: nx.Graph[int]
     g = nx.Graph([(1, 2)])
@@ -87,6 +91,11 @@ def test_compose_2() -> None:
     # [6] -- 17 -- (1)
     #  |     |
     # [7] -- 4  -- (2)
+    #
+    # Expected graph
+    # [0] -- 17 -- 23 -- o -- (100)
+    #        |     |     |
+    # [3] -- 4  -- 13 -- o -- (200)
 
     g: nx.Graph[int]
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
@@ -125,6 +134,8 @@ def test_compose_3() -> None:
     # [3] -- 4  -- (13)
     #
     # Graph 2 = Graph 1
+    #
+    # Expected graph = Graph 1
 
     g: nx.Graph[int]
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
@@ -150,6 +161,11 @@ def test_compose_4() -> None:
     #
     # Graph 2
     # [1] -- 2 -- (3)
+    #
+    # Expected graph
+    # (300) -- 2 -- [17] -- (3)
+    #                |
+    #               [18]
 
     g: nx.Graph[int]
     g = nx.Graph([(18, 17), (17, 3)])
@@ -178,8 +194,6 @@ def test_compose_4() -> None:
     assert len(og.measurements) == len(outputs_c)
     assert set(og.measurements) == set(outputs_c)
 
-    # Overlap inputs/outputs
-
 
 # Inverse series composition
 def test_compose_5() -> None:
@@ -191,6 +205,11 @@ def test_compose_5() -> None:
     #
     # Graph 2
     # [3] -- (4)
+    #
+    # Expected graph
+    # [300] -- 1 -- (2)
+    #          |
+    #         [3]
 
     g: nx.Graph[int]
     g = nx.Graph([(1, 2), (1, 3)])
