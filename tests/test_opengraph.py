@@ -232,7 +232,7 @@ def test_compose_5() -> None:
     assert og.inside.order() == 4
     assert og.inside.size() == 3
     assert og.inputs == [3, 300]
-    assert og.outputs == [2]  # the output character of node 17 is lost because node 1 (in G2) is not an output
+    assert og.outputs == [2]
 
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
     assert len(og.measurements) == len(outputs_c)
