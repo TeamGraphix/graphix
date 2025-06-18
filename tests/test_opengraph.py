@@ -121,8 +121,7 @@ def test_compose_2() -> None:
     assert og.outputs == [100, 200]
 
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
-    assert len(og.measurements) == len(outputs_c)
-    assert set(og.measurements) == set(outputs_c)
+    assert og.measurements.keys() == set(outputs_c)
 
 
 # Full overlap
