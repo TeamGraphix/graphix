@@ -126,7 +126,7 @@ class OpenGraph:
         other : OpenGraph
             open graph to be composed with `self`.
         mapping: dict[int, int]
-            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the new and old node label, respectively.
+            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
 
         Returns
         -------
