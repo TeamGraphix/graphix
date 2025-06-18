@@ -118,14 +118,14 @@ class OpenGraph:
 
         return generate_from_graph(g, angles, inputs, outputs, planes)
 
-    def compose(self, other: OpenGraph, custom_mapping: dict[int, int]) -> OpenGraph:
+    def compose(self, other: OpenGraph, mapping: dict[int, int]) -> OpenGraph:
         r"""Compose two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
 
         Parameters
         ----------
         other : OpenGraph
             open graph to be composed with `self`.
-        custom_mapping: dict[int, int]
+        mapping: dict[int, int]
             Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the new and old node label, respectively.
 
         Returns
@@ -135,9 +135,9 @@ class OpenGraph:
 
         Notes
         -----
-        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `custom_mapping`.
+        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `mapping`.
 
-        We define :math:`V, U` the set of nodes in `custom_mapping.keys()` and `custom_mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
+        We define :math:`V, U` the set of nodes in `mapping.keys()` and `mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
 
         The open graph composition requires that
         - :math:`V \subseteq V_2`.
@@ -147,29 +147,29 @@ class OpenGraph:
         - :math:`O = [O_1 \setminus (O_1 \cap M)] \cup [O_2 \setminus (O_2 \cap M)] \cup (O_1 \cap O_2 \cap M)`,
         - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         """
-        if not set(custom_mapping.keys()) <= set(other.inside.nodes):
-            raise ValueError("Keys of custom_mapping must be correspond to nodes of other.")
-        if len(custom_mapping.values()) != len(set(custom_mapping.values())):
-            raise ValueError("Values in custom_mapping contain duplicates.")
-        for v, u in custom_mapping.items():
+        if not set(mapping.keys()) <= set(other.inside.nodes):
+            raise ValueError("Keys of mapping must be correspond to nodes of other.")
+        if len(mapping.values()) != len(set(mapping.values())):
+            raise ValueError("Values in mapping contain duplicates.")
+        for v, u in mapping.items():
             if v in other.measurements and u in self.measurements and not other.measurements[v].isclose(self.measurements[u]):
                     raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
 
-        shift = max(*self.inside.nodes, *custom_mapping.values()) + 1
+        shift = max(*self.inside.nodes, *mapping.values()) + 1
 
-        mapping = {
+        mapping_sequential = {
             node: shift + i
             for i, node in enumerate(
-                filter(lambda node: node not in custom_mapping, other.inside.nodes)
+                filter(lambda node: node not in mapping, other.inside.nodes)
             )
-        }  # assigns new labels to nodes in other not specified in custom_mapping
+        }  # assigns new labels to nodes in other not specified in mapping
 
-        mapping = {**custom_mapping, **mapping}
+        mapping = {**mapping, **mapping_sequential}
 
         g2_shifted = nx.relabel_nodes(other.inside, mapping)
         g = nx.compose(self.inside, g2_shifted)
 
-        merged = set(custom_mapping.values()) & set(self.inside.nodes())
+        merged = set(mapping.values()) & set(self.inside.nodes())
 
         i1 = set(self.inputs)
         i2 = {mapping[i] for i in other.inputs}

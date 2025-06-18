@@ -65,9 +65,9 @@ def test_compose_1() -> None:
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
-    custom_mapping = {1: 100, 2: 200}
+    mapping = {1: 100, 2: 200}
 
-    og = og_1.compose(og_1, custom_mapping)
+    og = og_1.compose(og_1, mapping)
 
     assert og.inside.order() == 4
     assert og.inside.size() == 2
@@ -111,9 +111,9 @@ def test_compose_2() -> None:
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_2 = OpenGraph(g, meas, inputs, outputs)
 
-    custom_mapping = {6: 23, 7: 13, 1: 100, 2: 200}
+    mapping = {6: 23, 7: 13, 1: 100, 2: 200}
 
-    og = og_1.compose(og_2, custom_mapping)
+    og = og_1.compose(og_2, mapping)
 
     assert og.inside.order() == 10
     assert og.inside.size() == 11
@@ -143,9 +143,9 @@ def test_compose_3() -> None:
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
-    custom_mapping = {i: i for i in g.nodes()}
+    mapping = {i: i for i in g.nodes()}
 
-    og = og_1.compose(og_1, custom_mapping)
+    og = og_1.compose(og_1, mapping)
 
     assert og.isclose(og_1)
 
@@ -180,9 +180,9 @@ def test_compose_4() -> None:
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_2 = OpenGraph(g, meas, inputs, outputs)
 
-    custom_mapping = {1: 17, 3: 300}
+    mapping = {1: 17, 3: 300}
 
-    og = og_1.compose(og_2, custom_mapping)
+    og = og_1.compose(og_2, mapping)
 
     assert og.inside.order() == 5
     assert og.inside.size() == 4
@@ -224,9 +224,9 @@ def test_compose_5() -> None:
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_2 = OpenGraph(g, meas, inputs, outputs)
 
-    custom_mapping = {4: 1, 3: 300}
+    mapping = {4: 1, 3: 300}
 
-    og = og_1.compose(og_2, custom_mapping)
+    og = og_1.compose(og_2, mapping)
 
     assert og.inside.order() == 4
     assert og.inside.size() == 3
