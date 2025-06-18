@@ -176,7 +176,7 @@ class OpenGraph:
         g2_shifted = nx.relabel_nodes(other.inside, mapping)
         g = nx.compose(self.inside, g2_shifted)
 
-        merged = {i for i in custom_mapping.values() if i in self.inside.nodes()}
+        merged = set(custom_mapping.values()) & set(self.inside.nodes())
 
         i1 = set(self.inputs)
         i2 = {mapping[i] for i in other.inputs}
