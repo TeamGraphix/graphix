@@ -124,7 +124,7 @@ class OpenGraph:
         return generate_from_graph(g, angles, inputs, outputs, planes)
 
     def compose(self, other: OpenGraph, custom_mapping: dict[int, int]) -> OpenGraph:
-        r"""Composes two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
+        r"""Compose two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
 
         Parameters
         ----------
