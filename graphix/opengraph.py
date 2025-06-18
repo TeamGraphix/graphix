@@ -140,7 +140,7 @@ class OpenGraph:
 
         Notes
         -----
-        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the open graph `og` and `{v:u}` an element of `custom_mapping`.
+        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `custom_mapping`.
 
         We define :math:`V, U` the set of nodes in `custom_mapping.keys()` and `custom_mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
 
