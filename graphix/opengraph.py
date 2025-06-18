@@ -61,9 +61,7 @@ class OpenGraph:
         if len(set(self.outputs)) != len(self.outputs):
             raise ValueError("Output nodes contain duplicates.")
 
-    def isclose(
-        self, other: OpenGraph, rel_tol: float = 1e-09, abs_tol: float = 0.0
-    ) -> bool:
+    def isclose(self, other: OpenGraph, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
         """Return `True` if two open graphs implement approximately the same unitary operator.
 
         Ensures the structure of the graphs are the same and all
@@ -81,10 +79,7 @@ class OpenGraph:
         if set(self.measurements.keys()) != set(other.measurements.keys()):
             return False
 
-        return all(
-            m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
-            for node, m in self.measurements.items()
-        )
+        return all(m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol) for node, m in self.measurements.items())
 
     @staticmethod
     def from_pattern(pattern: Pattern) -> OpenGraph:
