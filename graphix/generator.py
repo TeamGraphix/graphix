@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
-from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, get_layers
+from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, find_pauliflow, get_layers
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
@@ -116,7 +116,21 @@ def generate_from_graph(
                     for k in g[j] - {j}:
                         pattern.add(X(node=k, domain={j}))
         else:
-            raise ValueError("no flow or gflow found")
+            # no flow or gflow found - we try pflow
+            p, l_k = find_pauliflow(
+                graph,
+                set(inputs),
+                set(outputs),
+                meas_planes=meas_planes,
+                meas_angles=angles,
+            )
+            if p is not None:
+                # pflow found
+                print("pflow found")
+                depth, layers = get_layers(l_k)
 
-    pattern.reorder_output_nodes(outputs)
-    return pattern
+            else:
+                raise ValueError("no flow or gflow or pflow found")
+
+    # pattern.reorder_output_nodes(outputs)
+    # return pattern
