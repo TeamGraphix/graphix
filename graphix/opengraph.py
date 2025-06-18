@@ -154,8 +154,6 @@ class OpenGraph:
         """
         if not set(custom_mapping.keys()) <= set(other.inside.nodes):
             raise ValueError("Keys of custom_mapping must be correspond to nodes of other.")
-        if len(custom_mapping.keys()) != len(set(custom_mapping.keys())):
-            raise ValueError("Keys in custom_mapping contain duplicates.")
         if len(custom_mapping.values()) != len(set(custom_mapping.values())):
             raise ValueError("Values in custom_mapping contain duplicates.")
         for v, u in custom_mapping.items():
