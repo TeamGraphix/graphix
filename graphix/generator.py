@@ -117,20 +117,28 @@ def generate_from_graph(
                         pattern.add(X(node=k, domain={j}))
         else:
             # no flow or gflow found - we try pflow
-            p, l_k = find_pauliflow(
-                graph,
-                set(inputs),
-                set(outputs),
-                meas_planes=meas_planes,
-                meas_angles=angles,
-            )
+            p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=angles)
             if p is not None:
                 # pflow found
                 print("pflow found")
                 depth, layers = get_layers(l_k)
+                pattern = Pattern(input_nodes=inputs)
+                for i in set(graph.nodes) - set(inputs):
+                    pattern.add(N(node=i))
+                for e in graph.edges:
+                    pattern.add(E(nodes=e))
+                for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
+                    for j in layers[i]:
+                        pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
+                        odd_neighbors = find_odd_neighbor(graph, p[j])
+                        future_nodes = [nodes for (layer, nodes) in layers.items() if layer < i]
+                        for k in odd_neighbors & set.union(*future_nodes):
+                            pattern.add(Z(node=k, domain={j}))
+                        for k in p[j] & set.union(*future_nodes):
+                            pattern.add(X(node=k, domain={j}))
 
             else:
                 raise ValueError("no flow or gflow or pflow found")
 
     # pattern.reorder_output_nodes(outputs)
-    # return pattern
+    return pattern
