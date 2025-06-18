@@ -162,7 +162,7 @@ class OpenGraph:
             if v in other.measurements and u in self.measurements and not other.measurements[v].isclose(self.measurements[u]):
                     raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
 
-        shift = max(chain(self.inside.nodes, custom_mapping.values())) + 1
+        shift = max(*self.inside.nodes, *custom_mapping.values()) + 1
 
         mapping = {
             node: shift + i
