@@ -173,13 +173,15 @@ class OpenGraph:
 
         merged = set(mapping.values()) & set(self.inside.nodes())
 
-        i1 = set(self.inputs)
-        i2 = {mapping[i] for i in other.inputs}
-        inputs = (i1 - (i1 & merged)) | (i2 - (i2 & merged)) | (i1 & i2 & merged)
+        def merge_ports(p1, p2):
+            p2_mapped = [mapping[node] for node in p2]
+            p2_set = set(p2_mapped)
+            part1 = [node for node in p1 if node not in merged or node in p2_set]
+            part2 = [node for node in p2_mapped if node not in merged]
+            return part1 + part2
 
-        o1 = set(self.outputs)
-        o2 = {mapping[i] for i in other.outputs}
-        outputs = (o1 - (o1 & merged)) | (o2 - (o2 & merged)) | (o1 & o2 & merged)
+        inputs = merge_ports(self.inputs, other.inputs)
+        outputs = merge_ports(self.outputs, other.outputs)
 
         measurements_shifted = {
             mapping[i]: meas for i, meas in other.measurements.items()
