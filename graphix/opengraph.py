@@ -145,8 +145,8 @@ class OpenGraph:
         - :math:`V \subseteq V_2`.
         - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
          The returned open graph follows this convention:
-        - :math:`I = [I_1 \setminus (I_1 \cap M)] \cup [I_2 \setminus (I_2 \cap M)] \cup (I_1 \cap I_2 \cap M)`,
-        - :math:`O = [O_1 \setminus (O_1 \cap M)] \cup [O_2 \setminus (O_2 \cap M)] \cup (O_1 \cap O_2 \cap M)`,
+        - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
+        - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
         - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         """
         if not set(mapping.keys()) <= set(other.inside.nodes):
