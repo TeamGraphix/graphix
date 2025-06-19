@@ -188,4 +188,4 @@ class OpenGraph:
         }
         measurements = {**self.measurements, **measurements_shifted}
 
-        return OpenGraph(g, measurements, sorted(inputs), sorted(outputs))
+        return OpenGraph(g, measurements, inputs, outputs)
