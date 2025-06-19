@@ -5,24 +5,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphix.command import E, M, N, X, Z
-from graphix.fundamentals import Plane
 from graphix.gflow import find_flow, find_gflow, group_layers, odd_neighbor
+from graphix.measurements import Measurement
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Iterable, Mapping
 
     import networkx as nx
-    import numpy as np
-    import numpy.typing as npt
 
 
 def generate_from_graph(
-    graph: nx.Graph[int],
-    angles: Mapping[int, float] | Sequence[float] | npt.NDArray[np.float64],
-    inputs: Iterable[int],
-    outputs: Iterable[int],
-    meas_planes: Mapping[int, Plane] | None = None,
+    graph: nx.Graph[int], inputs: Iterable[int], outputs: Iterable[int], meas: Mapping[int, Measurement] | None = None
 ) -> Pattern:
     r"""Generate the measurement pattern from open graph and measurement angles.
 
@@ -52,14 +46,12 @@ def generate_from_graph(
     ----------
     graph : :class:`networkx.Graph`
         Graph on which MBQC should be performed
-    angles : dict
-        measurement angles for each nodes on the graph (unit of pi), except output nodes
     inputs : list
         list of node indices for input nodes
     outputs : list
         list of node indices for output nodes
-    meas_planes : dict
-        optional: measurement planes for each nodes on the graph, except output nodes
+    meas : dict
+        optional: measurement specs for each nodes on the graph, except output nodes
 
     Returns
     -------
@@ -70,11 +62,11 @@ def generate_from_graph(
     outputs = list(outputs)
     measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
-    if meas_planes is None:
-        meas_planes = dict.fromkeys(measuring_nodes, Plane.XY)
+    if meas is None:
+        meas = dict.fromkeys(measuring_nodes, Measurement())
 
     # search for flow first
-    if (fres := find_flow(graph, set(inputs), set(outputs), meas_planes)) is not None:
+    if (fres := find_flow(graph, set(inputs), set(outputs), meas)) is not None:
         # flow found
         f = fres.f
         depth, layers = group_layers(fres.layer)
@@ -88,14 +80,14 @@ def generate_from_graph(
             for j in layers[i]:
                 fj = f[j]
                 measured.append(j)
-                pattern.add(M(node=j, angle=angles[j]))
+                pattern.add(M(node=j, angle=meas[j].angle))
                 neighbors = set(graph.neighbors(fj))
                 for k in neighbors - {j}:
                     # if k not in measured:
                     pattern.add(Z(node=k, domain={j}))
                 pattern.add(X(node=fj, domain={j}))
     # no flow found - we try gflow
-    elif (gres := find_gflow(graph, set(inputs), set(outputs), meas_planes)) is not None:
+    elif (gres := find_gflow(graph, set(inputs), set(outputs), meas)) is not None:
         # gflow found
         g = gres.f
         depth, layers = group_layers(gres.layer)
@@ -106,7 +98,8 @@ def generate_from_graph(
             pattern.add(E(nodes=e))
         for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
             for j in layers[i]:
-                pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
+                mj = meas[j]
+                pattern.add(M(node=j, plane=mj.plane, angle=mj.angle))
                 odd_neighbors = odd_neighbor(graph, g[j])
                 for k in odd_neighbors - {j}:
                     pattern.add(Z(node=k, domain={j}))

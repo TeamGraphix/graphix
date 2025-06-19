@@ -24,7 +24,7 @@ from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, group_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import Domains, PauliMeasurement
+from graphix.measurements import Domains, Measurement, PauliMeasurement
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -953,8 +953,8 @@ class Pattern:
         g.add_edges_from(edges)
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_plane = self.get_meas_plane()
-        if (res := find_flow(g, vin, vout, meas_plane)) is None:
+        meas = {k: Measurement(v) for k, v in self.get_meas_plane().items()}
+        if (res := find_flow(g, vin, vout, meas)) is None:
             return None
         l_k = res.layer
         depth, layer = group_layers(l_k)

@@ -14,7 +14,7 @@ def test_open_graph_to_pattern() -> None:
     g = nx.Graph([(0, 1), (1, 2)])
     inputs = [0]
     outputs = [2]
-    meas = {0: Measurement(0, Plane.XY), 1: Measurement(0, Plane.XY)}
+    meas = {0: Measurement(Plane.XY), 1: Measurement(Plane.XY)}
     og = OpenGraph(g, meas, inputs, outputs)
 
     pattern = og.to_pattern()
@@ -29,10 +29,10 @@ def test_open_graph_to_pattern() -> None:
     inputs = [0, 3]
     outputs = [2, 5]
     meas = {
-        0: Measurement(0, Plane.XY),
-        1: Measurement(1.0, Plane.XY),
-        3: Measurement(1.0, Plane.YZ),
-        4: Measurement(1.0, Plane.XY),
+        0: Measurement(Plane.XY),
+        1: Measurement(Plane.XY, 1),
+        3: Measurement(Plane.YZ, 1),
+        4: Measurement(Plane.XY, 1),
     }
 
     og = OpenGraph(g, meas, inputs, outputs)

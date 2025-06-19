@@ -112,7 +112,4 @@ class OpenGraph:
         outputs = self.outputs
         meas = self.measurements
 
-        angles = {node: m.angle for node, m in meas.items()}
-        planes = {node: m.plane for node, m in meas.items()}
-
-        return generate_from_graph(g, angles, inputs, outputs, planes)
+        return generate_from_graph(g, inputs, outputs, meas)
