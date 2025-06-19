@@ -13,6 +13,7 @@ Ref: Backens et al., Quantum 5, 421 (2021).
 from __future__ import annotations
 
 import functools
+import sys
 from typing import TYPE_CHECKING
 
 import typing_extensions
@@ -38,7 +39,13 @@ if TYPE_CHECKING:
 Flow = FlowResult[int]
 GFlow = GFlowResult[int]
 PauliFlow = GFlowResult[int]
-AnyMeasurement = Measurement | PauliMeasurement
+
+if sys.version_info >= (3, 10):
+    AnyMeasurement = Measurement | PauliMeasurement
+else:
+    from typing import Union
+
+    AnyMeasurement = Union[Measurement, PauliMeasurement]
 
 
 @functools.singledispatch
