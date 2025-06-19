@@ -119,7 +119,7 @@ class OpenGraph:
 
         return generate_from_graph(g, angles, inputs, outputs, planes)
 
-    def compose(self, other: OpenGraph, mapping: Mapping[int, int]) -> OpenGraph:
+    def compose(self, other: OpenGraph, mapping: Mapping[int, int]) -> tuple[OpenGraph, dict[int, int]]:
         r"""Compose two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
 
         Parameters
@@ -133,6 +133,8 @@ class OpenGraph:
         -------
         og: OpenGraph
             composed open graph
+        mapping_complete: dict[int, int]
+            Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
 
         Notes
         -----
@@ -166,15 +168,15 @@ class OpenGraph:
             node: i for i, node in enumerate(sorted(set(other.inside.nodes) - mapping.keys()), start=shift)
         }  # assigns new labels to nodes in other not specified in mapping
 
-        mapping = {**mapping, **mapping_sequential}
+        mapping_complete = {**mapping, **mapping_sequential}
 
-        g2_shifted = nx.relabel_nodes(other.inside, mapping)
+        g2_shifted = nx.relabel_nodes(other.inside, mapping_complete)
         g = nx.compose(self.inside, g2_shifted)
 
-        merged = set(mapping.values()) & set(self.inside.nodes())
+        merged = set(mapping_complete.values()) & set(self.inside.nodes())
 
         def merge_ports(p1: list[int], p2: list[int]) -> list[int]:
-            p2_mapped = [mapping[node] for node in p2]
+            p2_mapped = [mapping_complete[node] for node in p2]
             p2_set = set(p2_mapped)
             part1 = [node for node in p1 if node not in merged or node in p2_set]
             part2 = [node for node in p2_mapped if node not in merged]
@@ -183,7 +185,7 @@ class OpenGraph:
         inputs = merge_ports(self.inputs, other.inputs)
         outputs = merge_ports(self.outputs, other.outputs)
 
-        measurements_shifted = {mapping[i]: meas for i, meas in other.measurements.items()}
+        measurements_shifted = {mapping_complete[i]: meas for i, meas in other.measurements.items()}
         measurements = {**self.measurements, **measurements_shifted}
 
-        return OpenGraph(g, measurements, inputs, outputs)
+        return OpenGraph(g, measurements, inputs, outputs), mapping_complete

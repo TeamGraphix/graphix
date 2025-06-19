@@ -10,6 +10,7 @@ from graphix.opengraph import OpenGraph
 # Tests whether an open graph can be converted to and from a pattern and be
 # successfully reconstructed.
 def test_open_graph_to_pattern() -> None:
+    g: nx.Graph[int]
     g = nx.Graph([(0, 1), (1, 2)])
     inputs = [0]
     outputs = [2]
@@ -59,6 +60,7 @@ def test_compose_1() -> None:
     #
     # [100] -- (200)
 
+    g: nx.Graph[int]
     g = nx.Graph([(1, 2)])
     inputs = [1]
     outputs = [2]
@@ -67,8 +69,9 @@ def test_compose_1() -> None:
 
     mapping = {1: 100, 2: 200}
 
-    og = og_1.compose(og_1, mapping)
+    og, mapping_complete = og_1.compose(og_1, mapping)
 
+    expected_graph: nx.Graph[int]
     expected_graph = nx.Graph([(1, 2), (100, 200)])
     assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [1, 100]
@@ -77,6 +80,8 @@ def test_compose_1() -> None:
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
     assert len(og.measurements) == len(outputs_c)
     assert set(og.measurements) == set(outputs_c)
+    assert mapping.keys() <= mapping_complete.keys()
+    assert set(mapping.values()) <= set(mapping_complete.values())
 
 
 # Series composition
@@ -98,6 +103,7 @@ def test_compose_2() -> None:
     #        |     |     |
     # [3] -- 4  -- 13 -- o -- (200)
 
+    g: nx.Graph[int]
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
@@ -112,8 +118,9 @@ def test_compose_2() -> None:
 
     mapping = {6: 23, 7: 13, 1: 100, 2: 200}
 
-    og = og_1.compose(og_2, mapping)
+    og, mapping_complete = og_1.compose(og_2, mapping)
 
+    expected_graph: nx.Graph[int]
     expected_graph = nx.Graph(
         [(0, 17), (17, 23), (17, 4), (3, 4), (4, 13), (23, 13), (23, 1), (13, 2), (1, 2), (1, 100), (2, 200)]
     )
@@ -123,6 +130,8 @@ def test_compose_2() -> None:
 
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
     assert og.measurements.keys() == set(outputs_c)
+    assert mapping.keys() <= mapping_complete.keys()
+    assert set(mapping.values()) <= set(mapping_complete.values())
 
 
 # Full overlap
@@ -138,6 +147,7 @@ def test_compose_3() -> None:
     #
     # Expected graph = Graph 1
 
+    g: nx.Graph[int]
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
@@ -146,9 +156,11 @@ def test_compose_3() -> None:
 
     mapping = {i: i for i in g.nodes()}
 
-    og = og_1.compose(og_1, mapping)
+    og, mapping_complete = og_1.compose(og_1, mapping)
 
     assert og.isclose(og_1)
+    assert mapping.keys() <= mapping_complete.keys()
+    assert set(mapping.values()) <= set(mapping_complete.values())
 
 
 # Overlap inputs/outputs
@@ -168,6 +180,7 @@ def test_compose_4() -> None:
     #                |
     #               [18]
 
+    g: nx.Graph[int]
     g = nx.Graph([(18, 17), (17, 3)])
     inputs = [17, 18]
     outputs = [3, 17]
@@ -182,8 +195,9 @@ def test_compose_4() -> None:
 
     mapping = {1: 17, 3: 300}
 
-    og = og_1.compose(og_2, mapping)
+    og, mapping_complete = og_1.compose(og_2, mapping)
 
+    expected_graph: nx.Graph[int]
     expected_graph = nx.Graph([(18, 17), (17, 3), (17, 2), (2, 300)])
     assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [17, 18]  # the input character of node 17 is kept because node 1 (in G2) is an input
@@ -192,6 +206,8 @@ def test_compose_4() -> None:
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
     assert len(og.measurements) == len(outputs_c)
     assert set(og.measurements) == set(outputs_c)
+    assert mapping.keys() <= mapping_complete.keys()
+    assert set(mapping.values()) <= set(mapping_complete.values())
 
 
 # Inverse series composition
@@ -211,6 +227,7 @@ def test_compose_5() -> None:
     #          |
     #         [3]
 
+    g: nx.Graph[int]
     g = nx.Graph([(1, 2), (1, 3)])
     inputs = [1, 3]
     outputs = [2]
@@ -225,8 +242,9 @@ def test_compose_5() -> None:
 
     mapping = {4: 1, 3: 300}
 
-    og = og_1.compose(og_2, mapping)
+    og, mapping_complete = og_1.compose(og_2, mapping)
 
+    expected_graph: nx.Graph[int]
     expected_graph = nx.Graph([(1, 2), (1, 3), (1, 300)])
     assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [3, 300]
@@ -235,3 +253,5 @@ def test_compose_5() -> None:
     outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
     assert len(og.measurements) == len(outputs_c)
     assert set(og.measurements) == set(outputs_c)
+    assert mapping.keys() <= mapping_complete.keys()
+    assert set(mapping.values()) <= set(mapping_complete.values())
