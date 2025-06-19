@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import chain
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -12,7 +11,10 @@ from graphix.generator import generate_from_graph
 from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from graphix.pattern import Pattern
+
 
 
 @dataclass(frozen=True)
@@ -118,7 +120,7 @@ class OpenGraph:
 
         return generate_from_graph(g, angles, inputs, outputs, planes)
 
-    def compose(self, other: OpenGraph, mapping: dict[int, int]) -> OpenGraph:
+    def compose(self, other: OpenGraph, mapping: Mapping[int, int]) -> OpenGraph:
         r"""Compose two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
 
         Parameters
