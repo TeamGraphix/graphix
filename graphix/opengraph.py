@@ -173,7 +173,7 @@ class OpenGraph:
 
         merged = set(mapping.values()) & set(self.inside.nodes())
 
-        def merge_ports(p1, p2):
+        def merge_ports(p1: list[int], p2: list[int]) -> list[int]:
             p2_mapped = [mapping[node] for node in p2]
             p2_set = set(p2_mapped)
             part1 = [node for node in p1 if node not in merged or node in p2_set]
