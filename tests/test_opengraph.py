@@ -53,6 +53,8 @@ def test_compose_1() -> None:
     #
     # Graph 2 = Graph 1
     #
+    # Mapping: 1 -> 100, 2 -> 200
+    #
     # Expected graph
     #  [1]  --  (2)
     #
@@ -91,6 +93,8 @@ def test_compose_2() -> None:
     # [6] -- 17 -- (1)
     #  |     |
     # [7] -- 4  -- (2)
+    #
+    # Mapping: 6 -> 23, 7 -> 13, 1 -> 100, 2 -> 200
     #
     # Expected graph
     # [0] -- 17 -- 23 -- o -- (100)
@@ -134,6 +138,8 @@ def test_compose_3() -> None:
     #
     # Graph 2 = Graph 1
     #
+    # Mapping: 0 -> 0, 3 -> 3, 17 -> 17, 4 -> 4, 23 -> 23, 13 -> 13
+    #
     # Expected graph = Graph 1
 
     g: nx.Graph[int]
@@ -160,6 +166,8 @@ def test_compose_4() -> None:
     #
     # Graph 2
     # [1] -- 2 -- (3)
+    #
+    # Mapping: 1 -> 17, 3 -> 300
     #
     # Expected graph
     # (300) -- 2 -- [17] -- (3)
@@ -204,6 +212,8 @@ def test_compose_5() -> None:
     #
     # Graph 2
     # [3] -- (4)
+    #
+    # Mapping: 4 -> 1, 3 -> 300
     #
     # Expected graph
     # [300] -- 1 -- (2)
