@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 
 from graphix import gflow, gflow_shim
 from graphix.fundamentals import Plane
+from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     # MEMO: Potential circular import
@@ -78,6 +79,13 @@ class GraphVisualizer:
         self.meas_angles = meas_angles
         self.local_clifford = local_clifford
 
+    @property
+    def meas(self) -> dict[int, Measurement]:
+        """Get the measurements of the graph."""
+        if self.meas_angles is None:
+            return {k: Measurement(self.meas_planes[k]) for k in self.meas_planes}
+        return {k: Measurement(self.meas_planes[k], self.meas_angles[k]) for k in self.meas_planes}
+
     def visualize(
         self,
         show_pauli_measurement: bool = True,
@@ -116,7 +124,7 @@ class GraphVisualizer:
         filename : str
             Filename of the saved plot.
         """
-        if (resf := gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)) is not None:
+        if (resf := gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), self.meas)) is not None:
             print("Flow detected in the graph.")
             self.visualize_w_flow(
                 resf.f,
@@ -129,7 +137,7 @@ class GraphVisualizer:
                 save,
                 filename,
             )
-        elif (resg := gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)) is not None:
+        elif (resg := gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas)) is not None:
             print("Gflow detected in the graph. (flow not detected)")
             self.visualize_w_gflow(
                 resg.f,
