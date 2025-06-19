@@ -160,11 +160,8 @@ class OpenGraph:
         shift = max(*self.inside.nodes, *mapping.values()) + 1
 
         mapping_sequential = {
-            node: shift + i
-            for i, node in enumerate(
-                filter(lambda node: node not in mapping, other.inside.nodes)
-            )
-        }  # assigns new labels to nodes in other not specified in mapping
+            node: i
+            for i, node in enumerate(sorted(set(other.inside.nodes) - mapping.keys()), start=shift)}  # assigns new labels to nodes in other not specified in mapping
 
         mapping = {**mapping, **mapping_sequential}
 
