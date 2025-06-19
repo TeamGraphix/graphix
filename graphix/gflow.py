@@ -68,21 +68,14 @@ def _(p: PauliMeasurement) -> PPlane_:
     typing_extensions.assert_never(p.axis)
 
 
-def _p_convert(p: AnyMeasurement) -> Plane_:
-    pp = _pp_convert(p)
-    if pp == PPlane_.XY:
+def _p_convert(p: Measurement) -> Plane_:
+    if p.plane == Plane.XY:
         return Plane_.XY
-    if pp == PPlane_.YZ:
+    if p.plane == Plane.YZ:
         return Plane_.YZ
-    if pp == PPlane_.XZ:
+    if p.plane == Plane.XZ:
         return Plane_.XZ
-    if pp == PPlane_.X:
-        return Plane_.XY
-    if pp == PPlane_.Y:
-        return Plane_.XY
-    if pp == PPlane_.Z:
-        return Plane_.XZ
-    raise AssertionError
+    typing_extensions.assert_never(p.plane)
 
 
 def _default_construct(keys: Iterable[int]) -> dict[int, Measurement]:
@@ -127,7 +120,7 @@ def find_flow(
     graph: nx.Graph[int],
     iset: AbstractSet[int],
     oset: AbstractSet[int],
-    meas: Mapping[int, AnyMeasurement] | None = None,
+    meas: Mapping[int, Measurement] | None = None,
 ) -> Flow | None:
     """Causal flow finding algorithm.
 
@@ -163,7 +156,7 @@ def find_gflow(
     graph: nx.Graph[int],
     iset: AbstractSet[int],
     oset: AbstractSet[int],
-    meas: Mapping[int, AnyMeasurement] | None = None,
+    meas: Mapping[int, Measurement] | None = None,
 ) -> GFlow | None:
     """Maximally delayed gflow finding algorithm.
 
@@ -282,7 +275,7 @@ def verify_gflow(
     graph: nx.Graph[int],
     iset: AbstractSet[int],
     oset: AbstractSet[int],
-    meas: Mapping[int, AnyMeasurement] | None = None,
+    meas: Mapping[int, Measurement] | None = None,
     *,
     allow_raise: bool = False,
 ) -> bool:

@@ -23,10 +23,18 @@ class GraphForTest:
     graph: nx.Graph[int]
     inputs: set[int]
     outputs: set[int]
-    meas: dict[int, AnyMeasurement]
+    meas: dict[int, Measurement | tuple[Measurement, AnyMeasurement]]
     flow_exist: bool | None
     gflow_exist: bool
     pauliflow_exist: bool
+
+    @property
+    def meas_p(self) -> dict[int, Measurement]:
+        return {k: v if isinstance(v, Measurement) else v[0] for k, v in self.meas.items()}
+
+    @property
+    def meas_pp(self) -> dict[int, AnyMeasurement]:
+        return {k: v if isinstance(v, Measurement) else v[1] for k, v in self.meas.items()}
 
 
 def generate_g0() -> GraphForTest:
@@ -146,7 +154,12 @@ def generate_g6() -> GraphForTest:
         nx.Graph([(0, 1), (1, 2), (1, 4), (2, 3)]),
         {0},
         {4},
-        {0: Measurement(Plane.XY), 1: PauliMeasurement(Axis.X), 2: Measurement(Plane.XY), 3: PauliMeasurement(Axis.X)},
+        {
+            0: Measurement(Plane.XY),
+            1: (Measurement(Plane.XY), PauliMeasurement(Axis.X)),
+            2: Measurement(Plane.XY),
+            3: (Measurement(Plane.XY), PauliMeasurement(Axis.X)),
+        },
         flow_exist=False,
         gflow_exist=False,
         pauliflow_exist=True,
@@ -163,10 +176,10 @@ def generate_g7() -> GraphForTest:
         {0},
         {4},
         {
-            0: PauliMeasurement(Axis.Z),
-            1: PauliMeasurement(Axis.Z),
-            2: PauliMeasurement(Axis.Y),
-            3: PauliMeasurement(Axis.Y),
+            0: (Measurement(Plane.YZ), PauliMeasurement(Axis.Z)),
+            1: (Measurement(Plane.XZ), PauliMeasurement(Axis.Z)),
+            2: (Measurement(Plane.XY), PauliMeasurement(Axis.Y)),
+            3: (Measurement(Plane.YZ), PauliMeasurement(Axis.Y)),
         },
         flow_exist=None,  # flow not defined
         gflow_exist=False,
@@ -185,7 +198,11 @@ def generate_g8() -> GraphForTest:
         nx.Graph([(0, 1), (0, 4), (1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]),
         {0},
         {3, 4},
-        {0: PauliMeasurement(Axis.Z), 1: Measurement(Plane.XZ), 2: PauliMeasurement(Axis.Y)},
+        {
+            0: (Measurement(Plane.YZ), PauliMeasurement(Axis.Z)),
+            1: Measurement(Plane.XZ),
+            2: (Measurement(Plane.XY), PauliMeasurement(Axis.Y)),
+        },
         flow_exist=None,  # flow not defined
         gflow_exist=False,
         pauliflow_exist=True,
@@ -269,10 +286,10 @@ class TestGflow:
 
     @pytest.mark.parametrize("gft", generate_gft())
     def test_gflow(self, gft: GraphForTest) -> None:
-        res = gflow.find_gflow(gft.graph, gft.inputs, gft.outputs, gft.meas)
+        res = gflow.find_gflow(gft.graph, gft.inputs, gft.outputs, gft.meas_p)
         assert gft.gflow_exist == (res is not None)
         if res is not None:
-            assert gflow.verify_gflow(res, gft.graph, gft.inputs, gft.outputs, gft.meas)
+            assert gflow.verify_gflow(res, gft.graph, gft.inputs, gft.outputs, gft.meas_p)
 
     @pytest.mark.parametrize("gft", generate_gft())
     def test_pflow_default(self, gft: GraphForTest) -> None:
@@ -282,10 +299,10 @@ class TestGflow:
 
     @pytest.mark.parametrize("gft", generate_gft())
     def test_pflow(self, gft: GraphForTest) -> None:
-        res = gflow.find_pauliflow(gft.graph, gft.inputs, gft.outputs, gft.meas)
+        res = gflow.find_pauliflow(gft.graph, gft.inputs, gft.outputs, gft.meas_pp)
         assert gft.pauliflow_exist == (res is not None)
         if res is not None:
-            assert gflow.verify_pauliflow(res, gft.graph, gft.inputs, gft.outputs, gft.meas)
+            assert gflow.verify_pauliflow(res, gft.graph, gft.inputs, gft.outputs, gft.meas_pp)
 
     def test_randcirc_flow(self, fx_rng: Generator) -> None:
         # test for large graph
