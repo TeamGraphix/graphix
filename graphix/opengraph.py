@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
 
-
 @dataclass(frozen=True)
 class OpenGraph:
     """Open graph contains the graph, measurement, and input and output nodes.
