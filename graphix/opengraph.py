@@ -80,7 +80,10 @@ class OpenGraph:
         if set(self.measurements.keys()) != set(other.measurements.keys()):
             return False
 
-        return all(m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol) for node, m in self.measurements.items())
+        return all(
+            m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
+            for node, m in self.measurements.items()
+        )
 
     @staticmethod
     def from_pattern(pattern: Pattern) -> OpenGraph:
@@ -95,10 +98,7 @@ class OpenGraph:
 
         meas_planes = pattern.get_meas_plane()
         meas_angles = pattern.get_angles()
-        meas = {
-            node: Measurement(meas_angles[node], meas_planes[node])
-            for node in meas_angles
-        }
+        meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
 
         return OpenGraph(g, meas, inputs, outputs)
 
@@ -153,14 +153,18 @@ class OpenGraph:
         if len(mapping.values()) != len(set(mapping.values())):
             raise ValueError("Values in mapping contain duplicates.")
         for v, u in mapping.items():
-            if v in other.measurements and u in self.measurements and not other.measurements[v].isclose(self.measurements[u]):
-                    raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
+            if (
+                v in other.measurements
+                and u in self.measurements
+                and not other.measurements[v].isclose(self.measurements[u])
+            ):
+                raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
 
         shift = max(*self.inside.nodes, *mapping.values()) + 1
 
         mapping_sequential = {
-            node: i
-            for i, node in enumerate(sorted(set(other.inside.nodes) - mapping.keys()), start=shift)}  # assigns new labels to nodes in other not specified in mapping
+            node: i for i, node in enumerate(sorted(set(other.inside.nodes) - mapping.keys()), start=shift)
+        }  # assigns new labels to nodes in other not specified in mapping
 
         mapping = {**mapping, **mapping_sequential}
 
@@ -179,9 +183,7 @@ class OpenGraph:
         inputs = merge_ports(self.inputs, other.inputs)
         outputs = merge_ports(self.outputs, other.outputs)
 
-        measurements_shifted = {
-            mapping[i]: meas for i, meas in other.measurements.items()
-        }
+        measurements_shifted = {mapping[i]: meas for i, meas in other.measurements.items()}
         measurements = {**self.measurements, **measurements_shifted}
 
         return OpenGraph(g, measurements, inputs, outputs)

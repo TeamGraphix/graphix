@@ -44,6 +44,7 @@ def test_open_graph_to_pattern() -> None:
 
 # Tests composition of two graphs
 
+
 # Parallel composition
 def test_compose_1() -> None:
     # Graph 1
