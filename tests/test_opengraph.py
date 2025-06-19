@@ -71,8 +71,8 @@ def test_compose_1() -> None:
 
     og = og_1.compose(og_1, mapping)
 
-    assert og.inside.order() == 4
-    assert og.inside.size() == 2
+    expected_graph = nx.Graph([(1, 2), (100, 200)])
+    assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [1, 100]
     assert og.outputs == [2, 200]
 
@@ -119,8 +119,8 @@ def test_compose_2() -> None:
 
     og = og_1.compose(og_2, mapping)
 
-    assert og.inside.order() == 10
-    assert og.inside.size() == 11
+    expected_graph = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13), (23, 13), (23, 1), (13, 2), (1, 2), (1, 100), (2, 200)])
+    assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [0, 3]
     assert og.outputs == [100, 200]
 
@@ -192,8 +192,8 @@ def test_compose_4() -> None:
 
     og = og_1.compose(og_2, mapping)
 
-    assert og.inside.order() == 5
-    assert og.inside.size() == 4
+    expected_graph = nx.Graph([(18, 17), (17, 3), (17, 2), (2, 300)])
+    assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [17, 18]  # the input character of node 17 is kept because node 1 (in G2) is an input
     assert og.outputs == [3, 300]  # the output character of node 17 is lost because node 1 (in G2) is not an output
 
@@ -238,8 +238,8 @@ def test_compose_5() -> None:
 
     og = og_1.compose(og_2, mapping)
 
-    assert og.inside.order() == 4
-    assert og.inside.size() == 3
+    expected_graph = nx.Graph([(1, 2), (1, 3), (1, 300)])
+    assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [3, 300]
     assert og.outputs == [2]
 
