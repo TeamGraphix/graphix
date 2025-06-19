@@ -10,7 +10,6 @@ from graphix.opengraph import OpenGraph
 # Tests whether an open graph can be converted to and from a pattern and be
 # successfully reconstructed.
 def test_open_graph_to_pattern() -> None:
-    g: nx.Graph[int]
     g = nx.Graph([(0, 1), (1, 2)])
     inputs = [0]
     outputs = [2]
@@ -47,7 +46,6 @@ def test_open_graph_to_pattern() -> None:
 
 # Parallel composition
 def test_compose_1() -> None:
-
     # Graph 1
     # [1] -- (2)
     #
@@ -60,7 +58,6 @@ def test_compose_1() -> None:
     #
     # [100] -- (200)
 
-    g: nx.Graph[int]
     g = nx.Graph([(1, 2)])
     inputs = [1]
     outputs = [2]
@@ -83,7 +80,6 @@ def test_compose_1() -> None:
 
 # Series composition
 def test_compose_2() -> None:
-
     # Graph 1
     # [0] -- 17 -- (23)
     #        |
@@ -101,14 +97,12 @@ def test_compose_2() -> None:
     #        |     |     |
     # [3] -- 4  -- 13 -- o -- (200)
 
-    g: nx.Graph[int]
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
-    g: nx.Graph[int]
     g = nx.Graph([(6, 7), (6, 17), (17, 1), (7, 4), (17, 4), (4, 2)])
     inputs = [6, 7]
     outputs = [1, 2]
@@ -119,7 +113,9 @@ def test_compose_2() -> None:
 
     og = og_1.compose(og_2, mapping)
 
-    expected_graph = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13), (23, 13), (23, 1), (13, 2), (1, 2), (1, 100), (2, 200)])
+    expected_graph = nx.Graph(
+        [(0, 17), (17, 23), (17, 4), (3, 4), (4, 13), (23, 13), (23, 1), (13, 2), (1, 2), (1, 100), (2, 200)]
+    )
     assert nx.is_isomorphic(og.inside, expected_graph)
     assert og.inputs == [0, 3]
     assert og.outputs == [100, 200]
@@ -130,7 +126,6 @@ def test_compose_2() -> None:
 
 # Full overlap
 def test_compose_3() -> None:
-
     # Graph 1
     # [0] -- 17 -- (23)
     #        |
@@ -142,7 +137,6 @@ def test_compose_3() -> None:
     #
     # Expected graph = Graph 1
 
-    g: nx.Graph[int]
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
@@ -158,7 +152,6 @@ def test_compose_3() -> None:
 
 # Overlap inputs/outputs
 def test_compose_4() -> None:
-
     # Graph 1
     # ([17]) -- (3)
     #   |
@@ -174,14 +167,12 @@ def test_compose_4() -> None:
     #                |
     #               [18]
 
-    g: nx.Graph[int]
     g = nx.Graph([(18, 17), (17, 3)])
     inputs = [17, 18]
     outputs = [3, 17]
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
-    g: nx.Graph[int]
     g = nx.Graph([(1, 2), (2, 3)])
     inputs = [1]
     outputs = [3]
@@ -204,7 +195,6 @@ def test_compose_4() -> None:
 
 # Inverse series composition
 def test_compose_5() -> None:
-
     # Graph 1
     # [1] -- (2)
     #  |
@@ -220,14 +210,12 @@ def test_compose_5() -> None:
     #          |
     #         [3]
 
-    g: nx.Graph[int]
     g = nx.Graph([(1, 2), (1, 3)])
     inputs = [1, 3]
     outputs = [2]
     meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
-    g: nx.Graph[int]
     g = nx.Graph([(3, 4)])
     inputs = [3]
     outputs = [4]
