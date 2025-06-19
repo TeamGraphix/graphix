@@ -28,8 +28,8 @@ class Measurement(NamedTuple):
     :param plane: the measurement plane
     """
 
-    angle: float
-    plane: Plane
+    plane: Plane = Plane.XY
+    angle: float = 0
 
     def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
         """Compare if two measurements have the same plane and their angles are close.
@@ -38,11 +38,11 @@ class Measurement(NamedTuple):
         -------
         >>> from graphix.opengraph import Measurement
         >>> from graphix.fundamentals import Plane
-        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
+        >>> Measurement(Plane.XY).isclose(Measurement(Plane.XY))
         True
-        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.YZ))
+        >>> Measurement(Plane.XY).isclose(Measurement(Plane.YZ))
         False
-        >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
+        >>> Measurement(Plane.XY, 0.1).isclose(Measurement(Plane.XY, 0.0))
         False
         """
         return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
@@ -52,7 +52,7 @@ class PauliMeasurement(NamedTuple):
     """Pauli measurement."""
 
     axis: Axis
-    sign: Sign
+    sign: Sign = Sign.PLUS
 
     @staticmethod
     def try_from(plane: Plane, angle: ExpressionOrFloat) -> PauliMeasurement | None:

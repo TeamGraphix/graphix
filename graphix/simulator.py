@@ -123,7 +123,7 @@ class DefaultMeasureMethod(MeasureMethod):
         t_signal = sum(self.results[j] for j in cmd.t_domain)
         measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, Clifford.I)
         angle = angle * measure_update.coeff + measure_update.add_term
-        return Measurement(angle, measure_update.new_plane)
+        return Measurement(measure_update.new_plane, angle)
 
     def get_measure_result(self, node: int) -> bool:
         """Return the result of a previous measurement.

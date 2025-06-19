@@ -33,7 +33,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     >>> g = nx.Graph([(0, 1), (1, 2)])
     >>> inputs = [0]
     >>> outputs = [2]
-    >>> measurements = {0: Measurement(0, Plane.XY), 1: Measurement(1, Plane.YZ)}
+    >>> measurements = {0: Measurement(Plane.XY), 1: Measurement(Plane.YZ, 1)}
     >>> og = OpenGraph(g, measurements, inputs, outputs)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
@@ -165,7 +165,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement(-_checked_float(g.phase(v)), Plane.YZ)
+            measurements[nbrs[0]] = Measurement(Plane.YZ, -_checked_float(g.phase(v)))
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1
@@ -177,7 +177,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
             continue
 
         g_nx.add_edges_from([(out, next_id), (next_id, next_id + 1)])
-        measurements[next_id] = Measurement(0, Plane.XY)
+        measurements[next_id] = Measurement(Plane.XY)
 
         outputs = [o if o != out else next_id + 1 for o in outputs]
         next_id += 2
@@ -189,6 +189,6 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
 
         # g.phase() may be a fractions.Fraction object, but Measurement
         # expects a float
-        measurements[v] = Measurement(-_checked_float(g.phase(v)), Plane.XY)
+        measurements[v] = Measurement(Plane.XY, -_checked_float(g.phase(v)))
 
     return OpenGraph(g_nx, measurements, inputs, outputs)

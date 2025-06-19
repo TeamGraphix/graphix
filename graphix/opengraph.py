@@ -34,7 +34,7 @@ class OpenGraph:
     >>>
     >>> inside_graph = nx.Graph([(0, 1), (1, 2), (2, 0)])
     >>>
-    >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
+    >>> measurements = {i: Measurement(Plane.XY, 0.5 * i) for i in range(2)}
     >>> inputs = [0]
     >>> outputs = [2]
     >>> og = OpenGraph(inside_graph, measurements, inputs, outputs)
@@ -96,7 +96,7 @@ class OpenGraph:
 
         meas_planes = pattern.get_meas_plane()
         meas_angles = pattern.get_angles()
-        meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
+        meas = {node: Measurement(meas_planes[node], meas_angles[node]) for node in meas_angles}
 
         return OpenGraph(g, meas, inputs, outputs)
 

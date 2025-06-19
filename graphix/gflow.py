@@ -87,7 +87,10 @@ def _p_convert(p: AnyMeasurement) -> Plane_:
 
 def _default_construct(keys: Iterable[int]) -> dict[int, Measurement]:
     # Random angle for safety
-    return dict.fromkeys(keys, Measurement(0.5014943209046647, Plane.XY))
+    return dict.fromkeys(
+        keys,
+        Measurement(Plane.XY, 0.5014943209046647),
+    )
 
 
 def odd_neighbor(graph: nx.Graph[int], vset: AbstractSet[int]) -> set[int]:
