@@ -140,5 +140,5 @@ def generate_from_graph(
             else:
                 raise ValueError("no flow or gflow or pflow found")
 
-    # pattern.reorder_output_nodes(outputs)
+    pattern.reorder_output_nodes(outputs)
     return pattern
