@@ -38,6 +38,9 @@ def generate_from_graph(
     Then, if no flow was found, searches for gflow using :func:`graphix.gflow.find_gflow`,
     from which measurement pattern can be constructed from theorem 2 of [NJP 9, 250 (2007)].
 
+    Then, if no gflow was found, searches for Pauli flow using :func:`graphix.gflow.find_pauliflow`,
+    from which measurement pattern can be constructed from theorem 4 of [NJP 9, 250 (2007)].
+
     The constructed measurement pattern deterministically realize the unitary embedding
 
     .. math::
@@ -48,7 +51,7 @@ def generate_from_graph(
     angles :math:`\alpha_i` are applied to the measuring nodes,
     i.e. the randomness of the measurement is eliminated by the added byproduct commands.
 
-    .. seealso:: :func:`graphix.gflow.find_flow` :func:`graphix.gflow.find_gflow` :class:`graphix.pattern.Pattern`
+    .. seealso:: :func:`graphix.gflow.find_flow` :func:`graphix.gflow.find_gflow` :func:`graphix.gflow.find_pauliflow` :class:`graphix.pattern.Pattern`
 
     Parameters
     ----------
