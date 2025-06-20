@@ -10,7 +10,9 @@ from typing import ClassVar, Literal, Union
 
 import numpy as np
 
-from graphix import utils
+# We would like to import `DataclassPrettyPrintMixin` from `pretty_print`,
+# but we want to avoid breaking the circular import cycle since `pretty_print` imports `command`.
+from graphix import pretty_print, utils
 from graphix.clifford import Clifford
 from graphix.fundamentals import Plane, Sign
 from graphix.measurements import Domains
@@ -18,7 +20,6 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
-from graphix.pretty_print import DataclassPrettyPrintMixin
 from graphix.states import BasicStates, State
 
 Node = int
@@ -46,7 +47,7 @@ class _KindChecker:
 
 
 @dataclasses.dataclass(repr=False)
-class N(_KindChecker, DataclassPrettyPrintMixin):
+class N(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""Preparation command.
 
     Parameters
@@ -63,7 +64,7 @@ class N(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class M(_KindChecker, DataclassPrettyPrintMixin):
+class M(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""Measurement command.
 
     Parameters
@@ -112,7 +113,7 @@ class M(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class E(_KindChecker, DataclassPrettyPrintMixin):
+class E(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""Entanglement command between two qubits.
 
     Parameters
@@ -126,7 +127,7 @@ class E(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class C(_KindChecker, DataclassPrettyPrintMixin):
+class C(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""Local Clifford gate command.
 
     Parameters
@@ -143,7 +144,7 @@ class C(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class X(_KindChecker, DataclassPrettyPrintMixin):
+class X(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""X correction command.
 
     Parameters
@@ -160,7 +161,7 @@ class X(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class Z(_KindChecker, DataclassPrettyPrintMixin):
+class Z(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""Z correction command.
 
     Parameters
@@ -177,7 +178,7 @@ class Z(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class S(_KindChecker, DataclassPrettyPrintMixin):
+class S(_KindChecker, pretty_print.DataclassPrettyPrintMixin):
     r"""S command.
 
     Parameters
