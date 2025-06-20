@@ -10,18 +10,16 @@ from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, find_paulifl
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Iterable, Mapping
 
     import networkx as nx
-    import numpy as np
-    import numpy.typing as npt
 
     from graphix.parameter import ExpressionOrFloat
 
 
 def generate_from_graph(
     graph: nx.Graph[int],
-    angles: Mapping[int, ExpressionOrFloat] | Sequence[ExpressionOrFloat] | npt.NDArray[np.float64],
+    angles: Mapping[int, float],
     inputs: Iterable[int],
     outputs: Iterable[int],
     meas_planes: Mapping[int, Plane] | None = None,
@@ -120,7 +118,7 @@ def generate_from_graph(
                         pattern.add(X(node=k, domain={j}))
         else:
             # no flow or gflow found - we try pflow
-            p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=angles)
+            p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=dict(angles))
             if p is not None:
                 # pflow found
                 depth, layers = get_layers(l_k)

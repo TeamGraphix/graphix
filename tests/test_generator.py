@@ -16,8 +16,9 @@ if TYPE_CHECKING:
 
 
 class TestGenerator:
-
-    def get_graph_pflow(self, fx_rng: Generator) -> tuple[nx.Graph[int], list[int], list[int], dict[int, Plane], dict[int, float]]:
+    def get_graph_pflow(
+        self, fx_rng: Generator
+    ) -> tuple[nx.Graph[int], list[int], list[int], dict[int, Plane], dict[int, float]]:
         """Create a graph which has pflow but no gflow.
 
         Parameters
@@ -45,7 +46,7 @@ class TestGenerator:
         outputs = [8, 9]
 
         # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no glow but there's pflow.
-        meas_angles = {**dict.fromkeys(range(4), 0), **dict.fromkeys(range(4, 8), 2 * fx_rng.random())}
+        meas_angles = {**dict.fromkeys(range(4), 0), **dict(zip(range(4, 8), (2 * fx_rng.random(4)).tolist()))}
         meas_planes = dict.fromkeys(range(8), Plane.XY)
 
         gf, _ = find_gflow(graph=graph, iset=set(inputs), oset=set(outputs), meas_planes=meas_planes)
@@ -62,7 +63,7 @@ class TestGenerator:
         graph: nx.Graph[int] = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
         inputs = {0, 1, 2}
         outputs = {6, 7, 8}
-        angles = fx_rng.normal(size=6)
+        angles = dict(zip(range(6), (2 * fx_rng.random(6)).tolist()))
         results = []
         repeats = 3  # for testing the determinism of a pattern
         meas_planes = dict.fromkeys(range(6), Plane.XY)
@@ -81,7 +82,7 @@ class TestGenerator:
         graph: nx.Graph[int] = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
         inputs = {1, 3, 5}
         outputs = {2, 4, 6}
-        angles = fx_rng.normal(size=6)
+        angles = dict(zip([1, 3, 5], (2 * fx_rng.random(3)).tolist()))
         meas_planes = dict.fromkeys([1, 3, 5], Plane.XY)
         results = []
         repeats = 3  # for testing the determinism of a pattern
