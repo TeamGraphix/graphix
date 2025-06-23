@@ -13,6 +13,7 @@ from scipy.stats import unitary_group
 from graphix.channels import KrausChannel, KrausData
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
+from graphix.sim.density_matrix import DensityMatrix
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
@@ -21,7 +22,6 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.parameter import Parameter
-    from graphix.sim.density_matrix import DensityMatrix
 
 
 def rand_herm(sz: int, rng: Generator | None = None) -> npt.NDArray:
@@ -80,8 +80,6 @@ def rand_dm(
     dm = rand_u @ dm @ rand_u.transpose().conj()
 
     if dm_dtype:
-        from graphix.sim.density_matrix import DensityMatrix  # circumvent circular import
-
         # will raise an error if incorrect dimension
         return DensityMatrix(data=dm)
     return dm
