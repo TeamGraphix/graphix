@@ -17,18 +17,23 @@ try:
     from pyzx.generate import cliffordT as clifford_t  # noqa: N813
 
     from graphix.pyzx import from_pyzx_graph, to_pyzx_graph
-
-    _HAS_PYZX = True
 except ImportError:
-    _HAS_PYZX = False
+    pytestmark = pytest.mark.skip(reason="pyzx not installed")
+
+    if TYPE_CHECKING:
+        import sys
+
+        # We skip type-checking the case where there is no pyzx, since
+        # pyright cannot figure out that tests are skipped in this
+        # case.
+        sys.exit(1)
+
 
 if TYPE_CHECKING:
     from pyzx.graph.base import BaseGraph
-
 SEED = 123
 
 
-@pytest.mark.skipif(not _HAS_PYZX, reason="pyzx not installed")
 def test_graph_equality() -> None:
     random.seed(SEED)
     g = clifford_t(4, 10, 0.1)
@@ -63,14 +68,12 @@ def assert_reconstructed_pyzx_graph_equal(g: BaseGraph[int, tuple[int, int]]) ->
 # Tests that compiling from a pyzx graph to an OpenGraph returns the same
 # graph. Only works with small circuits up to 4 qubits since PyZX's `tensorfy`
 # function seems to consume huge amount of memory for larger qubit
-@pytest.mark.skipif(not _HAS_PYZX, reason="pyzx not installed")
 def test_random_clifford_t() -> None:
     for _ in range(15):
         g = clifford_t(4, 10, 0.1)
         assert_reconstructed_pyzx_graph_equal(g)
 
 
-@pytest.mark.skipif(not _HAS_PYZX, reason="pyzx not installed")
 @pytest.mark.parametrize("jumps", range(1, 11))
 def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
@@ -91,7 +94,6 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
 
 
-@pytest.mark.skipif(not _HAS_PYZX, reason="pyzx not installed")
 def test_rz() -> None:
     circuit = Circuit(2)
     circuit.rz(0, np.pi / 4)
@@ -106,7 +108,6 @@ def test_rz() -> None:
 
 
 # Issue #235
-@pytest.mark.skipif(not _HAS_PYZX, reason="pyzx not installed")
 def test_full_reduce_toffoli() -> None:
     c = Circuit(3)
     c.ccx(0, 1, 2)
