@@ -67,7 +67,6 @@ extend-ignore = [
   "DOC",     # Docstring
   "E501",    # Line too long
   "EM10",    # Raise string
-  "PLC0415", # Import not at the top level
   "PLR1702", # Too many nests
   "PLW1641", # __hash__ missing
   "PT011",   # pytest raises too broad
@@ -110,8 +109,15 @@ docstring-code-format = true
 ]
 "tests/*.py" = [
   "D10",     # Allow undocumented items
+  "PLC0415", # Allow dynamic imports
   "PLC2701", # Allow private imports
   "PLR6301", # self not used
+]
+"graphix/device_interface.py" = [
+  "PLC0415", # Allow dynamic imports
+]
+"graphix/pyzx.py" = [
+  "PLC0415", # Allow dynamic imports
 ]
 
 [tool.ruff.lint.pydocstyle]
