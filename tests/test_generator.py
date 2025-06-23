@@ -8,7 +8,9 @@ import pytest
 
 from graphix.fundamentals import Plane
 from graphix.generator import generate_from_graph
-from graphix.gflow import find_gflow, find_pauliflow, pauliflow_from_pattern, verify_pauliflow
+from graphix.gflow import find_gflow, find_pauliflow, pauliflow_from_pattern
+from graphix.measurements import Measurement
+from graphix.opengraph import OpenGraph
 from graphix.random_objects import rand_gate
 
 if TYPE_CHECKING:
@@ -18,7 +20,7 @@ if TYPE_CHECKING:
 class TestGenerator:
     def get_graph_pflow(
         self, fx_rng: Generator
-    ) -> tuple[nx.Graph[int], list[int], list[int], dict[int, Plane], dict[int, float]]:
+    ) -> OpenGraph:
         """Create a graph which has pflow but no gflow.
 
         Parameters
@@ -28,16 +30,7 @@ class TestGenerator:
 
         Returns
         -------
-        graph: :class:`networkx.Graph`
-            Graph on which MBQC should be performed
-        inputs: list[int]
-            list of node indices for input nodes
-        outputs: list[int]
-            list of node indices for output nodes
-        meas_planes: dict[int, Plane]
-            measurement planes for each nodes on the graph, except output nodes
-        meas_angles: dict[int, float]
-            Measurement angles in multiples of pi. It combines Pauli angles (half-integers) and non-Pauli angles (any other real number).
+        OpenGraph: :class:`graphix.opengraph.OpenGraph`
         """
         graph: nx.Graph[int] = nx.Graph(
             [(0, 2), (1, 4), (2, 3), (3, 4), (2, 5), (3, 6), (4, 7), (5, 6), (6, 7), (5, 8), (7, 9)]
@@ -48,6 +41,7 @@ class TestGenerator:
         # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no glow but there's pflow.
         meas_angles = {**dict.fromkeys(range(4), 0), **dict(zip(range(4, 8), (2 * fx_rng.random(4)).tolist()))}
         meas_planes = dict.fromkeys(range(8), Plane.XY)
+        meas = {i: Measurement(angle, plane) for (i, angle), plane in zip(meas_angles.items(), meas_planes.values())}
 
         gf, _ = find_gflow(graph=graph, iset=set(inputs), oset=set(outputs), meas_planes=meas_planes)
         pf, _ = find_pauliflow(
@@ -57,7 +51,7 @@ class TestGenerator:
         assert gf is None  # example graph doesn't have gflow
         assert pf is not None  # example graph has Pauli flow
 
-        return graph, inputs, outputs, meas_planes, meas_angles
+        return OpenGraph(inside=graph, inputs=inputs, outputs=outputs, measurements=meas)
 
     def test_pattern_generation_determinism_flow(self, fx_rng: Generator) -> None:
         graph: nx.Graph[int] = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
@@ -73,9 +67,9 @@ class TestGenerator:
             pattern.minimize_space()
             state = pattern.simulate_pattern(rng=fx_rng)
             results.append(state)
-        combinations = [(0, 1), (0, 2), (1, 2)]
-        for i, j in combinations:
-            inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
+
+        for i in range(1, 3):
+            inner_product = np.dot(results[0].flatten(), results[i].flatten().conjugate())
             assert abs(inner_product) == pytest.approx(1)
 
     def test_pattern_generation_determinism_gflow(self, fx_rng: Generator) -> None:
@@ -92,24 +86,25 @@ class TestGenerator:
             pattern.minimize_space()
             state = pattern.simulate_pattern(rng=fx_rng)
             results.append(state)
-        combinations = [(0, 1), (0, 2), (1, 2)]
-        for i, j in combinations:
-            inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
+
+        for i in range(1, 3):
+            inner_product = np.dot(results[0].flatten(), results[i].flatten().conjugate())
             assert abs(inner_product) == pytest.approx(1)
 
     def test_pattern_generation_determinism_pflow(self, fx_rng: Generator) -> None:
-        graph, inputs, outputs, meas_planes, meas_angles = self.get_graph_pflow(fx_rng)
+        og = self.get_graph_pflow(fx_rng)
+        meas_angles = {i: m.angle for i, m in og.measurements.items()}
+        meas_planes = {i: m.plane for i, m in og.measurements.items()}
 
-        pattern = generate_from_graph(graph, meas_angles, inputs, outputs, meas_planes)
+        pattern = generate_from_graph(og.inside, meas_angles, og.inputs, og.outputs, meas_planes)
         pattern.standardize()
         pattern.minimize_space()
 
         repeats = 3  # for testing the determinism of a pattern
         results = [pattern.simulate_pattern(rng=fx_rng) for _ in range(repeats)]
 
-        combinations = [(0, 1), (0, 2), (1, 2)]
-        for i, j in combinations:
-            inner_product = np.dot(results[i].flatten(), results[j].flatten().conjugate())
+        for i in range(1, 3):
+            inner_product = np.dot(results[0].flatten(), results[i].flatten().conjugate())
             assert abs(inner_product) == pytest.approx(1)
 
     def test_pattern_generation_flow(self, fx_rng: Generator) -> None:
@@ -148,13 +143,15 @@ class TestGenerator:
         assert pattern.get_graph() == ([0, 1, 2], [(0, 1), (1, 2)])
 
     def test_pattern_generation_pflow(self, fx_rng: Generator) -> None:
-        graph, inputs, outputs, meas_planes, meas_angles = self.get_graph_pflow(fx_rng)
+        og = self.get_graph_pflow(fx_rng)
+        meas_angles = {i: m.angle for i, m in og.measurements.items()}
+        meas_planes = {i: m.plane for i, m in og.measurements.items()}
 
-        pattern = generate_from_graph(graph, meas_angles, inputs, outputs, meas_planes)
+        pattern = generate_from_graph(og.inside, meas_angles, og.inputs, og.outputs, meas_planes)
 
         _, edge_list = pattern.get_graph()
         graph_generated_pattern: nx.Graph[int] = nx.Graph(edge_list)
-        assert nx.is_isomorphic(graph, graph_generated_pattern)
+        assert nx.is_isomorphic(og.inside, graph_generated_pattern)
 
         pf_generated_pattern, _ = pauliflow_from_pattern(pattern)
         assert pf_generated_pattern is not None

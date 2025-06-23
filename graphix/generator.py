@@ -132,7 +132,7 @@ def generate_from_graph(
                         pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
                         odd_neighbors = find_odd_neighbor(graph, p[j])
                         future_nodes = set.union(
-                            nodes for (layer, nodes) in layers.items() if layer < i
+                            *[nodes for (layer, nodes) in layers.items() if layer < i]
                         )  # {k | k > j}, with "j" last corrected node and ">" the Pauli flow ordering
                         for k in odd_neighbors & future_nodes:
                             pattern.add(Z(node=k, domain={j}))
