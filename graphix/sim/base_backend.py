@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
 
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.ops import Ops
@@ -160,21 +162,32 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic:
 
 
 def perform_measure(
-    qubit: int, plane: Plane, angle: float, state, rng, pr_calc: bool = True, symbolic: bool = False
+    qubit_node: int,
+    qubit_loc: int,
+    plane: Plane,
+    angle: float,
+    state,
+    branch_selector: BranchSelector,
+    symbolic: bool = False,
 ) -> npt.NDArray:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
-    if pr_calc:
-        op_mat = _op_mat_from_result(vec, False, symbolic=symbolic)
-        prob_0 = state.expectation_single(op_mat, qubit)
-        result = rng.random() > prob_0
-        if result:
-            op_mat = _op_mat_from_result(vec, True, symbolic=symbolic)
-    else:
-        # choose the measurement result randomly
-        result = rng.choice([0, 1])
-        op_mat = _op_mat_from_result(vec, result, symbolic=symbolic)
-    state.evolve_single(op_mat, qubit)
+    # op_mat_0 may contain the matrix operator associated with the outcome 0,
+    # but the value is computed lazily, i.e., only if needed.
+    op_mat_0 = None
+
+    def get_op_mat_0() -> np.ndarray:
+        nonlocal op_mat_0
+        if op_mat_0 is None:
+            op_mat_0 = _op_mat_from_result(vec, False, symbolic=symbolic)
+        return op_mat_0
+
+    def compute_expectation_0() -> float:
+        return state.expectation_single(get_op_mat_0(), qubit_loc)
+
+    result = branch_selector.measure(qubit_node, compute_expectation_0)
+    op_mat = _op_mat_from_result(vec, True, symbolic=symbolic) if result else get_op_mat_0()
+    state.evolve_single(op_mat, qubit_loc)
     return result
 
 
@@ -185,7 +198,8 @@ class Backend:
         self,
         state: State,
         node_index: NodeIndex | None = None,
-        pr_calc: bool = True,
+        branch_selector: BranchSelector | None = None,
+        pr_calc: bool | None = None,
         rng: Generator | None = None,
         symbolic: bool = False,
     ):
@@ -211,16 +225,23 @@ class Backend:
             self.__node_index = NodeIndex()
         else:
             self.__node_index = node_index.copy()
-        if not isinstance(pr_calc, bool):
-            raise TypeError("`pr_calc` should be bool")
         # whether to compute the probability
-        self.__pr_calc = pr_calc
+        if branch_selector is None:
+            if pr_calc is None:
+                pr_calc = True
+            else:
+                warnings.warn(
+                    "Setting `pr_calc` in `Backend` is deprecated. Use a `RandomBranchSelector` instead.",
+                    DeprecationWarning,
+                    stacklevel=1,
+                )
+            self.__branch_selector: BranchSelector = RandomBranchSelector(pr_calc=pr_calc, rng=rng)
+        else:
+            if pr_calc is not None or rng is not None:
+                raise ValueError("Cannot specify both branch selector and pr_calc/rng")
+            self.__branch_selector = branch_selector
         self.__rng = ensure_rng(rng)
         self.__symbolic = symbolic
-
-    def copy(self) -> Backend:
-        """Return a copy of the backend."""
-        return Backend(self.__state, self.__node_index, self.__pr_calc, self.__rng)
 
     @property
     def rng(self) -> Generator:
@@ -274,12 +295,12 @@ class Backend:
         """
         loc = self.node_index.index(node)
         result = perform_measure(
+            node,
             loc,
             measurement.plane,
             measurement.angle,
             self.state,
-            rng=self.__rng,
-            pr_calc=self.__pr_calc,
+            self.__branch_selector,
             symbolic=self.__symbolic,
         )
         self.node_index.remove(node)
