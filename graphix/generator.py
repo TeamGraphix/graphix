@@ -71,9 +71,10 @@ def generate_from_graph(
     """
     inputs = list(inputs)
     outputs = list(outputs)
-    measuring_nodes = list(set(graph.nodes) - set(outputs) - set(inputs))
 
-    meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if meas_planes is None else dict(meas_planes)
+    measuring_nodes = list(set(graph.nodes) - set(outputs))
+
+    meas_planes = dict(meas_planes or dict.fromkeys(measuring_nodes, Plane.XY))
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
