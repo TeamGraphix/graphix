@@ -18,9 +18,7 @@ if TYPE_CHECKING:
 
 
 class TestGenerator:
-    def get_graph_pflow(
-        self, fx_rng: Generator
-    ) -> OpenGraph:
+    def get_graph_pflow(self, fx_rng: Generator) -> OpenGraph:
         """Create a graph which has pflow but no gflow.
 
         Parameters
