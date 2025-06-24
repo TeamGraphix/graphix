@@ -39,7 +39,7 @@ def check_meas_planes(meas_planes: dict[int, Plane]) -> None:
 
 
 def find_gflow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane],
