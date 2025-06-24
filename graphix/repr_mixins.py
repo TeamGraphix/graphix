@@ -1,4 +1,5 @@
 """Mixins for eval-friendly `repr` for dataclasses and Enum members."""
+
 from __future__ import annotations
 
 import dataclasses
