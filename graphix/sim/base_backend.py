@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from graphix import command
     from graphix.fundamentals import Plane
     from graphix.measurements import Measurement
+    from graphix.parameter import ExpressionOrFloat
     from graphix.simulator import MeasureMethod
 
 
@@ -160,8 +161,8 @@ def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic:
 
 
 def perform_measure(
-    qubit: int, plane: Plane, angle: float, state, rng, pr_calc: bool = True, symbolic: bool = False
-) -> npt.NDArray:
+    qubit: int, plane: Plane, angle: ExpressionOrFloat, state, rng, pr_calc: bool = True, symbolic: bool = False
+) -> Literal[0, 1]:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
     if pr_calc:

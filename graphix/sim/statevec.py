@@ -281,7 +281,7 @@ class Statevec(State):
         total_num = len(self.dims()) + len(other.dims())
         self.psi = np.kron(psi_self, psi_other).reshape((2,) * total_num)
 
-    def cnot(self, qubits):
+    def cnot(self, qubits) -> None:
         """Apply CNOT.
 
         Parameters

@@ -4,4 +4,4 @@ from __future__ import annotations
 
 from setuptools import setup
 
-setup()
+setup()  # type: ignore[no-untyped-call]
