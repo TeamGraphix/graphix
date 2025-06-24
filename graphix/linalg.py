@@ -206,9 +206,16 @@ class MatGF2:
         int: int
             rank of the matrix
         """
-        mat_a = self.forward_eliminate(copy=True)[0] if not self.is_canonical_form() else self
-        nonzero_index = np.diag(mat_a.data).nonzero()
-        return len(nonzero_index[0])
+        # Get the row echelon form of the matrix
+        row_echelon_form = self.data.row_reduce()
+        # Count the number of non-zero rows
+        # Could be optimized, but going with the simplest option
+        nnz_rows = 0
+        for i in range(self.data.shape[0]):
+            if all(row_echelon_form[i, :] == 0):
+                break
+            nnz_rows += 1
+        return nnz_rows
 
     def forward_eliminate(self, b=None, copy=False) -> tuple[MatGF2, MatGF2, list[int], list[int]]:
         r"""Forward eliminate the matrix.
@@ -313,3 +320,29 @@ class MatGF2:
         x = np.array(x).T
 
         return x, kernels
+
+    def right_inverse(self) -> MatGF2:
+        r"""Return any right inverse of the matrix.
+
+        A right inverse B of a matrix A satisfies AB = I where I is
+        the identity matrix. It is assumed that the right inverse
+        exists.
+
+        Returns
+        -------
+        rinv: Any right inverse of the matrix.
+        """
+        ident = galois.GF2.Identity(self.data.shape[0])
+        aug = np.hstack([self.data, ident])
+        red = aug.row_reduce(ncols=self.data.shape[1])
+        rinv = galois.GF2.Zeros((self.data.shape[1], self.data.shape[0]))
+        # for each row i, find the leading 1 col, let it be j, and set rinv[j, :] = C[i, :]
+        j = 0
+        for i in range(self.data.shape[0]):
+            for k in range(j, self.data.shape[1]):
+                if red[i, k] == 1:
+                    rinv[k, :] = red[i, self.data.shape[1] :]
+                    j = k + 1
+                    break
+        assert np.all(self.data @ rinv == galois.GF2.Identity(self.data.shape[0]))
+        return MatGF2(rinv)
