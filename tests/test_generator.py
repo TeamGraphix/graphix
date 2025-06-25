@@ -36,7 +36,7 @@ class TestGenerator:
         inputs = [0, 1]
         outputs = [8, 9]
 
-        # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no glow but there's pflow.
+        # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
         meas_angles = {**dict.fromkeys(range(4), 0), **dict(zip(range(4, 8), (2 * fx_rng.random(4)).tolist()))}
         meas_planes = dict.fromkeys(range(8), Plane.XY)
         meas = {i: Measurement(angle, plane) for (i, angle), plane in zip(meas_angles.items(), meas_planes.values())}
@@ -91,10 +91,7 @@ class TestGenerator:
 
     def test_pattern_generation_determinism_pflow(self, fx_rng: Generator) -> None:
         og = self.get_graph_pflow(fx_rng)
-        meas_angles = {i: m.angle for i, m in og.measurements.items()}
-        meas_planes = {i: m.plane for i, m in og.measurements.items()}
-
-        pattern = generate_from_graph(og.inside, meas_angles, og.inputs, og.outputs, meas_planes)
+        pattern = og.to_pattern()
         pattern.standardize()
         pattern.minimize_space()
 
@@ -142,10 +139,7 @@ class TestGenerator:
 
     def test_pattern_generation_pflow(self, fx_rng: Generator) -> None:
         og = self.get_graph_pflow(fx_rng)
-        meas_angles = {i: m.angle for i, m in og.measurements.items()}
-        meas_planes = {i: m.plane for i, m in og.measurements.items()}
-
-        pattern = generate_from_graph(og.inside, meas_angles, og.inputs, og.outputs, meas_planes)
+        pattern = og.to_pattern()
 
         _, edge_list = pattern.get_graph()
         graph_generated_pattern: nx.Graph[int] = nx.Graph(edge_list)
