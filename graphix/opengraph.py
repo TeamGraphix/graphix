@@ -120,14 +120,14 @@ class OpenGraph:
         return generate_from_graph(g, angles, inputs, outputs, planes)
 
     def compose(self, other: OpenGraph, mapping: Mapping[int, int]) -> tuple[OpenGraph, dict[int, int]]:
-        r"""Compose two open graphs by merging a subset of nodes of `self` and a subset of nodes of `other`.
+        r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
 
         Parameters
         ----------
         other : OpenGraph
-            open graph to be composed with `self`.
+            Open graph to be composed with `self`.
         mapping: dict[int, int]
-            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
+            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
 
         Returns
         -------
@@ -151,22 +151,22 @@ class OpenGraph:
         - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
         """
-        if not set(mapping.keys()) <= set(other.inside.nodes):
+        if not mapping.keys() <= other.inside.nodes:
             raise ValueError("Keys of mapping must be correspond to nodes of other.")
         if len(mapping.values()) != len(set(mapping.values())):
             raise ValueError("Values in mapping contain duplicates.")
         for v, u in mapping.items():
             if (
-                v in other.measurements
-                and u in self.measurements
-                and not other.measurements[v].isclose(self.measurements[u])
+                (vm := other.measurements.get(v)) is not None
+                and (um := self.measurements.get(u)) is not None
+                and not vm.isclose(um)
             ):
                 raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
 
         shift = max(*self.inside.nodes, *mapping.values()) + 1
 
         mapping_sequential = {
-            node: i for i, node in enumerate(sorted(set(other.inside.nodes) - mapping.keys()), start=shift)
+            node: i for i, node in enumerate(sorted(other.inside.nodes - mapping.keys()), start=shift)
         }  # assigns new labels to nodes in other not specified in mapping
 
         mapping_complete = {**mapping, **mapping_sequential}
@@ -174,7 +174,7 @@ class OpenGraph:
         g2_shifted = nx.relabel_nodes(other.inside, mapping_complete)
         g = nx.compose(self.inside, g2_shifted)
 
-        merged = set(mapping_complete.values()) & set(self.inside.nodes())
+        merged = set(mapping_complete.values()) & self.inside.nodes
 
         def merge_ports(p1: list[int], p2: list[int]) -> list[int]:
             p2_mapped = [mapping_complete[node] for node in p2]

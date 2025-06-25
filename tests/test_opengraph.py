@@ -64,7 +64,7 @@ def test_compose_1() -> None:
     g = nx.Graph([(1, 2)])
     inputs = [1]
     outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
     mapping = {1: 100, 2: 200}
@@ -77,7 +77,7 @@ def test_compose_1() -> None:
     assert og.inputs == [1, 100]
     assert og.outputs == [2, 200]
 
-    outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
+    outputs_c = [i for i in og.inside.nodes if i not in og.outputs]
     assert len(og.measurements) == len(outputs_c)
     assert set(og.measurements) == set(outputs_c)
     assert mapping.keys() <= mapping_complete.keys()
@@ -107,13 +107,13 @@ def test_compose_2() -> None:
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
     g = nx.Graph([(6, 7), (6, 17), (17, 1), (7, 4), (17, 4), (4, 2)])
     inputs = [6, 7]
     outputs = [1, 2]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_2 = OpenGraph(g, meas, inputs, outputs)
 
     mapping = {6: 23, 7: 13, 1: 100, 2: 200}
@@ -128,8 +128,8 @@ def test_compose_2() -> None:
     assert og.inputs == [0, 3]
     assert og.outputs == [100, 200]
 
-    outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
-    assert og.measurements.keys() == set(outputs_c)
+    outputs_c = {i for i in og.inside.nodes if i not in og.outputs}
+    assert og.measurements.keys() == outputs_c
     assert mapping.keys() <= mapping_complete.keys()
     assert set(mapping.values()) <= set(mapping_complete.values())
 
@@ -151,10 +151,10 @@ def test_compose_3() -> None:
     g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
     inputs = [0, 3]
     outputs = [13, 23]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
-    mapping = {i: i for i in g.nodes()}
+    mapping = {i: i for i in g.nodes}
 
     og, mapping_complete = og_1.compose(og_1, mapping)
 
@@ -184,13 +184,13 @@ def test_compose_4() -> None:
     g = nx.Graph([(18, 17), (17, 3)])
     inputs = [17, 18]
     outputs = [3, 17]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
     g = nx.Graph([(1, 2), (2, 3)])
     inputs = [1]
     outputs = [3]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_2 = OpenGraph(g, meas, inputs, outputs)
 
     mapping = {1: 17, 3: 300}
@@ -203,9 +203,8 @@ def test_compose_4() -> None:
     assert og.inputs == [17, 18]  # the input character of node 17 is kept because node 1 (in G2) is an input
     assert og.outputs == [3, 300]  # the output character of node 17 is lost because node 1 (in G2) is not an output
 
-    outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
-    assert len(og.measurements) == len(outputs_c)
-    assert set(og.measurements) == set(outputs_c)
+    outputs_c = {i for i in og.inside.nodes if i not in og.outputs}
+    assert og.measurements.keys() == outputs_c
     assert mapping.keys() <= mapping_complete.keys()
     assert set(mapping.values()) <= set(mapping_complete.values())
 
@@ -231,13 +230,13 @@ def test_compose_5() -> None:
     g = nx.Graph([(1, 2), (1, 3)])
     inputs = [1, 3]
     outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_1 = OpenGraph(g, meas, inputs, outputs)
 
     g = nx.Graph([(3, 4)])
     inputs = [3]
     outputs = [4]
-    meas = {i: Measurement(0, Plane.XY) for i in set(g.nodes()) - set(outputs)}
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_2 = OpenGraph(g, meas, inputs, outputs)
 
     mapping = {4: 1, 3: 300}
@@ -250,8 +249,7 @@ def test_compose_5() -> None:
     assert og.inputs == [3, 300]
     assert og.outputs == [2]
 
-    outputs_c = [i for i in og.inside.nodes() if i not in og.outputs]
-    assert len(og.measurements) == len(outputs_c)
-    assert set(og.measurements) == set(outputs_c)
+    outputs_c = {i for i in og.inside.nodes if i not in og.outputs}
+    assert og.measurements.keys() == outputs_c
     assert mapping.keys() <= mapping_complete.keys()
     assert set(mapping.values()) <= set(mapping_complete.values())
