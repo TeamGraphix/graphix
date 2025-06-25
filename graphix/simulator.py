@@ -22,7 +22,11 @@ from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
+    from typing import Any
+
+    from graphix.noise_models.noise_model import NoiseModel
     from graphix.pattern import Pattern
+    from graphix.sim.density_matrix import Data
 
 
 class MeasureMethod(abc.ABC):
@@ -160,7 +164,12 @@ class PatternSimulator:
     """
 
     def __init__(
-        self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, **kwargs
+        self,
+        pattern: Pattern,
+        backend: Backend | str = "statevector",
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        **kwargs: Any,
     ) -> None:
         """
         Construct a pattern simulator.
@@ -223,7 +232,7 @@ class PatternSimulator:
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state=BasicStates.PLUS) -> None:
+    def run(self, input_state: Data = BasicStates.PLUS) -> None:
         """Perform the simulation.
 
         Returns
