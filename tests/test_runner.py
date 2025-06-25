@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 try:
     import qiskit
     from qiskit_aer import Aer
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
     pass
 
 
