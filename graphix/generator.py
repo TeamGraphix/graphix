@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def generate_from_graph(
     graph: nx.Graph[int],
-    angles: Mapping[int, float],
+    angles: Mapping[int, ExpressionOrFloat],
     inputs: Iterable[int],
     outputs: Iterable[int],
     meas_planes: Mapping[int, Plane] | None = None,
@@ -119,7 +119,7 @@ def generate_from_graph(
                         pattern.add(X(node=k, domain={j}))
         else:
             # no flow or gflow found - we try pflow
-            p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=dict(angles))
+            p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=angles)
             if p is not None:
                 # pflow found
                 depth, layers = get_layers(l_k)
