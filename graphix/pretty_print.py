@@ -9,7 +9,8 @@ from enum import Enum
 from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
-from graphix import command, fundamentals
+from graphix import command
+from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     from collections.abc import Container
@@ -120,7 +121,7 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
         # with some other arguments and/or domains.
         arguments = []
         if cmd.kind == command.CommandKind.M:
-            if cmd.plane != fundamentals.Plane.XY:
+            if cmd.plane != Plane.XY:
                 arguments.append(cmd.plane.name)
             # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
             # is `False` if `cmd.angle` is an integer.
