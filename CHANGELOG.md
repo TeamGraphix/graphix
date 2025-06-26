@@ -5,17 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
+
+### Added
+
+- #277: Methods for pretty-printing `Pattern`: `to_ascii`,
+  `to_unicode`, `to_latex`.
+
+### Fixed
+
+- #277: The result of `repr()` for `Pattern`, `Circuit`, `Command`,
+  `Instruction`, `Plane`, `Axis` and `Sign` is now a valid Python
+  expression and is more readable.
+
+- #235, #252, #273: The open graph representation is now compatible
+  with pyzx 0.9, and conventions have been fixed to ensure that the
+  semantics is preserved between circuits, ZX graphs, open graphs and
+  patterns.
+
+### Changed
+
+- #277: The method `Pattern.print_pattern` is now deprecated.
+- Moved all device interface functionalities to an external library and removed their implementation from this library.
+
+## [0.3.1] - 2025-04-21
 
 ### Added
 
 - Parameterized circuits and patterns: angles in instructions and
   measures can be expressions with parameters created with
-  `parameter.Placeholder` class.  Parameterized circuits can be
+  `parameter.Placeholder` class. Parameterized circuits can be
   transpiled and parameterized patterns can be optimized
   (standardization, minimization, signal shifting and Pauli
-  preprocessing) before being instantiated with the method `subs`.  An
+  preprocessing) before being instantiated with the method `subs`. An
   additional package,
   [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic),
   provides parameters that suppor symbolic simulation, and the
@@ -28,10 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - #254: Fix examples in `opengraph` and `pyzx` modules
+- #264: Fixed type warnings
 
 ### Changed
 
-- Moved all device interface functionalities to an external library and removed their implementation from this library.
+- #262: Simplify `graphsim` and deprecated `rustworkx` support for simplicity.
 
 ## [0.3.0] - 2025-02-04
 
