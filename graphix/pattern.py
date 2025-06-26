@@ -20,7 +20,6 @@ from typing_extensions import assert_never, override
 from graphix import command, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
