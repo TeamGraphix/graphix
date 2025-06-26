@@ -77,9 +77,8 @@ def test_compose_1() -> None:
     assert og.inputs == [1, 100]
     assert og.outputs == [2, 200]
 
-    outputs_c = [i for i in og.inside.nodes if i not in og.outputs]
-    assert len(og.measurements) == len(outputs_c)
-    assert set(og.measurements) == set(outputs_c)
+    outputs_c = {i for i in og.inside.nodes if i not in og.outputs}
+    assert og.measurements.keys() == outputs_c
     assert mapping.keys() <= mapping_complete.keys()
     assert set(mapping.values()) <= set(mapping_complete.values())
 
