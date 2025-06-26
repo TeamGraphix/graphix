@@ -18,7 +18,7 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
-from graphix.pretty_print import DataclassPrettyPrintMixin
+from graphix.repr_mixins import DataclassReprMixin
 from graphix.states import BasicStates, State
 
 Node = int
@@ -46,7 +46,7 @@ class _KindChecker:
 
 
 @dataclasses.dataclass(repr=False)
-class N(_KindChecker, DataclassPrettyPrintMixin):
+class N(_KindChecker, DataclassReprMixin):
     r"""Preparation command.
 
     Parameters
@@ -63,7 +63,7 @@ class N(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class M(_KindChecker, DataclassPrettyPrintMixin):
+class M(_KindChecker, DataclassReprMixin):
     r"""Measurement command.
 
     Parameters
@@ -112,7 +112,7 @@ class M(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class E(_KindChecker, DataclassPrettyPrintMixin):
+class E(_KindChecker, DataclassReprMixin):
     r"""Entanglement command between two qubits.
 
     Parameters
@@ -126,7 +126,7 @@ class E(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class C(_KindChecker, DataclassPrettyPrintMixin):
+class C(_KindChecker, DataclassReprMixin):
     r"""Local Clifford gate command.
 
     Parameters
@@ -143,7 +143,7 @@ class C(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class X(_KindChecker, DataclassPrettyPrintMixin):
+class X(_KindChecker, DataclassReprMixin):
     r"""X correction command.
 
     Parameters
@@ -160,7 +160,7 @@ class X(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class Z(_KindChecker, DataclassPrettyPrintMixin):
+class Z(_KindChecker, DataclassReprMixin):
     r"""Z correction command.
 
     Parameters
@@ -177,7 +177,7 @@ class Z(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class S(_KindChecker, DataclassPrettyPrintMixin):
+class S(_KindChecker, DataclassReprMixin):
     r"""S command.
 
     Parameters

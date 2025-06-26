@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import sys
 import typing
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, SupportsInt, TypeVar
@@ -30,8 +31,6 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
     if sys.version_info < (3, 10):
         # MEMO: `inspect.get_annotations` unavailable
         return
-
-    import inspect
 
     ann = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
     if ann is None:

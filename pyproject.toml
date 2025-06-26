@@ -67,7 +67,6 @@ extend-ignore = [
   "DOC",     # Docstring
   "E501",    # Line too long
   "EM10",    # Raise string
-  "PLC0415", # Import not at the top level
   "PLR1702", # Too many nests
   "PLW1641", # __hash__ missing
   "PT011",   # pytest raises too broad

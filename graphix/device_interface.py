@@ -34,7 +34,8 @@ class PatternRunner:
 
         if self.backend_name == "ibmq":
             try:
-                from graphix_ibmq.runner import IBMQBackend
+                # This will be removed by #261
+                from graphix_ibmq.runner import IBMQBackend  # noqa: PLC0415
             except Exception as e:
                 raise ImportError(
                     "Failed to import graphix_ibmq. Please install graphix_ibmq by `pip install graphix-ibmq`."

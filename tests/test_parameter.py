@@ -196,7 +196,8 @@ def test_simulation_exception() -> None:
     reason="qiskit and/or graphix-ibmq not installed",
 )
 def test_ibmq_backend() -> None:
-    import qiskit.circuit.exceptions
+    # This will be removed by #261
+    import qiskit.circuit.exceptions  # noqa: PLC0415
 
     circuit = graphix.Circuit(1)
     alpha = Placeholder("alpha")
