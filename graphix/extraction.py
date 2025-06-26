@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import operator
 from enum import Enum
 
 import networkx as nx
@@ -81,16 +82,16 @@ def get_fusion_network_from_graph(
     neighbors_list = []
 
     # Prepare a list sorted by number of neighbors to get the largest GHZ clusters first.
-    for v in adjdict:
-        if len(adjdict[v]) > 2:
-            neighbors_list.append((v, len(adjdict[v])))
+    for v, va in adjdict.items():
+        if len(va) > 2:
+            neighbors_list.append((v, len(va)))
         # If there is an isolated node, add it to the list.
-        if len(adjdict[v]) == 0:
+        if len(va) == 0:
             resource_list.append(create_resource_graph([v], root=v))
 
     # Find GHZ graphs in the graph and remove their edges from the graph.
     # All nodes that have more than 2 edges become the roots of the GHZ clusters.
-    for v, _ in sorted(neighbors_list, key=lambda tup: tup[1], reverse=True):
+    for v, _ in sorted(neighbors_list, key=operator.itemgetter(1), reverse=True):
         if len(adjdict[v]) > 2:
             nodes = [v]
             while len(adjdict[v]) > 0 and len(nodes) < max_ghz:
@@ -102,8 +103,8 @@ def get_fusion_network_from_graph(
 
     # Find Linear clusters in the remaining graph and remove their edges from the graph.
     while number_of_edges != 0:
-        for v in adjdict:
-            if len(adjdict[v]) == 1:
+        for v, va in adjdict.items():
+            if len(va) == 1:
                 n = v
                 nodes = [n]
                 while len(adjdict[n]) > 0 and len(nodes) < max_lin:
@@ -122,14 +123,14 @@ def get_fusion_network_from_graph(
                     resource_list.append(create_resource_graph(nodes))
 
         # If a cycle exists in the graph, extract one 3-qubit ghz cluster from the cycle.
-        for v in adjdict:
-            if len(adjdict[v]) == 2:
-                neighbors = list(adjdict[v].keys())
+        for v, va in adjdict.items():
+            if len(va) == 2:
+                neighbors = list(va.keys())
                 nodes = [v, *neighbors]
                 del adjdict[neighbors[0]][v]
                 del adjdict[neighbors[1]][v]
-                del adjdict[v][neighbors[0]]
-                del adjdict[v][neighbors[1]]
+                del va[neighbors[0]]
+                del va[neighbors[1]]
                 number_of_edges -= 2
 
                 resource_list.append(create_resource_graph(nodes, root=v))

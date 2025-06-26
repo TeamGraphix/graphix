@@ -18,6 +18,7 @@ from graphix.measurements import Domains
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
+from graphix.pretty_print import DataclassPrettyPrintMixin
 from graphix.states import BasicStates, State
 
 Node = int
@@ -44,18 +45,40 @@ class _KindChecker:
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
-@dataclasses.dataclass
-class N(_KindChecker):
-    """Preparation command."""
+@dataclasses.dataclass(repr=False)
+class N(_KindChecker, DataclassPrettyPrintMixin):
+    r"""Preparation command.
+
+    Parameters
+    ----------
+    node : int
+        Index of the qubit to prepare.
+    state : ~graphix.states.State, optional
+        Initial state, defaults to :class:`~graphix.states.BasicStates.PLUS`.
+    """
 
     node: Node
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
 
-@dataclasses.dataclass
-class M(_KindChecker):
-    """Measurement command. By default the plane is set to 'XY', the angle to 0, empty domains and identity vop."""
+@dataclasses.dataclass(repr=False)
+class M(_KindChecker, DataclassPrettyPrintMixin):
+    r"""Measurement command.
+
+    Parameters
+    ----------
+    node : int
+        Node index of the measured qubit.
+    plane : Plane, optional
+        Measurement plane, defaults to :class:`~graphix.fundamentals.Plane.XY`.
+    angle : ExpressionOrFloat, optional
+        Rotation angle divided by :math:`\pi`.
+    s_domain : set[int], optional
+        Domain for the X byproduct operator.
+    t_domain : set[int], optional
+        Domain for the Z byproduct operator.
+    """
 
     node: Node
     plane: Plane = Plane.XY
@@ -65,9 +88,17 @@ class M(_KindChecker):
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
 
     def clifford(self, clifford_gate: Clifford) -> M:
-        """Apply a Clifford gate to the measure command.
+        r"""Return a new measurement command with a Clifford applied.
 
-        The returned `M` command is equivalent to the pattern `MC`.
+        Parameters
+        ----------
+        clifford_gate : ~graphix.clifford.Clifford
+            Clifford gate to apply before the measurement.
+
+        Returns
+        -------
+        :class:`~graphix.command.M`
+            Equivalent command representing the pattern ``MC``.
         """
         domains = clifford_gate.commute_domains(Domains(self.s_domain, self.t_domain))
         update = MeasureUpdate.compute(self.plane, False, False, clifford_gate)
@@ -80,53 +111,97 @@ class M(_KindChecker):
         )
 
 
-@dataclasses.dataclass
-class E(_KindChecker):
-    """Entanglement command."""
+@dataclasses.dataclass(repr=False)
+class E(_KindChecker, DataclassPrettyPrintMixin):
+    r"""Entanglement command between two qubits.
+
+    Parameters
+    ----------
+    nodes : tuple[int, int]
+        Pair of nodes to entangle.
+    """
 
     nodes: tuple[Node, Node]
     kind: ClassVar[Literal[CommandKind.E]] = dataclasses.field(default=CommandKind.E, init=False)
 
 
-@dataclasses.dataclass
-class C(_KindChecker):
-    """Clifford command."""
+@dataclasses.dataclass(repr=False)
+class C(_KindChecker, DataclassPrettyPrintMixin):
+    r"""Local Clifford gate command.
+
+    Parameters
+    ----------
+    node : int
+        Node index on which to apply the gate.
+    clifford : ~graphix.clifford.Clifford
+        Clifford operator to apply.
+    """
 
     node: Node
     clifford: Clifford
     kind: ClassVar[Literal[CommandKind.C]] = dataclasses.field(default=CommandKind.C, init=False)
 
 
-@dataclasses.dataclass
-class X(_KindChecker):
-    """X correction command."""
+@dataclasses.dataclass(repr=False)
+class X(_KindChecker, DataclassPrettyPrintMixin):
+    r"""X correction command.
+
+    Parameters
+    ----------
+    node : int
+        Node to correct.
+    domain : set[int], optional
+        Domain for the byproduct operator.
+    """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.X]] = dataclasses.field(default=CommandKind.X, init=False)
 
 
-@dataclasses.dataclass
-class Z(_KindChecker):
-    """Z correction command."""
+@dataclasses.dataclass(repr=False)
+class Z(_KindChecker, DataclassPrettyPrintMixin):
+    r"""Z correction command.
+
+    Parameters
+    ----------
+    node : int
+        Node to correct.
+    domain : set[int], optional
+        Domain for the byproduct operator.
+    """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.Z]] = dataclasses.field(default=CommandKind.Z, init=False)
 
 
-@dataclasses.dataclass
-class S(_KindChecker):
-    """S command."""
+@dataclasses.dataclass(repr=False)
+class S(_KindChecker, DataclassPrettyPrintMixin):
+    r"""S command.
+
+    Parameters
+    ----------
+    node : int
+        Node for the byproduct operator.
+    domain : set[int], optional
+        Domain on which to apply the operator.
+    """
 
     node: Node
     domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.S]] = dataclasses.field(default=CommandKind.S, init=False)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(repr=False)
 class T(_KindChecker):
-    """T command."""
+    r"""T command.
+
+    Parameters
+    ----------
+    None
+        The T command acts globally without parameters.
+    """
 
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
@@ -143,7 +218,17 @@ BaseM = M
 
 @dataclasses.dataclass
 class MeasureUpdate:
-    """Describe how a measure is changed by the signals and/or a vertex operator."""
+    r"""Describe how a measure is changed by signals and a vertex operator.
+
+    Parameters
+    ----------
+    new_plane : Plane
+        Updated measurement plane after commuting gates.
+    coeff : int
+        Coefficient by which the angle is multiplied.
+    add_term : float
+        Additional term to add to the measurement angle.
+    """
 
     new_plane: Plane
     coeff: int
@@ -151,7 +236,24 @@ class MeasureUpdate:
 
     @staticmethod
     def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
-        """Compute the update for a given plane, signals and vertex operator."""
+        r"""Compute the measurement update.
+
+        Parameters
+        ----------
+        plane : ~graphix.fundamentals.Plane
+            Measurement plane of the command.
+        s : bool
+            Whether an :math:`X` signal is present.
+        t : bool
+            Whether a :math:`Z` signal is present.
+        clifford_gate : ~graphix.clifford.Clifford
+            Vertex operator applied before the measurement.
+
+        Returns
+        -------
+        MeasureUpdate
+            Update describing the new measurement.
+        """
         gates = list(map(Pauli.from_axis, plane.axes))
         if s:
             clifford_gate = Clifford.X @ clifford_gate

@@ -222,7 +222,7 @@ class TestNoisyDensityMatrixBackend:
             np.array([[1 - 2 * prepare_error_pr / 3.0, 0.0], [0.0, 2 * prepare_error_pr / 3.0]]),
         )
 
-    ###  Test rz gate
+    # Test rz gate
 
     # test noiseless noisy vs noiseless
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")

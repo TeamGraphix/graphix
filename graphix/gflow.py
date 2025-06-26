@@ -19,11 +19,12 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import numpy as np
 import sympy as sp
+from typing_extensions import assert_never
 
-from graphix import utils
 from graphix.command import CommandKind
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.linalg import MatGF2
+from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
     from graphix.pattern import Pattern
@@ -34,11 +35,11 @@ def check_meas_planes(meas_planes: dict[int, Plane]) -> None:
     """Check that all planes are valid planes."""
     for node, plane in meas_planes.items():
         if not isinstance(plane, Plane):
-            raise ValueError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
+            raise TypeError(f"Measure plane for {node} is `{plane}`, which is not an instance of `Plane`")
 
 
 def find_gflow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane],
@@ -60,8 +61,8 @@ def find_gflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -111,8 +112,8 @@ def gflowaux(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -166,7 +167,7 @@ def gflowaux(
         elif meas_planes[node] == Plane.XZ:
             vec.data[i_row] = 1
             vec_add = adj_mat_row_reduced.data[:, node_order_list.index(node)]
-            vec = vec + vec_add
+            vec += vec_add
         elif meas_planes[node] == Plane.YZ:
             vec.data = adj_mat_row_reduced.data[:, node_order_list.index(node)].reshape(vec.data.shape)
         b.data[:, i_row] = vec.data
@@ -184,7 +185,7 @@ def gflowaux(
             sol = np.array(sol_list)
             sol_index = sol.nonzero()[0]
             g[non_out_node] = {node_order_col[col_permutation.index(i)] for i in sol_index}
-            if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
+            if meas_planes[non_out_node] in {Plane.XZ, Plane.YZ}:
                 g[non_out_node] |= {non_out_node}
 
         elif mode == "all":
@@ -195,7 +196,7 @@ def gflowaux(
                 sol = np.array(sol_list)
                 sol_index = sol.nonzero()[0]
                 g_i = {node_order_col[col_permutation.index(i)] for i in sol_index}
-                if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
+                if meas_planes[non_out_node] in {Plane.XZ, Plane.YZ}:
                     g_i |= {non_out_node}
 
                 g[non_out_node] |= {frozenset(g_i)}
@@ -205,7 +206,7 @@ def gflowaux(
             for i in range(len(x_col)):
                 node = node_order_col[col_permutation.index(i)]
                 g[non_out_node][node] = x_col[i]
-            if meas_planes[non_out_node] in [Plane.XZ, Plane.YZ]:
+            if meas_planes[non_out_node] in {Plane.XZ, Plane.YZ}:
                 g[non_out_node][non_out_node] = sp.true
 
         l_k[non_out_node] = k
@@ -244,8 +245,8 @@ def find_flow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -334,8 +335,8 @@ def flowaux(
             (p,) = p_set
             f[p] = {q}
             l_k[p] = k
-            v_out_prime = v_out_prime | {p}
-            c_prime = c_prime | {q}
+            v_out_prime |= {p}
+            c_prime |= {q}
     # determine whether there exists flow
     if not v_out_prime:
         if oset == nodes:
@@ -377,8 +378,8 @@ def find_pauliflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -436,8 +437,8 @@ def pauliflowaux(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -673,8 +674,8 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k:
-        l_k[node] = lmax - l_k[node] + 1
+    for node, val in l_k.items():
+        l_k[node] = lmax - val + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
 
@@ -722,14 +723,14 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
         for n in layers[1][l]:
             l_k[n] = l
     lmax = max(l_k.values()) if l_k else 0
-    for node in l_k:
-        l_k[node] = lmax - l_k[node] + 1
+    for node, val in l_k.items():
+        l_k[node] = lmax - val + 1
     for output_node in pattern.output_nodes:
         l_k[output_node] = 0
 
     xflow, zflow = get_corrections_from_pattern(pattern)
     for node, plane in meas_planes.items():
-        if plane in [Plane.XZ, Plane.YZ]:
+        if plane in {Plane.XZ, Plane.YZ}:
             if node not in xflow:
                 xflow[node] = {node}
             xflow[node] |= {node}
@@ -887,9 +888,9 @@ def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     nb = set()
     for edge in edges:
         if node == edge[0]:
-            nb = nb | {edge[1]}
+            nb |= {edge[1]}
         elif node == edge[1]:
-            nb = nb | {edge[0]}
+            nb |= {edge[0]}
     return nb
 
 
@@ -914,8 +915,8 @@ def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
 
     Parameters
     ----------
-    graph : nx.Graph
-        underlying graph.
+    graph : :class:`networkx.Graph`
+        Underlying graph
     vertices : set
         set of nodes indices to find odd neighbors
 
@@ -948,8 +949,8 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
     """
     d = get_min_depth(l_k)
     layers = {k: set() for k in range(d + 1)}
-    for i in l_k:
-        layers[l_k[i]] |= {i}
+    for i, val in l_k.items():
+        layers[val] |= {i}
     return d, layers
 
 
@@ -975,10 +976,7 @@ def get_dependence_flow(
     dependence_flow: dict[int, set]
         dependence flow function. dependence_flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     """
-    try:  # if inputs is not empty
-        dependence_flow = {u: set() for u in inputs}
-    except Exception:
-        dependence_flow = {}
+    dependence_flow = {u: set() for u in inputs}
     # concatenate flow and odd_flow
     combined_flow = {}
     for node, corrections in flow.items():
@@ -1098,12 +1096,18 @@ def get_layers_from_flow(
 def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
     """Get adjacency matrix of the graph.
 
+    Parameters
+    ----------
+    graph : :class:`networkx.Graph`
+        Graph whose adjacency matrix is computed.
+
     Returns
     -------
     adjacency_matrix: graphix.linalg.MatGF2
         adjacency matrix of the graph. the matrix is defined on GF(2) field.
     node_list: list
-        ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
+        ordered list of nodes. ``node_list[i]`` is the node label of the i-th
+        row/column of the adjacency matrix.
 
     """
     node_list = list(graph.nodes)
@@ -1124,8 +1128,8 @@ def verify_flow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     meas_planes: dict[int, str]
@@ -1175,8 +1179,8 @@ def verify_gflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -1233,8 +1237,8 @@ def verify_pauliflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -1352,19 +1356,15 @@ def get_pauli_nodes(
     check_meas_planes(meas_planes)
     l_x, l_y, l_z = set(), set(), set()
     for node, plane in meas_planes.items():
-        if plane == Plane.XY:
-            if utils.is_integer(meas_angles[node]):  # measurement angle is integer
-                l_x |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):  # measurement angle is half integer
-                l_y |= {node}
-        elif plane == Plane.XZ:
-            if utils.is_integer(meas_angles[node]):
-                l_z |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):
-                l_x |= {node}
-        elif plane == Plane.YZ:
-            if utils.is_integer(meas_angles[node]):
-                l_y |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):
-                l_z |= {node}
+        pm = PauliMeasurement.try_from(plane, meas_angles[node])
+        if pm is None:
+            continue
+        if pm.axis == Axis.X:
+            l_x |= {node}
+        elif pm.axis == Axis.Y:
+            l_y |= {node}
+        elif pm.axis == Axis.Z:
+            l_z |= {node}
+        else:
+            assert_never(pm.axis)
     return l_x, l_y, l_z

@@ -58,7 +58,7 @@ circuit.h(2)
 # Now let us transpile into MBQC measurement pattern and inspect the pattern sequence and graph state
 
 pattern = circuit.transpile().pattern
-pattern.print_pattern(lim=15)
+print(pattern.to_ascii(left_to_right=True, limit=15))
 pattern.draw_graph(flow_from_pattern=False)
 
 # %%
@@ -68,13 +68,19 @@ pattern.draw_graph(flow_from_pattern=False)
 
 pattern.standardize()
 pattern.shift_signals()
-pattern.print_pattern(lim=15)
+print(pattern.to_ascii(left_to_right=True, limit=15))
 
 # %%
 # Now we preprocess all Pauli measurements
 
 pattern.perform_pauli_measurements()
-pattern.print_pattern(lim=16, target=[CommandKind.N, CommandKind.M, CommandKind.C])
+print(
+    pattern.to_ascii(
+        left_to_right=True,
+        limit=16,
+        target=[CommandKind.N, CommandKind.M, CommandKind.C],
+    )
+)
 pattern.draw_graph(flow_from_pattern=True)
 
 # %%

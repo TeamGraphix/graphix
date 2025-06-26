@@ -33,7 +33,7 @@ Install together with device interface:
 pip install graphix[extra]
 ```
 
-this will install `graphix` and inteface for [IBMQ](https://github.com/TeamGraphix/graphix-ibmq) and [Perceval](https://github.com/TeamGraphix/graphix-perceval) to run MBQC patterns on superconducting and optical QPUs and their simulators.
+this will install `graphix` and interface for [IBMQ](https://github.com/TeamGraphix/graphix-ibmq) and [Perceval](https://github.com/TeamGraphix/graphix-perceval) to run MBQC patterns on superconducting and optical QPUs and their simulators.
 
 ## Using graphix
 
@@ -74,7 +74,6 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
 
-
 - Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
 
 - For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
@@ -83,7 +82,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 ## Citing
 
-> Shinichi Sunami and Masato Fukushima, Graphix. (2023) <https://doi.org/10.5281/zenodo.7861382> 
+> Shinichi Sunami and Masato Fukushima, Graphix. (2023) <https://doi.org/10.5281/zenodo.7861382>
 
 ## Contributing
 
@@ -95,11 +94,11 @@ Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary
 
 ## Core Contributors (alphabetical order)
 
- - Masato Fukushima (University of Tokyo, Fixstars Amplify)
- - Maxime Garnier (Inria Paris)
- - Thierry Martinez (Inria Paris)
- - Sora Shiratani (University of Tokyo, Fixstars Amplify)
- - Shinichi Sunami (University of Oxford)
+- Masato Fukushima (University of Tokyo, Fixstars Amplify)
+- Maxime Garnier (Inria Paris)
+- Thierry Martinez (Inria Paris)
+- Sora Shiratani (University of Tokyo, Fixstars Amplify)
+- Shinichi Sunami (University of Oxford)
 
 ## Acknowledgements
 

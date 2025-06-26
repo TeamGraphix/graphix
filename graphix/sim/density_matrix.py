@@ -38,24 +38,24 @@ class DensityMatrix(State):
     ):
         """Initialize density matrix objects.
 
-        The behaviour builds on the one of `graphix.statevec.Statevec`.
+        The behaviour builds on the one of *graphix.statevec.Statevec*.
         `data` can be:
         - a single :class:`graphix.states.State` (classical description of a quantum state)
         - an iterable of :class:`graphix.states.State` objects
-        - an iterable of iterable of scalars (A `2**n x 2**n` numerical density matrix)
-        - a `graphix.statevec.DensityMatrix` object
-        - a `graphix.statevec.Statevector` object
+        - an iterable of iterable of scalars (A *2**n x 2**n* numerical density matrix)
+        - a *graphix.statevec.DensityMatrix* object
+        - a *graphix.statevec.Statevector* object
 
         If `nqubit` is not provided, the number of qubit is inferred from `data` and checked for consistency.
         If only one :class:`graphix.states.State` is provided and nqubit is a valid integer, initialize the statevector
         in the tensor product state.
         If both `nqubit` and `data` are provided, consistency of the dimensions is checked.
-        If a `graphix.statevec.Statevec` or `graphix.statevec.DensityMatrix` is passed, returns a copy.
+        If a *graphix.statevec.Statevec* or *graphix.statevec.DensityMatrix* is passed, returns a copy.
 
 
         :param data: input data to prepare the state. Can be a classical description or a numerical input, defaults to graphix.states.BasicStates.PLUS
         :type data: Data
-        :param nqubit: number of qubits to prepare, defaults to `None`
+        :param nqubit: number of qubits to prepare, defaults to *None*
         :type nqubit: int, optional
         """
         if nqubit is not None and nqubit < 0:
@@ -120,7 +120,8 @@ class DensityMatrix(State):
             i : int
                 Index of qubit to apply operator.
         """
-        assert i >= 0 and i < self.nqubit
+        assert i >= 0
+        assert i < self.nqubit
         if op.shape != (2, 2):
             raise ValueError("op must be 2*2 matrix.")
 
@@ -202,7 +203,7 @@ class DensityMatrix(State):
 
         return np.trace(rho_tensor.reshape((2**self.nqubit, 2**self.nqubit)))
 
-    def dims(self) -> list[int]:
+    def dims(self) -> tuple[int, ...]:
         """Return the dimensions of the density matrix."""
         return self.rho.shape
 
@@ -252,7 +253,7 @@ class DensityMatrix(State):
 
     def normalize(self) -> None:
         """Normalize density matrix."""
-        self.rho = self.rho / np.trace(self.rho)
+        self.rho /= np.trace(self.rho)
 
     def remove_qubit(self, loc) -> None:
         """Remove a qubit."""

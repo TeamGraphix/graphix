@@ -1,49 +1,111 @@
-"""Noiseless noise model for testing."""
+"""Noise model that introduces no errors.
+
+This class is useful for unit tests or benchmarks where deterministic
+behaviour is required. All methods simply return an identity
+:class:`~graphix.channels.KrausChannel`.
+"""
 
 from __future__ import annotations
 
 import numpy as np
+import typing_extensions
 
 from graphix.channels import KrausChannel, KrausData
 from graphix.noise_models.noise_model import NoiseModel
 
 
 class NoiselessNoiseModel(NoiseModel):
-    """Noiseless noise model for testing.
+    """Noise model that performs no operation."""
 
-    Only return the identity channel.
-    """
+    @typing_extensions.override
+    def prepare_qubit(self) -> KrausChannel:
+        """Return the identity preparation channel.
 
-    def prepare_qubit(self):
-        """Return the channel to apply after clean single-qubit preparation. Here just identity."""
+        Returns
+        -------
+        KrausChannel
+            Identity channel :math:`I_2`.
+        """
         return KrausChannel([KrausData(1.0, np.eye(2))])
 
-    def entangle(self):
-        """Return noise model to qubits that happens after the CZ gates."""
+    @typing_extensions.override
+    def entangle(self) -> KrausChannel:
+        """Return the identity channel for entangling operations.
+
+        Returns
+        -------
+        KrausChannel
+            Identity channel :math:`I_4`.
+        """
         return KrausChannel([KrausData(1.0, np.eye(4))])
 
-    def measure(self):
-        """Apply noise to qubit to be measured."""
+    @typing_extensions.override
+    def measure(self) -> KrausChannel:
+        """Return the identity channel for measurements.
+
+        Returns
+        -------
+        KrausChannel
+            Identity channel :math:`I_2`.
+        """
         return KrausChannel([KrausData(1.0, np.eye(2))])
 
+    @typing_extensions.override
     def confuse_result(self, result: bool) -> bool:
-        """Assign wrong measurement result."""
+        """Return the unmodified measurement result.
+
+        Parameters
+        ----------
+        result : bool
+            Ideal measurement outcome.
+
+        Returns
+        -------
+        bool
+            Same as ``result``.
+        """
         return result
 
-    def byproduct_x(self):
-        """Apply noise to qubits after X gate correction."""
+    @typing_extensions.override
+    def byproduct_x(self) -> KrausChannel:
+        """Return the identity channel for X corrections.
+
+        Returns
+        -------
+        KrausChannel
+            Identity channel :math:`I_2`.
+        """
         return KrausChannel([KrausData(1.0, np.eye(2))])
 
-    def byproduct_z(self):
-        """Apply noise to qubits after Z gate correction."""
+    @typing_extensions.override
+    def byproduct_z(self) -> KrausChannel:
+        """Return the identity channel for Z corrections.
+
+        Returns
+        -------
+        KrausChannel
+            Identity channel :math:`I_2`.
+        """
         return KrausChannel([KrausData(1.0, np.eye(2))])
 
-    def clifford(self):
-        """Apply noise to qubits that happens in the Clifford gate process."""
+    @typing_extensions.override
+    def clifford(self) -> KrausChannel:
+        """Return the identity channel for Clifford gates.
+
+        Returns
+        -------
+        KrausChannel
+            Identity channel :math:`I_2`.
+        """
         return KrausChannel([KrausData(1.0, np.eye(2))])
 
-    def tick_clock(self):
-        """Notion of time in real devices - this is where we apply effect of T1 and T2.
+    @typing_extensions.override
+    def tick_clock(self) -> None:
+        """Advance the simulator clock without applying errors.
 
-        See :meth:`NoiseModel.tick_clock`.
+        Notes
+        -----
+        This method is present for API compatibility and does not modify the
+        internal state. See
+        :meth:`~graphix.noise_models.noise_model.NoiseModel.tick_clock`.
         """

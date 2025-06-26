@@ -16,18 +16,20 @@ if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
 
+    from graphix.parameter import ExpressionOrFloat
+
 
 def generate_from_graph(
     graph: nx.Graph[int],
-    angles: Mapping[int, float] | Sequence[float] | npt.NDArray[np.float64],
+    angles: Mapping[int, ExpressionOrFloat] | Sequence[ExpressionOrFloat] | npt.NDArray[np.float64],
     inputs: Iterable[int],
     outputs: Iterable[int],
     meas_planes: Mapping[int, Plane] | None = None,
 ) -> Pattern:
     r"""Generate the measurement pattern from open graph and measurement angles.
 
-    This function takes an open graph G = (nodes, edges, input, outputs),
-    specified by networks.Graph and two lists specifying input and output nodes.
+    This function takes an open graph ``G = (nodes, edges, input, outputs)``,
+    specified by :class:`networkx.Graph` and two lists specifying input and output nodes.
     Currently we support XY-plane measurements.
 
     Searches for the flow in the open graph using :func:`graphix.gflow.find_flow` and if found,
@@ -50,8 +52,8 @@ def generate_from_graph(
 
     Parameters
     ----------
-    graph : networkx.Graph
-        graph on which MBQC should be performed
+    graph : :class:`networkx.Graph`
+        Graph on which MBQC should be performed
     angles : dict
         measurement angles for each nodes on the graph (unit of pi), except output nodes
     inputs : list
@@ -74,11 +76,10 @@ def generate_from_graph(
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-    if f:
+    if f is not None:
         # flow found
         depth, layers = get_layers(l_k)
         pattern = Pattern(input_nodes=inputs)
-        # pattern.extend([["N", i] for i in inputs])
         for i in set(graph.nodes) - set(inputs):
             pattern.add(N(node=i))
         for e in graph.edges:
@@ -90,7 +91,7 @@ def generate_from_graph(
                 pattern.add(M(node=j, angle=angles[j]))
                 neighbors: set[int] = set()
                 for k in f[j]:
-                    neighbors = neighbors | set(graph.neighbors(k))
+                    neighbors |= set(graph.neighbors(k))
                 for k in neighbors - {j}:
                     # if k not in measured:
                     pattern.add(Z(node=k, domain={j}))
@@ -98,11 +99,10 @@ def generate_from_graph(
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-        if g:
+        if g is not None:
             # gflow found
             depth, layers = get_layers(l_k)
             pattern = Pattern(input_nodes=inputs)
-            # pattern.extend([["N", i] for i in inputs])
             for i in set(graph.nodes) - set(inputs):
                 pattern.add(N(node=i))
             for e in graph.edges:
@@ -118,4 +118,5 @@ def generate_from_graph(
         else:
             raise ValueError("no flow or gflow found")
 
+    pattern.reorder_output_nodes(outputs)
     return pattern

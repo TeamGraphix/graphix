@@ -12,6 +12,7 @@ import typing_extensions
 
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
+from graphix.pretty_print import EnumPrettyPrintMixin
 
 if TYPE_CHECKING:
     import numpy as np
@@ -28,7 +29,7 @@ else:  # pragma: no cover
     SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
 
 
-class Sign(Enum):
+class Sign(EnumPrettyPrintMixin, Enum):
     """Sign, plus or minus."""
 
     PLUS = 1
@@ -42,14 +43,14 @@ class Sign(Enum):
 
     @staticmethod
     def plus_if(b: bool) -> Sign:
-        """Return `+` if `b` is `True`, `-` otherwise."""
+        """Return *+* if *b* is *True*, *-* otherwise."""
         if b:
             return Sign.PLUS
         return Sign.MINUS
 
     @staticmethod
     def minus_if(b: bool) -> Sign:
-        """Return `-` if `b` is `True`, `+` otherwise."""
+        """Return *-* if *b* is *True*, *+* otherwise."""
         if b:
             return Sign.MINUS
         return Sign.PLUS
@@ -111,7 +112,7 @@ class Sign(Enum):
         return complex(self.value)
 
 
-class ComplexUnit(Enum):
+class ComplexUnit(EnumPrettyPrintMixin, Enum):
     """
     Complex unit: 1, -1, j, -j.
 
@@ -131,10 +132,7 @@ class ComplexUnit(Enum):
         """Return the ComplexUnit instance if the value is compatible, None otherwise."""
         if isinstance(value, ComplexUnit):
             return value
-        try:
-            value = complex(value)
-        except Exception:
-            return None
+        value = complex(value)
         if value == 1:
             return ComplexUnit.ONE
         if value == -1:
@@ -159,7 +157,7 @@ class ComplexUnit(Enum):
 
     @property
     def is_imag(self) -> bool:
-        """Return `True` if `j` or `-j`."""
+        """Return *True* if *j* or *-j*."""
         return bool(self.value % 2)
 
     def __complex__(self) -> complex:
@@ -168,7 +166,7 @@ class ComplexUnit(Enum):
         return ret
 
     def __str__(self) -> str:
-        """Return a string representation of the unit."""
+        """Return a human-readable representation of the unit."""
         result = "1j" if self.is_imag else "1"
         if self.sign == Sign.MINUS:
             result = "-" + result
@@ -178,7 +176,10 @@ class ComplexUnit(Enum):
         """Multiply the complex unit with a number."""
         if isinstance(other, ComplexUnit):
             return ComplexUnit((self.value + other.value) % 4)
-        if other_ := ComplexUnit.try_from(other):
+        if isinstance(
+            other,
+            (SupportsComplex, SupportsFloat, SupportsIndex, complex),
+        ) and (other_ := ComplexUnit.try_from(other)):
             return self.__mul__(other_)
         return NotImplemented
 
@@ -213,8 +214,8 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
-class Axis(Enum):
-    """Axis: `X`, `Y` or `Z`."""
+class Axis(EnumPrettyPrintMixin, Enum):
+    """Axis: *X*, *Y* or *Z*."""
 
     X = enum.auto()
     Y = enum.auto()
@@ -232,9 +233,9 @@ class Axis(Enum):
         typing_extensions.assert_never(self)
 
 
-class Plane(Enum):
+class Plane(EnumPrettyPrintMixin, Enum):
     # TODO: Refactor using match
-    """Plane: `XY`, `YZ` or `XZ`."""
+    """Plane: *XY*, *YZ* or *XZ*."""
 
     XY = enum.auto()
     YZ = enum.auto()

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=66.1", "wheel", "setuptools_scm"]
+requires = ["setuptools>=77", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ authors = [{ name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" }]
 maintainers = [
   { name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" },
 ]
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 description = "Optimize and simulate measurement-based quantum computation"
 readme = "README.md"
 classifiers = [
@@ -19,11 +19,11 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering :: Physics",
 ]
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.14"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -39,47 +39,56 @@ dependencies = { file = ["requirements.txt"] }
 [tool.setuptools.dynamic.optional-dependencies]
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
+doc = { file = ["requirements-doc.txt"] }
 
 [tool.ruff]
 line-length = 120
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-extend-select = [
-  "A",
-  "B",
-  "C4",
-  "D",
-  "FA",
-  "FLY",
-  "FURB",
-  "ICN",
-  "INT",
-  "ISC",
-  "I",
-  "NPY",
-  "N",
-  "PERF",
-  "PGH",
-  "PIE",
-  "PLE",
-  "PLR",
-  "PLW",
-  "PYI",
-  "RET",
-  "RUF",
-  "SIM",
-  "TC",
-  "TID",
-  "TID",
-  "UP",
-  "W",
-  "YTT",
-]
+preview = true
+select = ["ALL"]
 extend-ignore = [
+  "C90",     # Complexity
   "E74",     # Ambiguous name
+  "ERA",     # Commmented out code
+  "FBT",     # Boolean positional arguments
+  "FIX",     # Fixme
   "PLR091",  # Too many XXX
+  "PLR0904", # Too many public methods
   "PLR2004", # Magic vavlue comparison
+  "S101",    # assert
+  "T20",     # print
+  "TD",      # Todo
+
+  # Tentative ignores
+  "ANN",     # Missing annotations
+  "CPY",     # Copyright
+  "DOC",     # Docstring
+  "E501",    # Line too long
+  "EM10",    # Raise string
+  "PLC0415", # Import not at the top level
+  "PLR1702", # Too many nests
+  "PLW1641", # __hash__ missing
+  "PT011",   # pytest raises too broad
+  "SLF001",  # Private access
+  "TRY003",  # Raise vanilla args
+
+  # Conflicts with ruff format
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "ISC001",
+  "ISC002",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "W191",
 ]
 # Allow "α" (U+03B1 GREEK SMALL LETTER ALPHA) which could be confused for "a"
 allowed-confusables = ["α"]
@@ -88,19 +97,21 @@ allowed-confusables = ["α"]
 docstring-code-format = true
 
 [tool.ruff.lint.extend-per-file-ignores]
-"__init__.py" = [
-  "F401", # Unused import
-]
 "benchmarks/*.py" = [
-  "D", # Benchmarks follow Sphinx doc conventions
+  "D",   # Benchmarks follow Sphinx doc conventions
+  "INP", # Missing __init__.py
 ]
 "examples/*.py" = [
+  "ARG",  # Unused arguments
   "B018", # Useless expression
   "D",    # Examples follow Sphinx doc conventions
   "E402", # Import not at top of file
+  "INP",  # Missing __init__.py
 ]
 "tests/*.py" = [
-  "D10", # Allow undocumented items
+  "D10",     # Allow undocumented items
+  "PLC2701", # Allow private imports
+  "PLR6301", # self not used
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -113,44 +124,45 @@ ban-relative-imports = "all"
 required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]
+addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks"]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
 
 [tool.mypy]
 # Keep in sync with pyright
-files = [
-  "graphix/channels.py",
-  "graphix/clifford.py",
-  "graphix/command.py",
-  "graphix/extraction.py",
-  "graphix/fundamentals.py",
-  "graphix/graphsim.py",
-  "graphix/instruction.py",
-  "graphix/linalg_validations.py",
-  "graphix/measurements.py",
-  "graphix/ops.py",
-  "graphix/parameter.py",
-  "graphix/pauli.py",
-  "graphix/pyzx.py",
-  "graphix/rng.py",
-  "graphix/states.py",
-  "graphix/utils.py",
-  "graphix/**/__init__.py",
-  "graphix/_db.py",
-  "noxfile.py",
-  "tests/conftest.py",
-  "tests/test_clifford.py",
-  "tests/test_command.py",
-  "tests/test_db.py",
-  "tests/test_extraction.py",
-  "tests/test_fundamentals.py",
-  "tests/test_generator.py",
-  "tests/test_graphsim.py",
-  "tests/test_kraus.py",
-  "tests/test_parameter.py",
-  "tests/test_pauli.py",
-  "tests/test_pyzx.py",
-  "tests/test_rng.py",
+files = ["*.py", "examples", "graphix", "tests"]
+exclude = [
+  '^examples/deutsch_jozsa\.py$',
+  '^examples/ghz_with_tn\.py$',
+  '^examples/mbqc_vqe\.py$',
+  '^examples/qaoa\.py$',
+  '^examples/qft_with_tn\.py$',
+  '^examples/qnn\.py$',
+  '^examples/rotation\.py$',
+  '^examples/tn_simulation\.py$',
+  '^examples/visualization\.py$',
+  '^graphix/device_interface\.py$',
+  '^graphix/gflow\.py$',
+  '^graphix/linalg\.py$',
+  '^graphix/random_objects\.py$',
+  '^graphix/simulator\.py$',
+  '^graphix/sim/base_backend\.py$',
+  '^graphix/sim/density_matrix\.py$',
+  '^graphix/sim/statevec\.py$',
+  '^graphix/sim/tensornet\.py$',
+  '^graphix/transpiler\.py$',
+  '^graphix/visualization\.py$',
+  '^tests/test_density_matrix\.py$',
+  '^tests/test_gflow\.py$',
+  '^tests/test_linalg\.py$',
+  '^tests/test_noisy_density_matrix\.py$',
+  '^tests/test_random_utilities\.py$',
+  '^tests/test_runner\.py$',
+  '^tests/test_statevec\.py$',
+  '^tests/test_statevec_backend\.py$',
+  '^tests/test_tnsim\.py$',
+  '^tests/test_transpiler\.py$',
+  '^tests/test_visualization\.py$',
 ]
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
@@ -158,39 +170,39 @@ strict = true
 
 [tool.pyright]
 # Keep in sync with mypy
-include = [
-  "graphix/channels.py",
-  "graphix/clifford.py",
-  "graphix/command.py",
-  "graphix/extraction.py",
-  "graphix/fundamentals.py",
-  "graphix/graphsim.py",
-  "graphix/instruction.py",
-  "graphix/linalg_validations.py",
-  "graphix/measurements.py",
-  "graphix/ops.py",
-  "graphix/parameter.py",
-  "graphix/pauli.py",
-  "graphix/pyzx.py",
-  "graphix/rng.py",
-  "graphix/states.py",
-  "graphix/utils.py",
-  "graphix/**/__init__.py",
-  "graphix/_db.py",
-  "noxfile.py",
-  "tests/conftest.py",
-  "tests/test_clifford.py",
-  "tests/test_command.py",
-  "tests/test_db.py",
-  "tests/test_extraction.py",
-  "tests/test_fundamentals.py",
-  "tests/test_generator.py",
-  "tests/test_graphsim.py",
-  "tests/test_kraus.py",
-  "tests/test_parameter.py",
-  "tests/test_pauli.py",
-  "tests/test_pyzx.py",
-  "tests/test_rng.py",
+include = ["*.py", "examples", "graphix", "tests"]
+exclude = [
+  "examples/deutsch_jozsa.py",
+  "examples/ghz_with_tn.py",
+  "examples/mbqc_vqe.py",
+  "examples/qaoa.py",
+  "examples/qft_with_tn.py",
+  "examples/qnn.py",
+  "examples/rotation.py",
+  "examples/tn_simulation.py",
+  "examples/visualization.py",
+  "graphix/device_interface.py",
+  "graphix/gflow.py",
+  "graphix/linalg.py",
+  "graphix/random_objects.py",
+  "graphix/simulator.py",
+  "graphix/sim/base_backend.py",
+  "graphix/sim/density_matrix.py",
+  "graphix/sim/statevec.py",
+  "graphix/sim/tensornet.py",
+  "graphix/transpiler.py",
+  "graphix/visualization.py",
+  "tests/test_density_matrix.py",
+  "tests/test_gflow.py",
+  "tests/test_linalg.py",
+  "tests/test_noisy_density_matrix.py",
+  "tests/test_random_utilities.py",
+  "tests/test_runner.py",
+  "tests/test_statevec.py",
+  "tests/test_statevec_backend.py",
+  "tests/test_tnsim.py",
+  "tests/test_transpiler.py",
+  "tests/test_visualization.py",
 ]
 
 [tool.coverage.report]

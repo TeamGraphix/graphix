@@ -38,19 +38,42 @@ class NodeIndex:
     """
 
     def __init__(self) -> None:
+        """Initialize an empty mapping between nodes and qubit indices."""
         self.__dict = {}
         self.__list = []
 
     def __getitem__(self, index: int) -> int:
-        """Return the qubit node associated with the specified index."""
+        """Return the qubit node associated with the specified index.
+
+        Parameters
+        ----------
+        index : int
+            Position in the internal list.
+
+        Returns
+        -------
+        int
+            Node label corresponding to ``index``.
+        """
         return self.__list[index]
 
     def index(self, node: int) -> int:
-        """Return the qubit index associated with the specified node label."""
+        """Return the qubit index associated with the specified node label.
+
+        Parameters
+        ----------
+        node : int
+            Node label to look up.
+
+        Returns
+        -------
+        int
+            Position of ``node`` in the internal ordering.
+        """
         return self.__dict[node]
 
     def __iter__(self) -> Iterator[int]:
-        """Return an iterator over indices."""
+        """Return an iterator over node labels in their current order."""
         return iter(self.__list)
 
     def __len__(self) -> int:
@@ -58,7 +81,13 @@ class NodeIndex:
         return len(self.__list)
 
     def extend(self, nodes: Iterable[int]) -> None:
-        """Extend the list with a sequence of node labels, updating the dictionary by assigning them sequential qubit indices."""
+        """Extend the mapping with additional nodes.
+
+        Parameters
+        ----------
+        nodes : Iterable[int]
+            Node labels to append.
+        """
         base = len(self)
         self.__list.extend(nodes)
         # The following loop iterates over `self.__list[base:]` instead of `nodes`
@@ -68,7 +97,13 @@ class NodeIndex:
             self.__dict[node] = base + index
 
     def remove(self, node: int) -> None:
-        """Remove the specified node label from the list and dictionary, and re-attributes qubit indices for the remaining nodes."""
+        """Remove a node and reassign indices of the remaining nodes.
+
+        Parameters
+        ----------
+        node : int
+            Node label to remove.
+        """
         index = self.__dict[node]
         del self.__list[index]
         del self.__dict[node]
@@ -76,7 +111,13 @@ class NodeIndex:
             self.__dict[u] = new_index
 
     def swap(self, i: int, j: int) -> None:
-        """Swap two nodes given their indices."""
+        """Swap two nodes given their indices.
+
+        Parameters
+        ----------
+        i, j : int
+            Indices of the nodes in the current ordering.
+        """
         node_i = self.__list[i]
         node_j = self.__list[j]
         self.__list[i] = node_j
@@ -94,6 +135,22 @@ class State(ABC):
 
 
 def _op_mat_from_result(vec: tuple[float, float, float], result: bool, symbolic: bool = False) -> npt.NDArray:
+    r"""Return the operator :math:`\tfrac{1}{2}(I + (-1)^r \vec{v}\cdot\vec{\sigma})`.
+
+    Parameters
+    ----------
+    vec : tuple[float, float, float]
+        Cartesian components of a unit vector.
+    result : bool
+        Measurement result ``r``.
+    symbolic : bool, optional
+        If ``True`` return an array of ``object`` dtype.
+
+    Returns
+    -------
+    numpy.ndarray
+        2x2 operator acting on the measured qubit.
+    """
     dtype = "O" if symbolic else np.complex128
     op_mat = np.eye(2, dtype=dtype) / 2
     sign = (-1) ** result
@@ -231,7 +288,7 @@ class Backend:
 
     def correct_byproduct(self, cmd: command.M, measure_method: MeasureMethod) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
-        if np.mod(sum([measure_method.get_measure_result(j) for j in cmd.domain]), 2) == 1:
+        if np.mod(sum(measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
             if cmd.kind == CommandKind.X:
                 op = Ops.X
             elif cmd.kind == CommandKind.Z:

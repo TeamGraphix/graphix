@@ -7,6 +7,4 @@ updates:
     groups:
       python-packages:
         patterns:
-              - "*"
-    ignore:
-      - dependency-name: "pyzx"
+          - "*"

@@ -22,7 +22,11 @@ from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
+    from typing import Any
+
+    from graphix.noise_models.noise_model import NoiseModel
     from graphix.pattern import Pattern
+    from graphix.sim.density_matrix import Data
 
 
 class MeasureMethod(abc.ABC):
@@ -43,17 +47,47 @@ class MeasureMethod(abc.ABC):
 
     @abc.abstractmethod
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
-        """Return the description of the measurement performed by a given measure command (possibly blind)."""
+        """Return the description of the measurement performed by a command.
+
+        Parameters
+        ----------
+        cmd : BaseM
+            Measurement command whose description is required.
+
+        Returns
+        -------
+        Measurement
+            Plane and angle actually used by the backend.
+        """
         ...
 
     @abc.abstractmethod
     def get_measure_result(self, node: int) -> bool:
-        """Return the result of a previous measurement."""
+        """Return the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+
+        Returns
+        -------
+        bool
+            Recorded measurement outcome.
+        """
         ...
 
     @abc.abstractmethod
     def set_measure_result(self, node: int, result: bool) -> None:
-        """Store the result of a previous measurement."""
+        """Store the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+        result : bool
+            Measurement outcome to store.
+        """
         ...
 
 
@@ -61,12 +95,31 @@ class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
     def __init__(self, results=None):
+        """Initialize with an optional result dictionary.
+
+        Parameters
+        ----------
+        results : dict[int, bool] | None, optional
+            Mapping of previously measured nodes to their results. If ``None``,
+            an empty dictionary is created.
+        """
         if results is None:
             results = {}
         self.results = results
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
-        """Return the description of the measurement performed by a given measure command (cannot be blind in the case of DefaultMeasureMethod)."""
+        """Return the description of the measurement performed by ``cmd``.
+
+        Parameters
+        ----------
+        cmd : BaseM
+            Measurement command whose plane and angle should be updated.
+
+        Returns
+        -------
+        Measurement
+            Updated measurement specification.
+        """
         assert isinstance(cmd, M)
         angle = cmd.angle * np.pi
         # extract signals for adaptive angle
@@ -77,11 +130,30 @@ class DefaultMeasureMethod(MeasureMethod):
         return Measurement(angle, measure_update.new_plane)
 
     def get_measure_result(self, node: int) -> bool:
-        """Return the result of a previous measurement."""
+        """Return the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+
+        Returns
+        -------
+        bool
+            Stored measurement outcome.
+        """
         return self.results[node]
 
     def set_measure_result(self, node: int, result: bool) -> None:
-        """Store the result of a previous measurement."""
+        """Store the result of a previous measurement.
+
+        Parameters
+        ----------
+        node : int
+            Node label of the measured qubit.
+        result : bool
+            Measurement outcome to store.
+        """
         self.results[node] = result
 
 
@@ -92,7 +164,12 @@ class PatternSimulator:
     """
 
     def __init__(
-        self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, **kwargs
+        self,
+        pattern: Pattern,
+        backend: Backend | str = "statevector",
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        **kwargs: Any,
     ) -> None:
         """
         Construct a pattern simulator.
@@ -155,7 +232,7 @@ class PatternSimulator:
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state=BasicStates.PLUS) -> None:
+    def run(self, input_state: Data = BasicStates.PLUS) -> None:
         """Perform the simulation.
 
         Returns
@@ -197,11 +274,11 @@ class PatternSimulator:
                     self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
                 elif cmd.kind == CommandKind.Z:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum([self.__measure_method.results[j] for j in cmd.domain]), 2) == 1:
+                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)

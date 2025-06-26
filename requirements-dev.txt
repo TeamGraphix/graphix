@@ -1,15 +1,17 @@
 # Lint/format
 mypy
+pre-commit # for language-agnostic hooks
 pyright
-ruff==0.11.5
+ruff==0.12.0
 
 # Stubs
 types-networkx
 types-psutil
+types-setuptools
 
 # Tests
 # Keep in sync with CI
-nox==2025.2.9
+nox==2025.5.1
 psutil
 pytest
 pytest-cov
@@ -18,6 +20,3 @@ pytest-mock
 # Optional dependencies
 qiskit>=1.0
 qiskit-aer
-
-# Optional dependency. Pinned due to version changes often being incompatible
-pyzx==0.8.0

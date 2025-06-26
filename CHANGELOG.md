@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Now variables, functions, and classes are named based on PEP8.
 - `KrausChannel` class now uses `KrausData` class (originally `dict`) to store Kraus operators.
 - Deprecated support for Python 3.8.
-- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules. 
+- Major refactoring of the codebase, especially in the `pattern` and `transpiler` modules.
   - Removed `opt` option for `Circuit.transpile` method.
   - Removed `pattern.LocalPattern` class and associted `local` options in `Pattern.standardize` and `Pattern.shift_signals` methods.
 - Simulator back-ends have an additional optional argument `rng`,

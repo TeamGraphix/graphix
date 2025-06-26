@@ -133,6 +133,8 @@ class _CM(NamedTuple):
 
 
 class _CMTuple(NamedTuple):
+    """Container for three Pauli strings along X, Y and Z axes."""
+
     x: _CM
     y: _CM
     z: _CM

@@ -272,7 +272,7 @@ def _graph8() -> GraphForTest:
         2: Plane.XY,
         3: Plane.YZ,
     }
-    meas_angles = {0: 0.5, 1: 0, 2: 0.5, 3: 0}
+    meas_angles = {0: 0, 1: 0, 2: 0.5, 3: 0.5}
     return GraphForTest(
         graph,
         inputs,
@@ -301,7 +301,7 @@ def _graph9() -> GraphForTest:
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     meas_planes = {0: Plane.YZ, 1: Plane.XZ, 2: Plane.XY}
-    meas_angles = {0: 0.5, 1: 0.1, 2: 0.5}
+    meas_angles = {0: 0, 1: 0.1, 2: 0.5}
     return GraphForTest(
         graph,
         inputs,
@@ -453,7 +453,7 @@ def get_rand_graph(rng: Generator, n_nodes: int, edge_prob: float = 0.3) -> Rand
 class TestGflow:
     @pytest.mark.parametrize("test_graph", generate_test_graphs())
     def test_flow(self, test_graph: GraphForTest) -> None:
-        f, l_k = find_flow(
+        f, _ = find_flow(
             test_graph.graph,
             test_graph.inputs,
             test_graph.outputs,
@@ -463,7 +463,7 @@ class TestGflow:
 
     @pytest.mark.parametrize("test_graph", generate_test_graphs())
     def test_gflow(self, test_graph: GraphForTest) -> None:
-        g, l_k = find_gflow(
+        g, _ = find_gflow(
             test_graph.graph,
             test_graph.inputs,
             test_graph.outputs,
@@ -527,13 +527,13 @@ class TestGflow:
         input_ = set(pattern.input_nodes)
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        f, l_k = find_flow(graph, input_, output, meas_planes)
+        f, _ = find_flow(graph, input_, output, meas_planes)
         valid = verify_flow(graph, input_, output, f, meas_planes)
 
         assert valid
 
     # TODO: Remove after fixed
-    @pytest.mark.skip()
+    @pytest.mark.skip
     def test_rand_circ_gflow(self, fx_rng: Generator) -> None:
         # test for large graph
         # pauli-node measured graph always has gflow
@@ -549,7 +549,7 @@ class TestGflow:
         input_ = set()
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
-        g, l_k = find_gflow(graph, input_, output, meas_planes)
+        g, _ = find_gflow(graph, input_, output, meas_planes)
 
         valid = verify_gflow(graph, input_, output, g, meas_planes)
 
@@ -560,8 +560,8 @@ class TestGflow:
         # test finding algorithm and verification for random graphs
         rng = Generator(fx_bg.jumped(jumps))
         n_nodes = 5
-        graph, vin, vout, meas_planes, meas_angles = get_rand_graph(rng, n_nodes)
-        f, l_k = find_flow(graph, vin, vout, meas_planes)
+        graph, vin, vout, meas_planes, _ = get_rand_graph(rng, n_nodes)
+        f, _ = find_flow(graph, vin, vout, meas_planes)
         if f:
             valid = verify_flow(graph, vin, vout, f, meas_planes)
             assert valid
@@ -571,9 +571,9 @@ class TestGflow:
         # test finding algorithm and verification for random graphs
         rng = Generator(fx_bg.jumped(jumps))
         n_nodes = 5
-        graph, vin, vout, meas_planes, meas_angles = get_rand_graph(rng, n_nodes)
+        graph, vin, vout, meas_planes, _ = get_rand_graph(rng, n_nodes)
 
-        g, l_k = find_gflow(graph, vin, vout, meas_planes)
+        g, _ = find_gflow(graph, vin, vout, meas_planes)
         if g:
             valid = verify_gflow(graph, vin, vout, g, meas_planes)
             assert valid
@@ -585,7 +585,7 @@ class TestGflow:
         n_nodes = 5
         graph, vin, vout, meas_planes, meas_angles = get_rand_graph(rng, n_nodes)
 
-        p, l_k = find_pauliflow(graph, vin, vout, meas_planes, meas_angles)
+        p, _ = find_pauliflow(graph, vin, vout, meas_planes, meas_angles)
         if p:
             valid = verify_pauliflow(graph, vin, vout, p, meas_planes, meas_angles)
             assert valid

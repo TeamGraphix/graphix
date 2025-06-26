@@ -11,18 +11,20 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Callable
 
 import numpy as np
+from typing_extensions import assert_never
 
 from graphix import command, instruction, parameter
 from graphix.command import CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
+from graphix.instruction import Instruction, InstructionKind
 from graphix.ops import Ops
-from graphix.parameter import ExpressionOrSupportsFloat, Parameter
+from graphix.parameter import ExpressionOrFloat, Parameter
 from graphix.pattern import Pattern
 from graphix.sim import base_backend
 from graphix.sim.statevec import Data, Statevec
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
 
 @dataclasses.dataclass
@@ -31,7 +33,7 @@ class TranspileResult:
     The result of a transpilation.
 
     pattern : :class:`graphix.pattern.Pattern` object
-    classical_outputs : tuple[int,...], index of nodes measured with `M` gates
+    classical_outputs : tuple[int,...], index of nodes measured with *M* gates
     """
 
     pattern: Pattern
@@ -51,7 +53,7 @@ class SimulateResult:
     classical_measures: tuple[int, ...]
 
 
-Angle = ExpressionOrSupportsFloat
+Angle = ExpressionOrFloat
 
 
 class Circuit:
@@ -67,7 +69,9 @@ class Circuit:
         List containing the gate sequence applied.
     """
 
-    def __init__(self, width: int):
+    instruction: list[Instruction]
+
+    def __init__(self, width: int, instr: Iterable[Instruction] | None = None) -> None:
         """
         Construct a circuit.
 
@@ -75,12 +79,61 @@ class Circuit:
         ----------
         width : int
             number of logical qubits for the gate network
+        instr : list[instruction.Instruction] | None
+            Optional. List of initial instructions.
         """
         self.width = width
-        self.instruction: list[instruction.Instruction] = []
+        self.instruction = []
         self.active_qubits = set(range(width))
+        if instr is not None:
+            self.extend(instr)
 
-    def cnot(self, control: int, target: int):
+    def add(self, instr: Instruction) -> None:
+        """Add an instruction to the circuit."""
+        if instr.kind == InstructionKind.CCX:
+            self.ccx(instr.controls[0], instr.controls[1], instr.target)
+        elif instr.kind == InstructionKind.RZZ:
+            self.rzz(instr.control, instr.target, instr.angle)
+        elif instr.kind == InstructionKind.CNOT:
+            self.cnot(instr.control, instr.target)
+        elif instr.kind == InstructionKind.SWAP:
+            self.swap(instr.targets[0], instr.targets[1])
+        elif instr.kind == InstructionKind.H:
+            self.h(instr.target)
+        elif instr.kind == InstructionKind.S:
+            self.s(instr.target)
+        elif instr.kind == InstructionKind.X:
+            self.x(instr.target)
+        elif instr.kind == InstructionKind.Y:
+            self.y(instr.target)
+        elif instr.kind == InstructionKind.Z:
+            self.z(instr.target)
+        elif instr.kind == InstructionKind.I:
+            self.i(instr.target)
+        elif instr.kind == InstructionKind.M:
+            self.m(instr.target, instr.plane, instr.angle)
+        elif instr.kind == InstructionKind.RX:
+            self.rx(instr.target, instr.angle)
+        elif instr.kind == InstructionKind.RY:
+            self.ry(instr.target, instr.angle)
+        elif instr.kind == InstructionKind.RZ:
+            self.rz(instr.target, instr.angle)
+        # Use of `==` here for mypy
+        elif instr.kind == InstructionKind._XC or instr.kind == InstructionKind._ZC:  # noqa: PLR1714
+            raise ValueError(f"Unsupported instruction: {instr}")
+        else:
+            assert_never(instr.kind)
+
+    def extend(self, instrs: Iterable[Instruction]) -> None:
+        """Add instructions to the circuit."""
+        for instr in instrs:
+            self.add(instr)
+
+    def __repr__(self) -> str:
+        """Return a representation of the Circuit."""
+        return f"Circuit(width={self.width}, instr={self.instruction})"
+
+    def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate.
 
         Parameters
@@ -95,7 +148,7 @@ class Circuit:
         assert control != target
         self.instruction.append(instruction.CNOT(control=control, target=target))
 
-    def swap(self, qubit1: int, qubit2: int):
+    def swap(self, qubit1: int, qubit2: int) -> None:
         """Apply a SWAP gate.
 
         Parameters
@@ -110,7 +163,7 @@ class Circuit:
         assert qubit1 != qubit2
         self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)))
 
-    def h(self, qubit: int):
+    def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
 
         Parameters
@@ -121,7 +174,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.H(target=qubit))
 
-    def s(self, qubit: int):
+    def s(self, qubit: int) -> None:
         """Apply an S gate.
 
         Parameters
@@ -132,7 +185,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.S(target=qubit))
 
-    def x(self, qubit):
+    def x(self, qubit: int) -> None:
         """Apply a Pauli X gate.
 
         Parameters
@@ -143,7 +196,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.X(target=qubit))
 
-    def y(self, qubit: int):
+    def y(self, qubit: int) -> None:
         """Apply a Pauli Y gate.
 
         Parameters
@@ -154,7 +207,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Y(target=qubit))
 
-    def z(self, qubit: int):
+    def z(self, qubit: int) -> None:
         """Apply a Pauli Z gate.
 
         Parameters
@@ -165,7 +218,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Z(target=qubit))
 
-    def rx(self, qubit: int, angle: Angle):
+    def rx(self, qubit: int, angle: Angle) -> None:
         """Apply an X rotation gate.
 
         Parameters
@@ -178,7 +231,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
-    def ry(self, qubit: int, angle: Angle):
+    def ry(self, qubit: int, angle: Angle) -> None:
         """Apply a Y rotation gate.
 
         Parameters
@@ -191,7 +244,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
-    def rz(self, qubit: int, angle: Angle):
+    def rz(self, qubit: int, angle: Angle) -> None:
         """Apply a Z rotation gate.
 
         Parameters
@@ -204,7 +257,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
-    def rzz(self, control: int, target: int, angle: Angle):
+    def rzz(self, control: int, target: int, angle: Angle) -> None:
         r"""Apply a ZZ-rotation gate.
 
         Equivalent to the sequence
@@ -228,7 +281,7 @@ class Circuit:
         assert target in self.active_qubits
         self.instruction.append(instruction.RZZ(control=control, target=target, angle=angle))
 
-    def ccx(self, control1: int, control2: int, target: int):
+    def ccx(self, control1: int, control2: int, target: int) -> None:
         r"""Apply a CCX (Toffoli) gate.
 
         Prameters
@@ -248,7 +301,7 @@ class Circuit:
         assert control2 != target
         self.instruction.append(instruction.CCX(controls=(control1, control2), target=target))
 
-    def i(self, qubit: int):
+    def i(self, qubit: int) -> None:
         """Apply an identity (teleportation) gate.
 
         Parameters
@@ -259,7 +312,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.I(target=qubit))
 
-    def m(self, qubit: int, plane: Plane, angle: Angle):
+    def m(self, qubit: int, plane: Plane, angle: Angle) -> None:
         """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
@@ -397,14 +450,18 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(target_node, ancilla[0])))
-        seq.append(E(nodes=(control_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=target_node))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={target_node}))
-        seq.append(Z(node=control_node, domain={target_node}))
+        seq.extend(
+            (
+                E(nodes=(target_node, ancilla[0])),
+                E(nodes=(control_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=target_node),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={target_node}),
+                Z(node=control_node, domain={target_node}),
+            )
+        )
         return control_node, ancilla[1], seq
 
     @classmethod
@@ -446,9 +503,7 @@ class Circuit:
             list of MBQC commands
         """
         seq = [N(node=ancilla)]
-        seq.append(E(nodes=(input_node, ancilla)))
-        seq.append(M(node=input_node))
-        seq.append(X(node=ancilla, domain={input_node}))
+        seq.extend((E(nodes=(input_node, ancilla)), M(node=input_node), X(node=ancilla, domain={input_node})))
         return ancilla, seq
 
     @classmethod
@@ -471,12 +526,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), command.N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node, angle=-0.5))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node, angle=-0.5),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -499,12 +558,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node))
-        seq.append(M(node=ancilla[0], angle=-1))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node),
+                M(node=ancilla[0], angle=-1),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -528,16 +591,20 @@ class Circuit:
         assert len(ancilla) == 4
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(E(nodes=(ancilla[1], ancilla[2])))
-        seq.append(E(nodes=(ancilla[2], ancilla[3])))
-        seq.append(M(node=input_node, angle=0.5))
-        seq.append(M(node=ancilla[0], angle=1.0, s_domain={input_node}))
-        seq.append(M(node=ancilla[1], angle=-0.5, s_domain={input_node}))
-        seq.append(M(node=ancilla[2]))
-        seq.append(X(node=ancilla[3], domain={ancilla[0], ancilla[2]}))
-        seq.append(Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                E(nodes=(ancilla[1], ancilla[2])),
+                E(nodes=(ancilla[2], ancilla[3])),
+                M(node=input_node, angle=0.5),
+                M(node=ancilla[0], angle=1.0, s_domain={input_node}),
+                M(node=ancilla[1], angle=-0.5, s_domain={input_node}),
+                M(node=ancilla[2]),
+                X(node=ancilla[3], domain={ancilla[0], ancilla[2]}),
+                Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}),
+            )
+        )
         return ancilla[3], seq
 
     @classmethod
@@ -560,12 +627,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node, angle=-1))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node, angle=-1),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -590,12 +661,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node))
-        seq.append(M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node),
+                M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -621,16 +696,20 @@ class Circuit:
         assert len(ancilla) == 4
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(E(nodes=(ancilla[1], ancilla[2])))
-        seq.append(E(nodes=(ancilla[2], ancilla[3])))
-        seq.append(M(node=input_node, angle=0.5))
-        seq.append(M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}))
-        seq.append(M(node=ancilla[1], angle=-0.5, s_domain={input_node}))
-        seq.append(M(node=ancilla[2]))
-        seq.append(X(node=ancilla[3], domain={ancilla[0], ancilla[2]}))
-        seq.append(Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                E(nodes=(ancilla[1], ancilla[2])),
+                E(nodes=(ancilla[2], ancilla[3])),
+                M(node=input_node, angle=0.5),
+                M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}),
+                M(node=ancilla[1], angle=-0.5, s_domain={input_node}),
+                M(node=ancilla[2]),
+                X(node=ancilla[3], domain={ancilla[0], ancilla[2]}),
+                Z(node=ancilla[3], domain={ancilla[0], ancilla[1]}),
+            )
+        )
         return ancilla[3], seq
 
     @classmethod
@@ -655,12 +734,16 @@ class Circuit:
         """
         assert len(ancilla) == 2
         seq = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
-        seq.append(E(nodes=(input_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(M(node=input_node, angle=-angle / np.pi))
-        seq.append(M(node=ancilla[0]))
-        seq.append(X(node=ancilla[1], domain={ancilla[0]}))
-        seq.append(Z(node=ancilla[1], domain={input_node}))
+        seq.extend(
+            (
+                E(nodes=(input_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                M(node=input_node, angle=-angle / np.pi),
+                M(node=ancilla[0]),
+                X(node=ancilla[1], domain={ancilla[0]}),
+                Z(node=ancilla[1], domain={input_node}),
+            )
+        )
         return ancilla[1], seq
 
     @classmethod
@@ -697,126 +780,77 @@ class Circuit:
         """
         assert len(ancilla) == 18
         seq = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
-        seq.append(E(nodes=(target_node, ancilla[0])))
-        seq.append(E(nodes=(ancilla[0], ancilla[1])))
-        seq.append(E(nodes=(ancilla[1], ancilla[2])))
-        seq.append(E(nodes=(ancilla[1], control_node2)))
-        seq.append(E(nodes=(control_node1, ancilla[14])))
-        seq.append(E(nodes=(ancilla[2], ancilla[3])))
-        seq.append(E(nodes=(ancilla[14], ancilla[4])))
-        seq.append(E(nodes=(ancilla[3], ancilla[5])))
-        seq.append(E(nodes=(ancilla[3], ancilla[4])))
-        seq.append(E(nodes=(ancilla[5], ancilla[6])))
-        seq.append(E(nodes=(control_node2, ancilla[6])))
-        seq.append(E(nodes=(control_node2, ancilla[9])))
-        seq.append(E(nodes=(ancilla[6], ancilla[7])))
-        seq.append(E(nodes=(ancilla[9], ancilla[4])))
-        seq.append(E(nodes=(ancilla[9], ancilla[10])))
-        seq.append(E(nodes=(ancilla[7], ancilla[8])))
-        seq.append(E(nodes=(ancilla[10], ancilla[11])))
-        seq.append(E(nodes=(ancilla[4], ancilla[8])))
-        seq.append(E(nodes=(ancilla[4], ancilla[11])))
-        seq.append(E(nodes=(ancilla[4], ancilla[16])))
-        seq.append(E(nodes=(ancilla[8], ancilla[12])))
-        seq.append(E(nodes=(ancilla[11], ancilla[15])))
-        seq.append(E(nodes=(ancilla[12], ancilla[13])))
-        seq.append(E(nodes=(ancilla[16], ancilla[17])))
-        seq.append(M(node=target_node))
-        seq.append(M(node=ancilla[0], s_domain={target_node}))
-        seq.append(M(node=ancilla[1], s_domain={ancilla[0]}))
-        seq.append(M(node=control_node1))
-        seq.append(M(node=ancilla[2], angle=-1.75, s_domain={ancilla[1], target_node}))
-        seq.append(M(node=ancilla[14], s_domain={control_node1}))
-        seq.append(M(node=ancilla[3], s_domain={ancilla[2], ancilla[0]}))
-        seq.append(
-            M(
-                node=ancilla[5],
-                angle=-0.25,
-                s_domain={ancilla[3], ancilla[1], ancilla[14], target_node},
-            )
-        )
-        seq.append(M(node=control_node2, angle=-0.25))
-        seq.append(M(node=ancilla[6], s_domain={ancilla[5], ancilla[2], ancilla[0]}))
-        seq.append(
-            M(
-                node=ancilla[9],
-                s_domain={control_node2, ancilla[5], ancilla[2]},
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[7],
-                angle=-1.75,
-                s_domain={ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node},
-            )
-        )
-        seq.append(M(node=ancilla[10], angle=-1.75, s_domain={ancilla[9], ancilla[14]}))
-        seq.append(M(node=ancilla[4], angle=-0.25, s_domain={ancilla[14]}))
-        seq.append(
-            M(
-                node=ancilla[8],
-                s_domain={ancilla[7], ancilla[5], ancilla[2], ancilla[0]},
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[11],
-                s_domain={ancilla[10], control_node2, ancilla[5], ancilla[2]},
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[12],
-                angle=-0.25,
-                s_domain={
-                    ancilla[8],
-                    ancilla[6],
-                    ancilla[3],
-                    ancilla[1],
-                    target_node,
-                },
-            )
-        )
-        seq.append(
-            M(
-                node=ancilla[16],
-                s_domain={
-                    ancilla[4],
-                    control_node1,
-                    ancilla[2],
-                    control_node2,
-                    ancilla[7],
-                    ancilla[10],
-                    ancilla[2],
-                    control_node2,
-                    ancilla[5],
-                },
-            )
-        )
-        seq.append(X(node=ancilla[17], domain={ancilla[14], ancilla[16]}))
-        seq.append(X(node=ancilla[15], domain={ancilla[9], ancilla[11]}))
-        seq.append(
-            X(
-                node=ancilla[13],
-                domain={ancilla[0], ancilla[2], ancilla[5], ancilla[7], ancilla[12]},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[17],
-                domain={ancilla[4], ancilla[5], ancilla[7], ancilla[10], control_node1},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[15],
-                domain={control_node2, ancilla[2], ancilla[5], ancilla[10]},
-            )
-        )
-        seq.append(
-            Z(
-                node=ancilla[13],
-                domain={ancilla[1], ancilla[3], ancilla[6], ancilla[8], target_node},
+        seq.extend(
+            (
+                E(nodes=(target_node, ancilla[0])),
+                E(nodes=(ancilla[0], ancilla[1])),
+                E(nodes=(ancilla[1], ancilla[2])),
+                E(nodes=(ancilla[1], control_node2)),
+                E(nodes=(control_node1, ancilla[14])),
+                E(nodes=(ancilla[2], ancilla[3])),
+                E(nodes=(ancilla[14], ancilla[4])),
+                E(nodes=(ancilla[3], ancilla[5])),
+                E(nodes=(ancilla[3], ancilla[4])),
+                E(nodes=(ancilla[5], ancilla[6])),
+                E(nodes=(control_node2, ancilla[6])),
+                E(nodes=(control_node2, ancilla[9])),
+                E(nodes=(ancilla[6], ancilla[7])),
+                E(nodes=(ancilla[9], ancilla[4])),
+                E(nodes=(ancilla[9], ancilla[10])),
+                E(nodes=(ancilla[7], ancilla[8])),
+                E(nodes=(ancilla[10], ancilla[11])),
+                E(nodes=(ancilla[4], ancilla[8])),
+                E(nodes=(ancilla[4], ancilla[11])),
+                E(nodes=(ancilla[4], ancilla[16])),
+                E(nodes=(ancilla[8], ancilla[12])),
+                E(nodes=(ancilla[11], ancilla[15])),
+                E(nodes=(ancilla[12], ancilla[13])),
+                E(nodes=(ancilla[16], ancilla[17])),
+                M(node=target_node),
+                M(node=ancilla[0], s_domain={target_node}),
+                M(node=ancilla[1], s_domain={ancilla[0]}),
+                M(node=control_node1),
+                M(node=ancilla[2], angle=-1.75, s_domain={ancilla[1], target_node}),
+                M(node=ancilla[14], s_domain={control_node1}),
+                M(node=ancilla[3], s_domain={ancilla[2], ancilla[0]}),
+                M(node=ancilla[5], angle=-0.25, s_domain={ancilla[3], ancilla[1], ancilla[14], target_node}),
+                M(node=control_node2, angle=-0.25),
+                M(node=ancilla[6], s_domain={ancilla[5], ancilla[2], ancilla[0]}),
+                M(node=ancilla[9], s_domain={control_node2, ancilla[5], ancilla[2]}),
+                M(
+                    node=ancilla[7],
+                    angle=-1.75,
+                    s_domain={ancilla[6], ancilla[3], ancilla[1], ancilla[14], target_node},
+                ),
+                M(node=ancilla[10], angle=-1.75, s_domain={ancilla[9], ancilla[14]}),
+                M(node=ancilla[4], angle=-0.25, s_domain={ancilla[14]}),
+                M(node=ancilla[8], s_domain={ancilla[7], ancilla[5], ancilla[2], ancilla[0]}),
+                M(node=ancilla[11], s_domain={ancilla[10], control_node2, ancilla[5], ancilla[2]}),
+                M(
+                    node=ancilla[12],
+                    angle=-0.25,
+                    s_domain={ancilla[8], ancilla[6], ancilla[3], ancilla[1], target_node},
+                ),
+                M(
+                    node=ancilla[16],
+                    s_domain={
+                        ancilla[4],
+                        control_node1,
+                        ancilla[2],
+                        control_node2,
+                        ancilla[7],
+                        ancilla[10],
+                        ancilla[2],
+                        control_node2,
+                        ancilla[5],
+                    },
+                ),
+                X(node=ancilla[17], domain={ancilla[14], ancilla[16]}),
+                X(node=ancilla[15], domain={ancilla[9], ancilla[11]}),
+                X(node=ancilla[13], domain={ancilla[0], ancilla[2], ancilla[5], ancilla[7], ancilla[12]}),
+                Z(node=ancilla[17], domain={ancilla[4], ancilla[5], ancilla[7], ancilla[10], control_node1}),
+                Z(node=ancilla[15], domain={control_node2, ancilla[2], ancilla[5], ancilla[10]}),
+                Z(node=ancilla[13], domain={ancilla[1], ancilla[3], ancilla[6], ancilla[8], target_node}),
             )
         )
         return ancilla[17], ancilla[15], ancilla[13], seq
@@ -917,16 +951,25 @@ class Circuit:
                 result.instruction.append(new_instr)
         return result
 
-    def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Circuit:
+    def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""
         return self.map_angle(lambda angle: parameter.subs(angle, variable, substitute))
 
-    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Circuit:
+    def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         return self.map_angle(lambda angle: parameter.xreplace(angle, assignment))
 
 
 def _extend_domain(measure: M, domain: set[int]) -> None:
+    """Extend the correction domain of ``measure`` by ``domain``.
+
+    Parameters
+    ----------
+    measure : M
+        Measurement command to modify.
+    domain : set[int]
+        Set of nodes to XOR into the appropriate domain of ``measure``.
+    """
     if measure.plane == Plane.XY:
         measure.s_domain ^= domain
     else:

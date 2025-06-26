@@ -171,7 +171,7 @@ class TestUtilities:
         with pytest.raises(TypeError):
             randobj.rand_pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5, rng=fx_rng)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             randobj.rand_pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk, rng=fx_rng)
 
         with pytest.raises(ValueError):

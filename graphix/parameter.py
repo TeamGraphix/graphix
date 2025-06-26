@@ -8,14 +8,13 @@ value assignment.
 
 from __future__ import annotations
 
+import cmath
 import math
 import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeVar, overload
-
-import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -144,7 +143,7 @@ class PlaceholderOperationError(ValueError):
 class AffineExpression(Expression):
     """Affine expression.
 
-    An affine expression is of the form `a*x+b` where `a` and `b` are numbers and `x` is a parameter.
+    An affine expression is of the form *a*x+b* where *a* and *b* are numbers and *x* is a parameter.
     """
 
     a: float
@@ -152,10 +151,22 @@ class AffineExpression(Expression):
     b: float
 
     def offset(self, d: float) -> AffineExpression:
-        """Add `d` to the expression."""
+        """Add *d* to the expression."""
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
     def _scale_non_null(self, k: float) -> AffineExpression:
+        """Return ``self`` scaled by ``k`` assuming ``k`` is non-zero.
+
+        Parameters
+        ----------
+        k : float
+            Scaling factor.
+
+        Returns
+        -------
+        AffineExpression
+            A new expression scaled by ``k``.
+        """
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
     def scale(self, k: float) -> ExpressionOrFloat:
@@ -324,7 +335,7 @@ T = TypeVar("T")
 
 
 @overload
-def subs(value: Expression, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Expression: ...
+def subs(value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrFloat: ...
 
 
 @overload
@@ -359,6 +370,16 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
             return c.real
         return c
     return new_value
+
+
+@overload
+def xreplace(
+    value: ExpressionOrFloat, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+) -> ExpressionOrFloat: ...
+
+
+@overload
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex: ...
 
 
 # The return type could be `T | Expression | complex` since `subs` returns `Expression` only
@@ -411,7 +432,4 @@ def exp(z: ExpressionOrComplex) -> ExpressionOrComplex:
         if isinstance(z, ExpressionWithTrigonometry):
             return z.exp()
         raise PlaceholderOperationError
-    e = np.exp(z)
-    # Result type of np.exp is Any!
-    assert isinstance(e, (complex, float))
-    return e
+    return cmath.exp(z)
