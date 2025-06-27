@@ -165,6 +165,56 @@ class Pattern:
         self.clear()
         self.extend(cmds)
 
+    def compose(self, other: Pattern, mapping: Mapping[int, int]) -> tuple[Pattern, dict[int, int]]:
+        """Compose two patterns"""
+
+        def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
+            nodes: set[int]
+            nodes = set()
+            for c in p:
+                nodes.update(c.nodes) if c.kind.name == 'E' else nodes.add(c.node)  # Maybe all commands should have an attribute `nodes` (Iterable) even if they act on a single qubit or would that be misleading ?
+            return nodes
+
+        nodes_p1 = get_nodes(self)
+        nodes_p2 = get_nodes(other)
+
+        if not mapping.keys() <= nodes_p2:
+            raise ValueError("Keys of `mapping` must correspond to the nodes of `other`")
+
+        if len(mapping.values()) != len(set(mapping.values())):
+            raise ValueError("Values of `mapping` contain duplicates.")
+
+        if mapping.keys() & nodes_p1 - set(self.__output_nodes):
+            raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`")
+
+        for k, v in mapping.items():
+            if v in self.__output_nodes and k not in other.input_nodes:
+                raise ValueError(f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`.")
+
+        # The following lines are copy-pasted from OpenGraph.compose -> could design be improved?
+        shift = max(*nodes_p1, *mapping.values()) + 1
+        mapping_sequential = {
+            node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
+        }  # assigns new labels to nodes in other not specified in mapping
+
+        mapping_complete = {**mapping, **mapping_sequential}
+
+        inputs = self.__input_nodes + [mapping_complete[n] for n in other.input_nodes if n not in mapping]
+        outputs = [n for n in self.__output_nodes if n not in mapping.values()] + [mapping_complete[n] for n in other.output_nodes]
+
+        def update_command(cmd: Command) -> Command:
+            cmd_new = deepcopy(cmd)
+            if cmd.kind.name == 'E':
+                cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)
+            else:
+                cmd_new.node = mapping_complete[cmd.node]
+
+            return cmd_new
+
+        seq = [update_command(c) for c in p[::-1]] + self.__seq
+
+        return Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq), mapping_complete
+
     @property
     def input_nodes(self) -> list[int]:
         """List input nodes."""
