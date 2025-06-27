@@ -427,6 +427,8 @@ class TestPattern:
         state_p = pattern.simulate_pattern()
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
+    #def test_compose(self) -> None:
+
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
