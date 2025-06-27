@@ -172,11 +172,18 @@ class Pattern:
         def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
             nodes: set[int]
             nodes = set()
-            for c in p:  # Ruff complains if putting try/except statements inside the loop (PERF203)
-                if hasattr(c, 'node'):
+            for c in p:
+                with contextlib.suppress(AttributeError):
                     nodes.add(c.node)
-                elif hasattr(c, 'nodes'):
-                    nodes.update(c.nodes)
+                    with contextlib.suppress(AttributeError):
+                        nodes.update(c.nodes)
+
+                # Alternatively:  ...but EAFP ?
+                # if hasattr(c, 'node'):
+                #     nodes.add(c.node)
+                # elif hasattr(c, 'nodes'):
+                #     nodes.update(c.nodes)
+
             return nodes
 
         nodes_p1 = get_nodes(self)
@@ -214,15 +221,13 @@ class Pattern:
         def update_command(cmd: Command) -> Command:
             cmd_new = deepcopy(cmd)
 
-            try:
+            with contextlib.suppress(AttributeError):
                 cmd_new.node = mapping_complete[cmd.node]  # All commands except E and T
-            except AttributeError:
                 with contextlib.suppress(AttributeError):
                     cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)  # Only E
 
-            try:
+            with contextlib.suppress(AttributeError):
                 cmd_new.domain = {mapping_complete[i] for i in cmd.domain}  # X, Z, S commands
-            except AttributeError:
                 with contextlib.suppress(AttributeError):
                     cmd_new.s_domain = {mapping_complete[i] for i in cmd.s_domain}  # Only M
                     cmd_new.t_domain = {mapping_complete[i] for i in cmd.t_domain}
