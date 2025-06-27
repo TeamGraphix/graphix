@@ -28,6 +28,7 @@ from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
+import contextlib
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Iterator, Mapping
@@ -171,8 +172,11 @@ class Pattern:
         def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
             nodes: set[int]
             nodes = set()
-            for c in p:
-                nodes.update(c.nodes) if c.kind.name == 'E' else nodes.add(c.node)  # Maybe all commands should have an attribute `nodes` (Iterable) even if they act on a single qubit or would that be misleading ?
+            for c in p:  # Ruff complains if putting try/except statements inside the loop (PERF203)
+                if hasattr(c, 'node'):
+                    nodes.add(c.node)
+                elif hasattr(c, 'nodes'):
+                    nodes.update(c.nodes)
             return nodes
 
         nodes_p1 = get_nodes(self)
@@ -184,7 +188,7 @@ class Pattern:
         if len(mapping.values()) != len(set(mapping.values())):
             raise ValueError("Values of `mapping` contain duplicates.")
 
-        if mapping.keys() & nodes_p1 - set(self.__output_nodes):
+        if set(mapping.values()) & nodes_p1 - set(self.__output_nodes):
             raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`")
 
         for k, v in mapping.items():
@@ -199,19 +203,33 @@ class Pattern:
 
         mapping_complete = {**mapping, **mapping_sequential}
 
-        inputs = self.__input_nodes + [mapping_complete[n] for n in other.input_nodes if n not in mapping]
-        outputs = [n for n in self.__output_nodes if n not in mapping.values()] + [mapping_complete[n] for n in other.output_nodes]
+        mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
+        mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
+
+        merged = set(mapping_complete.values()) & set(self.__output_nodes)
+
+        inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
+        outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
         def update_command(cmd: Command) -> Command:
             cmd_new = deepcopy(cmd)
-            if cmd.kind.name == 'E':
-                cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)
-            else:
-                cmd_new.node = mapping_complete[cmd.node]
+
+            try:
+                cmd_new.node = mapping_complete[cmd.node]  # All commands except E and T
+            except AttributeError:
+                with contextlib.suppress(AttributeError):
+                    cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)  # Only E
+
+            try:
+                cmd_new.domain = {mapping_complete[i] for i in cmd.domain}  # X, Z, S commands
+            except AttributeError:
+                with contextlib.suppress(AttributeError):
+                    cmd_new.s_domain = {mapping_complete[i] for i in cmd.s_domain}  # Only M
+                    cmd_new.t_domain = {mapping_complete[i] for i in cmd.t_domain}
 
             return cmd_new
 
-        seq = [update_command(c) for c in p[::-1]] + self.__seq
+        seq = self.__seq + [update_command(c) for c in other]
 
         return Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq), mapping_complete
 
