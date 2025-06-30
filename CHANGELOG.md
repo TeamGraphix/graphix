@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #277: Methods for pretty-printing `Pattern`: `to_ascii`,
   `to_unicode`, `to_latex`.
 
+- QASM3 import support via `pattern_from_qasm3` function with tests (#296).
+
 ### Fixed
 
 - #277: The result of `repr()` for `Pattern`, `Circuit`, `Command`,
