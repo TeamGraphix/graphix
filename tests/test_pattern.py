@@ -427,7 +427,12 @@ class TestPattern:
         state_p = pattern.simulate_pattern()
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    #def test_compose(self) -> None:
+    def test_compose(self) -> None:
+        i1 = [1, 4]
+        o1 = [4]
+        cmds1 = [X(4, {1, 3}), Z(4, {0}), M(3, t_domain={1}, s_domain={2}), E((1, 2)), E((0, 4)), M(2), M(1), M(0), N(2), N(3)]
+
+        p1 = Pattern(input_nodes=i1, output_nodes=o1)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:

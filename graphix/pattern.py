@@ -167,7 +167,7 @@ class Pattern:
         self.extend(cmds)
 
     def compose(self, other: Pattern, mapping: Mapping[int, int]) -> tuple[Pattern, dict[int, int]]:
-        """Compose two patterns"""
+        """Compose two patterns."""
 
         def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
             nodes: set[int]
