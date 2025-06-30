@@ -167,7 +167,40 @@ class Pattern:
         self.extend(cmds)
 
     def compose(self, other: Pattern, mapping: Mapping[int, int]) -> tuple[Pattern, dict[int, int]]:
-        """Compose two patterns."""
+        r"""Compose two patterns by merging subsets of outputs from `self` and a subset of inputs of `other`, and relabeling the nodes of `other` that were not merged.
+
+        Parameters
+        ----------
+        other : Pattern
+            Pattern to be composed with `self`.
+        mapping: Mapping[int, int]
+            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
+
+        Returns
+        -------
+        p: Pattern
+            composed pattern
+        mapping_complete: dict[int, int]
+            Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
+
+        Notes
+        -----
+        Let's denote :math:`(I_j, O_j, V_j, S_j)` the ordered set of inputs and outputs, the computational space and the sequence of commands of pattern :math`P_j`, respectively, with :math:`j = 1` for pattern `self` and :math:`j = 2` for pattern `other`. Let's denote :math:`P` the resulting pattern with :math:`(I, O, V, S)`.
+        Let's denote :math:`K, U` the sets of `keys` and `values` of `mapping`, and :math:`M_1 = O_1 \cap U` and :math:`M_2 = O_2 \cap K` respectively the set of merged outputs and inputs.
+
+        The pattern composition requires that
+        - :math:`K \subseteq V_2`.
+        - For a pair :math:`(k, v) \in (K, U)`
+            - :math:`v` can always satisfy :math:`v \notin V_1`, thereby allowing a custom relabelling.
+            - :math:`U \cap O_1^c = \emptyset`. If :math:`v \in O_1`, then :math:`k \in I_2`, otherwise an error is raised.
+
+        The returned pattern follows this convention:
+        - Nodes of pattern `other` not specified in `mapping` (i.e., :math:`i \in V_2 \cap K^c`) are relabelled in ascending order.
+        - The sequence of the resulting pattern is :math:`S = S_2 S_1`, where nodes in :math:`S_2` are relabelled according to `mapping`.
+        - :math:`I = I_1 \cup (I_2 \setminus M_2)`.
+        - :math:`O = (O_1 \setminus M_1) \cup O_2`.
+        - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
+        """
 
         def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
             nodes: set[int]
