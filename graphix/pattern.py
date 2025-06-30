@@ -184,19 +184,19 @@ class Pattern:
         nodes_p2 = get_nodes(other)
 
         if not mapping.keys() <= nodes_p2:
-            raise ValueError("Keys of `mapping` must correspond to the nodes of `other`")
+            raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
 
         if len(mapping.values()) != len(set(mapping.values())):
             raise ValueError("Values of `mapping` contain duplicates.")
 
         if set(mapping.values()) & nodes_p1 - set(self.__output_nodes):
-            raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`")
+            raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`.")
 
         for k, v in mapping.items():
             if v in self.__output_nodes and k not in other.input_nodes:
                 raise ValueError(f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`.")
 
-        # The following lines are copy-pasted from OpenGraph.compose -> could design be improved?
+        # The following lines are taken from OpenGraph.compose -> could design be improved?
         shift = max(*nodes_p1, *mapping.values()) + 1
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
