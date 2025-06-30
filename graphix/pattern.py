@@ -175,14 +175,8 @@ class Pattern:
             for c in p:
                 with contextlib.suppress(AttributeError):
                     nodes.add(c.node)
-                    with contextlib.suppress(AttributeError):
-                        nodes.update(c.nodes)
-
-                # Alternatively:  ...but EAFP ?
-                # if hasattr(c, 'node'):
-                #     nodes.add(c.node)
-                # elif hasattr(c, 'nodes'):
-                #     nodes.update(c.nodes)
+                with contextlib.suppress(AttributeError):
+                    nodes.update(c.nodes)
 
             return nodes
 
@@ -221,16 +215,18 @@ class Pattern:
         def update_command(cmd: Command) -> Command:
             cmd_new = deepcopy(cmd)
 
-            with contextlib.suppress(AttributeError):
-                cmd_new.node = mapping_complete[cmd.node]  # All commands except E and T
-                with contextlib.suppress(AttributeError):
-                    cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)  # Only E
+            # To ensure compatibility in case a new command is added.
+            assert cmd.kind in {CommandKind.N, CommandKind.M, CommandKind.E, CommandKind.C, CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}
 
-            with contextlib.suppress(AttributeError):
-                cmd_new.domain = {mapping_complete[i] for i in cmd.domain}  # X, Z, S commands
-                with contextlib.suppress(AttributeError):
-                    cmd_new.s_domain = {mapping_complete[i] for i in cmd.s_domain}  # Only M
+            if cmd.kind is CommandKind.E:
+                cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)
+            elif cmd.kind is not CommandKind.E:
+                cmd_new.node = mapping_complete[cmd.node]
+                if cmd.kind is CommandKind.M:
+                    cmd_new.s_domain = {mapping_complete[i] for i in cmd.s_domain}
                     cmd_new.t_domain = {mapping_complete[i] for i in cmd.t_domain}
+                elif cmd.kind in {CommandKind.X, CommandKind.Z, CommandKind.S}:
+                    cmd_new.domain = {mapping_complete[i] for i in cmd.domain}
 
             return cmd_new
 

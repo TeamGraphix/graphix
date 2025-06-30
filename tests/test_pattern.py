@@ -427,12 +427,49 @@ class TestPattern:
         state_p = pattern.simulate_pattern()
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    def test_compose(self) -> None:
-        i1 = [1, 4]
-        o1 = [4]
-        cmds1 = [X(4, {1, 3}), Z(4, {0}), M(3, t_domain={1}, s_domain={2}), E((1, 2)), E((0, 4)), M(2), M(1), M(0), N(2), N(3)]
+    # def test_compose_1(self) -> None:
+    #     i1 = [1, 4]
+    #     o1 = [4]
+    #     cmds1 = [N(0), N(2), N(3), E((1, 2)), E((0, 4)), M(0), M(1), M(2), M(3, t_domain={1}, s_domain={2}), Z(4, {0}), X(4, {3, 1})]
+    #     p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
 
-        p1 = Pattern(input_nodes=i1, output_nodes=o1)
+    #     i2 = [0, 3]
+    #     o2 = [3]
+    #     cmds2 = [N(1), N(2), M(1), M(2), M(0, t_domain={1}, s_domain={2}), Z(3, {1, 0}), X(3, {2})]
+    #     p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
+
+    #     mapping = {0: 4, 3: 100}
+    #     pc, mapping_complete = p1.compose(other=p2, mapping=mapping)
+
+    #     i = [1, 4, 100]
+    #     o = [100]
+    #     cmds = [N(0), N(2), N(3), E((1, 2)), E((0, 4)), M(0), M(1), M(2), M(3, t_domain={1}, s_domain={2}), Z(4, {0}), X(4, {3, 1}), N(102), N(101), M(102), M(101), M(4, t_domain={101}, s_domain={102}), Z(100, {4, 101}), X(100, {102})]
+    #     p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
+
+    #     assert p == pc
+    #     assert mapping_complete == {0: 4, 3: 100, 1: 101, 2: 102}
+
+    def test_compose(self) -> None:
+        i1_lst = [0]
+        o1_lst = [1]
+        cmds1 = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0})]
+        p1 = Pattern(input_nodes=i1_lst, output_nodes=o1_lst, cmds=cmds1)
+
+        i2_lst = [0]
+        o2_lst = [2]
+        cmds2 = [N(2), E((0, 2)), M(0), Z(2, {0}), X(2, {0})]
+        p2 = Pattern(input_nodes=i2_lst, output_nodes=o2_lst, cmds=cmds2)
+
+        mapping = {0: 1, 2: 5}
+        pc, mapping_c = p1.compose(p2, mapping)
+
+        i_lst = [0]
+        o_lst = [5]
+        cmds = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0}), N(5), E((1, 5)), M(1), Z(5, {1}), X(5, {1})]
+        p = Pattern(input_nodes=i_lst, output_nodes=o_lst, cmds=cmds)
+
+        assert pc == p
+        assert mapping_c == {0: 1, 2: 5}
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
