@@ -12,7 +12,6 @@ Module reference
     extraction
     flow
     clifford
-    device_interface
     visualization
     channels
     random_objects

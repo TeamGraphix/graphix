@@ -345,19 +345,17 @@ With graphix-ibmq installed, we can turn a measurement pattern into a qiskit dyn
 
 .. code-block:: python
 
-    from graphix_ibmq.runner import IBMQBackend
+    from graphix_ibmq.backend import IBMQBackend
 
     # minimize space and convert to qiskit circuit
     pattern.minimize_space()
-    backend = IBMQBackend(pattern)
-    backend.to_qiskit()
-    print(type(backend.circ))
+    backend = IBMQBackend()
+    backend.compile(pattern)
+    print(type(backend._compiled_circuit))
 
-    #set the rondom input state
-    psi = []
-    for i in range(n):
-        psi.append(i.random_statevector(2, seed=100+i))
-    backend.set_input(psi)
+    # select device and submit job
+    backend.select_device()
+    job = backend.submit_job(shots=1024)
 
 .. rst-class:: sphx-glr-script-out
 
