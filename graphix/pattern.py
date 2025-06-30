@@ -20,7 +20,6 @@ from typing_extensions import assert_never, override
 from graphix import command, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-from graphix.device_interface import PatternRunner
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
@@ -1330,26 +1329,6 @@ class Pattern:
         sim = PatternSimulator(self, backend=backend, **kwargs)
         sim.run(input_state)
         return sim.backend.state
-
-    def run_pattern(self, backend: str, **kwargs: Any) -> Any:
-        """Run the pattern on cloud-based quantum devices and their simulators.
-
-        Available backend: ['ibmq']
-
-        Parameters
-        ----------
-        backend : str
-            parameter to select executor backend.
-        kwargs: keyword args for specified backend.
-
-        Returns
-        -------
-        result :
-            the measurement result,
-            in the representation depending on the backend used.
-        """
-        exe = PatternRunner(self, backend=backend, **kwargs)
-        return exe.run()
 
     def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
