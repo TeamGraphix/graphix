@@ -194,7 +194,7 @@ class Pattern:
             - :math:`U \cap O_1^c = \emptyset`. If :math:`v \in O_1`, then :math:`k \in I_2`, otherwise an error is raised.
 
         The returned pattern follows this convention:
-        - Nodes of pattern `other` not specified in `mapping` (i.e., :math:`i \in V_2 \cap K^c`) are relabelled in ascending order.
+        - Nodes of pattern `other` not specified in `mapping` (i.e., :math:`V_2 \cap K^c`) are relabelled in ascending order.
         - The sequence of the resulting pattern is :math:`S = S_2 S_1`, where nodes in :math:`S_2` are relabelled according to `mapping`.
         - :math:`I = I_1 \cup (I_2 \setminus M_2)`.
         - :math:`O = (O_1 \setminus M_1) \cup O_2`.
