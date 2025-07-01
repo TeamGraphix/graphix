@@ -27,6 +27,9 @@ from graphix.linalg import MatGF2
 from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
 
 
@@ -359,7 +362,7 @@ def find_pauliflow(
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane],
-    meas_angles: dict[int, float],
+    meas_angles: Mapping[int, ExpressionOrFloat],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Maximally delayed Pauli flow finding algorithm.
@@ -1333,7 +1336,7 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
 
 
 def get_pauli_nodes(
-    meas_planes: dict[int, Plane], meas_angles: dict[int, float]
+    meas_planes: dict[int, Plane], meas_angles: Mapping[int, ExpressionOrFloat]
 ) -> tuple[set[int], set[int], set[int]]:
     """Get sets of nodes measured in X, Y, Z basis.
 
