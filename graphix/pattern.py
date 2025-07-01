@@ -28,7 +28,6 @@ from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
-import contextlib
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Iterator, Mapping
@@ -205,11 +204,23 @@ class Pattern:
         def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
             nodes: set[int]
             nodes = set()
-            for c in p:
-                with contextlib.suppress(AttributeError):
-                    nodes.add(c.node)
-                with contextlib.suppress(AttributeError):
-                    nodes.update(c.nodes)
+            for cmd in p:
+                # To ensure compatibility in case a new command is added.
+                assert cmd.kind in {
+                    CommandKind.N,
+                    CommandKind.M,
+                    CommandKind.E,
+                    CommandKind.C,
+                    CommandKind.X,
+                    CommandKind.Z,
+                    CommandKind.S,
+                    CommandKind.T,
+                }
+
+                if cmd.kind is CommandKind.E:
+                    nodes.update(cmd.nodes)
+                elif cmd.kind is not CommandKind.T:
+                    nodes.add(cmd.node)
 
             return nodes
 
@@ -227,7 +238,9 @@ class Pattern:
 
         for k, v in mapping.items():
             if v in self.__output_nodes and k not in other.input_nodes:
-                raise ValueError(f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`.")
+                raise ValueError(
+                    f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`."
+                )
 
         # The following lines are taken from OpenGraph.compose -> could design be improved?
         shift = max(*nodes_p1, *mapping.values()) + 1
@@ -249,17 +262,26 @@ class Pattern:
             cmd_new = deepcopy(cmd)
 
             # To ensure compatibility in case a new command is added.
-            assert cmd.kind in {CommandKind.N, CommandKind.M, CommandKind.E, CommandKind.C, CommandKind.X, CommandKind.Z, CommandKind.S, CommandKind.T}
+            assert cmd.kind in {
+                CommandKind.N,
+                CommandKind.M,
+                CommandKind.E,
+                CommandKind.C,
+                CommandKind.X,
+                CommandKind.Z,
+                CommandKind.S,
+                CommandKind.T,
+            }
 
-            if cmd.kind is CommandKind.E:
-                cmd_new.nodes = tuple(mapping_complete[i] for i in cmd.nodes)
-            elif cmd.kind is not CommandKind.E:
-                cmd_new.node = mapping_complete[cmd.node]
-                if cmd.kind is CommandKind.M:
-                    cmd_new.s_domain = {mapping_complete[i] for i in cmd.s_domain}
-                    cmd_new.t_domain = {mapping_complete[i] for i in cmd.t_domain}
-                elif cmd.kind in {CommandKind.X, CommandKind.Z, CommandKind.S}:
-                    cmd_new.domain = {mapping_complete[i] for i in cmd.domain}
+            if cmd_new.kind is CommandKind.E:
+                cmd_new.nodes = tuple(mapping_complete[i] for i in cmd_new.nodes)
+            elif cmd_new.kind is not CommandKind.T:
+                cmd_new.node = mapping_complete[cmd_new.node]
+                if cmd_new.kind is CommandKind.M:
+                    cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
+                    cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
+                elif cmd_new.kind in {CommandKind.X, CommandKind.Z, CommandKind.S}:
+                    cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
 
             return cmd_new
 

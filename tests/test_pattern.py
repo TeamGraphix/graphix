@@ -458,14 +458,28 @@ class TestPattern:
         with pytest.raises(ValueError, match=r"Values of `mapping` must not contain measured nodes of pattern `self`."):
             p1.compose(p2, mapping={0: 1, 2: 0})
 
-        with pytest.raises(ValueError, match=r"Mapping 2 -> 1 is not valid. 1 is an output of pattern `self` but 2 is not an input of pattern `other`."):
+        with pytest.raises(
+            ValueError,
+            match=r"Mapping 2 -> 1 is not valid. 1 is an output of pattern `self` but 2 is not an input of pattern `other`.",
+        ):
             p1.compose(p2, mapping={2: 1})
-
 
     def test_compose_2(self) -> None:
         i1 = [1, 4]
         o1 = [4]
-        cmds1 = [N(0), N(2), N(3), E((1, 2)), E((0, 4)), M(0), M(1), M(2), M(3, t_domain={1}, s_domain={2}), Z(4, {0}), X(4, {3, 1})]
+        cmds1 = [
+            N(0),
+            N(2),
+            N(3),
+            E((1, 2)),
+            E((0, 4)),
+            M(0),
+            M(1),
+            M(2),
+            M(3, t_domain={1}, s_domain={2}),
+            Z(4, {0}),
+            X(4, {3, 1}),
+        ]
         p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
 
         i2 = [0, 3]
@@ -478,7 +492,26 @@ class TestPattern:
 
         i = [1, 4, 100]
         o = [100]
-        cmds = [N(0), N(2), N(3), E((1, 2)), E((0, 4)), M(0), M(1), M(2), M(3, t_domain={1}, s_domain={2}), Z(4, {0}), X(4, {3, 1}), N(101), N(102), M(101), M(102), M(4, t_domain={101}, s_domain={102}), Z(100, {4, 101}), X(100, {102})]
+        cmds = [
+            N(0),
+            N(2),
+            N(3),
+            E((1, 2)),
+            E((0, 4)),
+            M(0),
+            M(1),
+            M(2),
+            M(3, t_domain={1}, s_domain={2}),
+            Z(4, {0}),
+            X(4, {3, 1}),
+            N(101),
+            N(102),
+            M(101),
+            M(102),
+            M(4, t_domain={101}, s_domain={102}),
+            Z(100, {4, 101}),
+            X(100, {102}),
+        ]
         p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
 
         assert p == pc
