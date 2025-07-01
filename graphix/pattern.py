@@ -200,20 +200,10 @@ class Pattern:
         - :math:`O = (O_1 \setminus M_1) \cup O_2`.
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         """
-
-        def get_nodes(p: Pattern) -> set[int]:  # should we add this as a property of pattern?
-            nodes: set[int]
-            nodes = set()
-            for cmd in p:
-                if cmd.kind is CommandKind.E:
-                    nodes.update(cmd.nodes)
-                elif cmd.kind is not CommandKind.T:
-                    nodes.add(cmd.node)
-
-            return nodes
-
-        nodes_p1 = get_nodes(self)
-        nodes_p2 = get_nodes(other)
+        nodes_p1_lst, _ = self.get_graph()
+        nodes_p1: set[int] = set(nodes_p1_lst)
+        nodes_p2_lst, _ = other.get_graph()
+        nodes_p2: set[int] = set(nodes_p2_lst)
 
         if not mapping.keys() <= nodes_p2:
             raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
@@ -248,7 +238,6 @@ class Pattern:
 
         def update_command(cmd: Command) -> Command:
             cmd_new = copy.copy(cmd)
-
 
             if cmd_new.kind is CommandKind.E:
                 i, j = cmd_new.nodes
