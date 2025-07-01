@@ -191,7 +191,7 @@ class Pattern:
         - :math:`K \subseteq V_2`.
         - For a pair :math:`(k, v) \in (K, U)`
             - :math:`v` can always satisfy :math:`v \notin V_1`, thereby allowing a custom relabelling.
-            - :math:`U \cap O_1^c = \emptyset`. If :math:`v \in O_1`, then :math:`k \in I_2`, otherwise an error is raised.
+            - :math:`U \cap V_1 \setminus O_1 = \emptyset`. If :math:`v \in O_1`, then :math:`k \in I_2`, otherwise an error is raised.
 
         The returned pattern follows this convention:
         - Nodes of pattern `other` not specified in `mapping` (i.e., :math:`V_2 \cap K^c`) are relabelled in ascending order.
@@ -205,18 +205,6 @@ class Pattern:
             nodes: set[int]
             nodes = set()
             for cmd in p:
-                # To ensure compatibility in case a new command is added.
-                assert cmd.kind in {
-                    CommandKind.N,
-                    CommandKind.M,
-                    CommandKind.E,
-                    CommandKind.C,
-                    CommandKind.X,
-                    CommandKind.Z,
-                    CommandKind.S,
-                    CommandKind.T,
-                }
-
                 if cmd.kind is CommandKind.E:
                     nodes.update(cmd.nodes)
                 elif cmd.kind is not CommandKind.T:
@@ -253,25 +241,14 @@ class Pattern:
         mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
 
-        merged = set(mapping_complete.values()) & set(self.__output_nodes)
+        merged = set(mapping.values()) & set(self.__output_nodes)
 
         inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
         outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
         def update_command(cmd: Command) -> Command:
-            cmd_new = deepcopy(cmd)
+            cmd_new = copy.copy(cmd)
 
-            # To ensure compatibility in case a new command is added.
-            assert cmd.kind in {
-                CommandKind.N,
-                CommandKind.M,
-                CommandKind.E,
-                CommandKind.C,
-                CommandKind.X,
-                CommandKind.Z,
-                CommandKind.S,
-                CommandKind.T,
-            }
 
             if cmd_new.kind is CommandKind.E:
                 i, j = cmd_new.nodes
