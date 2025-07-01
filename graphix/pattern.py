@@ -274,13 +274,15 @@ class Pattern:
             }
 
             if cmd_new.kind is CommandKind.E:
-                cmd_new.nodes = tuple(mapping_complete[i] for i in cmd_new.nodes)
+                i, j = cmd_new.nodes
+                cmd_new.nodes = (mapping_complete[i], mapping_complete[j])
             elif cmd_new.kind is not CommandKind.T:
                 cmd_new.node = mapping_complete[cmd_new.node]
                 if cmd_new.kind is CommandKind.M:
                     cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
                     cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
-                elif cmd_new.kind in {CommandKind.X, CommandKind.Z, CommandKind.S}:
+                # Use of `==` here for mypy
+                elif cmd_new.kind == CommandKind.X or cmd_new.kind == CommandKind.Z or cmd_new.kind == CommandKind.S:  # noqa: PLR1714
                     cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
 
             return cmd_new
