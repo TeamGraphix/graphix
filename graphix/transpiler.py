@@ -7,14 +7,13 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-from copy import deepcopy
 from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from typing_extensions import assert_never
 
 from graphix import command, instruction, parameter
-from graphix.command import CommandKind, E, M, N, X, Z
+from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.instruction import Instruction, InstructionKind
 from graphix.ops import Ops
@@ -25,6 +24,8 @@ from graphix.sim.statevec import Data, Statevec
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
+
+    from graphix.command import Command
 
 
 @dataclasses.dataclass
@@ -54,6 +55,14 @@ class SimulateResult:
 
 
 Angle = ExpressionOrFloat
+
+
+def _check_target(out: Sequence[int | None], index: int) -> int:
+    target = out[index]
+    if target is None:
+        msg = f"Qubit {index} has already been measured."
+        raise ValueError(msg)
+    return target
 
 
 class Circuit:
@@ -336,92 +345,102 @@ class Circuit:
         result : :class:`TranspileResult` object
         """
         n_node = self.width
-        out = list(range(self.width))
+        out: list[int | None] = list(range(self.width))
         pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
         for instr in self.instruction:
-            kind = instr.kind
-            if kind == instruction.InstructionKind.CNOT:
+            if instr.kind == instruction.InstructionKind.CNOT:
                 ancilla = [n_node, n_node + 1]
-                assert out[instr.control] is not None
-                assert out[instr.target] is not None
-                out[instr.control], out[instr.target], seq = self._cnot_command(
-                    out[instr.control], out[instr.target], ancilla
-                )
+                control = _check_target(out, instr.control)
+                target = _check_target(out, instr.target)
+                out[instr.control], out[instr.target], seq = self._cnot_command(control, target, ancilla)
                 pattern.extend(seq)
                 n_node += 2
-            elif kind == instruction.InstructionKind.SWAP:
+            elif instr.kind == instruction.InstructionKind.SWAP:
+                target0 = _check_target(out, instr.targets[0])
+                target1 = _check_target(out, instr.targets[1])
                 out[instr.targets[0]], out[instr.targets[1]] = (
-                    out[instr.targets[1]],
-                    out[instr.targets[0]],
+                    target1,
+                    target0,
                 )
-            elif kind == instruction.InstructionKind.I:
+            elif instr.kind == instruction.InstructionKind.I:
                 pass
-            elif kind == instruction.InstructionKind.H:
-                ancilla = n_node
-                out[instr.target], seq = self._h_command(out[instr.target], ancilla)
+            elif instr.kind == instruction.InstructionKind.H:
+                single_ancilla = n_node
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._h_command(target, single_ancilla)
                 pattern.extend(seq)
                 n_node += 1
-            elif kind == instruction.InstructionKind.S:
+            elif instr.kind == instruction.InstructionKind.S:
                 ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._s_command(out[instr.target], ancilla)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._s_command(target, ancilla)
                 pattern.extend(seq)
                 n_node += 2
-            elif kind == instruction.InstructionKind.X:
+            elif instr.kind == instruction.InstructionKind.X:
                 ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._x_command(out[instr.target], ancilla)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._x_command(target, ancilla)
                 pattern.extend(seq)
                 n_node += 2
-            elif kind == instruction.InstructionKind.Y:
+            elif instr.kind == instruction.InstructionKind.Y:
                 ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                out[instr.target], seq = self._y_command(out[instr.target], ancilla)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._y_command(target, ancilla)
                 pattern.extend(seq)
                 n_node += 4
-            elif kind == instruction.InstructionKind.Z:
+            elif instr.kind == instruction.InstructionKind.Z:
                 ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._z_command(out[instr.target], ancilla)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._z_command(target, ancilla)
                 pattern.extend(seq)
                 n_node += 2
-            elif kind == instruction.InstructionKind.RX:
+            elif instr.kind == instruction.InstructionKind.RX:
                 ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._rx_command(out[instr.target], ancilla, instr.angle)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._rx_command(target, ancilla, instr.angle)
                 pattern.extend(seq)
                 n_node += 2
-            elif kind == instruction.InstructionKind.RY:
+            elif instr.kind == instruction.InstructionKind.RY:
                 ancilla = [n_node, n_node + 1, n_node + 2, n_node + 3]
-                out[instr.target], seq = self._ry_command(out[instr.target], ancilla, instr.angle)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._ry_command(target, ancilla, instr.angle)
                 pattern.extend(seq)
                 n_node += 4
-            elif kind == instruction.InstructionKind.RZ:
+            elif instr.kind == instruction.InstructionKind.RZ:
                 ancilla = [n_node, n_node + 1]
-                out[instr.target], seq = self._rz_command(out[instr.target], ancilla, instr.angle)
+                target = _check_target(out, instr.target)
+                out[instr.target], seq = self._rz_command(target, ancilla, instr.angle)
                 pattern.extend(seq)
                 n_node += 2
-            elif kind == instruction.InstructionKind.CCX:
+            elif instr.kind == instruction.InstructionKind.CCX:
                 ancilla = [n_node + i for i in range(18)]
+                control0 = _check_target(out, instr.controls[0])
+                control1 = _check_target(out, instr.controls[1])
+                target = _check_target(out, instr.target)
                 (
                     out[instr.controls[0]],
                     out[instr.controls[1]],
                     out[instr.target],
                     seq,
                 ) = self._ccx_command(
-                    out[instr.controls[0]],
-                    out[instr.controls[1]],
-                    out[instr.target],
+                    control0,
+                    control1,
+                    target,
                     ancilla,
                 )
                 pattern.extend(seq)
                 n_node += 18
-            elif kind == instruction.InstructionKind.M:
-                node_index = out[instr.target]
-                seq = self._m_command(instr.target, instr.plane, instr.angle)
+            elif instr.kind == instruction.InstructionKind.M:
+                target = _check_target(out, instr.target)
+                seq = self._m_command(target, instr.plane, instr.angle)
                 pattern.extend(seq)
-                classical_outputs.append(node_index)
+                classical_outputs.append(target)
                 out[instr.target] = None
             else:
                 raise ValueError("Unknown instruction, commands not added")
-        out = filter(lambda node: node is not None, out)
-        pattern.reorder_output_nodes(out)
+        output_nodes = [node for node in out if node is not None]
+        pattern.reorder_output_nodes(output_nodes)
         return TranspileResult(pattern, tuple(classical_outputs))
 
     @classmethod
@@ -449,7 +468,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(target_node, ancilla[0])),
@@ -465,7 +484,7 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _m_command(cls, input_node: int, plane: Plane, angle: Angle):
+    def _m_command(cls, input_node: int, plane: Plane, angle: Angle) -> list[Command]:
         """MBQC commands for measuring qubit.
 
         Parameters
@@ -485,7 +504,7 @@ class Circuit:
         return [M(node=input_node, plane=plane, angle=angle)]
 
     @classmethod
-    def _h_command(cls, input_node: int, ancilla: int):
+    def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command]]:
         """MBQC commands for Hadamard gate.
 
         Parameters
@@ -502,7 +521,7 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        seq = [N(node=ancilla)]
+        seq: list[Command] = [N(node=ancilla)]
         seq.extend((E(nodes=(input_node, ancilla)), M(node=input_node), X(node=ancilla, domain={input_node})))
         return ancilla, seq
 
@@ -525,7 +544,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq = [N(node=ancilla[0]), command.N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), command.N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -557,7 +576,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -589,7 +608,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 4
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
         seq.extend(
             (
@@ -626,7 +645,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -660,7 +679,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -694,7 +713,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 4
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]
         seq.extend([N(node=ancilla[2]), N(node=ancilla[3])])
         seq.extend(
             (
@@ -733,7 +752,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 2
-        seq = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
+        seq: list[Command] = [N(node=ancilla[0]), N(node=ancilla[1])]  # assign new qubit labels
         seq.extend(
             (
                 E(nodes=(input_node, ancilla[0])),
@@ -779,7 +798,7 @@ class Circuit:
             list of MBQC commands
         """
         assert len(ancilla) == 18
-        seq = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
+        seq: list[Command] = [N(node=ancilla[i]) for i in range(18)]  # assign new qubit labels
         seq.extend(
             (
                 E(nodes=(target_node, ancilla[0])),
@@ -855,38 +874,6 @@ class Circuit:
         )
         return ancilla[17], ancilla[15], ancilla[13], seq
 
-    @classmethod
-    def _sort_outputs(cls, pattern: Pattern, output_nodes: Sequence[int]):
-        """Sort the node indices of ouput qubits.
-
-        Parameters
-        ----------
-        pattern : :meth:`~graphix.pattern.Pattern`
-            pattern object
-        output_nodes : list of int
-            output node indices
-
-        Returns
-        -------
-        out_node : int
-            control node on graph after the gate
-        commands : list
-            list of MBQC commands
-        """
-        old_out = deepcopy(output_nodes)
-        output_nodes.sort()
-        # check all commands and swap node indices
-        for cmd in pattern:
-            if cmd.kind == CommandKind.E:
-                j, k = cmd.nodes
-                if j in old_out:
-                    j = output_nodes[old_out.index(j)]
-                if k in old_out:
-                    k = output_nodes[old_out.index(k)]
-                cmd.nodes = (j, k)
-            elif cmd.nodes in old_out:
-                cmd.nodes = output_nodes[old_out.index(cmd.nodes)]
-
     def simulate_statevector(self, input_state: Data | None = None) -> SimulateResult:
         """Run statevector simulation of the gate sequence.
 
@@ -905,50 +892,55 @@ class Circuit:
 
         for i in range(len(self.instruction)):
             instr = self.instruction[i]
-            kind = instr.kind
-            if kind == instruction.InstructionKind.CNOT:
+            if instr.kind == instruction.InstructionKind.CNOT:
                 state.cnot((instr.control, instr.target))
-            elif kind == instruction.InstructionKind.SWAP:
+            elif instr.kind == instruction.InstructionKind.SWAP:
                 state.swap(instr.targets)
-            elif kind == instruction.InstructionKind.I:
+            elif instr.kind == instruction.InstructionKind.I:
                 pass
-            elif kind == instruction.InstructionKind.S:
+            elif instr.kind == instruction.InstructionKind.S:
                 state.evolve_single(Ops.S, instr.target)
-            elif kind == instruction.InstructionKind.H:
+            elif instr.kind == instruction.InstructionKind.H:
                 state.evolve_single(Ops.H, instr.target)
-            elif kind == instruction.InstructionKind.X:
+            elif instr.kind == instruction.InstructionKind.X:
                 state.evolve_single(Ops.X, instr.target)
-            elif kind == instruction.InstructionKind.Y:
+            elif instr.kind == instruction.InstructionKind.Y:
                 state.evolve_single(Ops.Y, instr.target)
-            elif kind == instruction.InstructionKind.Z:
+            elif instr.kind == instruction.InstructionKind.Z:
                 state.evolve_single(Ops.Z, instr.target)
-            elif kind == instruction.InstructionKind.RX:
+            elif instr.kind == instruction.InstructionKind.RX:
                 state.evolve_single(Ops.rx(instr.angle), instr.target)
-            elif kind == instruction.InstructionKind.RY:
+            elif instr.kind == instruction.InstructionKind.RY:
                 state.evolve_single(Ops.ry(instr.angle), instr.target)
-            elif kind == instruction.InstructionKind.RZ:
+            elif instr.kind == instruction.InstructionKind.RZ:
                 state.evolve_single(Ops.rz(instr.angle), instr.target)
-            elif kind == instruction.InstructionKind.RZZ:
+            elif instr.kind == instruction.InstructionKind.RZZ:
                 state.evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
-            elif kind == instruction.InstructionKind.CCX:
+            elif instr.kind == instruction.InstructionKind.CCX:
                 state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
-            elif kind == instruction.InstructionKind.M:
+            elif instr.kind == instruction.InstructionKind.M:
                 result = base_backend.perform_measure(instr.target, instr.plane, instr.angle * np.pi, state, np.random)
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")
-        return SimulateResult(state, classical_measures)
+        return SimulateResult(state, tuple(classical_measures))
 
     def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:
         """Apply `f` to all angles that occur in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
-            angle = getattr(instr, "angle", None)
-            if angle is None:
-                result.instruction.append(instr)
-            else:
-                new_instr = dataclasses.replace(instr, angle=f(angle))
+            # Use == for mypy
+            if (
+                instr.kind == InstructionKind.RZZ  # noqa: PLR1714
+                or instr.kind == InstructionKind.M
+                or instr.kind == InstructionKind.RX
+                or instr.kind == InstructionKind.RY
+                or instr.kind == InstructionKind.RZ
+            ):
+                new_instr = dataclasses.replace(instr, angle=f(instr.angle))
                 result.instruction.append(new_instr)
+            else:
+                result.instruction.append(instr)
         return result
 
     def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:

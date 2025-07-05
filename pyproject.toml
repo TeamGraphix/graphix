@@ -149,7 +149,6 @@ exclude = [
   '^graphix/sim/density_matrix\.py$',
   '^graphix/sim/statevec\.py$',
   '^graphix/sim/tensornet\.py$',
-  '^graphix/transpiler\.py$',
   '^graphix/visualization\.py$',
   '^tests/test_density_matrix\.py$',
   '^tests/test_gflow\.py$',
@@ -160,7 +159,6 @@ exclude = [
   '^tests/test_statevec\.py$',
   '^tests/test_statevec_backend\.py$',
   '^tests/test_tnsim\.py$',
-  '^tests/test_transpiler\.py$',
   '^tests/test_visualization\.py$',
 ]
 follow_imports = "silent"
