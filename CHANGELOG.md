@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - #277: The method `Pattern.print_pattern` is now deprecated.
-- Moved all device interface functionalities to an external library and removed their implementation from this library.
+- #261: Moved all device interface functionalities to an external library and removed their implementation from this library.
 
 ## [0.3.1] - 2025-04-21
 

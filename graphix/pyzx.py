@@ -45,12 +45,6 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     >>> og = OpenGraph(g, measurements, inputs, outputs)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
-    # check pyzx availability and version
-    try:
-        import pyzx as zx
-    except ModuleNotFoundError as e:
-        msg = "Cannot find pyzx (optional dependency)."
-        raise RuntimeError(msg) from e
     if zx.__version__ != "0.9.0":
         warnings.warn(
             "`to_pyzx_graph` is guaranteed to work only with pyzx==0.9.0 due to possible breaking changes in `pyzx`.",
