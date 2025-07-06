@@ -98,7 +98,8 @@ def test_rz() -> None:
     circuit = Circuit(2)
     circuit.rz(0, np.pi / 4)
     pattern = circuit.transpile().pattern
-    circ = zx.qasm("qreg q[2]; rz(pi / 4) q[0];")  # type: ignore[attr-defined]
+    # pyzx 0.8 does not support arithmetic expressions such as `pi / 4`.
+    circ = zx.qasm(f"qreg q[2]; rz({np.pi / 4}) q[0];")  # type: ignore[attr-defined]
     g = circ.to_graph()
     og = from_pyzx_graph(g)
     pattern_zx = og.to_pattern()

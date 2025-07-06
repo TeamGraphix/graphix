@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     import functools
     from collections.abc import Iterable, Mapping
 
+    from graphix.measurements import Outcome
+
 
 if TYPE_CHECKING:
     Graph = nx.Graph[int]
@@ -373,7 +375,7 @@ class GraphState(Graph):
             return 2
         return 0
 
-    def measure_x(self, node: int, choice: int = 0) -> int:
+    def measure_x(self, node: int, choice: Outcome = 0) -> Outcome:
         """Perform measurement in X basis.
 
         According to original paper, we realise X measurement by
@@ -406,7 +408,7 @@ class GraphState(Graph):
         self.h(node)
         return self.measure_z(node, choice=choice)
 
-    def measure_y(self, node: int, choice: int = 0) -> int:
+    def measure_y(self, node: int, choice: Outcome = 0) -> Outcome:
         """Perform measurement in Y basis.
 
         According to original paper, we realise Y measurement by
@@ -431,7 +433,7 @@ class GraphState(Graph):
         self.h(node)
         return self.measure_z(node, choice=choice)
 
-    def measure_z(self, node: int, choice: int = 0) -> int:
+    def measure_z(self, node: int, choice: Outcome = 0) -> Outcome:
         """Perform measurement in Z basis.
 
         To realize the simple Z measurement on undecorated graph state,
@@ -455,7 +457,7 @@ class GraphState(Graph):
         if choice:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-        result = choice if not isolated else int(self.nodes[node]["sign"])
+        result = choice if not isolated else 1 if self.nodes[node]["sign"] else 0
         self.remove_node(node)
         return result
 
