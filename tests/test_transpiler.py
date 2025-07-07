@@ -115,7 +115,7 @@ class TestTranspilerUnitGates:
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
-    def test_measure(self) -> None:
+    def test_measure(self, fx_rng: Generator) -> None:
         circuit = Circuit(2)
         circuit.h(1)
         circuit.cnot(0, 1)
@@ -123,7 +123,7 @@ class TestTranspilerUnitGates:
         _ = circuit.transpile()
 
         def simulate_and_measure() -> int:
-            circuit_simulate = circuit.simulate_statevector()
+            circuit_simulate = circuit.simulate_statevector(rng=fx_rng)
             assert circuit_simulate.classical_measures[0] == (circuit_simulate.statevec.psi[0][1].imag > 0)
             return circuit_simulate.classical_measures[0]
 

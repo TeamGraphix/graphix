@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from graphix.channels import KrausChannel
+    from graphix.measurements import Outcome
     from graphix.simulator import PatternSimulator
 
 
@@ -66,17 +67,17 @@ class NoiseModel(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def confuse_result(self, result: bool) -> bool:
+    def confuse_result(self, result: Outcome) -> Outcome:
         """Return a possibly flipped measurement outcome.
 
         Parameters
         ----------
-        result : bool
+        result : Outcome
             Ideal measurement result.
 
         Returns
         -------
-        bool
+        Outcome
             Possibly corrupted result.
         """
 

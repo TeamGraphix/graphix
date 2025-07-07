@@ -28,10 +28,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Literal
 
-    from graphix.sim.base_backend import Backend, State
+    from graphix.sim.base_backend import BackendState
 
 
-def compare_backend_result_with_statevec(backend_state: State, statevec: Statevec) -> float:
+def compare_backend_result_with_statevec(backend_state: BackendState, statevec: Statevec) -> float:
     if isinstance(backend_state, Statevec):
         return float(np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten())))
     if isinstance(backend_state, DensityMatrix):
@@ -185,7 +185,7 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
-    def test_pauli_measurement_random_circuit(self, fx_bg: PCG64, jumps: int, backend: Backend) -> None:
+    def test_pauli_measurement_random_circuit(self, fx_bg: PCG64, jumps: int, backend: str) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
