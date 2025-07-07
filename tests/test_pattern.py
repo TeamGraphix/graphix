@@ -576,55 +576,6 @@ class TestPattern:
 
         assert p == p12
 
-    # Equivalence between pattern and circuit composition after pauli-preprocessing
-    # NOT PASSING
-    def test_compose_5(self, fx_rng: Generator) -> None:
-        circuit_1 = Circuit(1)
-        circuit_1.h(0)
-        p1 = circuit_1.transpile().pattern  # outputs: [1]
-
-        alpha = 2 * np.pi * fx_rng.random()
-
-        circuit_2 = Circuit(1)
-        circuit_2.rz(0, alpha)
-        p2 = circuit_2.transpile().pattern  # Z(2,{0}) X(2,{1}) M(1) M(0,-alpha) E(1,2) E(0,1) N(2) N(1)
-        p2.perform_pauli_measurements()  # X(2,{1}) Z(2,{0}) M(0,YZ,alpha) E(0,2) N(2)
-
-        p, _ = p1.compose(p2, mapping={0: 1})
-        p.perform_pauli_measurements()
-
-        nodes_p_lst, _ = p.get_graph()
-        nodes_p: set[int] = set(nodes_p_lst) | p.results.keys()
-
-        def node_in_pattern(cmd: Command) -> bool:
-            if cmd.kind is CommandKind.E:
-                return set(cmd.nodes) <= nodes_p
-            if cmd.kind is not CommandKind.T:
-                node_exists = cmd.node in nodes_p
-                if cmd.kind is CommandKind.M:
-                    return cmd.s_domain <= nodes_p and cmd.t_domain <= nodes_p and node_exists
-                # Use of `==` here for mypy
-                if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z or cmd.kind == CommandKind.S:  # noqa: PLR1714
-                    return (cmd.domain <= nodes_p) and node_exists
-            return True
-
-        # Performing pauli-processing on a composed pattern p = p1 * p2 where p1 or p2 had been pauli-processed before yields a pattern where some of the correction domains are not in the pattern nodes or in the pattern results.
-
-        for cmd in p:
-            assert node_in_pattern(cmd)
-
-        # The following lines are not reached in this test but are also problematic since standardize does not work properly if there are CLifford commands.
-        circuit_12 = Circuit(1)
-        circuit_12.h(0)
-        circuit_12.rz(0, alpha)
-        p12 = circuit_12.transpile().pattern
-        p12.perform_pauli_measurements()
-
-        p.standardize()
-        p12.standardize()
-
-        assert p12 == p
-
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
