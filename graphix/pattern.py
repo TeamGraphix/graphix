@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-from unittest import result
 import warnings
 from collections.abc import Iterator
 from copy import deepcopy
