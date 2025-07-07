@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+from unittest import result
 import warnings
 from collections.abc import Iterator
 from copy import deepcopy
@@ -201,9 +202,9 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         """
         nodes_p1_lst, _ = self.get_graph()
-        nodes_p1: set[int] = set(nodes_p1_lst)
+        nodes_p1: set[int] = set(nodes_p1_lst) | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2_lst, _ = other.get_graph()
-        nodes_p2: set[int] = set(nodes_p2_lst)
+        nodes_p2: set[int] = set(nodes_p2_lst) | other.results.keys()
 
         if not mapping.keys() <= nodes_p2:
             raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
@@ -220,7 +221,6 @@ class Pattern:
                     f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`."
                 )
 
-        # The following lines are taken from OpenGraph.compose -> could design be improved?
         shift = max(*nodes_p1, *mapping.values()) + 1
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
@@ -230,6 +230,7 @@ class Pattern:
 
         mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
+        mapped_results = {mapping_complete[n]: m for n, m in other.results.items()}
 
         merged = set(mapping.values()) & set(self.__output_nodes)
 
@@ -255,7 +256,11 @@ class Pattern:
 
         seq = self.__seq + [update_command(c) for c in other]
 
-        return Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq), mapping_complete
+        results = {**self.results, **mapped_results}
+        p = Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq)
+        p.results = results
+
+        return p, mapping_complete
 
     @property
     def input_nodes(self) -> list[int]:

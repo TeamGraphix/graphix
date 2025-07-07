@@ -427,6 +427,7 @@ class TestPattern:
         state_p = pattern.simulate_pattern()
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
+    # Simple pattern composition
     def test_compose_1(self) -> None:
         i1_lst = [0]
         o1_lst = [1]
@@ -464,6 +465,7 @@ class TestPattern:
         ):
             p1.compose(p2, mapping={2: 1})
 
+    # Pattern composition (more involved than test_compose_1)
     def test_compose_2(self) -> None:
         i1 = [1, 4]
         o1 = [4]
@@ -516,6 +518,112 @@ class TestPattern:
 
         assert p == pc
         assert mapping_complete == {0: 4, 3: 100, 1: 101, 2: 102}
+
+    # Pattern composition with Pauli preprocessing
+    def test_compose_3(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        i1 = [0]
+        o1 = [2]
+        cmds1: list[Command] = [N(1), N(2), E((0, 1)), E((1, 2)), M(0, angle=-alpha), M(1), X(2, {1}), Z(2, {0})]
+        p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+        p2 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+
+        p1.perform_pauli_measurements()
+        p2.perform_pauli_measurements()
+
+        mapping = {0: 2, 1: 3, 2: 4}
+        pc, mapping_complete = p1.compose(p2, mapping=mapping)
+
+        i = [0]
+        o = [4]
+        cmds: list[Command] = [
+            N(2),
+            E((0, 2)),
+            M(0, plane=Plane.YZ, angle=alpha),
+            Z(2, {0}),
+            X(2, {1}),
+            N(4),
+            E((2, 4)),
+            M(2, plane=Plane.YZ, angle=alpha),
+            Z(4, {2}),
+            X(4, {3}),
+        ]
+        p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
+        p.results = {1: 0, 3: 0}
+
+        assert p == pc
+        assert p.results == pc.results
+        assert mapping_complete == mapping
+
+    # Equivalence between pattern and circuit composition
+    def test_compose_4(self, fx_rng: Generator) -> None:
+        circuit_1 = Circuit(1)
+        circuit_1.h(0)
+        p1 = circuit_1.transpile().pattern  # outputs: [1]
+
+        alpha = 2 * np.pi * fx_rng.random()
+
+        circuit_2 = Circuit(1)
+        circuit_2.rz(0, alpha)
+        p2 = circuit_2.transpile().pattern  # inputs: [0]
+
+        p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
+
+        circuit_12 = Circuit(1)
+        circuit_12.h(0)
+        circuit_12.rz(0, alpha)
+        p12 = circuit_12.transpile().pattern
+
+        assert p == p12
+
+    # Equivalence between pattern and circuit composition after pauli-preprocessing
+    # NOT PASSING
+    def test_compose_5(self, fx_rng: Generator) -> None:
+        circuit_1 = Circuit(1)
+        circuit_1.h(0)
+        p1 = circuit_1.transpile().pattern  # outputs: [1]
+
+        alpha = 2 * np.pi * fx_rng.random()
+
+        circuit_2 = Circuit(1)
+        circuit_2.rz(0, alpha)
+        p2 = circuit_2.transpile().pattern  # Z(2,{0}) X(2,{1}) M(1) M(0,-alpha) E(1,2) E(0,1) N(2) N(1)
+        p2.perform_pauli_measurements()  # X(2,{1}) Z(2,{0}) M(0,YZ,alpha) E(0,2) N(2)
+
+        p, _ = p1.compose(p2, mapping={0: 1})
+        p.perform_pauli_measurements()
+
+        nodes_p_lst, _ = p.get_graph()
+        nodes_p: set[int] = set(nodes_p_lst) | p.results.keys()
+
+        def node_in_pattern(cmd: Command) -> bool:
+            if cmd.kind is CommandKind.E:
+                return set(cmd.nodes) <= nodes_p
+            if cmd.kind is not CommandKind.T:
+                node_exists = cmd.node in nodes_p
+                if cmd.kind is CommandKind.M:
+                    return cmd.s_domain <= nodes_p and cmd.t_domain <= nodes_p and node_exists
+                # Use of `==` here for mypy
+                if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z or cmd.kind == CommandKind.S:  # noqa: PLR1714
+                    return (cmd.domain <= nodes_p) and node_exists
+            return True
+
+        # Performing pauli-processing on a composed pattern p = p1 * p2 where p1 or p2 had been pauli-processed before yields a pattern where some of the correction domains are not in the pattern nodes or in the pattern results.
+
+        for cmd in p:
+            assert node_in_pattern(cmd)
+
+        # The following lines are not reached in this test but are also problematic since standardize does not work properly if there are CLifford commands.
+        circuit_12 = Circuit(1)
+        circuit_12.h(0)
+        circuit_12.rz(0, alpha)
+        p12 = circuit_12.transpile().pattern
+        p12.perform_pauli_measurements()
+
+        p.standardize()
+        p12.standardize()
+
+        assert p12 == p
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
