@@ -240,7 +240,7 @@ class Pattern:
 
         inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
 
-        if perserve_order and len(other.output_nodes) != len(merged):
+        if preserve_order and len(other.output_nodes) != len(merged):
             warnings.warn(
                 "`preserve_order = True` ignored because the number of merged nodes and outputs of pattern `other` are different.",
                 stacklevel=2,
