@@ -519,8 +519,55 @@ class TestPattern:
         assert p == pc
         assert mapping_complete == {0: 4, 3: 100, 1: 101, 2: 102}
 
-    # Pattern composition with Pauli preprocessing
-    def test_compose_3(self, fx_rng: Generator) -> None:
+    #  Pattern composition preserving output order
+    def test_compose_3(self) -> None:
+        i1 = [0, 1, 2, 3]
+        o1 = [0, 1, 2, 3]
+        cmds1: list[Command] = [
+            E((0, 1)),
+            E((1, 2)),
+            E((2, 3)),
+            C(0, Clifford.H),
+            C(1, Clifford.X),
+        ]
+        p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+
+        i2 = [0, 1]
+        o2 = [2, 3]
+        cmds2: list[Command] = [N(2), N(3), E((0, 1)), E((0, 2)), E((1, 3)), M(0), M(1), X(2, {0}), Z(3, {1})]
+        p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
+
+        mapping = {0: 1, 1: 2, 2: 100, 3: 101}
+        pc, _ = p1.compose(other=p2, mapping=mapping)
+        pc_ordered, _ = p1.compose(other=p2, mapping=mapping, perserve_order=True)
+
+        i = [0, 1, 2, 3]
+        o = [0, 3, 100, 101]
+        o_ordered = [0, 100, 101, 3]
+        cmds: list[Command] = [
+            E((0, 1)),
+            E((1, 2)),
+            E((2, 3)),
+            C(0, Clifford.H),
+            C(1, Clifford.X),
+            N(100),
+            N(101),
+            E((1, 2)),
+            E((1, 100)),
+            E((2, 101)),
+            M(1),
+            M(2),
+            X(100, {1}),
+            Z(101, {2}),
+        ]
+        p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
+        p_ordered = Pattern(cmds=cmds, input_nodes=i, output_nodes=o_ordered)
+
+        assert p == pc
+        assert p_ordered == pc_ordered
+
+    #  Pattern composition with Pauli preprocessing
+    def test_compose_4(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
         i1 = [0]
         o1 = [2]
@@ -556,7 +603,7 @@ class TestPattern:
         assert mapping_complete == mapping
 
     # Equivalence between pattern and circuit composition
-    def test_compose_4(self, fx_rng: Generator) -> None:
+    def test_compose_5(self, fx_rng: Generator) -> None:
         circuit_1 = Circuit(1)
         circuit_1.h(0)
         p1 = circuit_1.transpile().pattern  # outputs: [1]
@@ -575,6 +622,37 @@ class TestPattern:
         p12 = circuit_12.transpile().pattern
 
         assert p == p12
+
+    # Equivalence between pattern a circuit composition after standarization
+    # FAILING because of standardize
+    @pytest.mark.skip(reason="Pattern standarization does not support Clifford commands before entanglement commands.")
+    def test_compose_6(self, fx_rng: Generator) -> None:
+        alpha = 2 * np.pi * fx_rng.random()
+
+        circuit_1 = Circuit(1)
+        circuit_1.h(0)
+        circuit_1.rz(0, alpha)
+        p1 = circuit_1.transpile().pattern
+        p1.perform_pauli_measurements()
+
+        circuit_2 = Circuit(1)
+        circuit_2.rz(0, alpha)
+        p2 = circuit_2.transpile().pattern
+
+        pc, _ = p1.compose(p2, mapping={0: 3})
+        s_compose = pc.simulate_pattern(backend="statevector")
+
+        pc.standardize()  # Problematic because pc contains Cliffords before entanglement operators
+        s_compose_std = pc.simulate_pattern(backend="statevector")
+
+        circuit_3 = Circuit(1)
+        circuit_3.h(0)
+        circuit_3.rz(0, 2 * alpha)
+        p3 = circuit_3.transpile().pattern
+        s_circuit = p3.simulate_pattern(backend="statevector")
+
+        for s in [s_compose, s_compose_std]:
+            assert np.abs(np.dot(s.flatten().conjugate(), s_circuit.flatten())) == pytest.approx(1)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:

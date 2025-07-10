@@ -165,7 +165,9 @@ class Pattern:
         self.clear()
         self.extend(cmds)
 
-    def compose(self, other: Pattern, mapping: Mapping[int, int], perserve_order: bool = False) -> tuple[Pattern, dict[int, int]]:
+    def compose(
+        self, other: Pattern, mapping: Mapping[int, int], perserve_order: bool = False
+    ) -> tuple[Pattern, dict[int, int]]:
         r"""Compose two patterns by merging subsets of outputs from `self` and a subset of inputs of `other`, and relabeling the nodes of `other` that were not merged.
 
         Parameters
@@ -239,7 +241,10 @@ class Pattern:
         inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
 
         if perserve_order and len(other.output_nodes) != len(merged):
-            warnings.warn("`preserve_order = True` ignored beacuse the number of merged nodes and outputs of pattern `other` are different.", stacklevel=2)
+            warnings.warn(
+                "`preserve_order = True` ignored beacuse the number of merged nodes and outputs of pattern `other` are different.",
+                stacklevel=2,
+            )
             perserve_order = False
 
         if perserve_order:
