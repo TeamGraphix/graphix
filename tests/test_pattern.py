@@ -539,7 +539,7 @@ class TestPattern:
 
         mapping = {0: 1, 1: 2, 2: 100, 3: 101}
         pc, _ = p1.compose(other=p2, mapping=mapping)
-        pc_ordered, _ = p1.compose(other=p2, mapping=mapping, perserve_order=True)
+        pc_ordered, _ = p1.compose(other=p2, mapping=mapping, preserve_order=True)
 
         i = [0, 1, 2, 3]
         o = [0, 3, 100, 101]
