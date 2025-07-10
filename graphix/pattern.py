@@ -165,7 +165,7 @@ class Pattern:
         self.clear()
         self.extend(cmds)
 
-    def compose(self, other: Pattern, mapping: Mapping[int, int]) -> tuple[Pattern, dict[int, int]]:
+    def compose(self, other: Pattern, mapping: Mapping[int, int], perserve_order: bool = False) -> tuple[Pattern, dict[int, int]]:
         r"""Compose two patterns by merging subsets of outputs from `self` and a subset of inputs of `other`, and relabeling the nodes of `other` that were not merged.
 
         Parameters
@@ -174,6 +174,8 @@ class Pattern:
             Pattern to be composed with `self`.
         mapping: Mapping[int, int]
             Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
+        preserve_order: bool
+            Boolean flag controlling the ordering of the output nodes in the returned pattern.
 
         Returns
         -------
@@ -199,6 +201,7 @@ class Pattern:
         - :math:`I = I_1 \cup (I_2 \setminus M_2)`.
         - :math:`O = (O_1 \setminus M_1) \cup O_2`.
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
+        - If `preserve_order = True` and :math:`|M_1| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the nth output of pattern `other` instead.
         """
         nodes_p1_lst, _ = self.get_graph()
         nodes_p1: set[int] = set(nodes_p1_lst) | self.results.keys()  # Results contain preprocessed Pauli nodes
@@ -234,7 +237,16 @@ class Pattern:
         merged = set(mapping.values()) & set(self.__output_nodes)
 
         inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
-        outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
+
+        if perserve_order and len(other.output_nodes) != len(merged):
+            warnings.warn("`preserve_order = True` ignored beacuse the number of merged nodes and outputs of pattern `other` are different.", stacklevel=2)
+            perserve_order = False
+
+        if perserve_order:
+            mapped_iter = iter(mapped_outputs)
+            outputs = [next(mapped_iter) if n in merged else n for n in self.__output_nodes]
+        else:
+            outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
         def update_command(cmd: Command) -> Command:
             cmd_new = copy.copy(cmd)
