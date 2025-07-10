@@ -599,7 +599,6 @@ class TestPattern:
         p.results = {1: 0, 3: 0}
 
         assert p == pc
-        assert p.results == pc.results
         assert mapping_complete == mapping
 
     # Equivalence between pattern and circuit composition

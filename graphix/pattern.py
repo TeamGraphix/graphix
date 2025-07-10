@@ -188,14 +188,14 @@ class Pattern:
 
         Notes
         -----
-        Let's denote :math:`(I_j, O_j, V_j, S_j)` the ordered set of inputs and outputs, the computational space and the sequence of commands of pattern :math`P_j`, respectively, with :math:`j = 1` for pattern `self` and :math:`j = 2` for pattern `other`. Let's denote :math:`P` the resulting pattern with :math:`(I, O, V, S)`.
+        Let's denote :math:`(I_j, O_j, V_j, S_j)` the ordered set of inputs and outputs, the computational space and the sequence of commands of pattern :math:`P_j`, respectively, with :math:`j = 1` for pattern `self` and :math:`j = 2` for pattern `other`. Let's denote :math:`P` the resulting pattern with :math:`(I, O, V, S)`.
         Let's denote :math:`K, U` the sets of `keys` and `values` of `mapping`, and :math:`M_1 = O_1 \cap U` and :math:`M_2 = O_2 \cap K` respectively the set of merged outputs and inputs.
 
         The pattern composition requires that
         - :math:`K \subseteq V_2`.
         - For a pair :math:`(k, v) \in (K, U)`
-            - :math:`v` can always satisfy :math:`v \notin V_1`, thereby allowing a custom relabelling.
             - :math:`U \cap V_1 \setminus O_1 = \emptyset`. If :math:`v \in O_1`, then :math:`k \in I_2`, otherwise an error is raised.
+            - :math:`v` can always satisfy :math:`v \notin V_1`, thereby allowing a custom relabelling.
 
         The returned pattern follows this convention:
         - Nodes of pattern `other` not specified in `mapping` (i.e., :math:`V_2 \cap K^c`) are relabelled in ascending order.
@@ -352,6 +352,7 @@ class Pattern:
             self.__seq == other.__seq
             and self.__input_nodes == other.__input_nodes
             and self.__output_nodes == other.__output_nodes
+            and self.results == other.results
         )
 
     def to_ascii(
