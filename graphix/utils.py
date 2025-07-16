@@ -36,11 +36,11 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
     if ann is None:
         msg = "kind must be annotated."
         raise TypeError(msg)
-    if typing.get_origin(ann) is not ClassVar:
+    if typing.get_origin(ann) is not ClassVar:  # type: ignore[comparison-overlap]
         msg = "Tag attribute must be a class variable."
         raise TypeError(msg)
     (ann,) = typing.get_args(ann)
-    if typing.get_origin(ann) is not Literal:
+    if typing.get_origin(ann) is not Literal:  # type: ignore[comparison-overlap]
         msg = "Tag attribute must be a literal."
         raise TypeError(msg)
 
