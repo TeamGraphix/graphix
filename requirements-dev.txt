@@ -5,7 +5,7 @@ pyright
 ruff==0.12.3
 
 # Stubs
-types-networkx<=3.5.0.20250610
+types-networkx<=3.5.0.20250701
 types-psutil
 types-setuptools
 
