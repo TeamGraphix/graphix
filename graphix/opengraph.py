@@ -11,7 +11,7 @@ from graphix.generator import generate_from_graph
 from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
 
     from graphix.pattern import Pattern
 
@@ -176,7 +176,7 @@ class OpenGraph:
 
         merged = set(mapping_complete.values()) & self.inside.nodes
 
-        def merge_ports(p1: list[int], p2: list[int]) -> list[int]:
+        def merge_ports(p1: Iterable[int], p2: Iterable[int]) -> list[int]:
             p2_mapped = [mapping_complete[node] for node in p2]
             p2_set = set(p2_mapped)
             part1 = [node for node in p1 if node not in merged or node in p2_set]
