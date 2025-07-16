@@ -27,7 +27,7 @@ from graphix.linalg import MatGF2
 from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, MutableSet
 
     from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
@@ -913,7 +913,7 @@ def get_min_depth(l_k: dict[int, int]) -> int:
     return max(l_k.values())
 
 
-def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
+def find_odd_neighbor(graph: nx.Graph, vertices: MutableSet[int]) -> set[int]:
     """Return the set containing the odd neighbor of a set of vertices.
 
     Parameters
@@ -935,7 +935,7 @@ def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
     return odd_neighbors
 
 
-def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
+def get_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
     """Get components of each layer.
 
     Parameters
