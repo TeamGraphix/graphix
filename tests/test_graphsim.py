@@ -150,4 +150,4 @@ class TestGraphSim:
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
         g.local_complement(1)
         exp_g = GraphState(nodes=np.arange(nqubit), edges=exp_edges)
-        assert nx.utils.graphs_equal(g, exp_g)  # type:ignore[no-untyped-call]
+        assert nx.utils.graphs_equal(g, exp_g)
