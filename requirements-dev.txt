@@ -1,11 +1,11 @@
 # Lint/format
-mypy
+mypy==1.17.0
 pre-commit # for language-agnostic hooks
 pyright
 ruff==0.12.3
 
 # Stubs
-types-networkx
+types-networkx==3.5.0.20250701
 types-psutil
 types-setuptools
 
