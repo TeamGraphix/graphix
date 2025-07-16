@@ -45,7 +45,7 @@ class ResourceGraph:
         if not isinstance(other, ResourceGraph):
             raise TypeError("cannot compare ResourceGraph with other object")
 
-        return self.cltype == other.cltype and nx.utils.graphs_equal(self.graph, other.graph)  # type: ignore[no-untyped-call]
+        return self.cltype == other.cltype and nx.utils.graphs_equal(self.graph, other.graph)
 
 
 def get_fusion_network_from_graph(
