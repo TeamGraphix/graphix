@@ -69,7 +69,7 @@ class OpenGraph:
         This doesn't check they are equal up to an isomorphism.
 
         """
-        if not nx.utils.graphs_equal(self.inside, other.inside):  # type: ignore[no-untyped-call]
+        if not nx.utils.graphs_equal(self.inside, other.inside):
             return False
 
         if self.inputs != other.inputs or self.outputs != other.outputs:
