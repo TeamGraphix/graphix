@@ -1,5 +1,5 @@
 # Lint/format
-mypy
+mypy==1.16.1
 pre-commit # for language-agnostic hooks
 pyright
 ruff==0.12.3
