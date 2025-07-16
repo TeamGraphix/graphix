@@ -32,15 +32,15 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
         # MEMO: `inspect.get_annotations` unavailable
         return
 
-    ann = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
+    ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
     if ann is None:
         msg = "kind must be annotated."
         raise TypeError(msg)
-    if typing.get_origin(ann) is not ClassVar:  # type: ignore[comparison-overlap]
+    if typing.get_origin(ann) is not ClassVar:
         msg = "Tag attribute must be a class variable."
         raise TypeError(msg)
     (ann,) = typing.get_args(ann)
-    if typing.get_origin(ann) is not Literal:  # type: ignore[comparison-overlap]
+    if typing.get_origin(ann) is not Literal:
         msg = "Tag attribute must be a literal."
         raise TypeError(msg)
 
