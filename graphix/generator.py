@@ -74,7 +74,7 @@ def generate_from_graph(
 
     measuring_nodes = set(graph.nodes) - set(outputs)
 
-    meas_planes = dict(meas_planes or dict.fromkeys(measuring_nodes, Plane.XY))
+    meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if not meas_planes else dict(meas_planes)
 
     # search for flow first
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
@@ -101,7 +101,13 @@ def generate_from_graph(
     return pattern
 
 
-def _flow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat], inputs: list[int], f: dict[int, set[int]], l_k: dict[int, int]) -> Pattern:
+def _flow2pattern(
+    graph: nx.Graph[int],
+    angles: Mapping[int, ExpressionOrFloat],
+    inputs: list[int],
+    f: dict[int, set[int]],
+    l_k: dict[int, int],
+) -> Pattern:
     """Construct a measurement pattern from a causal flow according to the theorem 1 of [NJP 9, 250 (2007)]."""
     depth, layers = get_layers(l_k)
     pattern = Pattern(input_nodes=inputs)
@@ -124,7 +130,14 @@ def _flow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat],
     return pattern
 
 
-def _gflow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat], inputs: list[int], meas_planes: dict[int, Plane], g: dict[int, set[int]], l_k: dict[int, int]) -> Pattern:
+def _gflow2pattern(
+    graph: nx.Graph[int],
+    angles: Mapping[int, ExpressionOrFloat],
+    inputs: list[int],
+    meas_planes: dict[int, Plane],
+    g: dict[int, set[int]],
+    l_k: dict[int, int],
+) -> Pattern:
     """Construct a measurement pattern from a generalized flow according to the theorem 2 of [NJP 9, 250 (2007)]."""
     depth, layers = get_layers(l_k)
     pattern = Pattern(input_nodes=inputs)
@@ -143,7 +156,14 @@ def _gflow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat]
     return pattern
 
 
-def _pflow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat], inputs: list[int], meas_planes: dict[int, Plane], p: dict[int, set[int]], l_k: dict[int, int]) -> Pattern:
+def _pflow2pattern(
+    graph: nx.Graph[int],
+    angles: Mapping[int, ExpressionOrFloat],
+    inputs: list[int],
+    meas_planes: dict[int, Plane],
+    p: dict[int, set[int]],
+    l_k: dict[int, int],
+) -> Pattern:
     """Construct a measurement pattern from a Pauli flow according to the theorem 4 of [NJP 9, 250 (2007)]."""
     depth, layers = get_layers(l_k)
     pattern = Pattern(input_nodes=inputs)
@@ -156,7 +176,7 @@ def _pflow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat]
             pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
             odd_neighbors = find_odd_neighbor(graph, p[j])
             future_nodes = set.union(
-                    *(nodes for (layer, nodes) in layers.items() if layer < i)
+                *(nodes for (layer, nodes) in layers.items() if layer < i)
             )  # {k | k > j}, with "j" last corrected node and ">" the Pauli flow ordering
             for k in odd_neighbors & future_nodes:
                 pattern.add(Z(node=k, domain={j}))
