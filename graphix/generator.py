@@ -72,7 +72,7 @@ def generate_from_graph(
     inputs = list(inputs)
     outputs = list(outputs)
 
-    measuring_nodes = list(set(graph.nodes) - set(outputs))
+    measuring_nodes = set(graph.nodes) - set(outputs)
 
     meas_planes = dict(meas_planes or dict.fromkeys(measuring_nodes, Plane.XY))
 
@@ -80,68 +80,86 @@ def generate_from_graph(
     f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
     if f is not None:
         # flow found
-        depth, layers = get_layers(l_k)
-        pattern = Pattern(input_nodes=inputs)
-        for i in set(graph.nodes) - set(inputs):
-            pattern.add(N(node=i))
-        for e in graph.edges:
-            pattern.add(E(nodes=e))
-        measured = []
-        for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
-            for j in layers[i]:
-                measured.append(j)
-                pattern.add(M(node=j, angle=angles[j]))
-                neighbors: set[int] = set()
-                for k in f[j]:
-                    neighbors |= set(graph.neighbors(k))
-                for k in neighbors - {j}:
-                    # if k not in measured:
-                    pattern.add(Z(node=k, domain={j}))
-                pattern.add(X(node=f[j].pop(), domain={j}))
+        pattern = _flow2pattern(graph, angles, inputs, f, l_k)
     else:
         # no flow found - we try gflow
         g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
         if g is not None:
             # gflow found
-            depth, layers = get_layers(l_k)
-            pattern = Pattern(input_nodes=inputs)
-            for i in set(graph.nodes) - set(inputs):
-                pattern.add(N(node=i))
-            for e in graph.edges:
-                pattern.add(E(nodes=e))
-            for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
-                for j in layers[i]:
-                    pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
-                    odd_neighbors = find_odd_neighbor(graph, g[j])
-                    for k in odd_neighbors - {j}:
-                        pattern.add(Z(node=k, domain={j}))
-                    for k in g[j] - {j}:
-                        pattern.add(X(node=k, domain={j}))
+            pattern = _gflow2pattern(graph, angles, inputs, meas_planes, g, l_k)
         else:
             # no flow or gflow found - we try pflow
             p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=angles)
             if p is not None:
                 # pflow found
-                depth, layers = get_layers(l_k)
-                pattern = Pattern(input_nodes=inputs)
-                for i in set(graph.nodes) - set(inputs):
-                    pattern.add(N(node=i))
-                for e in graph.edges:
-                    pattern.add(E(nodes=e))
-                for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
-                    for j in layers[i]:
-                        pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
-                        odd_neighbors = find_odd_neighbor(graph, p[j])
-                        future_nodes = set.union(
-                            *[nodes for (layer, nodes) in layers.items() if layer < i]
-                        )  # {k | k > j}, with "j" last corrected node and ">" the Pauli flow ordering
-                        for k in odd_neighbors & future_nodes:
-                            pattern.add(Z(node=k, domain={j}))
-                        for k in p[j] & future_nodes:
-                            pattern.add(X(node=k, domain={j}))
+                pattern = _pflow2pattern(graph, angles, inputs, meas_planes, p, l_k)
 
             else:
                 raise ValueError("no flow or gflow or pflow found")
 
     pattern.reorder_output_nodes(outputs)
+    return pattern
+
+
+def _flow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat], inputs: list[int], f: dict[int, set[int]], l_k: dict[int, int]) -> Pattern:
+    """Construct a measurement pattern from a causal flow according to the theorem 1 of [NJP 9, 250 (2007)]."""
+    depth, layers = get_layers(l_k)
+    pattern = Pattern(input_nodes=inputs)
+    for i in set(graph.nodes) - set(inputs):
+        pattern.add(N(node=i))
+    for e in graph.edges:
+        pattern.add(E(nodes=e))
+    measured = []
+    for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
+        for j in layers[i]:
+            measured.append(j)
+            pattern.add(M(node=j, angle=angles[j]))
+            neighbors: set[int] = set()
+            for k in f[j]:
+                neighbors |= set(graph.neighbors(k))
+            for k in neighbors - {j}:
+                # if k not in measured:
+                pattern.add(Z(node=k, domain={j}))
+            pattern.add(X(node=f[j].pop(), domain={j}))
+    return pattern
+
+
+def _gflow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat], inputs: list[int], meas_planes: dict[int, Plane], g: dict[int, set[int]], l_k: dict[int, int]) -> Pattern:
+    """Construct a measurement pattern from a generalized flow according to the theorem 2 of [NJP 9, 250 (2007)]."""
+    depth, layers = get_layers(l_k)
+    pattern = Pattern(input_nodes=inputs)
+    for i in set(graph.nodes) - set(inputs):
+        pattern.add(N(node=i))
+    for e in graph.edges:
+        pattern.add(E(nodes=e))
+    for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
+        for j in layers[i]:
+            pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
+            odd_neighbors = find_odd_neighbor(graph, g[j])
+            for k in odd_neighbors - {j}:
+                pattern.add(Z(node=k, domain={j}))
+            for k in g[j] - {j}:
+                pattern.add(X(node=k, domain={j}))
+    return pattern
+
+
+def _pflow2pattern(graph: nx.Graph[int], angles: Mapping[int, ExpressionOrFloat], inputs: list[int], meas_planes: dict[int, Plane], p: dict[int, set[int]], l_k: dict[int, int]) -> Pattern:
+    """Construct a measurement pattern from a Pauli flow according to the theorem 4 of [NJP 9, 250 (2007)]."""
+    depth, layers = get_layers(l_k)
+    pattern = Pattern(input_nodes=inputs)
+    for i in set(graph.nodes) - set(inputs):
+        pattern.add(N(node=i))
+    for e in graph.edges:
+        pattern.add(E(nodes=e))
+    for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
+        for j in layers[i]:
+            pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
+            odd_neighbors = find_odd_neighbor(graph, p[j])
+            future_nodes = set.union(
+                    *(nodes for (layer, nodes) in layers.items() if layer < i)
+            )  # {k | k > j}, with "j" last corrected node and ">" the Pauli flow ordering
+            for k in odd_neighbors & future_nodes:
+                pattern.add(Z(node=k, domain={j}))
+            for k in p[j] & future_nodes:
+                pattern.add(X(node=k, domain={j}))
     return pattern
