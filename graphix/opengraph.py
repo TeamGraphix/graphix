@@ -151,9 +151,9 @@ class OpenGraph:
         - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
         - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
         """
-        if not mapping.keys() <= other.inside.nodes:
+        if not (mapping.keys() <= other.inside.nodes):
             raise ValueError("Keys of mapping must be correspond to nodes of other.")
-        if len(mapping.values()) != len(set(mapping.values())):
+        if len(mapping) != len(set(mapping.values())):
             raise ValueError("Values in mapping contain duplicates.")
         for v, u in mapping.items():
             if (
