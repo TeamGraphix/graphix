@@ -16,9 +16,24 @@ def tests_minimal(session: Session) -> None:
     session.run("pytest")
 
 
+# Note that recent types-networkx versions don't support Python 3.9
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+def tests_dev(session: Session) -> None:
+    """Run the test suite with dev dependencies."""
+    session.install("-e", ".[dev]")
+    session.run("pytest", "--doctest-modules")
+
+
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
-def tests(session: Session) -> None:
-    """Run the test suite with full dependencies."""
+def tests_extra(session: Session) -> None:
+    """Run the test suite with extra dependencies."""
+    session.install("-e", ".[extra]")
+    session.run("pytest", "--doctest-modules")
+
+
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+def tests_all(session: Session) -> None:
+    """Run the test suite with all dependencies."""
     session.install("-e", ".[dev,extra]")
     session.run("pytest", "--doctest-modules")
 
