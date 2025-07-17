@@ -28,7 +28,9 @@ def tests_minimal(session: Session) -> None:
 def tests_dev(session: Session) -> None:
     """Run the test suite with dev dependencies."""
     session.install("-e", ".[dev]")
-    session.run("pytest", "--doctest-modules")
+    # We cannot run `pytest --doctest-modules` here, since some tests
+    # involve optional dependencies, like pyzx.
+    session.run("pytest")
 
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
@@ -36,7 +38,7 @@ def tests_extra(session: Session) -> None:
     """Run the test suite with extra dependencies."""
     session.install("-e", ".[extra]")
     install_pytest(session)
-    session.install("nox")  # needed for --doctest-modules
+    session.install("nox")  # needed for `--doctest-modules`
     session.run("pytest", "--doctest-modules")
 
 
@@ -53,7 +55,7 @@ def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
     session.install("-e", ".")
     install_pytest(session)
-    session.install("nox")  # needed for --doctest-modules
+    session.install("nox")  # needed for `--doctest-modules`
     # Use `session.cd` as a context manager to ensure that the
     # working directory is restored afterward. This is important
     # because Windows cannot delete a temporary directory while it
