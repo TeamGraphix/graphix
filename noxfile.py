@@ -7,13 +7,16 @@ from tempfile import TemporaryDirectory
 import nox
 from nox import Session
 
+
 def install_pytest(session: Session) -> None:
     """Install pytest when requirements-dev.txt is not installed."""
     session.install("pytest", "pytest-mock", "psutil")
 
+
 def run_pytest(session: Session) -> None:
     """Run pytest."""
     session.run("pytest", "--doctest-modules")
+
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
 def tests_minimal(session: Session) -> None:
@@ -22,8 +25,9 @@ def tests_minimal(session: Session) -> None:
     install_pytest(session)
     run_pytest(session)
 
-
     # Note that recent types-networkx versions don't support Python 3.9
+
+
 @nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_dev(session: Session) -> None:
     """Run the test suite with dev dependencies."""
