@@ -129,7 +129,7 @@ def _flow2pattern(
             for k in neighbors - {j}:
                 # if k not in measured:
                 pattern.add(Z(node=k, domain={j}))
-            fj, *_ = f[j]
+            (fj, ) = f[j]
             pattern.add(X(node=fj, domain={j}))
     return pattern
 
