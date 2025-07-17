@@ -70,15 +70,15 @@ def generate_from_graph(
     pattern : graphix.pattern.Pattern
         constructed pattern.
     """
-    inputs = set(inputs)
-    outputs = set(outputs)
+    inputs_set = set(inputs)
+    outputs_set = set(outputs)
 
-    measuring_nodes = set(graph.nodes) - outputs
+    measuring_nodes = set(graph.nodes) - outputs_set
 
     meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if not meas_planes else dict(meas_planes)
 
     # search for flow first
-    f, l_k = find_flow(graph, inputs, outputs, meas_planes=meas_planes)
+    f, l_k = find_flow(graph, inputs_set, outputs_set, meas_planes=meas_planes)
     if f is not None:
         # flow found
         pattern = _flow2pattern(graph, angles, inputs, f, l_k)
@@ -86,7 +86,7 @@ def generate_from_graph(
         return pattern
 
     # no flow found - we try gflow
-    g, l_k = find_gflow(graph, inputs, outputs, meas_planes=meas_planes)
+    g, l_k = find_gflow(graph, inputs_set, outputs_set, meas_planes=meas_planes)
     if g is not None:
         # gflow found
         pattern = _gflow2pattern(graph, angles, inputs, meas_planes, g, l_k)
@@ -94,7 +94,7 @@ def generate_from_graph(
         return pattern
 
     # no flow or gflow found - we try pflow
-    p, l_k = find_pauliflow(graph, inputs, outputs, meas_planes=meas_planes, meas_angles=angles)
+    p, l_k = find_pauliflow(graph, inputs_set, outputs_set, meas_planes=meas_planes, meas_angles=angles)
     if p is not None:
         # pflow found
         pattern = _pflow2pattern(graph, angles, inputs, meas_planes, p, l_k)
