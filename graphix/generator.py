@@ -10,7 +10,8 @@ from graphix.gflow import find_flow, find_gflow, find_odd_neighbor, find_paulifl
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, MutableSet
+    from collections.abc import Iterable, Mapping
+    from collections.abc import Set as AbstractSet
 
     import networkx as nx
 
@@ -69,43 +70,45 @@ def generate_from_graph(
     pattern : graphix.pattern.Pattern
         constructed pattern.
     """
-    inputs = list(inputs)
-    outputs = list(outputs)
+    inputs = set(inputs)
+    outputs = set(outputs)
 
-    measuring_nodes = set(graph.nodes) - set(outputs)
+    measuring_nodes = set(graph.nodes) - outputs
 
     meas_planes = dict.fromkeys(measuring_nodes, Plane.XY) if not meas_planes else dict(meas_planes)
 
     # search for flow first
-    f, l_k = find_flow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
+    f, l_k = find_flow(graph, inputs, outputs, meas_planes=meas_planes)
     if f is not None:
         # flow found
         pattern = _flow2pattern(graph, angles, inputs, f, l_k)
-    else:
-        # no flow found - we try gflow
-        g, l_k = find_gflow(graph, set(inputs), set(outputs), meas_planes=meas_planes)
-        if g is not None:
-            # gflow found
-            pattern = _gflow2pattern(graph, angles, inputs, meas_planes, g, l_k)
-        else:
-            # no flow or gflow found - we try pflow
-            p, l_k = find_pauliflow(graph, set(inputs), set(outputs), meas_planes=meas_planes, meas_angles=angles)
-            if p is not None:
-                # pflow found
-                pattern = _pflow2pattern(graph, angles, inputs, meas_planes, p, l_k)
+        pattern.reorder_output_nodes(outputs)
+        return pattern
 
-            else:
-                raise ValueError("no flow or gflow or pflow found")
+    # no flow found - we try gflow
+    g, l_k = find_gflow(graph, inputs, outputs, meas_planes=meas_planes)
+    if g is not None:
+        # gflow found
+        pattern = _gflow2pattern(graph, angles, inputs, meas_planes, g, l_k)
+        pattern.reorder_output_nodes(outputs)
+        return pattern
 
-    pattern.reorder_output_nodes(outputs)
-    return pattern
+    # no flow or gflow found - we try pflow
+    p, l_k = find_pauliflow(graph, inputs, outputs, meas_planes=meas_planes, meas_angles=angles)
+    if p is not None:
+        # pflow found
+        pattern = _pflow2pattern(graph, angles, inputs, meas_planes, p, l_k)
+        pattern.reorder_output_nodes(outputs)
+        return pattern
+
+    raise ValueError("no flow or gflow or pflow found")
 
 
 def _flow2pattern(
     graph: nx.Graph[int],
     angles: Mapping[int, ExpressionOrFloat],
     inputs: Iterable[int],
-    f: Mapping[int, MutableSet[int]],
+    f: Mapping[int, AbstractSet[int]],
     l_k: Mapping[int, int],
 ) -> Pattern:
     """Construct a measurement pattern from a causal flow according to the theorem 1 of [NJP 9, 250 (2007)]."""
@@ -126,7 +129,8 @@ def _flow2pattern(
             for k in neighbors - {j}:
                 # if k not in measured:
                 pattern.add(Z(node=k, domain={j}))
-            pattern.add(X(node=f[j].pop(), domain={j}))
+            fj, *_ = f[j]
+            pattern.add(X(node=fj, domain={j}))
     return pattern
 
 
@@ -135,7 +139,7 @@ def _gflow2pattern(
     angles: Mapping[int, ExpressionOrFloat],
     inputs: Iterable[int],
     meas_planes: Mapping[int, Plane],
-    g: Mapping[int, MutableSet[int]],
+    g: Mapping[int, AbstractSet[int]],
     l_k: Mapping[int, int],
 ) -> Pattern:
     """Construct a measurement pattern from a generalized flow according to the theorem 2 of [NJP 9, 250 (2007)]."""
@@ -161,7 +165,7 @@ def _pflow2pattern(
     angles: Mapping[int, ExpressionOrFloat],
     inputs: Iterable[int],
     meas_planes: Mapping[int, Plane],
-    p: Mapping[int, MutableSet[int]],
+    p: Mapping[int, AbstractSet[int]],
     l_k: Mapping[int, int],
 ) -> Pattern:
     """Construct a measurement pattern from a Pauli flow according to the theorem 4 of [NJP 9, 250 (2007)]."""
