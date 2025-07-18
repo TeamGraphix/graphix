@@ -7,11 +7,16 @@ behaviour is required. All methods simply return an identity
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import typing_extensions
 
 from graphix.channels import KrausChannel, KrausData
 from graphix.noise_models.noise_model import NoiseModel
+
+if TYPE_CHECKING:
+    from graphix.measurements import Outcome
 
 
 class NoiselessNoiseModel(NoiseModel):
@@ -51,7 +56,7 @@ class NoiselessNoiseModel(NoiseModel):
         return KrausChannel([KrausData(1.0, np.eye(2))])
 
     @typing_extensions.override
-    def confuse_result(self, result: bool) -> bool:
+    def confuse_result(self, result: Outcome) -> Outcome:
         """Return the unmodified measurement result.
 
         Parameters

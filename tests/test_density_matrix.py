@@ -45,8 +45,12 @@ class TestDensityMatrix:
             DensityMatrix("hello")
         with pytest.raises(TypeError):
             DensityMatrix(1)
-        with pytest.raises(TypeError):
+        # Length is not a power of two
+        with pytest.raises(ValueError):
             DensityMatrix([1, 2, [3]])
+        # setting an array element with a sequence (numpy error)
+        with pytest.raises(ValueError):
+            DensityMatrix([1, 2, [3], 4])
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
