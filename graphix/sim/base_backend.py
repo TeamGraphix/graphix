@@ -6,7 +6,7 @@ import dataclasses
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -52,7 +52,7 @@ def tensordot(op: Matrix, psi: Matrix, axes: tuple[int | Sequence[int], int | Se
     support `Matrix` directly.
 
     If `psi` and `op` are numeric, the result is numeric.
-    If `psi` or `op` are symbolic, the other is cast to symbolic if needed and
+    If `psi` or `op` are symbolic, the other is converted to symbolic if needed and
     the result is symbolic.
 
     Parameters
@@ -70,11 +70,11 @@ def tensordot(op: Matrix, psi: Matrix, axes: tuple[int | Sequence[int], int | Se
         The result of the tensor contraction with the same type as `psi`.
     """
     if psi.dtype == np.complex128 and op.dtype == np.complex128:
-        psi_c = cast("npt.NDArray[np.complex128]", psi)
-        op_c = cast("npt.NDArray[np.complex128]", op)
+        psi_c = psi.astype(np.complex128, copy=False)
+        op_c = op.astype(np.complex128, copy=False)
         return np.tensordot(op_c, psi_c, axes).astype(np.complex128)
-    psi_o = psi.astype(np.object_)
-    op_o = op.astype(np.object_)
+    psi_o = psi.astype(np.object_, copy=False)
+    op_o = op.astype(np.object_, copy=False)
     return np.tensordot(op_o, psi_o, axes)
 
 
@@ -102,11 +102,11 @@ def eig(mat: Matrix) -> tuple[Matrix, Matrix]:
         If `mat` has an unsupported dtype.
     """
     if mat.dtype == np.object_:
-        mat_o = cast("npt.NDArray[np.object_]", mat)
+        mat_o = mat.astype(np.object_, copy=False)
         # mypy doesn't accept object dtype here
         return np.linalg.eig(mat_o)  # type: ignore[arg-type]
 
-    mat_c = cast("npt.NDArray[np.complex128]", mat)
+    mat_c = mat.astype(np.complex128, copy=False)
     return np.linalg.eig(mat_c)
 
 
@@ -133,13 +133,13 @@ def kron(a: Matrix, b: Matrix) -> Matrix:
         If `a` and `b` don't have the same type.
     """
     if a.dtype == np.complex128 and b.dtype == np.complex128:
-        a_c = cast("npt.NDArray[np.complex128]", a)
-        b_c = cast("npt.NDArray[np.complex128]", b)
+        a_c = a.astype(np.complex128, copy=False)
+        b_c = b.astype(np.complex128, copy=False)
         return np.kron(a_c, b_c).astype(np.complex128)
 
     if a.dtype == np.object_ and b.dtype == np.object_:
-        a_o = cast("npt.NDArray[np.object_]", a)
-        b_o = cast("npt.NDArray[np.object_]", b)
+        a_o = a.astype(np.object_, copy=False)
+        b_o = b.astype(np.object_, copy=False)
         return np.kron(a_o, b_o)
 
     raise TypeError("Operands should have the same type.")
@@ -168,13 +168,13 @@ def outer(a: Matrix, b: Matrix) -> Matrix:
         If `a` and `b` don't have the same type.
     """
     if a.dtype == np.complex128 and b.dtype == np.complex128:
-        a_c = cast("npt.NDArray[np.complex128]", a)
-        b_c = cast("npt.NDArray[np.complex128]", b)
+        a_c = a.astype(np.complex128, copy=False)
+        b_c = b.astype(np.complex128, copy=False)
         return np.outer(a_c, b_c).astype(np.complex128)
 
     if a.dtype == np.object_ and b.dtype == np.object_:
-        a_o = cast("npt.NDArray[np.object_]", a)
-        b_o = cast("npt.NDArray[np.object_]", b)
+        a_o = a.astype(np.object_, copy=False)
+        b_o = b.astype(np.object_, copy=False)
         return np.outer(a_o, b_o)
 
     raise TypeError("Operands should have the same type.")
@@ -203,13 +203,13 @@ def vdot(a: Matrix, b: Matrix) -> ExpressionOrComplex:
         If `a` and `b` don't have the same type.
     """
     if a.dtype == np.complex128 and b.dtype == np.complex128:
-        a_c = cast("npt.NDArray[np.complex128]", a)
-        b_c = cast("npt.NDArray[np.complex128]", b)
+        a_c = a.astype(np.complex128, copy=False)
+        b_c = b.astype(np.complex128, copy=False)
         return complex(np.vdot(a_c, b_c))
 
     if a.dtype == np.object_ and b.dtype == np.object_:
-        a_o = cast("npt.NDArray[np.object_]", a)
-        b_o = cast("npt.NDArray[np.object_]", b)
+        a_o = a.astype(np.object_, copy=False)
+        b_o = b.astype(np.object_, copy=False)
         return np.vdot(a_o, b_o)  # type: ignore[no-any-return]
 
     raise TypeError("Operands should have the same type.")
@@ -238,13 +238,13 @@ def matmul(a: Matrix, b: Matrix) -> Matrix:
         If `a` and `b` don't have the same type.
     """
     if a.dtype == np.complex128 and b.dtype == np.complex128:
-        a_c = cast("npt.NDArray[np.complex128]", a)
-        b_c = cast("npt.NDArray[np.complex128]", b)
+        a_c = a.astype(np.complex128, copy=False)
+        b_c = b.astype(np.complex128, copy=False)
         return a_c @ b_c
 
     if a.dtype == np.object_ and b.dtype == np.object_:
-        a_o = cast("npt.NDArray[np.object_]", a)
-        b_o = cast("npt.NDArray[np.object_]", b)
+        a_o = a.astype(np.object_, copy=False)
+        b_o = b.astype(np.object_, copy=False)
         return a_o @ b_o  # type: ignore[no-any-return]
 
     raise TypeError("Operands should have the same type.")

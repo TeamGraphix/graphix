@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import functools
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, cast
@@ -285,13 +286,14 @@ class Statevec(DenseState):
         norm = _get_statevec_norm(self.psi)
         if isinstance(norm, SupportsFloat):
             assert not np.isclose(norm, 0)
-        psi: Matrix = cast("Matrix", self.psi.take(indices=0, axis=qarg))
+        index: list[slice[int] | int] = [slice(None)] * self.psi.ndim
+        index[qarg] = 0
+        psi = self.psi[tuple(index)]
         norm = _get_statevec_norm(psi)
-        self.psi = (
-            psi
-            if not isinstance(norm, SupportsFloat) or not np.isclose(norm, 0)
-            else cast("Matrix", self.psi.take(indices=1, axis=qarg))
-        )
+        if isinstance(norm, SupportsFloat) and math.isclose(norm, 0):
+            index[qarg] = 1
+            psi = self.psi[tuple(index)]
+        self.psi = psi
         self.normalize()
 
     @override
@@ -353,12 +355,16 @@ class Statevec(DenseState):
 
     def normalize(self) -> None:
         """Normalize the state in-place."""
+        # Note that the following calls to `astype` are guaranteed to
+        # return the original NumPy array itself, since `copy=False` and
+        # the `dtype` matches. This is important because the array is
+        # then modified in place.
         if self.psi.dtype == np.object_:
-            psi_o = cast("npt.NDArray[np.object_]", self.psi)
+            psi_o = self.psi.astype(np.object_, copy=False)
             norm_o = _get_statevec_norm_symbolic(psi_o)
             psi_o /= norm_o
         else:
-            psi_c = cast("npt.NDArray[np.complex128]", self.psi)
+            psi_c = self.psi.astype(np.complex128, copy=False)
             norm_c = _get_statevec_norm_numeric(psi_c)
             psi_c /= norm_c
 
@@ -442,5 +448,5 @@ def _get_statevec_norm(psi: Matrix) -> ExpressionOrFloat:
     """Return norm of the state."""
     # Narrow psi to concrete dtype
     if psi.dtype == np.object_:
-        return _get_statevec_norm_symbolic(cast("npt.NDArray[np.object_]", psi))
-    return _get_statevec_norm_numeric(cast("npt.NDArray[np.complex128]", psi))
+        return _get_statevec_norm_symbolic(psi.astype(np.object_, copy=False))
+    return _get_statevec_norm_numeric(psi.astype(np.complex128, copy=False))

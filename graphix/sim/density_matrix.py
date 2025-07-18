@@ -10,7 +10,7 @@ import dataclasses
 import math
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, cast
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 from typing_extensions import override
@@ -25,8 +25,6 @@ from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-
-    import numpy.typing as npt
 
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
@@ -291,11 +289,15 @@ class DensityMatrix(DenseState):
 
     def normalize(self) -> None:
         """Normalize density matrix."""
+        # Note that the following calls to `astype` are guaranteed to
+        # return the original NumPy array itself, since `copy=False` and
+        # the `dtype` matches. This is important because the array is
+        # then modified in place.
         if self.rho.dtype == np.object_:
-            rho_o = cast("npt.NDArray[np.object_]", self.rho)
+            rho_o = self.rho.astype(np.object_, copy=False)
             rho_o /= np.trace(rho_o)
         else:
-            rho_c = cast("npt.NDArray[np.complex128]", self.rho)
+            rho_c = self.rho.astype(np.complex128, copy=False)
             rho_c /= np.trace(rho_c)
 
     @override
