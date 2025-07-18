@@ -33,8 +33,8 @@ class TestGenerator:
         graph: nx.Graph[int] = nx.Graph(
             [(0, 2), (1, 4), (2, 3), (3, 4), (2, 5), (3, 6), (4, 7), (5, 6), (6, 7), (5, 8), (7, 9)]
         )
-        inputs = [0, 1]
-        outputs = [8, 9]
+        inputs = [1, 0]
+        outputs = [9, 8]
 
         # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
         meas_angles = {**dict.fromkeys(range(4), 0), **dict(zip(range(4, 8), (2 * fx_rng.random(4)).tolist()))}
@@ -53,41 +53,45 @@ class TestGenerator:
 
     def test_pattern_generation_determinism_flow(self, fx_rng: Generator) -> None:
         graph: nx.Graph[int] = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
-        inputs = {0, 1, 2}
-        outputs = {6, 7, 8}
+        inputs = [1, 0, 2]  # non-trivial order to check order is conserved.
+        outputs = [7, 6, 8]
         angles = dict(zip(range(6), (2 * fx_rng.random(6)).tolist()))
-        results = []
-        repeats = 3  # for testing the determinism of a pattern
         meas_planes = dict.fromkeys(range(6), Plane.XY)
-        for _ in range(repeats):
-            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
-            pattern.standardize()
-            pattern.minimize_space()
-            state = pattern.simulate_pattern(rng=fx_rng)
-            results.append(state)
+
+        pattern = generate_from_graph(graph, angles, inputs, outputs, meas_planes=meas_planes)
+        pattern.standardize()
+        pattern.minimize_space()
+
+        repeats = 3  # for testing the determinism of a pattern
+        results = [pattern.simulate_pattern(rng=fx_rng) for _ in range(repeats)]
 
         for i in range(1, 3):
             inner_product = np.dot(results[0].flatten(), results[i].flatten().conjugate())
             assert abs(inner_product) == pytest.approx(1)
+
+        assert pattern.input_nodes == inputs
+        assert pattern.output_nodes == outputs
 
     def test_pattern_generation_determinism_gflow(self, fx_rng: Generator) -> None:
         graph: nx.Graph[int] = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
-        inputs = {1, 3, 5}
-        outputs = {2, 4, 6}
+        inputs = [3, 1, 5]
+        outputs = [4, 2, 6]
         angles = dict(zip([1, 3, 5], (2 * fx_rng.random(3)).tolist()))
         meas_planes = dict.fromkeys([1, 3, 5], Plane.XY)
-        results = []
+
+        pattern = generate_from_graph(graph, angles, inputs, outputs, meas_planes=meas_planes)
+        pattern.standardize()
+        pattern.minimize_space()
+
         repeats = 3  # for testing the determinism of a pattern
-        for _ in range(repeats):
-            pattern = generate_from_graph(graph, angles, list(inputs), list(outputs), meas_planes=meas_planes)
-            pattern.standardize()
-            pattern.minimize_space()
-            state = pattern.simulate_pattern(rng=fx_rng)
-            results.append(state)
+        results = [pattern.simulate_pattern(rng=fx_rng) for _ in range(repeats)]
 
         for i in range(1, 3):
             inner_product = np.dot(results[0].flatten(), results[i].flatten().conjugate())
             assert abs(inner_product) == pytest.approx(1)
+
+        assert pattern.input_nodes == inputs
+        assert pattern.output_nodes == outputs
 
     def test_pattern_generation_determinism_pflow(self, fx_rng: Generator) -> None:
         og = self.get_graph_pflow(fx_rng)
@@ -101,6 +105,9 @@ class TestGenerator:
         for i in range(1, 3):
             inner_product = np.dot(results[0].flatten(), results[i].flatten().conjugate())
             assert abs(inner_product) == pytest.approx(1)
+
+        assert og.inputs == pattern.input_nodes
+        assert og.outputs == pattern.output_nodes
 
     def test_pattern_generation_flow(self, fx_rng: Generator) -> None:
         nqubits = 3
