@@ -233,7 +233,7 @@ def gflowaux(
 
 
 def find_flow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane] | None = None,
@@ -359,7 +359,7 @@ def flowaux(
 
 
 def find_pauliflow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane],
@@ -898,7 +898,7 @@ def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     return nb
 
 
-def get_min_depth(l_k: dict[int, int]) -> int:
+def get_min_depth(l_k: Mapping[int, int]) -> int:
     """Get minimum depth of graph.
 
     Parameters
@@ -914,7 +914,7 @@ def get_min_depth(l_k: dict[int, int]) -> int:
     return max(l_k.values())
 
 
-def find_odd_neighbor(graph: nx.Graph, vertices: AbstractSet[int]) -> set[int]:
+def find_odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
     """Return the set containing the odd neighbor of a set of vertices.
 
     Parameters
@@ -952,7 +952,7 @@ def get_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
         components of each layer
     """
     d = get_min_depth(l_k)
-    layers = {k: set() for k in range(d + 1)}
+    layers: dict[int, set[int]] = {k: set() for k in range(d + 1)}
     for i, val in l_k.items():
         layers[val] |= {i}
     return d, layers

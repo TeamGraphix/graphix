@@ -37,7 +37,10 @@ class TestGenerator:
         outputs = [9, 8]
 
         # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
-        meas_angles = {**dict.fromkeys(range(4), 0), **dict(zip(range(4, 8), (2 * fx_rng.random(4)).tolist()))}
+        meas_angles: dict[int, float] = {
+            **dict.fromkeys(range(4), 0),
+            **dict(zip(range(4, 8), (2 * fx_rng.random(4)).tolist())),
+        }
         meas_planes = dict.fromkeys(range(8), Plane.XY)
         meas = {i: Measurement(angle, plane) for (i, angle), plane in zip(meas_angles.items(), meas_planes.values())}
 

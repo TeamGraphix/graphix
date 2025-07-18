@@ -118,7 +118,7 @@ def _flow2pattern(
         pattern.add(N(node=i))
     for e in graph.edges:
         pattern.add(E(nodes=e))
-    measured = []
+    measured: list[int] = []
     for i in range(depth, 0, -1):  # i from depth, depth-1, ... 1
         for j in layers[i]:
             measured.append(j)
@@ -179,7 +179,7 @@ def _pflow2pattern(
         for j in layers[i]:
             pattern.add(M(node=j, plane=meas_planes[j], angle=angles[j]))
             odd_neighbors = find_odd_neighbor(graph, p[j])
-            future_nodes = set.union(
+            future_nodes: set[int] = set.union(
                 *(nodes for (layer, nodes) in layers.items() if layer < i)
             )  # {k | k > j}, with "j" last corrected node and ">" the Pauli flow ordering
             for k in odd_neighbors & future_nodes:
