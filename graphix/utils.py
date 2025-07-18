@@ -32,7 +32,8 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
         # MEMO: `inspect.get_annotations` unavailable
         return
 
-    ann = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
+    # Type annotation to work around a regression in mypy 1.17, see https://github.com/python/mypy/issues/19458
+    ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")
     if ann is None:
         msg = "kind must be annotated."
         raise TypeError(msg)

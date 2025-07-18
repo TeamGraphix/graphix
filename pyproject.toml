@@ -190,6 +190,11 @@ exclude = [
   "tests/test_transpiler.py",
   "tests/test_visualization.py",
 ]
+reportUnknownArgumentType = "information"
+reportUnknownLambdaType = "information"
+reportUnknownMemberType = "information"
+reportUnknownParameterType = "information"
+reportUnknownVariableType = "information"
 
 [tool.coverage.report]
 exclude_also = [
