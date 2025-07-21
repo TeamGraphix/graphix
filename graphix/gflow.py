@@ -656,6 +656,8 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     l_k: dict
         layers obtained by flow algorithm. l_k[d] is a node set of depth d.
     """
+    if not pattern.is_standard(strict=True):
+        raise ValueError("The pattern should be standardized first.")
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
         if plane != Plane.XY:
@@ -708,6 +710,8 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
+    if not pattern.is_standard(strict=True):
+        raise ValueError("The pattern should be standardized first.")
     g = nx.Graph()
     nodes, edges = pattern.get_graph()
     g.add_nodes_from(nodes)
@@ -768,6 +772,8 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
     l_k: dict
         layers obtained by Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
+    if not pattern.is_standard(strict=True):
+        raise ValueError("The pattern should be standardized first.")
     g = nx.Graph()
     nodes, edges = pattern.get_graph()
     nodes = set(nodes)
