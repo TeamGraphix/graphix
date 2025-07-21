@@ -537,13 +537,16 @@ class TestPattern:
         cmds2: list[Command] = [N(2), N(3), E((0, 1)), E((0, 2)), E((1, 3)), M(0), M(1), X(2, {0}), Z(3, {1})]
         p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
 
-        mapping = {0: 1, 1: 2, 2: 100, 3: 101}
-        pc, _ = p1.compose(other=p2, mapping=mapping)
-        pc_ordered, _ = p1.compose(other=p2, mapping=mapping, preserve_order=True)
+        mapping_1 = {0: 1, 1: 2, 2: 100, 3: 101}
+        mapping_2 = {0: 2, 1: 1, 2: 100, 3: 101}
+        pc, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=False)
+        pc_1, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=True)
+        pc_2, _ = p1.compose(other=p2, mapping=mapping_2, preserve_mapping=True)
 
         i = [0, 1, 2, 3]
         o = [0, 3, 100, 101]
-        o_ordered = [0, 100, 101, 3]
+        o_1 = [0, 100, 101, 3]
+        o_2 = [0, 101, 100, 3]
         cmds: list[Command] = [
             E((0, 1)),
             E((1, 2)),
@@ -560,11 +563,29 @@ class TestPattern:
             X(100, {1}),
             Z(101, {2}),
         ]
+        cmds_2: list[Command] = [
+            E((0, 1)),
+            E((1, 2)),
+            E((2, 3)),
+            C(0, Clifford.H),
+            C(1, Clifford.X),
+            N(100),
+            N(101),
+            E((2, 1)),
+            E((2, 100)),
+            E((1, 101)),
+            M(2),
+            M(1),
+            X(100, {2}),
+            Z(101, {1}),
+        ]
         p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
-        p_ordered = Pattern(cmds=cmds, input_nodes=i, output_nodes=o_ordered)
+        p_1 = Pattern(cmds=cmds, input_nodes=i, output_nodes=o_1)
+        p_2 = Pattern(cmds=cmds_2, input_nodes=i, output_nodes=o_2)
 
         assert p == pc
-        assert p_ordered == pc_ordered
+        assert p_1 == pc_1
+        assert p_2 == pc_2
 
     #  Pattern composition with Pauli preprocessing
     def test_compose_4(self, fx_rng: Generator) -> None:
