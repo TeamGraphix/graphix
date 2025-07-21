@@ -643,9 +643,9 @@ class TestPattern:
 
         assert p == p12
 
-    # Equivalence between pattern a circuit composition after standarization
+    # Equivalence between pattern a circuit composition after standardization
     # FAILING because of standardize
-    @pytest.mark.skip(reason="Pattern standarization does not support Clifford commands before entanglement commands.")
+    @pytest.mark.skip(reason="Pattern standardization does not support Clifford commands before entanglement commands.")
     def test_compose_6(self, fx_rng: Generator) -> None:
         alpha = 2 * np.pi * fx_rng.random()
 
