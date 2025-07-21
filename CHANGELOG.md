@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Method for `Pattern`: `compose`
+
 - Method for `OpenGraph`: `compose`
 
 - #277: Methods for pretty-printing `Pattern`: `to_ascii`,
