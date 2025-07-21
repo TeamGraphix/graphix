@@ -643,10 +643,29 @@ class TestPattern:
 
         assert p == p12
 
+    # Compose random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_compose_6(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 4
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit_2 = rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit = Circuit(width=nqubits, instr=circuit_1.instruction + circuit_2.instruction)
+        p1 = circuit_1.transpile().pattern
+        p2 = circuit_2.transpile().pattern
+        p = circuit.transpile().pattern
+        p_compose, _ = p1.compose(p2, mapping=dict(zip(p2.input_nodes, p1.output_nodes)), preserve_mapping=True)
+        p.minimize_space()
+        p_compose.minimize_space()
+        s = p.simulate_pattern()
+        s_compose = p_compose.simulate_pattern()
+        assert np.abs(np.dot(s.flatten().conjugate(), s_compose.flatten())) == pytest.approx(1)
+
     # Equivalence between pattern a circuit composition after standardization
     # FAILING because of standardize
     @pytest.mark.skip(reason="Pattern standardization does not support Clifford commands before entanglement commands.")
-    def test_compose_6(self, fx_rng: Generator) -> None:
+    def test_compose_7(self, fx_rng: Generator) -> None:
         alpha = 2 * np.pi * fx_rng.random()
 
         circuit_1 = Circuit(1)
