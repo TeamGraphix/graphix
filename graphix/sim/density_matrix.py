@@ -92,7 +92,7 @@ class DensityMatrix(DenseState):
                 if not lv.is_qubitop(self.rho):
                     raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
                 check_size_consistency(self.rho)
-                if self.rho.dtype != "O":
+                if self.rho.dtype != np.object_:
                     if not lv.is_unit_trace(self.rho):
                         raise ValueError("Density matrix must have unit trace.")
                     if not lv.is_psd(self.rho):
