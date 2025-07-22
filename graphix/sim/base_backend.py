@@ -17,6 +17,7 @@ from typing_extensions import TypeAlias, override
 
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
+from graphix.measurements import outcome
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.states import BasicStates
@@ -565,7 +566,7 @@ def perform_measure(
     if pr_calc:
         op_mat = _op_mat_from_result(vec, 0, symbolic=symbolic)
         prob_0 = state.expectation_single(op_mat, qubit)
-        result: Outcome = 1 if rng.random() > abs(prob_0) else 0
+        result = outcome(rng.random() > abs(prob_0))
         if result:
             op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic)
     else:

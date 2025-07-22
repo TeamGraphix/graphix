@@ -9,6 +9,7 @@ import typing_extensions
 
 from graphix import utils
 from graphix.clifford import Clifford
+from graphix.measurements import outcome
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
@@ -457,7 +458,7 @@ class GraphState(Graph):
         if choice:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-        result = choice if not isolated else 1 if self.nodes[node]["sign"] else 0
+        result = choice if not isolated else outcome(self.nodes[node]["sign"])
         self.remove_node(node)
         return result
 

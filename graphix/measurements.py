@@ -17,6 +17,11 @@ from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 Outcome: TypeAlias = Literal[0, 1]
 
 
+def outcome(b: bool) -> Outcome:
+    """Return 1 if True, 0 if False."""
+    return 1 if b else 0
+
+
 @dataclasses.dataclass
 class Domains:
     """Represent `X^sZ^t` where s and t are XOR of results from given sets of indices."""
