@@ -686,6 +686,12 @@ class Backend(Generic[StateT_co]):
     def apply_channel(self, channel: KrausChannel, qargs: Collection[int]) -> None:
         """Apply channel to the state.
 
+        The default implementation of this method raises
+        `NoiseNotSupportedError`, indicating that the backend does not
+        support noise. Backends that support noise (e.g.,
+        `DensityMatrixBackend`) override this method to implement
+        the effect of noise.
+
         Parameters
         ----------
             qargs : list of ints. Target qubits
