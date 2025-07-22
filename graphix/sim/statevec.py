@@ -16,7 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex
-from graphix.sim.base_backend import DenseState, FullStateBackend, Matrix, eig, kron, tensordot
+from graphix.sim.base_backend import DenseState, FullStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -208,30 +208,6 @@ class Statevec(DenseState):
     def dims(self) -> tuple[int, ...]:
         """Return the dimensions."""
         return self.psi.shape
-
-    def ptrace(self, qargs: Sequence[int]) -> None:
-        """Perform partial trace of the selected qubits.
-
-        .. warning::
-            This method currently assumes qubits in qargs to be separable from the rest
-            (checks not implemented for speed).
-            Otherwise, the state returned will be forced to be pure which will result in incorrect output.
-            Correct behaviour will be implemented as soon as the densitymatrix class, currently under development
-            (PR #64), is merged.
-
-        Parameters
-        ----------
-        qargs : list of int
-            qubit indices to trace over
-        """
-        nqubit_after = len(self.psi.shape) - len(qargs)
-        psi = self.psi
-        rho = tensordot(psi, psi.conj(), axes=(qargs, qargs))  # density matrix
-        rho = np.reshape(rho, (2**nqubit_after, 2**nqubit_after))
-        evals, evecs = eig(rho)  # back to statevector
-        # NOTE works since only one 1 in the eigenvalues corresponding to the state
-        # TODO use np.eigh since rho is Hermitian?
-        self.psi = np.reshape(evecs[:, np.argmax(evals)], (2,) * nqubit_after)
 
     # Note that `@property` must appear before `@override` for pyright
     @property
