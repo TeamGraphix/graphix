@@ -16,7 +16,7 @@ from typing_extensions import override
 
 from graphix import parameter, states
 from graphix.parameter import Expression, ExpressionOrSupportsComplex
-from graphix.sim.base_backend import DenseState, FullStateBackend, Matrix, kron, tensordot
+from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -403,7 +403,7 @@ class Statevec(DenseState):
 
 
 @dataclass(frozen=True)
-class StatevectorBackend(FullStateBackend[Statevec]):
+class StatevectorBackend(DenseStateBackend[Statevec]):
     """MBQC simulator with statevector method."""
 
     state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))

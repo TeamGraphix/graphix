@@ -616,9 +616,9 @@ class Backend(Generic[StateT_co]):
     This class is abstract and should not be instantiated directly.
 
     The class hierarchy of states mirrors the class hierarchy of backends:
-    - `FullStateBackend` and `TensorNetworkBackend` are subclasses of `Backend`,
+    - `DenseStateBackend` and `TensorNetworkBackend` are subclasses of `Backend`,
       and `DenseState` and `MBQCTensorNet` are subclasses of `BackendState`.
-    - `StatevecBackend` and `DensityMatrixBackend` are subclasses of `FullStateBackend`,
+    - `StatevecBackend` and `DensityMatrixBackend` are subclasses of `DenseStateBackend`,
       and `Statevec` and `DensityMatrix` are subclasses of `DenseState`.
 
     The type variable `StateT_co` specifies the type of the ``state`` field, so that subclasses
@@ -636,7 +636,7 @@ class Backend(Generic[StateT_co]):
 
     See Also
     --------
-    :class:`BackendState`, :`class:`FullStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
+    :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
     """
 
     # `init=False` is required because `state` cannot appear in a contravariant position
@@ -732,7 +732,7 @@ DenseStateT_co = TypeVar("DenseStateT_co", bound="DenseState", covariant=True)
 
 
 @dataclass(frozen=True)
-class FullStateBackend(Backend[DenseStateT_co], Generic[DenseStateT_co]):
+class DenseStateBackend(Backend[DenseStateT_co], Generic[DenseStateT_co]):
     """
     Abstract base class for backends that represent quantum states explicitly in memory.
 
@@ -743,7 +743,7 @@ class FullStateBackend(Backend[DenseStateT_co], Generic[DenseStateT_co]):
 
     In contrast to :class:`TensorNetworkBackend`, which uses structured and compressed
     representations (e.g., matrix product states) to scale to larger systems,
-    `FullStateBackend` subclasses simulate quantum systems by maintaining the full
+    `DenseStateBackend` subclasses simulate quantum systems by maintaining the full
     state in memory. This approach enables straightforward implementation of gates,
     measurements, and noise models, but scales exponentially with the number of qubits.
 

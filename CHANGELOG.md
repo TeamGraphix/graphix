@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #312: The separation between `TensorNetworkBackend` and backends
   that operate on a full-state representation, such as
   `StatevecBackend` and `DensityMatrixBackend`, is now clearer with
-  the introduction of the abstract classes `FullStateBackend` and
+  the introduction of the abstract classes `DenseStateBackend` and
   `DenseState`, which derive from `Backend` and `BackendState`,
   respectively. `StatevecBackend` and `DensityMatrixBackend` inherit
-  from `FullStateBackend`, while `Statevec` and `DensityMatrix`
+  from `DenseStateBackend`, while `Statevec` and `DensityMatrix`
   inherit from `DenseState`. Note that the class hierarchy of
   `BackendState` mirrors that of `Backend`.
 
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a name conflict with the `State` class defined in `graphix.states`,
   which represents the state of a single qubit.
 
-- #312: `Backend[StateT_co]` and `FullStateBackend[DenseStateT_co]`
+- #312: `Backend[StateT_co]` and `DenseStateBackend[DenseStateT_co]`
   are now parameterized by covariant type variables, allowing
   subclasses to narrow the type of the state field to match their
   specific state representation. Covariance is sound in this context
