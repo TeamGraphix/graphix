@@ -60,9 +60,8 @@ def tests_symbolic(session: Session) -> None:
     # because Windows cannot delete a temporary directory while it
     # is the working directory.
     with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
-        # See https://github.com/TeamGraphix/graphix-symbolic/pull/3
         # If you need a specific branch:
-        session.run("git", "clone", "-b", "implement_abs", "https://github.com/thierry-martinez/graphix-symbolic")
-        # session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
+        # session.run("git", "clone", "-b", "branch-name", "https://github.com/TeamGraphix/graphix-symbolic")
+        session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
         with session.cd("graphix-symbolic"):
             session.run("pytest", "--doctest-modules")

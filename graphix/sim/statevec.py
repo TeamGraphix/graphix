@@ -8,7 +8,7 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, cast
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
 
 import numpy as np
 import numpy.typing as npt
@@ -412,12 +412,14 @@ class StatevectorBackend(FullStateBackend[Statevec]):
 def _get_statevec_norm_symbolic(psi: npt.NDArray[np.object_]) -> Expression:
     """Return norm of the state."""
     flat = psi.flatten()
-    return cast("Expression", np.abs(np.sqrt(np.sum(flat.conj() * flat))))
+    return np.sqrt(np.sum(flat.conj() * flat))  # type: ignore[no-any-return]
 
 
 def _get_statevec_norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
     flat = psi.flatten()
-    return float(np.abs(np.sqrt(np.sum(flat.conj() * flat))))
+    norm_sq = np.sum(flat.conj() * flat)
+    assert math.isclose(norm_sq.imag, 0, abs_tol=1e-15)
+    return math.sqrt(norm_sq.real)
 
 
 def _get_statevec_norm(psi: Matrix) -> ExpressionOrFloat:
