@@ -35,7 +35,8 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
-    from graphix.sim import Backend, BackendState, Data, StateT_co
+    from graphix.sim import Backend, BackendState, Data
+    from graphix.sim.base_backend import StateT_co
 
 
 @dataclass(frozen=True)
