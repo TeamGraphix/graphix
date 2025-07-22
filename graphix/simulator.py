@@ -23,6 +23,7 @@ from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from typing import Any
 
     from graphix.noise_models.noise_model import NoiseModel
@@ -95,18 +96,23 @@ class MeasureMethod(abc.ABC):
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
-    def __init__(self, results: dict[int, Outcome] | None = None):
+    def __init__(self, results: Mapping[int, Outcome] | None = None):
         """Initialize with an optional result dictionary.
 
         Parameters
         ----------
-        results : dict[int, Outcome] | None, optional
+        results : Mapping[int, Outcome] | None, optional
             Mapping of previously measured nodes to their results. If ``None``,
             an empty dictionary is created.
+
+        Notes
+        -----
+        If a mapping is provided, it is treated as read-only. Measurements
+        performed during simulation are stored in `self.results`, which is a copy
+        of the given mapping. The original `results` mapping is not modified.
         """
-        if results is None:
-            results = {}
-        self.results = results
+        # results is coerced into dict, since `set_measure_result` mutates it.
+        self.results = {} if results is None else dict(results)
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
