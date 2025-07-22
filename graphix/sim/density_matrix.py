@@ -327,7 +327,7 @@ class DensityMatrix(DenseState):
         # ket, bra indices to trace out
         trace_axes = list(qargs) + [n + qarg for qarg in qargs]
         op: Matrix = np.eye(2**qargs_num).reshape((2,) * qargs_num * 2).astype(np.complex128)
-        rho_res = tensordot(op, rho_res, axes=(list(range(2 * qargs_num)), trace_axes))
+        rho_res = tensordot(op, rho_res, axes=(range(2 * qargs_num), trace_axes))
 
         self.rho = rho_res.reshape((2**nqubit_after, 2**nqubit_after))
 
