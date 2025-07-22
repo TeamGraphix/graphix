@@ -116,7 +116,7 @@ class Statevec(DenseState):
                     raise TypeError("Data should be an homogeneous sequence of states.")
                 return s.get_statevector()
 
-            list_of_sv: list[npt.NDArray[np.complex128]] = [get_statevector(s) for s in input_list]
+            list_of_sv = [get_statevector(s) for s in input_list]
 
             tmp_psi = functools.reduce(lambda m0, m1: np.kron(m0, m1).astype(np.complex128), list_of_sv)
             # reshape
