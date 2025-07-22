@@ -87,7 +87,7 @@ class DensityMatrix(DenseState):
                         return list(item)
                     raise TypeError("Every row of a matrix should be iterable.")
 
-                input_matrix: list[list[ExpressionOrSupportsComplex]] = list(map(get_row, input_list))
+                input_matrix: list[list[ExpressionOrSupportsComplex]] = [get_row(item) for item in input_list]
                 if isinstance(input_matrix[0][0], (Expression, SupportsComplex, SupportsFloat)):
                     self.rho = np.array(input_matrix)
                     if not lv.is_qubitop(self.rho):
