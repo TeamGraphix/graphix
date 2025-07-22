@@ -49,7 +49,7 @@ class Statevec(DenseState):
         self,
         data: Data = BasicStates.PLUS,
         nqubit: int | None = None,
-    ):
+    ) -> None:
         """Initialize statevector objects.
 
         `data` can be:

@@ -39,7 +39,7 @@ class DensityMatrix(DenseState):
         self,
         data: Data = BasicStates.PLUS,
         nqubit: int | None = None,
-    ):
+    ) -> None:
         """Initialize density matrix objects.
 
         The behaviour builds on the one of *graphix.statevec.Statevec*.
