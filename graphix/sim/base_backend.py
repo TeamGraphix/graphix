@@ -541,9 +541,11 @@ def _op_mat_from_result(
             op_mat_symbolic += sign * t * Clifford(i + 1).matrix / 2
         return op_mat_symbolic
     op_mat_complex: npt.NDArray[np.complex128] = np.eye(2, dtype=np.complex128) / 2
-    x = vec[0]
-    y = vec[1]
-    z = vec[2]
+    x, y, z = vec
+    # mypy requires each of x, y, and z to be tested explicitly for it to infer
+    # that they are instances of `SupportsFloat`.
+    # In particular, using a loop or comprehension like
+    # `not all(isinstance(v, SupportsFloat) for v in (x, y, z))` is not supported.
     if not isinstance(x, SupportsFloat) or not isinstance(y, SupportsFloat) or not isinstance(z, SupportsFloat):
         raise TypeError("Vector of float expected with symbolic = False")
     float_vec = [x, y, z]
