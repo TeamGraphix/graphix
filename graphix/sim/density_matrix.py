@@ -10,7 +10,7 @@ import dataclasses
 import math
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat
+from typing import TYPE_CHECKING, SupportsComplex
 
 import numpy as np
 from typing_extensions import override
@@ -88,17 +88,16 @@ class DensityMatrix(DenseState):
                     raise TypeError("Every row of a matrix should be iterable.")
 
                 input_matrix: list[list[ExpressionOrSupportsComplex]] = [get_row(item) for item in input_list]
-                if isinstance(input_matrix[0][0], (Expression, SupportsComplex, SupportsFloat)):
-                    self.rho = np.array(input_matrix)
-                    if not lv.is_qubitop(self.rho):
-                        raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
-                    check_size_consistency(self.rho)
-                    if self.rho.dtype != "O":
-                        if not lv.is_unit_trace(self.rho):
-                            raise ValueError("Density matrix must have unit trace.")
-                        if not lv.is_psd(self.rho):
-                            raise ValueError("Density matrix must be positive semi-definite.")
-                    return
+                self.rho = np.array(input_matrix)
+                if not lv.is_qubitop(self.rho):
+                    raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
+                check_size_consistency(self.rho)
+                if self.rho.dtype != "O":
+                    if not lv.is_unit_trace(self.rho):
+                        raise ValueError("Density matrix must have unit trace.")
+                    if not lv.is_psd(self.rho):
+                        raise ValueError("Density matrix must be positive semi-definite.")
+                return
         statevec = Statevec(data, nqubit)
         # NOTE this works since np.outer flattens the inputs!
         self.rho = outer(statevec.psi, statevec.psi.conj())
