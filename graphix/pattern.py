@@ -219,8 +219,12 @@ class Pattern:
         if set(mapping.values()) & nodes_p1 - set(self.__output_nodes):
             raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`.")
 
+        # Cast to set for improved performance in membership test
+        o1_set = set(self.__output_nodes)
+        i2_set = set(other.input_nodes)
+
         for k, v in mapping.items():
-            if v in self.__output_nodes and k not in other.input_nodes:
+            if v in o1_set and k not in i2_set:
                 raise ValueError(
                     f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`."
                 )
@@ -236,7 +240,7 @@ class Pattern:
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
         mapped_results = {mapping_complete[n]: m for n, m in other.results.items()}
 
-        merged = set(mapping.values()) & set(self.__output_nodes)
+        merged = set(mapping.values()).intersection(self.__output_nodes)
 
         inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
 
