@@ -79,38 +79,6 @@ def tensordot(op: Matrix, psi: Matrix, axes: tuple[int | Sequence[int], int | Se
     return np.tensordot(op_o, psi_o, axes)
 
 
-def eig(mat: Matrix) -> tuple[Matrix, Matrix]:
-    """Compute eigenvalues and eigenvectors of a matrix, preserving symbolic/numeric type.
-
-    This wrapper around `np.linalg.eig` handles both numeric and symbolic matrices.
-    Even though the runtime behavior is the same, NumPy's static types don't
-    support `Matrix` directly.
-
-    Parameters
-    ----------
-    mat : Matrix
-        The matrix to diagonalize. Can be either `np.complex128` or `np.object_`.
-
-    Returns
-    -------
-    tuple[Matrix, Matrix]
-        A tuple `(w, v)` where `w` are the eigenvalues and `v` the right eigenvectors,
-        with the same dtype as `mat`.
-
-    Raises
-    ------
-    TypeError
-        If `mat` has an unsupported dtype.
-    """
-    if mat.dtype == np.object_:
-        mat_o = mat.astype(np.object_, copy=False)
-        # mypy doesn't accept object dtype here
-        return np.linalg.eig(mat_o)  # type: ignore[arg-type]
-
-    mat_c = mat.astype(np.complex128, copy=False)
-    return np.linalg.eig(mat_c)
-
-
 def kron(a: Matrix, b: Matrix) -> Matrix:
     """Kronecker product with type-safe handling of symbolic and numeric matrices.
 
