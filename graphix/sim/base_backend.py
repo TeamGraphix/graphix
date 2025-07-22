@@ -634,6 +634,21 @@ class Backend(Generic[StateT_co]):
     This covariance is sound because backends are frozen dataclasses; thus, the type of
     ``state`` cannot be changed after instantiation.
 
+    The interface expected from a backend includes the following methods:
+    - `add_nodes`: which executes `N` commands.
+    - `apply_channel`: used for noisy simulations.
+      The class `Backend` provides a default implementation that
+      raises `NoiseNotSupportedError`, indicating that the backend
+      does not support noise. Backends that support noise (e.g.,
+      `DensityMatrixBackend`) override this method to implement the
+      effect of noise.
+    - `apply_clifford`: executes `C` commands.
+    - `correct_byproduct`: executes `X` and `Z` commands.
+    - `entangle_nodes`: executes `E` commands.
+    - `finalize`: called at the end of pattern simulation to convey
+      the order of output nodes.
+    - `measure`: executes `M` commands.
+
     See Also
     --------
     :class:`BackendState`, :`class:`DenseStateBackend`, :class:`StatevecBackend`, :class:`DensityMatrixBackend`, :class:`TensorNetworkBackend`
@@ -721,7 +736,7 @@ class Backend(Generic[StateT_co]):
 
     @abstractmethod
     def finalize(self, output_nodes: Iterable[int]) -> None:
-        """To be run at the end of pattern simulation."""
+        """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
     def measure(self, node: int, measurement: Measurement) -> Outcome:
