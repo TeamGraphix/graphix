@@ -48,7 +48,7 @@ class MeasureMethod(abc.ABC):
         self.set_measure_result(cmd.node, result)
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd: command.BaseM) -> Measurement:
+    def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a command.
 
         Parameters
