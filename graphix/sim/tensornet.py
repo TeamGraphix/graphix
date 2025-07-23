@@ -274,7 +274,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
 
         .. seealso:: :meth:`~graphix.sim.tensornet.TensorNetworkBackend.__init__()`
         """
-        ind_dict = {}
+        ind_dict: dict[int, list[str]] = {}
         vec_dict: dict[int, list[bool]] = {}
         for edge in edges:
             for node in edge:
