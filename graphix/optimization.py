@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import graphix
 from graphix import command
 from graphix.clifford import Clifford
-from graphix.command import CommandKind
+from graphix.command import CommandKind, Node
 from graphix.measurements import Domains
 
 if TYPE_CHECKING:
@@ -42,16 +42,14 @@ def standardize(pattern: Pattern) -> Pattern:
     standardized : Pattern
         The standardized pattern, if it exists.
     """
-    n_list = []
-    e_list = []
-    m_list = []
+    n_list: list[command.N] = []
+    e_list: list[command.E] = []
+    m_list: list[command.M] = []
     c_dict: dict[int, Clifford] = {}
-    z_dict: dict[int, set[command.Node]] = {}
-    x_dict: dict[int, set[command.Node]] = {}
+    z_dict: dict[int, set[Node]] = {}
+    x_dict: dict[int, set[Node]] = {}
 
-    def add_correction_domain(
-        domain_dict: dict[command.Node, set[command.Node]], node: command.Node, domain: set[command.Node]
-    ) -> None:
+    def add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
         """Merge a correction domain into ``domain_dict`` for ``node``.
 
         Parameters
@@ -94,6 +92,11 @@ def standardize(pattern: Pattern) -> Pattern:
                 f"Pattern contains a Clifford followed by an E command on qubit {i} which only commute up to a two-qubit Clifford. Standarization is not supported."
             )
 
+    s_domain: set[Node]
+    t_domain: set[Node]
+    s_domain_opt: set[Node] | None
+    t_domain_opt: set[Node] | None
+
     for cmd in pattern:
         if cmd.kind == CommandKind.N:
             n_list.append(cmd)
@@ -102,19 +105,19 @@ def standardize(pattern: Pattern) -> Pattern:
                 i, j = cmd.nodes[side], cmd.nodes[1 - side]
                 if clifford_gate := c_dict.get(i):
                     commute_clifford(clifford_gate, c_dict, i, j)
-                if s_domain := x_dict.get(i):
-                    add_correction_domain(z_dict, j, s_domain)
+                if s_domain_opt := x_dict.get(i):
+                    add_correction_domain(z_dict, j, s_domain_opt)
             e_list.append(cmd)
         elif cmd.kind == CommandKind.M:
             new_cmd = cmd
             if clifford_gate := c_dict.pop(cmd.node, None):
                 new_cmd = new_cmd.clifford(clifford_gate)
-            if t_domain := z_dict.pop(cmd.node, None):
+            if t_domain_opt := z_dict.pop(cmd.node, None):
                 # The original domain should not be mutated
-                new_cmd.t_domain = new_cmd.t_domain ^ t_domain  # noqa: PLR6104
-            if s_domain := x_dict.pop(cmd.node, None):
+                new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
+            if s_domain_opt := x_dict.pop(cmd.node, None):
                 # The original domain should not be mutated
-                new_cmd.s_domain = new_cmd.s_domain ^ s_domain  # noqa: PLR6104
+                new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
             m_list.append(new_cmd)
         # Use of `==` here for mypy
         elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
