@@ -808,21 +808,3 @@ def outer_product(vectors: Sequence[npt.NDArray[np.complex128]]) -> npt.NDArray[
     subscripts = string.ascii_letters[: len(vectors)]
     subscripts = ",".join(subscripts) + "->" + subscripts
     return np.array(np.einsum(subscripts, *vectors), dtype=np.complex128)
-
-
-def _check_complex(
-    item: Iterable[Expression | SupportsComplex] | State | Expression | SupportsComplex,
-) -> SupportsComplex:
-    if isinstance(item, SupportsComplex):
-        return item
-    raise ValueError("Unsupported states")
-
-
-def _check_state(
-    item: Iterable[Expression | SupportsComplex] | State | Expression | SupportsComplex,
-) -> State | Statevec | Iterable[SupportsComplex]:
-    if isinstance(item, (State, Statevec)):
-        return item
-    if isinstance(item, Iterable):
-        return [_check_complex(value) for value in item]
-    raise ValueError("Unsupported states")
