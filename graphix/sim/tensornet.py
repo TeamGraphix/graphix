@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import string
 import sys
+import warnings
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -620,7 +621,10 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
             graph_prep = self.graph_prep
         elif self.graph_prep == "opt":
             graph_prep = "parallel"
-            print(f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'")
+            warnings.warn(
+                f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'",
+                stacklevel=1
+            )
         elif self.graph_prep == "auto":
             max_degree = self.pattern.get_max_degree()
             # "parallel" does not support non standard pattern
