@@ -761,7 +761,7 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
         measure_method : MeasureMethod
             The measure method to use
         """
-        if np.mod(sum(measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
+        if sum(measure_method.get_measure_result(j) for j in cmd.domain) % 2 == 1:
             op = Ops.X if isinstance(cmd, command.X) else Ops.Z
             self.state.evolve_single(cmd.node, op, str(cmd.kind))
 
