@@ -41,6 +41,9 @@ dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 doc = { file = ["requirements-doc.txt"] }
 
+[tool.setuptools.packages.find]
+include = ["graphix", "stubs"]
+
 [tool.ruff]
 line-length = 120
 extend-exclude = ["docs"]
