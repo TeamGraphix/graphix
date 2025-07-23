@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import dataclasses
 import string
 import sys
 import warnings
-from collections.abc import Iterable, Sequence
+from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex
@@ -25,10 +24,11 @@ from graphix.ops import Ops
 from graphix.parameter import Expression
 from graphix.rng import ensure_rng
 from graphix.sim.base_backend import Backend, BackendState
-from graphix.sim.statevec import Statevec
-from graphix.states import BasicStates, PlanarState, State
+from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from cotengra.oe import PathOptimizer
     from numpy.random import Generator
 
@@ -576,7 +576,20 @@ def _get_decomposed_cz() -> list[npt.NDArray[np.complex128]]:
 
 
 @dataclass(frozen=True)
-class TensorNetworkBackend(Backend[MBQCTensorNet]):
+class _AbstractTensorNetworkBackend(Backend[MBQCTensorNet], ABC):
+    state: MBQCTensorNet
+    pattern: Pattern
+    graph_prep: str
+    input_state: Data
+    rng: Generator
+    output_nodes: list[int]
+    results: dict[int, Outcome]
+    _decomposed_cz: list[npt.NDArray[np.complex128]]
+    _isolated_nodes: set[int]
+
+
+@dataclass(frozen=True)
+class TensorNetworkBackend(_AbstractTensorNetworkBackend):
     """Tensor Network Simulator for MBQC.
 
     Executes the measurement pattern using TN expression of graph states.
@@ -600,55 +613,57 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
         random number generator to use for measurements
     """
 
-    pattern: Pattern
-    graph_prep: str = "auto"
-    input_state: Data = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
-    rng: Generator = dataclasses.field(default_factory=ensure_rng)
-
-    output_nodes: list[int] = dataclasses.field(init=False)
-    results: dict[int, int] = dataclasses.field(init=False)
-    _decomposed_cz: list[npt.NDArray[np.complex128]] = dataclasses.field(init=False)
-    _isolated_nodes: list[int] = dataclasses.field(init=False)
-
-    def __post_init__(self) -> None:
+    def __init__(
+        self, pattern: Pattern, graph_prep: str = "auto", input_state: Data | None = None, rng: Generator | None = None
+    ) -> None:
         """Construct a tensor network backend."""
-        if self.input_state != BasicStates.PLUS:
+        if input_state is None:
+            input_state = BasicStates.PLUS
+        elif input_state != BasicStates.PLUS:
             msg = "TensorNetworkBackend currently only supports BasicStates.PLUS as input state."
             raise NotImplementedError(msg)
-        # object.__setattr__ is used here to initialize frozen fields
-        object.__setattr__(self, "output_nodes", self.pattern.output_nodes)
-        object.__setattr__(self, "results", deepcopy(self.pattern.results))
-        if self.graph_prep in {"parallel", "sequential"}:
-            graph_prep = self.graph_prep
-        elif self.graph_prep == "opt":
+        rng = ensure_rng(rng)
+        if graph_prep in {"parallel", "sequential"}:
+            pass
+        elif graph_prep == "opt":
             graph_prep = "parallel"
             warnings.warn(
                 f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'",
                 stacklevel=1,
             )
-        elif self.graph_prep == "auto":
-            max_degree = self.pattern.get_max_degree()
+        elif graph_prep == "auto":
+            max_degree = pattern.get_max_degree()
             # "parallel" does not support non standard pattern
-            graph_prep = "sequential" if max_degree > 5 or not self.pattern.is_standard() else "parallel"
+            graph_prep = "sequential" if max_degree > 5 or not pattern.is_standard() else "parallel"
         else:
-            raise ValueError(f"Invalid graph preparation strategy: {self.graph_prep}")
-        object.__setattr__(self, "graph_prep", graph_prep)
-
+            raise ValueError(f"Invalid graph preparation strategy: {graph_prep}")
+        results = deepcopy(pattern.results)
         if graph_prep == "parallel":
-            if not self.pattern.is_standard():
+            if not pattern.is_standard():
                 raise ValueError("parallel preparation strategy does not support not-standardized pattern")
-            nodes, edges = self.pattern.get_graph()
+            nodes, edges = pattern.get_graph()
             state = MBQCTensorNet(
                 graph_nodes=nodes,
                 graph_edges=edges,
-                default_output_nodes=self.pattern.output_nodes,
-                rng=self.rng,
+                default_output_nodes=pattern.output_nodes,
+                rng=rng,
             )
+            decomposed_cz = []
         else:  # graph_prep == "sequential":
-            state = MBQCTensorNet(default_output_nodes=self.pattern.output_nodes, rng=self.rng)
-            object.__setattr__(self, "_decomposed_cz", _get_decomposed_cz())
-        object.__setattr__(self, "_isolated_nodes", self.pattern.get_isolated_nodes())
-        object.__setattr__(self, "state", state)
+            state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, rng=rng)
+            decomposed_cz = _get_decomposed_cz()
+        isolated_nodes = pattern.get_isolated_nodes()
+        super().__init__(
+            state,
+            pattern,
+            graph_prep,
+            input_state,
+            rng,
+            pattern.output_nodes,
+            results,
+            decomposed_cz,
+            isolated_nodes,
+        )
 
     @override
     def add_nodes(self, nodes: Sequence[int], data: Data = BasicStates.PLUS) -> None:
