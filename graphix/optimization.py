@@ -140,14 +140,12 @@ def standardize(pattern: Pattern) -> Pattern:
     result = graphix.Pattern(input_nodes=pattern.input_nodes)
     result.results = pattern.results
     result.extend(
-        [
-            *n_list,
-            *e_list,
-            *m_list,
-            *(command.Z(node=node, domain=domain) for node, domain in z_dict.items()),
-            *(command.X(node=node, domain=domain) for node, domain in x_dict.items()),
-            *(command.C(node=node, clifford=clifford_gate) for node, clifford_gate in c_dict.items()),
-        ]
+        n_list,
+        e_list,
+        m_list,
+        (command.Z(node=node, domain=domain) for node, domain in z_dict.items()),
+        (command.X(node=node, domain=domain) for node, domain in x_dict.items()),
+        (command.C(node=node, clifford=clifford_gate) for node, clifford_gate in c_dict.items()),
     )
     return result
 

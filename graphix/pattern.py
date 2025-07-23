@@ -139,13 +139,17 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: Iterable[Command]) -> None:
-        """Add a list of commands.
+    def extend(self, *cmds: Command | Iterable[Command]) -> None:
+        """Add sequences of commands.
 
-        :param cmds: list of commands
+        :param cmds: sequences of commands
         """
-        for cmd in cmds:
-            self.add(cmd)
+        for item in cmds:
+            if isinstance(item, Command):
+                self.add(item)
+            else:
+                for cmd in item:
+                    self.add(cmd)
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
