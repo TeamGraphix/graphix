@@ -15,7 +15,7 @@ import numpy.typing as npt
 from typing_extensions import override
 
 from graphix import parameter, states
-from graphix.parameter import Expression, ExpressionOrSupportsComplex
+from graphix.parameter import Expression, ExpressionOrSupportsComplex, check_expression_or_float
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix, kron, tensordot
 from graphix.states import BasicStates
 
@@ -409,10 +409,10 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
     state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))
 
 
-def _get_statevec_norm_symbolic(psi: npt.NDArray[np.object_]) -> Expression:
+def _get_statevec_norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
     """Return norm of the state."""
     flat = psi.flatten()
-    return np.sqrt(np.sum(flat.conj() * flat))  # type: ignore[no-any-return]
+    return check_expression_or_float(np.sqrt(np.sum(flat.conj() * flat)))
 
 
 def _get_statevec_norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
