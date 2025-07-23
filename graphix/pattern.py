@@ -8,7 +8,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import warnings
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +30,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Iterable, Iterator, Mapping
+    from collections.abc import Container, Iterator, Mapping
     from collections.abc import Set as AbstractSet
     from typing import Any, Literal
 
@@ -145,11 +145,11 @@ class Pattern:
         :param cmds: sequences of commands
         """
         for item in cmds:
-            if isinstance(item, Command):
-                self.add(item)
-            else:
+            if isinstance(item, Iterable):
                 for cmd in item:
                     self.add(cmd)
+            else:
+                self.add(item)
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
