@@ -231,7 +231,7 @@ class DensityMatrix(DenseState):
 
         nqubit = self.nqubit
         rho_tensor: Matrix = st1.rho.reshape((2,) * nqubit * 2)
-        rho_tensor = tensordot(op, rho_tensor, axes=([1], [loc]))
+        rho_tensor = tensordot(op, rho_tensor, axes=((1,), (loc,)))
         rho_tensor = np.moveaxis(rho_tensor, 0, loc)
 
         # complex() needed with mypy strict mode (no-any-return)
