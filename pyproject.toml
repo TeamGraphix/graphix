@@ -159,6 +159,7 @@ exclude = [
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
 strict = true
+mypy_path = "./stubs"
 
 [tool.pyright]
 # Keep in sync with mypy
@@ -195,6 +196,7 @@ reportUnknownLambdaType = "information"
 reportUnknownMemberType = "information"
 reportUnknownParameterType = "information"
 reportUnknownVariableType = "information"
+extraPaths = ["./stubs"]
 
 [tool.coverage.report]
 exclude_also = [

@@ -29,6 +29,7 @@ from graphix.sim.statevec import Statevec
 from graphix.states import BasicStates, PlanarState, State
 
 if TYPE_CHECKING:
+    from cotengra.oe import PathOptimizer
     from numpy.random import Generator
 
     from graphix import Pattern
@@ -36,11 +37,6 @@ if TYPE_CHECKING:
     from graphix.measurements import Measurement, Outcome
     from graphix.sim import Data
     from graphix.simulator import MeasureMethod
-
-# Bypass type-check with respect to quimb interface
-# pyright: reportArgumentType=false
-# pyright: reportAssignmentType=false
-# pyright: reportCallIssue=false
 
 if sys.version_info >= (3, 10):
     PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
@@ -80,7 +76,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         """
         if ts is None:
             ts = []
-        super().__init__(ts=ts, virtual=virtual)  # type: ignore[no-untyped-call]
+        super().__init__(ts=ts, virtual=virtual)
         self._dangling = ts._dangling if isinstance(ts, MBQCTensorNet) else {}
         self.default_output_nodes = None if default_output_nodes is None else list(default_output_nodes)
         # prepare the graph state if graph_nodes and graph_edges are given
@@ -105,9 +101,9 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             index = str(index)
         assert isinstance(index, str)
         tags = [index, "Open"]
-        tid = next(iter(self._get_tids_from_tags(tags, which="all")))  # type: ignore[no-untyped-call]
+        tid = next(iter(self._get_tids_from_tags(tags, which="all")))
         tensor = self.tensor_map[tid]
-        return tensor.data  # type: ignore[no-any-return]
+        return tensor.data.astype(dtype=np.complex128)
 
     def add_qubit(self, index: int, state: PrepareState = "plus") -> None:
         """Add a single qubit to the network.
@@ -142,8 +138,8 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             if not np.isclose(np.linalg.norm(state), 1):
                 raise ValueError("state must be normalized")
             vec = state
-        tsr = Tensor(vec, [ind], [tag, "Open"])  # type: ignore[no-untyped-call]
-        self.add_tensor(tsr)  # type: ignore[no-untyped-call]
+        tsr = Tensor(vec, [ind], [tag, "Open"])
+        self.add_tensor(tsr)
         self._dangling[tag] = ind
 
     def evolve_single(self, index: int, arr: npt.NDArray[np.complex128], label: str = "U") -> None:
@@ -159,19 +155,19 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             label for the gate.
         """
         old_ind = self._dangling[str(index)]
-        tid = list(self._get_tids_from_inds(old_ind))  # type: ignore[no-untyped-call]
+        tid = list(self._get_tids_from_inds(old_ind))
         tensor = self.tensor_map[tid[0]]
 
         new_ind = gen_str()
         tensor.retag({"Open": "Close"}, inplace=True)
 
-        node_ts = Tensor(  # type: ignore[no-untyped-call]
+        node_ts = Tensor(
             arr,
             [new_ind, old_ind],
             [str(index), label, "Open"],
         )
         self._dangling[str(index)] = new_ind
-        self.add_tensor(node_ts)  # type: ignore[no-untyped-call]
+        self.add_tensor(node_ts)
 
     def add_qubits(self, indices: Sequence[int], states: PrepareState | Iterable[PrepareState] = "plus") -> None:
         """Add qubits to the network.
@@ -205,7 +201,11 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             self.add_qubit(ind, state)
 
     def measure_single(
-        self, index: int, basis: str = "Z", bypass_probability_calculation: bool = True, outcome: Outcome | None = None
+        self,
+        index: int,
+        basis: str | npt.NDArray[np.complex128] = "Z",
+        bypass_probability_calculation: bool = True,
+        outcome: Outcome | None = None,
     ) -> Outcome:
         """Measure a node in specified basis. Note this does not perform the partial trace.
 
@@ -254,12 +254,12 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         else:
             raise NotImplementedError("Measurement probability calculation not implemented.")
         old_ind = self._dangling[str(index)]
-        proj_ts = Tensor(proj_vec, [old_ind], [str(index), "M", "Close", "ancilla"]).H  # type: ignore[no-untyped-call]
+        proj_ts = Tensor(proj_vec, [old_ind], [str(index), "M", "Close", "ancilla"]).H
         # add the tensor to the network
-        tid = list(self._get_tids_from_inds(old_ind))  # type: ignore[no-untyped-call]
+        tid = list(self._get_tids_from_inds(old_ind))
         tensor = self.tensor_map[tid[0]]
         tensor.retag({"Open": "Close"}, inplace=True)
-        self.add_tensor(proj_ts)  # type: ignore[no-untyped-call]
+        self.add_tensor(proj_ts)
         return result
 
     def set_graph_state(self, nodes: Iterable[int], edges: Iterable[tuple[int, int]]) -> None:
@@ -295,7 +295,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             if node not in ind_dict:
                 ind = gen_str()
                 self._dangling[str(node)] = ind
-                self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))  # type: ignore[no-untyped-call]
+                self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))
                 continue
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
@@ -308,7 +308,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
                     ),
                 ]
             ) * 2 ** (dim_tensor / 4 - 1.0 / 2)
-            self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))  # type: ignore[no-untyped-call]
+            self.add_tensor(Tensor(tensor, ind_dict[node], [str(node), "Open"]))
 
     def _require_default_output_nodes(self) -> list[int]:
         if self.default_output_nodes is None:
@@ -348,18 +348,18 @@ class MBQCTensorNet(BackendState, TensorNetwork):
                 basis -= 2**exp
             else:
                 state_out = BasicStates.ZERO.get_statevector()  # project onto |0>
-            tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])  # type: ignore[no-untyped-call]
+            tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
-            tid = next(iter(tn._get_tids_from_inds(old_ind)))  # type: ignore[no-untyped-call]
+            tid = next(iter(tn._get_tids_from_inds(old_ind)))
             tn.tensor_map[tid].retag({"Open": "Close"})
-            tn.add_tensor(tensor)  # type: ignore[no-untyped-call]
+            tn.add_tensor(tensor)
 
         # contraction
-        tn_simplified = tn.full_simplify("ADCR")  # type: ignore[no-untyped-call]
-        coef: complex = tn_simplified.contract(output_inds=[])
+        tn_simplified = tn.full_simplify("ADCR")
+        coef = tn_simplified.contract(output_inds=[])
         if normalize:
-            norm: float = self.get_norm()
+            norm = self.get_norm()
             return coef / norm
         return coef
 
@@ -406,7 +406,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         """Return flattened statevector."""
         return self.to_statevector().flatten()
 
-    def get_norm(self, optimize: object = None) -> float:
+    def get_norm(self, optimize: str | PathOptimizer | None = None) -> float:
         """Calculate the norm of the state.
 
         Returns
@@ -415,10 +415,10 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             norm of the state
         """
         tn_cp1 = self.copy()
-        tn_cp2 = tn_cp1.conj()  # type: ignore[no-untyped-call]
-        tn = TensorNetwork([tn_cp1, tn_cp2])  # type: ignore[no-untyped-call]
-        tn_simplified = tn.full_simplify("ADCR")  # type: ignore[no-untyped-call]
-        contraction: complex = tn_simplified.contract(output_inds=[], optimize=optimize)
+        tn_cp2 = tn_cp1.conj()
+        tn = TensorNetwork([tn_cp1, tn_cp2])
+        tn_simplified = tn.full_simplify("ADCR")
+        contraction = tn_simplified.contract(output_inds=[], optimize=optimize)
         return float(abs(contraction) ** 0.5)
 
     def expectation_value(
@@ -426,7 +426,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         op: npt.NDArray[np.complex128],
         qubit_indices: Sequence[int],
         output_node_indices: Iterable[int] | None = None,
-        optimize: object = None,
+        optimize: str | PathOptimizer | None = None,
     ) -> float:
         """Calculate expectation value of the given operator.
 
@@ -452,13 +452,13 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         new_ind_left = [gen_str() for _ in range(op_dim)]
         new_ind_right = [gen_str() for _ in range(op_dim)]
         tn_cp_left = self.copy()
-        op_ts = Tensor(op, new_ind_right + new_ind_left, ["Expectation Op.", "Close"])  # type: ignore[no-untyped-call]
-        tn_cp_right = tn_cp_left.conj()  # type: ignore[no-untyped-call]
+        op_ts = Tensor(op, new_ind_right + new_ind_left, ["Expectation Op.", "Close"])
+        tn_cp_right = tn_cp_left.conj()
 
         # reindex & retag
         for node in out_inds:
             old_ind = tn_cp_left._dangling[str(node)]
-            tid_left = next(iter(tn_cp_left._get_tids_from_inds(old_ind)))  # type: ignore[no-untyped-call]
+            tid_left = next(iter(tn_cp_left._get_tids_from_inds(old_ind)))
             tid_right = next(iter(tn_cp_right._get_tids_from_inds(old_ind)))
             if node in target_nodes:
                 tn_cp_left.tensor_map[tid_left].reindex({old_ind: new_ind_left[target_nodes.index(node)]}, inplace=True)
@@ -467,12 +467,12 @@ class MBQCTensorNet(BackendState, TensorNetwork):
                 )
             tn_cp_left.tensor_map[tid_left].retag({"Open": "Close"})
             tn_cp_right.tensor_map[tid_right].retag({"Open": "Close"})
-        tn_cp_left.add([op_ts, tn_cp_right])  # type: ignore[no-untyped-call]
+        tn_cp_left.add([op_ts, tn_cp_right])
 
         # contraction
-        tn_cp_left = tn_cp_left.full_simplify("ADCR")  # type: ignore[no-untyped-call]
-        exp_val: float = tn_cp_left.contract(output_inds=[], optimize=optimize)
-        norm: float = self.get_norm(optimize=optimize)
+        tn_cp_left = tn_cp_left.full_simplify("ADCR")
+        exp_val = tn_cp_left.contract(output_inds=[], optimize=optimize)
+        norm = self.get_norm(optimize=optimize)
         return exp_val / norm**2
 
     def evolve(self, operator: npt.NDArray[np.complex128], qubit_indices: list[int], decompose: bool = True) -> None:
@@ -500,24 +500,25 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         for i in range(len(node_indices)):
             self._dangling[str(node_indices[i])] = new_ind_list[i]
 
-        ts: Tensor | TensorNetwork = Tensor(  # type: ignore[no-untyped-call]
+        ts: Tensor | TensorNetwork = Tensor(
             operator,
             new_ind_list + old_ind_list,
             [str(index) for index in node_indices],
         )
         if decompose:  # decompose tensor into Matrix Product Operator(MPO)
-            tensors = []
+            tensors: list[Tensor | TensorNetwork] = []
             bond_inds: dict[int, str | None] = {0: None}
             for i in range(len(node_indices) - 1):
                 bond_inds[i + 1] = gen_str()
-                left_inds: list[str | None] = [new_ind_list[i], old_ind_list[i]]
-                if bond_inds[i]:
-                    left_inds.append(bond_inds[i])
-                unit_tensor, ts = ts.split(left_inds=left_inds, bond_ind=bond_inds[i + 1])  # type: ignore[call-arg]
+                left_inds: list[str] = [new_ind_list[i], old_ind_list[i]]
+                bond_ind = bond_inds[i]
+                if bond_ind is not None:
+                    left_inds.append(bond_ind)
+                unit_tensor, ts = ts.split(left_inds=left_inds, bond_ind=bond_inds[i + 1])
                 tensors.append(unit_tensor)
             tensors.append(ts)
-            ts = TensorNetwork(tensors)  # type: ignore[no-untyped-call]
-        self.add(ts)  # type: ignore[no-untyped-call]
+            ts = TensorNetwork(tensors)
+        self.add(ts)
 
     @override
     def copy(self, virtual: bool = False, deep: bool = False) -> MBQCTensorNet:
@@ -562,15 +563,15 @@ def _get_decomposed_cz() -> list[npt.NDArray[np.complex128]]:
 
     4-rank x1         3-rank x2
     """
-    cz_ts = Tensor(  # type: ignore[no-untyped-call]
+    cz_ts = Tensor(
         Ops.CZ.reshape((2, 2, 2, 2)).astype(np.complex128),
         ["O1", "O2", "I1", "I2"],
         ["CZ"],
     )
-    decomposed_cz = cz_ts.split(left_inds=["O1", "I1"], right_inds=["O2", "I2"], max_bond=4)  # type: ignore[call-arg]
+    decomposed_cz = cz_ts.split(left_inds=["O1", "I1"], right_inds=["O2", "I2"], max_bond=4)
     return [
-        decomposed_cz.tensors[0].data,
-        decomposed_cz.tensors[1].data,
+        decomposed_cz.tensors[0].data.astype(np.complex128),
+        decomposed_cz.tensors[1].data.astype(np.complex128),
     ]
 
 
@@ -623,7 +624,7 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
             graph_prep = "parallel"
             warnings.warn(
                 f"graph preparation strategy '{graph_prep}' is deprecated and will be replaced by 'parallel'",
-                stacklevel=1
+                stacklevel=1,
             )
         elif self.graph_prep == "auto":
             max_degree = self.pattern.get_max_degree()
@@ -692,7 +693,7 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
         """
         if self.graph_prep == "sequential":
             old_inds = [self.state._dangling[str(node)] for node in edge]
-            tids = self.state._get_tids_from_inds(old_inds, which="any")  # type: ignore[no-untyped-call]
+            tids = self.state._get_tids_from_inds(old_inds, which="any")
             tensors = [self.state.tensor_map[tid] for tid in tids]
             new_inds = [gen_str() for _ in range(3)]
 
@@ -700,21 +701,21 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
             for i in range(2):
                 tensors[i].retag({"Open": "Close"}, inplace=True)
                 self.state._dangling[str(edge[i])] = new_inds[i]
-            cz_tn = TensorNetwork(  # type: ignore[no-untyped-call]
+            cz_tn = TensorNetwork(
                 [
-                    qtn.Tensor(  # type: ignore[no-untyped-call]
+                    qtn.Tensor(
                         self._decomposed_cz[0],
                         [new_inds[0], old_inds[0], new_inds[2]],
                         [str(edge[0]), "CZ", "Open"],
                     ),
-                    qtn.Tensor(  # type: ignore[no-untyped-call]
+                    qtn.Tensor(
                         self._decomposed_cz[1],
                         [new_inds[2], new_inds[1], old_inds[1]],
                         [str(edge[1]), "CZ", "Open"],
                     ),
                 ]
             )
-            self.state.add_tensor_network(cz_tn)  # type: ignore[no-untyped-call]
+            self.state.add_tensor_network(cz_tn)
         elif self.graph_prep == "opt":
             pass
 
@@ -788,10 +789,10 @@ class TensorNetworkBackend(Backend[MBQCTensorNet]):
 
 def gen_str() -> str:
     """Generate dummy string for einsum."""
-    return qtn.rand_uuid()  # type: ignore[no-untyped-call,no-any-return]
+    return qtn.rand_uuid()
 
 
-def outer_product(vectors: Sequence[npt.NDArray[np.complex128]]) -> np.complex128:
+def outer_product(vectors: Sequence[npt.NDArray[np.complex128]]) -> npt.NDArray[np.complex128]:
     """Return the outer product of the given vectors.
 
     Parameters
@@ -806,7 +807,7 @@ def outer_product(vectors: Sequence[npt.NDArray[np.complex128]]) -> np.complex12
     """
     subscripts = string.ascii_letters[: len(vectors)]
     subscripts = ",".join(subscripts) + "->" + subscripts
-    return np.einsum(subscripts, *vectors)  # type: ignore[no-any-return]
+    return np.array(np.einsum(subscripts, *vectors), dtype=np.complex128)
 
 
 def _check_complex(
