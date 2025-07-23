@@ -548,11 +548,11 @@ def perform_measure(
     return result
 
 
-StateT_co = TypeVar("StateT_co", bound="BackendState", covariant=True)
+_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
 @dataclass(frozen=True)
-class Backend(Generic[StateT_co]):
+class Backend(Generic[_StateT_co]):
     """
     Abstract base class for all quantum backends.
 
@@ -590,13 +590,13 @@ class Backend(Generic[StateT_co]):
     - `StatevecBackend` and `DensityMatrixBackend` are subclasses of `DenseStateBackend`,
       and `Statevec` and `DensityMatrix` are subclasses of `DenseState`.
 
-    The type variable `StateT_co` specifies the type of the ``state`` field, so that subclasses
+    The type variable `_StateT_co` specifies the type of the ``state`` field, so that subclasses
     provide a precise type for this field:
     - `StatevecBackend` is a subtype of ``Backend[Statevec]``.
     - `DensityMatrixBackend` is a subtype of ``Backend[DensityMatrix]``.
     - `TensorNetworkBackend` is a subtype of ``Backend[MBQCTensorNet]``.
 
-    The type variables `StateT_co` and `DenseStateT_co` are declared as covariant.
+    The type variables `_StateT_co` and `_DenseStateT_co` are declared as covariant.
     That is, ``Backend[T1]`` is a subtype of ``Backend[T2]`` if ``T1`` is a subtype of ``T2``.
     This means that `StatevecBackend`, `DensityMatrixBackend`, and `TensorNetworkBackend` are
     all subtypes of ``Backend[BackendState]``.
@@ -624,8 +624,8 @@ class Backend(Generic[StateT_co]):
     """
 
     # `init=False` is required because `state` cannot appear in a contravariant position
-    # (specifically, as a parameter of `__init__`) since `StateT_co` is covariant.
-    state: StateT_co = dataclasses.field(init=False)
+    # (specifically, as a parameter of `__init__`) since `_StateT_co` is covariant.
+    state: _StateT_co = dataclasses.field(init=False)
 
     @abstractmethod
     def add_nodes(self, nodes: Sequence[int], data: Data = BasicStates.PLUS) -> None:
@@ -718,11 +718,11 @@ class Backend(Generic[StateT_co]):
         """
 
 
-DenseStateT_co = TypeVar("DenseStateT_co", bound="DenseState", covariant=True)
+_DenseStateT_co = TypeVar("_DenseStateT_co", bound="DenseState", covariant=True)
 
 
 @dataclass(frozen=True)
-class DenseStateBackend(Backend[DenseStateT_co], Generic[DenseStateT_co]):
+class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     """
     Abstract base class for backends that represent quantum states explicitly in memory.
 

@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 
 import networkx as nx
 from typing_extensions import assert_never, override
@@ -36,7 +36,9 @@ if TYPE_CHECKING:
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
-    from graphix.sim.base_backend import StateT_co
+
+
+_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
 @dataclass(frozen=True)
@@ -1306,7 +1308,7 @@ class Pattern:
         return n_list
 
     def simulate_pattern(
-        self, backend: Backend[StateT_co] | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
+        self, backend: Backend[_StateT_co] | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
     ) -> BackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 

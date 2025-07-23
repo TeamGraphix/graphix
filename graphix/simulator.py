@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import abc
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 
@@ -16,7 +16,7 @@ from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, MeasureUpdate
 from graphix.measurements import Measurement, Outcome
-from graphix.sim.base_backend import Backend, StateT_co
+from graphix.sim.base_backend import Backend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from graphix.sim import BackendState, Data
 
 
+_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
+
+
 class MeasureMethod(abc.ABC):
     """Measure method used by the simulator, with default measurement method that implements MBQC.
 
@@ -39,7 +42,7 @@ class MeasureMethod(abc.ABC):
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
-    def measure(self, backend: Backend[StateT_co], cmd: BaseM, noise_model: NoiseModel | None = None) -> None:
+    def measure(self, backend: Backend[_StateT_co], cmd: BaseM, noise_model: NoiseModel | None = None) -> None:
         """Perform a measure."""
         description = self.get_measurement_description(cmd)
         result = backend.measure(cmd.node, description)
