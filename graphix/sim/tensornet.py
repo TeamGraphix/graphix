@@ -186,7 +186,11 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             states_iter: list[PrepareState] = [states] * len(indices)
         else:
             states_list = list(states)
-            if isinstance(states_list[0], SupportsComplex):
+            # `states` is of type `PrepareState`, a type alias for
+            # `str | npt.NDArray[np.complex128]`. To distinguish
+            # between the two cases, we just need to check whether
+            # an element is a character or a complex number.
+            if len(states_list) == 0 or isinstance(states_list[0], SupportsComplex):
                 states_iter = [np.array(states_list)] * len(indices)
             else:
 
