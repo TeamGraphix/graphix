@@ -819,5 +819,5 @@ def _check_state(
     if isinstance(item, (State, Statevec)):
         return item
     if isinstance(item, Iterable):
-        return list(map(_check_complex, item))
+        return [_check_complex(value) for value in item]
     raise ValueError("Unsupported states")
