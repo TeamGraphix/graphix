@@ -539,9 +539,24 @@ class TestPattern:
 
         mapping_1 = {0: 1, 1: 2, 2: 100, 3: 101}
         mapping_2 = {0: 2, 1: 1, 2: 100, 3: 101}
-        pc, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=False)
-        pc_1, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=True)
-        pc_2, _ = p1.compose(other=p2, mapping=mapping_2, preserve_mapping=True)
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            pc, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=False)
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            pc_1, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=True)
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            pc_2, _ = p1.compose(other=p2, mapping=mapping_2, preserve_mapping=True)
 
         i = [0, 1, 2, 3]
         o = [0, 3, 100, 101]
@@ -662,9 +677,7 @@ class TestPattern:
         s_compose = p_compose.simulate_pattern()
         assert np.abs(np.dot(s.flatten().conjugate(), s_compose.flatten())) == pytest.approx(1)
 
-    # Equivalence between pattern a circuit composition after standardization
-    # FAILING because of standardize
-    @pytest.mark.skip(reason="Pattern standardization does not support Clifford commands before entanglement commands.")
+    # Test warning composition after standardization
     def test_compose_7(self, fx_rng: Generator) -> None:
         alpha = 2 * np.pi * fx_rng.random()
 
@@ -678,20 +691,11 @@ class TestPattern:
         circuit_2.rz(0, alpha)
         p2 = circuit_2.transpile().pattern
 
-        pc, _ = p1.compose(p2, mapping={0: 3})
-        s_compose = pc.simulate_pattern(backend="statevector")
-
-        pc.standardize()  # Problematic because pc contains Cliffords before entanglement operators
-        s_compose_std = pc.simulate_pattern(backend="statevector")
-
-        circuit_3 = Circuit(1)
-        circuit_3.h(0)
-        circuit_3.rz(0, 2 * alpha)
-        p3 = circuit_3.transpile().pattern
-        s_circuit = p3.simulate_pattern(backend="statevector")
-
-        for s in [s_compose, s_compose_std]:
-            assert np.abs(np.dot(s.flatten().conjugate(), s_circuit.flatten())) == pytest.approx(1)
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            p1.compose(p2, mapping={0: 3})
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:

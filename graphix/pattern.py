@@ -229,6 +229,13 @@ class Pattern:
                     f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`."
                 )
 
+        # Check if resulting pattern will have C commands before E commands
+        if any(cmd.kind == CommandKind.C for cmd in self.__seq) and any(cmd.kind == CommandKind.E for cmd in other):
+            warnings.warn(
+                r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+                stacklevel=2,
+            )
+
         shift = max(*nodes_p1, *mapping.values()) + 1
         mapping_sequential = {
             node: i for i, node in enumerate(sorted(nodes_p2 - mapping.keys()), start=shift)
