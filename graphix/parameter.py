@@ -334,6 +334,16 @@ else:
 T = TypeVar("T")
 
 
+def check_expression_or_complex(value: object) -> ExpressionOrComplex:
+    """Check that the given object is of type ExpressionOrComplex and return it."""
+    if isinstance(value, Expression):
+        return value
+    if isinstance(value, SupportsComplex):
+        return complex(value)
+    msg = f"ExpressionOrComplex expected, but {type(value)} found."
+    raise TypeError(msg)
+
+
 @overload
 def subs(value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrFloat: ...
 

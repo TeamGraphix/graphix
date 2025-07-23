@@ -19,6 +19,7 @@ from graphix.clifford import Clifford
 from graphix.command import CommandKind
 from graphix.measurements import outcome
 from graphix.ops import Ops
+from graphix.parameter import check_expression_or_complex
 from graphix.rng import ensure_rng
 from graphix.states import BasicStates
 
@@ -179,7 +180,7 @@ def vdot(a: Matrix, b: Matrix) -> ExpressionOrComplex:
     if a.dtype == np.object_ and b.dtype == np.object_:
         a_o = a.astype(np.object_, copy=False)
         b_o = b.astype(np.object_, copy=False)
-        return np.vdot(a_o, b_o)  # type: ignore[no-any-return]
+        return check_expression_or_complex(np.vdot(a_o, b_o))
 
     raise TypeError("Operands should have the same type.")
 
