@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import graphix
+import graphix.pattern
 from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
@@ -137,7 +137,7 @@ def standardize(pattern: Pattern) -> Pattern:
             # has been already applied to a node, applying a clifford `C'` to the same
             # node is equivalent to apply `C'C` to a fresh node.
             c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
-    result = graphix.Pattern(input_nodes=pattern.input_nodes)
+    result = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     result.results = pattern.results
     result.extend(
         n_list,
@@ -162,7 +162,7 @@ def _incorporate_pauli_results_in_domain(
 
 def incorporate_pauli_results(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
-    result = graphix.Pattern(input_nodes=pattern.input_nodes)
+    result = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     for cmd in pattern:
         if cmd.kind == CommandKind.M:
             s = _incorporate_pauli_results_in_domain(pattern.results, cmd.s_domain)
