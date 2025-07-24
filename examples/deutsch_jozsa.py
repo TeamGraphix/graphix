@@ -81,6 +81,7 @@ print(
         target=[CommandKind.N, CommandKind.M, CommandKind.C],
     )
 )
+pattern.standardize()
 pattern.draw_graph(flow_from_pattern=True)
 
 # %%
