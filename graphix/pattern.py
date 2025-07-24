@@ -283,20 +283,13 @@ class Pattern:
         )
         print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
 
-    def standardize(self, method: str | None = None) -> None:
+    def standardize(self) -> None:
         """Execute standardization of the pattern.
 
         'standard' pattern is one where commands are sorted in the
         order of 'N', 'E', 'M' and then byproduct commands ('X' and
         'Z') and finally Clifford commands ('C').
         """
-        if method is not None:
-            warnings.warn(
-                "Use of `standardize(method=...) is deprecated. Please remove the optional `method=` argument. See https://github.com/TeamGraphix/graphix/issues/314 for details.",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-
         self.__seq = optimization.standardize(self).__seq
 
     def is_standard(self, strict: bool = False) -> bool:
