@@ -667,7 +667,7 @@ class Backend(Generic[_StateT_co]):
         Previously existing nodes remain unchanged.
         """
 
-    def apply_channel(self, channel: KrausChannel, qargs: Collection[int]) -> None:
+    def apply_channel(self, channel: KrausChannel, qargs: Collection[int]) -> None:  # noqa: ARG002,PLR6301
         """Apply channel to the state.
 
         The default implementation of this method raises
@@ -680,9 +680,6 @@ class Backend(Generic[_StateT_co]):
         ----------
             qargs : list of ints. Target qubits
         """
-        _ = self  # silence PLC0105
-        _ = channel  # silence ARG002
-        _ = qargs
         raise NoiseNotSupportedError
 
     @abstractmethod
