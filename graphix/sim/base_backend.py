@@ -357,11 +357,8 @@ class BackendState(ABC):
     :class:`DenseState`, :class:`MBQCTensorNet`, :class:`Statevec`, :class:`DensityMatrix`
     """
 
-    def apply_channel(self, channel: KrausChannel, qargs: Sequence[int]) -> None:
+    def apply_channel(self, channel: KrausChannel, qargs: Sequence[int]) -> None:  # noqa: ARG002,PLR6301
         """Apply channel to the state."""
-        _ = self  # silence PLR6301
-        _ = channel  # silence ARG002
-        _ = qargs
         raise NoiseNotSupportedError
 
     @abstractmethod
