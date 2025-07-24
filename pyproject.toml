@@ -41,6 +41,9 @@ dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 doc = { file = ["requirements-doc.txt"] }
 
+[tool.setuptools.packages.find]
+include = ["graphix", "stubs"]
+
 [tool.ruff]
 line-length = 120
 extend-exclude = ["docs"]
@@ -144,11 +147,6 @@ exclude = [
   '^graphix/gflow\.py$',
   '^graphix/linalg\.py$',
   '^graphix/random_objects\.py$',
-  '^graphix/simulator\.py$',
-  '^graphix/sim/base_backend\.py$',
-  '^graphix/sim/density_matrix\.py$',
-  '^graphix/sim/statevec\.py$',
-  '^graphix/sim/tensornet\.py$',
   '^graphix/visualization\.py$',
   '^tests/test_density_matrix\.py$',
   '^tests/test_gflow\.py$',
@@ -164,6 +162,7 @@ exclude = [
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
 strict = true
+mypy_path = "./stubs"
 
 [tool.pyright]
 # Keep in sync with mypy
@@ -182,12 +181,6 @@ exclude = [
   "graphix/gflow.py",
   "graphix/linalg.py",
   "graphix/random_objects.py",
-  "graphix/simulator.py",
-  "graphix/sim/base_backend.py",
-  "graphix/sim/density_matrix.py",
-  "graphix/sim/statevec.py",
-  "graphix/sim/tensornet.py",
-  "graphix/transpiler.py",
   "graphix/visualization.py",
   "tests/test_density_matrix.py",
   "tests/test_gflow.py",
@@ -206,6 +199,7 @@ reportUnknownLambdaType = "information"
 reportUnknownMemberType = "information"
 reportUnknownParameterType = "information"
 reportUnknownVariableType = "information"
+extraPaths = ["./stubs"]
 
 [tool.coverage.report]
 exclude_also = [

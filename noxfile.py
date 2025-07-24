@@ -49,8 +49,7 @@ def tests_all(session: Session) -> None:
     session.run("pytest", "--doctest-modules")
 
 
-# TODO: Add 3.13 CI
-@nox.session(python=["3.9", "3.10", "3.11", "3.12"])
+@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
 def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
     session.install("-e", ".")

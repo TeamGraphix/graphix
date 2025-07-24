@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, SupportsFloat
 
 import numpy as np
 from typing_extensions import assert_never
@@ -19,11 +19,13 @@ from graphix.instruction import Instruction, InstructionKind
 from graphix.ops import Ops
 from graphix.parameter import ExpressionOrFloat, Parameter
 from graphix.pattern import Pattern
-from graphix.sim import base_backend
-from graphix.sim.statevec import Data, Statevec
+from graphix.rng import ensure_rng
+from graphix.sim import Data, Statevec, base_backend
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
+
+    from numpy.random import Generator
 
     from graphix.command import Command
 
@@ -874,18 +876,22 @@ class Circuit:
         )
         return ancilla[17], ancilla[15], ancilla[13], seq
 
-    def simulate_statevector(self, input_state: Data | None = None) -> SimulateResult:
+    def simulate_statevector(self, input_state: Data | None = None, rng: Generator | None = None) -> SimulateResult:
         """Run statevector simulation of the gate sequence.
 
         Parameters
         ----------
-        input_state : :class:`graphix.sim.statevec.Statevec`
+        input_state : Data
+        rng : Generator
+            Random number generator used to sample measurement outcomes.
 
         Returns
         -------
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
+        symbolic = self.is_parameterized()
+        rng = ensure_rng(rng)
         state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
@@ -919,7 +925,9 @@ class Circuit:
             elif instr.kind == instruction.InstructionKind.CCX:
                 state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif instr.kind == instruction.InstructionKind.M:
-                result = base_backend.perform_measure(instr.target, instr.plane, instr.angle * np.pi, state, np.random)
+                result = base_backend.perform_measure(
+                    instr.target, instr.plane, instr.angle * np.pi, state, rng, symbolic
+                )
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")
@@ -942,6 +950,27 @@ class Circuit:
             else:
                 result.instruction.append(instr)
         return result
+
+    def is_parameterized(self) -> bool:
+        """
+        Return `True` if there is at least one measurement angle that is not just an instance of `SupportsFloat`.
+
+        A parameterized circuit is a circuit where at least one
+        measurement angle is an expression that is not a number,
+        typically an instance of `sympy.Expr` (but we don't force to
+        choose `sympy` here).
+
+        """
+        # Use of `==` here for mypy
+        return any(
+            not isinstance(instr.angle, SupportsFloat)
+            for instr in self.instruction
+            if instr.kind == InstructionKind.RZZ  # noqa: PLR1714
+            or instr.kind == InstructionKind.M
+            or instr.kind == InstructionKind.RX
+            or instr.kind == InstructionKind.RY
+            or instr.kind == InstructionKind.RZ
+        )
 
     def subs(self, variable: Parameter, substitute: ExpressionOrFloat) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given variable in measurement angles are substituted by the given value."""

@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #277: Methods for pretty-printing `Pattern`: `to_ascii`,
   `to_unicode`, `to_latex`.
 
+- #312: The separation between `TensorNetworkBackend` and backends
+  that operate on a full-state representation, such as
+  `StatevecBackend` and `DensityMatrixBackend`, is now clearer with
+  the introduction of the abstract classes `DenseStateBackend` and
+  `DenseState`, which derive from `Backend` and `BackendState`,
+  respectively. `StatevecBackend` and `DensityMatrixBackend` inherit
+  from `DenseStateBackend`, while `Statevec` and `DensityMatrix`
+  inherit from `DenseState`. Note that the class hierarchy of
+  `BackendState` mirrors that of `Backend`.
+
 - #322: Added a new `optimization` module containing:
 
   * a functional version of `standardize` that returns a standardized
@@ -44,6 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   semantics is preserved between circuits, ZX graphs, open graphs and
   patterns.
 
+- #302, #308, #312: `Pattern`, `Circuit`, `PatternSimulator`, and
+  backends are now type-checked.
+
 ### Changed
 
 - #277: The method `Pattern.print_pattern` is now deprecated.
@@ -60,6 +73,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   last).  
   Note: the method `perform_pauli_measurements` still places C
   commands before X and Z commands.
+
+- #312: Backend's `State` has been renamed to `BackendState` to avoid
+  a name conflict with the `State` class defined in `graphix.states`,
+  which represents the state of a single qubit.
+
+- #312: `Backend[StateT_co]` and `DenseStateBackend[DenseStateT_co]`
+  are now parameterized by covariant type variables, allowing
+  subclasses to narrow the type of the state field to match their
+  specific state representation. Covariance is sound in this context
+  because the classes are frozen, and it ensures that
+  `Backend[BackendState]` is a supertype of all backend classes.
 
 ## [0.3.1] - 2025-04-21
 

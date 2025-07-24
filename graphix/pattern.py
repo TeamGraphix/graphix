@@ -12,7 +12,7 @@ from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 
 import networkx as nx
 from typing_extensions import assert_never, override
@@ -23,7 +23,7 @@ from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import PauliMeasurement
+from graphix.measurements import Outcome, PauliMeasurement
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -35,9 +35,10 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
-    from graphix.sim.base_backend import Backend
-    from graphix.sim.base_backend import State as BackendState
-    from graphix.sim.density_matrix import Data
+    from graphix.sim import Backend, BackendState, Data
+
+
+_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
 @dataclass(frozen=True)
@@ -81,7 +82,7 @@ class Pattern:
         total number of nodes in the resource state
     """
 
-    results: dict[int, int]
+    results: dict[int, Outcome]
     __seq: list[Command]
 
     def __init__(
@@ -250,7 +251,7 @@ class Pattern:
 
         mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
-        mapped_results = {mapping_complete[n]: m for n, m in other.results.items()}
+        mapped_results: dict[int, Outcome] = {mapping_complete[n]: m for n, m in other.results.items()}
 
         merged = mapping_values_set.intersection(self.__output_nodes)
 
@@ -289,7 +290,7 @@ class Pattern:
 
         seq = self.__seq + [update_command(c) for c in other]
 
-        results = {**self.results, **mapped_results}
+        results: dict[int, Outcome] = {**self.results, **mapped_results}
         p = Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq)
         p.results = results
 
@@ -1354,7 +1355,7 @@ class Pattern:
         return n_list
 
     def simulate_pattern(
-        self, backend: Backend | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
+        self, backend: Backend[_StateT_co] | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
     ) -> BackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
@@ -1644,7 +1645,7 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     nodes, edges = pattern.get_graph()
     vop_init = pattern.get_vops(conj=False)
     graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
-    results: dict[int, int] = {}
+    results: dict[int, Outcome] = {}
     to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
         new_inputs = []
@@ -1684,7 +1685,7 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
         if basis.sign == Sign.PLUS:
             results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
         else:
-            results[pattern_cmd.node] = 1 - measure(pattern_cmd.node, choice=1)
+            results[pattern_cmd.node] = 0 if measure(pattern_cmd.node, choice=1) else 1
 
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,

@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import abc
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 
+from graphix import command
 from graphix.clifford import Clifford
-from graphix.command import BaseM, CommandKind, M, MeasureUpdate
-from graphix.measurements import Measurement
+from graphix.command import BaseM, CommandKind, MeasureUpdate
+from graphix.measurements import Measurement, Outcome
 from graphix.sim.base_backend import Backend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
@@ -22,11 +23,15 @@ from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from typing import Any
 
     from graphix.noise_models.noise_model import NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim.density_matrix import Data
+    from graphix.sim import BackendState, Data
+
+
+_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
 class MeasureMethod(abc.ABC):
@@ -37,7 +42,7 @@ class MeasureMethod(abc.ABC):
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
-    def measure(self, backend: Backend, cmd, noise_model=None) -> None:
+    def measure(self, backend: Backend[_StateT_co], cmd: BaseM, noise_model: NoiseModel | None = None) -> None:
         """Perform a measure."""
         description = self.get_measurement_description(cmd)
         result = backend.measure(cmd.node, description)
@@ -62,7 +67,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_measure_result(self, node: int) -> bool:
+    def get_measure_result(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -78,7 +83,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def set_measure_result(self, node: int, result: bool) -> None:
+    def set_measure_result(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -94,18 +99,23 @@ class MeasureMethod(abc.ABC):
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
-    def __init__(self, results=None):
+    def __init__(self, results: Mapping[int, Outcome] | None = None):
         """Initialize with an optional result dictionary.
 
         Parameters
         ----------
-        results : dict[int, bool] | None, optional
+        results : Mapping[int, Outcome] | None, optional
             Mapping of previously measured nodes to their results. If ``None``,
             an empty dictionary is created.
+
+        Notes
+        -----
+        If a mapping is provided, it is treated as read-only. Measurements
+        performed during simulation are stored in `self.results`, which is a copy
+        of the given mapping. The original `results` mapping is not modified.
         """
-        if results is None:
-            results = {}
-        self.results = results
+        # results is coerced into dict, since `set_measure_result` mutates it.
+        self.results = {} if results is None else dict(results)
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
@@ -120,7 +130,7 @@ class DefaultMeasureMethod(MeasureMethod):
         Measurement
             Updated measurement specification.
         """
-        assert isinstance(cmd, M)
+        assert isinstance(cmd, command.M)
         angle = cmd.angle * np.pi
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
@@ -129,7 +139,7 @@ class DefaultMeasureMethod(MeasureMethod):
         angle = angle * measure_update.coeff + measure_update.add_term
         return Measurement(angle, measure_update.new_plane)
 
-    def get_measure_result(self, node: int) -> bool:
+    def get_measure_result(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -139,12 +149,12 @@ class DefaultMeasureMethod(MeasureMethod):
 
         Returns
         -------
-        bool
+        Outcome
             Stored measurement outcome.
         """
         return self.results[node]
 
-    def set_measure_result(self, node: int, result: bool) -> None:
+    def set_measure_result(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -163,10 +173,12 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
+    noise_model: NoiseModel | None
+
     def __init__(
         self,
         pattern: Pattern,
-        backend: Backend | str = "statevector",
+        backend: Backend[BackendState] | str = "statevector",
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
         **kwargs: Any,
@@ -225,7 +237,7 @@ class PatternSimulator:
         """Return the measure method."""
         return self.__measure_method
 
-    def set_noise_model(self, model):
+    def set_noise_model(self, model: NoiseModel | None) -> None:
         """Set a noise model."""
         if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
             self.noise_model = None  # if not initialized yet
@@ -251,7 +263,8 @@ class PatternSimulator:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 elif cmd.kind == CommandKind.M:
                     self.__measure_method.measure(self.backend, cmd)
-                elif cmd.kind in {CommandKind.X, CommandKind.Z}:
+                # Use of `==` here for mypy
+                elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)
@@ -274,11 +287,11 @@ class PatternSimulator:
                     self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
+                    if np.mod(sum(self.__measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
                 elif cmd.kind == CommandKind.Z:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
+                    if np.mod(sum(self.__measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)

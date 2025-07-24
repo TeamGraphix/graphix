@@ -4,13 +4,22 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from typing import NamedTuple, SupportsInt
+from typing import Literal, NamedTuple, SupportsInt
+
+from typing_extensions import TypeAlias  # TypeAlias introduced in Python 3.10
 
 from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+
+Outcome: TypeAlias = Literal[0, 1]
+
+
+def outcome(b: bool) -> Outcome:
+    """Return 1 if True, 0 if False."""
+    return 1 if b else 0
 
 
 @dataclasses.dataclass

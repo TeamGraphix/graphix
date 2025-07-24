@@ -41,12 +41,16 @@ class TestDensityMatrix:
             DensityMatrix(nqubit=-2)
 
     def test_init_with_invalid_data_fail(self, fx_rng: Generator) -> None:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             DensityMatrix("hello")
         with pytest.raises(TypeError):
             DensityMatrix(1)
-        with pytest.raises(TypeError):
+        # Length is not a power of two
+        with pytest.raises(ValueError):
             DensityMatrix([1, 2, [3]])
+        # setting an array element with a sequence (numpy error)
+        with pytest.raises(ValueError):
+            DensityMatrix([1, 2, [3], 4])
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
@@ -245,7 +249,7 @@ class TestDensityMatrix:
 
     def test_tensor_fail(self) -> None:
         dm = DensityMatrix(nqubit=1)
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             dm.tensor("hello")
         with pytest.raises(TypeError):
             dm.tensor(1)
