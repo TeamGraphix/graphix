@@ -8,7 +8,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import warnings
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,20 +17,20 @@ from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 import networkx as nx
 from typing_extensions import assert_never, override
 
-from graphix import command, parameter
+from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import Domains, Outcome, PauliMeasurement
+from graphix.measurements import Outcome, PauliMeasurement
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Iterable, Iterator, Mapping
+    from collections.abc import Container, Iterator, Mapping
     from collections.abc import Set as AbstractSet
     from typing import Any, Literal
 
@@ -140,13 +140,17 @@ class Pattern:
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
-    def extend(self, cmds: Iterable[Command]) -> None:
-        """Add a list of commands.
+    def extend(self, *cmds: Command | Iterable[Command]) -> None:
+        """Add sequences of commands.
 
-        :param cmds: list of commands
+        :param cmds: sequences of commands
         """
-        for cmd in cmds:
-            self.add(cmd)
+        for item in cmds:
+            if isinstance(item, Iterable):
+                for cmd in item:
+                    self.add(cmd)
+            else:
+                self.add(item)
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
@@ -280,110 +284,22 @@ class Pattern:
         )
         print(pattern_to_str(self, OutputFormat.ASCII, left_to_right=True, limit=lim, target=target))
 
-    def standardize(self, method: str = "direct") -> None:
+    def standardize(self) -> None:
         """Execute standardization of the pattern.
 
-        'standard' pattern is one where commands are sorted in the order of
-        'N', 'E', 'M' and then byproduct commands ('X' and 'Z').
+        'standard' pattern is one where commands are sorted in the
+        order of 'N', 'E', 'M' and then byproduct commands ('X' and
+        'Z') and finally Clifford commands ('C').
+        """
+        self.__seq = optimization.standardize(self).__seq
+
+    def is_standard(self, strict: bool = False) -> bool:
+        """Determine whether the command sequence is standard.
 
         Parameters
         ----------
-        method : str, optional
-            'mc' corresponds to a conventional standardization defined in original measurement calculus paper, executed on Pattern class.
-            'direct' fast standardization implemented as *standardize_direct()*
-            defaults to 'direct'
-        """
-        if method == "direct":  # faster implementation
-            self.standardize_direct()
-            return
-        if method == "mc":  # direct measuremment calculus implementation
-            self._move_n_to_left()
-            self._move_byproduct_to_right()
-            self._move_e_after_n()
-            return
-        raise ValueError("Invalid method")
-
-    def standardize_direct(self) -> None:
-        """Execute standardization of the pattern.
-
-        This algorithm sort the commands in the following order:
-        `N`, `E`, `M`, `C`, `Z`, `X`.
-        """
-        n_list = []
-        e_list = []
-        m_list = []
-        c_dict: dict[int, Clifford] = {}
-        z_dict: dict[int, set[command.Node]] = {}
-        x_dict: dict[int, set[command.Node]] = {}
-
-        def add_correction_domain(
-            domain_dict: dict[command.Node, set[command.Node]], node: command.Node, domain: set[command.Node]
-        ) -> None:
-            """Merge a correction domain into ``domain_dict`` for ``node``.
-
-            Parameters
-            ----------
-            domain_dict : dict[int, Command]
-                Mapping from node index to accumulated domain.
-            node : int
-                Target node whose domain should be updated.
-            domain : set[int]
-                Domain to merge with the existing one.
-            """
-            if previous_domain := domain_dict.get(node):
-                previous_domain ^= domain
-            else:
-                domain_dict[node] = domain.copy()
-
-        for cmd in self:
-            if cmd.kind == CommandKind.N:
-                n_list.append(cmd)
-            elif cmd.kind == CommandKind.E:
-                for side in (0, 1):
-                    if s_domain := x_dict.get(cmd.nodes[side], None):
-                        add_correction_domain(z_dict, cmd.nodes[1 - side], s_domain)
-                e_list.append(cmd)
-            elif cmd.kind == CommandKind.M:
-                new_cmd = cmd
-                if clifford_gate := c_dict.pop(cmd.node, None):
-                    new_cmd = new_cmd.clifford(clifford_gate)
-                if t_domain := z_dict.pop(cmd.node, None):
-                    # The original domain should not be mutated
-                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain  # noqa: PLR6104
-                if s_domain := x_dict.pop(cmd.node, None):
-                    # The original domain should not be mutated
-                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain  # noqa: PLR6104
-                m_list.append(new_cmd)
-            elif cmd.kind == CommandKind.Z:
-                add_correction_domain(z_dict, cmd.node, cmd.domain)
-            elif cmd.kind == CommandKind.X:
-                add_correction_domain(x_dict, cmd.node, cmd.domain)
-            elif cmd.kind == CommandKind.C:
-                # If some `X^sZ^t` have been applied to the node, compute `X^s'Z^t'`
-                # such that `CX^sZ^t = X^s'Z^t'C` since the Clifford command will
-                # be applied first (i.e., in right-most position).
-                t_domain = z_dict.pop(cmd.node, set())
-                s_domain = x_dict.pop(cmd.node, set())
-                domains = cmd.clifford.conj.commute_domains(Domains(s_domain, t_domain))
-                if domains.t_domain:
-                    z_dict[cmd.node] = domains.t_domain
-                if domains.s_domain:
-                    x_dict[cmd.node] = domains.s_domain
-                # Each pattern command is applied by left multiplication: if a clifford `C`
-                # has been already applied to a node, applying a clifford `C'` to the same
-                # node is equivalent to apply `C'C` to a fresh node.
-                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
-        self.__seq = [
-            *n_list,
-            *e_list,
-            *m_list,
-            *(command.C(node=node, clifford=clifford_gate) for node, clifford_gate in c_dict.items()),
-            *(command.Z(node=node, domain=domain) for node, domain in z_dict.items()),
-            *(command.X(node=node, domain=domain) for node, domain in x_dict.items()),
-        ]
-
-    def is_standard(self) -> bool:
-        """Determine whether the command sequence is standard.
+        strict : bool, optional
+            If True, ensures that C commands are the last ones.
 
         Returns
         -------
@@ -399,9 +315,16 @@ class Pattern:
                 kind = next(it).kind
             while kind == CommandKind.M:
                 kind = next(it).kind
-            xzc = {CommandKind.X, CommandKind.Z, CommandKind.C}
-            while kind in xzc:
-                kind = next(it).kind
+            if strict:
+                xz = {CommandKind.X, CommandKind.Z}
+                while kind in xz:
+                    kind = next(it).kind
+                while kind == CommandKind.C:
+                    kind = next(it).kind
+            else:
+                xzc = {CommandKind.X, CommandKind.Z, CommandKind.C}
+                while kind in xzc:
+                    kind = next(it).kind
         except StopIteration:
             return True
         else:
@@ -1235,7 +1158,6 @@ class Pattern:
         prepared = set(self.input_nodes)
         measured: set[int] = set()
         new: list[Command] = []
-        c_list = []
         cmd: Command
 
         for cmd in meas_commands:
@@ -1257,14 +1179,12 @@ class Pattern:
             if cmd.kind == CommandKind.N and cmd.node not in prepared:
                 new.append(command.N(node=cmd.node))
             elif (
-                cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes)
-            ) or cmd.kind == CommandKind.C:
+                (cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes))
+                or cmd.kind == CommandKind.C
+                or cmd.kind in {CommandKind.Z, CommandKind.X}
+            ):
                 new.append(cmd)
-            elif cmd.kind in {CommandKind.Z, CommandKind.X}:  # Add corrections
-                c_list.append(cmd)
 
-        # c_list = self.correction_commands()
-        new.extend(c_list)
         self.__seq = new
 
     def max_space(self) -> int:

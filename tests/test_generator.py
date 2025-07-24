@@ -155,5 +155,6 @@ class TestGenerator:
         graph_generated_pattern: nx.Graph[int] = nx.Graph(edge_list)
         assert nx.is_isomorphic(og.inside, graph_generated_pattern)
 
+        pattern.standardize()
         pf_generated_pattern, _ = pauliflow_from_pattern(pattern)
         assert pf_generated_pattern is not None
