@@ -251,7 +251,7 @@ class Pattern:
 
         mapped_inputs = [mapping_complete[n] for n in other.input_nodes]
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
-        mapped_results = {mapping_complete[n]: m for n, m in other.results.items()}
+        mapped_results: dict[int, Outcome] = {mapping_complete[n]: m for n, m in other.results.items()}
 
         merged = mapping_values_set.intersection(self.__output_nodes)
 
@@ -290,7 +290,7 @@ class Pattern:
 
         seq = self.__seq + [update_command(c) for c in other]
 
-        results = {**self.results, **mapped_results}
+        results: dict[int, Outcome] = {**self.results, **mapped_results}
         p = Pattern(input_nodes=inputs, output_nodes=outputs, cmds=seq)
         p.results = results
 
