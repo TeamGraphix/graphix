@@ -213,10 +213,12 @@ class Pattern:
         if not mapping.keys() <= nodes_p2:
             raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
 
-        if len(mapping) != len(set(mapping.values())):
+        mapping_values_set = set(mapping.values())
+
+        if len(mapping) != len(mapping_values_set):
             raise ValueError("Values of `mapping` contain duplicates.")
 
-        if set(mapping.values()) & nodes_p1 - set(self.__output_nodes):
+        if mapping_values_set & nodes_p1 - set(self.__output_nodes):
             raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`.")
 
         # Cast to set for improved performance in membership test
@@ -247,7 +249,7 @@ class Pattern:
         mapped_outputs = [mapping_complete[n] for n in other.output_nodes]
         mapped_results = {mapping_complete[n]: m for n, m in other.results.items()}
 
-        merged = set(mapping.values()).intersection(self.__output_nodes)
+        merged = mapping_values_set.intersection(self.__output_nodes)
 
         inputs = self.__input_nodes + [n for n in mapped_inputs if n not in merged]
 
@@ -265,6 +267,7 @@ class Pattern:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
 
         def update_command(cmd: Command) -> Command:
+            # Shallow copy is enough since the mutable attributes of cmd_new susceptible to change are reassigned
             cmd_new = copy.copy(cmd)
 
             if cmd_new.kind is CommandKind.E:
