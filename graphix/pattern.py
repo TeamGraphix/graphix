@@ -217,17 +217,16 @@ class Pattern:
         if not mapping.keys() <= nodes_p2:
             raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
 
+        # Cast to set for improved performance in membership test
         mapping_values_set = set(mapping.values())
+        o1_set = set(self.__output_nodes)
+        i2_set = set(other.input_nodes)
 
         if len(mapping) != len(mapping_values_set):
             raise ValueError("Values of `mapping` contain duplicates.")
 
-        if mapping_values_set & nodes_p1 - set(self.__output_nodes):
+        if mapping_values_set & nodes_p1 - o1_set:
             raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`.")
-
-        # Cast to set for improved performance in membership test
-        o1_set = set(self.__output_nodes)
-        i2_set = set(other.input_nodes)
 
         for k, v in mapping.items():
             if v in o1_set and k not in i2_set:
