@@ -11,7 +11,7 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix.clifford import Clifford
-from graphix.command import C, CommandKind, E, M, N, X, Z
+from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
 from graphix.pattern import Pattern, shift_outcomes
@@ -425,6 +425,276 @@ class TestPattern:
         state_ref = pattern_ref.simulate_pattern()
         state_p = pattern.simulate_pattern()
         assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+
+    # Simple pattern composition
+    def test_compose_1(self) -> None:
+        i1_lst = [0]
+        o1_lst = [1]
+        cmds1: list[Command] = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0})]
+        p1 = Pattern(input_nodes=i1_lst, output_nodes=o1_lst, cmds=cmds1)
+
+        i2_lst = [0]
+        o2_lst = [2]
+        cmds2: list[Command] = [N(2), E((0, 2)), M(0), Z(2, {0}), X(2, {0})]
+        p2 = Pattern(input_nodes=i2_lst, output_nodes=o2_lst, cmds=cmds2)
+
+        mapping = {0: 1, 2: 5}
+        pc, mapping_c = p1.compose(p2, mapping)
+
+        i_lst = [0]
+        o_lst = [5]
+        cmds: list[Command] = [N(1), E((0, 1)), M(0), Z(1, {0}), X(1, {0}), N(5), E((1, 5)), M(1), Z(5, {1}), X(5, {1})]
+        p = Pattern(input_nodes=i_lst, output_nodes=o_lst, cmds=cmds)
+
+        assert pc == p
+        assert mapping_c == {0: 1, 2: 5}
+
+        with pytest.raises(ValueError, match=r"Keys of `mapping` must correspond to the nodes of `other`."):
+            p1.compose(p2, mapping={0: 1, 2: 5, 1: 2})
+
+        with pytest.raises(ValueError, match=r"Values of `mapping` contain duplicates."):
+            p1.compose(p2, mapping={0: 1, 2: 1})
+
+        with pytest.raises(ValueError, match=r"Values of `mapping` must not contain measured nodes of pattern `self`."):
+            p1.compose(p2, mapping={0: 1, 2: 0})
+
+        with pytest.raises(
+            ValueError,
+            match=r"Mapping 2 -> 1 is not valid. 1 is an output of pattern `self` but 2 is not an input of pattern `other`.",
+        ):
+            p1.compose(p2, mapping={2: 1})
+
+    # Pattern composition (more involved than test_compose_1)
+    def test_compose_2(self) -> None:
+        i1 = [1, 4]
+        o1 = [4]
+        cmds1: list[Command] = [
+            N(0),
+            N(2),
+            N(3),
+            E((1, 2)),
+            E((0, 4)),
+            M(0),
+            M(1),
+            M(2),
+            M(3, t_domain={1}, s_domain={2}),
+            Z(4, {0}),
+            X(4, {3, 1}),
+        ]
+        p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+
+        i2 = [0, 3]
+        o2 = [3]
+        cmds2: list[Command] = [N(1), N(2), M(1), M(2), M(0, t_domain={1}, s_domain={2}), Z(3, {1, 0}), X(3, {2})]
+        p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
+
+        mapping = {0: 4, 3: 100}
+        pc, mapping_complete = p1.compose(other=p2, mapping=mapping)
+
+        i = [1, 4, 100]
+        o = [100]
+        cmds: list[Command] = [
+            N(0),
+            N(2),
+            N(3),
+            E((1, 2)),
+            E((0, 4)),
+            M(0),
+            M(1),
+            M(2),
+            M(3, t_domain={1}, s_domain={2}),
+            Z(4, {0}),
+            X(4, {3, 1}),
+            N(101),
+            N(102),
+            M(101),
+            M(102),
+            M(4, t_domain={101}, s_domain={102}),
+            Z(100, {4, 101}),
+            X(100, {102}),
+        ]
+        p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
+
+        assert p == pc
+        assert mapping_complete == {0: 4, 3: 100, 1: 101, 2: 102}
+
+    #  Pattern composition preserving output order
+    def test_compose_3(self) -> None:
+        i1 = [0, 1, 2, 3]
+        o1 = [0, 1, 2, 3]
+        cmds1: list[Command] = [
+            E((0, 1)),
+            E((1, 2)),
+            E((2, 3)),
+            C(0, Clifford.H),
+            C(1, Clifford.X),
+        ]
+        p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+
+        i2 = [0, 1]
+        o2 = [2, 3]
+        cmds2: list[Command] = [N(2), N(3), E((0, 1)), E((0, 2)), E((1, 3)), M(0), M(1), X(2, {0}), Z(3, {1})]
+        p2 = Pattern(cmds=cmds2, input_nodes=i2, output_nodes=o2)
+
+        mapping_1 = {0: 1, 1: 2, 2: 100, 3: 101}
+        mapping_2 = {0: 2, 1: 1, 2: 100, 3: 101}
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            pc, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=False)
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            pc_1, _ = p1.compose(other=p2, mapping=mapping_1, preserve_mapping=True)
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            pc_2, _ = p1.compose(other=p2, mapping=mapping_2, preserve_mapping=True)
+
+        i = [0, 1, 2, 3]
+        o = [0, 3, 100, 101]
+        o_1 = [0, 100, 101, 3]
+        o_2 = [0, 101, 100, 3]
+        cmds: list[Command] = [
+            E((0, 1)),
+            E((1, 2)),
+            E((2, 3)),
+            C(0, Clifford.H),
+            C(1, Clifford.X),
+            N(100),
+            N(101),
+            E((1, 2)),
+            E((1, 100)),
+            E((2, 101)),
+            M(1),
+            M(2),
+            X(100, {1}),
+            Z(101, {2}),
+        ]
+        cmds_2: list[Command] = [
+            E((0, 1)),
+            E((1, 2)),
+            E((2, 3)),
+            C(0, Clifford.H),
+            C(1, Clifford.X),
+            N(100),
+            N(101),
+            E((2, 1)),
+            E((2, 100)),
+            E((1, 101)),
+            M(2),
+            M(1),
+            X(100, {2}),
+            Z(101, {1}),
+        ]
+        p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
+        p_1 = Pattern(cmds=cmds, input_nodes=i, output_nodes=o_1)
+        p_2 = Pattern(cmds=cmds_2, input_nodes=i, output_nodes=o_2)
+
+        assert p == pc
+        assert p_1 == pc_1
+        assert p_2 == pc_2
+
+    #  Pattern composition with Pauli preprocessing
+    def test_compose_4(self, fx_rng: Generator) -> None:
+        alpha = fx_rng.random()
+        i1 = [0]
+        o1 = [2]
+        cmds1: list[Command] = [N(1), N(2), E((0, 1)), E((1, 2)), M(0, angle=-alpha), M(1), X(2, {1}), Z(2, {0})]
+        p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+        p2 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
+
+        p1.perform_pauli_measurements()
+        p2.perform_pauli_measurements()
+
+        mapping = {0: 2, 1: 3, 2: 4}
+        pc, mapping_complete = p1.compose(p2, mapping=mapping)
+
+        i = [0]
+        o = [4]
+        cmds: list[Command] = [
+            N(2),
+            E((0, 2)),
+            M(0, plane=Plane.YZ, angle=alpha),
+            Z(2, {0}),
+            X(2, {1}),
+            N(4),
+            E((2, 4)),
+            M(2, plane=Plane.YZ, angle=alpha),
+            Z(4, {2}),
+            X(4, {3}),
+        ]
+        p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
+        p.results = {1: 0, 3: 0}
+
+        assert p == pc
+        assert mapping_complete == mapping
+
+    # Equivalence between pattern and circuit composition
+    def test_compose_5(self, fx_rng: Generator) -> None:
+        circuit_1 = Circuit(1)
+        circuit_1.h(0)
+        p1 = circuit_1.transpile().pattern  # outputs: [1]
+
+        alpha = 2 * np.pi * fx_rng.random()
+
+        circuit_2 = Circuit(1)
+        circuit_2.rz(0, alpha)
+        p2 = circuit_2.transpile().pattern  # inputs: [0]
+
+        p, _ = p1.compose(p2, mapping={0: 1, 1: 2, 2: 3})
+
+        circuit_12 = Circuit(1)
+        circuit_12.h(0)
+        circuit_12.rz(0, alpha)
+        p12 = circuit_12.transpile().pattern
+
+        assert p == p12
+
+    # Compose random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_compose_6(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 4
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit_2 = rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit = Circuit(width=nqubits, instr=circuit_1.instruction + circuit_2.instruction)
+        p1 = circuit_1.transpile().pattern
+        p2 = circuit_2.transpile().pattern
+        p = circuit.transpile().pattern
+        p_compose, _ = p1.compose(p2, mapping=dict(zip(p2.input_nodes, p1.output_nodes)), preserve_mapping=True)
+        p.minimize_space()
+        p_compose.minimize_space()
+        s = p.simulate_pattern()
+        s_compose = p_compose.simulate_pattern()
+        assert np.abs(np.dot(s.flatten().conjugate(), s_compose.flatten())) == pytest.approx(1)
+
+    # Test warning composition after standardization
+    def test_compose_7(self, fx_rng: Generator) -> None:
+        alpha = 2 * np.pi * fx_rng.random()
+
+        circuit_1 = Circuit(1)
+        circuit_1.h(0)
+        circuit_1.rz(0, alpha)
+        p1 = circuit_1.transpile().pattern
+        p1.perform_pauli_measurements()
+
+        circuit_2 = Circuit(1)
+        circuit_2.rz(0, alpha)
+        p2 = circuit_2.transpile().pattern
+
+        with pytest.warns(
+            UserWarning,
+            match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
+        ):
+            p1.compose(p2, mapping={0: 3})
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
