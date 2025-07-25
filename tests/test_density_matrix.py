@@ -10,6 +10,7 @@ import numpy.typing as npt
 import pytest
 
 import graphix.random_objects as randobj
+from graphix.branch_selector import RandomBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import Plane
 from graphix.ops import Ops
@@ -921,7 +922,7 @@ class TestDensityMatrixBackend:
         pattern = circ.transpile().pattern
 
         measure_method = DefaultMeasureMethod()
-        backend = DensityMatrixBackend(pr_calc=pr_calc)
+        backend = DensityMatrixBackend(branch_selector=RandomBranchSelector(pr_calc=pr_calc))
         backend.add_nodes(pattern.input_nodes)
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))

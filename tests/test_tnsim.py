@@ -8,6 +8,7 @@ import pytest
 from numpy.random import PCG64, Generator
 from quimb.tensor import Tensor
 
+from graphix.branch_selector import RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, E, X, Z
 from graphix.ops import Ops
@@ -33,7 +34,7 @@ plus = BasicStates.PLUS.get_statevector()
 class TestTN:
     def test_add_node(self, fx_rng: Generator) -> None:
         node_index = fx_rng.integers(0, 1000)
-        tn = MBQCTensorNet(rng=fx_rng)
+        tn = MBQCTensorNet(branch_selector=RandomBranchSelector(rng=fx_rng))
 
         tn.add_qubit(node_index)
 
@@ -42,7 +43,7 @@ class TestTN:
 
     def test_add_nodes(self, fx_rng: Generator) -> None:
         node_index = set(fx_rng.integers(0, 1000, 20))
-        tn = MBQCTensorNet(rng=fx_rng)
+        tn = MBQCTensorNet(branch_selector=RandomBranchSelector(rng=fx_rng))
 
         tn.graph_prep = "sequential"
         tn.add_qubits(node_index)

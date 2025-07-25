@@ -23,7 +23,7 @@ from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import Outcome, PauliMeasurement
+from graphix.measurements import Outcome, PauliMeasurement, toggle_outcome
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -32,7 +32,7 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from collections.abc import Container, Iterator, Mapping
     from collections.abc import Set as AbstractSet
-    from typing import Any, Literal
+    from typing import Any
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
@@ -1887,14 +1887,7 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
     assert_never(plane)
 
 
-def toggle_outcome(outcome: Literal[0, 1]) -> Literal[0, 1]:
-    """Toggle outcome."""
-    if outcome == 0:
-        return 1
-    return 0
-
-
-def shift_outcomes(outcomes: dict[int, Literal[0, 1]], signal_dict: dict[int, set[int]]) -> dict[int, Literal[0, 1]]:
+def shift_outcomes(outcomes: dict[int, Outcome], signal_dict: dict[int, set[int]]) -> dict[int, Outcome]:
     """Update outcomes with shifted signals.
 
     Shifted signals (as returned by the method

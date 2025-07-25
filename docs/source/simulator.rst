@@ -12,7 +12,6 @@ Pattern Simulation
 
     .. automethod:: run
 
-
 Simulator backends
 ++++++++++++++++++
 

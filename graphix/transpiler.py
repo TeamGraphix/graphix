@@ -13,13 +13,13 @@ import numpy as np
 from typing_extensions import assert_never
 
 from graphix import command, instruction, parameter
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.instruction import Instruction, InstructionKind
 from graphix.ops import Ops
 from graphix.parameter import ExpressionOrFloat, Parameter
 from graphix.pattern import Pattern
-from graphix.rng import ensure_rng
 from graphix.sim import Data, Statevec, base_backend
 
 if TYPE_CHECKING:
@@ -876,7 +876,12 @@ class Circuit:
         )
         return ancilla[17], ancilla[15], ancilla[13], seq
 
-    def simulate_statevector(self, input_state: Data | None = None, rng: Generator | None = None) -> SimulateResult:
+    def simulate_statevector(
+        self,
+        input_state: Data | None = None,
+        branch_selector: BranchSelector | None = None,
+        rng: Generator | None = None,
+    ) -> SimulateResult:
         """Run statevector simulation of the gate sequence.
 
         Parameters
@@ -885,13 +890,23 @@ class Circuit:
         rng : Generator
             Random number generator used to sample measurement outcomes.
 
+        branch_selector: :class:`graphix.branch_selector.BranchSelector`
+            branch selector for measures (default: :class:`graphix.branch_selector.RandomBranchSelector`)
+
+        rng: :class:`np.random.Generator`
+            random number generator for :class:`graphix.branch_selector.RandomBranchSelector` (should only be used with default branch selector)
+
         Returns
         -------
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
         symbolic = self.is_parameterized()
-        rng = ensure_rng(rng)
+        if branch_selector is None:
+            branch_selector = RandomBranchSelector(rng=rng)
+        elif rng is not None:
+            raise ValueError("Cannot specify both branch selector and rng")
+
         state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
 
         classical_measures = []
@@ -926,7 +941,7 @@ class Circuit:
                 state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif instr.kind == instruction.InstructionKind.M:
                 result = base_backend.perform_measure(
-                    instr.target, instr.plane, instr.angle * np.pi, state, rng, symbolic
+                    instr.target, instr.target, instr.plane, instr.angle * np.pi, state, branch_selector, symbolic
                 )
                 classical_measures.append(result)
             else:
