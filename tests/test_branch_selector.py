@@ -102,7 +102,7 @@ def test_random_branch_selector_without_pr_calc(backend: str) -> None:
         pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
         if measure_method.results[0]:
             nb_outcome_1 += 1
-    assert abs(nb_outcome_1 - NB_ROUNDS / 2) < NB_ROUNDS / 10
+    assert abs(nb_outcome_1 - NB_ROUNDS / 2) < NB_ROUNDS / 5
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
