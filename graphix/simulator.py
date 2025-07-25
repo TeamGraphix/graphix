@@ -193,21 +193,21 @@ class PatternSimulator:
 
         Parameters
         ----------
-        pattern: :class:`graphix.pattern.Pattern` object
+        pattern: :class:`Pattern` object
             MBQC pattern to be simulated.
-        backend: :class:`graphix.sim.backend.Backend` object,
+        backend: :class:`Backend` object,
             or 'statevector', or 'densitymatrix', or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
         measure_method: :class:`MeasureMethod`, optional
             Measure method used by the simulator. Default is :class:`DefaultMeasureMethod`.
-        noise_model: :class:`graphix.noise_models.noise_model.NoiseModel`, optional
+        noise_model: :class:`NoiseModel`, optional
             [Density matrix backend only] Noise model used by the simulator.
-        branch_selector: :class:`graphix.branch_selector.BranchSelector`, optional
-            Branch selector used for measurements. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object.  Default is :class:`RandomBranchSelector`.
+        branch_selector: :class:`BranchSelector`, optional
+            Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  Default is :class:`RandomBranchSelector`.
         rng: :class:`numpy.random.Generator`, optional
-            Random number generator to be used by the default `RandomBranchSelector`. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object and if `branch_selector` is not specified.
+            Random number generator to be used by the default :class:`RandomBranchSelector`. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object and if ``branch_selector`` is not specified.
         graph_prep: str, optional
-            [Tensor network backend only] Strategy for preparing the graph state.  See :class:`graphix.sim.tensornet.TensorNetworkBackend`.
+            [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
         symbolic : bool, optional
             [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
 
