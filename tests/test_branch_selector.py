@@ -28,7 +28,6 @@ NB_ROUNDS = 100
 class CheckedBranchSelector(RandomBranchSelector):
     """Random branch selector that verifies that expectation values match the expected ones."""
 
-    rng: Generator | None = None
     expected: Mapping[int, float] = dataclasses.field(default_factory=dict)
 
     @override
