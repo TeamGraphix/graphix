@@ -67,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #277: The method `Pattern.print_pattern` is now deprecated.
 
-- #300: `pr_calc` parameter is deprecated in back-end initializers.
+- #300: `pr_calc` parameter is removed in back-end initializers.
   The user can specify `pr_calc` in the constructor of
   `RandomBranchSelector` instead.
 

@@ -186,6 +186,7 @@ class PatternSimulator:
         branch_selector: BranchSelector | None = None,
         rng: Generator | None = None,
         graph_prep: str | None = None,
+        symbolic: bool = False,
     ) -> None:
         """
         Construct a pattern simulator.
@@ -207,6 +208,9 @@ class PatternSimulator:
             Random number generator to be used by the default `RandomBranchSelector`. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object and if `branch_selector` is not specified.
         graph_prep: str, optional
             [Tensor network backend only] Strategy for preparing the graph state.  See :class:`graphix.sim.tensornet.TensorNetworkBackend`.
+        symbolic : bool, optional
+            [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
+
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
@@ -223,6 +227,8 @@ class PatternSimulator:
                     raise ValueError("`rng` cannot be specified if `backend` is already instantiated.")
                 if graph_prep is not None:
                     raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
+                if symbolic:
+                    raise ValueError("`symbolic` cannot be specified if `backend` is already instantiated.")
                 return backend
             if branch_selector is None:
                 branch_selector = RandomBranchSelector(rng=rng)
@@ -231,6 +237,8 @@ class PatternSimulator:
             if backend in {"tensornetwork", "mps"}:
                 if noise_model is not None:
                     raise ValueError("`noise_model` cannot be specified for tensor network backend.")
+                if symbolic:
+                    raise ValueError("`symbolic` cannot be specified for tensor network backend.")
                 if graph_prep is None:
                     graph_prep = "auto"
                 return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
@@ -239,14 +247,14 @@ class PatternSimulator:
             if backend == "statevector":
                 if noise_model is not None:
                     raise ValueError("`noise_model` cannot be specified for state vector backend.")
-                return StatevectorBackend(branch_selector=branch_selector)
+                return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
             if backend == "densitymatrix":
                 if noise_model is None:
                     warnings.warn(
                         "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
                         stacklevel=1,
                     )
-                return DensityMatrixBackend(branch_selector=branch_selector)
+                return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
             raise ValueError(f"Unknown backend {backend}.")
 
         self.backend = initialize_backend()
