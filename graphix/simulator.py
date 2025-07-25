@@ -202,7 +202,7 @@ class PatternSimulator:
         noise_model: :class:`graphix.noise_models.noise_model.NoiseModel`, optional
             [Density matrix backend only] Noise model used by the simulator.
         branch_selector: :class:`graphix.branch_selector.BranchSelector`, optional
-            Branch selector used by the backend. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object.  Default is :class:`RandomBranchSelector`.
+            Branch selector used for measurements. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object.  Default is :class:`RandomBranchSelector`.
         rng: :class:`numpy.random.Generator`, optional
             Random number generator to be used by the default `RandomBranchSelector`. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object and if `branch_selector` is not specified.
         graph_prep: str, optional
@@ -211,44 +211,45 @@ class PatternSimulator:
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
-        if isinstance(backend, Backend):
-            if noise_model is not None:
-                raise ValueError("`noise_model` cannot be specified if `backend` is already instantiated.")
-            if branch_selector is not None:
-                raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
-            if rng is not None:
-                raise ValueError("`rng` cannot be specified if `backend` is already instantiated.")
-            if graph_prep is not None:
-                raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
-            self.backend = backend
-        elif backend in {"tensornetwork", "mps"}:
-            if noise_model is not None:
-                raise ValueError("`noise_model` cannot be specified for tensor network backend.")
-            if branch_selector is not None:
-                raise ValueError("`branch_selector` cannot be specified for tensor network backend.")
-            if graph_prep is None:
-                graph_prep = "auto"
-            self.backend = TensorNetworkBackend(pattern, rng=rng, graph_prep=graph_prep)
-        else:
+
+        def initialize_backend() -> Backend[BackendState]:
+            nonlocal backend, branch_selector, rng, graph_prep, noise_model
+            if isinstance(backend, Backend):
+                if noise_model is not None:
+                    raise ValueError("`noise_model` cannot be specified if `backend` is already instantiated.")
+                if branch_selector is not None:
+                    raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
+                if rng is not None:
+                    raise ValueError("`rng` cannot be specified if `backend` is already instantiated.")
+                if graph_prep is not None:
+                    raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
+                return backend
             if branch_selector is None:
                 branch_selector = RandomBranchSelector(rng=rng)
             elif rng is not None:
                 raise ValueError("`rng` and `branch_selector` cannot be specified simultaneously.")
+            if backend in {"tensornetwork", "mps"}:
+                if noise_model is not None:
+                    raise ValueError("`noise_model` cannot be specified for tensor network backend.")
+                if graph_prep is None:
+                    graph_prep = "auto"
+                return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
             if graph_prep is not None:
                 raise ValueError("`graph_prep` can only be specified for tensor network backend.")
             if backend == "statevector":
                 if noise_model is not None:
                     raise ValueError("`noise_model` cannot be specified for state vector backend.")
-                self.backend = StatevectorBackend(branch_selector=branch_selector)
-            elif backend == "densitymatrix":
+                return StatevectorBackend(branch_selector=branch_selector)
+            if backend == "densitymatrix":
                 if noise_model is None:
                     warnings.warn(
                         "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
                         stacklevel=1,
                     )
-                self.backend = DensityMatrixBackend(branch_selector=branch_selector)
-            else:
-                raise ValueError(f"Unknown backend {backend}.")
+                return DensityMatrixBackend(branch_selector=branch_selector)
+            raise ValueError(f"Unknown backend {backend}.")
+
+        self.backend = initialize_backend()
         self.noise_model = noise_model
         self.__pattern = pattern
         if measure_method is None:

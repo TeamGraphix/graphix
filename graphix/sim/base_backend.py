@@ -742,11 +742,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     ----------
     node_index : NodeIndex, optional
         Mapping between node numbers and qubit indices in the internal state of the backend.
-    pr_calc : bool, optional
-        Whether or not to compute the probability distribution before choosing the measurement outcome.
-        If False, measurements yield results 0/1 with 50% probabilities each.
-    rng : Generator, optional
-        Random number generator used to sample measurement outcomes.
+    branch_selector: :class:`graphix.branch_selector.BranchSelector`, optional
+        Branch selector used for measurements.  Default is :class:`RandomBranchSelector`.
     symbolic : bool, optional
         If True, support arbitrary objects (typically, symbolic expressions) in matrices.
 
