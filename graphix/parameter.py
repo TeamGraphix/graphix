@@ -334,8 +334,28 @@ else:
 T = TypeVar("T")
 
 
+def check_expression_or_complex(value: object) -> ExpressionOrComplex:
+    """Check that the given object is of type ExpressionOrComplex and return it."""
+    if isinstance(value, Expression):
+        return value
+    if isinstance(value, SupportsComplex):
+        return complex(value)
+    msg = f"ExpressionOrComplex expected, but {type(value)} found."
+    raise TypeError(msg)
+
+
+def check_expression_or_float(value: object) -> ExpressionOrFloat:
+    """Check that the given object is of type ExpressionOrFloat and return it."""
+    if isinstance(value, Expression):
+        return value
+    if isinstance(value, SupportsFloat):
+        return float(value)
+    msg = f"ExpressionOrFloat expected, but {type(value)} found."
+    raise TypeError(msg)
+
+
 @overload
-def subs(value: Expression, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Expression: ...
+def subs(value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrFloat: ...
 
 
 @overload
@@ -370,6 +390,16 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
             return c.real
         return c
     return new_value
+
+
+@overload
+def xreplace(
+    value: ExpressionOrFloat, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+) -> ExpressionOrFloat: ...
+
+
+@overload
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex: ...
 
 
 # The return type could be `T | Expression | complex` since `subs` returns `Expression` only

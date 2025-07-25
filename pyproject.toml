@@ -41,6 +41,9 @@ dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 doc = { file = ["requirements-doc.txt"] }
 
+[tool.setuptools.packages.find]
+include = ["graphix", "stubs"]
+
 [tool.ruff]
 line-length = 120
 extend-exclude = ["docs"]
@@ -67,7 +70,6 @@ extend-ignore = [
   "DOC",     # Docstring
   "E501",    # Line too long
   "EM10",    # Raise string
-  "PLC0415", # Import not at the top level
   "PLR1702", # Too many nests
   "PLW1641", # __hash__ missing
   "PT011",   # pytest raises too broad
@@ -144,31 +146,23 @@ exclude = [
   '^graphix/device_interface\.py$',
   '^graphix/gflow\.py$',
   '^graphix/linalg\.py$',
-  '^graphix/pattern\.py$',
   '^graphix/random_objects\.py$',
-  '^graphix/simulator\.py$',
-  '^graphix/sim/base_backend\.py$',
-  '^graphix/sim/density_matrix\.py$',
-  '^graphix/sim/statevec\.py$',
-  '^graphix/sim/tensornet\.py$',
-  '^graphix/transpiler\.py$',
   '^graphix/visualization\.py$',
   '^tests/test_density_matrix\.py$',
   '^tests/test_gflow\.py$',
   '^tests/test_linalg\.py$',
   '^tests/test_noisy_density_matrix\.py$',
-  '^tests/test_pattern\.py$',
   '^tests/test_random_utilities\.py$',
   '^tests/test_runner\.py$',
   '^tests/test_statevec\.py$',
   '^tests/test_statevec_backend\.py$',
   '^tests/test_tnsim\.py$',
-  '^tests/test_transpiler\.py$',
   '^tests/test_visualization\.py$',
 ]
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
 strict = true
+mypy_path = "./stubs"
 
 [tool.pyright]
 # Keep in sync with mypy
@@ -186,20 +180,12 @@ exclude = [
   "graphix/device_interface.py",
   "graphix/gflow.py",
   "graphix/linalg.py",
-  "graphix/pattern.py",
   "graphix/random_objects.py",
-  "graphix/simulator.py",
-  "graphix/sim/base_backend.py",
-  "graphix/sim/density_matrix.py",
-  "graphix/sim/statevec.py",
-  "graphix/sim/tensornet.py",
-  "graphix/transpiler.py",
   "graphix/visualization.py",
   "tests/test_density_matrix.py",
   "tests/test_gflow.py",
   "tests/test_linalg.py",
   "tests/test_noisy_density_matrix.py",
-  "tests/test_pattern.py",
   "tests/test_random_utilities.py",
   "tests/test_runner.py",
   "tests/test_statevec.py",
@@ -208,6 +194,12 @@ exclude = [
   "tests/test_transpiler.py",
   "tests/test_visualization.py",
 ]
+reportUnknownArgumentType = "information"
+reportUnknownLambdaType = "information"
+reportUnknownMemberType = "information"
+reportUnknownParameterType = "information"
+reportUnknownVariableType = "information"
+extraPaths = ["./stubs"]
 
 [tool.coverage.report]
 exclude_also = [

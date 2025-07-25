@@ -15,12 +15,15 @@ from typing import TYPE_CHECKING, Callable
 
 from typing_extensions import override
 
+from graphix.measurements import outcome
 from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from numpy.random import Generator
+
+    from graphix.measurements import Outcome
 
 
 class BranchSelector(ABC):
@@ -31,7 +34,7 @@ class BranchSelector(ABC):
     """
 
     @abstractmethod
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
+    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
         """Return the measurement outcome of ``qubit``.
 
         Parameters
@@ -67,7 +70,7 @@ class RandomBranchSelector(BranchSelector):
     rng: Generator | None = None
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
+    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
         """
         Return the measurement outcome of ``qubit``.
 
@@ -78,9 +81,9 @@ class RandomBranchSelector(BranchSelector):
         self.rng = ensure_rng(self.rng)
         if self.pr_calc:
             prob_0 = compute_expectation_0()
-            return self.rng.random() > prob_0
-        outcome: int = self.rng.choice([0, 1])
-        return outcome == 1
+            return outcome(self.rng.random() > prob_0)
+        result: Outcome = self.rng.choice([0, 1])
+        return result
 
 
 @dataclass
@@ -103,11 +106,11 @@ class FixedBranchSelector(BranchSelector):
         Default is ``None``.
     """
 
-    results: Mapping[int, bool]
+    results: Mapping[int, Outcome]
     default: BranchSelector | None = None
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
+    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
         """
         Return the predefined measurement outcome of ``qubit``, if available.
 
@@ -130,13 +133,13 @@ class ConstBranchSelector(BranchSelector):
 
     Parameters
     ----------
-    result : bool
+    result : Outcome
         The fixed measurement outcome for all qubits.
     """
 
-    result: bool
+    result: Outcome
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> bool:
+    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
         """Return the constant measurement outcome ``result`` for any qubit."""
         return self.result

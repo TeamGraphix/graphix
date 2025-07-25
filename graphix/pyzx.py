@@ -22,6 +22,14 @@ from graphix.opengraph import OpenGraph
 if TYPE_CHECKING:
     from pyzx.graph.base import BaseGraph
 
+    from graphix.parameter import ExpressionOrFloat
+
+
+def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
+    if not isinstance(angle, SupportsFloat):
+        raise TypeError("Parametric angles are not supported by pyzx")
+    return Fraction(angle)
+
 
 def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
@@ -37,12 +45,6 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     >>> og = OpenGraph(g, measurements, inputs, outputs)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
-    # check pyzx availability and version
-    try:
-        import pyzx as zx
-    except ModuleNotFoundError as e:
-        msg = "Cannot find pyzx (optional dependency)."
-        raise RuntimeError(msg) from e
     if zx.__version__ != "0.9.0":
         warnings.warn(
             "`to_pyzx_graph` is guaranteed to work only with pyzx==0.9.0 due to possible breaking changes in `pyzx`.",
@@ -95,12 +97,12 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     for og_index, meas in og.measurements.items():
         # If it's an X measured node, then we handle it in the next loop
         if meas.plane == Plane.XY:
-            g.set_phase(map_to_pyzx[og_index], Fraction(-meas.angle))
+            g.set_phase(map_to_pyzx[og_index], -_fraction_of_angle(meas.angle))
 
     # Connect the X measured vertices
     for og_index, pyzx_index in zip(x_meas, x_meas_verts):
         g.add_edge((map_to_pyzx[og_index], pyzx_index), EdgeType.HADAMARD)
-        g.set_phase(pyzx_index, Fraction(-og.measurements[og_index].angle))
+        g.set_phase(pyzx_index, -_fraction_of_angle(og.measurements[og_index].angle))
 
     return g
 

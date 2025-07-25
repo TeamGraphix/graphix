@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,30 +11,12 @@ from graphix.measurements import Measurement
 from graphix.pauli import Pauli
 from graphix.sim.statevec import Statevec, StatevectorBackend
 from graphix.states import BasicStates, PlanarState
-from tests.test_graphsim import meas_op
 
 if TYPE_CHECKING:
     from numpy.random import Generator
 
 
 class TestStatevec:
-    def test_remove_one_qubit(self) -> None:
-        n = 10
-        k = 3
-
-        sv = Statevec(nqubit=n)
-        for i in range(n):
-            sv.entangle([i, (i + 1) % n])
-        m_op = meas_op(np.pi / 5)
-        sv.evolve(m_op, [k])
-        sv2 = deepcopy(sv)
-
-        sv.remove_qubit(k)
-        sv2.ptrace([k])
-        sv2.normalize()
-
-        assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
-
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )

@@ -8,13 +8,15 @@ from __future__ import annotations
 
 import abc
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 
+from graphix import command
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import BaseM, CommandKind, M, MeasureUpdate
-from graphix.measurements import Measurement
+from graphix.command import BaseM, CommandKind, MeasureUpdate
+from graphix.measurements import Measurement, Outcome
 from graphix.sim.base_backend import Backend
 from graphix.sim.density_matrix import DensityMatrixBackend
 from graphix.sim.statevec import StatevectorBackend
@@ -22,7 +24,16 @@ from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from numpy.random import Generator
+
+    from graphix.noise_models.noise_model import NoiseModel
     from graphix.pattern import Pattern
+    from graphix.sim import BackendState, Data
+
+
+_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
 class MeasureMethod(abc.ABC):
@@ -33,7 +44,7 @@ class MeasureMethod(abc.ABC):
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
-    def measure(self, backend: Backend, cmd, noise_model=None) -> None:
+    def measure(self, backend: Backend[_StateT_co], cmd: BaseM, noise_model: NoiseModel | None = None) -> None:
         """Perform a measure."""
         description = self.get_measurement_description(cmd)
         result = backend.measure(cmd.node, description)
@@ -58,7 +69,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_measure_result(self, node: int) -> bool:
+    def get_measure_result(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -74,7 +85,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def set_measure_result(self, node: int, result: bool) -> None:
+    def set_measure_result(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -90,18 +101,23 @@ class MeasureMethod(abc.ABC):
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
 
-    def __init__(self, results=None):
+    def __init__(self, results: Mapping[int, Outcome] | None = None):
         """Initialize with an optional result dictionary.
 
         Parameters
         ----------
-        results : dict[int, bool] | None, optional
+        results : Mapping[int, Outcome] | None, optional
             Mapping of previously measured nodes to their results. If ``None``,
             an empty dictionary is created.
+
+        Notes
+        -----
+        If a mapping is provided, it is treated as read-only. Measurements
+        performed during simulation are stored in `self.results`, which is a copy
+        of the given mapping. The original `results` mapping is not modified.
         """
-        if results is None:
-            results = {}
-        self.results = results
+        # results is coerced into dict, since `set_measure_result` mutates it.
+        self.results = {} if results is None else dict(results)
 
     def get_measurement_description(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
@@ -116,7 +132,7 @@ class DefaultMeasureMethod(MeasureMethod):
         Measurement
             Updated measurement specification.
         """
-        assert isinstance(cmd, M)
+        assert isinstance(cmd, command.M)
         angle = cmd.angle * np.pi
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
@@ -125,7 +141,7 @@ class DefaultMeasureMethod(MeasureMethod):
         angle = angle * measure_update.coeff + measure_update.add_term
         return Measurement(angle, measure_update.new_plane)
 
-    def get_measure_result(self, node: int) -> bool:
+    def get_measure_result(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -135,12 +151,12 @@ class DefaultMeasureMethod(MeasureMethod):
 
         Returns
         -------
-        bool
+        Outcome
             Stored measurement outcome.
         """
         return self.results[node]
 
-    def set_measure_result(self, node: int, result: bool) -> None:
+    def set_measure_result(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -159,8 +175,17 @@ class PatternSimulator:
     Executes the measurement pattern.
     """
 
+    noise_model: NoiseModel | None
+
     def __init__(
-        self, pattern, backend="statevector", measure_method: MeasureMethod | None = None, noise_model=None, **kwargs
+        self,
+        pattern: Pattern,
+        backend: Backend[BackendState] | str = "statevector",
+        measure_method: MeasureMethod | None = None,
+        noise_model: NoiseModel | None = None,
+        branch_selector: BranchSelector | None = None,
+        rng: Generator | None = None,
+        graph_prep: str | None = None,
     ) -> None:
         """
         Construct a pattern simulator.
@@ -172,35 +197,59 @@ class PatternSimulator:
         backend: :class:`graphix.sim.backend.Backend` object,
             or 'statevector', or 'densitymatrix', or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
-        noise_model:
-        kwargs: keyword args for specified backend.
-
+        measure_method: :class:`MeasureMethod`, optional
+            Measure method used by the simulator. Default is :class:`DefaultMeasureMethod`.
+        noise_model: :class:`graphix.noise_models.noise_model.NoiseModel`, optional
+            [Density matrix backend only] Noise model used by the simulator.
+        branch_selector: :class:`graphix.branch_selector.BranchSelector`, optional
+            Branch selector used by the backend. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object.  Default is :class:`RandomBranchSelector`.
+        rng: :class:`numpy.random.Generator`, optional
+            Random number generator to be used by the default `RandomBranchSelector`. Can only be specified if `backend` is not an already instantiated :class:`graphix.sim.backend.Backend` object and if `branch_selector` is not specified.
+        graph_prep: str, optional
+            [Tensor network backend only] Strategy for preparing the graph state.  See :class:`graphix.sim.tensornet.TensorNetworkBackend`.
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
         if isinstance(backend, Backend):
-            assert kwargs == {}
+            if noise_model is not None:
+                raise ValueError("`noise_model` cannot be specified if `backend` is already instantiated.")
+            if branch_selector is not None:
+                raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
+            if rng is not None:
+                raise ValueError("`rng` cannot be specified if `backend` is already instantiated.")
+            if graph_prep is not None:
+                raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
             self.backend = backend
-        elif backend == "statevector":
-            self.backend = StatevectorBackend(**kwargs)
-        elif backend == "densitymatrix":
-            if noise_model is None:
-                self.noise_model = None
-                self.backend = DensityMatrixBackend(**kwargs)
-                warnings.warn(
-                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
-                    stacklevel=1,
-                )
-            else:
-                self.backend = DensityMatrixBackend(pr_calc=True, **kwargs)
-                self.set_noise_model(noise_model)
-        elif backend in {"tensornetwork", "mps"} and noise_model is None:
-            self.noise_model = None
-            self.backend = TensorNetworkBackend(pattern, **kwargs)
+        elif backend in {"tensornetwork", "mps"}:
+            if noise_model is not None:
+                raise ValueError("`noise_model` cannot be specified for tensor network backend.")
+            if branch_selector is not None:
+                raise ValueError("`branch_selector` cannot be specified for tensor network backend.")
+            if graph_prep is None:
+                graph_prep = "auto"
+            self.backend = TensorNetworkBackend(pattern, rng=rng, graph_prep=graph_prep)
         else:
-            raise ValueError("Unknown backend.")
-        self.set_noise_model(noise_model)
+            if branch_selector is None:
+                branch_selector = RandomBranchSelector(rng=rng)
+            elif rng is not None:
+                raise ValueError("`rng` and `branch_selector` cannot be specified simultaneously.")
+            if graph_prep is not None:
+                raise ValueError("`graph_prep` can only be specified for tensor network backend.")
+            if backend == "statevector":
+                if noise_model is not None:
+                    raise ValueError("`noise_model` cannot be specified for state vector backend.")
+                self.backend = StatevectorBackend(branch_selector=branch_selector)
+            elif backend == "densitymatrix":
+                if noise_model is None:
+                    warnings.warn(
+                        "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
+                        stacklevel=1,
+                    )
+                self.backend = DensityMatrixBackend(branch_selector=branch_selector)
+            else:
+                raise ValueError(f"Unknown backend {backend}.")
+        self.noise_model = noise_model
         self.__pattern = pattern
         if measure_method is None:
             measure_method = DefaultMeasureMethod(pattern.results)
@@ -216,14 +265,14 @@ class PatternSimulator:
         """Return the measure method."""
         return self.__measure_method
 
-    def set_noise_model(self, model):
+    def set_noise_model(self, model: NoiseModel | None) -> None:
         """Set a noise model."""
         if not isinstance(self.backend, DensityMatrixBackend) and model is not None:
             self.noise_model = None  # if not initialized yet
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state=BasicStates.PLUS) -> None:
+    def run(self, input_state: Data = BasicStates.PLUS) -> None:
         """Perform the simulation.
 
         Returns
@@ -242,7 +291,8 @@ class PatternSimulator:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 elif cmd.kind == CommandKind.M:
                     self.__measure_method.measure(self.backend, cmd)
-                elif cmd.kind in {CommandKind.X, CommandKind.Z}:
+                # Use of `==` here for mypy
+                elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)
@@ -265,11 +315,11 @@ class PatternSimulator:
                     self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
+                    if np.mod(sum(self.__measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_x(), [cmd.node])
                 elif cmd.kind == CommandKind.Z:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
-                    if np.mod(sum(self.__measure_method.results[j] for j in cmd.domain), 2) == 1:
+                    if np.mod(sum(self.__measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
                         self.backend.apply_channel(self.noise_model.byproduct_z(), [cmd.node])
                 elif cmd.kind == CommandKind.C:
                     self.backend.apply_clifford(cmd.node, cmd.clifford)

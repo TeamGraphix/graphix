@@ -11,6 +11,8 @@ from graphix.generator import generate_from_graph
 from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from graphix.pattern import Pattern
 
 
@@ -69,7 +71,7 @@ class OpenGraph:
         This doesn't check they are equal up to an isomorphism.
 
         """
-        if not nx.utils.graphs_equal(self.inside, other.inside):  # type: ignore[no-untyped-call]
+        if not nx.utils.graphs_equal(self.inside, other.inside):
             return False
 
         if self.inputs != other.inputs or self.outputs != other.outputs:
@@ -116,3 +118,75 @@ class OpenGraph:
         planes = {node: m.plane for node, m in meas.items()}
 
         return generate_from_graph(g, angles, inputs, outputs, planes)
+
+    def compose(self, other: OpenGraph, mapping: Mapping[int, int]) -> tuple[OpenGraph, dict[int, int]]:
+        r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
+
+        Parameters
+        ----------
+        other : OpenGraph
+            Open graph to be composed with `self`.
+        mapping: dict[int, int]
+            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
+
+        Returns
+        -------
+        og: OpenGraph
+            composed open graph
+        mapping_complete: dict[int, int]
+            Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
+
+        Notes
+        -----
+        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `mapping`.
+
+        We define :math:`V, U` the set of nodes in `mapping.keys()` and `mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
+
+        The open graph composition requires that
+        - :math:`V \subseteq V_2`.
+        - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
+         The returned open graph follows this convention:
+        - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
+        - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
+        - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
+        - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
+        """
+        if not (mapping.keys() <= other.inside.nodes):
+            raise ValueError("Keys of mapping must be correspond to nodes of other.")
+        if len(mapping) != len(set(mapping.values())):
+            raise ValueError("Values in mapping contain duplicates.")
+        for v, u in mapping.items():
+            if (
+                (vm := other.measurements.get(v)) is not None
+                and (um := self.measurements.get(u)) is not None
+                and not vm.isclose(um)
+            ):
+                raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
+
+        shift = max(*self.inside.nodes, *mapping.values()) + 1
+
+        mapping_sequential = {
+            node: i for i, node in enumerate(sorted(other.inside.nodes - mapping.keys()), start=shift)
+        }  # assigns new labels to nodes in other not specified in mapping
+
+        mapping_complete = {**mapping, **mapping_sequential}
+
+        g2_shifted = nx.relabel_nodes(other.inside, mapping_complete)
+        g = nx.compose(self.inside, g2_shifted)
+
+        merged = set(mapping_complete.values()) & self.inside.nodes
+
+        def merge_ports(p1: Iterable[int], p2: Iterable[int]) -> list[int]:
+            p2_mapped = [mapping_complete[node] for node in p2]
+            p2_set = set(p2_mapped)
+            part1 = [node for node in p1 if node not in merged or node in p2_set]
+            part2 = [node for node in p2_mapped if node not in merged]
+            return part1 + part2
+
+        inputs = merge_ports(self.inputs, other.inputs)
+        outputs = merge_ports(self.outputs, other.outputs)
+
+        measurements_shifted = {mapping_complete[i]: meas for i, meas in other.measurements.items()}
+        measurements = {**self.measurements, **measurements_shifted}
+
+        return OpenGraph(g, measurements, inputs, outputs), mapping_complete

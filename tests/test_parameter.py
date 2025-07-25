@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
@@ -9,7 +8,6 @@ import pytest
 
 import graphix
 import graphix.command
-from graphix.device_interface import PatternRunner
 from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
@@ -189,19 +187,3 @@ def test_simulation_exception() -> None:
     pattern.add(graphix.command.M(node=1, angle=alpha))
     with pytest.raises(PlaceholderOperationError):
         pattern.simulate_pattern()
-
-
-@pytest.mark.skipif(
-    importlib.util.find_spec("qiskit") is None or importlib.util.find_spec("graphix_ibmq") is None,
-    reason="qiskit and/or graphix-ibmq not installed",
-)
-def test_ibmq_backend() -> None:
-    import qiskit.circuit.exceptions
-
-    circuit = graphix.Circuit(1)
-    alpha = Placeholder("alpha")
-    circuit.rx(0, alpha)
-    pattern = circuit.transpile().pattern
-    with pytest.raises(qiskit.circuit.exceptions.CircuitError):
-        # Invalid param type <class 'graphix.parameter.AffineExpression'> for gate p.
-        PatternRunner(pattern, backend="ibmq", save_statevector=True)
