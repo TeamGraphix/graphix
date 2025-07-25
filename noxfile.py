@@ -62,6 +62,7 @@ def tests_symbolic(session: Session) -> None:
     with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
         # If you need a specific branch:
         # session.run("git", "clone", "-b", "branch-name", "https://github.com/TeamGraphix/graphix-symbolic")
+        # See https://github.com/TeamGraphix/graphix-symbolic/pull/4
         session.run("git", "clone", "-b", "branch_selector", "https://github.com/thierry-martinez/graphix-symbolic")
         # session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
         with session.cd("graphix-symbolic"):
