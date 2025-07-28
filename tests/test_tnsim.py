@@ -34,7 +34,7 @@ plus = BasicStates.PLUS.get_statevector()
 class TestTN:
     def test_add_node(self, fx_rng: Generator) -> None:
         node_index = fx_rng.integers(0, 1000)
-        tn = MBQCTensorNet(branch_selector=RandomBranchSelector(rng=fx_rng))
+        tn = MBQCTensorNet(branch_selector=RandomBranchSelector())
 
         tn.add_qubit(node_index)
 
@@ -43,7 +43,7 @@ class TestTN:
 
     def test_add_nodes(self, fx_rng: Generator) -> None:
         node_index = set(fx_rng.integers(0, 1000, 20))
-        tn = MBQCTensorNet(branch_selector=RandomBranchSelector(rng=fx_rng))
+        tn = MBQCTensorNet(branch_selector=RandomBranchSelector())
 
         tn.graph_prep = "sequential"
         tn.add_qubits(node_index)

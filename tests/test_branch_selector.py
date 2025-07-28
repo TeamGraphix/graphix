@@ -31,7 +31,7 @@ class CheckedBranchSelector(RandomBranchSelector):
     expected: Mapping[int, float] = dataclasses.field(default_factory=dict)
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
         """Return the measurement outcome of ``qubit``."""
         expectation0 = f_expectation0()
         assert math.isclose(expectation0, self.expected[qubit])
@@ -55,8 +55,8 @@ class CheckedBranchSelector(RandomBranchSelector):
 def test_expectation_value(fx_rng: Generator, backend: str) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
-    branch_selector = CheckedBranchSelector(rng=fx_rng, expected={0: 1.0})
-    pattern.simulate_pattern(backend, branch_selector=branch_selector)
+    branch_selector = CheckedBranchSelector(expected={0: 1.0})
+    pattern.simulate_pattern(backend, branch_selector=branch_selector, rng=fx_rng)
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
@@ -74,11 +74,11 @@ def test_expectation_value(fx_rng: Generator, backend: str) -> None:
     ],
 )
 def test_random_branch_selector(fx_rng: Generator, backend: str) -> None:
-    branch_selector = RandomBranchSelector(rng=fx_rng)
+    branch_selector = RandomBranchSelector()
     pattern = Pattern(cmds=[N(0), M(0)])
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
-        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
+        pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method, rng=fx_rng)
         assert measure_method.results[0] == 0
 
 

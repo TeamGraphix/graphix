@@ -887,14 +887,12 @@ class Circuit:
         Parameters
         ----------
         input_state : Data
-        rng : Generator
-            Random number generator used to sample measurement outcomes.
-
         branch_selector: :class:`graphix.branch_selector.BranchSelector`
-            branch selector for measures (default: :class:`graphix.branch_selector.RandomBranchSelector`)
-
-        rng: :class:`np.random.Generator`
-            random number generator for :class:`graphix.branch_selector.RandomBranchSelector` (should only be used with default branch selector)
+            branch selector for measures (default: :class:`RandomBranchSelector`).
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
 
         Returns
         -------
@@ -903,9 +901,7 @@ class Circuit:
         """
         symbolic = self.is_parameterized()
         if branch_selector is None:
-            branch_selector = RandomBranchSelector(rng=rng)
-        elif rng is not None:
-            raise ValueError("Cannot specify both branch selector and rng")
+            branch_selector = RandomBranchSelector()
 
         state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
 
@@ -941,7 +937,14 @@ class Circuit:
                 state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif instr.kind == instruction.InstructionKind.M:
                 result = base_backend.perform_measure(
-                    instr.target, instr.target, instr.plane, instr.angle * np.pi, state, branch_selector, symbolic
+                    instr.target,
+                    instr.target,
+                    instr.plane,
+                    instr.angle * np.pi,
+                    state,
+                    branch_selector,
+                    rng=rng,
+                    symbolic=symbolic,
                 )
                 classical_measures.append(result)
             else:

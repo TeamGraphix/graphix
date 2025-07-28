@@ -33,7 +33,7 @@ class BranchSelector(ABC):
     """
 
     @abstractmethod
-    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
         """Return the measurement outcome of ``qubit``.
 
         Parameters
@@ -46,6 +46,13 @@ class BranchSelector(ABC):
             probability of outcome 0. The probability is computed only if
             this function is called (lazy computation), ensuring no
             unnecessary computational cost.
+
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
+            If ``None``, a default random-number generator is used.
+            Default is ``None``.
         """
 
 
@@ -59,17 +66,12 @@ class RandomBranchSelector(BranchSelector):
         Whether to compute the probability distribution before selecting the measurement result.
         If ``False``, measurements yield 0/1 with equal probability (50% each).
         Default is ``True``.
-    rng : Generator | None, optional
-        Random-number generator for measurements.
-        If ``None``, a default random-number generator is used.
-        Default is ``None``.
     """
 
     pr_calc: bool = True
-    rng: Generator | None = None
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
         """
         Return the measurement outcome of ``qubit``.
 
@@ -77,11 +79,11 @@ class RandomBranchSelector(BranchSelector):
         computed probability of outcome 0. Otherwise, the result is randomly chosen
         with a 50% chance for either outcome.
         """
-        self.rng = ensure_rng(self.rng)
+        rng = ensure_rng(rng)
         if self.pr_calc:
             prob_0 = f_expectation0()
-            return outcome(self.rng.random() > prob_0)
-        result: Outcome = self.rng.choice([0, 1])
+            return outcome(rng.random() > prob_0)
+        result: Outcome = rng.choice([0, 1])
         return result
 
 
@@ -112,7 +114,7 @@ class FixedBranchSelector(BranchSelector, Generic[_T]):
     default: BranchSelector | None = None
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
         """
         Return the predefined measurement outcome of ``qubit``, if available.
 
@@ -142,6 +144,6 @@ class ConstBranchSelector(BranchSelector):
     result: Outcome
 
     @override
-    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
         """Return the constant measurement outcome ``result`` for any qubit."""
         return self.result

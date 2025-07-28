@@ -44,10 +44,16 @@ class MeasureMethod(abc.ABC):
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
-    def measure(self, backend: Backend[_StateT_co], cmd: BaseM, noise_model: NoiseModel | None = None) -> None:
+    def measure(
+        self,
+        backend: Backend[_StateT_co],
+        cmd: BaseM,
+        noise_model: NoiseModel | None = None,
+        rng: Generator | None = None,
+    ) -> None:
         """Perform a measure."""
         description = self.get_measurement_description(cmd)
-        result = backend.measure(cmd.node, description)
+        result = backend.measure(cmd.node, description, rng=rng)
         if noise_model is not None:
             result = noise_model.confuse_result(result)
         self.set_measure_result(cmd.node, result)
@@ -184,7 +190,6 @@ class PatternSimulator:
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
         branch_selector: BranchSelector | None = None,
-        rng: Generator | None = None,
         graph_prep: str | None = None,
         symbolic: bool = False,
     ) -> None:
@@ -204,8 +209,6 @@ class PatternSimulator:
             [Density matrix backend only] Noise model used by the simulator.
         branch_selector: :class:`BranchSelector`, optional
             Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  Default is :class:`RandomBranchSelector`.
-        rng: :class:`numpy.random.Generator`, optional
-            Random number generator to be used by the default :class:`RandomBranchSelector`. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object and if ``branch_selector`` is not specified.
         graph_prep: str, optional
             [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
         symbolic : bool, optional
@@ -217,23 +220,19 @@ class PatternSimulator:
         """
 
         def initialize_backend() -> Backend[BackendState]:
-            nonlocal backend, branch_selector, rng, graph_prep, noise_model
+            nonlocal backend, branch_selector, graph_prep, noise_model
             if isinstance(backend, Backend):
                 if noise_model is not None:
                     raise ValueError("`noise_model` cannot be specified if `backend` is already instantiated.")
                 if branch_selector is not None:
                     raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
-                if rng is not None:
-                    raise ValueError("`rng` cannot be specified if `backend` is already instantiated.")
                 if graph_prep is not None:
                     raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
                 if symbolic:
                     raise ValueError("`symbolic` cannot be specified if `backend` is already instantiated.")
                 return backend
             if branch_selector is None:
-                branch_selector = RandomBranchSelector(rng=rng)
-            elif rng is not None:
-                raise ValueError("`rng` and `branch_selector` cannot be specified simultaneously.")
+                branch_selector = RandomBranchSelector()
             if backend in {"tensornetwork", "mps"}:
                 if noise_model is not None:
                     raise ValueError("`noise_model` cannot be specified for tensor network backend.")
@@ -281,14 +280,19 @@ class PatternSimulator:
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state: Data = BasicStates.PLUS) -> None:
+    def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None) -> None:
         """Perform the simulation.
 
         Returns
         -------
-        state :
+        input_state: Data, optional
             the output quantum state,
             in the representation depending on the backend used.
+            Default: |+>.
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
         """
         if input_state is not None:
             self.backend.add_nodes(self.pattern.input_nodes, input_state)
@@ -299,7 +303,7 @@ class PatternSimulator:
                 elif cmd.kind == CommandKind.E:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 elif cmd.kind == CommandKind.M:
-                    self.__measure_method.measure(self.backend, cmd)
+                    self.__measure_method.measure(self.backend, cmd, rng=rng)
                 # Use of `==` here for mypy
                 elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                     self.backend.correct_byproduct(cmd, self.__measure_method)
@@ -321,7 +325,7 @@ class PatternSimulator:
                     self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
                 elif cmd.kind == CommandKind.M:
                     self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
-                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
+                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                     if np.mod(sum(self.__measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:

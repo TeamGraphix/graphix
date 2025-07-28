@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Any
 
+    from numpy.random import Generator
+
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
 
@@ -1355,7 +1357,11 @@ class Pattern:
         return n_list
 
     def simulate_pattern(
-        self, backend: Backend[_StateT_co] | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
+        self,
+        backend: Backend[_StateT_co] | str = "statevector",
+        input_state: Data = BasicStates.PLUS,
+        rng: Generator | None = None,
+        **kwargs: Any,
     ) -> BackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
@@ -1365,6 +1371,10 @@ class Pattern:
         ----------
         backend : str
             optional parameter to select simulator backend.
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
         kwargs: keyword args for specified backend.
 
         Returns
@@ -1375,7 +1385,7 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        sim.run(input_state)
+        sim.run(input_state, rng=rng)
         return sim.backend.state
 
     def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:

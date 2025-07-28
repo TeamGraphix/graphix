@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from cotengra.oe import PathOptimizer
+    from numpy.random import Generator
 
     from graphix import Pattern
     from graphix.clifford import Clifford
@@ -205,6 +206,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         basis: str | npt.NDArray[np.complex128] = "Z",
         bypass_probability_calculation: bool = True,
         outcome: Outcome | None = None,
+        rng: Generator | None = None,
     ) -> Outcome:
         """Measure a node in specified basis. Note this does not perform the partial trace.
 
@@ -230,7 +232,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             measurement result.
         """
         if bypass_probability_calculation:
-            result = outcome if outcome is not None else self.__branch_selector.measure(index, lambda: 0.5)
+            result = outcome if outcome is not None else self.__branch_selector.measure(index, lambda: 0.5, rng=rng)
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -739,7 +741,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             pass
 
     @override
-    def measure(self, node: int, measurement: Measurement) -> Outcome:
+    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
         """Perform measurement of the node.
 
         In the context of tensornetwork, performing measurement equals to
@@ -756,11 +758,11 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             vector: npt.NDArray[np.complex128] = self.state.get_open_tensor_from_index(node)
             probs = (np.abs(vector) ** 2).astype(np.float64)
             probs /= np.sum(probs)
-            result: Outcome = self.branch_selector.measure(node, lambda: probs[0])
+            result: Outcome = self.branch_selector.measure(node, lambda: probs[0], rng=rng)
             self.results[node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
-            result = self.branch_selector.measure(node, lambda: 0.5)
+            result = self.branch_selector.measure(node, lambda: 0.5, rng=rng)
             self.results[node] = result
             buffer = 2**0.5
         if isinstance(measurement.angle, Expression):
@@ -769,7 +771,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         if result:
             vec = measurement.plane.orth.matrix @ vec
         proj_vec = vec * buffer
-        self.state.measure_single(node, basis=proj_vec)
+        self.state.measure_single(node, basis=proj_vec, rng=rng)
         return result
 
     @override

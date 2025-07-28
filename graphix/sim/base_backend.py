@@ -26,6 +26,8 @@ from graphix.states import BasicStates
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator, Sequence
 
+    from numpy.random import Generator
+
     from graphix import command
     from graphix.channels import KrausChannel
     from graphix.fundamentals import Plane
@@ -525,6 +527,7 @@ def perform_measure(
     angle: ExpressionOrFloat,
     state: DenseState,
     branch_selector: BranchSelector,
+    rng: Generator | None = None,
     symbolic: bool = False,
 ) -> Outcome:
     """Perform measurement of a qubit."""
@@ -544,7 +547,7 @@ def perform_measure(
         assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
         return exp_val.real
 
-    result = branch_selector.measure(qubit_node, f_expectation0)
+    result = branch_selector.measure(qubit_node, f_expectation0, rng)
     op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic) if result else get_op_mat0()
     state.evolve_single(op_mat, qubit_loc)
     return result
@@ -707,13 +710,17 @@ class Backend(Generic[_StateT_co]):
         """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
-    def measure(self, node: int, measurement: Measurement) -> Outcome:
+    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
         measurement: Measurement
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
         """
 
 
@@ -791,13 +798,14 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         self.state.entangle((target, control))
 
     @override
-    def measure(self, node: int, measurement: Measurement) -> Outcome:
+    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
         measurement: Measurement
+        rng: Generator, optional
         """
         loc = self.node_index.index(node)
         result = perform_measure(
@@ -807,6 +815,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
             measurement.angle,
             self.state,
             self.branch_selector,
+            rng=rng,
             symbolic=self.symbolic,
         )
         self.node_index.remove(node)
