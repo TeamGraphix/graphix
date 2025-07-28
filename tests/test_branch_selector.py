@@ -31,11 +31,11 @@ class CheckedBranchSelector(RandomBranchSelector):
     expected: Mapping[int, float] = dataclasses.field(default_factory=dict)
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
         """Return the measurement outcome of ``qubit``."""
-        expectation_0 = compute_expectation_0()
-        assert math.isclose(expectation_0, self.expected[qubit])
-        return super().measure(qubit, lambda: expectation_0)
+        expectation0 = f_expectation0()
+        assert math.isclose(expectation0, self.expected[qubit])
+        return super().measure(qubit, lambda: expectation0)
 
 
 @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")

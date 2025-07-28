@@ -34,7 +34,7 @@ class BranchSelector(ABC):
     """
 
     @abstractmethod
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
         """Return the measurement outcome of ``qubit``.
 
         Parameters
@@ -42,7 +42,7 @@ class BranchSelector(ABC):
         qubit : int
             Index of qubit to measure
 
-        compute_expectation_0 : Callable[[], float]
+        f_expectation0 : Callable[[], float]
             A function that the method can use to retrieve the expected
             probability of outcome 0. The probability is computed only if
             this function is called (lazy computation), ensuring no
@@ -70,7 +70,7 @@ class RandomBranchSelector(BranchSelector):
     rng: Generator | None = None
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
         """
         Return the measurement outcome of ``qubit``.
 
@@ -80,7 +80,7 @@ class RandomBranchSelector(BranchSelector):
         """
         self.rng = ensure_rng(self.rng)
         if self.pr_calc:
-            prob_0 = compute_expectation_0()
+            prob_0 = f_expectation0()
             return outcome(self.rng.random() > prob_0)
         result: Outcome = self.rng.choice([0, 1])
         return result
@@ -110,7 +110,7 @@ class FixedBranchSelector(BranchSelector):
     default: BranchSelector | None = None
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
         """
         Return the predefined measurement outcome of ``qubit``, if available.
 
@@ -121,7 +121,7 @@ class FixedBranchSelector(BranchSelector):
         if result is None:
             if self.default is None:
                 raise ValueError(f"Unexpected measurement of qubit {qubit}.")
-            return self.default.measure(qubit, compute_expectation_0)
+            return self.default.measure(qubit, f_expectation0)
         return result
 
 
@@ -140,6 +140,6 @@ class ConstBranchSelector(BranchSelector):
     result: Outcome
 
     @override
-    def measure(self, qubit: int, compute_expectation_0: Callable[[], float]) -> Outcome:
+    def measure(self, qubit: int, f_expectation0: Callable[[], float]) -> Outcome:
         """Return the constant measurement outcome ``result`` for any qubit."""
         return self.result
