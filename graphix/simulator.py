@@ -288,7 +288,7 @@ class PatternSimulator:
         input_state: Data, optional
             the output quantum state,
             in the representation depending on the backend used.
-            Default: |+>.
+            Default: ``|+>``.
         rng: Generator, optional
             Random-number generator for measurements.
             This generator is used only in case of random branch selection
