@@ -12,7 +12,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from typing_extensions import override
 
@@ -20,6 +20,8 @@ from graphix.measurements import Outcome, outcome
 from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.random import Generator
 
 

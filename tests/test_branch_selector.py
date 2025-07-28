@@ -4,7 +4,7 @@ import dataclasses
 import itertools
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from typing_extensions import override
@@ -15,7 +15,7 @@ from graphix.command import M, N
 from graphix.simulator import DefaultMeasureMethod
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     from numpy.random import Generator
 
