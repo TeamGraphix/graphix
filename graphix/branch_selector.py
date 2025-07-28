@@ -10,20 +10,17 @@ deterministic (see :class:`ConstBranchSelector`).
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Generic, TypeVar
 
 from typing_extensions import override
 
-from graphix.measurements import outcome
+from graphix.measurements import Outcome, outcome
 from graphix.rng import ensure_rng
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from numpy.random import Generator
-
-    from graphix.measurements import Outcome
 
 
 class BranchSelector(ABC):
@@ -86,8 +83,11 @@ class RandomBranchSelector(BranchSelector):
         return result
 
 
+_T = TypeVar("_T", bound=Mapping[int, Outcome])
+
+
 @dataclass
-class FixedBranchSelector(BranchSelector):
+class FixedBranchSelector(BranchSelector, Generic[_T]):
     """Branch selector with predefined measurement outcomes.
 
     The mapping is fixed in ``results``. By default, an error is raised if
@@ -106,7 +106,7 @@ class FixedBranchSelector(BranchSelector):
         Default is ``None``.
     """
 
-    results: Mapping[int, Outcome]
+    results: _T
     default: BranchSelector | None = None
 
     @override

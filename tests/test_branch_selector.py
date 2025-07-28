@@ -135,7 +135,8 @@ def test_fixed_branch_selector(backend: str, outcome: list[Outcome]) -> None:
     ],
 )
 def test_fixed_branch_selector_no_default(backend: str) -> None:
-    branch_selector = FixedBranchSelector(results={})
+    results: dict[int, Outcome] = {}
+    branch_selector = FixedBranchSelector(results)
     pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
     measure_method = DefaultMeasureMethod()
     with pytest.raises(ValueError):
