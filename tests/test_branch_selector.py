@@ -115,9 +115,9 @@ def test_random_branch_selector_without_pr_calc(backend: str) -> None:
 )
 @pytest.mark.parametrize("outcome", itertools.product([0, 1], repeat=3))
 def test_fixed_branch_selector(backend: str, outcome: list[Outcome]) -> None:
-    branch_selector = FixedBranchSelector(
-        results=dict(enumerate(outcome[:-1])), default=FixedBranchSelector({2: outcome[2]})
-    )
+    results1: dict[int, Outcome] = dict(enumerate(outcome[:-1]))
+    results2: dict[int, Outcome] = {2: outcome[2]}
+    branch_selector = FixedBranchSelector(results1, default=FixedBranchSelector(results2))
     pattern = Pattern(cmds=[cmd for qubit in range(3) for cmd in (N(qubit), M(qubit, angle=0.1))])
     measure_method = DefaultMeasureMethod()
     pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
