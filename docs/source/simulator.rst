@@ -48,3 +48,32 @@ Density Matrix
 
 .. autoclass:: DensityMatrix
     :members:
+
+Branch Selection: :mod:`graphix.branch_selector` module
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. currentmodule:: graphix.branch_selector
+
+Abstract Branch Selector
+------------------------
+
+.. autoclass:: BranchSelector
+    :members:
+
+Random Branch Selector
+----------------------
+
+.. autoclass:: RandomBranchSelector
+    :members:
+
+Fixed Branch Selector
+---------------------
+
+.. autoclass:: FixedBranchSelector
+    :members:
+
+Constant Branch Selector
+------------------------
+
+.. autoclass:: ConstBranchSelector
+    :members:

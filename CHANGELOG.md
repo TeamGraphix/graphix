@@ -71,6 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The user can specify `pr_calc` in the constructor of
   `RandomBranchSelector` instead.
 
+- #300: `rng` is no longer stored in the backends; it is now passed as
+  an optional argument to each simulation method.
+
 - #261: Moved all device interface functionalities to an external
   library and removed their implementation from this library.
 
