@@ -28,10 +28,10 @@ class _PauliMeta(type):
 
 @dataclasses.dataclass(frozen=True)
 class Pauli(metaclass=_PauliMeta):
-    """Pauli gate: `u * {I, X, Y, Z}` where u is a complex unit.
+    r"""Pauli gate: ``u * {I, X, Y, Z}`` where u is a complex unit.
 
-    Pauli gates can be multiplied with other Pauli gates (with `@`),
-    with complex units and unit constants (with `*`),
+    Pauli gates can be multiplied with other Pauli gates (with ``@``),
+    with complex units and unit constants (with ``*``),
     and can be negated.
     """
 
@@ -87,6 +87,7 @@ class Pauli(metaclass=_PauliMeta):
         typing_extensions.assert_never(self.symbol)
 
     def _repr_impl(self, prefix: str | None) -> str:
+        """Return ``repr`` string with an optional prefix."""
         sym = self.symbol.name
         if prefix is not None:
             sym = f"{prefix}.{sym}"
@@ -110,6 +111,7 @@ class Pauli(metaclass=_PauliMeta):
 
     @staticmethod
     def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
+        """Return the product of ``lhs`` and ``rhs`` ignoring units."""
         if lhs == IXYZ.I:
             return Pauli(rhs)
         if rhs == IXYZ.I:

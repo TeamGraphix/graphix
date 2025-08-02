@@ -81,6 +81,8 @@ html_theme_options = {
     "dark_logo": "white_with_text.png",
 }
 
+default_role = "any"
+
 sphinx_gallery_conf = {
     # path to your example scripts
     "examples_dirs": ["../../examples"],
@@ -88,6 +90,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": ["gallery"],
     "filename_pattern": "/",
     "thumbnail_size": (800, 550),
+    "parallel": True,
 }
 
 suppress_warnings = ["config.cache"]

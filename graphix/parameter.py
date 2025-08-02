@@ -143,7 +143,7 @@ class PlaceholderOperationError(ValueError):
 class AffineExpression(Expression):
     """Affine expression.
 
-    An affine expression is of the form `a*x+b` where `a` and `b` are numbers and `x` is a parameter.
+    An affine expression is of the form *a*x+b* where *a* and *b* are numbers and *x* is a parameter.
     """
 
     a: float
@@ -151,10 +151,22 @@ class AffineExpression(Expression):
     b: float
 
     def offset(self, d: float) -> AffineExpression:
-        """Add `d` to the expression."""
+        """Add *d* to the expression."""
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
     def _scale_non_null(self, k: float) -> AffineExpression:
+        """Return ``self`` scaled by ``k`` assuming ``k`` is non-zero.
+
+        Parameters
+        ----------
+        k : float
+            Scaling factor.
+
+        Returns
+        -------
+        AffineExpression
+            A new expression scaled by ``k``.
+        """
         return AffineExpression(a=k * self.a, x=self.x, b=k * self.b)
 
     def scale(self, k: float) -> ExpressionOrFloat:
@@ -322,8 +334,28 @@ else:
 T = TypeVar("T")
 
 
+def check_expression_or_complex(value: object) -> ExpressionOrComplex:
+    """Check that the given object is of type ExpressionOrComplex and return it."""
+    if isinstance(value, Expression):
+        return value
+    if isinstance(value, SupportsComplex):
+        return complex(value)
+    msg = f"ExpressionOrComplex expected, but {type(value)} found."
+    raise TypeError(msg)
+
+
+def check_expression_or_float(value: object) -> ExpressionOrFloat:
+    """Check that the given object is of type ExpressionOrFloat and return it."""
+    if isinstance(value, Expression):
+        return value
+    if isinstance(value, SupportsFloat):
+        return float(value)
+    msg = f"ExpressionOrFloat expected, but {type(value)} found."
+    raise TypeError(msg)
+
+
 @overload
-def subs(value: Expression, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Expression: ...
+def subs(value: ExpressionOrFloat, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> ExpressionOrFloat: ...
 
 
 @overload
@@ -358,6 +390,16 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
             return c.real
         return c
     return new_value
+
+
+@overload
+def xreplace(
+    value: ExpressionOrFloat, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+) -> ExpressionOrFloat: ...
+
+
+@overload
+def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> T | Expression | complex: ...
 
 
 # The return type could be `T | Expression | complex` since `subs` returns `Expression` only

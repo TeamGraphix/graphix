@@ -1,36 +1,40 @@
-"""Noiseless noise model for testing."""
+"""Noise model that introduces no errors.
+
+This class is useful for unit tests or benchmarks where deterministic
+behaviour is required. All methods simply return an identity
+:class:`~graphix.channels.KrausChannel`.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import typing_extensions
+# override introduced in Python 3.12
+from typing_extensions import override
 
-from graphix.noise_models.noise_model import CommandOrNoise, NoiseCommands, NoiseModel
+from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from graphix.command import BaseM
+    from graphix.measurements import Outcome
 
 
 class NoiselessNoiseModel(NoiseModel):
-    """Noiseless noise model for testing.
+    """Noise model that performs no operation."""
 
-    Only return the identity channel.
-    """
-
-    @typing_extensions.override
-    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
+    @override
+    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return []
 
-    @typing_extensions.override
-    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+    @override
+    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
         """Return the noise to apply to the command `cmd`."""
         return [cmd]
 
-    @typing_extensions.override
-    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
+    @override
+    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
         """Assign wrong measurement result."""
         return result

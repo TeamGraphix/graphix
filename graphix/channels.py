@@ -19,6 +19,18 @@ _T = TypeVar("_T", bound=np.generic)
 
 
 def _ilog2(n: int) -> int:
+    """Return the integer base-2 logarithm of ``n``.
+
+    Parameters
+    ----------
+    n : int
+        Positive integer.
+
+    Returns
+    -------
+    int
+        ``floor(log2(n))`` for ``n > 0``.
+    """
     if n <= 0:
         raise ValueError("n must be positive.")
     return (n - 1).bit_length()
@@ -78,7 +90,8 @@ class KrausChannel:
 
     @staticmethod
     def _nqubit(kraus_data: Iterable[KrausData]) -> int:
-        # MEMO: kraus_data is not empty.
+        """Return the number of qubits acted on by ``kraus_data``."""
+        # MEMO: ``kraus_data`` is not empty.
         it = iter(kraus_data)
         nqubit = next(it).nqubit
 
@@ -130,13 +143,13 @@ class KrausChannel:
         """Return the Kraus operator at the given index."""
         return self.__data[index]
 
-    def __iter__(self) -> Iterator[KrausData]:
-        """Return an iterator on Kraus operators."""
-        return iter(self.__data)
-
     def __len__(self) -> int:
         """Return the number of Kraus operators."""
         return len(self.__data)
+
+    def __iter__(self) -> Iterator[KrausData]:
+        """Iterate over Kraus operators."""
+        return iter(self.__data)
 
     @property
     def nqubit(self) -> int:

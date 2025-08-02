@@ -9,12 +9,15 @@ import typing_extensions
 
 from graphix import utils
 from graphix.clifford import Clifford
+from graphix.measurements import outcome
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
     import functools
     from collections.abc import Iterable, Mapping
+
+    from graphix.measurements import Outcome
 
 
 if TYPE_CHECKING:
@@ -32,7 +35,7 @@ class MBQCGraphNode(TypedDict):
 
 
 class GraphState(Graph):
-    """Graph state simulator implemented with networkx.
+    """Graph state simulator implemented with :mod:`networkx`.
 
     Performs Pauli measurements on graph states.
 
@@ -40,9 +43,9 @@ class GraphState(Graph):
     and PRA 77, 042307 (2008)
 
     Each node has attributes:
-        :`hollow`: True if node is hollow (has local H operator)
-        :`sign`: True if node has negative sign (local Z operator)
-        :`loop`: True if node has loop (local S operator)
+        :*hollow*: True if node is hollow (has local H operator)
+        :*sign*: True if node has negative sign (local Z operator)
+        :*loop*: True if node has loop (local S operator)
     """
 
     nodes: functools.cached_property[Mapping[int, MBQCGraphNode]]  # type: ignore[assignment]
@@ -349,7 +352,7 @@ class GraphState(Graph):
         Returns
         -------
         result : int
-            if the selected node is hollow and isolated, `result` is 1.
+            if the selected node is hollow and isolated, *result* is 1.
             if filled and isolated, 2.
             otherwise it is 0.
         """
@@ -373,7 +376,7 @@ class GraphState(Graph):
             return 2
         return 0
 
-    def measure_x(self, node: int, choice: int = 0) -> int:
+    def measure_x(self, node: int, choice: Outcome = 0) -> Outcome:
         """Perform measurement in X basis.
 
         According to original paper, we realise X measurement by
@@ -406,7 +409,7 @@ class GraphState(Graph):
         self.h(node)
         return self.measure_z(node, choice=choice)
 
-    def measure_y(self, node: int, choice: int = 0) -> int:
+    def measure_y(self, node: int, choice: Outcome = 0) -> Outcome:
         """Perform measurement in Y basis.
 
         According to original paper, we realise Y measurement by
@@ -431,7 +434,7 @@ class GraphState(Graph):
         self.h(node)
         return self.measure_z(node, choice=choice)
 
-    def measure_z(self, node: int, choice: int = 0) -> int:
+    def measure_z(self, node: int, choice: Outcome = 0) -> Outcome:
         """Perform measurement in Z basis.
 
         To realize the simple Z measurement on undecorated graph state,
@@ -455,7 +458,7 @@ class GraphState(Graph):
         if choice:
             for i in self.neighbors(node):
                 self.flip_sign(i)
-        result = choice if not isolated else int(self.nodes[node]["sign"])
+        result = choice if not isolated else outcome(self.nodes[node]["sign"])
         self.remove_node(node)
         return result
 

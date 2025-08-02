@@ -9,7 +9,8 @@ import typing_extensions
 
 from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
 from graphix.command import BaseM, CommandKind
-from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseCommands, NoiseModel
+from graphix.measurements import toggle_outcome
+from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseModel
 from graphix.rng import ensure_rng
 from graphix.utils import Probability
 
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from numpy.random import Generator
+
+    from graphix.measurements import Outcome
 
 
 @dataclass
@@ -83,12 +86,12 @@ class DepolarisingNoiseModel(NoiseModel):
         self.rng = ensure_rng(rng)
 
     @typing_extensions.override
-    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
+    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return [A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
 
     @typing_extensions.override
-    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
         """Return the noise to apply to the command `cmd`."""
         if cmd.kind == CommandKind.N:
             return [cmd, A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
@@ -108,8 +111,8 @@ class DepolarisingNoiseModel(NoiseModel):
         typing_extensions.assert_never(cmd.kind)
 
     @typing_extensions.override
-    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
+    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
         """Assign wrong measurement result cmd = "M"."""
         if self.rng.uniform() < self.measure_error_prob:
-            return not result
+            return toggle_outcome(result)
         return result

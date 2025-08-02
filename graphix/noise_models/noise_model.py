@@ -1,4 +1,10 @@
-"""Abstract base class for all noise models."""
+"""Abstract interface for noise models.
+
+This module defines :class:`NoiseModel`, the base class used by
+:class:`graphix.simulator.PatternSimulator` when running noisy
+simulations. Child classes implement concrete noise processes by
+overriding the abstract methods defined here.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +14,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-import typing_extensions
+# override introduced in Python 3.12
+from typing_extensions import override
 
 from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
 
@@ -16,6 +23,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from graphix.channels import KrausChannel
+    from graphix.measurements import Outcome
 
 
 class Noise(ABC):
@@ -48,25 +56,36 @@ else:
     CommandOrNoise = Union[Command, A]
 
 
-NoiseCommands = list[CommandOrNoise]
-
-
 class NoiseModel(ABC):
     """Abstract base class for all noise models."""
 
     @abstractmethod
-    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
+    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
 
     @abstractmethod
-    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
         """Return the noise to apply to the command `cmd`."""
 
     @abstractmethod
-    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
-        """Assign wrong measurement result."""
+    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
+        """Return a possibly flipped measurement outcome.
 
-    def transpile(self, sequence: NoiseCommands) -> NoiseCommands:
+        Parameters
+        ----------
+        result : Outcome
+            Ideal measurement result.
+
+        cmd : BaseM
+            The measurement command that produced the given outcome.
+
+        Returns
+        -------
+        Outcome
+            Possibly corrupted result.
+        """
+
+    def transpile(self, sequence: Iterable[CommandOrNoise]) -> list[CommandOrNoise]:
         """Apply the noise to a sequence of commands and return the resulting sequence."""
         return [n_cmd for cmd in sequence for n_cmd in self.command(cmd)]
 
@@ -77,21 +96,21 @@ class ComposeNoiseModel(NoiseModel):
 
     models: list[NoiseModel]
 
-    @typing_extensions.override
-    def input_nodes(self, nodes: Iterable[int]) -> NoiseCommands:
+    @override
+    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return [n_cmd for m in self.models for n_cmd in m.input_nodes(nodes)]
 
-    @typing_extensions.override
-    def command(self, cmd: CommandOrNoise) -> NoiseCommands:
+    @override
+    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
         """Return the noise to apply to the command `cmd`."""
         sequence = [cmd]
         for model in self.models:
             sequence = model.transpile(sequence)
         return sequence
 
-    @typing_extensions.override
-    def confuse_result(self, cmd: BaseM, result: bool) -> bool:
+    @override
+    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
         """Assign wrong measurement result."""
         for m in self.models:
             result = m.confuse_result(cmd, result)

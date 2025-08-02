@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=66.1", "wheel", "setuptools_scm"]
+requires = ["setuptools>=77", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ authors = [{ name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" }]
 maintainers = [
   { name = "Shinichi Sunami", email = "shinichi.sunami@gmail.com" },
 ]
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
 description = "Optimize and simulate measurement-based quantum computation"
 readme = "README.md"
 classifiers = [
@@ -19,11 +19,11 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: OS Independent",
   "Topic :: Scientific/Engineering :: Physics",
 ]
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.14"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -39,6 +39,10 @@ dependencies = { file = ["requirements.txt"] }
 [tool.setuptools.dynamic.optional-dependencies]
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
+doc = { file = ["requirements-doc.txt"] }
+
+[tool.setuptools.packages.find]
+include = ["graphix", "stubs"]
 
 [tool.ruff]
 line-length = 120
@@ -66,7 +70,6 @@ extend-ignore = [
   "DOC",     # Docstring
   "E501",    # Line too long
   "EM10",    # Raise string
-  "PLC0415", # Import not at the top level
   "PLR1702", # Too many nests
   "PLW1641", # __hash__ missing
   "PT011",   # pytest raises too broad
@@ -129,94 +132,74 @@ filterwarnings = ["ignore:Couldn't import `kahypar`"]
 
 [tool.mypy]
 # Keep in sync with pyright
-files = [
-  "graphix/channels.py",
-  "graphix/clifford.py",
-  "graphix/command.py",
-  "graphix/extraction.py",
-  "graphix/fundamentals.py",
-  "graphix/graphsim.py",
-  "graphix/instruction.py",
-  "graphix/linalg_validations.py",
-  "graphix/measurements.py",
-  "graphix/noise_models/depolarising_noise_model.py",
-  "graphix/noise_models/noiseless_noise_model.py",
-  "graphix/noise_models/noise_model.py",
-  "graphix/ops.py",
-  "graphix/parameter.py",
-  "graphix/pauli.py",
-  "graphix/pretty_print.py",
-  "graphix/pyzx.py",
-  "graphix/rng.py",
-  "graphix/states.py",
-  "graphix/utils.py",
-  "graphix/**/__init__.py",
-  "graphix/_db.py",
-  "noxfile.py",
-  "tests/conftest.py",
-  "tests/test_clifford.py",
-  "tests/test_command.py",
-  "tests/test_db.py",
-  "tests/test_density_matrix.py",
-  "tests/test_extraction.py",
-  "tests/test_fundamentals.py",
-  "tests/test_generator.py",
-  "tests/test_graphsim.py",
-  "tests/test_kraus.py",
-  "tests/test_noisy_density_matrix.py",
-  "tests/test_parameter.py",
-  "tests/test_pauli.py",
-  "tests/test_pretty_print.py",
-  "tests/test_pyzx.py",
-  "tests/test_rng.py",
+files = ["*.py", "examples", "graphix", "tests"]
+exclude = [
+  '^examples/deutsch_jozsa\.py$',
+  '^examples/ghz_with_tn\.py$',
+  '^examples/mbqc_vqe\.py$',
+  '^examples/qaoa\.py$',
+  '^examples/qft_with_tn\.py$',
+  '^examples/qnn\.py$',
+  '^examples/rotation\.py$',
+  '^examples/tn_simulation\.py$',
+  '^examples/visualization\.py$',
+  '^graphix/device_interface\.py$',
+  '^graphix/gflow\.py$',
+  '^graphix/linalg\.py$',
+  '^graphix/random_objects\.py$',
+  '^graphix/visualization\.py$',
+  '^tests/test_density_matrix\.py$',
+  '^tests/test_gflow\.py$',
+  '^tests/test_linalg\.py$',
+  '^tests/test_noisy_density_matrix\.py$',
+  '^tests/test_random_utilities\.py$',
+  '^tests/test_runner\.py$',
+  '^tests/test_statevec\.py$',
+  '^tests/test_statevec_backend\.py$',
+  '^tests/test_tnsim\.py$',
+  '^tests/test_visualization\.py$',
 ]
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
 strict = true
+mypy_path = "./stubs"
 
 [tool.pyright]
 # Keep in sync with mypy
-include = [
-  "graphix/channels.py",
-  "graphix/clifford.py",
-  "graphix/command.py",
-  "graphix/extraction.py",
-  "graphix/fundamentals.py",
-  "graphix/graphsim.py",
-  "graphix/instruction.py",
-  "graphix/linalg_validations.py",
-  "graphix/measurements.py",
-  "graphix/noise_models/depolarising_noise_model.py",
-  "graphix/noise_models/noiseless_noise_model.py",
-  "graphix/noise_models/noise_model.py",
-  "graphix/ops.py",
-  "graphix/parameter.py",
-  "graphix/pauli.py",
-  "graphix/pretty_print.py",
-  "graphix/pyzx.py",
-  "graphix/rng.py",
-  "graphix/states.py",
-  "graphix/utils.py",
-  "graphix/**/__init__.py",
-  "graphix/_db.py",
-  "noxfile.py",
-  "tests/conftest.py",
-  "tests/test_clifford.py",
-  "tests/test_command.py",
-  "tests/test_db.py",
+include = ["*.py", "examples", "graphix", "tests"]
+exclude = [
+  "examples/deutsch_jozsa.py",
+  "examples/ghz_with_tn.py",
+  "examples/mbqc_vqe.py",
+  "examples/qaoa.py",
+  "examples/qft_with_tn.py",
+  "examples/qnn.py",
+  "examples/rotation.py",
+  "examples/tn_simulation.py",
+  "examples/visualization.py",
+  "graphix/device_interface.py",
+  "graphix/gflow.py",
+  "graphix/linalg.py",
+  "graphix/random_objects.py",
+  "graphix/visualization.py",
   "tests/test_density_matrix.py",
-  "tests/test_extraction.py",
-  "tests/test_fundamentals.py",
-  "tests/test_generator.py",
-  "tests/test_graphsim.py",
-  "tests/test_kraus.py",
+  "tests/test_gflow.py",
+  "tests/test_linalg.py",
   "tests/test_noisy_density_matrix.py",
-  "tests/test_parameter.py",
-  "tests/test_pauli.py",
-  "tests/test_pretty_print.py",
-  "tests/test_pyzx.py",
-  "tests/test_rng.py",
+  "tests/test_random_utilities.py",
+  "tests/test_runner.py",
+  "tests/test_statevec.py",
+  "tests/test_statevec_backend.py",
+  "tests/test_tnsim.py",
+  "tests/test_transpiler.py",
+  "tests/test_visualization.py",
 ]
+reportUnknownArgumentType = "information"
+reportUnknownLambdaType = "information"
+reportUnknownMemberType = "information"
+reportUnknownParameterType = "information"
+reportUnknownVariableType = "information"
+extraPaths = ["./stubs"]
 
 [tool.coverage.report]
 exclude_also = [

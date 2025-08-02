@@ -4,13 +4,27 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from typing import NamedTuple, SupportsInt
+from typing import Literal, NamedTuple, SupportsInt
+
+from typing_extensions import TypeAlias  # TypeAlias introduced in Python 3.10
 
 from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+
+Outcome: TypeAlias = Literal[0, 1]
+
+
+def outcome(b: bool) -> Outcome:
+    """Return 1 if True, 0 if False."""
+    return 1 if b else 0
+
+
+def toggle_outcome(outcome: Outcome) -> Outcome:
+    """Toggle outcome."""
+    return 1 if outcome == 0 else 0
 
 
 @dataclasses.dataclass
@@ -28,7 +42,7 @@ class Measurement(NamedTuple):
     :param plane: the measurement plane
     """
 
-    angle: float
+    angle: ExpressionOrFloat
     plane: Plane
 
     def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
@@ -45,7 +59,11 @@ class Measurement(NamedTuple):
         >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         False
         """
-        return math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol) and self.plane == other.plane
+        return (
+            math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
+            if isinstance(self.angle, float) and isinstance(other.angle, float)
+            else self.angle == other.angle
+        ) and self.plane == other.plane
 
 
 class PauliMeasurement(NamedTuple):

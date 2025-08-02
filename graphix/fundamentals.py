@@ -12,7 +12,7 @@ import typing_extensions
 
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
-from graphix.pretty_print import EnumPrettyPrintMixin
+from graphix.repr_mixins import EnumReprMixin
 
 if TYPE_CHECKING:
     import numpy as np
@@ -29,7 +29,7 @@ else:  # pragma: no cover
     SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
 
 
-class Sign(EnumPrettyPrintMixin, Enum):
+class Sign(EnumReprMixin, Enum):
     """Sign, plus or minus."""
 
     PLUS = 1
@@ -43,14 +43,14 @@ class Sign(EnumPrettyPrintMixin, Enum):
 
     @staticmethod
     def plus_if(b: bool) -> Sign:
-        """Return `+` if `b` is `True`, `-` otherwise."""
+        """Return *+* if *b* is *True*, *-* otherwise."""
         if b:
             return Sign.PLUS
         return Sign.MINUS
 
     @staticmethod
     def minus_if(b: bool) -> Sign:
-        """Return `-` if `b` is `True`, `+` otherwise."""
+        """Return *-* if *b* is *True*, *+* otherwise."""
         if b:
             return Sign.MINUS
         return Sign.PLUS
@@ -112,7 +112,7 @@ class Sign(EnumPrettyPrintMixin, Enum):
         return complex(self.value)
 
 
-class ComplexUnit(EnumPrettyPrintMixin, Enum):
+class ComplexUnit(EnumReprMixin, Enum):
     """
     Complex unit: 1, -1, j, -j.
 
@@ -157,7 +157,7 @@ class ComplexUnit(EnumPrettyPrintMixin, Enum):
 
     @property
     def is_imag(self) -> bool:
-        """Return `True` if `j` or `-j`."""
+        """Return *True* if *j* or *-j*."""
         return bool(self.value % 2)
 
     def __complex__(self) -> complex:
@@ -214,8 +214,8 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
-class Axis(EnumPrettyPrintMixin, Enum):
-    """Axis: `X`, `Y` or `Z`."""
+class Axis(EnumReprMixin, Enum):
+    """Axis: *X*, *Y* or *Z*."""
 
     X = enum.auto()
     Y = enum.auto()
@@ -233,9 +233,9 @@ class Axis(EnumPrettyPrintMixin, Enum):
         typing_extensions.assert_never(self)
 
 
-class Plane(EnumPrettyPrintMixin, Enum):
+class Plane(EnumReprMixin, Enum):
     # TODO: Refactor using match
-    """Plane: `XY`, `YZ` or `XZ`."""
+    """Plane: *XY*, *YZ* or *XZ*."""
 
     XY = enum.auto()
     YZ = enum.auto()

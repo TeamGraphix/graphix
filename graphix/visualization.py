@@ -15,6 +15,8 @@ from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     # MEMO: Potential circular import
+    from graphix.clifford import Clifford
+    from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
 
 
@@ -23,8 +25,8 @@ class GraphVisualizer:
 
     Attributes
     ----------
-    g : networkx graph
-        the graph to be visualized
+    g : :class:`networkx.Graph`
+        The graph to be visualized
     v_in : list
         list of input nodes
     v_out : list
@@ -43,17 +45,17 @@ class GraphVisualizer:
         g: nx.Graph,
         v_in: list[int],
         v_out: list[int],
-        meas_plane: dict[int, str] | None = None,
-        meas_angles: dict[int, float] | None = None,
-        local_clifford: dict[int, int] | None = None,
+        meas_plane: dict[int, Plane] | None = None,
+        meas_angles: dict[int, ExpressionOrFloat] | None = None,
+        local_clifford: dict[int, Clifford] | None = None,
     ):
         """
         Construct a graph visualizer.
 
         Parameters
         ----------
-        g : :class:`networkx.graph.Graph` object
-            networkx graph
+        g : :class:`networkx.Graph`
+            NetworkX graph instance
         v_in : list
             list of input nodes
         v_out : list
@@ -849,6 +851,23 @@ class GraphVisualizer:
             if arrow[0] == arrow[1]:  # Self loop
 
                 def _point_from_node(pos, dist, angle):
+                    """Return a point at a given distance and angle from ``pos``.
+
+                    Parameters
+                    ----------
+                    pos : Sequence[float]
+                        Coordinate of the node.
+                    dist : float
+                        Distance from ``pos``.
+                    angle : float
+                        Angle in degrees measured counter-clockwise from the
+                        positive x-axis.
+
+                    Returns
+                    -------
+                    list[float]
+                        The new ``[x, y]`` coordinate.
+                    """
                     angle = np.deg2rad(angle)
                     return [pos[0] + dist * np.cos(angle), pos[1] + dist * np.sin(angle)]
 

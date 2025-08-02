@@ -10,7 +10,7 @@ import numpy.typing as npt
 import pytest
 
 import graphix.random_objects as randobj
-from graphix import command
+from graphix.branch_selector import RandomBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import Plane
 from graphix.ops import Ops
@@ -44,12 +44,16 @@ class TestDensityMatrix:
             DensityMatrix(nqubit=-2)
 
     def test_init_with_invalid_data_fail(self, fx_rng: Generator) -> None:
-        # with pytest.raises(TypeError):
-        #    DensityMatrix("hello")
-        # with pytest.raises(TypeError):
-        #    DensityMatrix(1)
-        # with pytest.raises(TypeError):
-        #    DensityMatrix([1, 2, [3]])
+        with pytest.raises(ValueError):
+            DensityMatrix("hello")
+        with pytest.raises(TypeError):
+            DensityMatrix(1)
+        # Length is not a power of two
+        with pytest.raises(ValueError):
+            DensityMatrix([1, 2, [3]])
+        # setting an array element with a sequence (numpy error)
+        with pytest.raises(ValueError):
+            DensityMatrix([1, 2, [3], 4])
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
@@ -246,12 +250,12 @@ class TestDensityMatrix:
         # watch out ordering. Expval unitary is cpx so psi1 on the right to match DM.
         assert np.allclose(np.dot(psi.conjugate(), psi1), dm.expectation_single(op, target_qubit))
 
-    # def test_tensor_fail(self) -> None:
-    #    dm = DensityMatrix(nqubit=1)
-    #    #with pytest.raises(TypeError):
-    #    #    dm.tensor("hello")
-    #    #with pytest.raises(TypeError):
-    #    #    dm.tensor(1)
+    def test_tensor_fail(self) -> None:
+        dm = DensityMatrix(nqubit=1)
+        with pytest.raises(ValueError):
+            dm.tensor("hello")
+        with pytest.raises(TypeError):
+            dm.tensor(1)
 
     @pytest.mark.parametrize("n", range(3))
     def test_tensor_without_data_success(self, n: int) -> None:
@@ -921,7 +925,7 @@ class TestDensityMatrixBackend:
         pattern = circ.transpile().pattern
 
         measure_method = DefaultMeasureMethod()
-        backend = DensityMatrixBackend(pr_calc=pr_calc)
+        backend = DensityMatrixBackend(branch_selector=RandomBranchSelector(pr_calc=pr_calc))
         backend.add_nodes(pattern.input_nodes)
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
@@ -943,44 +947,24 @@ class TestDensityMatrixBackend:
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        m = pattern[-4]
-        assert isinstance(m, command.M)
-        result = measure_method.measure(backend, m)
-        measure_method.set_measure_result(m.node, result)
-        m = pattern[-3]
-        assert isinstance(m, command.M)
-        result = measure_method.measure(backend, m)
-        measure_method.set_measure_result(m.node, result)
-        bp = pattern[-2]
-        assert isinstance(bp, (command.X, command.Z))
-        backend.correct_byproduct(bp, measure_method)
-        bp = pattern[-1]
-        assert isinstance(bp, (command.X, command.Z))
-        backend.correct_byproduct(bp, measure_method)
+        measure_method.measure(backend, pattern[-4])
+        measure_method.measure(backend, pattern[-3])
+        backend.correct_byproduct(pattern[-2], measure_method)
+        backend.correct_byproduct(pattern[-1], measure_method)
         backend.finalize(pattern.output_nodes)
         rho = backend.state.rho
 
-        sv_backend = StatevectorBackend()
-        sv_backend.add_nodes(pattern.input_nodes)
+        backend = StatevectorBackend()
+        backend.add_nodes(pattern.input_nodes)
         # node 0 initialized in Backend
-        sv_backend.add_nodes([1, 2])
-        sv_backend.entangle_nodes((0, 1))
-        sv_backend.entangle_nodes((1, 2))
-        m = pattern[-4]
-        assert isinstance(m, command.M)
-        result = measure_method.measure(sv_backend, m)
-        measure_method.set_measure_result(m.node, result)
-        m = pattern[-3]
-        assert isinstance(m, command.M)
-        result = measure_method.measure(sv_backend, m)
-        measure_method.set_measure_result(m.node, result)
-        bp = pattern[-2]
-        assert isinstance(bp, (command.X, command.Z))
-        sv_backend.correct_byproduct(bp, measure_method)
-        bp = pattern[-1]
-        assert isinstance(bp, (command.X, command.Z))
-        sv_backend.correct_byproduct(bp, measure_method)
-        sv_backend.finalize(pattern.output_nodes)
-        psi = sv_backend.state.psi
+        backend.add_nodes([1, 2])
+        backend.entangle_nodes((0, 1))
+        backend.entangle_nodes((1, 2))
+        measure_method.measure(backend, pattern[-4])
+        measure_method.measure(backend, pattern[-3])
+        backend.correct_byproduct(pattern[-2], measure_method)
+        backend.correct_byproduct(pattern[-1], measure_method)
+        backend.finalize(pattern.output_nodes)
+        psi = backend.state.psi
 
         assert np.allclose(rho, np.outer(psi, psi.conj()))

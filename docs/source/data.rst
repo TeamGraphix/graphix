@@ -110,7 +110,7 @@ sufficient for transpiling and pattern optimizations (such as
 standardization, minimization, signal shifting, and Pauli
 preprocessing), but they do not support simulation.
 
-Parameter objects that support symbolic simulation with `sympy` are
+Parameter objects that support symbolic simulation with *sympy* are
 available in a separate package:
 https://github.com/TeamGraphix/graphix-symbolic.
 

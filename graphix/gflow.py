@@ -19,13 +19,18 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import numpy as np
 import sympy as sp
+from typing_extensions import assert_never
 
-from graphix import utils
 from graphix.command import CommandKind
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.linalg import MatGF2
+from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from collections.abc import Set as AbstractSet
+
+    from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
 
 
@@ -38,7 +43,7 @@ def check_meas_planes(meas_planes: dict[int, Plane]) -> None:
 
 
 def find_gflow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane],
@@ -60,8 +65,8 @@ def find_gflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -111,8 +116,8 @@ def gflowaux(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -228,7 +233,7 @@ def gflowaux(
 
 
 def find_flow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane] | None = None,
@@ -244,8 +249,8 @@ def find_flow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -354,11 +359,11 @@ def flowaux(
 
 
 def find_pauliflow(
-    graph: nx.Graph,
+    graph: nx.Graph[int],
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane],
-    meas_angles: dict[int, float],
+    meas_angles: Mapping[int, ExpressionOrFloat],
     mode: str = "single",
 ) -> tuple[dict[int, set[int]], dict[int, int]]:
     """Maximally delayed Pauli flow finding algorithm.
@@ -377,8 +382,8 @@ def find_pauliflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -436,8 +441,8 @@ def pauliflowaux(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -655,6 +660,8 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     l_k: dict
         layers obtained by flow algorithm. l_k[d] is a node set of depth d.
     """
+    if not pattern.is_standard(strict=True):
+        raise ValueError("The pattern should be standardized first.")
     meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
         if plane != Plane.XY:
@@ -707,6 +714,8 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     l_k: dict
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
+    if not pattern.is_standard(strict=True):
+        raise ValueError("The pattern should be standardized first.")
     g = nx.Graph()
     nodes, edges = pattern.get_graph()
     g.add_nodes_from(nodes)
@@ -767,6 +776,8 @@ def pauliflow_from_pattern(pattern: Pattern, mode="single") -> tuple[dict[int, s
     l_k: dict
         layers obtained by Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
+    if not pattern.is_standard(strict=True):
+        raise ValueError("The pattern should be standardized first.")
     g = nx.Graph()
     nodes, edges = pattern.get_graph()
     nodes = set(nodes)
@@ -893,7 +904,7 @@ def search_neighbor(node: int, edges: set[tuple[int, int]]) -> set[int]:
     return nb
 
 
-def get_min_depth(l_k: dict[int, int]) -> int:
+def get_min_depth(l_k: Mapping[int, int]) -> int:
     """Get minimum depth of graph.
 
     Parameters
@@ -909,13 +920,13 @@ def get_min_depth(l_k: dict[int, int]) -> int:
     return max(l_k.values())
 
 
-def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
+def find_odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:
     """Return the set containing the odd neighbor of a set of vertices.
 
     Parameters
     ----------
-    graph : nx.Graph
-        underlying graph.
+    graph : :class:`networkx.Graph`
+        Underlying graph
     vertices : set
         set of nodes indices to find odd neighbors
 
@@ -931,7 +942,7 @@ def find_odd_neighbor(graph: nx.Graph, vertices: set[int]) -> set[int]:
     return odd_neighbors
 
 
-def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
+def get_layers(l_k: Mapping[int, int]) -> tuple[int, dict[int, set[int]]]:
     """Get components of each layer.
 
     Parameters
@@ -947,7 +958,7 @@ def get_layers(l_k: dict[int, int]) -> tuple[int, dict[int, set[int]]]:
         components of each layer
     """
     d = get_min_depth(l_k)
-    layers = {k: set() for k in range(d + 1)}
+    layers: dict[int, set[int]] = {k: set() for k in range(d + 1)}
     for i, val in l_k.items():
         layers[val] |= {i}
     return d, layers
@@ -1095,12 +1106,18 @@ def get_layers_from_flow(
 def get_adjacency_matrix(graph: nx.Graph) -> tuple[MatGF2, list[int]]:
     """Get adjacency matrix of the graph.
 
+    Parameters
+    ----------
+    graph : :class:`networkx.Graph`
+        Graph whose adjacency matrix is computed.
+
     Returns
     -------
     adjacency_matrix: graphix.linalg.MatGF2
         adjacency matrix of the graph. the matrix is defined on GF(2) field.
     node_list: list
-        ordered list of nodes. node_list[i] is the node label of i-th row/column of the adjacency matrix.
+        ordered list of nodes. ``node_list[i]`` is the node label of the i-th
+        row/column of the adjacency matrix.
 
     """
     node_list = list(graph.nodes)
@@ -1121,8 +1138,8 @@ def verify_flow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     flow: dict[int, set]
         flow function. flow[i] is the set of qubits to be corrected for the measurement of qubit i.
     meas_planes: dict[int, str]
@@ -1172,8 +1189,8 @@ def verify_gflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -1230,8 +1247,8 @@ def verify_pauliflow(
 
     Parameters
     ----------
-    graph: nx.Graph
-        graph (incl. in and out)
+    graph: :class:`networkx.Graph`
+        Graph (incl. input and output)
     iset: set
         set of node labels for input
     oset: set
@@ -1326,7 +1343,7 @@ def get_output_from_flow(flow: dict[int, set]) -> set:
 
 
 def get_pauli_nodes(
-    meas_planes: dict[int, Plane], meas_angles: dict[int, float]
+    meas_planes: dict[int, Plane], meas_angles: Mapping[int, ExpressionOrFloat]
 ) -> tuple[set[int], set[int], set[int]]:
     """Get sets of nodes measured in X, Y, Z basis.
 
@@ -1349,19 +1366,15 @@ def get_pauli_nodes(
     check_meas_planes(meas_planes)
     l_x, l_y, l_z = set(), set(), set()
     for node, plane in meas_planes.items():
-        if plane == Plane.XY:
-            if utils.is_integer(meas_angles[node]):  # measurement angle is integer
-                l_x |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):  # measurement angle is half integer
-                l_y |= {node}
-        elif plane == Plane.XZ:
-            if utils.is_integer(meas_angles[node]):
-                l_z |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):
-                l_x |= {node}
-        elif plane == Plane.YZ:
-            if utils.is_integer(meas_angles[node]):
-                l_y |= {node}
-            elif utils.is_integer(2 * meas_angles[node]):
-                l_z |= {node}
+        pm = PauliMeasurement.try_from(plane, meas_angles[node])
+        if pm is None:
+            continue
+        if pm.axis == Axis.X:
+            l_x |= {node}
+        elif pm.axis == Axis.Y:
+            l_y |= {node}
+        elif pm.axis == Axis.Z:
+            l_z |= {node}
+        else:
+            assert_never(pm.axis)
     return l_x, l_y, l_z

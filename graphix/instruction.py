@@ -14,7 +14,8 @@ from graphix.fundamentals import Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
-from graphix.pretty_print import DataclassPrettyPrintMixin, OutputFormat, angle_to_str
+from graphix.pretty_print import OutputFormat, angle_to_str
+from graphix.repr_mixins import DataclassReprMixin
 
 
 def repr_angle(angle: ExpressionOrFloat) -> str:
@@ -59,12 +60,13 @@ class _KindChecker:
     """Enforce tag field declaration."""
 
     def __init_subclass__(cls) -> None:
+        """Validate that subclasses define the ``kind`` attribute."""
         super().__init_subclass__()
         utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
 @dataclass(repr=False)
-class CCX(_KindChecker, DataclassPrettyPrintMixin):
+class CCX(_KindChecker, DataclassReprMixin):
     """Toffoli circuit instruction."""
 
     target: int
@@ -73,7 +75,7 @@ class CCX(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class RZZ(_KindChecker, DataclassPrettyPrintMixin):
+class RZZ(_KindChecker, DataclassReprMixin):
     """RZZ circuit instruction."""
 
     target: int
@@ -86,7 +88,7 @@ class RZZ(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class CNOT(_KindChecker, DataclassPrettyPrintMixin):
+class CNOT(_KindChecker, DataclassReprMixin):
     """CNOT circuit instruction."""
 
     target: int
@@ -95,7 +97,7 @@ class CNOT(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class SWAP(_KindChecker, DataclassPrettyPrintMixin):
+class SWAP(_KindChecker, DataclassReprMixin):
     """SWAP circuit instruction."""
 
     targets: tuple[int, int]
@@ -103,7 +105,7 @@ class SWAP(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class H(_KindChecker, DataclassPrettyPrintMixin):
+class H(_KindChecker, DataclassReprMixin):
     """H circuit instruction."""
 
     target: int
@@ -111,7 +113,7 @@ class H(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class S(_KindChecker, DataclassPrettyPrintMixin):
+class S(_KindChecker, DataclassReprMixin):
     """S circuit instruction."""
 
     target: int
@@ -119,7 +121,7 @@ class S(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class X(_KindChecker, DataclassPrettyPrintMixin):
+class X(_KindChecker, DataclassReprMixin):
     """X circuit instruction."""
 
     target: int
@@ -127,7 +129,7 @@ class X(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class Y(_KindChecker, DataclassPrettyPrintMixin):
+class Y(_KindChecker, DataclassReprMixin):
     """Y circuit instruction."""
 
     target: int
@@ -135,7 +137,7 @@ class Y(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class Z(_KindChecker, DataclassPrettyPrintMixin):
+class Z(_KindChecker, DataclassReprMixin):
     """Z circuit instruction."""
 
     target: int
@@ -143,7 +145,7 @@ class Z(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class I(_KindChecker, DataclassPrettyPrintMixin):
+class I(_KindChecker, DataclassReprMixin):
     """I circuit instruction."""
 
     target: int
@@ -151,7 +153,7 @@ class I(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class M(_KindChecker, DataclassPrettyPrintMixin):
+class M(_KindChecker, DataclassReprMixin):
     """M circuit instruction."""
 
     target: int
@@ -161,7 +163,7 @@ class M(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class RX(_KindChecker, DataclassPrettyPrintMixin):
+class RX(_KindChecker, DataclassReprMixin):
     """X rotation circuit instruction."""
 
     target: int
@@ -171,7 +173,7 @@ class RX(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class RY(_KindChecker, DataclassPrettyPrintMixin):
+class RY(_KindChecker, DataclassReprMixin):
     """Y rotation circuit instruction."""
 
     target: int
@@ -181,7 +183,7 @@ class RY(_KindChecker, DataclassPrettyPrintMixin):
 
 
 @dataclass(repr=False)
-class RZ(_KindChecker, DataclassPrettyPrintMixin):
+class RZ(_KindChecker, DataclassReprMixin):
     """Z rotation circuit instruction."""
 
     target: int
