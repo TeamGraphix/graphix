@@ -116,7 +116,7 @@ class Validator(ABC, Generic[_ValueT]):
 
 
 @dataclass
-class Number(Validator[float]):
+class BoundedFloat(Validator[float]):
     """Descriptor to validate numbers with given bounds.
 
     https://docs.python.org/3/howto/descriptor.html#custom-validators
@@ -134,7 +134,7 @@ class Number(Validator[float]):
             raise ValueError(f"Expected {value!r} to be no more than {self.maxvalue!r}")
 
 
-class Probability(Number):
+class Probability(BoundedFloat):
     """Descriptor for probability (between 0 and 1)."""
 
     def __init__(self) -> None:
