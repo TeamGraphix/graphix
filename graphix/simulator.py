@@ -58,7 +58,7 @@ class MeasureMethod(abc.ABC):
         description = self.get_measurement_description(cmd)
         result = backend.measure(cmd.node, description, rng=rng)
         if noise_model is not None:
-            result = noise_model.confuse_result(cmd, result)
+            result = noise_model.confuse_result(cmd, result, rng=rng)
         self.set_measure_result(cmd.node, result)
 
     @abc.abstractmethod
@@ -301,8 +301,8 @@ class PatternSimulator:
         if self.noise_model is None:
             pattern: Iterable[CommandOrNoise] = self.pattern
         else:
-            pattern = self.noise_model.input_nodes(self.pattern.input_nodes) if input_state is not None else []
-            pattern.extend(self.noise_model.transpile(self.pattern))
+            pattern = self.noise_model.input_nodes(self.pattern.input_nodes, rng=rng) if input_state is not None else []
+            pattern.extend(self.noise_model.transpile(self.pattern, rng=rng))
 
         for cmd in pattern:
             if cmd.kind == CommandKind.N:

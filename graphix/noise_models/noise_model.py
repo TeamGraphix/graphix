@@ -22,6 +22,8 @@ from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from numpy.random import Generator
+
     from graphix.channels import KrausChannel
     from graphix.measurements import Outcome
 
@@ -60,15 +62,15 @@ class NoiseModel(ABC):
     """Abstract base class for all noise models."""
 
     @abstractmethod
-    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
 
     @abstractmethod
-    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
 
     @abstractmethod
-    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
         """Return a possibly flipped measurement outcome.
 
         Parameters
@@ -85,26 +87,26 @@ class NoiseModel(ABC):
             Possibly corrupted result.
         """
 
-    def transpile(self, sequence: Iterable[CommandOrNoise]) -> list[CommandOrNoise]:
+    def transpile(self, sequence: Iterable[CommandOrNoise], rng: Generator | None = None) -> list[CommandOrNoise]:
         """Apply the noise to a sequence of commands and return the resulting sequence."""
-        return [n_cmd for cmd in sequence for n_cmd in self.command(cmd)]
+        return [n_cmd for cmd in sequence for n_cmd in self.command(cmd, rng=rng)]
 
 
 class NoiselessNoiseModel(NoiseModel):
     """Noise model that performs no operation."""
 
     @override
-    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return []
 
     @override
-    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
         return [cmd]
 
     @override
-    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
         """Assign wrong measurement result."""
         return result
 
@@ -116,12 +118,12 @@ class ComposeNoiseModel(NoiseModel):
     models: list[NoiseModel]
 
     @override
-    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return [n_cmd for m in self.models for n_cmd in m.input_nodes(nodes)]
 
     @override
-    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
         sequence = [cmd]
         for model in self.models:
@@ -129,7 +131,7 @@ class ComposeNoiseModel(NoiseModel):
         return sequence
 
     @override
-    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
         """Assign wrong measurement result."""
         for m in self.models:
             result = m.confuse_result(cmd, result)

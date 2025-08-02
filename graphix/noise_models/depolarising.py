@@ -86,12 +86,12 @@ class DepolarisingNoiseModel(NoiseModel):
         self.rng = ensure_rng(rng)
 
     @typing_extensions.override
-    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
         return [A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
 
     @typing_extensions.override
-    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
         if cmd.kind == CommandKind.N:
             return [cmd, A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
@@ -111,7 +111,7 @@ class DepolarisingNoiseModel(NoiseModel):
         typing_extensions.assert_never(cmd.kind)
 
     @typing_extensions.override
-    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
         """Assign wrong measurement result cmd = "M"."""
         if self.rng.uniform() < self.measure_error_prob:
             return toggle_outcome(result)
