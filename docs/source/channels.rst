@@ -36,15 +36,13 @@ Noise model classes
 .. autoclass:: NoiseModel
     :members:
 
-.. autoclass:: ComposeNoiseModel
-    :members:
-
-.. currentmodule:: graphix.noise_models.noiseless_noise_model
-
 .. autoclass:: NoiselessNoiseModel
     :members:
 
-.. currentmodule:: graphix.noise_models.depolarising_noise_model
+.. autoclass:: ComposeNoiseModel
+    :members:
+
+.. currentmodule:: graphix.noise_models.depolarising
 
 .. autoclass:: DepolarisingNoise
     :members:
