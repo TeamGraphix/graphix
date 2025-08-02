@@ -126,10 +126,8 @@ class Number(Validator[float]):
     maxvalue: float | None = None
 
     @typing_extensions.override
-    def validate(self, value: object) -> None:
+    def validate(self, value: float) -> None:
         """Validate the assigned value."""
-        if not isinstance(value, (int, float)):
-            raise TypeError(f"Expected {value!r} to be an int or float")
         if self.minvalue is not None and value < self.minvalue:
             raise ValueError(f"Expected {value!r} to be at least {self.minvalue!r}")
         if self.maxvalue is not None and value > self.maxvalue:
