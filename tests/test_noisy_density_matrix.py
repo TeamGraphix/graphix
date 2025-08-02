@@ -6,8 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from graphix.noise_models.depolarising_noise_model import DepolarisingNoiseModel
-from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
+from graphix.noise_models import DepolarisingNoiseModel, NoiselessNoiseModel
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.transpiler import Circuit

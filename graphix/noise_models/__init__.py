@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from graphix.noise_models.depolarising_noise_model import DepolarisingNoise, DepolarisingNoiseModel
-from graphix.noise_models.noise_model import ComposeNoiseModel, Noise, NoiseModel
-from graphix.noise_models.noiseless_noise_model import NoiselessNoiseModel
+from graphix.noise_models.depolarising import DepolarisingNoise, DepolarisingNoiseModel
+from graphix.noise_models.noise_model import ComposeNoiseModel, Noise, NoiselessNoiseModel, NoiseModel
 
 __all__ = [
     "ComposeNoiseModel",

@@ -90,6 +90,25 @@ class NoiseModel(ABC):
         return [n_cmd for cmd in sequence for n_cmd in self.command(cmd)]
 
 
+class NoiselessNoiseModel(NoiseModel):
+    """Noise model that performs no operation."""
+
+    @override
+    def input_nodes(self, nodes: Iterable[int]) -> list[CommandOrNoise]:
+        """Return the noise to apply to input nodes."""
+        return []
+
+    @override
+    def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
+        """Return the noise to apply to the command ``cmd``."""
+        return [cmd]
+
+    @override
+    def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
+        """Assign wrong measurement result."""
+        return result
+
+
 @dataclass(frozen=True)
 class ComposeNoiseModel(NoiseModel):
     """Compose noise models."""
