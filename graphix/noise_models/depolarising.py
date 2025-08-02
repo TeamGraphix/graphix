@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import typing_extensions
@@ -22,12 +21,20 @@ if TYPE_CHECKING:
     from graphix.measurements import Outcome
 
 
-@dataclass
 class DepolarisingNoise(Noise):
     """One-qubit depolarising noise with probabibity ``prob``."""
 
-    # Probability is a descriptor
-    prob: Probability = Probability()  # noqa: RUF009
+    prob = Probability()
+
+    def __init__(self, prob: float) -> None:
+        """Initialize one-qubit depolarizing noise.
+
+        Parameters
+        ----------
+        prob : float
+            Probability parameter of the noise, between 0 and 1.
+        """
+        self.prob = prob
 
     @property
     @typing_extensions.override
@@ -41,12 +48,20 @@ class DepolarisingNoise(Noise):
         return depolarising_channel(self.prob)
 
 
-@dataclass
 class TwoQubitDepolarisingNoise(Noise):
     """Two-qubits depolarising noise with probabibity ``prob``."""
 
-    # Probability is a descriptor
-    prob: Probability = Probability()  # noqa: RUF009
+    prob = Probability()
+
+    def __init__(self, prob: float) -> None:
+        """Initialize two-qubit depolarizing noise.
+
+        Parameters
+        ----------
+        prob : float
+            Probability parameter of the noise, between 0 and 1.
+        """
+        self.prob = prob
 
     @property
     @typing_extensions.override

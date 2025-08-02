@@ -7,11 +7,13 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
-import typing_extensions
+
+# override introduced in Python 3.12
+from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -100,8 +102,18 @@ class Validator(ABC, Generic[_ValueT]):
         """Set private field name."""
         self.private_name = "_" + name
 
-    def __get__(self, obj: object, objtype: object = None) -> _ValueT:
+    @overload
+    def __get__(self, obj: None, objtype: type | None = None) -> Validator[_ValueT]:  # access on class
+        ...
+
+    @overload
+    def __get__(self, obj: object, objtype: type | None = None) -> _ValueT:  # access on instance
+        ...
+
+    def __get__(self, obj: object, objtype: object = None) -> _ValueT | Validator[_ValueT]:
         """Get the validated value from the private field."""
+        if obj is None:  # access on the class, not an instance
+            return self
         result: _ValueT = getattr(obj, self.private_name)
         return result
 
@@ -125,7 +137,7 @@ class BoundedFloat(Validator[float]):
     minvalue: float | None = None
     maxvalue: float | None = None
 
-    @typing_extensions.override
+    @override
     def validate(self, value: float) -> None:
         """Validate the assigned value."""
         if self.minvalue is not None and value < self.minvalue:
