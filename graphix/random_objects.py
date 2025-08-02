@@ -23,14 +23,14 @@ if TYPE_CHECKING:
     from graphix.parameter import Parameter
 
 
-def rand_herm(sz: int, rng: Generator | None = None) -> npt.NDArray:
+def rand_herm(sz: int, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
     """Generate random hermitian matrix of size sz*sz."""
     rng = ensure_rng(rng)
     tmp = rng.random(size=(sz, sz)) + 1j * rng.random(size=(sz, sz))
     return tmp + tmp.conj().T
 
 
-def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray:
+def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
     """Generate haar random unitary matrix of size sz*sz."""
     rng = ensure_rng(rng)
     if sz == 1:
@@ -41,7 +41,7 @@ def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray:
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rng: Generator | None = None, rank: int | None = None) -> npt.NDArray:
+def rand_dm(dim: int, rng: Generator | None = None, rank: int | None = None) -> npt.NDArray[np.complex128]:
     """Generate random density matrices (positive semi-definite matrices with unit trace).
 
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter *dm_dtype*.
@@ -73,7 +73,9 @@ def rand_dm(dim: int, rng: Generator | None = None, rank: int | None = None) -> 
     return rand_u @ dm @ rand_u.transpose().conj()
 
 
-def rand_gauss_cpx_mat(dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)) -> npt.NDArray:
+def rand_gauss_cpx_mat(
+    dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)
+) -> npt.NDArray[np.complex128]:
     """Return a square array of standard normal complex random variates.
 
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
