@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, TypeVar
 import numpy as np
 
 from graphix import command
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, MeasureUpdate
 from graphix.measurements import Measurement, Outcome
@@ -24,7 +25,8 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from typing import Any
+
+    from numpy.random import Generator
 
     from graphix.noise_models.noise_model import NoiseModel
     from graphix.pattern import Pattern
@@ -42,10 +44,16 @@ class MeasureMethod(abc.ABC):
     Example: class `ClientMeasureMethod` in https://github.com/qat-inria/veriphix
     """
 
-    def measure(self, backend: Backend[_StateT_co], cmd: BaseM, noise_model: NoiseModel | None = None) -> None:
+    def measure(
+        self,
+        backend: Backend[_StateT_co],
+        cmd: BaseM,
+        noise_model: NoiseModel | None = None,
+        rng: Generator | None = None,
+    ) -> None:
         """Perform a measure."""
         description = self.get_measurement_description(cmd)
-        result = backend.measure(cmd.node, description)
+        result = backend.measure(cmd.node, description, rng=rng)
         if noise_model is not None:
             result = noise_model.confuse_result(result)
         self.set_measure_result(cmd.node, result)
@@ -181,47 +189,75 @@ class PatternSimulator:
         backend: Backend[BackendState] | str = "statevector",
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
-        **kwargs: Any,
+        branch_selector: BranchSelector | None = None,
+        graph_prep: str | None = None,
+        symbolic: bool = False,
     ) -> None:
         """
         Construct a pattern simulator.
 
         Parameters
         ----------
-        pattern: :class:`graphix.pattern.Pattern` object
+        pattern: :class:`Pattern` object
             MBQC pattern to be simulated.
-        backend: :class:`graphix.sim.backend.Backend` object,
+        backend: :class:`Backend` object,
             or 'statevector', or 'densitymatrix', or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
-        noise_model:
-        kwargs: keyword args for specified backend.
+        measure_method: :class:`MeasureMethod`, optional
+            Measure method used by the simulator. Default is :class:`DefaultMeasureMethod`.
+        noise_model: :class:`NoiseModel`, optional
+            [Density matrix backend only] Noise model used by the simulator.
+        branch_selector: :class:`BranchSelector`, optional
+            Branch selector used for measurements. Can only be specified if ``backend`` is not an already instantiated :class:`Backend` object.  Default is :class:`RandomBranchSelector`.
+        graph_prep: str, optional
+            [Tensor network backend only] Strategy for preparing the graph state.  See :class:`TensorNetworkBackend`.
+        symbolic : bool, optional
+            [State vector and density matrix backends only] If True, support arbitrary objects (typically, symbolic expressions) in measurement angles.
 
         .. seealso:: :class:`graphix.sim.statevec.StatevectorBackend`\
             :class:`graphix.sim.tensornet.TensorNetworkBackend`\
             :class:`graphix.sim.density_matrix.DensityMatrixBackend`\
         """
-        if isinstance(backend, Backend):
-            assert kwargs == {}
-            self.backend = backend
-        elif backend == "statevector":
-            self.backend = StatevectorBackend(**kwargs)
-        elif backend == "densitymatrix":
-            if noise_model is None:
-                self.noise_model = None
-                self.backend = DensityMatrixBackend(**kwargs)
-                warnings.warn(
-                    "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
-                    stacklevel=1,
-                )
-            else:
-                self.backend = DensityMatrixBackend(pr_calc=True, **kwargs)
-                self.set_noise_model(noise_model)
-        elif backend in {"tensornetwork", "mps"} and noise_model is None:
-            self.noise_model = None
-            self.backend = TensorNetworkBackend(pattern, **kwargs)
-        else:
-            raise ValueError("Unknown backend.")
-        self.set_noise_model(noise_model)
+
+        def initialize_backend() -> Backend[BackendState]:
+            nonlocal backend, branch_selector, graph_prep, noise_model
+            if isinstance(backend, Backend):
+                if noise_model is not None:
+                    raise ValueError("`noise_model` cannot be specified if `backend` is already instantiated.")
+                if branch_selector is not None:
+                    raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
+                if graph_prep is not None:
+                    raise ValueError("`graph_prep` cannot be specified if `backend` is already instantiated.")
+                if symbolic:
+                    raise ValueError("`symbolic` cannot be specified if `backend` is already instantiated.")
+                return backend
+            if branch_selector is None:
+                branch_selector = RandomBranchSelector()
+            if backend in {"tensornetwork", "mps"}:
+                if noise_model is not None:
+                    raise ValueError("`noise_model` cannot be specified for tensor network backend.")
+                if symbolic:
+                    raise ValueError("`symbolic` cannot be specified for tensor network backend.")
+                if graph_prep is None:
+                    graph_prep = "auto"
+                return TensorNetworkBackend(pattern, branch_selector=branch_selector, graph_prep=graph_prep)
+            if graph_prep is not None:
+                raise ValueError("`graph_prep` can only be specified for tensor network backend.")
+            if backend == "statevector":
+                if noise_model is not None:
+                    raise ValueError("`noise_model` cannot be specified for state vector backend.")
+                return StatevectorBackend(branch_selector=branch_selector, symbolic=symbolic)
+            if backend == "densitymatrix":
+                if noise_model is None:
+                    warnings.warn(
+                        "Simulating using densitymatrix backend with no noise. To add noise to the simulation, give an object of `graphix.noise_models.Noisemodel` to `noise_model` keyword argument.",
+                        stacklevel=1,
+                    )
+                return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
+            raise ValueError(f"Unknown backend {backend}.")
+
+        self.backend = initialize_backend()
+        self.noise_model = noise_model
         self.__pattern = pattern
         if measure_method is None:
             measure_method = DefaultMeasureMethod(pattern.results)
@@ -244,14 +280,19 @@ class PatternSimulator:
             raise ValueError(f"The backend {self.backend} doesn't support noise but noisemodel was provided.")
         self.noise_model = model
 
-    def run(self, input_state: Data = BasicStates.PLUS) -> None:
+    def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None) -> None:
         """Perform the simulation.
 
         Returns
         -------
-        state :
+        input_state: Data, optional
             the output quantum state,
             in the representation depending on the backend used.
+            Default: ``|+>``.
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
         """
         if input_state is not None:
             self.backend.add_nodes(self.pattern.input_nodes, input_state)
@@ -262,7 +303,7 @@ class PatternSimulator:
                 elif cmd.kind == CommandKind.E:
                     self.backend.entangle_nodes(edge=cmd.nodes)
                 elif cmd.kind == CommandKind.M:
-                    self.__measure_method.measure(self.backend, cmd)
+                    self.__measure_method.measure(self.backend, cmd, rng=rng)
                 # Use of `==` here for mypy
                 elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                     self.backend.correct_byproduct(cmd, self.__measure_method)
@@ -284,7 +325,7 @@ class PatternSimulator:
                     self.backend.apply_channel(self.noise_model.entangle(), cmd.nodes)
                 elif cmd.kind == CommandKind.M:
                     self.backend.apply_channel(self.noise_model.measure(), [cmd.node])
-                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model)
+                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
                 elif cmd.kind == CommandKind.X:
                     self.backend.correct_byproduct(cmd, self.__measure_method)
                     if np.mod(sum(self.__measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:

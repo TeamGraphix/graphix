@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import math
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -15,12 +16,11 @@ import numpy.typing as npt
 # override introduced in Python 3.12
 from typing_extensions import TypeAlias, override
 
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import CommandKind
-from graphix.measurements import outcome
 from graphix.ops import Ops
 from graphix.parameter import check_expression_or_complex
-from graphix.rng import ensure_rng
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -521,27 +521,35 @@ def _op_mat_from_result(
 
 
 def perform_measure(
-    qubit: int,
+    qubit_node: int,
+    qubit_loc: int,
     plane: Plane,
     angle: ExpressionOrFloat,
     state: DenseState,
-    rng: Generator,
-    pr_calc: bool = True,
+    branch_selector: BranchSelector,
+    rng: Generator | None = None,
     symbolic: bool = False,
 ) -> Outcome:
     """Perform measurement of a qubit."""
     vec = plane.polar(angle)
-    if pr_calc:
-        op_mat = _op_mat_from_result(vec, 0, symbolic=symbolic)
-        prob_0 = state.expectation_single(op_mat, qubit)
-        result = outcome(rng.random() > abs(prob_0))
-        if result:
-            op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic)
-    else:
-        # choose the measurement result randomly
-        result = rng.choice([0, 1])
-        op_mat = _op_mat_from_result(vec, result, symbolic=symbolic)
-    state.evolve_single(op_mat, qubit)
+    # op_mat0 may contain the matrix operator associated with the outcome 0,
+    # but the value is computed lazily, i.e., only if needed.
+    op_mat0 = None
+
+    def get_op_mat0() -> Matrix:
+        nonlocal op_mat0
+        if op_mat0 is None:
+            op_mat0 = _op_mat_from_result(vec, 0, symbolic=symbolic)
+        return op_mat0
+
+    def f_expectation0() -> float:
+        exp_val = state.expectation_single(get_op_mat0(), qubit_loc)
+        assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
+        return exp_val.real
+
+    result = branch_selector.measure(qubit_node, f_expectation0, rng)
+    op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic) if result else get_op_mat0()
+    state.evolve_single(op_mat, qubit_loc)
     return result
 
 
@@ -702,13 +710,17 @@ class Backend(Generic[_StateT_co]):
         """To be run at the end of pattern simulation to convey the order of output nodes."""
 
     @abstractmethod
-    def measure(self, node: int, measurement: Measurement) -> Outcome:
+    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
         measurement: Measurement
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
         """
 
 
@@ -737,11 +749,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     ----------
     node_index : NodeIndex, optional
         Mapping between node numbers and qubit indices in the internal state of the backend.
-    pr_calc : bool, optional
-        Whether or not to compute the probability distribution before choosing the measurement outcome.
-        If False, measurements yield results 0/1 with 50% probabilities each.
-    rng : Generator, optional
-        Random number generator used to sample measurement outcomes.
+    branch_selector: :class:`graphix.branch_selector.BranchSelector`, optional
+        Branch selector used for measurements.  Default is :class:`RandomBranchSelector`.
     symbolic : bool, optional
         If True, support arbitrary objects (typically, symbolic expressions) in matrices.
 
@@ -751,8 +760,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     """
 
     node_index: NodeIndex = dataclasses.field(default_factory=NodeIndex)
-    pr_calc: bool = True
-    rng: Generator = dataclasses.field(default_factory=ensure_rng)
+    branch_selector: BranchSelector = dataclasses.field(default_factory=RandomBranchSelector)
     symbolic: bool = False
 
     @override
@@ -790,22 +798,24 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         self.state.entangle((target, control))
 
     @override
-    def measure(self, node: int, measurement: Measurement) -> Outcome:
+    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
         """Perform measurement of a node and trace out the qubit.
 
         Parameters
         ----------
         node: int
         measurement: Measurement
+        rng: Generator, optional
         """
         loc = self.node_index.index(node)
         result = perform_measure(
+            node,
             loc,
             measurement.plane,
             measurement.angle,
             self.state,
-            rng=self.rng,
-            pr_calc=self.pr_calc,
+            self.branch_selector,
+            rng=rng,
             symbolic=self.symbolic,
         )
         self.node_index.remove(node)

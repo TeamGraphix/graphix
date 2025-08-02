@@ -23,7 +23,7 @@ from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import Outcome, PauliMeasurement
+from graphix.measurements import Outcome, PauliMeasurement, toggle_outcome
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -32,7 +32,9 @@ from graphix.visualization import GraphVisualizer
 if TYPE_CHECKING:
     from collections.abc import Container, Iterator, Mapping
     from collections.abc import Set as AbstractSet
-    from typing import Any, Literal
+    from typing import Any
+
+    from numpy.random import Generator
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
@@ -1355,7 +1357,11 @@ class Pattern:
         return n_list
 
     def simulate_pattern(
-        self, backend: Backend[_StateT_co] | str = "statevector", input_state: Data = BasicStates.PLUS, **kwargs: Any
+        self,
+        backend: Backend[_StateT_co] | str = "statevector",
+        input_state: Data = BasicStates.PLUS,
+        rng: Generator | None = None,
+        **kwargs: Any,
     ) -> BackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
@@ -1365,6 +1371,10 @@ class Pattern:
         ----------
         backend : str
             optional parameter to select simulator backend.
+        rng: Generator, optional
+            Random-number generator for measurements.
+            This generator is used only in case of random branch selection
+            (see :class:`RandomBranchSelector`).
         kwargs: keyword args for specified backend.
 
         Returns
@@ -1375,7 +1385,7 @@ class Pattern:
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
-        sim.run(input_state)
+        sim.run(input_state, rng=rng)
         return sim.backend.state
 
     def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
@@ -1887,14 +1897,7 @@ def extract_signal(plane: Plane, s_domain: set[int], t_domain: set[int]) -> Extr
     assert_never(plane)
 
 
-def toggle_outcome(outcome: Literal[0, 1]) -> Literal[0, 1]:
-    """Toggle outcome."""
-    if outcome == 0:
-        return 1
-    return 0
-
-
-def shift_outcomes(outcomes: dict[int, Literal[0, 1]], signal_dict: dict[int, set[int]]) -> dict[int, Literal[0, 1]]:
+def shift_outcomes(outcomes: dict[int, Outcome], signal_dict: dict[int, set[int]]) -> dict[int, Outcome]:
     """Update outcomes with shifted signals.
 
     Shifted signals (as returned by the method

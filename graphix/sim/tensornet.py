@@ -20,9 +20,9 @@ from quimb.tensor import Tensor, TensorNetwork
 from typing_extensions import TypeAlias, override
 
 from graphix import command
+from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.ops import Ops
 from graphix.parameter import Expression
-from graphix.rng import ensure_rng
 from graphix.sim.base_backend import Backend, BackendState
 from graphix.states import BasicStates, PlanarState
 
@@ -53,7 +53,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
 
     def __init__(
         self,
-        rng: Generator | None = None,
+        branch_selector: BranchSelector,
         graph_nodes: Iterable[int] | None = None,
         graph_edges: Iterable[tuple[int, int]] | None = None,
         default_output_nodes: Iterable[int] | None = None,
@@ -82,7 +82,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
             self.set_graph_state(graph_nodes, graph_edges)
-        self.__rng = ensure_rng(rng)
+        self.__branch_selector = branch_selector
 
     def get_open_tensor_from_index(self, index: int | str) -> npt.NDArray[np.complex128]:
         """Get tensor specified by node index. The tensor has a dangling edge.
@@ -206,6 +206,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         basis: str | npt.NDArray[np.complex128] = "Z",
         bypass_probability_calculation: bool = True,
         outcome: Outcome | None = None,
+        rng: Generator | None = None,
     ) -> Outcome:
         """Measure a node in specified basis. Note this does not perform the partial trace.
 
@@ -231,7 +232,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
             measurement result.
         """
         if bypass_probability_calculation:
-            result = outcome if outcome is not None else self.__rng.choice([0, 1])
+            result = outcome if outcome is not None else self.__branch_selector.measure(index, lambda: 0.5, rng=rng)
             # Basis state to be projected
             if isinstance(basis, np.ndarray):
                 if outcome is not None:
@@ -537,7 +538,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
         """
         if deep:
             return deepcopy(self)
-        return self.__class__(rng=self.__rng, ts=self)
+        return self.__class__(branch_selector=self.__branch_selector, ts=self)
 
 
 def _get_decomposed_cz() -> list[npt.NDArray[np.complex128]]:
@@ -581,7 +582,7 @@ class _AbstractTensorNetworkBackend(Backend[MBQCTensorNet], ABC):
     pattern: Pattern
     graph_prep: str
     input_state: Data
-    rng: Generator
+    branch_selector: BranchSelector
     output_nodes: list[int]
     results: dict[int, Outcome]
     _decomposed_cz: list[npt.NDArray[np.complex128]]
@@ -609,12 +610,16 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         'auto'(default) :
             Automatically select a preparation strategy based on the max degree of a graph
     input_state : preparation for input states (only BasicStates.PLUS is supported for tensor networks yet),
-    rng: :class:`np.random.Generator` (default: *None*)
-        random number generator to use for measurements
+    branch_selector: :class:`graphix.branch_selector.BranchSelector`, optional
+        Branch selector to be used for measurements.
     """
 
     def __init__(
-        self, pattern: Pattern, graph_prep: str = "auto", input_state: Data | None = None, rng: Generator | None = None
+        self,
+        pattern: Pattern,
+        graph_prep: str = "auto",
+        input_state: Data | None = None,
+        branch_selector: BranchSelector | None = None,
     ) -> None:
         """Construct a tensor network backend."""
         if input_state is None:
@@ -622,7 +627,8 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         elif input_state != BasicStates.PLUS:
             msg = "TensorNetworkBackend currently only supports BasicStates.PLUS as input state."
             raise NotImplementedError(msg)
-        rng = ensure_rng(rng)
+        if branch_selector is None:
+            branch_selector = RandomBranchSelector()
         if graph_prep in {"parallel", "sequential"}:
             pass
         elif graph_prep == "opt":
@@ -646,11 +652,11 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
                 graph_nodes=nodes,
                 graph_edges=edges,
                 default_output_nodes=pattern.output_nodes,
-                rng=rng,
+                branch_selector=branch_selector,
             )
             decomposed_cz = []
         else:  # graph_prep == "sequential":
-            state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, rng=rng)
+            state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, branch_selector=branch_selector)
             decomposed_cz = _get_decomposed_cz()
         isolated_nodes = pattern.get_isolated_nodes()
         super().__init__(
@@ -658,7 +664,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             pattern,
             graph_prep,
             input_state,
-            rng,
+            branch_selector,
             pattern.output_nodes,
             results,
             decomposed_cz,
@@ -735,7 +741,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             pass
 
     @override
-    def measure(self, node: int, measurement: Measurement) -> Outcome:
+    def measure(self, node: int, measurement: Measurement, rng: Generator | None = None) -> Outcome:
         """Perform measurement of the node.
 
         In the context of tensornetwork, performing measurement equals to
@@ -752,12 +758,11 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             vector: npt.NDArray[np.complex128] = self.state.get_open_tensor_from_index(node)
             probs = (np.abs(vector) ** 2).astype(np.float64)
             probs /= np.sum(probs)
-            result: Outcome = self.rng.choice([0, 1], p=probs)
+            result: Outcome = self.branch_selector.measure(node, lambda: probs[0], rng=rng)
             self.results[node] = result
             buffer = 1 / probs[result] ** 0.5
         else:
-            # choose the measurement result randomly
-            result = self.rng.choice([0, 1])
+            result = self.branch_selector.measure(node, lambda: 0.5, rng=rng)
             self.results[node] = result
             buffer = 2**0.5
         if isinstance(measurement.angle, Expression):
@@ -766,7 +771,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         if result:
             vec = measurement.plane.orth.matrix @ vec
         proj_vec = vec * buffer
-        self.state.measure_single(node, basis=proj_vec)
+        self.state.measure_single(node, basis=proj_vec, rng=rng)
         return result
 
     @override

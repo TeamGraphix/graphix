@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #277: Methods for pretty-printing `Pattern`: `to_ascii`,
   `to_unicode`, `to_latex`.
 
+- #300: Branch selection in simulation: in addition to
+  `RandomBranchSelector` which corresponds to the strategy that was
+  already implemented, the user can use `FixedBranchSelector`,
+  `ConstBranchSelector`, or define a custom branch selection by
+  deriving the abstract class `BranchSelector`.
+
 - #312: The separation between `TensorNetworkBackend` and backends
   that operate on a full-state representation, such as
   `StatevecBackend` and `DensityMatrixBackend`, is now clearer with
@@ -60,6 +66,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - #277: The method `Pattern.print_pattern` is now deprecated.
+
+- #300: `pr_calc` parameter is removed in back-end initializers.
+  The user can specify `pr_calc` in the constructor of
+  `RandomBranchSelector` instead.
+
+- #300: `rng` is no longer stored in the backends; it is now passed as
+  an optional argument to each simulation method.
 
 - #261: Moved all device interface functionalities to an external
   library and removed their implementation from this library.

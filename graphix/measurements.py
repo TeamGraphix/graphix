@@ -22,6 +22,11 @@ def outcome(b: bool) -> Outcome:
     return 1 if b else 0
 
 
+def toggle_outcome(outcome: Outcome) -> Outcome:
+    """Toggle outcome."""
+    return 1 if outcome == 0 else 0
+
+
 @dataclasses.dataclass
 class Domains:
     """Represent `X^sZ^t` where s and t are XOR of results from given sets of indices."""
