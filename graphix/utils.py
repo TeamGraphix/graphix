@@ -87,10 +87,10 @@ def iter_empty(it: Iterator[_T]) -> bool:
     return all(False for _ in it)
 
 
-ValueT = TypeVar("ValueT")
+_ValueT = TypeVar("_ValueT")
 
 
-class Validator(ABC, Generic[ValueT]):
+class Validator(ABC, Generic[_ValueT]):
     """Descriptor to validate value.
 
     https://docs.python.org/3/howto/descriptor.html#custom-validators
@@ -100,17 +100,17 @@ class Validator(ABC, Generic[ValueT]):
         """Set private field name."""
         self.private_name = "_" + name
 
-    def __get__(self, obj: object, objtype: object = None) -> ValueT:
+    def __get__(self, obj: object, objtype: object = None) -> _ValueT:
         """Get the validated value from the private field."""
-        return cast("ValueT", getattr(obj, self.private_name))
+        return cast("_ValueT", getattr(obj, self.private_name))
 
-    def __set__(self, obj: object, value: ValueT) -> None:
+    def __set__(self, obj: object, value: _ValueT) -> None:
         """Validate and set the value in the private field."""
         self.validate(value)
         setattr(obj, self.private_name, value)
 
     @abstractmethod
-    def validate(self, value: ValueT) -> None:
+    def validate(self, value: _ValueT) -> None:
         """Validate the assigned value."""
 
 
