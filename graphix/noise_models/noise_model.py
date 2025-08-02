@@ -65,7 +65,7 @@ class NoiseModel(ABC):
 
     @abstractmethod
     def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
-        """Return the noise to apply to the command `cmd`."""
+        """Return the noise to apply to the command ``cmd``."""
 
     @abstractmethod
     def confuse_result(self, cmd: BaseM, result: Outcome) -> Outcome:
@@ -103,7 +103,7 @@ class ComposeNoiseModel(NoiseModel):
 
     @override
     def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
-        """Return the noise to apply to the command `cmd`."""
+        """Return the noise to apply to the command ``cmd``."""
         sequence = [cmd]
         for model in self.models:
             sequence = model.transpile(sequence)

@@ -31,7 +31,7 @@ class NoiselessNoiseModel(NoiseModel):
 
     @override
     def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
-        """Return the noise to apply to the command `cmd`."""
+        """Return the noise to apply to the command ``cmd``."""
         return [cmd]
 
     @override

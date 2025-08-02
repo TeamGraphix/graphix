@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class DepolarisingNoise(Noise):
-    """One-qubit depolarising noise with probabibity `prob`."""
+    """One-qubit depolarising noise with probabibity ``prob``."""
 
     # Probability is a descriptor
     prob: Probability = Probability()  # noqa: RUF009
@@ -43,7 +43,7 @@ class DepolarisingNoise(Noise):
 
 @dataclass
 class TwoQubitDepolarisingNoise(Noise):
-    """Two-qubits depolarising noise with probabibity `prob`."""
+    """Two-qubits depolarising noise with probabibity ``prob``."""
 
     # Probability is a descriptor
     prob: Probability = Probability()  # noqa: RUF009
@@ -63,7 +63,7 @@ class TwoQubitDepolarisingNoise(Noise):
 class DepolarisingNoiseModel(NoiseModel):
     """Depolarising noise model.
 
-    :param NoiseModel: Parent abstract class class:`graphix.noise_model.NoiseModel`
+    :param NoiseModel: Parent abstract class class:`NoiseModel`
     :type NoiseModel: class
     """
 
@@ -92,7 +92,7 @@ class DepolarisingNoiseModel(NoiseModel):
 
     @typing_extensions.override
     def command(self, cmd: CommandOrNoise) -> list[CommandOrNoise]:
-        """Return the noise to apply to the command `cmd`."""
+        """Return the noise to apply to the command ``cmd``."""
         if cmd.kind == CommandKind.N:
             return [cmd, A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
         if cmd.kind == CommandKind.E:
