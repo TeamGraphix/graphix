@@ -476,7 +476,7 @@ class DenseState(BackendState):
             (control, target) qubit indices
         """
 
-    def apply_noise(self, qubits: list[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
+    def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
         """Apply noise.
 
         The default implementation of this method raises
@@ -686,7 +686,7 @@ class Backend(Generic[_StateT_co]):
         Previously existing nodes remain unchanged.
         """
 
-    def apply_noise(self, nodes: list[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
+    def apply_noise(self, nodes: Sequence[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
         """Apply noise.
 
         The default implementation of this method raises
@@ -697,7 +697,7 @@ class Backend(Generic[_StateT_co]):
 
         Parameters
         ----------
-        nodes : list of ints.
+        nodes : sequence of ints.
             Target qubits
         noise : Noise
             Noise to apply
@@ -847,12 +847,12 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
             self.apply_single(node=cmd.node, op=op)
 
     @override
-    def apply_noise(self, nodes: list[int], noise: Noise) -> None:
+    def apply_noise(self, nodes: Sequence[int], noise: Noise) -> None:
         """Apply noise.
 
         Parameters
         ----------
-        nodes : list of ints.
+        nodes : sequence of ints.
             Target qubits
         noise : Noise
             Noise to apply

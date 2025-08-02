@@ -392,7 +392,7 @@ class DensityMatrix(DenseState):
 
         Parameters
         ----------
-        qubits : list of ints.
+        qubits : sequence of ints.
             Target qubits
         noise : Noise
             Noise to apply
