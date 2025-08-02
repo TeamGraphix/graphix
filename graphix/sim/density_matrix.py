@@ -26,6 +26,7 @@ from graphix.states import BasicStates, State
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
+    from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim.data import Data
 
@@ -348,7 +349,6 @@ class DensityMatrix(DenseState):
         """Return flattened density matrix."""
         return self.rho.flatten()
 
-    @override
     def apply_channel(self, channel: KrausChannel, qargs: Sequence[int]) -> None:
         """Apply a channel to a density matrix.
 
@@ -385,6 +385,20 @@ class DensityMatrix(DenseState):
             raise ValueError("The output density matrix is not normalized, check the channel definition.")
 
         self.rho = result_array
+
+    @override
+    def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:
+        """Apply noise.
+
+        Parameters
+        ----------
+        qubits : sequence of ints.
+            Target qubits
+        noise : Noise
+            Noise to apply
+        """
+        channel = noise.to_kraus_channel()
+        self.apply_channel(channel, qubits)
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> DensityMatrix:
         """Return a copy of the density matrix where all occurrences of the given variable in measurement angles are substituted by the given value."""
