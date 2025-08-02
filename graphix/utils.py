@@ -7,7 +7,7 @@ import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -102,7 +102,8 @@ class Validator(ABC, Generic[_ValueT]):
 
     def __get__(self, obj: object, objtype: object = None) -> _ValueT:
         """Get the validated value from the private field."""
-        return cast("_ValueT", getattr(obj, self.private_name))
+        result: _ValueT = getattr(obj, self.private_name)
+        return result
 
     def __set__(self, obj: object, value: _ValueT) -> None:
         """Validate and set the value in the private field."""
