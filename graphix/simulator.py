@@ -177,7 +177,6 @@ class DefaultMeasureMethod(MeasureMethod):
         result : bool
             Measurement outcome to store.
         """
-        assert result is not None
         self.results[node] = result
 
 
