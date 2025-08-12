@@ -32,3 +32,33 @@ jobs:
       - run: mypy
 
       - run: pyright
+
+  # Check that `mypy` find installed `graphix` package (#328)
+  #
+  # Note that `mypy` does not find editable packages (installed with
+  # the option `pip install -e`), unless they are installed in
+  # `compat` or `strict` mode.
+  #
+  # pip install -e . --config-settings editable_mode=strict
+  #
+  # See https://github.com/pypa/setuptools/issues/3518.
+  typed-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+
+      - name: Install graphix and mypy
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Test type-checking
+        run: |
+          cd ${{ runner.temp }}
+          echo "from graphix import Pattern" > test_graphix_type.py
+          mypy test_graphix_type.py

@@ -70,3 +70,28 @@ enable the linter and basic type checking on save:
 ```
 
 and you are ready to commit the changes.
+
+## Type-checking other Python projects that import `graphix` when installed as an editable package
+
+If `graphix` is installed with the command given above:
+
+```bash
+pip install -e .[dev]
+```
+
+Then `mypy` fails to type-check other Python projects that import `graphix`, showing the following error:
+
+```
+error: Skipping analyzing "graphix": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+```
+
+Neither `mypy` nor `pyright` detect editable packages (installed with
+`pip install -e`), unless they are installed in `compat` or `strict`
+mode. A workaround is to install `graphix` in `strict` mode by running
+the following command in the `graphix` repository.
+
+```bash
+pip install -e . --config-settings editable_mode=strict
+```
+
+See https://github.com/pypa/setuptools/issues/3518 for more details.
