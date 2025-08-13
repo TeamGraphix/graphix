@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inherit from `DenseState`. Note that the class hierarchy of
   `BackendState` mirrors that of `Backend`.
 
-- #322: Added a new `optimization` module containing:
+- #322, #332: Added a new `optimization` module containing:
 
   * a functional version of `standardize` that returns a standardized
     pattern as a new object;
@@ -43,7 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     The resulting pattern is suitable for flow analysis. In
     particular, if a pattern has a flow, it is preserved by
     `perform_pauli_measurements` after applying `standardize` and
-    `incorporate_pauli_results`.
+    `incorporate_pauli_results`;
+
+  * a class `StandardizedPattern` that contains the decomposed parts
+    of a standardized pattern.
 
 ### Fixed
 
@@ -62,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #302, #308, #312: `Pattern`, `Circuit`, `PatternSimulator`, and
   backends are now type-checked.
+
+- #173, #332: `Pattern.extract_measurement_commands` does not
+  modify the pattern and returns unstandardized measurements.
 
 ### Changed
 
@@ -97,6 +103,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   specific state representation. Covariance is sound in this context
   because the classes are frozen, and it ensures that
   `Backend[BackendState]` is a supertype of all backend classes.
+
+- #220, #332: `Pattern.get_measurements_commands` is renamed into
+  `Pattern.extract_measurement_commands`.
 
 ## [0.3.1] - 2025-04-21
 

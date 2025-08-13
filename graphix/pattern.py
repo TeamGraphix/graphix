@@ -1068,30 +1068,15 @@ class Pattern:
                 target += 1
         return meas_cmds
 
-    def get_measurement_commands(self) -> list[command.M]:
-        """Return the list containing the measurement commands, in the order of measurements.
+    def extract_measurement_commands(self) -> Iterator[command.M]:
+        """Return measurement commands.
 
         Returns
         -------
-        meas_cmds : list
-            list of measurement commands in the order of meaurements
+        meas_cmds : Iterator[command.M]
+            measurement commands in the order of measurements
         """
-        if not self.is_standard():
-            self.standardize()
-        meas_cmds = []
-        ind = self._find_op_to_be_moved(CommandKind.M)
-        if ind is None:
-            return []
-        while True:
-            try:
-                cmd = self.__seq[ind]
-            except IndexError:
-                break
-            if cmd.kind != CommandKind.M:
-                break
-            meas_cmds.append(cmd)
-            ind += 1
-        return meas_cmds
+        yield from (cmd for cmd in self if cmd.kind == CommandKind.M)
 
     def get_meas_plane(self) -> dict[int, Plane]:
         """Get measurement plane from the pattern.
@@ -1650,13 +1635,11 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
 
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    if not pattern.is_standard():
-        pattern.standardize()
-    nodes, edges = pattern.get_graph()
-    vop_init = pattern.get_vops(conj=False)
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=vop_init)
+    standardized_pattern = optimization.StandardizedPattern(pattern)
+    nodes, edges = standardized_pattern.extract_graph()
+    graph_state = GraphState(nodes=nodes, edges=edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
-    to_measure, non_pauli_meas = pauli_nodes(pattern, leave_input)
+    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
         new_inputs = []
     else:
@@ -1734,7 +1717,9 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     return pat
 
 
-def pauli_nodes(pattern: Pattern, leave_input: bool) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(
+    pattern: optimization.StandardizedPattern, leave_input: bool
+) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
@@ -1748,15 +1733,12 @@ def pauli_nodes(pattern: Pattern, leave_input: bool) -> tuple[list[tuple[command
         list of measures
     non_pauli_nodes : set[int]
     """
-    if not pattern.is_standard():
-        pattern.standardize()
-    m_commands = pattern.get_measurement_commands()
     pauli_node: list[tuple[command.M, PauliMeasurement]] = []
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
-    for cmd in m_commands:
+    for cmd in pattern.m_list:
         pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
+        if pm is not None and (cmd.node not in pattern.pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
