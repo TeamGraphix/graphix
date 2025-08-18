@@ -111,7 +111,10 @@ class DepolarisingNoiseModel(NoiseModel):
         if cmd.kind == CommandKind.N:
             return [cmd, ApplyNoise(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
         if cmd.kind == CommandKind.E:
-            return [cmd, ApplyNoise(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes))]
+            return [
+                cmd,
+                ApplyNoise(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes)),
+            ]
         if cmd.kind == CommandKind.M:
             return [ApplyNoise(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
         if cmd.kind == CommandKind.X:
