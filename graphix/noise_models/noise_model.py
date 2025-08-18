@@ -8,66 +8,69 @@ overriding the abstract methods defined here.
 
 from __future__ import annotations
 
-import abc
-from typing import TYPE_CHECKING
+import dataclasses
+import sys
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar, Literal
+
+# override introduced in Python 3.12
+from typing_extensions import override
+
+from graphix.command import BaseM, Command, CommandKind, Node, _KindChecker
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from numpy.random import Generator
+
     from graphix.channels import KrausChannel
     from graphix.measurements import Outcome
-    from graphix.simulator import PatternSimulator
 
 
-class NoiseModel(abc.ABC):
-    """Base class for all noise models."""
+class Noise(ABC):
+    """Abstract base class for noise."""
 
-    data: PatternSimulator
+    @property
+    @abstractmethod
+    def nqubits(self) -> int:
+        """Return the number of qubits targetted by the noise."""
 
-    # shared by all objects of the child class.
-    def assign_simulator(self, simulator: PatternSimulator) -> None:
-        """Assign the running simulator.
+    @abstractmethod
+    def to_kraus_channel(self) -> KrausChannel:
+        """Return the Kraus channel describing the noise."""
 
-        Parameters
-        ----------
-        simulator : :class:`~graphix.simulator.PatternSimulator`
-            Simulator instance that will use this noise model.
-        """
-        self.simulator = simulator
 
-    @abc.abstractmethod
-    def prepare_qubit(self) -> KrausChannel:
-        """Return the preparation channel.
+@dataclass
+class ApplyNoise(_KindChecker):
+    """Apply noise command."""
 
-        Returns
-        -------
-        KrausChannel
-            Channel applied after single-qubit preparation.
-        """
-        ...
+    kind: ClassVar[Literal[CommandKind.ApplyNoise]] = dataclasses.field(default=CommandKind.ApplyNoise, init=False)
+    noise: Noise
+    nodes: list[Node]
 
-    @abc.abstractmethod
-    def entangle(self) -> KrausChannel:
-        """Return the channel applied after entanglement.
 
-        Returns
-        -------
-        KrausChannel
-            Channel modeling noise during the CZ gate.
-        """
-        ...
+if sys.version_info >= (3, 10):
+    CommandOrNoise = Command | ApplyNoise
+else:
+    from typing import Union
 
-    @abc.abstractmethod
-    def measure(self) -> KrausChannel:
-        """Return the measurement channel.
+    CommandOrNoise = Union[Command, ApplyNoise]
 
-        Returns
-        -------
-        KrausChannel
-            Channel applied immediately before measurement.
-        """
-        ...
 
-    @abc.abstractmethod
-    def confuse_result(self, result: Outcome) -> Outcome:
+class NoiseModel(ABC):
+    """Abstract base class for all noise models."""
+
+    @abstractmethod
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Return the noise to apply to input nodes."""
+
+    @abstractmethod
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Return the noise to apply to the command ``cmd``."""
+
+    @abstractmethod
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
         """Return a possibly flipped measurement outcome.
 
         Parameters
@@ -75,52 +78,61 @@ class NoiseModel(abc.ABC):
         result : Outcome
             Ideal measurement result.
 
+        cmd : BaseM
+            The measurement command that produced the given outcome.
+
         Returns
         -------
         Outcome
             Possibly corrupted result.
         """
 
-    @abc.abstractmethod
-    def byproduct_x(self) -> KrausChannel:
-        """Return the channel for X by-product corrections.
+    def transpile(self, sequence: Iterable[CommandOrNoise], rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Apply the noise to a sequence of commands and return the resulting sequence."""
+        return [n_cmd for cmd in sequence for n_cmd in self.command(cmd, rng=rng)]
 
-        Returns
-        -------
-        KrausChannel
-            Channel applied after an X correction.
-        """
-        ...
 
-    @abc.abstractmethod
-    def byproduct_z(self) -> KrausChannel:
-        """Return the channel for Z by-product corrections.
+class NoiselessNoiseModel(NoiseModel):
+    """Noise model that performs no operation."""
 
-        Returns
-        -------
-        KrausChannel
-            Channel applied after a Z correction.
-        """
-        ...
+    @override
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Return the noise to apply to input nodes."""
+        return []
 
-    @abc.abstractmethod
-    def clifford(self) -> KrausChannel:
-        """Return the channel for Clifford gates.
+    @override
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Return the noise to apply to the command ``cmd``."""
+        return [cmd]
 
-        Returns
-        -------
-        KrausChannel
-            Channel modeling the noise of Clifford operations.
-        """
-        # NOTE might be different depending on the gate.
-        ...
+    @override
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
+        """Assign wrong measurement result."""
+        return result
 
-    @abc.abstractmethod
-    def tick_clock(self) -> None:
-        """Advance the simulator clock.
 
-        This accounts for idle errors such as :math:`T_1` and :math:`T_2`. All
-        commands between consecutive ``T`` instructions are considered
-        simultaneous.
-        """
-        ...
+@dataclass(frozen=True)
+class ComposeNoiseModel(NoiseModel):
+    """Compose noise models."""
+
+    models: list[NoiseModel]
+
+    @override
+    def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Return the noise to apply to input nodes."""
+        return [n_cmd for m in self.models for n_cmd in m.input_nodes(nodes)]
+
+    @override
+    def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
+        """Return the noise to apply to the command ``cmd``."""
+        sequence = [cmd]
+        for model in self.models:
+            sequence = model.transpile(sequence)
+        return sequence
+
+    @override
+    def confuse_result(self, cmd: BaseM, result: Outcome, rng: Generator | None = None) -> Outcome:
+        """Assign wrong measurement result."""
+        for m in self.models:
+            result = m.confuse_result(cmd, result)
+        return result
