@@ -53,8 +53,8 @@ This is the simplest of the `graph state
 We can use the :class:`~graphix.simulator.PatternSimulator` to classically simulate the pattern above and obtain the output state, for default input state of :math:`|+\rangle`.
 Alternatively, we can simply call :meth:`~graphix.pattern.Pattern.simulate_pattern` of :class:`~graphix.pattern.Pattern` object to do it in one line:
 
->>> pattern.simulate_pattern(backend='statevector')
-Statevec, data=[1.+0.j 0.+0.j], shape=(2,)
+>>> print(pattern.simulate_pattern(backend='statevector'))
+Statevec object with statevector [1.+0.j 0.+0.j] and length (2,).
 
 Note again that we started with :math:`|+\rangle` state so the answer is correct.
 
