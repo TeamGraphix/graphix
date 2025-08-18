@@ -8,7 +8,7 @@ import pytest
 from graphix import Pattern
 from graphix.command import CommandKind, M, N
 from graphix.noise_models import (
-    A,
+    ApplyNoise,
     CommandOrNoise,
     ComposeNoiseModel,
     DepolarisingNoise,
@@ -58,7 +58,7 @@ def test_compose_noise_model_transpile(fx_rng: Generator) -> None:
     iterator = iter(noisy_pattern)
 
     def check_noise_command(cmd: CommandOrNoise, prob: float, two_qubits: bool) -> None:
-        assert isinstance(cmd, A)
+        assert isinstance(cmd, ApplyNoise)
         if two_qubits:
             assert isinstance(cmd.noise, TwoQubitDepolarisingNoise)
         else:

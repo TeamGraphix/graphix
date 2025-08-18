@@ -322,7 +322,7 @@ class PatternSimulator:
                 # pattern modifier. Noise models can perform special
                 # handling of ticks during noise transpilation.
                 pass
-            elif cmd.kind == CommandKind.A:
+            elif cmd.kind == CommandKind.ApplyNoise:
                 self.backend.apply_noise(cmd.nodes, cmd.noise)
             elif cmd.kind == CommandKind.S:
                 raise ValueError("S commands unexpected in simulated patterns.")

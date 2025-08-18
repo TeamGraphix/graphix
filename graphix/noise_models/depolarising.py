@@ -9,7 +9,7 @@ import typing_extensions
 from graphix.channels import KrausChannel, depolarising_channel, two_qubit_depolarising_channel
 from graphix.command import BaseM, CommandKind
 from graphix.measurements import toggle_outcome
-from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseModel
+from graphix.noise_models.noise_model import ApplyNoise, CommandOrNoise, Noise, NoiseModel
 from graphix.rng import ensure_rng
 from graphix.utils import Probability
 
@@ -103,23 +103,23 @@ class DepolarisingNoiseModel(NoiseModel):
     @typing_extensions.override
     def input_nodes(self, nodes: Iterable[int], rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to input nodes."""
-        return [A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
+        return [ApplyNoise(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[node]) for node in nodes]
 
     @typing_extensions.override
     def command(self, cmd: CommandOrNoise, rng: Generator | None = None) -> list[CommandOrNoise]:
         """Return the noise to apply to the command ``cmd``."""
         if cmd.kind == CommandKind.N:
-            return [cmd, A(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
+            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.prepare_error_prob), nodes=[cmd.node])]
         if cmd.kind == CommandKind.E:
-            return [cmd, A(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes))]
+            return [cmd, ApplyNoise(noise=TwoQubitDepolarisingNoise(self.entanglement_error_prob), nodes=list(cmd.nodes))]
         if cmd.kind == CommandKind.M:
-            return [A(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
+            return [ApplyNoise(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
         if cmd.kind == CommandKind.X:
-            return [cmd, A(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node])]
+            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node])]
         if cmd.kind == CommandKind.Z:
-            return [cmd, A(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node])]
+            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node])]
         # Use of `==` here for mypy
-        if cmd.kind == CommandKind.C or cmd.kind == CommandKind.T or cmd.kind == CommandKind.A:  # noqa: PLR1714
+        if cmd.kind == CommandKind.C or cmd.kind == CommandKind.T or cmd.kind == CommandKind.ApplyNoise:  # noqa: PLR1714
             return [cmd]
         if cmd.kind == CommandKind.S:
             raise ValueError("Unexpected signal!")

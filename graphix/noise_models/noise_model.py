@@ -42,20 +42,20 @@ class Noise(ABC):
 
 
 @dataclass
-class A(_KindChecker):
+class ApplyNoise(_KindChecker):
     """Apply noise command."""
 
-    kind: ClassVar[Literal[CommandKind.A]] = dataclasses.field(default=CommandKind.A, init=False)
+    kind: ClassVar[Literal[CommandKind.ApplyNoise]] = dataclasses.field(default=CommandKind.ApplyNoise, init=False)
     noise: Noise
     nodes: list[Node]
 
 
 if sys.version_info >= (3, 10):
-    CommandOrNoise = Command | A
+    CommandOrNoise = Command | ApplyNoise
 else:
     from typing import Union
 
-    CommandOrNoise = Union[Command, A]
+    CommandOrNoise = Union[Command, ApplyNoise]
 
 
 class NoiseModel(ABC):

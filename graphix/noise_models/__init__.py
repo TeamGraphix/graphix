@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from graphix.noise_models.depolarising import DepolarisingNoise, DepolarisingNoiseModel, TwoQubitDepolarisingNoise
 from graphix.noise_models.noise_model import (
-    A,
+    ApplyNoise,
     CommandOrNoise,
     ComposeNoiseModel,
     Noise,
@@ -13,7 +13,7 @@ from graphix.noise_models.noise_model import (
 )
 
 __all__ = [
-    "A",
+    "ApplyNoise",
     "CommandOrNoise",
     "ComposeNoiseModel",
     "DepolarisingNoise",
