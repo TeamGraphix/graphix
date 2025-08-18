@@ -82,11 +82,15 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
-- 
+### Projects using `graphix`
+
+- [Verphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
 
 ## Citing
 
-> Shinichi Sunami and Masato Fukushima, Graphix. (2023) <https://doi.org/10.5281/zenodo.7861382>
+> Shinichi Sunami and Masato Fukushima, Graphix. (2023) 
+> - Zenodo: https://doi.org/10.5281/zenodo.7861382 
+> - arXiv: https://doi.org/10.48550/arXiv.2212.11975
 
 ## Contributing
 
