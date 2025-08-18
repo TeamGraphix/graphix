@@ -128,7 +128,7 @@ class TestGenerator:
         g.add_edges_from(edges)
         input_list = [0, 1, 2]
         angles: dict[int, float] = {}
-        for cmd in pattern.get_measurement_commands():
+        for cmd in pattern.extract_measurement_commands():
             assert isinstance(cmd.angle, float)
             angles[cmd.node] = float(cmd.angle)
         meas_planes = pattern.get_meas_plane()
