@@ -248,10 +248,10 @@ We can simulate the MBQC pattern with various noise models to understand their e
 
 The statevector backend simulates the pattern ideally, without any noise.
 
-To run noisy simulations, we use a :class:`NoiseModel`, which transpiles ideal patterns into patterns containing some ``A`` commands.
-Each ``A`` command applies noise to certain qubits. The noise to be applied is described by an instance of :class:`Noise`, which is an abstract base class for classes that define a Kraus channel.
+To run noisy simulations, we use a :class:`NoiseModel`, which transpiles ideal patterns into patterns containing some ``ApplyNoise`` commands.
+Each ``ApplyNoise`` command applies noise to certain qubits. The noise to be applied is described by an instance of :class:`Noise`, which is an abstract base class for classes that define a Kraus channel.
 
-In the following example, we apply dephasing noise to qubit preparation commands (denoted by ``N``) by defining a noise model, ``NoisyGraphState``, that transpiles ideal patterns by inserting an ``A`` command carrying a ``DephasingNoise`` after each ``N`` command.
+In the following example, we apply dephasing noise to qubit preparation commands (denoted by ``N``) by defining a noise model, ``NoisyGraphState``, that transpiles ideal patterns by inserting an ``ApplyNoise`` command carrying a ``DephasingNoise`` after each ``N`` command.
 
 .. code-block:: python
 
@@ -260,7 +260,7 @@ In the following example, we apply dephasing noise to qubit preparation commands
     import typing_extensions
     from graphix.command import BaseM, CommandKind
     from graphix.channels import KrausChannel, dephasing_channel
-    from graphix.noise_models.noise_model import A, CommandOrNoise, Noise, NoiseCommands, NoiseModel
+    from graphix.noise_models.noise_model import ApplyNoise, CommandOrNoise, Noise, NoiseCommands, NoiseModel
     from graphix.utils import Probability
 
     @dataclass
@@ -289,7 +289,7 @@ In the following example, we apply dephasing noise to qubit preparation commands
         def command(self, cmd: CommandOrNoise) -> NoiseCommands:
             """Return the noise to apply to the command `cmd`."""
             if cmd.kind == CommandKind.N:
-                return [cmd, A(noise=DephasingNoise(self.p_z), nodes=[cmd.node])]
+                return [cmd, ApplyNoise(noise=DephasingNoise(self.p_z), nodes=[cmd.node])]
             else:
                 return [cmd]
 

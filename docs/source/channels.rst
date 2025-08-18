@@ -30,7 +30,7 @@ Noise model classes
 .. autoclass:: Noise
     :members:
 
-.. autoclass:: A
+.. autoclass:: ApplyNoise
     :members:
 
 .. autoclass:: NoiseModel
