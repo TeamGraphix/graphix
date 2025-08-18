@@ -227,8 +227,6 @@ class PatternSimulator:
         def initialize_backend() -> Backend[BackendState]:
             nonlocal backend, branch_selector, graph_prep, noise_model
             if isinstance(backend, Backend):
-                if noise_model is not None:
-                    raise ValueError("`noise_model` cannot be specified if `backend` is already instantiated.")
                 if branch_selector is not None:
                     raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
                 if graph_prep is not None:
