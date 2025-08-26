@@ -12,8 +12,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, 
 import numpy as np
 import numpy.typing as npt
 
+# Self introduced in Python 3.11
 # override introduced in Python 3.12
-from typing_extensions import override
+from typing_extensions import Self, override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -103,14 +104,14 @@ class Validator(ABC, Generic[_ValueT]):
         self.private_name = "_" + name
 
     @overload
-    def __get__(self, obj: None, objtype: type | None = None) -> Validator[_ValueT]:  # access on class
+    def __get__(self, obj: None, objtype: type | None = None) -> Self:  # access on class
         ...
 
     @overload
     def __get__(self, obj: object, objtype: type | None = None) -> _ValueT:  # access on instance
         ...
 
-    def __get__(self, obj: object, objtype: object = None) -> _ValueT | Validator[_ValueT]:
+    def __get__(self, obj: object, objtype: object = None) -> _ValueT | Self:
         """Get the validated value from the private field."""
         if obj is None:  # access on the class, not an instance
             return self
