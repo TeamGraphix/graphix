@@ -5,10 +5,16 @@ from __future__ import annotations
 import inspect
 import sys
 import typing
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, SupportsInt, TypeVar
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, SupportsInt, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
+
+# Self introduced in Python 3.11
+# override introduced in Python 3.12
+from typing_extensions import Self, override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -82,3 +88,67 @@ def iter_empty(it: Iterator[_T]) -> bool:
     This function consumes the iterator.
     """
     return all(False for _ in it)
+
+
+_ValueT = TypeVar("_ValueT")
+
+
+class Validator(ABC, Generic[_ValueT]):
+    """Descriptor to validate value.
+
+    https://docs.python.org/3/howto/descriptor.html#custom-validators
+    """
+
+    def __set_name__(self, owner: object, name: str) -> None:
+        """Set private field name."""
+        self.private_name = "_" + name
+
+    @overload
+    def __get__(self, obj: None, objtype: type | None = None) -> Self:  # access on class
+        ...
+
+    @overload
+    def __get__(self, obj: object, objtype: type | None = None) -> _ValueT:  # access on instance
+        ...
+
+    def __get__(self, obj: object, objtype: object = None) -> _ValueT | Self:
+        """Get the validated value from the private field."""
+        if obj is None:  # access on the class, not an instance
+            return self
+        result: _ValueT = getattr(obj, self.private_name)
+        return result
+
+    def __set__(self, obj: object, value: _ValueT) -> None:
+        """Validate and set the value in the private field."""
+        self.validate(value)
+        setattr(obj, self.private_name, value)
+
+    @abstractmethod
+    def validate(self, value: _ValueT) -> None:
+        """Validate the assigned value."""
+
+
+@dataclass
+class BoundedFloat(Validator[float]):
+    """Descriptor to validate numbers with given bounds.
+
+    https://docs.python.org/3/howto/descriptor.html#custom-validators
+    """
+
+    minvalue: float | None = None
+    maxvalue: float | None = None
+
+    @override
+    def validate(self, value: float) -> None:
+        """Validate the assigned value."""
+        if self.minvalue is not None and value < self.minvalue:
+            raise ValueError(f"Expected {value!r} to be at least {self.minvalue!r}")
+        if self.maxvalue is not None and value > self.maxvalue:
+            raise ValueError(f"Expected {value!r} to be no more than {self.maxvalue!r}")
+
+
+class Probability(BoundedFloat):
+    """Descriptor for probability (between 0 and 1)."""
+
+    def __init__(self) -> None:
+        super().__init__(minvalue=0, maxvalue=1)

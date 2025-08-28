@@ -24,14 +24,14 @@ from graphix.parameter import check_expression_or_complex
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Iterator, Sequence
+    from collections.abc import Iterable, Iterator, Sequence
 
     from numpy.random import Generator
 
     from graphix import command
-    from graphix.channels import KrausChannel
     from graphix.fundamentals import Plane
     from graphix.measurements import Measurement, Outcome
+    from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
     from graphix.sim.data import Data
     from graphix.simulator import MeasureMethod
@@ -357,10 +357,6 @@ class BackendState(ABC):
     :class:`DenseState`, :class:`MBQCTensorNet`, :class:`Statevec`, :class:`DensityMatrix`
     """
 
-    def apply_channel(self, channel: KrausChannel, qargs: Sequence[int]) -> None:  # noqa: ARG002,PLR6301
-        """Apply channel to the state."""
-        raise NoiseNotSupportedError
-
     @abstractmethod
     def flatten(self) -> Matrix:
         """Return flattened state."""
@@ -479,6 +475,24 @@ class DenseState(BackendState):
         qubits : tuple of int
             (control, target) qubit indices
         """
+
+    def apply_noise(self, qubits: Sequence[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
+        """Apply noise.
+
+        The default implementation of this method raises
+        `NoiseNotSupportedError`, indicating that the backend does not
+        support noise. Backends that support noise (e.g.,
+        `DensityMatrixBackend`) override this method to implement
+        the effect of noise.
+
+        Parameters
+        ----------
+        qubits : list of ints.
+            Target qubits
+        noise : Noise
+            Noise to apply
+        """
+        raise NoiseNotSupportedError
 
 
 def _op_mat_from_result(
@@ -672,8 +686,8 @@ class Backend(Generic[_StateT_co]):
         Previously existing nodes remain unchanged.
         """
 
-    def apply_channel(self, channel: KrausChannel, qargs: Collection[int]) -> None:  # noqa: ARG002,PLR6301
-        """Apply channel to the state.
+    def apply_noise(self, nodes: Sequence[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
+        """Apply noise.
 
         The default implementation of this method raises
         `NoiseNotSupportedError`, indicating that the backend does not
@@ -683,7 +697,10 @@ class Backend(Generic[_StateT_co]):
 
         Parameters
         ----------
-            qargs : list of ints. Target qubits
+        nodes : sequence of ints.
+            Target qubits
+        noise : Noise
+            Noise to apply
         """
         raise NoiseNotSupportedError
 
@@ -830,15 +847,18 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
             self.apply_single(node=cmd.node, op=op)
 
     @override
-    def apply_channel(self, channel: KrausChannel, qargs: Collection[int]) -> None:
-        """Apply channel to the state.
+    def apply_noise(self, nodes: Sequence[int], noise: Noise) -> None:
+        """Apply noise.
 
         Parameters
         ----------
-            qargs : list of ints. Target qubits
+        nodes : sequence of ints.
+            Target qubits
+        noise : Noise
+            Noise to apply
         """
-        indices = [self.node_index.index(i) for i in qargs]
-        self.state.apply_channel(channel, indices)
+        indices = [self.node_index.index(i) for i in nodes]
+        self.state.apply_noise(indices, noise)
 
     def apply_single(self, node: int, op: Matrix) -> None:
         """Apply a single gate to the state."""
