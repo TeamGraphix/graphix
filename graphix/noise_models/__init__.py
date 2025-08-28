@@ -8,7 +8,6 @@ from graphix.noise_models.noise_model import (
     CommandOrNoise,
     ComposeNoiseModel,
     Noise,
-    NoiselessNoiseModel,
     NoiseModel,
 )
 
@@ -20,6 +19,5 @@ __all__ = [
     "DepolarisingNoiseModel",
     "Noise",
     "NoiseModel",
-    "NoiselessNoiseModel",
     "TwoQubitDepolarisingNoise",
 ]

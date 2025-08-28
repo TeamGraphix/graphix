@@ -13,9 +13,9 @@ from graphix.noise_models import (
     ComposeNoiseModel,
     DepolarisingNoise,
     DepolarisingNoiseModel,
-    NoiselessNoiseModel,
     TwoQubitDepolarisingNoise,
 )
+from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.random_objects import rand_circuit
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.simulator import DefaultMeasureMethod
