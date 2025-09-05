@@ -1035,7 +1035,7 @@ class Pattern:
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
         flow, l_k = find_gflow(g, vin, vout, meas_planes=meas_planes)
-        if not flow:
+        if flow is None or l_k is None:  # We check both to avoid typing issues with `get_layers`.
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
         meas_order: list[int] = []

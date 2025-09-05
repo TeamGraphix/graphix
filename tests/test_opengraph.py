@@ -31,7 +31,7 @@ def test_open_graph_to_pattern() -> None:
     meas = {
         0: Measurement(0, Plane.XY),
         1: Measurement(1.0, Plane.XY),
-        3: Measurement(1.0, Plane.YZ),
+        3: Measurement(0.5, Plane.YZ),
         4: Measurement(1.0, Plane.XY),
     }
 

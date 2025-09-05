@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
-from graphix.generator import generate_from_graph
+import graphix.generator
 from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ class OpenGraph:
         angles = {node: m.angle for node, m in meas.items()}
         planes = {node: m.plane for node, m in meas.items()}
 
-        return generate_from_graph(g, angles, inputs, outputs, planes)
+        return graphix.generator.generate_from_graph(g, angles, inputs, outputs, planes)
 
     def compose(self, other: OpenGraph, mapping: Mapping[int, int]) -> tuple[OpenGraph, dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
