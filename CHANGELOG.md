@@ -5,22 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## Unreleased
 
 ### Added
 
-- #320: Method for `Pattern`: `compose`
+- #332: New class `StandardizedPattern` that contains the decomposed
+  parts of a standardized pattern.
 
-- #310: Method for `OpenGraph`: `compose`
+### Fixed
 
-- #277: Methods for pretty-printing `Pattern`: `to_ascii`,
-  `to_unicode`, `to_latex`.
+- #339, #332: Standardization now considers that CZ ∘ CZ = I,
+  consistently with respect to the simulators. `Pattern.get_graph`
+  now considers the standardized graph (used for open graphs and
+  Pauli presimulation).
+
+- #332: `optimization.standardize` is now pure: M commands were
+  formerly mutated in the original pattern.
+
+- #173, #332: `Pattern.extract_measurement_commands` does not
+  modify the pattern and returns unstandardized measurements.
+
+### Changed
+
+## [0.3.2] - 2025-08-12
+
+### Added
+
+- #271: New noise-model API via transpilation: noise-models can now
+  add or change the commands in the pattern. The API now includes a
+  depolarising noise model and a noise model composer.
+
+- #277: Methods for pretty-printing `Pattern`: `to_ascii`, `to_unicode`,
+  `to_latex`.
 
 - #300: Branch selection in simulation: in addition to
   `RandomBranchSelector` which corresponds to the strategy that was
   already implemented, the user can use `FixedBranchSelector`,
   `ConstBranchSelector`, or define a custom branch selection by
   deriving the abstract class `BranchSelector`.
+
+- #310: Method for `OpenGraph`: `compose`
 
 - #312: The separation between `TensorNetworkBackend` and backends
   that operate on a full-state representation, such as
@@ -32,7 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inherit from `DenseState`. Note that the class hierarchy of
   `BackendState` mirrors that of `Backend`.
 
-- #322, #332: Added a new `optimization` module containing:
+- #320: Method for `Pattern`: `compose`
+
+- #322: Added a new `optimization` module containing:
 
   * a functional version of `standardize` that returns a standardized
     pattern as a new object;
@@ -45,31 +71,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `perform_pauli_measurements` after applying `standardize` and
     `incorporate_pauli_results`;
 
-  * a class `StandardizedPattern` that contains the decomposed parts
-    of a standardized pattern.
-
 ### Fixed
-
-- #314, #322: The method `Pattern.standardize()` now correctly returns
-  an equivalent pattern even in the presence of C commands, or raises
-  an error if no standardized form exists.
-
-- #277: The result of `repr()` for `Pattern`, `Circuit`, `Command`,
-  `Instruction`, `Plane`, `Axis` and `Sign` is now a valid Python
-  expression and is more readable.
 
 - #235, #252, #273: The open graph representation is now compatible
   with pyzx 0.9, and conventions have been fixed to ensure that the
   semantics is preserved between circuits, ZX graphs, open graphs and
   patterns.
 
+- #277: The result of `repr()` for `Pattern`, `Circuit`, `Command`,
+  `Instruction`, `Plane`, `Axis` and `Sign` is now a valid Python
+  expression and is more readable.
+
 - #302, #308, #312: `Pattern`, `Circuit`, `PatternSimulator`, and
   backends are now type-checked.
 
-- #173, #332: `Pattern.extract_measurement_commands` does not
-  modify the pattern and returns unstandardized measurements.
+- #314, #322: The method `Pattern.standardize()` now correctly returns
+  an equivalent pattern even in the presence of C commands, or raises
+  an error if no standardized form exists.
 
 ### Changed
+
+- #261: Moved all device interface functionalities to an external
+  library and removed their implementation from this library.
 
 - #277: The method `Pattern.print_pattern` is now deprecated.
 
@@ -79,19 +102,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #300: `rng` is no longer stored in the backends; it is now passed as
   an optional argument to each simulation method.
-
-- #261: Moved all device interface functionalities to an external
-  library and removed their implementation from this library.
-
-- #314, #322: The method `Pattern.standardize()` now places C commands
-  after X and Z commands, making the resulting patterns suitable for
-  flow analysis.  
-  The `flow_from_pattern` functions now fail if the input pattern is
-  not strictly standardized (as checked by
-  `Pattern.is_standard(strict=True)`, which requires C commands to be
-  last).  
-  Note: the method `perform_pauli_measurements` still places C
-  commands before X and Z commands.
 
 - #312: Backend's `State` has been renamed to `BackendState` to avoid
   a name conflict with the `State` class defined in `graphix.states`,
@@ -104,8 +114,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   because the classes are frozen, and it ensures that
   `Backend[BackendState]` is a supertype of all backend classes.
 
+<<<<<<< HEAD
 - #220, #332: `Pattern.get_measurements_commands` is renamed into
   `Pattern.extract_measurement_commands`.
+||||||| 95bff60
+=======
+- #314, #322: The method `Pattern.standardize()` now places C commands
+  after X and Z commands, making the resulting patterns suitable for
+  flow analysis.  
+  The `flow_from_pattern` functions now fail if the input pattern is
+  not strictly standardized (as checked by
+  `Pattern.is_standard(strict=True)`, which requires C commands to be
+  last).  
+  Note: the method `perform_pauli_measurements` still places C
+  commands before X and Z commands.
+>>>>>>> master
 
 ## [0.3.1] - 2025-04-21
 

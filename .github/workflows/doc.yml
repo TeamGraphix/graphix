@@ -64,6 +64,6 @@ jobs:
           corepack enable pnpm
           pnpm dlx prettier --write .
 
-      - uses: reviewdog/action-suggester@v1
+      - uses: reviewdog/action-suggester@v1.22.0
         with:
           tool_name: ":art: text-formatter"
