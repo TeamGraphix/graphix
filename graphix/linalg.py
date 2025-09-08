@@ -412,9 +412,7 @@ def _elimination_jit(mat_data: npt.NDArray[np.uint8], ncols: int, full_reduce: b
         # Swap row `p` and `i`. The pivot is now located at row `p`.
         if i != p:
             for k in range(n):
-                tmp = mat_data[i, k]
-                mat_data[i, k] = mat_data[p, k]
-                mat_data[p, k] = tmp
+                mat_data[i, k], mat_data[p, k] = mat_data[p, k], mat_data[i, k]
 
         if full_reduce:
             # Force zeros BELOW and ABOVE the pivot by xor-ing with the pivot row
