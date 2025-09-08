@@ -721,7 +721,7 @@ class TestMCOps:
         pattern = circuit.transpile().pattern
         assert len(list(iter(pattern))) == 0
 
-    def test_get_graph(self) -> None:
+    def test_extract_graph(self) -> None:
         n = 3
         g = nx.complete_graph(n)
         circuit = Circuit(n)
@@ -733,7 +733,7 @@ class TestMCOps:
             circuit.rx(v, np.pi / 9)
 
         pattern = circuit.transpile().pattern
-        nodes, edges = pattern.get_graph()
+        graph = pattern.extract_graph()
 
         nodes_ref = list(range(27))
         edges_ref = [
@@ -769,35 +769,8 @@ class TestMCOps:
             (25, 26),
         ]
 
-        # nodes check
-        nodes_check1 = True
-        nodes_check2 = True
-        for node in nodes:
-            if node not in nodes_ref:
-                nodes_check1 = False
-        for node in nodes_ref:
-            if node not in nodes:
-                nodes_check2 = False
-        assert nodes_check1
-        assert nodes_check2
-
-        # edges check
-        edges_check1 = True
-        edges_check2 = True
-        for edge in edges:
-            edge_match = False
-            for edge_ref in edges_ref:
-                edge_match |= assert_equal_edge(edge, edge_ref)
-            if not edge_match:
-                edges_check1 = False
-        for edge in edges_ref:
-            edge_match = False
-            for edge_ref in edges:
-                edge_match |= assert_equal_edge(edge, edge_ref)
-            if not edge_match:
-                edges_check2 = False
-        assert edges_check1
-        assert edges_check2
+        assert set(nodes_ref) == set(graph.nodes)
+        assert set(map(frozenset, edges_ref)) == set(map(frozenset, graph.edges))
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize(self, fx_bg: PCG64, jumps: int) -> None:

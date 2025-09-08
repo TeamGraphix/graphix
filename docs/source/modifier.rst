@@ -46,7 +46,9 @@ Pattern Manipulation
 
     .. automethod:: is_standard
 
-    .. automethod:: get_graph
+    .. automethod:: extract_graph
+
+    .. automethod:: extract_nodes
 
     .. automethod:: parallelize_pattern
 

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #332: New class `StandardizedPattern` that contains the decomposed
   parts of a standardized pattern.
 
+- #332: New method `Pattern.extract_nodes` to get the set of nodes in
+  a pattern.
+
 ### Fixed
 
 - #339, #332: Standardization now considers that CZ ∘ CZ = I,
@@ -26,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   modify the pattern and returns unstandardized measurements.
 
 ### Changed
+
+- #220, #332: `Pattern.extract_graph` and `Pattern.compute_max_degree`
+  replace `Pattern.get_graph` and `Pattern.get_max_degree`.
+  They now consider that CZ ∘ CZ = I.
+
+- #332: `Pattern.extract_graph` now returns a networkx graph.
 
 ## [0.3.2] - 2025-08-12
 

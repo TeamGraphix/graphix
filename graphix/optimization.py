@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING
 
+import networkx as nx
+
 import graphix.pattern
 from graphix import command
 from graphix.clifford import Clifford
@@ -142,25 +144,20 @@ class StandardizedPattern:
                 # node is equivalent to apply `C'C` to a fresh node.
                 self.c_dict[cmd.node] = cmd.clifford @ self.c_dict.get(cmd.node, Clifford.I)
 
-    def extract_graph(self) -> tuple[list[int], list[tuple[int, int]]]:
-        """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
+    def extract_graph(self) -> nx.Graph[int]:
+        """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
 
         Returns
         -------
-        node_list : list
-            list of node indices.
-        edge_list : list
-            list of tuples (i,j) specifying edges
+        graph_state: nx.Graph
         """
-        # We rely on the fact that pattern.input_nodes returns a copy
-        node_list: list[int]
-        edge_list: list[tuple[int, int]]
-        node_list, edge_list = self.pattern.input_nodes, []
+        graph: nx.Graph[int] = nx.Graph()
+        graph.add_nodes_from(self.pattern.input_nodes)
         for cmd_n in self.n_list:
-            node_list.append(cmd_n.node)
+            graph.add_node(cmd_n.node)
         for u, v in self.e_set:
-            edge_list.append((u, v))
-        return node_list, edge_list
+            graph.add_edge(u, v)
+        return graph
 
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""

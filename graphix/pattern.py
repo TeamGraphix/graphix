@@ -212,9 +212,9 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
-        nodes_p1_lst, _ = self.get_graph()
+        nodes_p1_lst = self.extract_nodes()
         nodes_p1: set[int] = set(nodes_p1_lst) | self.results.keys()  # Results contain preprocessed Pauli nodes
-        nodes_p2_lst, _ = other.get_graph()
+        nodes_p2_lst = other.extract_nodes()
         nodes_p2: set[int] = set(nodes_p2_lst) | other.results.keys()
 
         if not mapping.keys() <= nodes_p2:
@@ -860,7 +860,7 @@ class Pattern:
         dependency : dict of set
             index is node number. all nodes in the each set must be measured before measuring
         """
-        nodes, _ = self.get_graph()
+        nodes = self.extract_nodes()
         dependency: dict[int, set[int]] = {i: set() for i in nodes}
         for cmd in self.__seq:
             if cmd.kind == CommandKind.M:
@@ -960,10 +960,9 @@ class Pattern:
         meas_order: list of int
             sub-optimal measurement order for classical simulation
         """
-        # NOTE calling get_graph
-        nodes_list, edges_list = self.get_graph()
-        nodes = set(nodes_list)
-        edges = set(edges_list)
+        graph = self.extract_graph()
+        nodes = set(graph.nodes)
+        edges = set(graph.edges)
         not_measured = nodes - set(self.output_nodes)
         dependency = self._get_dependency()
         self.update_dependency(self.results.keys(), dependency)
@@ -996,15 +995,11 @@ class Pattern:
         meas_order: list of int
             measurement order
         """
-        # NOTE calling get_graph
-        nodes_list, edges_list = self.get_graph()
-        g: nx.Graph[int] = nx.Graph()
-        g.add_nodes_from(nodes_list)
-        g.add_edges_from(edges_list)
+        graph = self.extract_graph()
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(g, vin, vout, meas_planes=meas_planes)
+        f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
         depth, layer = get_layers(l_k)
@@ -1023,18 +1018,14 @@ class Pattern:
         meas_order : list of int
             measurement order
         """
-        # NOTE calling get_graph
-        nodes, edges = self.get_graph()
-        g: nx.Graph[int] = nx.Graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
-        isolated = list(nx.isolates(g))
+        graph = self.extract_graph()
+        isolated = list(nx.isolates(graph))
         if isolated:
             raise ValueError("The input graph must be connected")
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
-        flow, l_k = find_gflow(g, vin, vout, meas_planes=meas_planes)
+        flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
         if not flow:
             raise ValueError("No gflow found")
         k, layers = get_layers(l_k)
@@ -1106,7 +1097,7 @@ class Pattern:
                 angles[cmd.node] = cmd.angle
         return angles
 
-    def get_max_degree(self) -> int:
+    def compute_max_degree(self) -> int:
         """Get max degree of a pattern.
 
         Returns
@@ -1114,26 +1105,38 @@ class Pattern:
         max_degree : int
             max degree of a pattern
         """
-        nodes, edges = self.get_graph()
-        g: nx.Graph[int] = nx.Graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
-        degree = g.degree()
+        graph = self.extract_graph()
+        degree = graph.degree()
         assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
         return int(max(list(dict(degree).values())))
 
-    def get_graph(self) -> tuple[list[int], list[tuple[int, int]]]:
-        """Return the list of nodes and edges from the command sequence, extracted from 'N' and 'E' commands.
+    def extract_graph(self) -> nx.Graph[int]:
+        """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
 
         Returns
         -------
-        node_list : list
-            list of node indices.
-        edge_list : list
-            list of tuples (i,j) specifying edges
+        graph_state: nx.Graph[int]
         """
-        standardized_pattern = optimization.StandardizedPattern(self)
-        return standardized_pattern.extract_graph()
+        graph: nx.Graph[int] = nx.Graph()
+        graph.add_nodes_from(self.input_nodes)
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                graph.add_node(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                if graph.has_edge(u, v):
+                    graph.remove_edge(u, v)
+                else:
+                    graph.add_edge(u, v)
+        return graph
+
+    def extract_nodes(self) -> set[int]:
+        """Return the set of nodes of the pattern."""
+        nodes = set(self.input_nodes)
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                nodes.add(cmd.node)
+        return nodes
 
     def get_isolated_nodes(self) -> set[int]:
         """Get isolated nodes.
@@ -1143,10 +1146,10 @@ class Pattern:
         isolated_nodes : set of int
             set of the isolated nodes
         """
-        nodes, edges = self.get_graph()
-        node_set = set(nodes)
+        graph = self.extract_graph()
+        node_set = set(graph.nodes)
         connected_node_set = set()
-        for edge in edges:
+        for edge in graph.edges:
             connected_node_set |= set(edge)
         return node_set - connected_node_set
 
@@ -1420,17 +1423,14 @@ class Pattern:
         filename : str
             Filename of the saved plot.
         """
-        nodes, edges = self.get_graph()
-        g: nx.Graph[int] = nx.Graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
+        graph = self.extract_graph()
         vin = self.input_nodes if self.input_nodes is not None else []
         vout = self.output_nodes
         meas_planes = self.get_meas_plane()
         meas_angles = self.get_angles()
         local_clifford = self.get_vops()
 
-        vis = GraphVisualizer(g, vin, vout, meas_planes, meas_angles, local_clifford)
+        vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
 
         if flow_from_pattern:
             vis.visualize_from_pattern(
@@ -1628,8 +1628,8 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
     standardized_pattern = optimization.StandardizedPattern(pattern)
-    nodes, edges = standardized_pattern.extract_graph()
-    graph_state = GraphState(nodes=nodes, edges=edges, vops=standardized_pattern.c_dict)
+    graph = standardized_pattern.extract_graph()
+    graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern, leave_input)
     if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
