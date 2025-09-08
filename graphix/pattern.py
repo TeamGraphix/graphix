@@ -1132,16 +1132,8 @@ class Pattern:
         edge_list : list
             list of tuples (i,j) specifying edges
         """
-        # We rely on the fact that self.input_nodes returns a copy:
-        # self.input_nodes is equivalent to list(self.__input_nodes)
-        node_list, edge_list = self.input_nodes, []
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                assert cmd.node not in node_list
-                node_list.append(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                edge_list.append(cmd.nodes)
-        return node_list, edge_list
+        standardized_pattern = optimization.StandardizedPattern(self)
+        return standardized_pattern.extract_graph()
 
     def get_isolated_nodes(self) -> set[int]:
         """Get isolated nodes.

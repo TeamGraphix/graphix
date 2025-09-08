@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import copy
 from typing import TYPE_CHECKING
 
 import graphix.pattern
@@ -57,8 +58,8 @@ class StandardizedPattern:
         The original pattern.
     n_list: list[command.N]
         The N commands.
-    e_list: list[command.E]
-        The E commands.
+    e_set: set[frozenset[int]]
+        Set of edges.
     m_list: list[command.M]
         The M commands.
     c_dict: dict[int, Clifford]
@@ -71,7 +72,7 @@ class StandardizedPattern:
 
     pattern: Pattern
     n_list: list[command.N]
-    e_list: list[command.E]
+    e_set: set[frozenset[int]]
     m_list: list[command.M]
     c_dict: dict[int, Clifford]
     z_dict: dict[int, set[Node]]
@@ -86,7 +87,7 @@ class StandardizedPattern:
 
         self.pattern = pattern
         self.n_list = []
-        self.e_list = []
+        self.e_set = set()
         self.m_list = []
         self.c_dict = {}
         self.z_dict = {}
@@ -102,18 +103,26 @@ class StandardizedPattern:
                         _commute_clifford(clifford_gate, self.c_dict, i, j)
                     if s_domain_opt := self.x_dict.get(i):
                         _add_correction_domain(self.z_dict, j, s_domain_opt)
-                self.e_list.append(cmd)
+                edge = frozenset(cmd.nodes)
+                self.e_set.symmetric_difference_update((edge,))
             elif cmd.kind == CommandKind.M:
-                new_cmd = cmd
+                new_cmd = None
                 if clifford_gate := self.c_dict.pop(cmd.node, None):
-                    new_cmd = new_cmd.clifford(clifford_gate)
+                    new_cmd = cmd.clifford(clifford_gate)
                 if t_domain_opt := self.z_dict.pop(cmd.node, None):
+                    if new_cmd is None:
+                        new_cmd = copy(cmd)
                     # The original domain should not be mutated
                     new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
                 if s_domain_opt := self.x_dict.pop(cmd.node, None):
+                    if new_cmd is None:
+                        new_cmd = copy(cmd)
                     # The original domain should not be mutated
                     new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
-                self.m_list.append(new_cmd)
+                if new_cmd is None:
+                    self.m_list.append(cmd)
+                else:
+                    self.m_list.append(new_cmd)
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                 if cmd.kind == CommandKind.X:
@@ -149,8 +158,8 @@ class StandardizedPattern:
         node_list, edge_list = self.pattern.input_nodes, []
         for cmd_n in self.n_list:
             node_list.append(cmd_n.node)
-        for cmd_e in self.e_list:
-            edge_list.append(cmd_e.nodes)
+        for u, v in self.e_set:
+            edge_list.append((u, v))
         return node_list, edge_list
 
     def to_pattern(self) -> Pattern:
@@ -159,7 +168,7 @@ class StandardizedPattern:
         result.results = self.pattern.results
         result.extend(
             self.n_list,
-            self.e_list,
+            (command.E((u, v)) for u, v in self.e_set),
             self.m_list,
             (command.Z(node=node, domain=domain) for node, domain in self.z_dict.items()),
             (command.X(node=node, domain=domain) for node, domain in self.x_dict.items()),
