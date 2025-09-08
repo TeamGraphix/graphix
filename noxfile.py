@@ -10,7 +10,7 @@ from nox import Session
 
 def install_pytest(session: Session) -> None:
     """Install pytest when requirements-dev.txt is not installed."""
-    session.install("pytest", "pytest-mock", "psutil")
+    session.install("pytest", "pytest-mock", "pytest-benchmark", "psutil")
 
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])

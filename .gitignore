@@ -167,3 +167,4 @@ docs/source/benchmarks
 docs/source/gallery
 graphix/_version.py
 docs/source/sg_execution_times.rst
+/.benchmarks/
