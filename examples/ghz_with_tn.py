@@ -35,7 +35,7 @@ for i in range(1, n):
 pattern = circuit.transpile().pattern
 pattern.standardize()
 
-graph = pattern.get_graph()
+graph = pattern.extract_graph()
 print(f"Number of nodes: {len(graph.nodes)}")
 print(f"Number of edges: {len(graph.edges)}")
 pos = nx.spring_layout(graph)
