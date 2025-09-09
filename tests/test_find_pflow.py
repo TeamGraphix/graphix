@@ -6,17 +6,17 @@ import networkx as nx
 import numpy as np
 import pytest
 
+from graphix._linalg import MatGF2
 from graphix.find_pflow import (
     OpenGraphIndex,
+    _compute_reduced_adj,
+    _compute_topological_generations,
     _find_pflow_simple,
     _get_pflow_matrices,
-    _get_reduced_adj,
-    _get_topological_generations,
     find_pflow,
 )
 from graphix.fundamentals import Plane
 from graphix.generator import _pflow2pattern
-from graphix.linalg import MatGF2
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
@@ -598,11 +598,11 @@ def prepare_test_dag() -> list[DAGTestCase]:
 
 class TestPflow:
     @pytest.mark.parametrize("test_case", prepare_test_og())
-    def test_get_reduced_adj(self, test_case: OpenGraphTestCase) -> None:
+    def test_compute_reduced_adj(self, test_case: OpenGraphTestCase) -> None:
         if test_case.radj is not None:
             ogi = test_case.ogi
-            radj = _get_reduced_adj(ogi)
-            assert radj == test_case.radj
+            radj = _compute_reduced_adj(ogi)
+            assert np.all(radj == test_case.radj)
 
     @pytest.mark.parametrize("test_case", prepare_test_og())
     def test_get_pflow_matrices(self, test_case: OpenGraphTestCase) -> None:
@@ -610,8 +610,8 @@ class TestPflow:
             ogi = test_case.ogi
             flow_demand_matrix, order_demand_matrix = _get_pflow_matrices(ogi)
 
-            assert flow_demand_matrix == test_case.flow_demand_mat
-            assert order_demand_matrix == test_case.order_demand_mat
+            assert np.all(flow_demand_matrix == test_case.flow_demand_mat)
+            assert np.all(order_demand_matrix == test_case.order_demand_mat)
 
     @pytest.mark.parametrize("test_case", prepare_test_og())
     def test_find_pflow_simple(self, test_case: OpenGraphTestCase) -> None:
@@ -625,8 +625,10 @@ class TestPflow:
                 else:
                     assert pflow_algebraic is not None
                     correction_matrix, _ = pflow_algebraic
-                    ident = MatGF2(np.eye(len(ogi.non_outputs), dtype=np.int_))
-                    assert test_case.flow_demand_mat @ correction_matrix == ident
+                    ident = MatGF2(np.eye(len(ogi.non_outputs), dtype=np.uint8))
+                    assert np.all(
+                        (test_case.flow_demand_mat @ correction_matrix) % 2 == ident
+                    )  # Test with numpy matrix product.
 
     @pytest.mark.parametrize("test_case", prepare_test_og())
     def test_find_pflow_determinism(self, test_case: OpenGraphTestCase, fx_rng: Generator) -> None:
@@ -674,8 +676,8 @@ class TestPflow:
             assert pflow is not None
 
     @pytest.mark.parametrize("test_case", prepare_test_dag())
-    def test_get_topological_generations(self, test_case: DAGTestCase) -> None:
+    def test_compute_topological_generations(self, test_case: DAGTestCase) -> None:
         adj_mat = test_case.adj_mat
         generations_ref = test_case.generations
 
-        assert generations_ref == _get_topological_generations(adj_mat)
+        assert generations_ref == _compute_topological_generations(adj_mat)
