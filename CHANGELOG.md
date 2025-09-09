@@ -30,11 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- #332: `Pattern.extract_graph` now returns a networkx graph.
+
 - #220, #332: `Pattern.extract_graph` and `Pattern.compute_max_degree`
   replace `Pattern.get_graph` and `Pattern.get_max_degree`.
   They now consider that CZ ∘ CZ = I.
 
-- #332: `Pattern.extract_graph` now returns a networkx graph.
+- #220, #332: `Pattern.get_measurements_commands` is renamed into
+  `Pattern.extract_measurement_commands`.
 
 ## [0.3.2] - 2025-08-12
 
@@ -78,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     The resulting pattern is suitable for flow analysis. In
     particular, if a pattern has a flow, it is preserved by
     `perform_pauli_measurements` after applying `standardize` and
-    `incorporate_pauli_results`;
+    `incorporate_pauli_results`.
 
 ### Fixed
 
@@ -123,11 +126,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   because the classes are frozen, and it ensures that
   `Backend[BackendState]` is a supertype of all backend classes.
 
-<<<<<<< HEAD
-- #220, #332: `Pattern.get_measurements_commands` is renamed into
-  `Pattern.extract_measurement_commands`.
-||||||| 95bff60
-=======
 - #314, #322: The method `Pattern.standardize()` now places C commands
   after X and Z commands, making the resulting patterns suitable for
   flow analysis.  
@@ -137,7 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   last).  
   Note: the method `perform_pauli_measurements` still places C
   commands before X and Z commands.
->>>>>>> master
 
 ## [0.3.1] - 2025-04-21
 
