@@ -24,7 +24,7 @@ Pattern Manipulation
 
     .. automethod:: simulate_pattern
 
-    .. automethod:: get_max_degree
+    .. automethod:: compute_max_degree
 
     .. automethod:: get_angles
 
