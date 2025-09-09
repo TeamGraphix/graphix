@@ -63,9 +63,9 @@ pattern.shift_signals()
 # %%
 # Print some properties of the graph.
 
-nodes, edges = pattern.get_graph()
-print(f"Number of nodes: {len(nodes)}")
-print(f"Number of edges: {len(edges)}")
+graph = pattern.extract_graph()
+print(f"Number of nodes: {len(graph.nodes)}")
+print(f"Number of edges: {len(graph.edges)}")
 
 # %%
 # Optimizing by performing Pauli measurements in the pattern using efficient stabilizer simulator.

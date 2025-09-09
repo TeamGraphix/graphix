@@ -520,10 +520,7 @@ class TestGflow:
         # graph transpiled from circuit always has a flow
         circ = rand_circuit(10, 10, fx_rng)
         pattern = circ.transpile().pattern
-        nodes, edges = pattern.get_graph()
-        graph = nx.Graph()
-        graph.add_nodes_from(nodes)
-        graph.add_edges_from(edges)
+        graph = pattern.extract_graph()
         input_ = set(pattern.input_nodes)
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()
@@ -542,10 +539,7 @@ class TestGflow:
         pattern.standardize()
         pattern.shift_signals()
         pattern.perform_pauli_measurements()
-        nodes, edges = pattern.get_graph()
-        graph = nx.Graph()
-        graph.add_nodes_from(nodes)
-        graph.add_edges_from(edges)
+        graph = pattern.extract_graph()
         input_ = set()
         output = set(pattern.output_nodes)
         meas_planes = pattern.get_meas_plane()

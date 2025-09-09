@@ -35,14 +35,11 @@ for i in range(1, n):
 pattern = circuit.transpile().pattern
 pattern.standardize()
 
-nodes, edges = pattern.get_graph()
-g = nx.Graph()
-g.add_nodes_from(nodes)
-g.add_edges_from(edges)
-print(f"Number of nodes: {len(nodes)}")
-print(f"Number of edges: {len(edges)}")
-pos = nx.spring_layout(g)
-nx.draw(g, pos=pos, node_size=15)
+graph = pattern.extract_graph()
+print(f"Number of nodes: {len(graph.nodes)}")
+print(f"Number of edges: {len(graph.edges)}")
+pos = nx.spring_layout(graph)
+nx.draw(graph, pos=pos, node_size=15)
 plt.show()
 
 # %%
