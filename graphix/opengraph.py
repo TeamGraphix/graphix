@@ -88,10 +88,7 @@ class OpenGraph:
     @staticmethod
     def from_pattern(pattern: Pattern) -> OpenGraph:
         """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
-        g: nx.Graph[int] = nx.Graph()
-        nodes, edges = pattern.get_graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
+        graph = pattern.extract_graph()
 
         inputs = pattern.input_nodes
         outputs = pattern.output_nodes
@@ -100,7 +97,7 @@ class OpenGraph:
         meas_angles = pattern.get_angles()
         meas = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
 
-        return OpenGraph(g, meas, inputs, outputs)
+        return OpenGraph(graph, meas, inputs, outputs)
 
     def to_pattern(self) -> Pattern:
         """Convert the `OpenGraph` into a `Pattern`.
