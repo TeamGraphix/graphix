@@ -1,8 +1,8 @@
 # Lint/format
-mypy==1.17.1
+mypy==1.18.1
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.12.12
+ruff==0.13.0
 
 # Stubs
 types-networkx==3.5.0.20250712
