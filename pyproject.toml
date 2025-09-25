@@ -126,7 +126,7 @@ ban-relative-imports = "all"
 required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]
-addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks"]
+addopts = ["--ignore=examples", "--ignore=docs", "--ignore=benchmarks", "--benchmark-autosave"]
 # Silence cotengra warning
 filterwarnings = ["ignore:Couldn't import `kahypar`"]
 

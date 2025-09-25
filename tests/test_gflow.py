@@ -282,7 +282,7 @@ def _graph8() -> GraphForTest:
         "graph with no flow and no gflow but pauliflow, No.2",
         flow_exist=False,
         gflow_exist=False,
-        pauliflow_exist=True,
+        pauliflow_exist=False,
     )
 
 
@@ -311,7 +311,7 @@ def _graph9() -> GraphForTest:
         "graph with no flow and no gflow but pauliflow, No.3",
         flow_exist=False,
         gflow_exist=False,
-        pauliflow_exist=True,
+        pauliflow_exist=False,
     )
 
 

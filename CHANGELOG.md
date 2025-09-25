@@ -8,11 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-
+- New module `graphix.find_pauliflow` with the $O(N^3)$ Pauli-flow finding algorithm introduced in Mitosek and Backens, 2024 (arXiv:2410.23439).
 ### Fixed
 
 ### Changed
-
+- Dropped dependence on `sympy` and `galois`.
 ## [0.3.2] - 2025-08-12
 
 ### Added
