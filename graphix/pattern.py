@@ -212,10 +212,8 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
-        nodes_p1_lst = self.extract_nodes()
-        nodes_p1: set[int] = set(nodes_p1_lst) | self.results.keys()  # Results contain preprocessed Pauli nodes
-        nodes_p2_lst = other.extract_nodes()
-        nodes_p2: set[int] = set(nodes_p2_lst) | other.results.keys()
+        nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
+        nodes_p2 = other.extract_nodes() | other.results.keys()
 
         if not mapping.keys() <= nodes_p2:
             raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
@@ -1108,7 +1106,7 @@ class Pattern:
         graph = self.extract_graph()
         degree = graph.degree()
         assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
-        return int(max(list(dict(degree).values())))
+        return int(max(dict(degree).values()))
 
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
@@ -1138,20 +1136,16 @@ class Pattern:
                 nodes.add(cmd.node)
         return nodes
 
-    def get_isolated_nodes(self) -> set[int]:
+    def extract_isolated_nodes(self) -> set[int]:
         """Get isolated nodes.
 
         Returns
         -------
-        isolated_nodes : set of int
+        isolated_nodes : set[int]
             set of the isolated nodes
         """
         graph = self.extract_graph()
-        node_set = set(graph.nodes)
-        connected_node_set = set()
-        for edge in graph.edges:
-            connected_node_set |= set(edge)
-        return node_set - connected_node_set
+        return {node for node, d in graph.degree if d == 0}
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.

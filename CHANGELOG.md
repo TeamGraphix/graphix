@@ -32,8 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #332: `Pattern.extract_graph` now returns a networkx graph.
 
-- #220, #332: `Pattern.extract_graph` and `Pattern.compute_max_degree`
-  replace `Pattern.get_graph` and `Pattern.get_max_degree`.
+- #220, #332: `Pattern.extract_graph`, `Pattern.extract_isolated_nodes`,
+  and `Pattern.compute_max_degree` replace `Pattern.get_graph`,
+  `Pattern.get_isolated_nodes`, and `Pattern.get_max_degree`.
   They now consider that CZ ∘ CZ = I.
 
 - #220, #332: `Pattern.get_measurements_commands` is renamed into

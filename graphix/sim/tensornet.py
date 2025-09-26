@@ -658,7 +658,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         else:  # graph_prep == "sequential":
             state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, branch_selector=branch_selector)
             decomposed_cz = _get_decomposed_cz()
-        isolated_nodes = pattern.get_isolated_nodes()
+        isolated_nodes = pattern.extract_isolated_nodes()
         super().__init__(
             state,
             pattern,

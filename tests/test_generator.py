@@ -143,8 +143,8 @@ class TestGenerator:
         g.add_edges_from([(0, 1), (1, 2)])
         pattern = generate_from_graph(g, {}, {0, 1, 2}, {0, 1, 2}, {})
         graph = pattern.extract_graph()
-        assert set(graph.nodes) == {0, 1, 2}
-        assert set(map(frozenset, graph.edges)) == {frozenset((0, 1)), frozenset((1, 2))}
+        graph_ref = nx.Graph(((0, 1), (1, 2)))
+        assert nx.utils.graphs_equal(graph, graph_ref)
 
     def test_pattern_generation_pflow(self, fx_rng: Generator) -> None:
         og = self.get_graph_pflow(fx_rng)

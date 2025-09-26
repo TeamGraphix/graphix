@@ -161,9 +161,9 @@ class StandardizedPattern:
 
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
-        result = graphix.pattern.Pattern(input_nodes=self.pattern.input_nodes)
-        result.results = self.pattern.results
-        result.extend(
+        pattern = graphix.pattern.Pattern(input_nodes=self.pattern.input_nodes)
+        pattern.results = self.pattern.results
+        pattern.extend(
             self.n_list,
             (command.E((u, v)) for u, v in self.e_set),
             self.m_list,
@@ -171,7 +171,7 @@ class StandardizedPattern:
             (command.X(node=node, domain=domain) for node, domain in self.x_dict.items()),
             (command.C(node=node, clifford=clifford_gate) for node, clifford_gate in self.c_dict.items()),
         )
-        return result
+        return pattern
 
 
 def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
