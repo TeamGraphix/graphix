@@ -9,10 +9,10 @@ import pytest
 from graphix._linalg import MatGF2
 from graphix.find_pflow import (
     OpenGraphIndex,
+    _compute_pflow_matrices,
     _compute_reduced_adj,
     _compute_topological_generations,
     _find_pflow_simple,
-    _get_pflow_matrices,
     find_pflow,
 )
 from graphix.fundamentals import Plane
@@ -605,10 +605,10 @@ class TestPflow:
             assert np.all(radj == test_case.radj)
 
     @pytest.mark.parametrize("test_case", prepare_test_og())
-    def test_get_pflow_matrices(self, test_case: OpenGraphTestCase) -> None:
+    def test_compute_pflow_matrices(self, test_case: OpenGraphTestCase) -> None:
         if test_case.flow_demand_mat is not None and test_case.order_demand_mat is not None:
             ogi = test_case.ogi
-            flow_demand_matrix, order_demand_matrix = _get_pflow_matrices(ogi)
+            flow_demand_matrix, order_demand_matrix = _compute_pflow_matrices(ogi)
 
             assert np.all(flow_demand_matrix == test_case.flow_demand_mat)
             assert np.all(order_demand_matrix == test_case.order_demand_mat)

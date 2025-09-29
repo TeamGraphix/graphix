@@ -89,7 +89,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         # Check that rank of right block is equal to the number of rows.
         # We don't use `MatGF2.compute_rank()` to avoid row-reducing twice.
-        if m != int(np.sum(red[:, :n].any(axis=1))):
+        if m != np.count_nonzero(red[:, :n].any(axis=1)):
             return None
         rinv = np.zeros((n, m), dtype=np.uint8).view(MatGF2)
 
@@ -118,7 +118,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         ref.gauss_elimination(ncols=m)
         row_idxs = np.flatnonzero(~ref[:, :m].any(axis=1))  # Row indices of the 0-rows in the first block of `ref`.
 
-        return MatGF2(ref[row_idxs, m:])
+        return ref[row_idxs, m:].view(MatGF2)
 
     def gauss_elimination(self, ncols: int | None = None, copy: bool = False) -> MatGF2:
         """Return row echelon form (REF) by performing Gaussian elimination.

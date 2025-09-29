@@ -99,7 +99,7 @@ def _compute_reduced_adj(ogi: OpenGraphIndex) -> MatGF2:
     return adj_red
 
 
-def _get_pflow_matrices(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2]:
+def _compute_pflow_matrices(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2]:
     r"""Construct flow-demand and order-demand matrices.
 
     Parameters
@@ -177,7 +177,7 @@ def _find_pflow_simple(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
 
     See Definitions 3.4, 3.5 and 3.6, Theorems 3.1 and 4.1, and Algorithm 2 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
-    flow_demand_matrix, order_demand_matrix = _get_pflow_matrices(ogi)
+    flow_demand_matrix, order_demand_matrix = _compute_pflow_matrices(ogi)
 
     correction_matrix = flow_demand_matrix.right_inverse()  # C matrix
 
@@ -343,7 +343,7 @@ def _update_kls_matrix(
             kls_matrix[k] ^= kils_matrix[j]  # Row `k` may now break REF.
 
             # Step 12.d.v
-            pivots = []  # Store pivots for next step.
+            pivots: list[np.int_] = []  # Store pivots for next step.
             for i, row in enumerate(kls_matrix):
                 if i != k:
                     col_idxs = np.flatnonzero(row[:n_oi_diff])  # Column indices with 1s in first block.
@@ -417,7 +417,7 @@ def _find_pflow_general(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
     n_oi_diff = len(ogi.og.outputs) - len(ogi.og.inputs)
 
     # Steps 1 and 2
-    flow_demand_matrix, order_demand_matrix = _get_pflow_matrices(ogi)
+    flow_demand_matrix, order_demand_matrix = _compute_pflow_matrices(ogi)
 
     # Steps 3 and 4
     correction_matrix_0 = flow_demand_matrix.right_inverse()  # C0 matrix.
