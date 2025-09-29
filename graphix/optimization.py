@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from copy import copy
 from typing import TYPE_CHECKING
+
+import networkx as nx
 
 import graphix.pattern
 from graphix import command
@@ -42,112 +45,179 @@ def standardize(pattern: Pattern) -> Pattern:
     standardized : Pattern
         The standardized pattern, if it exists.
     """
-    n_list: list[command.N] = []
-    e_list: list[command.E] = []
-    m_list: list[command.M] = []
-    c_dict: dict[int, Clifford] = {}
-    z_dict: dict[int, set[Node]] = {}
-    x_dict: dict[int, set[Node]] = {}
+    return StandardizedPattern(pattern).to_pattern()
 
-    def add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
-        """Merge a correction domain into ``domain_dict`` for ``node``.
 
-        Parameters
-        ----------
-        domain_dict : dict[int, Command]
-            Mapping from node index to accumulated domain.
-        node : int
-            Target node whose domain should be updated.
-        domain : set[int]
-            Domain to merge with the existing one.
+class StandardizedPattern:
+    """Pattern in standardized form.
+
+    Use the method :meth:`to_pattern()` to get the standardized pattern.
+    Note that the attribute :attr:`pattern` contains the original pattern.
+
+    Attributes
+    ----------
+    pattern: Pattern
+        The original pattern.
+    n_list: list[command.N]
+        The N commands.
+    e_set: set[frozenset[int]]
+        Set of edges.
+    m_list: list[command.M]
+        The M commands.
+    c_dict: dict[int, Clifford]
+        Mapping associating Clifford corrections to some nodes.
+    z_dict: dict[int, set[Node]]
+        Mapping associating Z-domains to some nodes.
+    x_dict: dict[int, set[Node]]
+        Mapping associating X-domains to some nodes.
+    """
+
+    pattern: Pattern
+    n_list: list[command.N]
+    e_set: set[frozenset[int]]
+    m_list: list[command.M]
+    c_dict: dict[int, Clifford]
+    z_dict: dict[int, set[Node]]
+    x_dict: dict[int, set[Node]]
+
+    def __init__(self, pattern: Pattern) -> None:
+        """Compute the standardized form of the given pattern."""
+        s_domain: set[Node]
+        t_domain: set[Node]
+        s_domain_opt: set[Node] | None
+        t_domain_opt: set[Node] | None
+
+        self.pattern = pattern
+        self.n_list = []
+        self.e_set = set()
+        self.m_list = []
+        self.c_dict = {}
+        self.z_dict = {}
+        self.x_dict = {}
+
+        for cmd in pattern:
+            if cmd.kind == CommandKind.N:
+                self.n_list.append(cmd)
+            elif cmd.kind == CommandKind.E:
+                for side in (0, 1):
+                    i, j = cmd.nodes[side], cmd.nodes[1 - side]
+                    if clifford_gate := self.c_dict.get(i):
+                        _commute_clifford(clifford_gate, self.c_dict, i, j)
+                    if s_domain_opt := self.x_dict.get(i):
+                        _add_correction_domain(self.z_dict, j, s_domain_opt)
+                edge = frozenset(cmd.nodes)
+                self.e_set.symmetric_difference_update((edge,))
+            elif cmd.kind == CommandKind.M:
+                new_cmd = None
+                if clifford_gate := self.c_dict.pop(cmd.node, None):
+                    new_cmd = cmd.clifford(clifford_gate)
+                if t_domain_opt := self.z_dict.pop(cmd.node, None):
+                    if new_cmd is None:
+                        new_cmd = copy(cmd)
+                    # The original domain should not be mutated
+                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
+                if s_domain_opt := self.x_dict.pop(cmd.node, None):
+                    if new_cmd is None:
+                        new_cmd = copy(cmd)
+                    # The original domain should not be mutated
+                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
+                if new_cmd is None:
+                    self.m_list.append(cmd)
+                else:
+                    self.m_list.append(new_cmd)
+            # Use of `==` here for mypy
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
+                if cmd.kind == CommandKind.X:
+                    s_domain = cmd.domain
+                    t_domain = set()
+                else:
+                    s_domain = set()
+                    t_domain = cmd.domain
+                domains = self.c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
+                if domains.t_domain:
+                    _add_correction_domain(self.z_dict, cmd.node, domains.t_domain)
+                if domains.s_domain:
+                    _add_correction_domain(self.x_dict, cmd.node, domains.s_domain)
+            elif cmd.kind == CommandKind.C:
+                # Each pattern command is applied by left multiplication: if a clifford `C`
+                # has been already applied to a node, applying a clifford `C'` to the same
+                # node is equivalent to apply `C'C` to a fresh node.
+                self.c_dict[cmd.node] = cmd.clifford @ self.c_dict.get(cmd.node, Clifford.I)
+
+    def extract_graph(self) -> nx.Graph[int]:
+        """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
+
+        Returns
+        -------
+        graph_state: nx.Graph
         """
-        if previous_domain := domain_dict.get(node):
-            previous_domain ^= domain
-        else:
-            domain_dict[node] = domain.copy()
+        graph: nx.Graph[int] = nx.Graph()
+        graph.add_nodes_from(self.pattern.input_nodes)
+        for cmd_n in self.n_list:
+            graph.add_node(cmd_n.node)
+        for u, v in self.e_set:
+            graph.add_edge(u, v)
+        return graph
 
-    def commute_clifford(clifford_gate: Clifford, c_dict: dict[int, Clifford], i: int, j: int) -> None:
-        """Commute a Clifford with an entanglement command.
+    def to_pattern(self) -> Pattern:
+        """Return the standardized pattern."""
+        pattern = graphix.pattern.Pattern(input_nodes=self.pattern.input_nodes)
+        pattern.results = self.pattern.results
+        pattern.extend(
+            self.n_list,
+            (command.E((u, v)) for u, v in self.e_set),
+            self.m_list,
+            (command.Z(node=node, domain=domain) for node, domain in self.z_dict.items()),
+            (command.X(node=node, domain=domain) for node, domain in self.x_dict.items()),
+            (command.C(node=node, clifford=clifford_gate) for node, clifford_gate in self.c_dict.items()),
+        )
+        pattern.reorder_output_nodes(self.pattern.output_nodes)
+        return pattern
 
-        Parameters
-        ----------
-        clifford_gate : Clifford
-            Clifford gate before the entanglement command
-        c_dict : dict[int, Clifford]
-            Mapping from the node index to accumulated Clifford commands.
-        i : int
-            First node of the entanglement command where the Clifford is applied.
-        j : int
-            Second node of the entanglement command where the Clifford is applied.
-        """
-        if clifford_gate in {Clifford.I, Clifford.Z, Clifford.S, Clifford.SDG}:
-            # Clifford gate commutes with the entanglement command.
-            pass
-        elif clifford_gate in {Clifford.X, Clifford.Y, Clifford(9), Clifford(10)}:
-            # Clifford gate commutes with the entanglement command up to a Z Clifford on the other index.
-            c_dict[j] = Clifford.Z @ c_dict.get(j, Clifford.I)
-        else:
-            # Clifford gate commutes with the entanglement command up to a two-qubit Clifford
-            raise NotImplementedError(
-                f"Pattern contains a Clifford followed by an E command on qubit {i} which only commute up to a two-qubit Clifford. Standarization is not supported."
-            )
 
-    s_domain: set[Node]
-    t_domain: set[Node]
-    s_domain_opt: set[Node] | None
-    t_domain_opt: set[Node] | None
+def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
+    """Merge a correction domain into ``domain_dict`` for ``node``.
 
-    for cmd in pattern:
-        if cmd.kind == CommandKind.N:
-            n_list.append(cmd)
-        elif cmd.kind == CommandKind.E:
-            for side in (0, 1):
-                i, j = cmd.nodes[side], cmd.nodes[1 - side]
-                if clifford_gate := c_dict.get(i):
-                    commute_clifford(clifford_gate, c_dict, i, j)
-                if s_domain_opt := x_dict.get(i):
-                    add_correction_domain(z_dict, j, s_domain_opt)
-            e_list.append(cmd)
-        elif cmd.kind == CommandKind.M:
-            new_cmd = cmd
-            if clifford_gate := c_dict.pop(cmd.node, None):
-                new_cmd = new_cmd.clifford(clifford_gate)
-            if t_domain_opt := z_dict.pop(cmd.node, None):
-                # The original domain should not be mutated
-                new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
-            if s_domain_opt := x_dict.pop(cmd.node, None):
-                # The original domain should not be mutated
-                new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
-            m_list.append(new_cmd)
-        # Use of `==` here for mypy
-        elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-            if cmd.kind == CommandKind.X:
-                s_domain = cmd.domain
-                t_domain = set()
-            else:
-                s_domain = set()
-                t_domain = cmd.domain
-            domains = c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
-            if domains.t_domain:
-                add_correction_domain(z_dict, cmd.node, domains.t_domain)
-            if domains.s_domain:
-                add_correction_domain(x_dict, cmd.node, domains.s_domain)
-        elif cmd.kind == CommandKind.C:
-            # Each pattern command is applied by left multiplication: if a clifford `C`
-            # has been already applied to a node, applying a clifford `C'` to the same
-            # node is equivalent to apply `C'C` to a fresh node.
-            c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
-    result = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
-    result.results = pattern.results
-    result.extend(
-        n_list,
-        e_list,
-        m_list,
-        (command.Z(node=node, domain=domain) for node, domain in z_dict.items()),
-        (command.X(node=node, domain=domain) for node, domain in x_dict.items()),
-        (command.C(node=node, clifford=clifford_gate) for node, clifford_gate in c_dict.items()),
-    )
-    return result
+    Parameters
+    ----------
+    domain_dict : dict[int, Command]
+        Mapping from node index to accumulated domain.
+    node : int
+        Target node whose domain should be updated.
+    domain : set[int]
+        Domain to merge with the existing one.
+    """
+    if previous_domain := domain_dict.get(node):
+        previous_domain ^= domain
+    else:
+        domain_dict[node] = domain.copy()
+
+
+def _commute_clifford(clifford_gate: Clifford, c_dict: dict[int, Clifford], i: int, j: int) -> None:
+    """Commute a Clifford with an entanglement command.
+
+    Parameters
+    ----------
+    clifford_gate : Clifford
+        Clifford gate before the entanglement command
+    c_dict : dict[int, Clifford]
+        Mapping from the node index to accumulated Clifford commands.
+    i : int
+        First node of the entanglement command where the Clifford is applied.
+    j : int
+        Second node of the entanglement command where the Clifford is applied.
+    """
+    if clifford_gate in {Clifford.I, Clifford.Z, Clifford.S, Clifford.SDG}:
+        # Clifford gate commutes with the entanglement command.
+        pass
+    elif clifford_gate in {Clifford.X, Clifford.Y, Clifford(9), Clifford(10)}:
+        # Clifford gate commutes with the entanglement command up to a Z Clifford on the other index.
+        c_dict[j] = Clifford.Z @ c_dict.get(j, Clifford.I)
+    else:
+        # Clifford gate commutes with the entanglement command up to a two-qubit Clifford
+        raise NotImplementedError(
+            f"Pattern contains a Clifford followed by an E command on qubit {i} which only commute up to a two-qubit Clifford. Standarization is not supported."
+        )
 
 
 def _incorporate_pauli_results_in_domain(

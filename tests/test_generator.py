@@ -122,17 +122,14 @@ class TestGenerator:
         pattern.standardize()
         pattern.shift_signals()
         # get the graph and generate pattern again with flow algorithm
-        nodes, edges = pattern.get_graph()
-        g: nx.Graph[int] = nx.Graph()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
+        graph = pattern.extract_graph()
         input_list = [0, 1, 2]
         angles: dict[int, float] = {}
-        for cmd in pattern.get_measurement_commands():
+        for cmd in pattern.extract_measurement_commands():
             assert isinstance(cmd.angle, float)
             angles[cmd.node] = float(cmd.angle)
         meas_planes = pattern.get_meas_plane()
-        pattern2 = generate_from_graph(g, angles, input_list, pattern.output_nodes, meas_planes)
+        pattern2 = generate_from_graph(graph, angles, input_list, pattern.output_nodes, meas_planes)
         # check that the new one runs and returns correct result
         pattern2.standardize()
         pattern2.shift_signals()
@@ -145,14 +142,15 @@ class TestGenerator:
         g: nx.Graph[int] = nx.Graph()
         g.add_edges_from([(0, 1), (1, 2)])
         pattern = generate_from_graph(g, {}, {0, 1, 2}, {0, 1, 2}, {})
-        assert pattern.get_graph() == ([0, 1, 2], [(0, 1), (1, 2)])
+        graph = pattern.extract_graph()
+        graph_ref = nx.Graph(((0, 1), (1, 2)))
+        assert nx.utils.graphs_equal(graph, graph_ref)
 
     def test_pattern_generation_pflow(self, fx_rng: Generator) -> None:
         og = self.get_graph_pflow(fx_rng)
         pattern = og.to_pattern()
 
-        _, edge_list = pattern.get_graph()
-        graph_generated_pattern: nx.Graph[int] = nx.Graph(edge_list)
+        graph_generated_pattern = pattern.extract_graph()
         assert nx.is_isomorphic(og.inside, graph_generated_pattern)
 
         pattern.standardize()

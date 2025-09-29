@@ -14,7 +14,6 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
-import networkx as nx
 from typing_extensions import assert_never
 
 import graphix.opengraph
@@ -27,6 +26,8 @@ from graphix.parameter import Placeholder
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
+
+    import networkx as nx
 
     from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
@@ -302,13 +303,9 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     for plane in meas_planes.values():
         if plane != Plane.XY:
             return None, None
-    g = nx.Graph()
-    nodes, edges = pattern.get_graph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
+    graph = pattern.extract_graph()
     input_nodes = pattern.input_nodes if not pattern.input_nodes else set()
     output_nodes = set(pattern.output_nodes)
-    nodes = set(nodes)
 
     layers = pattern.get_layers()
     l_k = {}
@@ -323,10 +320,10 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     xflow, zflow = get_corrections_from_pattern(pattern)
 
-    if verify_flow(g, input_nodes, output_nodes, xflow):  # if xflow is valid
+    if verify_flow(graph, input_nodes, output_nodes, xflow):  # if xflow is valid
         zflow_from_xflow = {}
         for node, corrections in deepcopy(xflow).items():
-            cand = find_odd_neighbor(g, corrections) - {node}
+            cand = find_odd_neighbor(graph, corrections) - {node}
             if cand:
                 zflow_from_xflow[node] = cand
         if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
@@ -352,14 +349,10 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     """
     if not pattern.is_standard(strict=True):
         raise ValueError("The pattern should be standardized first.")
-    g = nx.Graph()
-    nodes, edges = pattern.get_graph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
+    graph = pattern.extract_graph()
     input_nodes = set(pattern.input_nodes) if pattern.input_nodes else set()
     output_nodes = set(pattern.output_nodes)
     meas_planes = pattern.get_meas_plane()
-    nodes = set(nodes)
 
     layers = pattern.get_layers()
     l_k = {}
@@ -379,10 +372,10 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
                 xflow[node] = {node}
             xflow[node] |= {node}
 
-    if verify_gflow(g, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
+    if verify_gflow(graph, input_nodes, output_nodes, xflow, meas_planes):  # if xflow is valid
         zflow_from_xflow = {}
         for node, corrections in deepcopy(xflow).items():
-            cand = find_odd_neighbor(g, corrections) - {node}
+            cand = find_odd_neighbor(graph, corrections) - {node}
             if cand:
                 zflow_from_xflow[node] = cand
         if zflow_from_xflow != zflow:  # if zflow is consistent with xflow
@@ -418,16 +411,13 @@ def pauliflow_from_pattern(
     """
     if not pattern.is_standard(strict=True):
         raise ValueError("The pattern should be standardized first.")
-    g: nx.Graph[int] = nx.Graph()
-    nodes, edges = pattern.get_graph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
+    graph = pattern.extract_graph()
     input_nodes = set(pattern.input_nodes) if pattern.input_nodes else set()
     output_nodes = set(pattern.output_nodes) if pattern.output_nodes else set()
     meas_planes = pattern.get_meas_plane()
     meas_angles = pattern.get_angles()
 
-    return find_pauliflow(g, input_nodes, output_nodes, meas_planes, meas_angles)
+    return find_pauliflow(graph, input_nodes, output_nodes, meas_planes, meas_angles)
 
 
 def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
@@ -445,8 +435,7 @@ def get_corrections_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]],
     zflow: dict
         zflow function. zflow[i] is the set of qubits to be corrected in the Z basis for the measurement of qubit i.
     """
-    nodes, _ = pattern.get_graph()
-    nodes = set(nodes)
+    nodes = pattern.extract_nodes()
     xflow = {}
     zflow = {}
     for cmd in pattern:

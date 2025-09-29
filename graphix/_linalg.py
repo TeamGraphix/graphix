@@ -136,10 +136,10 @@ class MatGF2(npt.NDArray[np.uint8]):
         mat_ref : MatGF2
             The matrix in row echelon form.
         """
-        ncols = self.shape[1] if ncols is None else ncols
+        ncols_value = self.shape[1] if ncols is None else ncols
         mat_ref = MatGF2(self) if copy else self
 
-        return MatGF2(_elimination_jit(mat_ref, ncols=ncols, full_reduce=False))
+        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=False))
 
     def row_reduction(self, ncols: int | None = None, copy: bool = False) -> MatGF2:
         """Return row-reduced echelon form (RREF) by performing Gaussian elimination.
@@ -157,10 +157,10 @@ class MatGF2(npt.NDArray[np.uint8]):
         mat_ref: MatGF2
             The matrix in row-reduced echelon form.
         """
-        ncols = self.shape[1] if ncols is None else ncols
+        ncols_value = self.shape[1] if ncols is None else ncols
         mat_ref = self.copy() if copy else self
 
-        return MatGF2(_elimination_jit(mat_ref, ncols=ncols, full_reduce=True))
+        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=True))
 
 
 def solve_f2_linear_system(mat: MatGF2, b: MatGF2) -> MatGF2:

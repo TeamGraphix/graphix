@@ -61,8 +61,7 @@ def get_og_rndcircuit(depth: int, n_qubits: int, n_inputs: int | None = None) ->
     """
     circuit = rand_circuit(n_qubits, depth, fx_rng._fixture_function())
     pattern = circuit.transpile().pattern
-    _, edges = pattern.get_graph()
-    graph: nx.Graph[int] = nx.Graph(edges)
+    graph = pattern.extract_graph()
 
     angles = pattern.get_angles()
     planes = pattern.get_meas_plane()

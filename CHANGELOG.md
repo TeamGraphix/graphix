@@ -8,11 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-- New module `graphix.find_pauliflow` with the $O(N^3)$ Pauli-flow finding algorithm introduced in Mitosek and Backens, 2024 (arXiv:2410.23439).
+
+- #337: New module `graphix.find_pauliflow` with the $O(N^3)$
+  Pauli-flow finding algorithm introduced in Mitosek and Backens, 2024
+  (arXiv:2410.23439).
+
+- #332: New class `StandardizedPattern` that contains the decomposed
+  parts of a standardized pattern.
+
+- #332: New method `Pattern.extract_nodes` to get the set of nodes in
+  a pattern.
+
 ### Fixed
 
+- #339, #332: Standardization now considers that CZ ∘ CZ = I,
+  consistently with respect to the simulators. `Pattern.get_graph`
+  now considers the standardized graph (used for open graphs and
+  Pauli presimulation).
+
+- #332: `optimization.standardize` is now pure: M commands were
+  formerly mutated in the original pattern.
+
+- #173, #332: `Pattern.extract_measurement_commands` does not
+  modify the pattern and returns unstandardized measurements.
+
 ### Changed
-- Dropped dependence on `sympy` and `galois`.
+
+- #337: Dropped dependence on `sympy` and `galois`.
+
+- #332: `Pattern.extract_graph` now returns a networkx graph.
+
+- #220, #332: `Pattern.extract_graph`, `Pattern.extract_isolated_nodes`,
+  and `Pattern.compute_max_degree` replace `Pattern.get_graph`,
+  `Pattern.get_isolated_nodes`, and `Pattern.get_max_degree`.
+  They now consider that CZ ∘ CZ = I.
+
+- #220, #332: `Pattern.get_measurements_commands` is renamed into
+  `Pattern.extract_measurement_commands`.
+
 ## [0.3.2] - 2025-08-12
 
 ### Added

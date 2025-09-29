@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import networkx as nx
+import numpy as np
+import pytest
 
+from graphix import Pattern, command
 from graphix.fundamentals import Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
@@ -252,3 +255,11 @@ def test_compose_5() -> None:
     assert og.measurements.keys() == outputs_c
     assert mapping.keys() <= mapping_complete.keys()
     assert set(mapping.values()) <= set(mapping_complete.values())
+
+
+def test_double_entanglement() -> None:
+    pattern = Pattern(input_nodes=[0, 1], cmds=[command.E((0, 1)), command.E((0, 1))])
+    pattern2 = OpenGraph.from_pattern(pattern).to_pattern()
+    state = pattern.simulate_pattern()
+    state2 = pattern2.simulate_pattern()
+    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
