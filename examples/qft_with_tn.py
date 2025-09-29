@@ -56,9 +56,9 @@ qft(circuit, n)
 pattern = circuit.transpile().pattern
 pattern.standardize()
 pattern.shift_signals()
-nodes, edges = pattern.get_graph()
-print(f"Number of nodes: {len(nodes)}")
-print(f"Number of edges: {len(edges)}")
+graph = pattern.extract_graph()
+print(f"Number of nodes: {len(graph.nodes)}")
+print(f"Number of edges: {len(graph.edges)}")
 
 # %%
 # Using efficient graph state simulator `graphix.graphsim`, we can classically preprocess Pauli measurements.

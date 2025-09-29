@@ -253,7 +253,7 @@ class TestPattern:
         pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements()
 
-        isolated_nodes = pattern.get_isolated_nodes()
+        isolated_nodes = pattern.extract_isolated_nodes()
         # 48-node is the isolated and output node.
         isolated_nodes_ref = {48}
 
@@ -281,7 +281,7 @@ class TestPattern:
         pattern.shift_signals(method="mc")
         pattern.perform_pauli_measurements(leave_input=True)
 
-        isolated_nodes = pattern.get_isolated_nodes()
+        isolated_nodes = pattern.extract_isolated_nodes()
         # There is no isolated node.
         isolated_nodes_ref: set[int] = set()
 
@@ -721,7 +721,7 @@ class TestMCOps:
         pattern = circuit.transpile().pattern
         assert len(list(iter(pattern))) == 0
 
-    def test_get_graph(self) -> None:
+    def test_extract_graph(self) -> None:
         n = 3
         g = nx.complete_graph(n)
         circuit = Circuit(n)
@@ -733,71 +733,46 @@ class TestMCOps:
             circuit.rx(v, np.pi / 9)
 
         pattern = circuit.transpile().pattern
-        nodes, edges = pattern.get_graph()
+        graph = pattern.extract_graph()
 
-        nodes_ref = list(range(27))
-        edges_ref = [
-            (1, 3),
-            (0, 3),
-            (3, 4),
-            (4, 5),
-            (5, 6),
-            (6, 7),
-            (0, 7),
-            (7, 8),
-            (2, 9),
-            (0, 9),
-            (9, 10),
-            (10, 11),
-            (11, 12),
-            (12, 13),
-            (0, 13),
-            (13, 14),
-            (14, 15),
-            (8, 15),
-            (15, 16),
-            (16, 17),
-            (17, 18),
-            (18, 19),
-            (8, 19),
-            (19, 20),
-            (0, 21),
-            (21, 22),
-            (8, 23),
-            (23, 24),
-            (20, 25),
-            (25, 26),
-        ]
+        graph_ref: nx.Graph[int] = nx.Graph()
+        graph_ref.add_nodes_from(range(27))
+        graph_ref.add_edges_from(
+            (
+                (1, 3),
+                (0, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (0, 7),
+                (7, 8),
+                (2, 9),
+                (0, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (0, 13),
+                (13, 14),
+                (14, 15),
+                (8, 15),
+                (15, 16),
+                (16, 17),
+                (17, 18),
+                (18, 19),
+                (8, 19),
+                (19, 20),
+                (0, 21),
+                (21, 22),
+                (8, 23),
+                (23, 24),
+                (20, 25),
+                (25, 26),
+            )
+        )
 
-        # nodes check
-        nodes_check1 = True
-        nodes_check2 = True
-        for node in nodes:
-            if node not in nodes_ref:
-                nodes_check1 = False
-        for node in nodes_ref:
-            if node not in nodes:
-                nodes_check2 = False
-        assert nodes_check1
-        assert nodes_check2
-
-        # edges check
-        edges_check1 = True
-        edges_check2 = True
-        for edge in edges:
-            edge_match = False
-            for edge_ref in edges_ref:
-                edge_match |= assert_equal_edge(edge, edge_ref)
-            if not edge_match:
-                edges_check1 = False
-        for edge in edges_ref:
-            edge_match = False
-            for edge_ref in edges:
-                edge_match |= assert_equal_edge(edge, edge_ref)
-            if not edge_match:
-                edges_check2 = False
-        assert edges_check1
-        assert edges_check2
+        assert nx.utils.graphs_equal(graph, graph_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize(self, fx_bg: PCG64, jumps: int) -> None:
