@@ -171,6 +171,7 @@ class StandardizedPattern:
             (command.X(node=node, domain=domain) for node, domain in self.x_dict.items()),
             (command.C(node=node, clifford=clifford_gate) for node, clifford_gate in self.c_dict.items()),
         )
+        pattern.reorder_output_nodes(self.pattern.output_nodes)
         return pattern
 
 
