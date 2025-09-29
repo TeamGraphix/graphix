@@ -106,7 +106,11 @@ class DensityMatrix(DenseState):
     @property
     def nqubit(self) -> int:
         """Return the number of qubits."""
-        return self.rho.shape[0].bit_length() - 1
+        # Circumvent typing bug with numpy>=2.3
+        # `shape` field is typed `tuple[Any, ...]` instead of `tuple[int, ...]`
+        # See https://github.com/numpy/numpy/issues/29830
+        nqubit: int = self.rho.shape[0].bit_length() - 1
+        return nqubit
 
     def __str__(self) -> str:
         """Return a string description."""
