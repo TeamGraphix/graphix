@@ -1710,7 +1710,7 @@ def pauli_nodes(
 
     Parameters
     ----------
-    pattern : graphix.Pattern object
+    pattern : optimization.StandardizedPattern
     leave_input : bool
 
     Returns
