@@ -15,21 +15,22 @@ if TYPE_CHECKING:
 class MatGF2(npt.NDArray[np.uint8]):
     r"""Custom implementation of :math:`\mathbb F_2` matrices. This class specializes `:class:np.ndarray` to the :math:`\mathbb F_2` field with increased efficiency."""
 
-    def __new__(cls, data: npt.ArrayLike) -> Self:
+    def __new__(cls, data: npt.ArrayLike, copy: bool = True) -> Self:
         """Instantiate new `MatGF2` object.
 
         Parameters
         ----------
         data : array
             Data in array
-        dtype : npt.DTypeLike
-            Optional, defaults to `np.uint8`.
+        copy : bool
+            Optional, defaults to `True`. If `False` and if possible, data
+            is not copied.
 
         Return
         -------
             MatGF2
         """
-        arr = np.array(data, dtype=np.uint8)
+        arr = np.array(data, dtype=np.uint8, copy=copy)
         return super().__new__(cls, shape=arr.shape, dtype=arr.dtype, buffer=arr)
 
     def mat_mul(self, other: MatGF2 | npt.NDArray[np.uint8]) -> MatGF2:
@@ -50,7 +51,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         This function is a wrapper over :func:`_mat_mul_jit` which is a just-time compiled implementation of the matrix multiplication in :math:`\mathbb F_2`. It is more efficient than `galois.GF2.__matmul__` when the matrix `self` is sparse.
         The implementation assumes that the arguments have the right dimensions.
         """
-        return MatGF2(_mat_mul_jit(self, other))
+        return MatGF2(_mat_mul_jit(self, other), copy=False)
 
     def compute_rank(self) -> int:
         """Get the rank of the matrix.
@@ -139,7 +140,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         ncols_value = self.shape[1] if ncols is None else ncols
         mat_ref = MatGF2(self) if copy else self
 
-        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=False))
+        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=False), copy=False)
 
     def row_reduction(self, ncols: int | None = None, copy: bool = False) -> MatGF2:
         """Return row-reduced echelon form (RREF) by performing Gaussian elimination.
@@ -160,7 +161,7 @@ class MatGF2(npt.NDArray[np.uint8]):
         ncols_value = self.shape[1] if ncols is None else ncols
         mat_ref = self.copy() if copy else self
 
-        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=True))
+        return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=True), copy=False)
 
 
 def solve_f2_linear_system(mat: MatGF2, b: MatGF2) -> MatGF2:
@@ -182,7 +183,7 @@ def solve_f2_linear_system(mat: MatGF2, b: MatGF2) -> MatGF2:
     -----
     This function is not integrated in `:class: graphix.linalg.MatGF2` because it does not perform any checks on the form of `mat` to ensure that it is in REF or that the system is solvable.
     """
-    return MatGF2(_solve_f2_linear_system_jit(mat, b))
+    return MatGF2(_solve_f2_linear_system_jit(mat, b), copy=False)
 
 
 @nb.njit("uint8[::1](uint8[:,::1], uint8[::1])")
