@@ -71,7 +71,8 @@ class MatGF2(npt.NDArray[np.uint8]):
             Rank of the matrix.
         """
         mat_a = self.row_reduction(copy=True)
-        return np.count_nonzero(mat_a.any(axis=1))
+        rank: int = np.count_nonzero(mat_a.any(axis=1))
+        return rank
 
     def right_inverse(self) -> MatGF2 | None:
         r"""Return any right inverse of the matrix.
