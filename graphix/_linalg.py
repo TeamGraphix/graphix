@@ -70,8 +70,8 @@ class MatGF2(npt.NDArray[np.uint8]):
         int : int
             Rank of the matrix.
         """
-        mat_a = self.row_reduction()
-        return int(np.sum(mat_a.any(axis=1)))
+        mat_a = self.row_reduction(copy=True)
+        return np.count_nonzero(mat_a.any(axis=1))
 
     def right_inverse(self) -> MatGF2 | None:
         r"""Return any right inverse of the matrix.
@@ -95,7 +95,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         ident = np.eye(m, dtype=np.uint8)
         aug = np.hstack([self.data, ident]).view(MatGF2)
-        red = aug.row_reduction(ncols=n)  # Reduced row echelon form
+        red = aug.row_reduction(ncols=n, copy=False)  # Reduced row echelon form
 
         # Check that rank of right block is equal to the number of rows.
         # We don't use `MatGF2.compute_rank()` to avoid row-reducing twice.
@@ -125,12 +125,12 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         ident = np.eye(n, dtype=np.uint8)
         ref = np.hstack([self.T, ident]).view(MatGF2)
-        ref.gauss_elimination(ncols=m)
+        ref.gauss_elimination(ncols=m, copy=False)
         row_idxs = np.flatnonzero(~ref[:, :m].any(axis=1))  # Row indices of the 0-rows in the first block of `ref`.
 
         return ref[row_idxs, m:].view(MatGF2)
 
-    def gauss_elimination(self, ncols: int | None = None, copy: bool = False) -> MatGF2:
+    def gauss_elimination(self, ncols: int | None = None, copy: bool = True) -> MatGF2:
         """Return row echelon form (REF) by performing Gaussian elimination.
 
         Parameters
@@ -139,7 +139,7 @@ class MatGF2(npt.NDArray[np.uint8]):
             Number of columns over which to perform Gaussian elimination. The default is `None` which represents the number of columns of the matrix.
 
         copy : bool (optional)
-            If `True`, the REF matrix is copied into a new instance, otherwise `self` is modified. Defaults to `False`.
+            If `True`, the REF matrix is copied into a new instance, otherwise `self` is modified. Defaults to `True`.
 
         Returns
         -------
@@ -151,7 +151,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         return MatGF2(_elimination_jit(mat_ref, ncols=ncols_value, full_reduce=False), copy=False)
 
-    def row_reduction(self, ncols: int | None = None, copy: bool = False) -> MatGF2:
+    def row_reduction(self, ncols: int | None = None, copy: bool = True) -> MatGF2:
         """Return row-reduced echelon form (RREF) by performing Gaussian elimination.
 
         Parameters
@@ -160,7 +160,7 @@ class MatGF2(npt.NDArray[np.uint8]):
             Number of columns over which to perform Gaussian elimination. The default is `None` which represents the number of columns of the matrix.
 
         copy : bool (optional)
-            If `True`, the RREF matrix is copied into a new instance, otherwise `self` is modified. Defaults to `False`.
+            If `True`, the RREF matrix is copied into a new instance, otherwise `self` is modified. Defaults to `True`.
 
         Returns
         -------

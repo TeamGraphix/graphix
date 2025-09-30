@@ -184,9 +184,9 @@ class TestLinAlg:
             assert rinv is None
 
     @pytest.mark.parametrize("test_case", prepare_test_matrix())
-    def test_gaussian_elimination(self, test_case: LinalgTestCase) -> None:
+    def test_gauss_elimination(self, test_case: LinalgTestCase) -> None:
         mat = test_case.matrix
-        mat_red = mat.row_reduction(ncols=mat.shape[1], copy=True)
+        mat_red = mat.gauss_elimination(ncols=mat.shape[1], copy=True)
         verify_elimination(mat, mat_red, mat.shape[1], full_reduce=False)
 
     @pytest.mark.parametrize("test_case", prepare_test_matrix())
