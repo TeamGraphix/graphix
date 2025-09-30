@@ -476,7 +476,7 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
 
     Notes
     -----
-    This function adaptata `:func: networkx.algorithms.dag.topological_generations` so that it works directly on the adjacency matrix (which is the output of the Pauli-flow finding algorithm) instead of a `:class: nx.DiGraph` object. This avoids calling the function `nx.from_numpy_array` which can be expensive for certain graph instances.
+    This function is adapted from `:func: networkx.algorithms.dag.topological_generations` so that it works directly on the adjacency matrix (which is the output of the Pauli-flow finding algorithm) instead of a `:class: nx.DiGraph` object. This avoids calling the function `nx.from_numpy_array` which can be expensive for certain graph instances.
 
     Here we use the convention that the element `ordering_matrix[i,j]` represents a link `j -> i`. NetworkX uses the opposite convention.
     """

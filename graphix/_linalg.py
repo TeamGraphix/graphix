@@ -51,6 +51,15 @@ class MatGF2(npt.NDArray[np.uint8]):
         This function is a wrapper over :func:`_mat_mul_jit` which is a just-time compiled implementation of the matrix multiplication in :math:`\mathbb F_2`. It is more efficient than `galois.GF2.__matmul__` when the matrix `self` is sparse.
         The implementation assumes that the arguments have the right dimensions.
         """
+        if self.ndim != 2 or other.ndim != 2:
+            raise ValueError(
+                "`mat_mul` method only supports two-dimensional arrays. Use `np.matmul(self, other) % 2` instead."
+            )
+        if self.shape[1] != other.shape[0]:
+            raise ValueError(
+                f"Dimension mismatch. Attempted to multiply `self` with shape {self.shape} and  `other` with shape {other.shape}"
+            )
+
         return MatGF2(_mat_mul_jit(self, other), copy=False)
 
     def compute_rank(self) -> int:
@@ -236,7 +245,7 @@ def _elimination_jit(mat_data: npt.NDArray[np.uint8], ncols: int, full_reduce: b
     n_cols : int
         Number of columns over which to perform Gaussian elimination.
     full_reduce : bool
-        Flag determining the operation mode. Output is in RREF (respectively, REF) if `True` (repectively, `False`).
+        Flag determining the operation mode. Output is in RREF if `True`, REF otherwise.
 
     Returns
     -------
