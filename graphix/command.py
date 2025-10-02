@@ -64,7 +64,21 @@ class N(_KindChecker, DataclassReprMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class M(_KindChecker, DataclassReprMixin):
+class BaseM(DataclassReprMixin):
+    """Base measurement command.
+
+    Represent a measurement of a node. In MBQC, a measure is an instance of `M`,
+    with given plane, angles, and domains. In the context of blind computations,
+    the server only knows which node is measured, and the parameters are given
+    by the :class:`graphix.simulator.MeasureMethod` provided by the client.
+    """
+
+    node: Node
+    kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
+
+
+@dataclasses.dataclass(repr=False)
+class M(BaseM, _KindChecker):
     r"""Measurement command.
 
     Parameters
@@ -81,7 +95,6 @@ class M(_KindChecker, DataclassReprMixin):
         Domain for the Z byproduct operator.
     """
 
-    node: Node
     plane: Plane = Plane.XY
     angle: ExpressionOrFloat = 0.0
     s_domain: set[Node] = dataclasses.field(default_factory=set)
@@ -213,8 +226,6 @@ if sys.version_info >= (3, 10):
 else:
     Command = Union[N, M, E, C, X, Z, S, T]
     Correction = Union[X, Z]
-
-BaseM = M
 
 
 @dataclasses.dataclass
