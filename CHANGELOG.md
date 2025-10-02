@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #337: New module `graphix.find_pauliflow` with the $O(N^3)$
+  Pauli-flow finding algorithm introduced in Mitosek and Backens, 2024
+  (arXiv:2410.23439).
+
 - #332: New class `StandardizedPattern` that contains the decomposed
   parts of a standardized pattern.
 
@@ -29,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   modify the pattern and returns unstandardized measurements.
 
 ### Changed
+
+- #337: Dropped dependence on `sympy` and `galois`.
 
 - #332: `Pattern.extract_graph` now returns a networkx graph.
 

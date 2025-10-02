@@ -1,4 +1,3 @@
-galois
 matplotlib
 networkx
 numpy>=2,<3
