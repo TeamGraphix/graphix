@@ -73,7 +73,7 @@ nodes = [1, 2, 3, 4, 5, 6]
 edges = [(1, 4), (1, 6), (2, 4), (2, 5), (2, 6), (3, 5), (3, 6)]
 inputs = {1, 2, 3}
 outputs = {4, 5, 6}
-graph = nx.Graph()
+graph: nx.Graph[int] = nx.Graph()
 graph.add_nodes_from(nodes)
 graph.add_edges_from(edges)
 meas_planes = {1: Plane.XY, 2: Plane.XY, 3: Plane.XY}

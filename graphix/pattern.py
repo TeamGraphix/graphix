@@ -998,7 +998,7 @@ class Pattern:
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
         f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
-        if f is None:
+        if f is None or l_k is None:
             return None
         depth, layer = get_layers(l_k)
         meas_order: list[int] = []
@@ -1389,7 +1389,7 @@ class Pattern:
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
         show_loop: bool = True,
-        node_distance: tuple[int, int] = (1, 1),
+        node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         save: bool = False,
         filename: str | None = None,

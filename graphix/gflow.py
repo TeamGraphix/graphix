@@ -102,7 +102,7 @@ def find_flow(
     iset: set[int],
     oset: set[int],
     meas_planes: dict[int, Plane] | None = None,
-) -> tuple[dict[int, set[int]], dict[int, int]]:
+) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Causal flow finding algorithm.
 
     For open graph g with input, output, and measurement planes, this returns causal flow.
