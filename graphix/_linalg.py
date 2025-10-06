@@ -62,7 +62,7 @@ class MatGF2(npt.NDArray[np.uint8]):
 
         return MatGF2(_mat_mul_jit(self, other), copy=False)
 
-    def compute_rank(self) -> np.intp:
+    def compute_rank(self) -> int:
         """Get the rank of the matrix.
 
         Returns
