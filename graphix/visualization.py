@@ -466,10 +466,10 @@ class GraphVisualizer:
                 curve = self._bezier_curve_linspace(edge_path[edge])
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        for arrow in arrow_path.values():
+        for arrow, path in arrow_path.items():
             if arrow[0] == arrow[1]:  # self loop
                 if show_loop:
-                    curve = self._bezier_curve_linspace(arrow)
+                    curve = self._bezier_curve_linspace(path)
                     plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
                     plt.annotate(
                         "",
@@ -477,13 +477,13 @@ class GraphVisualizer:
                         xytext=curve[-2],
                         arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
                     )
-            elif len(arrow) == 2:  # straight line
+            elif len(path) == 2:  # straight line
                 nx.draw_networkx_edges(
                     self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
                 )
             else:
-                GraphVisualizer._shorten_path(arrow)
-                curve = self._bezier_curve_linspace(arrow)
+                GraphVisualizer._shorten_path(path)
+                curve = self._bezier_curve_linspace(path)
 
                 plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
                 plt.annotate(
