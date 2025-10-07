@@ -98,7 +98,7 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
     #     )
 
     @staticmethod
-    def from_pattern(pattern: Pattern) -> OpenGraph[Measurement]:
+    def from_pattern(pattern: Pattern) -> OpenGraph[MeasurementOrPauliMeasurement]:
         """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
         graph = pattern.extract_graph()
 
@@ -107,7 +107,9 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
 
         meas_planes = pattern.get_meas_plane()
         meas_angles = pattern.get_angles()
-        measurements: Mapping[int, Measurement] = {node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles}
+        measurements: Mapping[int, Measurement] = {
+            node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles
+        }
 
         return OpenGraph(graph, measurements, input_nodes, output_nodes)
 
@@ -128,7 +130,9 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
 
     #     return graphix.generator.generate_from_graph(g, angles, input_nodes, output_nodes, planes)
 
-    def compose(self, other: OpenGraph[_MeasurementLabel_T], mapping: Mapping[int, int]) -> tuple[OpenGraph[_MeasurementLabel_T], dict[int, int]]:
+    def compose(
+        self, other: OpenGraph[_MeasurementLabel_T], mapping: Mapping[int, int]
+    ) -> tuple[OpenGraph[_MeasurementLabel_T], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
 
         Parameters

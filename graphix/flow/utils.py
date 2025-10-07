@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
-
 from typing import TYPE_CHECKING
 
 import networkx as nx
 
-
-
 if TYPE_CHECKING:
-    from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
 
     import networkx as nx
-
-
 
 
 def find_odd_neighbor(graph: nx.Graph[int], vertices: AbstractSet[int]) -> set[int]:

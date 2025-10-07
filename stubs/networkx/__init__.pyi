@@ -1,10 +1,10 @@
-from collections.abc import Collection, Hashable
+from collections.abc import Collection
 from typing import Any, TypeVar
 
 import numpy.typing as npt
 from networkx.classes.graph import Graph
 
-_G = TypeVar("_G", bound=Graph[Hashable])
+_G = TypeVar("_G", bound=Graph)
 
 # parameter `nodelist` is not included in networkx-types
 # https://github.com/python/typeshed/blob/main/stubs/networkx/networkx/convert_matrix.pyi
