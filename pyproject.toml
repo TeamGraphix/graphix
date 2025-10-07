@@ -142,12 +142,10 @@ exclude = [
   '^examples/qnn\.py$',
   '^examples/rotation\.py$',
   '^examples/tn_simulation\.py$',
-  '^examples/visualization\.py$',
   '^graphix/device_interface\.py$',
   '^graphix/gflow\.py$',
   '^graphix/linalg\.py$',
   '^graphix/random_objects\.py$',
-  '^graphix/visualization\.py$',
   '^tests/test_density_matrix\.py$',
   '^tests/test_gflow\.py$',
   '^tests/test_linalg\.py$',
@@ -157,7 +155,6 @@ exclude = [
   '^tests/test_statevec\.py$',
   '^tests/test_statevec_backend\.py$',
   '^tests/test_tnsim\.py$',
-  '^tests/test_visualization\.py$',
 ]
 follow_imports = "silent"
 follow_untyped_imports = true # required for qiskit, requires mypy >=1.14
@@ -176,12 +173,10 @@ exclude = [
   "examples/qnn.py",
   "examples/rotation.py",
   "examples/tn_simulation.py",
-  "examples/visualization.py",
   "graphix/device_interface.py",
   "graphix/gflow.py",
   "graphix/linalg.py",
   "graphix/random_objects.py",
-  "graphix/visualization.py",
   "tests/test_density_matrix.py",
   "tests/test_gflow.py",
   "tests/test_linalg.py",
@@ -192,7 +187,6 @@ exclude = [
   "tests/test_statevec_backend.py",
   "tests/test_tnsim.py",
   "tests/test_transpiler.py",
-  "tests/test_visualization.py",
 ]
 reportUnknownArgumentType = "information"
 reportUnknownLambdaType = "information"
