@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #343: Circuit exporter to OpenQASM3:
+  `graphix.qasm3_exporter.circuit_to_qasm3`.
+
 - #337: New module `graphix.find_pauliflow` with the $O(N^3)$
   Pauli-flow finding algorithm introduced in Mitosek and Backens, 2024
   (arXiv:2410.23439).
