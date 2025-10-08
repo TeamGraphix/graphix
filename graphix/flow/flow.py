@@ -44,6 +44,13 @@ class CausalFlow(GFlow[_MeasurementLabel_T]):
     pass
 
 
+###
+# _compute_layers_from_dag -> checks dag is ok
+# _compute_dag_from_layers
+# use classmethod instead of static method
+# from_corrections
+
+
 @dataclass(frozen=True)
 class PartialOrder:
     dag: nx.DiGraph[int]
