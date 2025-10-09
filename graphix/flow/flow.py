@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import cached_property
+from itertools import pairwise, product
 from typing import TYPE_CHECKING, Generic
 
 import networkx as nx
@@ -14,6 +15,7 @@ from graphix.opengraph_ import OpenGraph, _MeasurementLabel_T
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
+    from collections.abc import Set as AbstractSet
 
 
 @dataclass(frozen=True)
@@ -26,10 +28,10 @@ class PauliFlow(Generic[_MeasurementLabel_T]):
     def compute_corrections(self) -> Corrections[_MeasurementLabel_T]:
         corrections = Corrections(self.og)
 
-        # TODO: implement Browne et al. Theorems. (Need to have defiend Partial Order)
-        # I think we only need to override in CausalFlow.
+        # TODO: implement Browne et al. Theorems.
 
-        # for layer in self.partial_order.layers: #TODO Define partial order iter
+        # Causal Flow and GFlow -> only need correction function
+        # Pauli Flow -> need correction function and partial order
 
         return corrections
 
@@ -44,38 +46,85 @@ class CausalFlow(GFlow[_MeasurementLabel_T]):
     pass
 
 
-###
-# _compute_layers_from_dag -> checks dag is ok
-# _compute_dag_from_layers
-# use classmethod instead of static method
-# from_corrections
-
-
 @dataclass(frozen=True)
 class PartialOrder:
+    """Class for storing and manipulating the partial order in a flow.
+
+    Attributes
+    ----------
     dag: nx.DiGraph[int]
-    layers: dict[int, set[int]] = field(init=False)
+        Directed Acyclical Graph (DAG) representing the partial order. The transitive closure of `dag` yields all the relations in the partial order.
 
-    def __post_init__(self) -> None:
-        try:
-            self.layers = {
-                layer: set(generation)
-                for layer, generation in enumerate(reversed(nx.topological_generations(self.dag)))
-            }
-        except nx.NetworkXUnfeasible:
-            raise ValueError("Partial order contains loops.")
+    layers: Mapping[int, AbstractSet[int]]
+        Mapping storing the partial order in a layer structure.
+        The pair `(key, value)` corresponds to the layer and the set of nodes in that layer.
+        Layer 0 corresponds to the largest nodes in the partial order. In general, if `i > j`, then nodes in `layers[j]` are in the future of nodes in `layers[i]`.
 
-    @staticmethod
-    def from_adj_matrix(adj_mat: npt.NDArray[np.uint8], nodelist: Collection[int] | None = None) -> PartialOrder:
-        return PartialOrder(nx.from_numpy_array(adj_mat, create_using=nx.DiGraph, nodelist=nodelist))
+    """
 
-    @staticmethod
-    def from_relations(relations: Collection[tuple[int, int]]) -> PartialOrder:
-        return PartialOrder(nx.DiGraph(relations))
+    dag: nx.DiGraph[int]
+    layers: Mapping[int, AbstractSet[int]]
 
-    @staticmethod
-    def from_layers(layers: Mapping[int, set[int]]) -> PartialOrder:
-        pass
+    @classmethod
+    def from_adj_matrix(cls, adj_mat: npt.NDArray[np.uint8], nodelist: Collection[int] | None = None) -> PartialOrder:
+        """Construct a partial order from an adjacency matrix representing a DAG.
+
+        Parameters
+        ----------
+        adj_mat: npt.NDArray[np.uint8]
+            Adjacency matrix of the DAG. A nonzero element `adj_mat[i,j]` represents a link `i -> j`.
+        node_list: Collection[int] | None
+            Mapping between matrix indices and node labels. Optional, defaults to `None`.
+
+        Returns
+        -------
+        PartialOrder
+
+        Notes
+        -----
+        The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
+        """
+        dag = nx.from_numpy_array(adj_mat, create_using=nx.DiGraph, nodelist=nodelist)
+        layers = _compute_layers_from_dag(dag)
+        return cls(dag=dag, layers=layers)
+
+    @classmethod
+    def from_relations(cls, relations: Collection[tuple[int, int]]) -> PartialOrder:
+        """Construct a partial order from the order relations.
+
+        Parameters
+        ----------
+        relations: Collection[tuple[int, int]]
+            Collection of relations in the partial order. A tuple `(a, b)` represents `a > b` in the partial order.
+
+        Returns
+        -------
+        PartialOrder
+
+        Notes
+        -----
+        The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
+        """
+        dag = nx.DiGraph(relations)
+        layers = _compute_layers_from_dag(dag)
+        return cls(dag=dag, layers=layers)
+
+    @classmethod
+    def from_layers(cls, layers: Mapping[int, AbstractSet[int]]) -> PartialOrder:
+        dag = _compute_dag_from_layers(layers)
+        return cls(dag=dag, layers=layers)
+
+    @classmethod
+    def from_corrections(cls, corrections: Corrections) -> PartialOrder:
+        relations: set[tuple[int, int]] = set()
+
+        for node, domain in corrections.x_corrections.items():
+            relations.update(product([node], domain))
+
+        for node, domain in corrections.z_corrections.items():
+            relations.update(product([node], domain))
+
+        return cls.from_relations(relations)
 
     @property
     def nodes(self) -> set[int]:
@@ -205,3 +254,29 @@ class Corrections(Generic[_MeasurementLabel_T]):
             self._z_corrections.update({node: domain})
 
     # TODO: There's a bit a of duplicity between X and Z, can we do better?
+
+
+def _compute_layers_from_dag(dag: nx.DiGraph[int]) -> dict[int, set[int]]:
+    try:
+        generations = reversed(list(nx.topological_generations(dag)))
+        return {layer: set(generation) for layer, generation in enumerate(generations)}
+    except nx.NetworkXUnfeasible as exc:
+        raise ValueError("Partial order contains loops.") from exc
+
+
+def _compute_dag_from_layers(layers: Mapping[int, AbstractSet[int]]) -> nx.DiGraph[int]:
+    max_layer = max(layers)
+    relations: list[tuple[int, int]] = []
+    visited_nodes: set[int] = set()
+
+    for i, j in pairwise(reversed(range(max_layer + 1))):
+        layer_curr, layer_next = layers[i], layers[j]
+        if layer_curr & visited_nodes:
+            raise ValueError(f"Layer {i} contains nodes in previous layers.")
+        visited_nodes |= layer_curr
+        relations.extend(product(layer_curr, layer_next))
+
+    if layers[0] & visited_nodes:
+        raise ValueError(f"Layer {i} contains nodes in previous layers.")
+
+    return nx.DiGraph(relations)
