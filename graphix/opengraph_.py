@@ -25,6 +25,10 @@ MeasurementOrPauliMeasurement = Measurement | PauliMeasurement
 
 _MeasurementLabel_T = TypeVar("_MeasurementLabel_T", PlaneOrAxis, MeasurementOrPauliMeasurement)
 
+# Add methods ?
+# neighbors(node) -> calls self.graph.neighbors(node)
+# odd_neighbors -> custom method
+
 
 @dataclass(frozen=True)
 class OpenGraph(Generic[_MeasurementLabel_T]):
