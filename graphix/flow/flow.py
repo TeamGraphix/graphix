@@ -137,6 +137,9 @@ class PauliFlow(Generic[_M]):
 
         return Corrections(self.og, x_corrections, z_corrections)
 
+    # TODO
+    # def is_well_formed(self) -> bool:
+
     # TODO: for compatibility with previous encoding of layers.
     # def node_layer_mapping(self) -> dict[int, int]:
     #     """Return layers in the form `{node: layer}`."""
@@ -365,13 +368,6 @@ class PartialOrder:
             Further, it is not symmetric.
         """
         return self.transitive_closure.issubset(other.transitive_closure)
-
-
-# def _compute_corrections(og: OpenGraph, corr_func: Mapping[int, set[int]]) -> Corrections:
-
-#     for node, corr_set in corr_func.items():
-#         domain_x = corr_set - {node}
-#         domain_z = og.odd_neighbors(corr_set)
 
 
 ###########
