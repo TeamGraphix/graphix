@@ -27,7 +27,9 @@ class OutputFormat(Enum):
     Unicode = enum.auto()
 
 
-def angle_to_str(angle: float, output: OutputFormat, max_denominator: int = 1000) -> str:
+def angle_to_str(
+    angle: float, output: OutputFormat, max_denominator: int = 1000, multiplication_sign: bool = False
+) -> str:
     r"""
     Return a string representation of an angle given in units of π.
 
@@ -43,6 +45,13 @@ def angle_to_str(angle: float, output: OutputFormat, max_denominator: int = 1000
         Desired formatting style: Unicode (π symbol), LaTeX (\pi), or ASCII ("pi").
     max_denominator : int, optional
         Maximum denominator for detecting a simple fraction (default: 1000).
+    multiplication_sign : bool
+        Optional (default: ``False``).
+        If ``True``, the multiplication sign  is made explicit between the
+        numerator and π:
+        ``2×π`` in Unicode, ``2 \times \pi`` in LaTeX, and ``2*pi`` in ASCII.
+        If ``False``, the multiplication sign is implicit:
+        ``2π`` in Unicode, ``2\pi`` in LaTeX, ``2pi`` in ASCII.
 
     Returns
     -------
@@ -54,7 +63,7 @@ def angle_to_str(angle: float, output: OutputFormat, max_denominator: int = 1000
     if not math.isclose(angle, float(frac)):
         rad = angle * math.pi
 
-        return f"{rad:.2f}"
+        return f"{rad}"
 
     num, den = frac.numerator, frac.denominator
     sign = "-" if num < 0 else ""
@@ -65,21 +74,28 @@ def angle_to_str(angle: float, output: OutputFormat, max_denominator: int = 1000
 
         def mkfrac(num: str, den: str) -> str:
             return rf"\frac{{{num}}}{{{den}}}"
+
+        mul = r" \times "
     else:
         pi = "π" if output == OutputFormat.Unicode else "pi"
 
         def mkfrac(num: str, den: str) -> str:
             return f"{num}/{den}"
 
+        mul = "×" if output == OutputFormat.Unicode else "*"
+
+    if not multiplication_sign:
+        mul = ""
+
     if den == 1:
         if num == 0:
             return "0"
         if num == 1:
             return f"{sign}{pi}"
-        return f"{sign}{num}{pi}"
+        return f"{sign}{num}{mul}{pi}"
 
     den_str = f"{den}"
-    num_str = pi if num == 1 else f"{num}{pi}"
+    num_str = pi if num == 1 else f"{num}{mul}{pi}"
     return f"{sign}{mkfrac(num_str, den_str)}"
 
 

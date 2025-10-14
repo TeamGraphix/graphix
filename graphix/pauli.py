@@ -1,4 +1,4 @@
-"""Pauli gates ± {1,j} × {I, X, Y, Z}."""  # noqa: RUF002
+"""Pauli gates ± {1,j} × {I, X, Y, Z}."""
 
 from __future__ import annotations
 
