@@ -12,7 +12,7 @@ from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement, PauliMeasurement
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Collection, Iterable, Mapping
 
     from graphix.pattern import Pattern
 
@@ -207,6 +207,42 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
         measurements = {**self.measurements, **measurements_shifted}
 
         return OpenGraph(g, measurements, input_nodes, output_nodes), mapping_complete
+
+    def neighbors(self, nodes: Collection[int]) -> set[int]:
+        """Return the set containing the neighborhood of a set of nodes.
+
+        Parameters
+        ----------
+        nodes : Collection[int]
+            Set of nodes whose neighborhood is to be found
+
+        Returns
+        -------
+        neighbors_set : set[int]
+            Neighborhood of set `nodes`.
+        """
+        neighbors_set: set[int] = set()
+        for node in nodes:
+            neighbors_set |= set(self.graph.neighbors(node))
+        return neighbors_set
+
+    def odd_neighbors(self, nodes: Collection[int]) -> set[int]:
+        """Return the set containing the odd neighborhood of a set of nodes.
+
+        Parameters
+        ----------
+        nodes : Collection[int]
+            Set of nodes whose odd neighborhood is to be found
+
+        Returns
+        -------
+        odd_neighbors_set : set[int]
+            Odd neighborhood of set `nodes`.
+        """
+        odd_neighbors_set: set[int] = set()
+        for node in nodes:
+            odd_neighbors_set ^= self.neighbors([node])
+        return odd_neighbors_set
 
     # def compute_flow(self) -> PauliFlow | None:
     #     """Compute flow."""

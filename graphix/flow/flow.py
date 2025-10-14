@@ -18,22 +18,116 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
 
+@dataclass
+class Corrections_(Generic[_MeasurementLabel_T]):
+    og: OpenGraph[_MeasurementLabel_T]
+    _x_corrections: dict[int, set[int]] = field(default_factory=dict)  # {node: domain}
+    _z_corrections: dict[int, set[int]] = field(default_factory=dict)  # {node: domain}
+
+    @property
+    def x_corrections(self) -> dict[int, set[int]]:
+        return self._x_corrections
+
+    @property
+    def z_corrections(self) -> dict[int, set[int]]:
+        return self._z_corrections
+
+    # TODO: This may be a cached_property. In this case we would have to clear the cache after adding an X or a Z correction.
+    # TODO: Strictly speaking, this function returns a directed graph (i.e., we don't check that it's acyclical at this level). This is done by the function `is_wellformed`
+    @property
+    def dag(self) -> nx.DiGraph[int]:
+
+        relations: set[tuple[int, int]] = set()
+
+        for node, domain in self.x_corrections.items():
+            relations.update(product([node], domain))
+
+        for node, domain in self.z_corrections.items():
+            relations.update(product([node], domain))
+
+        return nx.DiGraph(relations)
+
+    # TODO: There's a bit a of duplicity between X and Z, can we do better?
+
+    def add_x_correction(self, node: int, domain: set[int]) -> None:
+        if node not in self.og.graph.nodes:
+            raise ValueError(f"Cannot apply X correction. Corrected node {node} does not belong to the open graph.")
+
+        if not domain.issubset(self.og.measurements):
+            raise ValueError(f"Cannot apply X correction. Domain nodes {domain} are not measured.")
+
+        if node in self._x_corrections:
+            self._x_corrections[node] |= domain
+        else:
+            self._x_corrections.update({node: domain})
+
+    def add_z_correction(self, node: int, domain: set[int]) -> None:
+        if node not in self.og.graph.nodes:
+            raise ValueError(f"Cannot apply Z correction. Corrected node {node} does not belong to the open graph.")
+
+        if not domain.issubset(self.og.measurements):
+            raise ValueError(f"Cannot apply Z correction. Domain nodes {domain} are not measured.")
+
+        if node in self._z_corrections:
+            self._z_corrections[node] |= domain
+        else:
+            self._z_corrections.update({node: domain})
+
+    def is_wellformed(self) -> bool:
+        return nx.is_directed_acyclic_graph(self.dag)
+
+
 @dataclass(frozen=True)
-class PauliFlow(Generic[_MeasurementLabel_T]):
+class Corrections(Generic[_MeasurementLabel_T]):
+    og: OpenGraph[_MeasurementLabel_T]
+    x_corrections: dict[int, set[int]]   # {node: domain}
+    z_corrections: dict[int, set[int]]   # {node: domain}
+
+    def __post_init__(self):
+        for corr_type in ['X', 'Z']:
+            corrections = self.__getattribute__(f"{corr_type.lower()}_corrections")
+            for node, domain in corrections.items():
+                if node not in self.og.graph.nodes:
+                    raise ValueError(f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph.")
+                if not domain.issubset(self.og.measurements):
+                    raise ValueError(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
+        if nx.is_directed_acyclic_graph(self.dag):
+            raise ValueError("Corrections are not runnable since the induced directed graph contains cycles.")
+
+    @property
+    def dag(self) -> nx.DiGraph[int]:
+
+        relations: set[tuple[int, int]] = set()
+
+        for node, domain in self.x_corrections.items():
+            relations.update(product([node], domain))
+
+        for node, domain in self.z_corrections.items():
+            relations.update(product([node], domain))
+
+        return nx.DiGraph(relations)
+
+
+@dataclass(frozen=True)
+class PauliFlow(Corrections[_MeasurementLabel_T]):
     og: OpenGraph[_MeasurementLabel_T]
     correction_function: Mapping[int, set[int]]
-    partial_order: PartialOrder
 
-    # we might want to pass some order ?
-    def compute_corrections(self) -> Corrections[_MeasurementLabel_T]:
-        corrections = Corrections(self.og)
+    # TODO: Not needed atm
+    # @classmethod
+    # def from_correction_function(cls, og, pf) -> Self:
+    #     x_corrections: dict[int, set[int]] = {}
+    #     z_corrections: dict[int, set[int]] = {}
 
-        # TODO: implement Browne et al. Theorems.
+    #     return cls(og, x_corrections, z_corrections, pf)
 
-        # Causal Flow and GFlow -> only need correction function
-        # Pauli Flow -> need correction function and partial order
+    @classmethod
+    def from_c_matrix(cls, aog, c_matrix) -> Self:
+        x_corrections: dict[int, set[int]] = {}
+        z_corrections: dict[int, set[int]] = {}
+        pf: dict[int, set[int]] = {}
 
-        return corrections
+        return cls(aog, x_corrections, z_corrections, pf)
 
 
 @dataclass(frozen=True)
@@ -215,46 +309,15 @@ class PartialOrder:
         return self.transitive_closure.issubset(other.transitive_closure)
 
 
-@dataclass
-class Corrections(Generic[_MeasurementLabel_T]):
-    og: OpenGraph[_MeasurementLabel_T]
-    _x_corrections: dict[int, set[int]] = field(default_factory=dict)  # {node: domain}
-    _z_corrections: dict[int, set[int]] = field(default_factory=dict)  # {node: domain}
+def _compute_corrections(og: OpenGraph, corr_func: Mapping[int, set[int]]) -> Corrections:
 
-    @property
-    def x_corrections(self) -> dict[int, set[int]]:
-        return self._x_corrections
+    for node, corr_set in corr_func.items():
+        domain_x = corr_set - {node}
+        domain_z = og.odd_neighbors(corr_set)
 
-    @property
-    def z_corrections(self) -> dict[int, set[int]]:
-        return self._z_corrections
 
-    def add_x_correction(self, node: int, domain: set[int]) -> None:
-        if node not in self.og.graph.nodes:
-            raise ValueError(f"Cannot apply X correction. Corrected node {node} does not belong to the open graph.")
-
-        if not domain.issubset(self.og.measurements):
-            raise ValueError(f"Cannot apply X correction. Domain nodes {domain} are not measured.")
-
-        if node in self._x_corrections:
-            self._x_corrections[node] |= domain
-        else:
-            self._x_corrections.update({node: domain})
-
-    def add_z_correction(self, node: int, domain: set[int]) -> None:
-        if node not in self.og.graph.nodes:
-            raise ValueError(f"Cannot apply Z correction. Corrected node {node} does not belong to the open graph.")
-
-        if not domain.issubset(self.og.measurements):
-            raise ValueError(f"Cannot apply Z correction. Domain nodes {domain} are not measured.")
-
-        if node in self._z_corrections:
-            self._z_corrections[node] |= domain
-        else:
-            self._z_corrections.update({node: domain})
-
-    # TODO: There's a bit a of duplicity between X and Z, can we do better?
-
+###########
+# OLD functions
 
 def _compute_layers_from_dag(dag: nx.DiGraph[int]) -> dict[int, set[int]]:
     try:
