@@ -22,4 +22,4 @@ pytest-mock
 qiskit>=1.0
 qiskit-aer
 
-graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git@fix_typing_issues
+graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git@id_gate

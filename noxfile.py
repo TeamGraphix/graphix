@@ -78,8 +78,7 @@ def tests_qasm_parser(session: Session) -> None:
     # because Windows cannot delete a temporary directory while it
     # is the working directory.
     with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
-        # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/1
-        session.run("git", "clone", "-b", "fix_typing_issues", "https://github.com/TeamGraphix/graphix-qasm-parser")
+        session.run("git", "clone", "https://github.com/TeamGraphix/graphix-qasm-parser")
         with session.cd("graphix-qasm-parser"):
             session.install(".")
             session.run("pytest", "--doctest-modules")

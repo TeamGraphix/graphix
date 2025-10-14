@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-from fractions import Fraction
 from math import pi
 from typing import TYPE_CHECKING
 
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
+from graphix.fundamentals import Axis, Sign
 from graphix.instruction import Instruction, InstructionKind
+from graphix.measurements import PauliMeasurement
+from graphix.pretty_print import OutputFormat, angle_to_str
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     from graphix import Circuit
+    from graphix.parameter import ExpressionOrFloat
 
 
 def circuit_to_qasm3(circuit: Circuit) -> str:
@@ -45,9 +48,33 @@ def circuit_to_qasm3_lines(circuit: Circuit) -> Iterator[str]:
         yield f"{instruction_to_qasm3(instr)};"
 
 
+def qasm3_qubit(index: int) -> str:
+    """Return the name of the indexed qubit."""
+    return f"q[{index}]"
+
+
+def qasm3_gate_call(gate: str, operands: Iterable[str], args: Iterable[str] | None = None) -> str:
+    """Return the OpenQASM3 gate call."""
+    operands_str = ", ".join(operands)
+    if args is None:
+        return f"{gate} {operands_str}"
+    args_str = ", ".join(args)
+    return f"{gate}({args_str}) {operands_str}"
+
+
+def angle_to_qasm3(angle: ExpressionOrFloat) -> str:
+    """Get the OpenQASM3 representation of an angle."""
+    if not isinstance(angle, float):
+        raise TypeError("QASM export of symbolic pattern is not supported")
+    rad_over_pi = angle / pi
+    return angle_to_str(rad_over_pi, output=OutputFormat.ASCII, multiplication_sign=True)
+
+
 def instruction_to_qasm3(instruction: Instruction) -> str:
-    """Get the qasm3 representation of a single circuit instruction."""
+    """Get the OpenQASM3 representation of a single circuit instruction."""
     if instruction.kind == InstructionKind.M:
+        if PauliMeasurement.try_from(instruction.plane, instruction.angle) != PauliMeasurement(Axis.Z, Sign.PLUS):
+            raise ValueError("OpenQASM3 only supports measurements in Z axis.")
         return f"b[{instruction.target}] = measure q[{instruction.target}]"
     # Use of `==` here for mypy
     if (
@@ -55,40 +82,38 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
         or instruction.kind == InstructionKind.RY
         or instruction.kind == InstructionKind.RZ
     ):
-        if not isinstance(instruction.angle, float):
-            raise ValueError("QASM export of symbolic pattern is not supported")
-        rad_over_pi = instruction.angle / pi
-        tol = 1e-9
-        frac = Fraction(rad_over_pi).limit_denominator(1000)
-        if abs(rad_over_pi - float(frac)) > tol:
-            angle = f"{rad_over_pi}*pi"
-        num, den = frac.numerator, frac.denominator
-        sign = "-" if num < 0 else ""
-        num = abs(num)
-        if den == 1:
-            angle = f"{sign}pi" if num == 1 else f"{sign}{num}*pi"
-        else:
-            angle = f"{sign}pi/{den}" if num == 1 else f"{sign}{num}*pi/{den}"
-        return f"{instruction.kind.name.lower()}({angle}) q[{instruction.target}]"
+        angle = angle_to_qasm3(instruction.angle)
+        return qasm3_gate_call(instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)])
 
     # Use of `==` here for mypy
     if (
         instruction.kind == InstructionKind.H  # noqa: PLR1714
-        or instruction.kind == InstructionKind.I
         or instruction.kind == InstructionKind.S
         or instruction.kind == InstructionKind.X
         or instruction.kind == InstructionKind.Y
         or instruction.kind == InstructionKind.Z
     ):
-        return f"{instruction.kind.name.lower()} q[{instruction.target}]"
+        return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
+    if instruction.kind == InstructionKind.I:
+        return qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
     if instruction.kind == InstructionKind.CNOT:
-        return f"cx q[{instruction.control}], q[{instruction.target}]"
+        return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
     if instruction.kind == InstructionKind.SWAP:
-        return f"swap q[{instruction.targets[0]}], q[{instruction.targets[1]}]"
+        return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
     if instruction.kind == InstructionKind.RZZ:
-        return f"rzz q[{instruction.control}], q[{instruction.target}]"
+        angle = angle_to_qasm3(instruction.angle)
+        return qasm3_gate_call(
+            "crz", args=[angle], operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)]
+        )
     if instruction.kind == InstructionKind.CCX:
-        return f"ccx q[{instruction.controls[0]}], q[{instruction.controls[1]}], q[{instruction.target}]"
+        return qasm3_gate_call(
+            "ccx",
+            [
+                qasm3_qubit(instruction.controls[0]),
+                qasm3_qubit(instruction.controls[1]),
+                qasm3_qubit(instruction.target),
+            ],
+        )
     # Use of `==` here for mypy
     if instruction.kind == InstructionKind._XC or instruction.kind == InstructionKind._ZC:  # noqa: PLR1714
         raise ValueError("Internal instruction should not appear")
