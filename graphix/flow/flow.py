@@ -2,101 +2,49 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from functools import cached_property
 from itertools import pairwise, product
 from typing import TYPE_CHECKING, Generic
 
 import networkx as nx
-import numpy as np
-import numpy.typing as npt
 
-from graphix.opengraph_ import OpenGraph, _MeasurementLabel_T
+from graphix.flow._find_pflow import compute_correction_function, compute_partial_order_layers
+from graphix.fundamentals import Plane
+from graphix.opengraph_ import _M, OpenGraph
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
     from collections.abc import Set as AbstractSet
+    from typing import Self, override
 
+    import numpy as np
+    import numpy.typing as npt
 
-@dataclass
-class Corrections_(Generic[_MeasurementLabel_T]):
-    og: OpenGraph[_MeasurementLabel_T]
-    _x_corrections: dict[int, set[int]] = field(default_factory=dict)  # {node: domain}
-    _z_corrections: dict[int, set[int]] = field(default_factory=dict)  # {node: domain}
-
-    @property
-    def x_corrections(self) -> dict[int, set[int]]:
-        return self._x_corrections
-
-    @property
-    def z_corrections(self) -> dict[int, set[int]]:
-        return self._z_corrections
-
-    # TODO: This may be a cached_property. In this case we would have to clear the cache after adding an X or a Z correction.
-    # TODO: Strictly speaking, this function returns a directed graph (i.e., we don't check that it's acyclical at this level). This is done by the function `is_wellformed`
-    @property
-    def dag(self) -> nx.DiGraph[int]:
-
-        relations: set[tuple[int, int]] = set()
-
-        for node, domain in self.x_corrections.items():
-            relations.update(product([node], domain))
-
-        for node, domain in self.z_corrections.items():
-            relations.update(product([node], domain))
-
-        return nx.DiGraph(relations)
-
-    # TODO: There's a bit a of duplicity between X and Z, can we do better?
-
-    def add_x_correction(self, node: int, domain: set[int]) -> None:
-        if node not in self.og.graph.nodes:
-            raise ValueError(f"Cannot apply X correction. Corrected node {node} does not belong to the open graph.")
-
-        if not domain.issubset(self.og.measurements):
-            raise ValueError(f"Cannot apply X correction. Domain nodes {domain} are not measured.")
-
-        if node in self._x_corrections:
-            self._x_corrections[node] |= domain
-        else:
-            self._x_corrections.update({node: domain})
-
-    def add_z_correction(self, node: int, domain: set[int]) -> None:
-        if node not in self.og.graph.nodes:
-            raise ValueError(f"Cannot apply Z correction. Corrected node {node} does not belong to the open graph.")
-
-        if not domain.issubset(self.og.measurements):
-            raise ValueError(f"Cannot apply Z correction. Domain nodes {domain} are not measured.")
-
-        if node in self._z_corrections:
-            self._z_corrections[node] |= domain
-        else:
-            self._z_corrections.update({node: domain})
-
-    def is_wellformed(self) -> bool:
-        return nx.is_directed_acyclic_graph(self.dag)
+    from graphix._linalg import MatGF2
+    from graphix.flow._find_pflow import AlgebraicOpenGraph
 
 
 @dataclass(frozen=True)
-class Corrections(Generic[_MeasurementLabel_T]):
-    og: OpenGraph[_MeasurementLabel_T]
+class Corrections(Generic[_M]):
+    og: OpenGraph[_M]
     x_corrections: dict[int, set[int]]   # {node: domain}
     z_corrections: dict[int, set[int]]   # {node: domain}
 
-    def __post_init__(self):
-        for corr_type in ['X', 'Z']:
-            corrections = self.__getattribute__(f"{corr_type.lower()}_corrections")
-            for node, domain in corrections.items():
-                if node not in self.og.graph.nodes:
-                    raise ValueError(f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph.")
-                if not domain.issubset(self.og.measurements):
-                    raise ValueError(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
-        if nx.is_directed_acyclic_graph(self.dag):
-            raise ValueError("Corrections are not runnable since the induced directed graph contains cycles.")
+    def extract_dag(self) -> nx.DiGraph[int]:
+        """Extract directed graph induced by the corrections.
 
-    @property
-    def dag(self) -> nx.DiGraph[int]:
+        Returns
+        -------
+        nx.DiGraph[int]
+            Directed graph in which an edge `i -> j` represents a correction applied to qubit `i`, conditioned on the measurement outcome of qubit `j`.
 
+        Notes
+        -----
+        - Not all nodes of the underlying open graph are nodes of the returned directed graph, but only those involved in a correction, either as corrected qubits or belonging to a correction domain.
+        - Despite the name, the output of this method is not guranteed to be a directed acyclical graph (i.e., a directed graph without any loops). This is only the case if the `Corrections` object is well formed, which is verified by the method :func:`Corrections.is_wellformed`.
+        """
         relations: set[tuple[int, int]] = set()
 
         for node, domain in self.x_corrections.items():
@@ -107,37 +55,147 @@ class Corrections(Generic[_MeasurementLabel_T]):
 
         return nx.DiGraph(relations)
 
+    def is_wellformed(self, verbose: bool = True) -> bool:
+        """Verify if `Corrections` object is well formed.
+
+        Parameters
+        ----------
+        verbose : bool
+            Optional flag that indicates the source of the issue when `self` is malformed. Defaults to `True`.
+
+        Returns
+        -------
+        bool
+            `True` if `self` is well formed, `False` otherwise.
+
+        Notes
+        -----
+        This method verifies that:
+            - Corrected nodes belong to the underlying open graph.
+            - Nodes in domain set are measured.
+            - Corrections are runnable. This amounts to verifying that the corrections-induced directed graph does not have loops.
+        """
+        for corr_type in ['X', 'Z']:
+            corrections = getattr(self, f"{corr_type.lower()}_corrections")
+            for node, domain in corrections.items():
+                if node not in self.og.graph.nodes:
+                    if verbose:
+                        print(f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph.")
+                    return False
+                if not domain.issubset(self.og.measurements):
+                    if verbose:
+                        print(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
+                    return False
+        if nx.is_directed_acyclic_graph(self.extract_dag()):
+            if verbose:
+                print("Corrections are not runnable since the induced directed graph contains cycles.")
+            return False
+
+        return True
+
+    # def to_pattern(self, total_order, angles) -> Pattern: ...
+
 
 @dataclass(frozen=True)
-class PauliFlow(Corrections[_MeasurementLabel_T]):
-    og: OpenGraph[_MeasurementLabel_T]
+class PauliFlow(Generic[_M]):
+    og: OpenGraph[_M]
     correction_function: Mapping[int, set[int]]
+    partial_order_layers: list[set[int]]
 
-    # TODO: Not needed atm
-    # @classmethod
-    # def from_correction_function(cls, og, pf) -> Self:
-    #     x_corrections: dict[int, set[int]] = {}
-    #     z_corrections: dict[int, set[int]] = {}
-
-    #     return cls(og, x_corrections, z_corrections, pf)
-
+    # TODO: Add parametric dependence of AlgebraicOpenGraph
     @classmethod
-    def from_c_matrix(cls, aog, c_matrix) -> Self:
-        x_corrections: dict[int, set[int]] = {}
-        z_corrections: dict[int, set[int]] = {}
-        pf: dict[int, set[int]] = {}
+    def from_correction_matrix(cls, aog: AlgebraicOpenGraph, correction_matrix: MatGF2) -> Self | None:
+        correction_function = compute_correction_function(aog, correction_matrix)
+        partial_order_layers = compute_partial_order_layers(aog, correction_matrix)
+        if partial_order_layers is None:
+            return None
 
-        return cls(aog, x_corrections, z_corrections, pf)
+        return cls(aog.og, correction_function, partial_order_layers)
+
+    def to_corrections(self) -> Corrections[_M]:
+        """Compute the X and Z corrections induced by the Pauli flow encoded in `self`.
+
+        Returns
+        -------
+        Corrections[_M]
+
+        Notes
+        -----
+        This function partially implements Theorem 4 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+        """
+        future: set[int] = self.partial_order_layers[0]
+        x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+        z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+
+        for layer in self.partial_order_layers[1:]:
+            for node in layer:
+                corr_set = self.correction_function[node]
+                x_corrections[node].update(corr_set & future)
+                z_corrections[node].update(self.og.odd_neighbors(corr_set) & future)
+
+            future |= layer
+
+        return Corrections(self.og, x_corrections, z_corrections)
+
+    # TODO: for compatibility with previous encoding of layers.
+    # def node_layer_mapping(self) -> dict[int, int]:
+    #     """Return layers in the form `{node: layer}`."""
+    #     mapping: dict[int, int] = {}
+    #     for layer, nodes in self.layers.items():
+    #         mapping.update(dict.fromkeys(nodes, layer))
+
+    #     return mapping
 
 
 @dataclass(frozen=True)
-class GFlow(PauliFlow[_MeasurementLabel_T]):
-    pass
+class GFlow(PauliFlow[Plane]):
+
+    @override
+    def to_corrections(self) -> Corrections[Plane]:
+        r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
+
+        Returns
+        -------
+        Corrections[Plane]
+
+        Notes
+        -----
+        - This function partially implements Theorem 2 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+
+        - Contrary to the overridden method in the parent class, here we do not need any information on the partial order to build the corrections since a valid correction function :math:`g` guarantees that both :math:`g(i)\setminus \{i\}` and :math:`Odd(g(i))` are in the future of :math:`i`.
+        """
+        x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+        z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+
+        for node, corr_set in self.correction_function.items():
+            x_corrections[node].update(corr_set - {node})
+            z_corrections[node].update(self.og.odd_neighbors(corr_set))
+
+        return Corrections(self.og, x_corrections, z_corrections)
 
 
 @dataclass(frozen=True)
-class CausalFlow(GFlow[_MeasurementLabel_T]):
-    pass
+class CausalFlow(GFlow):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
+    @override
+    def to_corrections(self) -> Corrections[Plane]:
+        r"""Compute the X and Z corrections induced by the causal flow encoded in `self`.
+
+        Returns
+        -------
+        Corrections[Plane]
+
+        Notes
+        -----
+        This function partially implements Theorem 1 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+        """
+        x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+        z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+
+        for node, corr_set in self.correction_function.items():
+            x_corrections[node].update(corr_set)
+            z_corrections[node].update(self.og.neighbors(corr_set) - {node})
+
+        return Corrections(self.og, x_corrections, z_corrections)
 
 
 @dataclass(frozen=True)
@@ -309,11 +367,11 @@ class PartialOrder:
         return self.transitive_closure.issubset(other.transitive_closure)
 
 
-def _compute_corrections(og: OpenGraph, corr_func: Mapping[int, set[int]]) -> Corrections:
+# def _compute_corrections(og: OpenGraph, corr_func: Mapping[int, set[int]]) -> Corrections:
 
-    for node, corr_set in corr_func.items():
-        domain_x = corr_set - {node}
-        domain_z = og.odd_neighbors(corr_set)
+#     for node, corr_set in corr_func.items():
+#         domain_x = corr_set - {node}
+#         domain_z = og.odd_neighbors(corr_set)
 
 
 ###########

@@ -12,6 +12,7 @@ References
 from __future__ import annotations
 
 from copy import deepcopy
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -27,8 +28,8 @@ if TYPE_CHECKING:
     from graphix.opengraph import OpenGraph
 
 
-class OpenGraphIndex:
-    """A class for managing the mapping between node numbers of a given open graph and matrix indices in the Pauli flow finding algorithm.
+class AlgebraicOpenGraph:
+    """A class for providing an algebraic representation of open graphs as introduced in [1]. In particular, it allows managing the mapping between node labels of the graph and the relevant matrix indices. The flow demand and order demand matrices appear as cached properties.
 
     It reuses the class `:class: graphix.sim.base_backend.NodeIndex` introduced for managing the mapping between node numbers and qubit indices in the internal state of the backend.
 
@@ -41,7 +42,11 @@ class OpenGraphIndex:
 
     Notes
     -----
-    At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the P matrix more efficiently in the `:func: _find_pflow_general` routine.
+    At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the P matrix more efficiently in the `:func: _compute_correction_matrix_general` routine.
+
+    References
+    ----------
+    [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
     def __init__(self, og: OpenGraph) -> None:
@@ -62,139 +67,108 @@ class OpenGraphIndex:
         # Needs to be a deep copy because it may be modified during runtime.
         self.non_outputs_optim = deepcopy(self.non_outputs)
 
+    @property
+    def flow_demand_matrix(self) -> MatGF2:
+        return self._compute_pflow_matrices[0]
 
-def _compute_reduced_adj(ogi: OpenGraphIndex) -> MatGF2:
-    r"""Return the reduced adjacency matrix (RAdj) of the input open graph.
+    @property
+    def order_demand_matrix(self) -> MatGF2:
+        return self._compute_pflow_matrices[1]
 
-    Parameters
-    ----------
-    ogi : OpenGraphIndex
-        Open graph whose RAdj is computed.
+    def _compute_reduced_adj(self) -> MatGF2:
+        r"""Return the reduced adjacency matrix (RAdj) of the input open graph.
 
-    Returns
-    -------
-    adj_red : MatGF2
-        Reduced adjacency matrix.
+        Parameters
+        ----------
+        aog : AlgebraicOpenGraph
+            Open graph whose RAdj is computed.
 
-    Notes
-    -----
-    The adjacency matrix of a graph :math:`Adj_G` is an :math:`n \times n` matrix.
+        Returns
+        -------
+        adj_red : MatGF2
+            Reduced adjacency matrix.
 
-    The RAdj matrix of an open graph OG is an :math:`(n - n_O) \times (n - n_I)` submatrix of :math:`Adj_G` constructed by removing the output rows and input columns of :math:`Adj_G`.
+        Notes
+        -----
+        The adjacency matrix of a graph :math:`Adj_G` is an :math:`n \times n` matrix.
 
-    See Definition 3.3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
-    """
-    graph = ogi.og.inside
-    row_tags = ogi.non_outputs
-    col_tags = ogi.non_inputs
+        The RAdj matrix of an open graph OG is an :math:`(n - n_O) \times (n - n_I)` submatrix of :math:`Adj_G` constructed by removing the output rows and input columns of :math:`Adj_G`.
 
-    adj_red = np.zeros((len(row_tags), len(col_tags)), dtype=np.uint8).view(MatGF2)
+        See Definition 3.3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        graph = self.og.inside
+        row_tags = self.non_outputs
+        col_tags = self.non_inputs
 
-    for n1, n2 in graph.edges:
-        for u, v in ((n1, n2), (n2, n1)):
-            if u in row_tags and v in col_tags:
-                i, j = row_tags.index(u), col_tags.index(v)
-                adj_red[i, j] = 1
+        adj_red = np.zeros((len(row_tags), len(col_tags)), dtype=np.uint8).view(MatGF2)
 
-    return adj_red
+        for n1, n2 in graph.edges:
+            for u, v in ((n1, n2), (n2, n1)):
+                if u in row_tags and v in col_tags:
+                    i, j = row_tags.index(u), col_tags.index(v)
+                    adj_red[i, j] = 1
 
+        return adj_red
 
-def _compute_pflow_matrices(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2]:
-    r"""Construct flow-demand and order-demand matrices.
+    @cached_property
+    def _compute_pflow_matrices(self) -> tuple[MatGF2, MatGF2]:
+        r"""Construct flow-demand and order-demand matrices.
 
-    Parameters
-    ----------
-    ogi : OpenGraphIndex
-        Open graph whose flow-demand and order-demand matrices are computed.
+        Parameters
+        ----------
+        aog : AlgebraicOpenGraph
+            Open graph whose flow-demand and order-demand matrices are computed.
 
-    Returns
-    -------
-    flow_demand_matrix : MatGF2
-    order_demand_matrix : MatGF2
+        Returns
+        -------
+        flow_demand_matrix : MatGF2
+        order_demand_matrix : MatGF2
 
-    Notes
-    -----
-    See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
-    """
-    flow_demand_matrix = _compute_reduced_adj(ogi)
-    order_demand_matrix = flow_demand_matrix.copy()
+        Notes
+        -----
+        See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        flow_demand_matrix = self._compute_reduced_adj()
+        order_demand_matrix = flow_demand_matrix.copy()
 
-    inputs_set = set(ogi.og.inputs)
-    meas = ogi.og.measurements
+        inputs_set = set(self.og.inputs)
+        meas = self.og.measurements
 
-    row_tags = ogi.non_outputs
-    col_tags = ogi.non_inputs
+        row_tags = self.non_outputs
+        col_tags = self.non_inputs
 
-    # TODO: integrate pauli measurements in open graphs
-    meas_planes = {i: m.plane for i, m in meas.items()}
-    meas_angles = {i: m.angle for i, m in meas.items()}
-    meas_plane_axis = {
-        node: pm.axis if (pm := PauliMeasurement.try_from(plane, meas_angles[node])) else plane
-        for node, plane in meas_planes.items()
-    }
+        # TODO: integrate pauli measurements in open graphs
+        meas_planes = {i: m.plane for i, m in meas.items()}
+        meas_angles = {i: m.angle for i, m in meas.items()}
+        meas_plane_axis = {
+            node: pm.axis if (pm := PauliMeasurement.try_from(plane, meas_angles[node])) else plane
+            for node, plane in meas_planes.items()
+        }
 
-    for v in row_tags:  # v is a node tag
-        i = row_tags.index(v)
-        plane_axis_v = meas_plane_axis[v]
+        for v in row_tags:  # v is a node tag
+            i = row_tags.index(v)
+            plane_axis_v = meas_plane_axis[v]
 
-        if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Z}:
-            flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
-        if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Y, Axis.Z} and v not in inputs_set:
-            j = col_tags.index(v)
-            flow_demand_matrix[i, j] = 1  # Set element (v, v) = 0
-        if plane_axis_v in {Plane.XY, Axis.X, Axis.Y, Axis.Z}:
-            order_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
-        if plane_axis_v in {Plane.XY, Plane.XZ} and v not in inputs_set:
-            j = col_tags.index(v)
-            order_demand_matrix[i, j] = 1  # Set element (v, v) = 1
+            if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Z}:
+                flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
+            if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Y, Axis.Z} and v not in inputs_set:
+                j = col_tags.index(v)
+                flow_demand_matrix[i, j] = 1  # Set element (v, v) = 0
+            if plane_axis_v in {Plane.XY, Axis.X, Axis.Y, Axis.Z}:
+                order_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
+            if plane_axis_v in {Plane.XY, Plane.XZ} and v not in inputs_set:
+                j = col_tags.index(v)
+                order_demand_matrix[i, j] = 1  # Set element (v, v) = 1
 
-    return flow_demand_matrix, order_demand_matrix
-
-
-def _find_pflow_simple(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
-    r"""Construct the correction matrix :math:`C` and the ordering matrix, :math:`NC` for an open graph with equal number of inputs and outputs.
-
-    Parameters
-    ----------
-    ogi : OpenGraphIndex
-        Open graph for which :math:`C` and :math:`NC` are computed.
-
-    Returns
-    -------
-    correction_matrix : MatGF2
-        Matrix encoding the correction function.
-    ordering_matrix : MatGF2
-        Matrix encoding the partial ordering between nodes.
-
-    or `None`
-        if the input open graph does not have Pauli flow.
-
-    Notes
-    -----
-    - The ordering matrix is defined as the product of the order-demand matrix :math:`N` and the correction matrix.
-
-    - The function only returns `None` when the flow-demand matrix is not invertible (meaning that `ogi` does not have Pauli flow). The condition that the ordering matrix :math:`NC` must encode a directed acyclic graph (DAG) is verified in a subsequent step by `:func: _compute_topological_generations`.
-
-    See Definitions 3.4, 3.5 and 3.6, Theorems 3.1 and 4.1, and Algorithm 2 in Mitosek and Backens, 2024 (arXiv:2410.23439).
-    """
-    flow_demand_matrix, order_demand_matrix = _compute_pflow_matrices(ogi)
-
-    correction_matrix = flow_demand_matrix.right_inverse()  # C matrix
-
-    if correction_matrix is None:
-        return None  # The flow-demand matrix is not invertible, therefore there's no flow.
-
-    ordering_matrix = order_demand_matrix.mat_mul(correction_matrix)  # NC matrix
-
-    return correction_matrix, ordering_matrix
+        return flow_demand_matrix, order_demand_matrix
 
 
-def _compute_p_matrix(ogi: OpenGraphIndex, nb_matrix: MatGF2) -> MatGF2 | None:
+def _compute_p_matrix(aog: AlgebraicOpenGraph, nb_matrix: MatGF2) -> MatGF2 | None:
     r"""Perform the steps 8 - 12 of the general case (larger number of outputs than inputs) algorithm.
 
     Parameters
     ----------
-    ogi : OpenGraphIndex
+    aog : AlgebraicOpenGraph
         Open graph for which the matrix :math:`P` is computed.
     nb_matrix : MatGF2
         Matrix :math:`N_B`
@@ -211,9 +185,9 @@ def _compute_p_matrix(ogi: OpenGraphIndex, nb_matrix: MatGF2) -> MatGF2 | None:
     -----
     See Theorem 4.4, steps 8 - 12 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
-    n_no = len(ogi.non_outputs)  # number of columns of P matrix.
-    n_oi_diff = len(ogi.og.outputs) - len(ogi.og.inputs)  # number of rows of P matrix.
-    n_no_optim = len(ogi.non_outputs_optim)  # number of rows and columns of the third block of the K_{LS} matrix.
+    n_no = len(aog.non_outputs)  # number of columns of P matrix.
+    n_oi_diff = len(aog.og.outputs) - len(aog.og.inputs)  # number of rows of P matrix.
+    n_no_optim = len(aog.non_outputs_optim)  # number of rows and columns of the third block of the K_{LS} matrix.
 
     # Steps 8, 9 and 10
     kils_matrix = np.concatenate(
@@ -224,23 +198,23 @@ def _compute_p_matrix(ogi: OpenGraphIndex, nb_matrix: MatGF2) -> MatGF2 | None:
     # Step 11
     p_matrix = np.zeros((n_oi_diff, n_no), dtype=np.uint8).view(MatGF2)
     solved_nodes: set[int] = set()
-    non_outputs_set = set(ogi.non_outputs)
+    non_outputs_set = set(aog.non_outputs)
 
     # Step 12
     while solved_nodes != non_outputs_set:
-        solvable_nodes = _find_solvable_nodes(ogi, kls_matrix, non_outputs_set, solved_nodes, n_oi_diff)  # Step 12.a
+        solvable_nodes = _find_solvable_nodes(aog, kls_matrix, non_outputs_set, solved_nodes, n_oi_diff)  # Step 12.a
         if not solvable_nodes:
             return None
 
-        _update_p_matrix(ogi, kls_matrix, p_matrix, solvable_nodes, n_oi_diff)  # Steps 12.b, 12.c
-        _update_kls_matrix(ogi, kls_matrix, kils_matrix, solvable_nodes, n_oi_diff, n_no, n_no_optim)  # Step 12.d
+        _update_p_matrix(aog, kls_matrix, p_matrix, solvable_nodes, n_oi_diff)  # Steps 12.b, 12.c
+        _update_kls_matrix(aog, kls_matrix, kils_matrix, solvable_nodes, n_oi_diff, n_no, n_no_optim)  # Step 12.d
         solved_nodes.update(solvable_nodes)
 
     return p_matrix
 
 
 def _find_solvable_nodes(
-    ogi: OpenGraphIndex,
+    aog: AlgebraicOpenGraph,
     kls_matrix: MatGF2,
     non_outputs_set: AbstractSet[int],
     solved_nodes: AbstractSet[int],
@@ -261,7 +235,7 @@ def _find_solvable_nodes(
     )  # Row indices of the 0-rows in the first block of K_{LS}.
     if row_idxs.size:
         for v in non_outputs_set - solved_nodes:
-            j = n_oi_diff + ogi.non_outputs.index(v)  # `n_oi_diff` is the column offset from the first block of K_{LS}.
+            j = n_oi_diff + aog.non_outputs.index(v)  # `n_oi_diff` is the column offset from the first block of K_{LS}.
             if not kls_matrix[row_idxs, j].any():
                 solvable_nodes.add(v)
     else:
@@ -272,7 +246,7 @@ def _find_solvable_nodes(
 
 
 def _update_p_matrix(
-    ogi: OpenGraphIndex, kls_matrix: MatGF2, p_matrix: MatGF2, solvable_nodes: AbstractSet[int], n_oi_diff: int
+    aog: AlgebraicOpenGraph, kls_matrix: MatGF2, p_matrix: MatGF2, solvable_nodes: AbstractSet[int], n_oi_diff: int
 ) -> None:
     """Update `p_matrix`.
 
@@ -281,7 +255,7 @@ def _update_p_matrix(
     See Theorem 4.4, steps 12.b and 12.c in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
     for v in solvable_nodes:
-        j = ogi.non_outputs.index(v)
+        j = aog.non_outputs.index(v)
         j_shift = n_oi_diff + j  # `n_oi_diff` is the column offset from the first block of K_{LS}.
         mat = MatGF2(kls_matrix[:, :n_oi_diff])  # First block of K_{LS}, in row echelon form.
         b = MatGF2(kls_matrix[:, j_shift])
@@ -290,7 +264,7 @@ def _update_p_matrix(
 
 
 def _update_kls_matrix(
-    ogi: OpenGraphIndex,
+    aog: AlgebraicOpenGraph,
     kls_matrix: MatGF2,
     kils_matrix: MatGF2,
     solvable_nodes: AbstractSet[int],
@@ -323,10 +297,10 @@ def _update_kls_matrix(
 
     for v in solvable_nodes:
         if (
-            v in ogi.non_outputs_optim
+            v in aog.non_outputs_optim
         ):  # if `v` corresponded to a zero row in N_B, it was not present in `kls_matrix` because we removed it in the optimization process, so there's no need to do Gaussian elimination for that vertex.
             # Step 12.d.ii
-            j = ogi.non_outputs_optim.index(v)
+            j = aog.non_outputs_optim.index(v)
             j_shift = shift + j
             row_idxs = np.flatnonzero(
                 kls_matrix[:, j_shift]
@@ -385,20 +359,22 @@ def _update_kls_matrix(
                 ]  # `[:]` is crucial to modify the data pointed by `kls_matrix`.
 
 
-def _find_pflow_general(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
-    r"""Construct the generalized correction matrix :math:`C'C^B` and the generalized ordering matrix, :math:`NC'C^B` for an open graph with larger number of outputs than inputs.
+def _compute_correction_matrix_general_case(aog: AlgebraicOpenGraph, flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2) -> MatGF2 | None:
+    r"""Construct the generalized correction matrix :math:`C'C^B` for an open graph with larger number of outputs than inputs.
 
     Parameters
     ----------
-    ogi : OpenGraphIndex
+    aog : AlgebraicOpenGraph
         Open graph for which :math:`C'C^B` and :math:`NC'C^B` are computed.
+    flow_demand_matrix: MatGF2
+        Flow demand matrix :math:`M` (a property of the open graph).
+    order_demand_matrix: MatGF2
+        Order demand matrix :math:`N` (a property of the open graph).
 
     Returns
     -------
     correction_matrix : MatGF2
         Matrix encoding the correction function.
-    ordering_matrix : MatGF2
-        Matrix encoding the partial ordering between nodes.
 
     or `None`
         if the input open graph does not have Pauli flow.
@@ -408,16 +384,13 @@ def _find_pflow_general(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
     - The function returns `None` if
         a) The flow-demand matrix is not invertible, or
         b) Not all linear systems of equations associated to the non-output nodes are solvable,
-    meaning that `ogi` does not have Pauli flow.
+    meaning that `aog` does not have Pauli flow.
     Condition (b) is satisfied when the flow-demand matrix :math:`M` does not have a right inverse :math:`C` such that :math:`NC` represents a directed acyclical graph (DAG).
 
     See Theorem 4.4 and Algorithm 3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
-    n_no = len(ogi.non_outputs)
-    n_oi_diff = len(ogi.og.outputs) - len(ogi.og.inputs)
-
-    # Steps 1 and 2
-    flow_demand_matrix, order_demand_matrix = _compute_pflow_matrices(ogi)
+    n_no = len(aog.non_outputs)
+    n_oi_diff = len(aog.og.outputs) - len(aog.og.inputs)
 
     # Steps 3 and 4
     correction_matrix_0 = flow_demand_matrix.right_inverse()  # C0 matrix.
@@ -440,10 +413,10 @@ def _find_pflow_general(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
             order_demand_matrix[row_idxs].view(MatGF2).mat_mul(c_prime_matrix)
         )  # `view` is used to keep mypy happy without copying data.
         for i in set(range(order_demand_matrix.shape[0])).difference(row_idxs):
-            ogi.non_outputs_optim.remove(ogi.non_outputs[i])  # Update the node-index mapping.
+            aog.non_outputs_optim.remove(aog.non_outputs[i])  # Update the node-index mapping.
 
         # Steps 8 - 12
-        if (p_matrix := _compute_p_matrix(ogi, nb_matrix_optim)) is None:
+        if (p_matrix := _compute_p_matrix(aog, nb_matrix_optim)) is None:
             return None
     else:
         # If all rows of `order_demand_matrix` are zero, any matrix will solve the associated linear system of equations.
@@ -452,10 +425,7 @@ def _find_pflow_general(ogi: OpenGraphIndex) -> tuple[MatGF2, MatGF2] | None:
     # Step 13
     cb_matrix = np.concatenate((np.eye(n_no, dtype=np.uint8), p_matrix), axis=0).view(MatGF2)
 
-    correction_matrix = c_prime_matrix.mat_mul(cb_matrix)
-    ordering_matrix = order_demand_matrix.mat_mul(correction_matrix)
-
-    return correction_matrix, ordering_matrix
+    return c_prime_matrix.mat_mul(cb_matrix)
 
 
 def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]] | None:
@@ -469,7 +439,7 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
     Returns
     -------
     list[list[int]]
-        Topological generations. Integers represent the indices of the matrix `ordering_matrix`, not the labelling of the nodes.
+        topological generations. Integers represent the indices of the matrix `ordering_matrix`, not the labelling of the nodes.
 
     or `None`
         if `ordering_matrix` is not a DAG.
@@ -510,87 +480,102 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
     return generations
 
 
-def _cnc_matrices2pflow(
-    ogi: OpenGraphIndex,
-    correction_matrix: MatGF2,
-    ordering_matrix: MatGF2,
-) -> tuple[dict[int, set[int]], dict[int, int]] | None:
-    r"""Transform the correction and ordering matrices into a Pauli flow in its standard form (correction function and partial order).
+def compute_correction_function(aog: AlgebraicOpenGraph, correction_matrix: MatGF2) -> dict[int, set[int]]:
+    r"""Transform the correction matrix into a correction function.
 
     Parameters
     ----------
-    ogi : OpenGraphIndex
+    aog : AlgebraicOpenGraph
         Open graph whose Pauli flow is calculated.
     correction_matrix : MatGF2
         Matrix encoding the correction function.
-    ordering_matrix : MatGF2
-        Matrix encoding the partial ordering between nodes (DAG).
 
     Returns
     -------
-    pf : dict[int, set[int]]
-        Pauli flow correction function. pf[i] is the set of qubits to be corrected for the measurement of qubit i.
-    l_k : dict[int, int]
-        Partial order between corrected qubits, such that the pair (`key`, `value`) corresponds to (node, depth).
+    correction_function : dict[int, set[int]]
+        Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits to be corrected for the measurement of qubit i.
+
+
+    Notes
+    -----
+    - The correction matrix :math:`C` is an :math:`(n - n_I) \times (n - n_O)` matrix related to the correction function :math:`c(v) = \{u \in I^c|C_{u,v} = 1\}`, where :math:`I^c` are the non-input nodes of `aog`. In other words, the column :math:`v` of :math:`C` encodes the correction set of :math:`v`, :math:`c(v)`.
+
+    See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+    """
+    row_tags = aog.non_inputs
+    col_tags = aog.non_outputs
+    correction_function: dict[int, set[int]] = {}
+    for node in col_tags:
+        i = col_tags.index(node)
+        correction_set = {row_tags[j] for j in np.flatnonzero(correction_matrix[:, i])}
+        correction_function[node] = correction_set
+    return correction_function
+
+
+def compute_partial_order_layers(aog: AlgebraicOpenGraph, correction_matrix: MatGF2) -> list[set[int]] | None:
+    r"""Compute the partial order compatible with the correction matrix if it exists.
+
+    Parameters
+    ----------
+    aog : AlgebraicOpenGraph
+        Open graph whose Pauli flow is calculated.
+    correction_matrix : MatGF2
+        Matrix encoding the correction function.
+
+    Returns
+    -------
+    layers : list[set[int]]
+        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer 0 are the "largest" nodes in the partial order.
 
     or `None`
+        If the correction matrix is not compatible with a partial order on the the open graph,
+
         if the ordering matrix is not a DAG, in which case the input open graph does not have Pauli flow.
 
     Notes
     -----
-    - The correction matrix :math:`C` is an :math:`(n - n_I) \times (n - n_O)` matrix related to the correction function :math:`c(v) = \{u \in I^c|C_{u,v} = 1\}`, where :math:`I^c` are the non-input nodes of `ogi`. In other words, the column :math:`v` of :math:`C` encodes the correction set of :math:`v`, :math:`c(v)`.
+    - The partial order of the Pauli (or generalised) flow :math:`<_c` is the transitive closure of :math:`\lhd_c`, where the latter is related to the ordering matrix :math:`NC` as :math:`v \lhd_c w \Leftrightarrow (NC)_{w,v} = 1`, for :math:`v, w, \in O^c` two non-output nodes of `aog`. The ordering matrix is the product of the order-demand and the correction matrices and it is the adjacency matrix of the directed acyclical graph encoding the partial order.
 
-    - The Pauli flow's ordering :math:`<_c` is the transitive closure of :math:`\lhd_c`, where the latter is related to the ordering matrix :math:`NC` as :math:`v \lhd_c w \Leftrightarrow (NC)_{w,v} = 1`, for :math:`v, w, \in O^c` two non-output nodes of `ogi`.
-
-    See Definition 3.6, Lemma 3.12, and Theorem 3.1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+    See Lemma 3.12, and Theorem 3.1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
-    row_tags = ogi.non_inputs
-    col_tags = ogi.non_outputs
-
-    # Calculation of the partial ordering
+    ordering_matrix = aog.order_demand_matrix.mat_mul(correction_matrix)
 
     if (topo_gen := _compute_topological_generations(ordering_matrix)) is None:
         return None  # The NC matrix is not a DAG, therefore there's no flow.
 
-    l_k = dict.fromkeys(ogi.og.outputs, 0)  # Output nodes are always in layer 0.
+    layers = [set(aog.og.outputs)]  # Output nodes are always in layer 0.
 
-    # If m >_c n, with >_c the flow order for two nodes m, n, then layer(n) > layer(m).
+    # If m >_c n, with >_c the flow partial order for two nodes m, n, then layer(n) > layer(m).
     # Therefore, we iterate the topological sort of the graph in _reverse_ order to obtain the order of measurements.
-    for layer, idx in enumerate(reversed(topo_gen), start=1):
-        l_k.update({col_tags[i]: layer for i in idx})
+    col_tags = aog.non_outputs
+    layers.extend({col_tags[i] for i in idx_layer} for idx_layer in reversed(topo_gen))
 
-    # Calculation of the correction function
-
-    pf: dict[int, set[int]] = {}
-    for node in col_tags:
-        i = col_tags.index(node)
-        correction_set = {row_tags[j] for j in np.flatnonzero(correction_matrix[:, i])}
-        pf[node] = correction_set
-
-    return pf, l_k
+    return layers
 
 
-def find_pflow(og: OpenGraph) -> tuple[dict[int, set[int]], dict[int, int]] | None:
-    """Return a Pauli flow of the input open graph if it exists.
+def compute_correction_matrix(og: OpenGraph) -> tuple[AlgebraicOpenGraph, MatGF2] | None:
+    """Return the correction matrix of the input open graph if it exists.
 
     Parameters
     ----------
     og : OpenGraph
-        Open graph whose Pauli flow is calculated.
+        Open graph whose correction matrix is calculated.
 
     Returns
     -------
-    pf : dict[int, set[int]]
-        Pauli flow correction function. `pf[i]` is the set of qubits to be corrected for the measurement of qubit `i`.
-    l_k : dict[int, int]
-        Partial order between corrected qubits, such that the pair (`key`, `value`) corresponds to (node, depth).
+    aog : AlgebraicOpenGraph
+        Algebraic representation of the open graph. This object encodes the mapping between the node labels in the input open graph and the row and column indices of the returned correction matrix
+    correction_matrix : MatGF2
+        Matrix encoding the correction function.
 
     or `None`
-        if the input open graph does not have Pauli flow.
+        if the input open graph does not have Pauli (or generalised) flow.
 
     Notes
     -----
-    See Theorems 3.1, 4.2 and 4.4, and Algorithms 2 and 3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+    - In the case of open graphs with equal number of inputs and outputs, the function only returns `None` when the flow-demand matrix is not invertible (meaning that `aog` does not have Pauli flow). The additional condition for the existence of Pauli flow that the ordering matrix :math:`NC` must encode a directed acyclic graph (DAG) is verified by :func:`compute_partial_order`, which is called from the `graphix.flow.flow.PauliFlow` constructor.
+
+    See Definitions 3.4, 3.5 and 3.6, Theorems 3.1, 4.2 and 4.4, and Algorithms 2 and 3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
     ni = len(og.inputs)
     no = len(og.outputs)
@@ -598,15 +583,18 @@ def find_pflow(og: OpenGraph) -> tuple[dict[int, set[int]], dict[int, int]] | No
     if ni > no:
         return None
 
-    ogi = OpenGraphIndex(og)
+    aog = AlgebraicOpenGraph(og)
 
-    cnc_matrices = _find_pflow_simple(ogi) if ni == no else _find_pflow_general(ogi)
-    if cnc_matrices is None:
+    # Steps 1 and 2
+    # Flow-demand and order-demand matrices are cached properties of `aog`.
+    flow_demand_matrix, order_demand_matrix = aog._compute_pflow_matrices
+
+    if ni == no:
+        correction_matrix = flow_demand_matrix.right_inverse()
+    else:
+        correction_matrix = _compute_correction_matrix_general_case(aog, flow_demand_matrix, order_demand_matrix)
+
+    if correction_matrix is None:
         return None
-    pflow = _cnc_matrices2pflow(ogi, *cnc_matrices)
-    if pflow is None:
-        return None
 
-    pf, l_k = pflow
-
-    return pf, l_k
+    return aog, correction_matrix

@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
-# import graphix.generator
+from graphix.flow._find_pflow import compute_correction_matrix
+from graphix.flow.flow import CausalFlow, PauliFlow
 from graphix.fundamentals import Axis, Plane
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping
@@ -20,10 +21,8 @@ if TYPE_CHECKING:
 # I think we should treat Plane and Axes on the same footing (are likewise for Measurement and PauliMeasurement)
 # Otherwise, shall we define Plane.XY-only open graphs.
 # Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
-PlaneOrAxis = Plane | Axis
-MeasurementOrPauliMeasurement = Measurement | PauliMeasurement
 
-_MeasurementLabel_T = TypeVar("_MeasurementLabel_T", PlaneOrAxis, MeasurementOrPauliMeasurement)
+_M = TypeVar("_M", bound=Plane | Axis)
 
 # Add methods ?
 # neighbors(node) -> calls self.graph.neighbors(node)
@@ -31,7 +30,7 @@ _MeasurementLabel_T = TypeVar("_MeasurementLabel_T", PlaneOrAxis, MeasurementOrP
 
 
 @dataclass(frozen=True)
-class OpenGraph(Generic[_MeasurementLabel_T]):
+class OpenGraph(Generic[_M]):
     """Open graph contains the graph, measurement, and input and output nodes.
 
     This is the graph we wish to implement deterministically.
@@ -57,7 +56,7 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
     """
 
     graph: nx.Graph[int]
-    measurements: Mapping[int, _MeasurementLabel_T]  # TODO: Rename `measurement_labels` ?
+    measurements: Mapping[int, _M]  # TODO: Rename `measurement_labels` ?
     input_nodes: list[int]  # Inputs are ordered
     output_nodes: list[int]  # Outputs are ordered
 
@@ -78,7 +77,7 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
         if len(set(self.output_nodes)) != len(self.output_nodes):
             raise ValueError("Output nodes contain duplicates.")
 
-    # def isclose(self, other: OpenGraph, rel_MeasurementLabel_Tol: float = 1e-09, abs_MeasurementLabel_Tol: float = 0.0) -> bool:
+    # def isclose(self, other: OpenGraph, rel_Mol: float = 1e-09, abs_Mol: float = 0.0) -> bool:
     #     """Return `True` if two open graphs implement approximately the same unitary operator.
 
     #     Ensures the structure of the graphs are the same and all
@@ -97,7 +96,7 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
     #         return False
 
     #     return all(
-    #         m.isclose(other.measurements[node], rel_MeasurementLabel_Tol=rel_MeasurementLabel_Tol, abs_MeasurementLabel_Tol=abs_MeasurementLabel_Tol)
+    #         m.isclose(other.measurements[node], rel_Mol=rel_Mol, abs_Mol=abs_Mol)
     #         for node, m in self.measurements.items()
     #     )
 
@@ -135,8 +134,8 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
     #     return graphix.generator.generate_from_graph(g, angles, input_nodes, output_nodes, planes)
 
     def compose(
-        self, other: OpenGraph[_MeasurementLabel_T], mapping: Mapping[int, int]
-    ) -> tuple[OpenGraph[_MeasurementLabel_T], dict[int, int]]:
+        self, other: OpenGraph[_M], mapping: Mapping[int, int]
+    ) -> tuple[OpenGraph[_M], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
 
         Parameters
@@ -244,10 +243,12 @@ class OpenGraph(Generic[_MeasurementLabel_T]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    # def compute_flow(self) -> PauliFlow | None:
-    #     """Compute flow."""
+    def compute_casual_flow(self) -> CausalFlow | None:
+        return None
 
-    #     try:
-    #         if all(isinstance(meas.plane, Plane.XY) for meas in self.measurements.values()):
-    #             find_cflow(self)
-    #     except
+    def compute_pauli_flow(self) -> PauliFlow | None:
+
+        aog_correction_matrix = compute_correction_matrix(self)
+        if aog_correction_matrix is None:
+            return None
+        return PauliFlow.from_correction_matrix(*aog_correction_matrix)  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
