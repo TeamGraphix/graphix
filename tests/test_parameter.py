@@ -6,7 +6,6 @@ import matplotlib as mpl
 import numpy as np
 import pytest
 
-import graphix
 import graphix.command
 from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import Pattern
