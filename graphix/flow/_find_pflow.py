@@ -493,7 +493,7 @@ def compute_correction_function(aog: AlgebraicOpenGraph, correction_matrix: MatG
     Returns
     -------
     correction_function : dict[int, set[int]]
-        Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits to be corrected for the measurement of qubit i.
+        Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
 
 
     Notes

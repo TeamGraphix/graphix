@@ -3,27 +3,35 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import pairwise, product
-from typing import TYPE_CHECKING, Generic
+from typing import TYPE_CHECKING, Generic, Self, override
 
 import networkx as nx
 
+from graphix.command import E, M, N, X, Z
 from graphix.flow._find_pflow import compute_correction_function, compute_partial_order_layers
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane, Sign
+from graphix.graphix._linalg import MatGF2
+from graphix.graphix.flow._find_pflow import AlgebraicOpenGraph
 from graphix.opengraph_ import _M, OpenGraph
+from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
     from collections.abc import Set as AbstractSet
-    from typing import Self, override
+    from typing import Self
 
     import numpy as np
     import numpy.typing as npt
 
     from graphix._linalg import MatGF2
     from graphix.flow._find_pflow import AlgebraicOpenGraph
+    from graphix.measurements import ExpressionOrFloat
+
+TotalOrder = Sequence[int]
 
 
 @dataclass(frozen=True)
@@ -93,14 +101,76 @@ class Corrections(Generic[_M]):
 
         return True
 
-    # def to_pattern(self, total_order, angles) -> Pattern: ...
+    def is_compatible(self, total_order: TotalOrder) -> bool:
+        # Verify compatibility
+        # Verify nodes are in open graph
+        return True
+
+    def to_pattern(self, angles: Mapping[int, ExpressionOrFloat | Sign], total_order: TotalOrder | None = None) -> Pattern:
+
+        # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
+
+        # TODO: Do we want to raise an error or just a warning and assign 0 by default ?
+        if not angles.keys() == self.og.measurements.keys():
+            raise ValueError("All measured nodes in the open graph must have an assigned angle label.")
+
+        if total_order is None:
+            total_order = list(reversed(list(nx.topological_sort(self.extract_dag()))))
+        elif not self.is_compatible(total_order):
+            raise ValueError("The input total order is not compatible with the partial order induced by the correction sets.")
+
+        pattern = Pattern(input_nodes=self.og.input_nodes)
+        non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
+
+        for i in non_input_nodes:
+            pattern.add(N(node=i))
+        for e in self.og.graph.edges:
+            pattern.add(E(nodes=e))
+
+        for node in total_order:
+            if node in self.og.output_nodes:
+                break
+
+            # TODO: the following block is hideous.
+            # Refactor Plane and Axis ?
+            # Abstract class Plane, Plane.XY, .XZ, .YZ subclasses ?
+            # Axis X subclass of Plane.XY, Plane.XZ, etc. ?
+            # Method Axis, Sign -> Plane, angle
+
+            meas_label = self.og.measurements[node]
+            angle_label = angles[node]
+
+            if isinstance(meas_label, Plane):
+                assert not isinstance(angle_label, Sign)
+                pattern.add(M(node=node, plane=meas_label, angle=angle_label))
+            else:
+                assert isinstance(angle_label, Sign)
+                if meas_label == Axis.X:
+                    plane = Plane.XY
+                    angle = 0 if angle_label is Sign.PLUS else 1
+                elif meas_label == Axis.Y:
+                    plane = Plane.XY
+                    angle = 0.5 if angle_label is Sign.PLUS else 1.5
+                elif meas_label == Axis.Z:
+                    plane = Plane.XZ
+                    angle = 0 if angle_label is Sign.PLUS else 1
+
+                pattern.add(M(node=node, plane=plane, angle=angle))
+
+            if node in self.z_corrections:
+                pattern.add(Z(node=node, domain=self.z_corrections[node]))
+            if node in self.x_corrections:
+                pattern.add(X(node=node, domain=self.x_corrections[node]))
+
+        pattern.reorder_output_nodes(self.og.output_nodes)
+        return pattern
 
 
 @dataclass(frozen=True)
 class PauliFlow(Generic[_M]):
     og: OpenGraph[_M]
     correction_function: Mapping[int, set[int]]
-    partial_order_layers: list[set[int]]
+    partial_order_layers: Sequence[AbstractSet[int]]
 
     # TODO: Add parametric dependence of AlgebraicOpenGraph
     @classmethod
@@ -179,6 +249,12 @@ class GFlow(PauliFlow[Plane]):
 
 @dataclass(frozen=True)
 class CausalFlow(GFlow):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
+
+    @override
+    @staticmethod
+    def from_correction_matrix() -> None:
+        raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
+
     @override
     def to_corrections(self) -> Corrections[Plane]:
         r"""Compute the X and Z corrections induced by the causal flow encoded in `self`.

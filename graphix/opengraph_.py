@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
+from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_pflow import compute_correction_matrix
 from graphix.flow.flow import CausalFlow, PauliFlow
 from graphix.fundamentals import Axis, Plane
@@ -23,10 +24,6 @@ if TYPE_CHECKING:
 # Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
 
 _M = TypeVar("_M", bound=Plane | Axis)
-
-# Add methods ?
-# neighbors(node) -> calls self.graph.neighbors(node)
-# odd_neighbors -> custom method
 
 
 @dataclass(frozen=True)
@@ -101,7 +98,7 @@ class OpenGraph(Generic[_M]):
     #     )
 
     @staticmethod
-    def from_pattern(pattern: Pattern) -> OpenGraph[MeasurementOrPauliMeasurement]:
+    def from_pattern(pattern: Pattern) -> OpenGraph[_M]:
         """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
         graph = pattern.extract_graph()
 
@@ -243,12 +240,17 @@ class OpenGraph(Generic[_M]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
+    # TODO: how to define this method just for OpenGraphs[Plane] ?
     def compute_casual_flow(self) -> CausalFlow | None:
-        return None
+        causal_flow = find_cflow(self)
+        if causal_flow is None:
+            return None
+
+        return CausalFlow(self, *causal_flow)
 
     def compute_pauli_flow(self) -> PauliFlow | None:
 
-        aog_correction_matrix = compute_correction_matrix(self)
-        if aog_correction_matrix is None:
+        aog_and_correction_matrix = compute_correction_matrix(self)
+        if aog_and_correction_matrix is None:
             return None
-        return PauliFlow.from_correction_matrix(*aog_correction_matrix)  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
+        return PauliFlow.from_correction_matrix(*aog_and_correction_matrix)  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
