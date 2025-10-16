@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
@@ -23,6 +23,7 @@ from graphix.measurements import PauliMeasurement
 from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
 
     from graphix.opengraph import OpenGraph
@@ -161,6 +162,75 @@ class AlgebraicOpenGraph:
                 order_demand_matrix[i, j] = 1  # Set element (v, v) = 1
 
         return flow_demand_matrix, order_demand_matrix
+
+
+class CorrectionMatrix(NamedTuple):
+    r"""A dataclass to bundle the correction matrix and the open graph to which it refers.
+
+    Attributes
+    ----------
+        aog (AgebraicOpenGraph) : Open graph in an algebraic representation.
+        c_matrix (MatGF2) : Matrix encoding the correction function of a Pauli (or generalised) flow, :math:`C`.
+
+    Notes
+    -----
+    The correction matrix :math:`C` is an :math:`(n - n_I) \times (n - n_O)` matrix related to the correction function :math:`c(v) = \{u \in I^c|C_{u,v} = 1\}`, where :math:`I^c` are the non-input nodes of `aog`. In other words, the column :math:`v` of :math:`C` encodes the correction set of :math:`v`, :math:`c(v)`.
+
+    See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+    """
+
+    aog: AlgebraicOpenGraph
+    c_matrix: MatGF2
+
+    @staticmethod
+    def from_correction_function(og: OpenGraph, correction_function: Mapping[int, set[int]]) -> CorrectionMatrix:
+        r"""Initialise a `CorrectionMatrix` object from a correction function.
+
+        Parameters
+        ----------
+        og : OpenGraph
+            The open graph relative to which the correction function is defined.
+        correction_function : dict[int, set[int]]
+            Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
+
+        Returns
+        -------
+        c_matrix : MatGF2
+            Matrix encoding the correction function.
+
+        Notes
+        -----
+        This function is not required to find a Pauli (or generalised) flow on an open graph but is a useful auxiliary method to verify the validity of a flow encoded in a correction function.
+        """
+        aog = AlgebraicOpenGraph(og)
+        row_tags = aog.non_inputs
+        col_tags = aog.non_outputs
+
+        c_matrix = MatGF2(np.zeros((len(row_tags), len(col_tags)), dtype=np.uint8))
+
+        for node, correction_set in correction_function.items():
+            col = col_tags.index(node)
+            for corrector in correction_set:
+                row = row_tags.index(corrector)
+                c_matrix[row, col] = 1
+        return CorrectionMatrix(aog, c_matrix)
+
+    def to_correction_function(self) -> dict[int, set[int]]:
+        r"""Transform the correction matrix into a correction function.
+
+        Returns
+        -------
+        correction_function : dict[int, set[int]]
+            Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
+        """
+        row_tags = self.aog.non_inputs
+        col_tags = self.aog.non_outputs
+        correction_function: dict[int, set[int]] = {}
+        for node in col_tags:
+            i = col_tags.index(node)
+            correction_set = {row_tags[j] for j in np.flatnonzero(self.c_matrix[:, i])}
+            correction_function[node] = correction_set
+        return correction_function
 
 
 def _compute_p_matrix(aog: AlgebraicOpenGraph, nb_matrix: MatGF2) -> MatGF2 | None:
@@ -359,7 +429,9 @@ def _update_kls_matrix(
                 ]  # `[:]` is crucial to modify the data pointed by `kls_matrix`.
 
 
-def _compute_correction_matrix_general_case(aog: AlgebraicOpenGraph, flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2) -> MatGF2 | None:
+def _compute_correction_matrix_general_case(
+    aog: AlgebraicOpenGraph, flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2
+) -> MatGF2 | None:
     r"""Construct the generalized correction matrix :math:`C'C^B` for an open graph with larger number of outputs than inputs.
 
     Parameters
@@ -480,39 +552,7 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
     return generations
 
 
-def compute_correction_function(aog: AlgebraicOpenGraph, correction_matrix: MatGF2) -> dict[int, set[int]]:
-    r"""Transform the correction matrix into a correction function.
-
-    Parameters
-    ----------
-    aog : AlgebraicOpenGraph
-        Open graph whose Pauli flow is calculated.
-    correction_matrix : MatGF2
-        Matrix encoding the correction function.
-
-    Returns
-    -------
-    correction_function : dict[int, set[int]]
-        Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
-
-
-    Notes
-    -----
-    - The correction matrix :math:`C` is an :math:`(n - n_I) \times (n - n_O)` matrix related to the correction function :math:`c(v) = \{u \in I^c|C_{u,v} = 1\}`, where :math:`I^c` are the non-input nodes of `aog`. In other words, the column :math:`v` of :math:`C` encodes the correction set of :math:`v`, :math:`c(v)`.
-
-    See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
-    """
-    row_tags = aog.non_inputs
-    col_tags = aog.non_outputs
-    correction_function: dict[int, set[int]] = {}
-    for node in col_tags:
-        i = col_tags.index(node)
-        correction_set = {row_tags[j] for j in np.flatnonzero(correction_matrix[:, i])}
-        correction_function[node] = correction_set
-    return correction_function
-
-
-def compute_partial_order_layers(aog: AlgebraicOpenGraph, correction_matrix: MatGF2) -> list[set[int]] | None:
+def compute_partial_order_layers(correction_matrix: CorrectionMatrix) -> list[set[int]] | None:
     r"""Compute the partial order compatible with the correction matrix if it exists.
 
     Parameters
@@ -538,7 +578,8 @@ def compute_partial_order_layers(aog: AlgebraicOpenGraph, correction_matrix: Mat
 
     See Lemma 3.12, and Theorem 3.1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
-    ordering_matrix = aog.order_demand_matrix.mat_mul(correction_matrix)
+    aog, c_matrix = correction_matrix
+    ordering_matrix = aog.order_demand_matrix.mat_mul(c_matrix)
 
     if (topo_gen := _compute_topological_generations(ordering_matrix)) is None:
         return None  # The NC matrix is not a DAG, therefore there's no flow.
@@ -553,7 +594,7 @@ def compute_partial_order_layers(aog: AlgebraicOpenGraph, correction_matrix: Mat
     return layers
 
 
-def compute_correction_matrix(og: OpenGraph) -> tuple[AlgebraicOpenGraph, MatGF2] | None:
+def compute_correction_matrix(og: OpenGraph) -> CorrectionMatrix | None:
     """Return the correction matrix of the input open graph if it exists.
 
     Parameters
@@ -597,4 +638,4 @@ def compute_correction_matrix(og: OpenGraph) -> tuple[AlgebraicOpenGraph, MatGF2
     if correction_matrix is None:
         return None
 
-    return aog, correction_matrix
+    return CorrectionMatrix(aog, correction_matrix)

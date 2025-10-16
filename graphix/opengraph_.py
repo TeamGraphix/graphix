@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_pflow import compute_correction_matrix
-from graphix.flow.flow import CausalFlow, PauliFlow
+from graphix.flow.flow import CausalFlow, GFlow, PauliFlow
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement
 
@@ -130,9 +131,7 @@ class OpenGraph(Generic[_M]):
 
     #     return graphix.generator.generate_from_graph(g, angles, input_nodes, output_nodes, planes)
 
-    def compose(
-        self, other: OpenGraph[_M], mapping: Mapping[int, int]
-    ) -> tuple[OpenGraph[_M], dict[int, int]]:
+    def compose(self, other: OpenGraph[_M], mapping: Mapping[int, int]) -> tuple[OpenGraph[_M], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
 
         Parameters
@@ -240,17 +239,25 @@ class OpenGraph(Generic[_M]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    # TODO: how to define this method just for OpenGraphs[Plane] ?
-    def compute_casual_flow(self) -> CausalFlow | None:
-        causal_flow = find_cflow(self)
-        if causal_flow is None:
+    def compute_causal_flow(self: OpenGraph[Plane]) -> CausalFlow | None:
+        return find_cflow(self)
+
+    @singledispatchmethod
+    def compute_maximally_delayed_flow(self) -> PauliFlow[_M] | None:
+        correction_matrix = compute_correction_matrix(self)
+        if correction_matrix is None:
             return None
+        return PauliFlow.from_correction_matrix(
+            correction_matrix
+        )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-        return CausalFlow(self, *causal_flow)
-
-    def compute_pauli_flow(self) -> PauliFlow | None:
-
-        aog_and_correction_matrix = compute_correction_matrix(self)
-        if aog_and_correction_matrix is None:
+    # TODO: this function could return a GFlow that is also a CausalFlow. Should we deal with this ?
+    # TODO: maybe @override for mypy
+    # Can we do singledispatch on self ?
+    # This doesn-t work because at run time we don-t now about the parametrized-type of OpenGraph
+    @compute_maximally_delayed_flow.register
+    def _(self: OpenGraph[Plane]) -> GFlow | None:
+        correction_matrix = compute_correction_matrix(self)
+        if correction_matrix is None:
             return None
-        return PauliFlow.from_correction_matrix(*aog_and_correction_matrix)  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
+        return GFlow.from_correction_matrix(correction_matrix)

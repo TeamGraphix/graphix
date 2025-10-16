@@ -10,12 +10,12 @@ from itertools import pairwise, product
 from typing import TYPE_CHECKING, Generic, Self, override
 
 import networkx as nx
+import numpy as np
 
 from graphix.command import E, M, N, X, Z
-from graphix.flow._find_pflow import compute_correction_function, compute_partial_order_layers
+from graphix.flow._find_pflow import CorrectionMatrix, compute_partial_order_layers
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphix._linalg import MatGF2
-from graphix.graphix.flow._find_pflow import AlgebraicOpenGraph
 from graphix.opengraph_ import _M, OpenGraph
 from graphix.pattern import Pattern
 
@@ -24,11 +24,8 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
-    import numpy as np
     import numpy.typing as npt
 
-    from graphix._linalg import MatGF2
-    from graphix.flow._find_pflow import AlgebraicOpenGraph
     from graphix.measurements import ExpressionOrFloat
 
 TotalOrder = Sequence[int]
@@ -37,8 +34,8 @@ TotalOrder = Sequence[int]
 @dataclass(frozen=True)
 class Corrections(Generic[_M]):
     og: OpenGraph[_M]
-    x_corrections: dict[int, set[int]]   # {node: domain}
-    z_corrections: dict[int, set[int]]   # {node: domain}
+    x_corrections: dict[int, set[int]]  # {node: domain}
+    z_corrections: dict[int, set[int]]  # {node: domain}
 
     def extract_dag(self) -> nx.DiGraph[int]:
         """Extract directed graph induced by the corrections.
@@ -63,13 +60,8 @@ class Corrections(Generic[_M]):
 
         return nx.DiGraph(relations)
 
-    def is_wellformed(self, verbose: bool = True) -> bool:
+    def is_wellformed(self) -> bool:
         """Verify if `Corrections` object is well formed.
-
-        Parameters
-        ----------
-        verbose : bool
-            Optional flag that indicates the source of the issue when `self` is malformed. Defaults to `True`.
 
         Returns
         -------
@@ -83,20 +75,19 @@ class Corrections(Generic[_M]):
             - Nodes in domain set are measured.
             - Corrections are runnable. This amounts to verifying that the corrections-induced directed graph does not have loops.
         """
-        for corr_type in ['X', 'Z']:
+        for corr_type in ["X", "Z"]:
             corrections = getattr(self, f"{corr_type.lower()}_corrections")
             for node, domain in corrections.items():
                 if node not in self.og.graph.nodes:
-                    if verbose:
-                        print(f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph.")
+                    print(
+                        f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph."
+                    )
                     return False
                 if not domain.issubset(self.og.measurements):
-                    if verbose:
-                        print(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
+                    print(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
                     return False
         if nx.is_directed_acyclic_graph(self.extract_dag()):
-            if verbose:
-                print("Corrections are not runnable since the induced directed graph contains cycles.")
+            print("Corrections are not runnable since the induced directed graph contains cycles.")
             return False
 
         return True
@@ -106,8 +97,9 @@ class Corrections(Generic[_M]):
         # Verify nodes are in open graph
         return True
 
-    def to_pattern(self, angles: Mapping[int, ExpressionOrFloat | Sign], total_order: TotalOrder | None = None) -> Pattern:
-
+    def to_pattern(
+        self, angles: Mapping[int, ExpressionOrFloat | Sign], total_order: TotalOrder | None = None
+    ) -> Pattern:
         # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
 
         # TODO: Do we want to raise an error or just a warning and assign 0 by default ?
@@ -117,7 +109,9 @@ class Corrections(Generic[_M]):
         if total_order is None:
             total_order = list(reversed(list(nx.topological_sort(self.extract_dag()))))
         elif not self.is_compatible(total_order):
-            raise ValueError("The input total order is not compatible with the partial order induced by the correction sets.")
+            raise ValueError(
+                "The input total order is not compatible with the partial order induced by the correction sets."
+            )
 
         pattern = Pattern(input_nodes=self.og.input_nodes)
         non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
@@ -174,13 +168,13 @@ class PauliFlow(Generic[_M]):
 
     # TODO: Add parametric dependence of AlgebraicOpenGraph
     @classmethod
-    def from_correction_matrix(cls, aog: AlgebraicOpenGraph, correction_matrix: MatGF2) -> Self | None:
-        correction_function = compute_correction_function(aog, correction_matrix)
-        partial_order_layers = compute_partial_order_layers(aog, correction_matrix)
+    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix) -> Self | None:
+        correction_function = correction_matrix.to_correction_function()
+        partial_order_layers = compute_partial_order_layers(correction_matrix)
         if partial_order_layers is None:
             return None
 
-        return cls(aog.og, correction_function, partial_order_layers)
+        return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
     def to_corrections(self) -> Corrections[_M]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in `self`.
@@ -193,7 +187,7 @@ class PauliFlow(Generic[_M]):
         -----
         This function partially implements Theorem 4 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
         """
-        future: set[int] = self.partial_order_layers[0]
+        future = self.partial_order_layers[0]
         x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
         z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
 
@@ -207,8 +201,53 @@ class PauliFlow(Generic[_M]):
 
         return Corrections(self.og, x_corrections, z_corrections)
 
-    # TODO
-    # def is_well_formed(self) -> bool:
+    def is_well_formed(self) -> bool:
+        r"""Verify if flow object is well formed.
+
+        Returns
+        -------
+        bool
+            `True` if `self` is well formed, `False` otherwise.
+
+        Notes
+        -----
+        This method verifies that:
+            - The correction function's domain and codomain respectively are non-output and non-input nodes.
+            - The product of the flow-demand and the correction matrices is the identity matrix, :math:`MC = \mathbb{1}`.
+            - The product of the order-demand and the correction matrices is the adjacency matrix of a DAG compatible with `self.partial_order_layers`.
+        """
+        domain = set(self.correction_function)
+        if not domain.intersection(self.og.output_nodes):
+            print("Invalid flow. Domain of the correction function includes output nodes.")
+            return False
+
+        codomain = set().union(*self.correction_function.values())
+        if not codomain.intersection(self.og.input_nodes):
+            print("Invalid flow. Codomain of the correction function includes input nodes.")
+            return False
+
+        correction_matrix = CorrectionMatrix.from_correction_function(self.og, self.correction_function)
+
+        aog, c_matrix = correction_matrix
+
+        identity = MatGF2(np.eye(len(aog.non_outputs), dtype=np.uint8))
+        mc_matrix = aog.flow_demand_matrix.mat_mul(c_matrix)
+        if not np.all(mc_matrix == identity):
+            print(
+                "Invalid flow. The product of the flow-demand and the correction matrices is not the identity matrix, MC ≠ 1"
+            )
+            return False
+
+        partial_order_layers = compute_partial_order_layers(correction_matrix)
+        if partial_order_layers is None:
+            print(
+                "Invalid flow. The correction function is not compatible with a partial order on the open graph. The product of the order-demand and the correction matrices NC does not form a DAG."
+            )
+            return False
+
+        # TODO: Verify that self.partial_order_layers is compatible with partial_order_layers
+
+        return True
 
     # TODO: for compatibility with previous encoding of layers.
     # def node_layer_mapping(self) -> dict[int, int]:
@@ -222,7 +261,6 @@ class PauliFlow(Generic[_M]):
 
 @dataclass(frozen=True)
 class GFlow(PauliFlow[Plane]):
-
     @override
     def to_corrections(self) -> Corrections[Plane]:
         r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
@@ -249,7 +287,6 @@ class GFlow(PauliFlow[Plane]):
 
 @dataclass(frozen=True)
 class CausalFlow(GFlow):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
-
     @override
     @staticmethod
     def from_correction_matrix() -> None:
@@ -275,6 +312,11 @@ class CausalFlow(GFlow):  # TODO: change parametric type to Plane.XY. Requires d
             z_corrections[node].update(self.og.neighbors(corr_set) - {node})
 
         return Corrections(self.og, x_corrections, z_corrections)
+
+
+###########
+# OLD functions
+###########
 
 
 @dataclass(frozen=True)
@@ -445,9 +487,6 @@ class PartialOrder:
         """
         return self.transitive_closure.issubset(other.transitive_closure)
 
-
-###########
-# OLD functions
 
 def _compute_layers_from_dag(dag: nx.DiGraph[int]) -> dict[int, set[int]]:
     try:

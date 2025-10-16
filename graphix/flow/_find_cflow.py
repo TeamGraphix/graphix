@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from graphix.flow.flow import CausalFlow
 from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
@@ -9,8 +10,10 @@ if TYPE_CHECKING:
 
     from graphix.opengraph_ import OpenGraph
 
+# TODO: Up doc strings
 
-def find_cflow(og: OpenGraph[Plane]) -> tuple[dict[int, set[int]], list[set[int]]] | None:
+
+def find_cflow(og: OpenGraph[Plane]) -> CausalFlow | None:
     """Return the causal flow of the input open graph if it exists.
 
     Parameters
@@ -46,7 +49,14 @@ def find_cflow(og: OpenGraph[Plane]) -> tuple[dict[int, set[int]], list[set[int]
     return _flow_aux(og, non_input_nodes, corrected_nodes, corrector_candidates, cf, layers)
 
 
-def _flow_aux(og: OpenGraph[Plane], non_input_nodes: AbstractSet[int], corrected_nodes: AbstractSet[int], corrector_candidates: AbstractSet[int], cf: dict[int, set[int]], layers: list[set[int]]) -> tuple[dict[int, set[int]], list[set[int]]] | None:
+def _flow_aux(
+    og: OpenGraph[Plane],
+    non_input_nodes: AbstractSet[int],
+    corrected_nodes: AbstractSet[int],
+    corrector_candidates: AbstractSet[int],
+    cf: dict[int, set[int]],
+    layers: list[set[int]],
+) -> CausalFlow | None:
     """Find one layer of the causal flow.
 
     Parameters
@@ -84,7 +94,7 @@ def _flow_aux(og: OpenGraph[Plane], non_input_nodes: AbstractSet[int], corrected
     for p in corrector_candidates:
         non_corrected_neighbors = og.neighbors({p}) & non_corrected_nodes
         if len(non_corrected_neighbors) == 1:
-            q, = non_corrected_neighbors
+            (q,) = non_corrected_neighbors
             cf[q] = {p}
             curr_layer.add(p)
             corrected_nodes_new |= {q}
@@ -95,7 +105,7 @@ def _flow_aux(og: OpenGraph[Plane], non_input_nodes: AbstractSet[int], corrected
     if len(corrected_nodes_new) == 0:
         # TODO: This is the structure in the original graphix code. I think that we could check if non_corrected_nodes == empty before the loop and here just return None.
         if corrected_nodes == og.graph.nodes:
-            return cf, layers
+            return CausalFlow(og, cf, layers)
         return None
 
     corrected_nodes |= corrected_nodes_new
