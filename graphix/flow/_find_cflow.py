@@ -3,17 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphix.flow.flow import CausalFlow
-from graphix.fundamentals import Plane
+from graphix.measurements import Plane
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
+    from graphix.measurements import AbstractPlanarMeasurement
     from graphix.opengraph_ import OpenGraph
 
 # TODO: Up doc strings
 
 
-def find_cflow(og: OpenGraph[Plane]) -> CausalFlow | None:
+def find_cflow(og: OpenGraph[AbstractPlanarMeasurement]) -> CausalFlow | None:
     """Return the causal flow of the input open graph if it exists.
 
     Parameters
@@ -35,8 +36,9 @@ def find_cflow(og: OpenGraph[Plane]) -> CausalFlow | None:
     -----
     See Definition 2, Theorem 1 and Algorithm 1 in Mhalla and Perdrix, Finding Optimal Flows Efficiently, 2008 (arXiv:0709.2670).
     """
-    if {Plane.XZ, Plane.YZ}.intersection(og.measurements.values()):
-        return None
+    for measurement in og.measurements.values():
+        if measurement.to_plane() in {Plane.XZ, Plane.YZ}:
+            return None
 
     corrected_nodes = set(og.output_nodes)
     corrector_candidates = corrected_nodes - set(og.input_nodes)
@@ -50,7 +52,7 @@ def find_cflow(og: OpenGraph[Plane]) -> CausalFlow | None:
 
 
 def _flow_aux(
-    og: OpenGraph[Plane],
+    og: OpenGraph[AbstractPlanarMeasurement],
     non_input_nodes: AbstractSet[int],
     corrected_nodes: AbstractSet[int],
     corrector_candidates: AbstractSet[int],

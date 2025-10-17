@@ -6,10 +6,11 @@ import enum
 import sys
 import typing
 from enum import Enum
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload, override
 
 import typing_extensions
 
+from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
 from graphix.repr_mixins import EnumReprMixin
@@ -214,7 +215,8 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
-class Axis(EnumReprMixin, Enum):
+# TODO Conflicts with Enum
+class Axis(EnumReprMixin, Enum, AbstractMeasurement):
     """Axis: *X*, *Y* or *Z*."""
 
     X = enum.auto()
@@ -232,8 +234,12 @@ class Axis(EnumReprMixin, Enum):
             return Ops.Z
         typing_extensions.assert_never(self)
 
+    @override
+    def to_plane_or_axis(self) -> Axis:
+        return self
 
-class Plane(EnumReprMixin, Enum):
+
+class Plane(EnumReprMixin, Enum, AbstractPlanarMeasurement):
     # TODO: Refactor using match
     """Plane: *XY*, *YZ* or *XZ*."""
 
@@ -317,3 +323,10 @@ class Plane(EnumReprMixin, Enum):
             return Plane.XZ
         assert a == b
         raise ValueError(f"Cannot make a plane giving the same axis {a} twice.")
+
+    @override
+    def to_plane_or_axis(self) -> Plane:
+        return self
+
+    def to_plane(self) -> Plane:
+        return self

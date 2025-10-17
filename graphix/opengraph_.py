@@ -3,19 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
 from graphix.flow._find_cflow import find_cflow
-from graphix.flow._find_pflow import compute_correction_matrix
+from graphix.flow._find_pflow import AlgebraicOpenGraphGFlow, AlgebraicOpenGraphPauliFlow, compute_correction_matrix
 from graphix.flow.flow import CausalFlow, GFlow, PauliFlow
-from graphix.fundamentals import Axis, Plane
-from graphix.measurements import Measurement
+from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement, Measurement
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Mapping
+    from collections.abc import Collection, Mapping
 
     from graphix.pattern import Pattern
 
@@ -24,7 +22,7 @@ if TYPE_CHECKING:
 # Otherwise, shall we define Plane.XY-only open graphs.
 # Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
 
-_M = TypeVar("_M", bound=Plane | Axis)
+_M = TypeVar("_M", bound=AbstractMeasurement)
 
 
 @dataclass(frozen=True)
@@ -58,8 +56,6 @@ class OpenGraph(Generic[_M]):
     input_nodes: list[int]  # Inputs are ordered
     output_nodes: list[int]  # Outputs are ordered
 
-    # TODO
-    # Should we transform measurements with angle n pi/2 into PauliMeasurements with PauliMeasurement.try_from?
     def __post_init__(self) -> None:
         """Validate the open graph."""
         if not set(self.measurements).issubset(self.graph.nodes):
@@ -99,7 +95,7 @@ class OpenGraph(Generic[_M]):
     #     )
 
     @staticmethod
-    def from_pattern(pattern: Pattern) -> OpenGraph[_M]:
+    def from_pattern(pattern: Pattern) -> OpenGraph[Measurement]:
         """Initialise an `OpenGraph` object based on the resource-state graph associated with the measurement pattern."""
         graph = pattern.extract_graph()
 
@@ -131,77 +127,77 @@ class OpenGraph(Generic[_M]):
 
     #     return graphix.generator.generate_from_graph(g, angles, input_nodes, output_nodes, planes)
 
-    def compose(self, other: OpenGraph[_M], mapping: Mapping[int, int]) -> tuple[OpenGraph[_M], dict[int, int]]:
-        r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
+    # def compose(self, other: OpenGraph[_M], mapping: Mapping[int, int]) -> tuple[OpenGraph[_M], dict[int, int]]:
+    #     r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
 
-        Parameters
-        ----------
-        other : OpenGraph
-            Open graph to be composed with `self`.
-        mapping: dict[int, int]
-            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
+    #     Parameters
+    #     ----------
+    #     other : OpenGraph
+    #         Open graph to be composed with `self`.
+    #     mapping: dict[int, int]
+    #         Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
 
-        Returns
-        -------
-        og: OpenGraph
-            composed open graph
-        mapping_complete: dict[int, int]
-            Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
+    #     Returns
+    #     -------
+    #     og: OpenGraph
+    #         composed open graph
+    #     mapping_complete: dict[int, int]
+    #         Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
 
-        Notes
-        -----
-        Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `mapping`.
+    #     Notes
+    #     -----
+    #     Let's denote :math:`\{G(V_1, E_1), I_1, O_1\}` the open graph `self`, :math:`\{G(V_2, E_2), I_2, O_2\}` the open graph `other`, :math:`\{G(V, E), I, O\}` the resulting open graph `og` and `{v:u}` an element of `mapping`.
 
-        We define :math:`V, U` the set of nodes in `mapping.keys()` and `mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
+    #     We define :math:`V, U` the set of nodes in `mapping.keys()` and `mapping.values()`, and :math:`M = U \cap V_1` the set of merged nodes.
 
-        The open graph composition requires that
-        - :math:`V \subseteq V_2`.
-        - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
-         The returned open graph follows this convention:
-        - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
-        - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
-        - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
-        - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
-        """
-        if not (mapping.keys() <= other.graph.nodes):
-            raise ValueError("Keys of mapping must be correspond to nodes of other.")
-        if len(mapping) != len(set(mapping.values())):
-            raise ValueError("Values in mapping contain duplicates.")
-        for v, u in mapping.items():
-            if (
-                (vm := other.measurements.get(v)) is not None
-                and (um := self.measurements.get(u)) is not None
-                and not vm.isclose(um)  # TODO: How do we ensure that planes, axis, etc. are the same ?
-            ):
-                raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
+    #     The open graph composition requires that
+    #     - :math:`V \subseteq V_2`.
+    #     - If both `v` and `u` are measured, the corresponding measurements must have the same plane and angle.
+    #      The returned open graph follows this convention:
+    #     - :math:`I = (I_1 \cup I_2) \setminus M \cup (I_1 \cap I_2 \cap M)`,
+    #     - :math:`O = (O_1 \cup O_2) \setminus M \cup (O_1 \cap O_2 \cap M)`,
+    #     - If only one node of the pair `{v:u}` is measured, this measure is assigned to :math:`u \in V` in the resulting open graph.
+    #     - Input (and, respectively, output) nodes in the returned open graph have the order of the open graph `self` followed by those of the open graph `other`. Merged nodes are removed, except when they are input (or output) nodes in both open graphs, in which case, they appear in the order they originally had in the graph `self`.
+    #     """
+    #     if not (mapping.keys() <= other.graph.nodes):
+    #         raise ValueError("Keys of mapping must be correspond to nodes of other.")
+    #     if len(mapping) != len(set(mapping.values())):
+    #         raise ValueError("Values in mapping contain duplicates.")
+    #     for v, u in mapping.items():
+    #         if (
+    #             (vm := other.measurements.get(v)) is not None
+    #             and (um := self.measurements.get(u)) is not None
+    #             and not vm.isclose(um)  # TODO: How do we ensure that planes, axis, etc. are the same ?
+    #         ):
+    #             raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
 
-        shift = max(*self.graph.nodes, *mapping.values()) + 1
+    #     shift = max(*self.graph.nodes, *mapping.values()) + 1
 
-        mapping_sequential = {
-            node: i for i, node in enumerate(sorted(other.graph.nodes - mapping.keys()), start=shift)
-        }  # assigns new labels to nodes in other not specified in mapping
+    #     mapping_sequential = {
+    #         node: i for i, node in enumerate(sorted(other.graph.nodes - mapping.keys()), start=shift)
+    #     }  # assigns new labels to nodes in other not specified in mapping
 
-        mapping_complete = {**mapping, **mapping_sequential}
+    #     mapping_complete = {**mapping, **mapping_sequential}
 
-        g2_shifted = nx.relabel_nodes(other.graph, mapping_complete)
-        g = nx.compose(self.graph, g2_shifted)
+    #     g2_shifted = nx.relabel_nodes(other.graph, mapping_complete)
+    #     g = nx.compose(self.graph, g2_shifted)
 
-        merged = set(mapping_complete.values()) & self.graph.nodes
+    #     merged = set(mapping_complete.values()) & self.graph.nodes
 
-        def merge_ports(p1: Iterable[int], p2: Iterable[int]) -> list[int]:
-            p2_mapped = [mapping_complete[node] for node in p2]
-            p2_set = set(p2_mapped)
-            part1 = [node for node in p1 if node not in merged or node in p2_set]
-            part2 = [node for node in p2_mapped if node not in merged]
-            return part1 + part2
+    #     def merge_ports(p1: Iterable[int], p2: Iterable[int]) -> list[int]:
+    #         p2_mapped = [mapping_complete[node] for node in p2]
+    #         p2_set = set(p2_mapped)
+    #         part1 = [node for node in p1 if node not in merged or node in p2_set]
+    #         part2 = [node for node in p2_mapped if node not in merged]
+    #         return part1 + part2
 
-        input_nodes = merge_ports(self.input_nodes, other.input_nodes)
-        output_nodes = merge_ports(self.output_nodes, other.output_nodes)
+    #     input_nodes = merge_ports(self.input_nodes, other.input_nodes)
+    #     output_nodes = merge_ports(self.output_nodes, other.output_nodes)
 
-        measurements_shifted = {mapping_complete[i]: meas for i, meas in other.measurements.items()}
-        measurements = {**self.measurements, **measurements_shifted}
+    #     measurements_shifted = {mapping_complete[i]: meas for i, meas in other.measurements.items()}
+    #     measurements = {**self.measurements, **measurements_shifted}
 
-        return OpenGraph(g, measurements, input_nodes, output_nodes), mapping_complete
+    #     return OpenGraph(g, measurements, input_nodes, output_nodes), mapping_complete
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:
         """Return the set containing the neighborhood of a set of nodes.
@@ -239,25 +235,23 @@ class OpenGraph(Generic[_M]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    def compute_causal_flow(self: OpenGraph[Plane]) -> CausalFlow | None:
+    def find_causal_flow(self: OpenGraph[AbstractPlanarMeasurement]) -> CausalFlow | None:
         return find_cflow(self)
 
-    @singledispatchmethod
-    def compute_maximally_delayed_flow(self) -> PauliFlow[_M] | None:
-        correction_matrix = compute_correction_matrix(self)
+    def find_gflow(self: OpenGraph[AbstractPlanarMeasurement]) -> GFlow | None:
+        aog = AlgebraicOpenGraphGFlow(self)
+        correction_matrix = compute_correction_matrix(aog)
+        if correction_matrix is None:
+            return None
+        return GFlow.from_correction_matrix(
+            correction_matrix
+        )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
+
+    def find_pauli_flow(self: OpenGraph[AbstractMeasurement]) -> PauliFlow | None:
+        aog = AlgebraicOpenGraphPauliFlow(self)
+        correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None
         return PauliFlow.from_correction_matrix(
             correction_matrix
         )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
-
-    # TODO: this function could return a GFlow that is also a CausalFlow. Should we deal with this ?
-    # TODO: maybe @override for mypy
-    # Can we do singledispatch on self ?
-    # This doesn-t work because at run time we don-t now about the parametrized-type of OpenGraph
-    @compute_maximally_delayed_flow.register
-    def _(self: OpenGraph[Plane]) -> GFlow | None:
-        correction_matrix = compute_correction_matrix(self)
-        if correction_matrix is None:
-            return None
-        return GFlow.from_correction_matrix(correction_matrix)

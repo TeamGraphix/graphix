@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
     import numpy.typing as npt
 
-    from graphix.measurements import ExpressionOrFloat
+    from graphix.measurements import AbstractPlanarMeasurement, ExpressionOrFloat, Measurement
 
 TotalOrder = Sequence[int]
 
@@ -98,7 +98,7 @@ class Corrections(Generic[_M]):
         return True
 
     def to_pattern(
-        self, angles: Mapping[int, ExpressionOrFloat | Sign], total_order: TotalOrder | None = None
+        self: Corrections[Measurement], angles: Mapping[int, ExpressionOrFloat | Sign], total_order: TotalOrder | None = None
     ) -> Pattern:
         # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
 
@@ -260,9 +260,9 @@ class PauliFlow(Generic[_M]):
 
 
 @dataclass(frozen=True)
-class GFlow(PauliFlow[Plane]):
+class GFlow(PauliFlow[AbstractPlanarMeasurement]):
     @override
-    def to_corrections(self) -> Corrections[Plane]:
+    def to_corrections(self) -> Corrections[AbstractPlanarMeasurement]:
         r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
 
         Returns

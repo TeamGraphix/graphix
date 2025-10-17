@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
+from abc import ABC, abstractmethod
 from typing import Literal, NamedTuple, SupportsInt
 
 from typing_extensions import TypeAlias  # TypeAlias introduced in Python 3.10
@@ -35,7 +36,19 @@ class Domains:
     t_domain: set[int]
 
 
-class Measurement(NamedTuple):
+class AbstractMeasurement(ABC):
+    @abstractmethod
+    def to_plane_or_axis(self) -> Plane | Axis: ...
+
+
+class AbstractPlanarMeasurement(AbstractMeasurement):
+    @abstractmethod
+    def to_plane(self) -> Plane: ...
+
+
+# TODO: Multiple inheritance with NamedTuple error
+# Replace by dataclass
+class Measurement(NamedTuple, AbstractPlanarMeasurement):
     """An MBQC measurement.
 
     :param angle: the angle of the measurement. Should be between [0, 2)
@@ -64,6 +77,14 @@ class Measurement(NamedTuple):
             if isinstance(self.angle, float) and isinstance(other.angle, float)
             else self.angle == other.angle
         ) and self.plane == other.plane
+
+    def to_plane_or_axis(self) -> Plane | Axis:
+        if pm := PauliMeasurement.try_from(self.plane, self.angle):
+            return pm.axis
+        return self.plane
+
+    def to_plane(self) -> Plane:
+        return self.plane
 
 
 class PauliMeasurement(NamedTuple):
