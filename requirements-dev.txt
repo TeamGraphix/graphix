@@ -2,7 +2,7 @@
 mypy==1.18.2
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.14.0
+ruff==0.14.1
 
 # Stubs
 types-networkx==3.5.0.20250712
@@ -11,7 +11,7 @@ types-setuptools
 
 # Tests
 # Keep in sync with CI
-nox==2025.5.1
+nox==2025.10.16
 psutil
 pytest
 pytest-benchmark
@@ -21,3 +21,5 @@ pytest-mock
 # Optional dependencies
 qiskit>=1.0
 qiskit-aer
+
+graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git@id_gate
