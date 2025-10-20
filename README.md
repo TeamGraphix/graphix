@@ -87,10 +87,6 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - [graphix-stim-backend](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
 - [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
-- [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): IBMQ backend.
-- [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): [`perceval`](https://github.com/Quandela/Perceval) linear-optical QPU backend.
-- [graphqomb](https://github.com/TeamGraphix/graphqomb): measurement-based fault-tolerant quantum computing compiler
-
 
 ### Projects using `graphix`
 
