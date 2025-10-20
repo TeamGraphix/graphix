@@ -128,11 +128,11 @@ Special thanks to [Unitary Foundation](https://unitary.fund/grants.html), [Inria
 </a></p>
 
 <p><a href="https://qat.inria.fr/presentation/">
-<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/33350509/503189828-745a6dbd-ac88-479c-a59d-f9cebc2c05dd.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20251020%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251020T114656Z&X-Amz-Expires=300&X-Amz-Signature=03415aea7a62c0866fdabb1374a30c25d3ae4689d170b36eff2f2991d2935af1&X-Amz-SignedHeaders=host" alt="qat" width="80"/>
+<img src="https://github.com/user-attachments/assets/a822175d-94e8-4388-8bee-34f4fecf9c01" alt="qat" width="80"/>
 </a></p>
 
 <p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/33350509/503190746-47a5b7c4-5236-4ec4-ba81-53cf526bbd8f.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20251020%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251020T114936Z&X-Amz-Expires=300&X-Amz-Signature=d05c982a5f4cf6c174b17294613f7a6e9656c45930151f54b49e552b6dfe1358&X-Amz-SignedHeaders=host" alt="amplify" width="200"/>
+<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="200"/>
 </a></p>
 
 ## License
