@@ -67,10 +67,11 @@ class N(_KindChecker, DataclassReprMixin):
 class BaseM(DataclassReprMixin):
     """Base measurement command.
 
-    Represent a measurement of a node. In MBQC, a measure is an instance of `M`,
-    with given plane, angles, and domains. In the context of blind computations,
-    the server only knows which node is measured, and the parameters are given
-    by the :class:`graphix.simulator.MeasureMethod` provided by the client.
+    Represent a measurement of a node. In `graphix`, a measurement is an instance of 
+    class `M`, with given plane, angles, and domains. The base class `BaseM` allows users to define 
+    new class of measurements with different abstractions. For example, in the context 
+    of blind computations, the server only knows which node is measured, and the parameters 
+    are given by the :class:`graphix.simulator.MeasureMethod` provided by the client.
     """
 
     node: Node
