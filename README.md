@@ -18,6 +18,7 @@
 - flow, gflow and pauliflow finding tools and graph visualization based on flows (see below)
 - statevector, density matrix and tensornetwork pattern simulation backends
 - QPU interface and fusion network extraction tool
+- _new_: [efficient implementation of fast O(N^3) pauli-flow finding algorithm](https://github.com/TeamGraphix/graphix/pull/337)
 
 ## Installation
 
@@ -82,23 +83,33 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
+### Related packages
+
+- [graphix-stim-backend](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
+- [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
+- [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): IBMQ backend.
+- [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): [`perceval`](https://github.com/Quandela/Perceval) linear-optical QPU backend.
+- [graphqomb](https://github.com/TeamGraphix/graphqomb): measurement-based fault-tolerant quantum computing compiler
+
+
 ### Projects using `graphix`
 
-- [Verphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
+- [Veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
+
 
 ## Citing
 
-> Shinichi Sunami and Masato Fukushima, Graphix. (2023) 
-> - Zenodo: https://doi.org/10.5281/zenodo.7861382 
-> - arXiv: https://doi.org/10.48550/arXiv.2212.11975
+> Zenodo: https://doi.org/10.5281/zenodo.7861382 
+>
+> arXiv: https://doi.org/10.48550/arXiv.2212.11975
 
 ## Contributing
 
 We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking feature requests and bug reports.
 
-## Discord Server
+## Discussion channels
 
-Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix` to ask questions.
+- Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix`. There, you can also find a link to our slack channel for regular discussions and questions.
 
 ## Core Contributors (alphabetical order)
 
@@ -110,16 +121,18 @@ Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary
 
 ## Acknowledgements
 
-We are proud to be supported by [unitary fund microgrant program](https://unitary.fund/grants.html).
+Special thanks to [Unitary Foundation](https://unitary.fund/grants.html), [Inria QAT](https://qat.inria.fr/presentation/) and [Fixstars Amplify](https://amplify.fixstars.com/en/).
 
 <p><a href="https://unitary.fund/grants.html">
 <img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
 </a></p>
 
-Special thanks to Fixstars Amplify:
+<p><a href="https://qat.inria.fr/presentation/">
+<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/33350509/503189828-745a6dbd-ac88-479c-a59d-f9cebc2c05dd.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20251020%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251020T114656Z&X-Amz-Expires=300&X-Amz-Signature=03415aea7a62c0866fdabb1374a30c25d3ae4689d170b36eff2f2991d2935af1&X-Amz-SignedHeaders=host" alt="qat" width="80"/>
+</a></p>
 
 <p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/imgs/fam_logo.png" alt="amplify" width="200"/>
+<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/33350509/503190746-47a5b7c4-5236-4ec4-ba81-53cf526bbd8f.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20251020%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251020T114936Z&X-Amz-Expires=300&X-Amz-Signature=d05c982a5f4cf6c174b17294613f7a6e9656c45930151f54b49e552b6dfe1358&X-Amz-SignedHeaders=host" alt="amplify" width="200"/>
 </a></p>
 
 ## License
