@@ -95,7 +95,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 ## Citing
 
-> Zenodo: https://doi.org/10.5281/zenodo.7861382 
+> Zenodo: https://doi.org/10.5281/zenodo.7861382
 >
 > arXiv: https://doi.org/10.48550/arXiv.2212.11975
 
