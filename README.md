@@ -18,6 +18,7 @@
 - flow, gflow and pauliflow finding tools and graph visualization based on flows (see below)
 - statevector, density matrix and tensornetwork pattern simulation backends
 - QPU interface and fusion network extraction tool
+- _new_: [efficient implementation of fast O(N^3) pauli-flow finding algorithm](https://github.com/TeamGraphix/graphix/pull/337)
 
 ## Installation
 
@@ -27,13 +28,12 @@ Install `graphix` with `pip`:
 pip install graphix
 ```
 
-Install together with device interface:
+Install together with [extra packages](https://github.com/TeamGraphix/graphix/blob/master/requirements-extra.txt):
 
 ```bash
 pip install graphix[extra]
 ```
 
-this will install `graphix` and interface for [IBMQ](https://github.com/TeamGraphix/graphix-ibmq) and [Perceval](https://github.com/TeamGraphix/graphix-perceval) to run MBQC patterns on superconducting and optical QPUs and their simulators.
 
 ## Using graphix
 
@@ -75,30 +75,34 @@ state_out = pattern.simulate_pattern(backend="statevector")
 ### and more..
 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
-
 - Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
-
 - For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
-
 - Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
+
+## Related packages
+
+- [graphix-stim-backend](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
+- [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
+- [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
+- [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
 
 ### Projects using `graphix`
 
-- [Verphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
+- [Veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
 
 ## Citing
 
-> Shinichi Sunami and Masato Fukushima, Graphix. (2023) 
-> - Zenodo: https://doi.org/10.5281/zenodo.7861382 
-> - arXiv: https://doi.org/10.48550/arXiv.2212.11975
+> Zenodo: https://doi.org/10.5281/zenodo.7861382
+>
+> arXiv: https://doi.org/10.48550/arXiv.2212.11975
 
 ## Contributing
 
 We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracking feature requests and bug reports.
 
-## Discord Server
+## Discussion channels
 
-Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix` to ask questions.
+- Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix`. There, you can also find a link to our slack channel for regular discussions and questions.
 
 ## Core Contributors (alphabetical order)
 
@@ -110,16 +114,18 @@ Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary
 
 ## Acknowledgements
 
-We are proud to be supported by [unitary fund microgrant program](https://unitary.fund/grants.html).
+Special thanks to [Unitary Foundation](https://unitary.fund/grants.html), [Inria QAT](https://qat.inria.fr/presentation/) and [Fixstars Amplify](https://amplify.fixstars.com/en/).
 
 <p><a href="https://unitary.fund/grants.html">
 <img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
 </a></p>
 
-Special thanks to Fixstars Amplify:
+<p><a href="https://qat.inria.fr/presentation/">
+<img src="https://github.com/user-attachments/assets/a822175d-94e8-4388-8bee-34f4fecf9c01" alt="qat" width="90"/>
+</a></p>
 
 <p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github.com/TeamGraphix/graphix/raw/master/docs/imgs/fam_logo.png" alt="amplify" width="200"/>
+<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="230"/>
 </a></p>
 
 ## License
