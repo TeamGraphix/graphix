@@ -13,10 +13,9 @@ import networkx as nx
 import numpy as np
 
 from graphix.command import E, M, N, X, Z
-from graphix.flow._find_pflow import CorrectionMatrix, compute_partial_order_layers
+from graphix.flow._find_pflow import _M, _PM, CorrectionMatrix, compute_partial_order_layers
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphix._linalg import MatGF2
-from graphix.opengraph_ import _M, OpenGraph
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
@@ -26,7 +25,8 @@ if TYPE_CHECKING:
 
     import numpy.typing as npt
 
-    from graphix.measurements import AbstractPlanarMeasurement, ExpressionOrFloat, Measurement
+    from graphix.measurements import ExpressionOrFloat, Measurement
+    from graphix.opengraph_ import OpenGraph
 
 TotalOrder = Sequence[int]
 
@@ -98,7 +98,9 @@ class Corrections(Generic[_M]):
         return True
 
     def to_pattern(
-        self: Corrections[Measurement], angles: Mapping[int, ExpressionOrFloat | Sign], total_order: TotalOrder | None = None
+        self: Corrections[Measurement],
+        angles: Mapping[int, ExpressionOrFloat | Sign],
+        total_order: TotalOrder | None = None,
     ) -> Pattern:
         # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
 
@@ -260,9 +262,9 @@ class PauliFlow(Generic[_M]):
 
 
 @dataclass(frozen=True)
-class GFlow(PauliFlow[AbstractPlanarMeasurement]):
+class GFlow(PauliFlow[_PM]):
     @override
-    def to_corrections(self) -> Corrections[AbstractPlanarMeasurement]:
+    def to_corrections(self) -> Corrections[_PM]:
         r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
 
         Returns
@@ -286,14 +288,16 @@ class GFlow(PauliFlow[AbstractPlanarMeasurement]):
 
 
 @dataclass(frozen=True)
-class CausalFlow(GFlow):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
+class CausalFlow(
+    GFlow[_PM]
+):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
     @override
     @staticmethod
     def from_correction_matrix() -> None:
         raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
-    def to_corrections(self) -> Corrections[Plane]:
+    def to_corrections(self) -> Corrections[_PM]:
         r"""Compute the X and Z corrections induced by the causal flow encoded in `self`.
 
         Returns

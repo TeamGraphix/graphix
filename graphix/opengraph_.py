@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import networkx as nx
 
 from graphix.flow._find_cflow import find_cflow
-from graphix.flow._find_pflow import AlgebraicOpenGraphGFlow, AlgebraicOpenGraphPauliFlow, compute_correction_matrix
+from graphix.flow._find_pflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.flow import CausalFlow, GFlow, PauliFlow
 from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement, Measurement
 
@@ -239,7 +239,7 @@ class OpenGraph(Generic[_M]):
         return find_cflow(self)
 
     def find_gflow(self: OpenGraph[AbstractPlanarMeasurement]) -> GFlow | None:
-        aog = AlgebraicOpenGraphGFlow(self)
+        aog = PlanarAlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None
@@ -248,7 +248,7 @@ class OpenGraph(Generic[_M]):
         )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
 
     def find_pauli_flow(self: OpenGraph[AbstractMeasurement]) -> PauliFlow | None:
-        aog = AlgebraicOpenGraphPauliFlow(self)
+        aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None

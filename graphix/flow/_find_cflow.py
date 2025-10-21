@@ -3,12 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphix.flow.flow import CausalFlow
-from graphix.measurements import Plane
+from graphix.measurements import AbstractPlanarMeasurement, Plane
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
-    from graphix.measurements import AbstractPlanarMeasurement
     from graphix.opengraph_ import OpenGraph
 
 # TODO: Up doc strings

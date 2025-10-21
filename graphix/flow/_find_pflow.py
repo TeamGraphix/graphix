@@ -11,17 +11,15 @@ References
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from copy import deepcopy
 from functools import cached_property
-from typing import TYPE_CHECKING, Generic, NamedTuple
+from typing import TYPE_CHECKING, Generic, NamedTuple, TypeVar
 
 import numpy as np
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.fundamentals import Axis, Plane
-from graphix.measurements import AbstractPlanarMeasurement
-from graphix.opengraph_ import _M
+from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
@@ -31,7 +29,11 @@ if TYPE_CHECKING:
     from graphix.opengraph_ import OpenGraph
 
 
-class AlgebraicOpenGraph(ABC, Generic[_M]):
+_M = TypeVar("_M", bound=AbstractMeasurement)
+_PM = TypeVar("_PM", bound=AbstractPlanarMeasurement)
+
+
+class AlgebraicOpenGraph(Generic[_M]):
     """A class for providing an algebraic representation of open graphs as introduced in [1]. In particular, it allows managing the mapping between node labels of the graph and the relevant matrix indices. The flow demand and order demand matrices appear as cached properties.
 
     It reuses the class `:class: graphix.sim.base_backend.NodeIndex` introduced for managing the mapping between node numbers and qubit indices in the internal state of the backend.
@@ -114,7 +116,6 @@ class AlgebraicOpenGraph(ABC, Generic[_M]):
         return adj_red
 
     @cached_property
-    @abstractmethod
     def _compute_pflow_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct flow-demand and order-demand matrices.
 
@@ -127,9 +128,33 @@ class AlgebraicOpenGraph(ABC, Generic[_M]):
         -----
         See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
+        flow_demand_matrix = self._compute_reduced_adj()
+        order_demand_matrix = flow_demand_matrix.copy()
+
+        inputs_set = set(self.og.input_nodes)
+
+        row_tags = self.non_outputs
+        col_tags = self.non_inputs
+
+        for v in row_tags:  # v is a node tag
+            i = row_tags.index(v)
+            plane_axis_v = self.og.measurements[v].to_plane_or_axis()
+
+            if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Z}:
+                flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
+            if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Y, Axis.Z} and v not in inputs_set:
+                j = col_tags.index(v)
+                flow_demand_matrix[i, j] = 1  # Set element (v, v) = 0
+            if plane_axis_v in {Plane.XY, Axis.X, Axis.Y, Axis.Z}:
+                order_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
+            if plane_axis_v in {Plane.XY, Plane.XZ} and v not in inputs_set:
+                j = col_tags.index(v)
+                order_demand_matrix[i, j] = 1  # Set element (v, v) = 1
+
+        return flow_demand_matrix, order_demand_matrix
 
 
-class AlgebraicOpenGraphGFlow(AlgebraicOpenGraph[AbstractPlanarMeasurement]):
+class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM]):
     @cached_property
     def _compute_pflow_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct flow-demand and order-demand matrices assuming that the underlying open graph has planar measurements only.
@@ -169,46 +194,6 @@ class AlgebraicOpenGraphGFlow(AlgebraicOpenGraph[AbstractPlanarMeasurement]):
         return flow_demand_matrix, order_demand_matrix
 
 
-class AlgebraicOpenGraphPauliFlow(AlgebraicOpenGraph[_M]):
-    @cached_property
-    def _compute_pflow_matrices(self) -> tuple[MatGF2, MatGF2]:
-        r"""Construct flow-demand and order-demand matrices.
-
-        Returns
-        -------
-        flow_demand_matrix : MatGF2
-        order_demand_matrix : MatGF2
-
-        Notes
-        -----
-        See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
-        """
-        flow_demand_matrix = self._compute_reduced_adj()
-        order_demand_matrix = flow_demand_matrix.copy()
-
-        inputs_set = set(self.og.input_nodes)
-
-        row_tags = self.non_outputs
-        col_tags = self.non_inputs
-
-        for v in row_tags:  # v is a node tag
-            i = row_tags.index(v)
-            plane_axis_v = self.og.measurements[v].to_plane_or_axis()
-
-            if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Z}:
-                flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
-            if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Y, Axis.Z} and v not in inputs_set:
-                j = col_tags.index(v)
-                flow_demand_matrix[i, j] = 1  # Set element (v, v) = 0
-            if plane_axis_v in {Plane.XY, Axis.X, Axis.Y, Axis.Z}:
-                order_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
-            if plane_axis_v in {Plane.XY, Plane.XZ} and v not in inputs_set:
-                j = col_tags.index(v)
-                order_demand_matrix[i, j] = 1  # Set element (v, v) = 1
-
-        return flow_demand_matrix, order_demand_matrix
-
-
 class CorrectionMatrix(NamedTuple, Generic[_M]):
     r"""A dataclass to bundle the correction matrix and the open graph to which it refers.
 
@@ -228,7 +213,9 @@ class CorrectionMatrix(NamedTuple, Generic[_M]):
     c_matrix: MatGF2
 
     @staticmethod
-    def from_correction_function(og: OpenGraph[_M], correction_function: Mapping[int, set[int]]) -> CorrectionMatrix[_M]:
+    def from_correction_function(
+        og: OpenGraph[_M], correction_function: Mapping[int, set[int]]
+    ) -> CorrectionMatrix[_M]:
         r"""Initialise a `CorrectionMatrix` object from a correction function.
 
         Parameters
@@ -247,7 +234,9 @@ class CorrectionMatrix(NamedTuple, Generic[_M]):
         -----
         This function is not required to find a Pauli (or generalised) flow on an open graph but is a useful auxiliary method to verify the validity of a flow encoded in a correction function.
         """
-        aog = AlgebraicOpenGraphPauliFlow(og)  # TODO: Is it a problem that we instatiate an AOGPauliFlow, regardless of the type of og ?
+        aog = AlgebraicOpenGraph(
+            og
+        )  # TODO: Is it a problem that we instatiate an AOGPauliFlow, regardless of the type of og ?
         row_tags = aog.non_inputs
         col_tags = aog.non_outputs
 
@@ -682,3 +671,6 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M]) -> CorrectionMatrix[_
         return None
 
     return CorrectionMatrix(aog, correction_matrix)
+
+
+# TODO: When should inputs be parametrized with `_M` and when with `AbstractMeasurement` ?
