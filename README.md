@@ -92,7 +92,6 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - [Veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
 
-
 ## Citing
 
 > Zenodo: https://doi.org/10.5281/zenodo.7861382
