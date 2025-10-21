@@ -83,10 +83,12 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
-### Related packages
+## Related packages
 
 - [graphix-stim-backend](https://github.com/thierry-martinez/graphix-stim-backend): `stim` backend for efficient Clifford pattern simulation
 - [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
+- [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
+- [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
 
 ### Projects using `graphix`
 
@@ -123,11 +125,11 @@ Special thanks to [Unitary Foundation](https://unitary.fund/grants.html), [Inria
 </a></p>
 
 <p><a href="https://qat.inria.fr/presentation/">
-<img src="https://github.com/user-attachments/assets/a822175d-94e8-4388-8bee-34f4fecf9c01" alt="qat" width="80"/>
+<img src="https://github.com/user-attachments/assets/a822175d-94e8-4388-8bee-34f4fecf9c01" alt="qat" width="90"/>
 </a></p>
 
 <p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="200"/>
+<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="230"/>
 </a></p>
 
 ## License
