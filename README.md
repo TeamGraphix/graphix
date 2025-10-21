@@ -28,13 +28,12 @@ Install `graphix` with `pip`:
 pip install graphix
 ```
 
-Install together with device interface:
+Install together with [extra packages](https://github.com/TeamGraphix/graphix/blob/master/requirements-extra.txt):
 
 ```bash
 pip install graphix[extra]
 ```
 
-this will install `graphix` and interface for [IBMQ](https://github.com/TeamGraphix/graphix-ibmq) and [Perceval](https://github.com/TeamGraphix/graphix-perceval) to run MBQC patterns on superconducting and optical QPUs and their simulators.
 
 ## Using graphix
 
@@ -76,11 +75,8 @@ state_out = pattern.simulate_pattern(backend="statevector")
 ### and more..
 
 - See [demos](https://graphix.readthedocs.io/en/latest/gallery/index.html) showing other features of `graphix`.
-
 - Read the [tutorial](https://graphix.readthedocs.io/en/latest/tutorial.html) for more usage guides.
-
 - For theoretical background, read our quick introduction into [MBQC](https://graphix.readthedocs.io/en/latest/intro.html) and [LC-MBQC](https://graphix.readthedocs.io/en/latest/lc-mbqc.html).
-
 - Full API docs is [here](https://graphix.readthedocs.io/en/latest/references.html).
 
 ## Related packages
