@@ -291,8 +291,8 @@ class CausalFlow(
     GFlow[_PM]
 ):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
     @override
-    @staticmethod
-    def from_correction_matrix() -> None:
+    @classmethod
+    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix) -> None:
         raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
@@ -310,9 +310,11 @@ class CausalFlow(
         x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
         z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
 
-        for node, corr_set in self.correction_function.items():
-            x_corrections[node].update(corr_set)
-            z_corrections[node].update(self.og.neighbors(corr_set) - {node})
+        for corrected_node, correcting_set in self.correction_function.items():
+            (correcting_node,) = correcting_set  # Correcting set of a causal flow has one element only.
+            x_corrections[correcting_node].add(corrected_node)
+            for node in self.og.neighbors(correcting_set) - {corrected_node}:
+                z_corrections[node].add(corrected_node)
 
         return XZCorrections(self.og, x_corrections, z_corrections)
 

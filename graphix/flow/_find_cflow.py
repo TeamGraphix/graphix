@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import copy
 from typing import TYPE_CHECKING
 
 from graphix.flow.flow import CausalFlow
@@ -43,7 +44,9 @@ def find_cflow(og: OpenGraph[_PM]) -> CausalFlow | None:
     corrector_candidates = corrected_nodes - set(og.input_nodes)
 
     cf: dict[int, set[int]] = {}
-    layers: list[set[int]] = [corrected_nodes]
+    layers: list[set[int]] = [
+        copy(corrected_nodes)
+    ]  # A copy is necessary because `corrected_nodes` is mutable and changes during the algorithm.
 
     non_input_nodes = og.graph.nodes - set(og.input_nodes)
 
@@ -92,12 +95,15 @@ def _flow_aux(
 
     non_corrected_nodes = og.graph.nodes - corrected_nodes
 
+    if corrected_nodes == set(og.graph.nodes):
+        return CausalFlow(og, cf, layers)
+
     for p in corrector_candidates:
         non_corrected_neighbors = og.neighbors({p}) & non_corrected_nodes
         if len(non_corrected_neighbors) == 1:
             (q,) = non_corrected_neighbors
             cf[q] = {p}
-            curr_layer.add(p)
+            curr_layer.add(q)
             corrected_nodes_new |= {q}
             corrector_nodes_new |= {p}
 
@@ -105,8 +111,8 @@ def _flow_aux(
 
     if len(corrected_nodes_new) == 0:
         # TODO: This is the structure in the original graphix code. I think that we could check if non_corrected_nodes == empty before the loop and here just return None.
-        if corrected_nodes == og.graph.nodes:
-            return CausalFlow(og, cf, layers)
+        # if corrected_nodes == set(og.graph.nodes):
+        #     return CausalFlow(og, cf, layers)
         return None
 
     corrected_nodes |= corrected_nodes_new
