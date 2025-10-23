@@ -18,8 +18,7 @@ from typing import TYPE_CHECKING, Generic, NamedTuple, TypeVar
 import numpy as np
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
-from graphix.fundamentals import Axis, Plane
-from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement
+from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
@@ -74,11 +73,11 @@ class AlgebraicOpenGraph(Generic[_M]):
 
     @property
     def flow_demand_matrix(self) -> MatGF2:
-        return self._compute_pflow_matrices[0]
+        return self._compute_og_matrices[0]
 
     @property
     def order_demand_matrix(self) -> MatGF2:
-        return self._compute_pflow_matrices[1]
+        return self._compute_og_matrices[1]
 
     def _compute_reduced_adj(self) -> MatGF2:
         r"""Return the reduced adjacency matrix (RAdj) of the input open graph.
@@ -116,7 +115,7 @@ class AlgebraicOpenGraph(Generic[_M]):
         return adj_red
 
     @cached_property
-    def _compute_pflow_matrices(self) -> tuple[MatGF2, MatGF2]:
+    def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct flow-demand and order-demand matrices.
 
         Returns
@@ -156,7 +155,7 @@ class AlgebraicOpenGraph(Generic[_M]):
 
 class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM]):
     @cached_property
-    def _compute_pflow_matrices(self) -> tuple[MatGF2, MatGF2]:
+    def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct flow-demand and order-demand matrices assuming that the underlying open graph has planar measurements only.
 
         Returns
@@ -660,7 +659,7 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M]) -> CorrectionMatrix[_
 
     # Steps 1 and 2
     # Flow-demand and order-demand matrices are cached properties of `aog`.
-    flow_demand_matrix, order_demand_matrix = aog._compute_pflow_matrices
+    flow_demand_matrix, order_demand_matrix = aog._compute_og_matrices
 
     if ni == no:
         correction_matrix = flow_demand_matrix.right_inverse()

@@ -5,12 +5,12 @@ from __future__ import annotations
 import enum
 import sys
 import typing
-from enum import Enum
+from abc import ABC, ABCMeta, abstractmethod
+from enum import Enum, EnumMeta
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload, override
 
 import typing_extensions
 
-from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
 from graphix.repr_mixins import EnumReprMixin
@@ -215,8 +215,22 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
+class CustomMeta(ABCMeta, EnumMeta):
+    """Custom metaclass to allow multiple inheritance from `Enum` and `ABC`."""
+
+
+class AbstractMeasurement(ABC):
+    @abstractmethod
+    def to_plane_or_axis(self) -> Plane | Axis: ...
+
+
+class AbstractPlanarMeasurement(AbstractMeasurement):
+    @abstractmethod
+    def to_plane(self) -> Plane: ...
+
+
 # TODO Conflicts with Enum
-class Axis(EnumReprMixin, Enum, AbstractMeasurement):
+class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     """Axis: *X*, *Y* or *Z*."""
 
     X = enum.auto()
@@ -239,7 +253,7 @@ class Axis(EnumReprMixin, Enum, AbstractMeasurement):
         return self
 
 
-class Plane(EnumReprMixin, Enum, AbstractPlanarMeasurement):
+class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     # TODO: Refactor using match
     """Plane: *XY*, *YZ* or *XZ*."""
 

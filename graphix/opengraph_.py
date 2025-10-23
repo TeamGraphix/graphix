@@ -5,15 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
 
-import networkx as nx
-
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_pflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.flow import CausalFlow, GFlow, PauliFlow
-from graphix.measurements import AbstractMeasurement, AbstractPlanarMeasurement, Measurement
+from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
+from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
+
+    import networkx as nx
 
     from graphix.pattern import Pattern
 
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 # Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
 
 _M = TypeVar("_M", bound=AbstractMeasurement)
+_PM = TypeVar("_PM", bound=AbstractPlanarMeasurement)
 
 
 @dataclass(frozen=True)
@@ -199,6 +201,7 @@ class OpenGraph(Generic[_M]):
 
     #     return OpenGraph(g, measurements, input_nodes, output_nodes), mapping_complete
 
+    # TODO: check if nodes in input belong to open graph ?
     def neighbors(self, nodes: Collection[int]) -> set[int]:
         """Return the set containing the neighborhood of a set of nodes.
 
@@ -235,10 +238,10 @@ class OpenGraph(Generic[_M]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    def find_causal_flow(self: OpenGraph[AbstractPlanarMeasurement]) -> CausalFlow | None:
+    def find_causal_flow(self: OpenGraph[_PM]) -> CausalFlow | None:
         return find_cflow(self)
 
-    def find_gflow(self: OpenGraph[AbstractPlanarMeasurement]) -> GFlow | None:
+    def find_gflow(self: OpenGraph[_PM]) -> GFlow | None:
         aog = PlanarAlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
@@ -247,7 +250,7 @@ class OpenGraph(Generic[_M]):
             correction_matrix
         )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def find_pauli_flow(self: OpenGraph[AbstractMeasurement]) -> PauliFlow | None:
+    def find_pauli_flow(self: OpenGraph[_M]) -> PauliFlow | None:
         aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:

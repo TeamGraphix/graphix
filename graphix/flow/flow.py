@@ -5,25 +5,22 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
-from functools import cached_property
-from itertools import pairwise, product
+from itertools import product
 from typing import TYPE_CHECKING, Generic, Self, override
 
 import networkx as nx
 import numpy as np
 
+from graphix._linalg import MatGF2
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_pflow import _M, _PM, CorrectionMatrix, compute_partial_order_layers
 from graphix.fundamentals import Axis, Plane, Sign
-from graphix.graphix._linalg import MatGF2
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Mapping
+    from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
     from typing import Self
-
-    import numpy.typing as npt
 
     from graphix.measurements import ExpressionOrFloat, Measurement
     from graphix.opengraph_ import OpenGraph
@@ -32,7 +29,7 @@ TotalOrder = Sequence[int]
 
 
 @dataclass(frozen=True)
-class Corrections(Generic[_M]):
+class XZCorrections(Generic[_M]):
     og: OpenGraph[_M]
     x_corrections: dict[int, set[int]]  # {node: domain}
     z_corrections: dict[int, set[int]]  # {node: domain}
@@ -98,7 +95,7 @@ class Corrections(Generic[_M]):
         return True
 
     def to_pattern(
-        self: Corrections[Measurement],
+        self: XZCorrections[Measurement],
         angles: Mapping[int, ExpressionOrFloat | Sign],
         total_order: TotalOrder | None = None,
     ) -> Pattern:
@@ -178,7 +175,7 @@ class PauliFlow(Generic[_M]):
 
         return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
-    def to_corrections(self) -> Corrections[_M]:
+    def to_corrections(self) -> XZCorrections[_M]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in `self`.
 
         Returns
@@ -201,7 +198,7 @@ class PauliFlow(Generic[_M]):
 
             future |= layer
 
-        return Corrections(self.og, x_corrections, z_corrections)
+        return XZCorrections(self.og, x_corrections, z_corrections)
 
     def is_well_formed(self) -> bool:
         r"""Verify if flow object is well formed.
@@ -264,7 +261,7 @@ class PauliFlow(Generic[_M]):
 @dataclass(frozen=True)
 class GFlow(PauliFlow[_PM]):
     @override
-    def to_corrections(self) -> Corrections[_PM]:
+    def to_corrections(self) -> XZCorrections[_PM]:
         r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
 
         Returns
@@ -280,11 +277,13 @@ class GFlow(PauliFlow[_PM]):
         x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
         z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
 
-        for node, corr_set in self.correction_function.items():
-            x_corrections[node].update(corr_set - {node})
-            z_corrections[node].update(self.og.odd_neighbors(corr_set))
+        for corr_node, corr_set in self.correction_function.items():
+            for node in self.og.odd_neighbors(corr_set):
+                z_corrections[node].add(corr_node)
+            for node in corr_set - {corr_node}:
+                x_corrections[node].add(corr_node)
 
-        return Corrections(self.og, x_corrections, z_corrections)
+        return XZCorrections(self.og, x_corrections, z_corrections)
 
 
 @dataclass(frozen=True)
@@ -297,7 +296,7 @@ class CausalFlow(
         raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
-    def to_corrections(self) -> Corrections[_PM]:
+    def to_corrections(self) -> XZCorrections[_PM]:
         r"""Compute the X and Z corrections induced by the causal flow encoded in `self`.
 
         Returns
@@ -315,7 +314,7 @@ class CausalFlow(
             x_corrections[node].update(corr_set)
             z_corrections[node].update(self.og.neighbors(corr_set) - {node})
 
-        return Corrections(self.og, x_corrections, z_corrections)
+        return XZCorrections(self.og, x_corrections, z_corrections)
 
 
 ###########
@@ -323,196 +322,196 @@ class CausalFlow(
 ###########
 
 
-@dataclass(frozen=True)
-class PartialOrder:
-    """Class for storing and manipulating the partial order in a flow.
+# @dataclass(frozen=True)
+# class PartialOrder:
+#     """Class for storing and manipulating the partial order in a flow.
 
-    Attributes
-    ----------
-    dag: nx.DiGraph[int]
-        Directed Acyclical Graph (DAG) representing the partial order. The transitive closure of `dag` yields all the relations in the partial order.
+#     Attributes
+#     ----------
+#     dag: nx.DiGraph[int]
+#         Directed Acyclical Graph (DAG) representing the partial order. The transitive closure of `dag` yields all the relations in the partial order.
 
-    layers: Mapping[int, AbstractSet[int]]
-        Mapping storing the partial order in a layer structure.
-        The pair `(key, value)` corresponds to the layer and the set of nodes in that layer.
-        Layer 0 corresponds to the largest nodes in the partial order. In general, if `i > j`, then nodes in `layers[j]` are in the future of nodes in `layers[i]`.
+#     layers: Mapping[int, AbstractSet[int]]
+#         Mapping storing the partial order in a layer structure.
+#         The pair `(key, value)` corresponds to the layer and the set of nodes in that layer.
+#         Layer 0 corresponds to the largest nodes in the partial order. In general, if `i > j`, then nodes in `layers[j]` are in the future of nodes in `layers[i]`.
 
-    """
+#     """
 
-    dag: nx.DiGraph[int]
-    layers: Mapping[int, AbstractSet[int]]
+#     dag: nx.DiGraph[int]
+#     layers: Mapping[int, AbstractSet[int]]
 
-    @classmethod
-    def from_adj_matrix(cls, adj_mat: npt.NDArray[np.uint8], nodelist: Collection[int] | None = None) -> PartialOrder:
-        """Construct a partial order from an adjacency matrix representing a DAG.
+#     @classmethod
+#     def from_adj_matrix(cls, adj_mat: npt.NDArray[np.uint8], nodelist: Collection[int] | None = None) -> PartialOrder:
+#         """Construct a partial order from an adjacency matrix representing a DAG.
 
-        Parameters
-        ----------
-        adj_mat: npt.NDArray[np.uint8]
-            Adjacency matrix of the DAG. A nonzero element `adj_mat[i,j]` represents a link `i -> j`.
-        node_list: Collection[int] | None
-            Mapping between matrix indices and node labels. Optional, defaults to `None`.
+#         Parameters
+#         ----------
+#         adj_mat: npt.NDArray[np.uint8]
+#             Adjacency matrix of the DAG. A nonzero element `adj_mat[i,j]` represents a link `i -> j`.
+#         node_list: Collection[int] | None
+#             Mapping between matrix indices and node labels. Optional, defaults to `None`.
 
-        Returns
-        -------
-        PartialOrder
+#         Returns
+#         -------
+#         PartialOrder
 
-        Notes
-        -----
-        The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
-        """
-        dag = nx.from_numpy_array(adj_mat, create_using=nx.DiGraph, nodelist=nodelist)
-        layers = _compute_layers_from_dag(dag)
-        return cls(dag=dag, layers=layers)
+#         Notes
+#         -----
+#         The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
+#         """
+#         dag = nx.from_numpy_array(adj_mat, create_using=nx.DiGraph, nodelist=nodelist)
+#         layers = _compute_layers_from_dag(dag)
+#         return cls(dag=dag, layers=layers)
 
-    @classmethod
-    def from_relations(cls, relations: Collection[tuple[int, int]]) -> PartialOrder:
-        """Construct a partial order from the order relations.
+#     @classmethod
+#     def from_relations(cls, relations: Collection[tuple[int, int]]) -> PartialOrder:
+#         """Construct a partial order from the order relations.
 
-        Parameters
-        ----------
-        relations: Collection[tuple[int, int]]
-            Collection of relations in the partial order. A tuple `(a, b)` represents `a > b` in the partial order.
+#         Parameters
+#         ----------
+#         relations: Collection[tuple[int, int]]
+#             Collection of relations in the partial order. A tuple `(a, b)` represents `a > b` in the partial order.
 
-        Returns
-        -------
-        PartialOrder
+#         Returns
+#         -------
+#         PartialOrder
 
-        Notes
-        -----
-        The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
-        """
-        dag = nx.DiGraph(relations)
-        layers = _compute_layers_from_dag(dag)
-        return cls(dag=dag, layers=layers)
+#         Notes
+#         -----
+#         The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
+#         """
+#         dag = nx.DiGraph(relations)
+#         layers = _compute_layers_from_dag(dag)
+#         return cls(dag=dag, layers=layers)
 
-    @classmethod
-    def from_layers(cls, layers: Mapping[int, AbstractSet[int]]) -> PartialOrder:
-        dag = _compute_dag_from_layers(layers)
-        return cls(dag=dag, layers=layers)
+#     @classmethod
+#     def from_layers(cls, layers: Mapping[int, AbstractSet[int]]) -> PartialOrder:
+#         dag = _compute_dag_from_layers(layers)
+#         return cls(dag=dag, layers=layers)
 
-    @classmethod
-    def from_corrections(cls, corrections: Corrections) -> PartialOrder:
-        relations: set[tuple[int, int]] = set()
+#     @classmethod
+#     def from_corrections(cls, corrections: XZCorrections) -> PartialOrder:
+#         relations: set[tuple[int, int]] = set()
 
-        for node, domain in corrections.x_corrections.items():
-            relations.update(product([node], domain))
+#         for node, domain in corrections.x_corrections.items():
+#             relations.update(product([node], domain))
 
-        for node, domain in corrections.z_corrections.items():
-            relations.update(product([node], domain))
+#         for node, domain in corrections.z_corrections.items():
+#             relations.update(product([node], domain))
 
-        return cls.from_relations(relations)
+#         return cls.from_relations(relations)
 
-    @property
-    def nodes(self) -> set[int]:
-        """Return nodes in the partial order."""
-        return set(self.dag.nodes)
+#     @property
+#     def nodes(self) -> set[int]:
+#         """Return nodes in the partial order."""
+#         return set(self.dag.nodes)
 
-    @property
-    def node_layer_mapping(self) -> dict[int, int]:
-        """Return layers in the form `{node: layer}`."""
-        mapping: dict[int, int] = {}
-        for layer, nodes in self.layers.items():
-            mapping.update(dict.fromkeys(nodes, layer))
+#     @property
+#     def node_layer_mapping(self) -> dict[int, int]:
+#         """Return layers in the form `{node: layer}`."""
+#         mapping: dict[int, int] = {}
+#         for layer, nodes in self.layers.items():
+#             mapping.update(dict.fromkeys(nodes, layer))
 
-        return mapping
+#         return mapping
 
-    @cached_property
-    def transitive_closure(self) -> set[tuple[int, int]]:
-        """Return the transitive closure of the Directed Acyclic Graph (DAG) encoding the partial order.
+#     @cached_property
+#     def transitive_closure(self) -> set[tuple[int, int]]:
+#         """Return the transitive closure of the Directed Acyclic Graph (DAG) encoding the partial order.
 
-        Returns
-        -------
-        set[tuple[int, int]]
-            A tuple `(i, j)` belongs to the transitive closure of the DAG if `i > j` according to the partial order.
-        """
-        return set(nx.transitive_closure_dag(self.dag).edges())
+#         Returns
+#         -------
+#         set[tuple[int, int]]
+#             A tuple `(i, j)` belongs to the transitive closure of the DAG if `i > j` according to the partial order.
+#         """
+#         return set(nx.transitive_closure_dag(self.dag).edges())
 
-    def greater(self, a: int, b: int) -> bool:
-        """Verify order between two nodes.
+#     def greater(self, a: int, b: int) -> bool:
+#         """Verify order between two nodes.
 
-        Parameters
-        ----------
-        a : int
-        b : int
+#         Parameters
+#         ----------
+#         a : int
+#         b : int
 
-        Returns
-        -------
-        bool
-            `True` if `a > b` in the partial order, `False` otherwise.
+#         Returns
+#         -------
+#         bool
+#             `True` if `a > b` in the partial order, `False` otherwise.
 
-        Raises
-        ------
-        ValueError
-            If either node `a` or `b` is not included in the definition of the partial order.
-        """
-        if a not in self.nodes:
-            raise ValueError(f"Node a = {a} is not included in the partial order.")
-        if b not in self.nodes:
-            raise ValueError(f"Node b = {b} is not included in the partial order.")
-        return (a, b) in self.transitive_closure
+#         Raises
+#         ------
+#         ValueError
+#             If either node `a` or `b` is not included in the definition of the partial order.
+#         """
+#         if a not in self.nodes:
+#             raise ValueError(f"Node a = {a} is not included in the partial order.")
+#         if b not in self.nodes:
+#             raise ValueError(f"Node b = {b} is not included in the partial order.")
+#         return (a, b) in self.transitive_closure
 
-    def compute_future(self, node: int) -> set[int]:
-        """Compute the future of `node`.
+#     def compute_future(self, node: int) -> set[int]:
+#         """Compute the future of `node`.
 
-        Parameters
-        ----------
-        node : int
-            Node for which the future is computed.
+#         Parameters
+#         ----------
+#         node : int
+#             Node for which the future is computed.
 
-        Returns
-        -------
-        set[int]
-            Set of nodes `i` such that `i > node` in the partial order.
-        """
-        if node not in self.nodes:
-            raise ValueError(f"Node {node} is not included in the partial order.")
+#         Returns
+#         -------
+#         set[int]
+#             Set of nodes `i` such that `i > node` in the partial order.
+#         """
+#         if node not in self.nodes:
+#             raise ValueError(f"Node {node} is not included in the partial order.")
 
-        return {i for i, j in self.transitive_closure if j == node}
+#         return {i for i, j in self.transitive_closure if j == node}
 
-    def is_compatible(self, other: PartialOrder) -> bool:
-        r"""Verify compatibility between two partial orders.
+#     def is_compatible(self, other: PartialOrder) -> bool:
+#         r"""Verify compatibility between two partial orders.
 
-        Parameters
-        ----------
-        other : PartialOrder
+#         Parameters
+#         ----------
+#         other : PartialOrder
 
-        Returns
-        -------
-        bool
-            `True` if partial order `self` is compatible with partial order `other`, `False` otherwise.
+#         Returns
+#         -------
+#         bool
+#             `True` if partial order `self` is compatible with partial order `other`, `False` otherwise.
 
-        Notes
-        -----
-        We define partial-order compatibility as follows:
-            A partial order :math:`<_P` on a set :math:`U` is compatible with a partial order :math:`<_Q` on a set :math:`V` iff :math:`a <_P b \rightarrow a <_Q b \forall a, b \in U`.
-            This definition of compatibility requires that :math:`U \subseteq V`.
-            Further, it is not symmetric.
-        """
-        return self.transitive_closure.issubset(other.transitive_closure)
-
-
-def _compute_layers_from_dag(dag: nx.DiGraph[int]) -> dict[int, set[int]]:
-    try:
-        generations = reversed(list(nx.topological_generations(dag)))
-        return {layer: set(generation) for layer, generation in enumerate(generations)}
-    except nx.NetworkXUnfeasible as exc:
-        raise ValueError("Partial order contains loops.") from exc
+#         Notes
+#         -----
+#         We define partial-order compatibility as follows:
+#             A partial order :math:`<_P` on a set :math:`U` is compatible with a partial order :math:`<_Q` on a set :math:`V` iff :math:`a <_P b \rightarrow a <_Q b \forall a, b \in U`.
+#             This definition of compatibility requires that :math:`U \subseteq V`.
+#             Further, it is not symmetric.
+#         """
+#         return self.transitive_closure.issubset(other.transitive_closure)
 
 
-def _compute_dag_from_layers(layers: Mapping[int, AbstractSet[int]]) -> nx.DiGraph[int]:
-    max_layer = max(layers)
-    relations: list[tuple[int, int]] = []
-    visited_nodes: set[int] = set()
+# def _compute_layers_from_dag(dag: nx.DiGraph[int]) -> dict[int, set[int]]:
+#     try:
+#         generations = reversed(list(nx.topological_generations(dag)))
+#         return {layer: set(generation) for layer, generation in enumerate(generations)}
+#     except nx.NetworkXUnfeasible as exc:
+#         raise ValueError("Partial order contains loops.") from exc
 
-    for i, j in pairwise(reversed(range(max_layer + 1))):
-        layer_curr, layer_next = layers[i], layers[j]
-        if layer_curr & visited_nodes:
-            raise ValueError(f"Layer {i} contains nodes in previous layers.")
-        visited_nodes |= layer_curr
-        relations.extend(product(layer_curr, layer_next))
 
-    if layers[0] & visited_nodes:
-        raise ValueError(f"Layer {i} contains nodes in previous layers.")
+# def _compute_dag_from_layers(layers: Mapping[int, AbstractSet[int]]) -> nx.DiGraph[int]:
+#     max_layer = max(layers)
+#     relations: list[tuple[int, int]] = []
+#     visited_nodes: set[int] = set()
 
-    return nx.DiGraph(relations)
+#     for i, j in pairwise(reversed(range(max_layer + 1))):
+#         layer_curr, layer_next = layers[i], layers[j]
+#         if layer_curr & visited_nodes:
+#             raise ValueError(f"Layer {i} contains nodes in previous layers.")
+#         visited_nodes |= layer_curr
+#         relations.extend(product(layer_curr, layer_next))
+
+#     if layers[0] & visited_nodes:
+#         raise ValueError(f"Layer {i} contains nodes in previous layers.")
+
+#     return nx.DiGraph(relations)

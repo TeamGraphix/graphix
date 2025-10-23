@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import dataclasses
 import math
-from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Literal, NamedTuple, SupportsInt
 
 from typing_extensions import TypeAlias  # TypeAlias introduced in Python 3.10
 
 from graphix import utils
-from graphix.fundamentals import Axis, Plane, Sign
+from graphix.fundamentals import AbstractPlanarMeasurement, Axis, Plane, Sign
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
@@ -28,7 +27,7 @@ def toggle_outcome(outcome: Outcome) -> Outcome:
     return 1 if outcome == 0 else 0
 
 
-@dataclasses.dataclass
+@dataclass
 class Domains:
     """Represent `X^sZ^t` where s and t are XOR of results from given sets of indices."""
 
@@ -36,19 +35,8 @@ class Domains:
     t_domain: set[int]
 
 
-class AbstractMeasurement(ABC):
-    @abstractmethod
-    def to_plane_or_axis(self) -> Plane | Axis: ...
-
-
-class AbstractPlanarMeasurement(AbstractMeasurement):
-    @abstractmethod
-    def to_plane(self) -> Plane: ...
-
-
-# TODO: Multiple inheritance with NamedTuple error
-# Replace by dataclass
-class Measurement(NamedTuple, AbstractPlanarMeasurement):
+@dataclass
+class Measurement(AbstractPlanarMeasurement):
     """An MBQC measurement.
 
     :param angle: the angle of the measurement. Should be between [0, 2)

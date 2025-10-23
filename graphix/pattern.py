@@ -21,13 +21,15 @@ from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
-from graphix.gflow import find_flow, find_gflow, get_layers
+
+# from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Outcome, PauliMeasurement, toggle_outcome
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
-from graphix.visualization import GraphVisualizer
+
+# from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterator, Mapping

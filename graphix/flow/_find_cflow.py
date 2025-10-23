@@ -3,17 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphix.flow.flow import CausalFlow
-from graphix.measurements import AbstractPlanarMeasurement, Plane
+from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
-    from graphix.opengraph_ import OpenGraph
+    from graphix.opengraph_ import _PM, OpenGraph
 
 # TODO: Up doc strings
 
 
-def find_cflow(og: OpenGraph[AbstractPlanarMeasurement]) -> CausalFlow | None:
+def find_cflow(og: OpenGraph[_PM]) -> CausalFlow | None:
     """Return the causal flow of the input open graph if it exists.
 
     Parameters
@@ -51,7 +51,7 @@ def find_cflow(og: OpenGraph[AbstractPlanarMeasurement]) -> CausalFlow | None:
 
 
 def _flow_aux(
-    og: OpenGraph[AbstractPlanarMeasurement],
+    og: OpenGraph[_PM],
     non_input_nodes: AbstractSet[int],
     corrected_nodes: AbstractSet[int],
     corrector_candidates: AbstractSet[int],
