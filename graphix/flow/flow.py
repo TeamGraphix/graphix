@@ -259,7 +259,7 @@ class PauliFlow(Generic[_M]):
 
 
 @dataclass(frozen=True)
-class GFlow(PauliFlow[_PM]):
+class GFlow(PauliFlow[_PM], Generic[_PM]):
     @override
     def to_corrections(self) -> XZCorrections[_PM]:
         r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
@@ -277,18 +277,18 @@ class GFlow(PauliFlow[_PM]):
         x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
         z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
 
-        for corr_node, corr_set in self.correction_function.items():
-            for node in self.og.odd_neighbors(corr_set):
-                z_corrections[node].add(corr_node)
-            for node in corr_set - {corr_node}:
-                x_corrections[node].add(corr_node)
+        for corrected_node, correcting_set in self.correction_function.items():
+            for correcting_node in self.og.odd_neighbors(correcting_set) - {corrected_node}:
+                z_corrections[correcting_node].add(corrected_node)
+            for correcting_node in correcting_set - {corrected_node}:
+                x_corrections[correcting_node].add(corrected_node)
 
         return XZCorrections(self.og, x_corrections, z_corrections)
 
 
 @dataclass(frozen=True)
 class CausalFlow(
-    GFlow[_PM]
+    GFlow[_PM], Generic[_PM]
 ):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
     @override
     @classmethod
