@@ -221,38 +221,38 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
         (
             XZCorrectionsTestCase(
                 flow=generate_causal_flow_0(),
-                x_corr={1: {0}, 2: {1}, 3: {2}},
-                z_corr={2: {0}, 3: {1}},
+                x_corr={0: {1}, 1: {2}, 2: {3}},
+                z_corr={0: {2}, 1: {3}},
             ),
             XZCorrectionsTestCase(
                 flow=generate_causal_flow_1(),
-                x_corr={2: {0}, 3: {1}, 4: {2}, 5: {3}},
-                z_corr={3: {0}, 4: {0}, 2: {1}, 5: {1}},
+                x_corr={0: {2}, 1: {3}, 2: {4}, 3: {5}},
+                z_corr={0: {3, 4}, 1: {2, 5}},
             ),
             XZCorrectionsTestCase(
                 flow=generate_gflow_0(),
-                x_corr={2: {0}, 5: {0, 3}, 3: {1}, 4: {1, 2}},
-                z_corr={4: {0}, 5: {1}},
+                x_corr={0: {2, 5}, 1: {3, 4}, 2: {4}, 3: {5}},
+                z_corr={0: {4}, 1: {5}},
             ),
             XZCorrectionsTestCase(
                 flow=generate_gflow_1(),
-                x_corr={3: {0, 2}, 4: {2}},
-                z_corr={1: {2}, 4: {1, 2}},
+                x_corr={0: {3}, 2: {3, 4}},
+                z_corr={1: {4}, 2: {1, 4}},
             ),
             XZCorrectionsTestCase(
                 flow=generate_gflow_2(),
-                x_corr={3: {1, 2}, 4: {0, 1, 2}, 5: {0, 1}},
+                x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}},
                 z_corr={},
             ),
             XZCorrectionsTestCase(
                 flow=generate_pauli_flow_0(),
-                x_corr={3: {0, 2}},
-                z_corr={3: {1}},
+                x_corr={0: {3}, 2: {3}},
+                z_corr={1: {3}},
             ),
             XZCorrectionsTestCase(
                 flow=generate_pauli_flow_1(),
-                x_corr={3: {1}, 6: {3, 4}, 7: {0, 2, 3, 5}},
-                z_corr={6: {1, 2}, 7: {0, 3}},
+                x_corr={0: {7}, 1: {3}, 2: {7}, 3: {6, 7}, 4: {6}, 5: {7}},
+                z_corr={0: {7}, 1: {6}, 2: {6}, 3: {7}},
             ),
         )
     )

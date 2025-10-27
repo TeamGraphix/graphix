@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import product
@@ -31,8 +30,8 @@ TotalOrder = Sequence[int]
 @dataclass(frozen=True)
 class XZCorrections(Generic[_M_co]):
     og: OpenGraph[_M_co]
-    x_corrections: dict[int, set[int]]  # {node: domain}
-    z_corrections: dict[int, set[int]]  # {node: domain}
+    x_corrections: dict[int, set[int]]  # {domain: nodes}
+    z_corrections: dict[int, set[int]]  # {domain: nodes}
 
     def extract_dag(self) -> nx.DiGraph[int]:
         """Extract directed graph induced by the corrections.
@@ -187,16 +186,18 @@ class PauliFlow(Generic[_M_co]):
         This function partially implements Theorem 4 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
         """
         future = self.partial_order_layers[0]
-        x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
-        z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+        x_corrections: dict[int, set[int]] = {}  # {domain: nodes}
+        z_corrections: dict[int, set[int]] = {}  # {domain: nodes}
 
         for layer in self.partial_order_layers[1:]:
-            for corrected_node in layer:
-                correcting_set = self.correction_function[corrected_node]
-                for correcting_node in correcting_set & future:
-                    x_corrections[correcting_node].add(corrected_node)
-                for correcting_node in self.og.odd_neighbors(correcting_set) & future:
-                    z_corrections[correcting_node].add(corrected_node)
+            for measured_node in layer:
+                correcting_set = self.correction_function[measured_node]
+                # Conditionals avoid storing empty correction sets
+                if x_corrected_nodes := correcting_set & future:
+                    x_corrections[measured_node] = x_corrected_nodes
+                if z_corrected_nodes := self.og.odd_neighbors(correcting_set) & future:
+                    z_corrections[measured_node] = z_corrected_nodes
+
             future |= layer
 
         return XZCorrections(self.og, x_corrections, z_corrections)
@@ -275,14 +276,15 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
         - Contrary to the overridden method in the parent class, here we do not need any information on the partial order to build the corrections since a valid correction function :math:`g` guarantees that both :math:`g(i)\setminus \{i\}` and :math:`Odd(g(i))` are in the future of :math:`i`.
         """
-        x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
-        z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+        x_corrections: dict[int, set[int]] = {}  # {domain: nodes}
+        z_corrections: dict[int, set[int]] = {}  # {domain: nodes}
 
-        for corrected_node, correcting_set in self.correction_function.items():
-            for correcting_node in correcting_set - {corrected_node}:
-                x_corrections[correcting_node].add(corrected_node)
-            for correcting_node in self.og.odd_neighbors(correcting_set) - {corrected_node}:
-                z_corrections[correcting_node].add(corrected_node)
+        for measured_node, correcting_set in self.correction_function.items():
+            # Conditionals avoid storing empty correction sets
+            if x_corrected_nodes := correcting_set - {measured_node}:
+                x_corrections[measured_node] = x_corrected_nodes
+            if z_corrected_nodes := self.og.odd_neighbors(correcting_set) - {measured_node}:
+                z_corrections[measured_node] = z_corrected_nodes
 
         return XZCorrections(self.og, x_corrections, z_corrections)
 
@@ -308,14 +310,15 @@ class CausalFlow(
         -----
         This function partially implements Theorem 1 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
         """
-        x_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
-        z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
+        x_corrections: dict[int, set[int]] = {}  # {domain: nodes}
+        z_corrections: dict[int, set[int]] = {}  # {domain: nodes}
 
-        for corrected_node, correcting_set in self.correction_function.items():
-            (correcting_node,) = correcting_set  # Correcting set of a causal flow has one element only.
-            x_corrections[correcting_node].add(corrected_node)
-            for node in self.og.neighbors(correcting_set) - {corrected_node}:
-                z_corrections[node].add(corrected_node)
+        for measured_node, correcting_set in self.correction_function.items():
+            # Conditionals avoid storing empty correction sets
+            if x_corrected_nodes := correcting_set:
+                x_corrections[measured_node] = x_corrected_nodes
+            if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
+                z_corrections[measured_node] = z_corrected_nodes
 
         return XZCorrections(self.og, x_corrections, z_corrections)
 
