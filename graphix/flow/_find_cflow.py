@@ -3,18 +3,18 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING
 
-from graphix.flow.flow import CausalFlow
+from graphix.flow.core import CausalFlow
 from graphix.fundamentals import Plane
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
-    from graphix.opengraph_ import _PM, OpenGraph
+    from graphix.opengraph_ import OpenGraph, _PM_co
 
 # TODO: Up doc strings
 
 
-def find_cflow(og: OpenGraph[_PM]) -> CausalFlow | None:
+def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow | None:
     """Return the causal flow of the input open graph if it exists.
 
     Parameters
@@ -54,7 +54,7 @@ def find_cflow(og: OpenGraph[_PM]) -> CausalFlow | None:
 
 
 def _flow_aux(
-    og: OpenGraph[_PM],
+    og: OpenGraph[_PM_co],
     non_input_nodes: AbstractSet[int],
     corrected_nodes: AbstractSet[int],
     corrector_candidates: AbstractSet[int],

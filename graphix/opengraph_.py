@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from graphix.flow._find_cflow import find_cflow
-from graphix.flow._find_pflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
-from graphix.flow.flow import CausalFlow, GFlow, PauliFlow
+from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
+from graphix.flow.core import CausalFlow, GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 from graphix.measurements import Measurement
 

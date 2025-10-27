@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import networkx as nx
 import pytest
 
-from graphix.flow.flow import CausalFlow, GFlow, PauliFlow
+from graphix.flow.core import CausalFlow, GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph_ import OpenGraph

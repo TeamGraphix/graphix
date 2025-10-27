@@ -13,7 +13,7 @@ import numpy as np
 
 from graphix._linalg import MatGF2
 from graphix.command import E, M, N, X, Z
-from graphix.flow._find_pflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
+from graphix.flow._find_gpflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.pattern import Pattern
 
