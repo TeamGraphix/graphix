@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+## [0.3.3] - 2025-10-23
+
+### Added
+
 - #343: Circuit exporter to OpenQASM3:
   `graphix.qasm3_exporter.circuit_to_qasm3`.
 
