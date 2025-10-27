@@ -23,12 +23,12 @@ if TYPE_CHECKING:
 # Otherwise, shall we define Plane.XY-only open graphs.
 # Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
 
-_M = TypeVar("_M", bound=AbstractMeasurement)
-_PM = TypeVar("_PM", bound=AbstractPlanarMeasurement)
+_M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
+_PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class OpenGraph(Generic[_M]):
+class OpenGraph(Generic[_M_co]):
     """Open graph contains the graph, measurement, and input and output nodes.
 
     This is the graph we wish to implement deterministically.
@@ -54,7 +54,7 @@ class OpenGraph(Generic[_M]):
     """
 
     graph: nx.Graph[int]
-    measurements: Mapping[int, _M]  # TODO: Rename `measurement_labels` ?
+    measurements: Mapping[int, _M_co]  # TODO: Rename `measurement_labels` ?
     input_nodes: list[int]  # Inputs are ordered
     output_nodes: list[int]  # Outputs are ordered
 
@@ -238,10 +238,10 @@ class OpenGraph(Generic[_M]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    def find_causal_flow(self: OpenGraph[_PM]) -> CausalFlow | None:
+    def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow | None:
         return find_cflow(self)
 
-    def find_gflow(self: OpenGraph[_PM]) -> GFlow | None:
+    def find_gflow(self: OpenGraph[_PM_co]) -> GFlow | None:
         aog = PlanarAlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
@@ -250,7 +250,7 @@ class OpenGraph(Generic[_M]):
             correction_matrix
         )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def find_pauli_flow(self: OpenGraph[_M]) -> PauliFlow | None:
+    def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow | None:
         aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:

@@ -229,7 +229,6 @@ class AbstractPlanarMeasurement(AbstractMeasurement):
     def to_plane(self) -> Plane: ...
 
 
-# TODO Conflicts with Enum
 class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     """Axis: *X*, *Y* or *Z*."""
 

@@ -13,7 +13,7 @@ import numpy as np
 
 from graphix._linalg import MatGF2
 from graphix.command import E, M, N, X, Z
-from graphix.flow._find_pflow import _M, _PM, CorrectionMatrix, compute_partial_order_layers
+from graphix.flow._find_pflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.pattern import Pattern
 
@@ -29,8 +29,8 @@ TotalOrder = Sequence[int]
 
 
 @dataclass(frozen=True)
-class XZCorrections(Generic[_M]):
-    og: OpenGraph[_M]
+class XZCorrections(Generic[_M_co]):
+    og: OpenGraph[_M_co]
     x_corrections: dict[int, set[int]]  # {node: domain}
     z_corrections: dict[int, set[int]]  # {node: domain}
 
@@ -160,8 +160,8 @@ class XZCorrections(Generic[_M]):
 
 
 @dataclass(frozen=True)
-class PauliFlow(Generic[_M]):
-    og: OpenGraph[_M]
+class PauliFlow(Generic[_M_co]):
+    og: OpenGraph[_M_co]
     correction_function: Mapping[int, set[int]]
     partial_order_layers: Sequence[AbstractSet[int]]
 
@@ -175,12 +175,12 @@ class PauliFlow(Generic[_M]):
 
         return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
-    def to_corrections(self) -> XZCorrections[_M]:
+    def to_corrections(self) -> XZCorrections[_M_co]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in `self`.
 
         Returns
         -------
-        Corrections[_M]
+        Corrections[_M_co]
 
         Notes
         -----
@@ -191,11 +191,12 @@ class PauliFlow(Generic[_M]):
         z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
 
         for layer in self.partial_order_layers[1:]:
-            for node in layer:
-                corr_set = self.correction_function[node]
-                x_corrections[node].update(corr_set & future)
-                z_corrections[node].update(self.og.odd_neighbors(corr_set) & future)
-
+            for corrected_node in layer:
+                correcting_set = self.correction_function[corrected_node]
+                for correcting_node in correcting_set & future:
+                    x_corrections[correcting_node].add(corrected_node)
+                for correcting_node in self.og.odd_neighbors(correcting_set) & future:
+                    z_corrections[correcting_node].add(corrected_node)
             future |= layer
 
         return XZCorrections(self.og, x_corrections, z_corrections)
@@ -259,9 +260,9 @@ class PauliFlow(Generic[_M]):
 
 
 @dataclass(frozen=True)
-class GFlow(PauliFlow[_PM], Generic[_PM]):
+class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
     @override
-    def to_corrections(self) -> XZCorrections[_PM]:
+    def to_corrections(self) -> XZCorrections[_PM_co]:
         r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
 
         Returns
@@ -278,17 +279,17 @@ class GFlow(PauliFlow[_PM], Generic[_PM]):
         z_corrections: dict[int, set[int]] = defaultdict(set)  # {node: domain}
 
         for corrected_node, correcting_set in self.correction_function.items():
-            for correcting_node in self.og.odd_neighbors(correcting_set) - {corrected_node}:
-                z_corrections[correcting_node].add(corrected_node)
             for correcting_node in correcting_set - {corrected_node}:
                 x_corrections[correcting_node].add(corrected_node)
+            for correcting_node in self.og.odd_neighbors(correcting_set) - {corrected_node}:
+                z_corrections[correcting_node].add(corrected_node)
 
         return XZCorrections(self.og, x_corrections, z_corrections)
 
 
 @dataclass(frozen=True)
 class CausalFlow(
-    GFlow[_PM], Generic[_PM]
+    GFlow[_PM_co], Generic[_PM_co]
 ):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
     @override
     @classmethod
@@ -296,7 +297,7 @@ class CausalFlow(
         raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
-    def to_corrections(self) -> XZCorrections[_PM]:
+    def to_corrections(self) -> XZCorrections[_PM_co]:
         r"""Compute the X and Z corrections induced by the causal flow encoded in `self`.
 
         Returns

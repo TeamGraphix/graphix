@@ -28,11 +28,11 @@ if TYPE_CHECKING:
     from graphix.opengraph_ import OpenGraph
 
 
-_M = TypeVar("_M", bound=AbstractMeasurement)
-_PM = TypeVar("_PM", bound=AbstractPlanarMeasurement)
+_M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
+_PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
-class AlgebraicOpenGraph(Generic[_M]):
+class AlgebraicOpenGraph(Generic[_M_co]):
     """A class for providing an algebraic representation of open graphs as introduced in [1]. In particular, it allows managing the mapping between node labels of the graph and the relevant matrix indices. The flow demand and order demand matrices appear as cached properties.
 
     It reuses the class `:class: graphix.sim.base_backend.NodeIndex` introduced for managing the mapping between node numbers and qubit indices in the internal state of the backend.
@@ -53,7 +53,7 @@ class AlgebraicOpenGraph(Generic[_M]):
     [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
-    def __init__(self, og: OpenGraph[_M]) -> None:
+    def __init__(self, og: OpenGraph[_M_co]) -> None:
         self.og = og
         nodes = set(og.graph.nodes)
 
@@ -153,7 +153,7 @@ class AlgebraicOpenGraph(Generic[_M]):
         return flow_demand_matrix, order_demand_matrix
 
 
-class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM]):
+class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
     @cached_property
     def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct flow-demand and order-demand matrices assuming that the underlying open graph has planar measurements only.
@@ -193,7 +193,7 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM]):
         return flow_demand_matrix, order_demand_matrix
 
 
-class CorrectionMatrix(NamedTuple, Generic[_M]):
+class CorrectionMatrix(NamedTuple, Generic[_M_co]):
     r"""A dataclass to bundle the correction matrix and the open graph to which it refers.
 
     Attributes
@@ -208,13 +208,13 @@ class CorrectionMatrix(NamedTuple, Generic[_M]):
     See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
-    aog: AlgebraicOpenGraph[_M]
+    aog: AlgebraicOpenGraph[_M_co]
     c_matrix: MatGF2
 
     @staticmethod
     def from_correction_function(
-        og: OpenGraph[_M], correction_function: Mapping[int, set[int]]
-    ) -> CorrectionMatrix[_M]:
+        og: OpenGraph[_M_co], correction_function: Mapping[int, set[int]]
+    ) -> CorrectionMatrix[_M_co]:
         r"""Initialise a `CorrectionMatrix` object from a correction function.
 
         Parameters
@@ -266,7 +266,7 @@ class CorrectionMatrix(NamedTuple, Generic[_M]):
         return correction_function
 
 
-def _compute_p_matrix(aog: AlgebraicOpenGraph[_M], nb_matrix: MatGF2) -> MatGF2 | None:
+def _compute_p_matrix(aog: AlgebraicOpenGraph[_M_co], nb_matrix: MatGF2) -> MatGF2 | None:
     r"""Perform the steps 8 - 12 of the general case (larger number of outputs than inputs) algorithm.
 
     Parameters
@@ -317,7 +317,7 @@ def _compute_p_matrix(aog: AlgebraicOpenGraph[_M], nb_matrix: MatGF2) -> MatGF2 
 
 
 def _find_solvable_nodes(
-    aog: AlgebraicOpenGraph[_M],
+    aog: AlgebraicOpenGraph[_M_co],
     kls_matrix: MatGF2,
     non_outputs_set: AbstractSet[int],
     solved_nodes: AbstractSet[int],
@@ -349,7 +349,11 @@ def _find_solvable_nodes(
 
 
 def _update_p_matrix(
-    aog: AlgebraicOpenGraph[_M], kls_matrix: MatGF2, p_matrix: MatGF2, solvable_nodes: AbstractSet[int], n_oi_diff: int
+    aog: AlgebraicOpenGraph[_M_co],
+    kls_matrix: MatGF2,
+    p_matrix: MatGF2,
+    solvable_nodes: AbstractSet[int],
+    n_oi_diff: int,
 ) -> None:
     """Update `p_matrix`.
 
@@ -367,7 +371,7 @@ def _update_p_matrix(
 
 
 def _update_kls_matrix(
-    aog: AlgebraicOpenGraph[_M],
+    aog: AlgebraicOpenGraph[_M_co],
     kls_matrix: MatGF2,
     kils_matrix: MatGF2,
     solvable_nodes: AbstractSet[int],
@@ -463,7 +467,7 @@ def _update_kls_matrix(
 
 
 def _compute_correction_matrix_general_case(
-    aog: AlgebraicOpenGraph[_M], flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2
+    aog: AlgebraicOpenGraph[_M_co], flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2
 ) -> MatGF2 | None:
     r"""Construct the generalized correction matrix :math:`C'C^B` for an open graph with larger number of outputs than inputs.
 
@@ -585,7 +589,7 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
     return generations
 
 
-def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M]) -> list[set[int]] | None:
+def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> list[set[int]] | None:
     r"""Compute the partial order compatible with the correction matrix if it exists.
 
     Parameters
@@ -627,7 +631,7 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M]) -> lis
     return layers
 
 
-def compute_correction_matrix(aog: AlgebraicOpenGraph[_M]) -> CorrectionMatrix[_M] | None:
+def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatrix[_M_co] | None:
     """Return the correction matrix of the input open graph if it exists.
 
     Parameters
@@ -672,4 +676,4 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M]) -> CorrectionMatrix[_
     return CorrectionMatrix(aog, correction_matrix)
 
 
-# TODO: When should inputs be parametrized with `_M` and when with `AbstractMeasurement` ?
+# TODO: When should inputs be parametrized with `_M_co` and when with `AbstractMeasurement` ?
