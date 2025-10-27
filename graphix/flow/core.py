@@ -13,7 +13,6 @@ import numpy as np
 from graphix._linalg import MatGF2
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
-from graphix.fundamentals import Axis, Plane, Sign
 from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
@@ -21,17 +20,74 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
-    from graphix.measurements import ExpressionOrFloat, Measurement
+    from graphix.measurements import Measurement
     from graphix.opengraph_ import OpenGraph
 
 TotalOrder = Sequence[int]
 
 
-@dataclass(frozen=True)
+@dataclass
 class XZCorrections(Generic[_M_co]):
     og: OpenGraph[_M_co]
     x_corrections: dict[int, set[int]]  # {domain: nodes}
     z_corrections: dict[int, set[int]]  # {domain: nodes}
+    _partial_order_layers: Sequence[AbstractSet[int]] | None = None
+    # Often xz-corrections are extracted from a flow whose partial order can be used to construct a pattern from the corrections. We store it to avoid recalculating it twice.
+
+    def to_pattern(
+        self: XZCorrections[Measurement],
+        total_measurement_order: TotalOrder | None = None,
+    ) -> Pattern:
+        # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
+
+        if total_measurement_order is None:
+            total_measurement_order = []
+            # TODO: Compute total measurement order
+            # total_order = list(reversed(list(nx.topological_sort(self.extract_dag()))))
+        elif not self.is_compatible(total_measurement_order):
+            raise ValueError(
+                "The input total order is not compatible with the partial order induced by the correction sets."
+            )
+
+        pattern = Pattern(input_nodes=self.og.input_nodes)
+        non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
+
+        for i in non_input_nodes:
+            pattern.add(N(node=i))
+        for e in self.og.graph.edges:
+            pattern.add(E(nodes=e))
+
+        for measured_node in total_measurement_order:
+
+            measurement = self.og.measurements[measured_node]
+            pattern.add(M(node=measured_node, plane=measurement.plane, angle=measurement.angle))
+
+            for corrected_node in self.z_corrections.get(measured_node, []):
+                pattern.add(Z(node=corrected_node, domain={measured_node}))
+
+            for corrected_node in self.x_corrections.get(measured_node, []):
+                pattern.add(X(node=corrected_node, domain={measured_node}))
+
+        pattern.reorder_output_nodes(self.og.output_nodes)
+        return pattern
+
+    def generate_total_order(self) -> TotalOrder:
+
+        if self._partial_order_layers is None:
+            self._partial_order_layers = self.compute_partial_order_layers()
+
+        return [node for layer in reversed(self._partial_order_layers[1:]) for node in layer]
+
+    def compute_partial_order_layers(self) -> list[set[int]]:
+
+        layers = [set(self.og.output_nodes)]
+        dag = self.extract_dag()
+        try:
+            layers.extend(set(layer) for layer in nx.topological_generations(dag))
+        except nx.NetworkXUnfeasible:
+            raise ValueError("XZ-corrections are not runnable since the induced directed graph contains closed loops.") from nx.NetworkXUnfeasible
+
+        return layers
 
     def extract_dag(self) -> nx.DiGraph[int]:
         """Extract directed graph induced by the corrections.
@@ -39,20 +95,20 @@ class XZCorrections(Generic[_M_co]):
         Returns
         -------
         nx.DiGraph[int]
-            Directed graph in which an edge `i -> j` represents a correction applied to qubit `i`, conditioned on the measurement outcome of qubit `j`.
+            Directed graph in which an edge `i -> j` represents a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
 
         Notes
         -----
         - Not all nodes of the underlying open graph are nodes of the returned directed graph, but only those involved in a correction, either as corrected qubits or belonging to a correction domain.
-        - Despite the name, the output of this method is not guranteed to be a directed acyclical graph (i.e., a directed graph without any loops). This is only the case if the `Corrections` object is well formed, which is verified by the method :func:`Corrections.is_wellformed`.
+        - Despite the name, the output of this method is not guranteed to be a directed acyclical graph (i.e., a directed graph without any loops). This is only the case if the `XZCorrections` object is well formed, which is verified by the method :func:`XZCorrections.is_wellformed`.
         """
         relations: set[tuple[int, int]] = set()
 
-        for node, domain in self.x_corrections.items():
-            relations.update(product([node], domain))
+        for measured_node, corrected_nodes in self.x_corrections.items():
+            relations.update(product([measured_node], corrected_nodes))
 
-        for node, domain in self.z_corrections.items():
-            relations.update(product([node], domain))
+        for measured_node, corrected_nodes in self.z_corrections.items():
+            relations.update(product([measured_node], corrected_nodes))
 
         return nx.DiGraph(relations)
 
@@ -92,70 +148,6 @@ class XZCorrections(Generic[_M_co]):
         # Verify compatibility
         # Verify nodes are in open graph
         return True
-
-    def to_pattern(
-        self: XZCorrections[Measurement],
-        angles: Mapping[int, ExpressionOrFloat | Sign],
-        total_order: TotalOrder | None = None,
-    ) -> Pattern:
-        # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
-
-        # TODO: Do we want to raise an error or just a warning and assign 0 by default ?
-        if not angles.keys() == self.og.measurements.keys():
-            raise ValueError("All measured nodes in the open graph must have an assigned angle label.")
-
-        if total_order is None:
-            total_order = list(reversed(list(nx.topological_sort(self.extract_dag()))))
-        elif not self.is_compatible(total_order):
-            raise ValueError(
-                "The input total order is not compatible with the partial order induced by the correction sets."
-            )
-
-        pattern = Pattern(input_nodes=self.og.input_nodes)
-        non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
-
-        for i in non_input_nodes:
-            pattern.add(N(node=i))
-        for e in self.og.graph.edges:
-            pattern.add(E(nodes=e))
-
-        for node in total_order:
-            if node in self.og.output_nodes:
-                break
-
-            # TODO: the following block is hideous.
-            # Refactor Plane and Axis ?
-            # Abstract class Plane, Plane.XY, .XZ, .YZ subclasses ?
-            # Axis X subclass of Plane.XY, Plane.XZ, etc. ?
-            # Method Axis, Sign -> Plane, angle
-
-            meas_label = self.og.measurements[node]
-            angle_label = angles[node]
-
-            if isinstance(meas_label, Plane):
-                assert not isinstance(angle_label, Sign)
-                pattern.add(M(node=node, plane=meas_label, angle=angle_label))
-            else:
-                assert isinstance(angle_label, Sign)
-                if meas_label == Axis.X:
-                    plane = Plane.XY
-                    angle = 0 if angle_label is Sign.PLUS else 1
-                elif meas_label == Axis.Y:
-                    plane = Plane.XY
-                    angle = 0.5 if angle_label is Sign.PLUS else 1.5
-                elif meas_label == Axis.Z:
-                    plane = Plane.XZ
-                    angle = 0 if angle_label is Sign.PLUS else 1
-
-                pattern.add(M(node=node, plane=plane, angle=angle))
-
-            if node in self.z_corrections:
-                pattern.add(Z(node=node, domain=self.z_corrections[node]))
-            if node in self.x_corrections:
-                pattern.add(X(node=node, domain=self.x_corrections[node]))
-
-        pattern.reorder_output_nodes(self.og.output_nodes)
-        return pattern
 
 
 @dataclass(frozen=True)
