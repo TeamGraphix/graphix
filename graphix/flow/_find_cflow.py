@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 # TODO: Up doc strings
 
 
-def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow | None:
+def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     """Return the causal flow of the input open graph if it exists.
 
     Parameters
@@ -60,7 +60,7 @@ def _flow_aux(
     corrector_candidates: AbstractSet[int],
     cf: dict[int, set[int]],
     layers: list[set[int]],
-) -> CausalFlow | None:
+) -> CausalFlow[_PM_co] | None:
     """Find one layer of the causal flow.
 
     Parameters

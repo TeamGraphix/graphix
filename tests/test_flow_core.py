@@ -228,22 +228,71 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
     test_cases.extend(
         (
             XZCorrectionsTestCase(
-                flow=generate_causal_flow_0(),
-                x_corr={0: {1}, 1: {2}, 2: {3}},
-                z_corr={0: {2}, 1: {3}},
-                pattern=None
+                flow=generate_causal_flow_0(), x_corr={0: {1}, 1: {2}, 2: {3}}, z_corr={0: {2}, 1: {3}}, pattern=None
             ),
             XZCorrectionsTestCase(
                 flow=generate_causal_flow_1(),
                 x_corr={0: {2}, 1: {3}, 2: {4}, 3: {5}},
                 z_corr={0: {3, 4}, 1: {2, 5}},
-                pattern=Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), N(4), N(5), E((0, 2)), E((2, 3)), E((2, 4)), E((3, 1)), E((3, 5)), M(0), Z(3, {0}), Z(4, {0}), X(2, {0}), M(1), Z(2, {1}), Z(5, {1}), X(3, {1}), M(2), X(4, {2}), M(3), X(5, {3})], output_nodes=[4, 5])
+                pattern=Pattern(
+                    input_nodes=[0, 1],
+                    cmds=[
+                        N(2),
+                        N(3),
+                        N(4),
+                        N(5),
+                        E((0, 2)),
+                        E((2, 3)),
+                        E((2, 4)),
+                        E((3, 1)),
+                        E((3, 5)),
+                        M(0),
+                        Z(3, {0}),
+                        Z(4, {0}),
+                        X(2, {0}),
+                        M(1),
+                        Z(2, {1}),
+                        Z(5, {1}),
+                        X(3, {1}),
+                        M(2),
+                        X(4, {2}),
+                        M(3),
+                        X(5, {3}),
+                    ],
+                    output_nodes=[4, 5],
+                ),
             ),
             XZCorrectionsTestCase(
                 flow=generate_gflow_0(),
                 x_corr={0: {2, 5}, 1: {3, 4}, 2: {4}, 3: {5}},
                 z_corr={0: {4}, 1: {5}},
-                pattern=Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), N(4), N(5), E((0, 2)), E((2, 3)), E((2, 4)), E((3, 1)), E((3, 5)), M(0), Z(3, {0}), Z(4, {0}), X(2, {0}), M(1), Z(2, {1}), Z(5, {1}), X(3, {1}), M(2), X(4, {2}), M(3), X(5, {3})], output_nodes=[4, 5]),
+                pattern=Pattern(
+                    input_nodes=[0, 1],
+                    cmds=[
+                        N(2),
+                        N(3),
+                        N(4),
+                        N(5),
+                        E((0, 2)),
+                        E((2, 3)),
+                        E((2, 4)),
+                        E((3, 1)),
+                        E((3, 5)),
+                        M(0),
+                        Z(3, {0}),
+                        Z(4, {0}),
+                        X(2, {0}),
+                        M(1),
+                        Z(2, {1}),
+                        Z(5, {1}),
+                        X(3, {1}),
+                        M(2),
+                        X(4, {2}),
+                        M(3),
+                        X(5, {3}),
+                    ],
+                    output_nodes=[4, 5],
+                ),
             ),
             XZCorrectionsTestCase(
                 flow=generate_gflow_1(),
@@ -252,10 +301,7 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                 pattern=None,
             ),
             XZCorrectionsTestCase(
-                flow=generate_gflow_2(),
-                x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}},
-                z_corr={},
-                pattern=None
+                flow=generate_gflow_2(), x_corr={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}}, z_corr={}, pattern=None
             ),
             XZCorrectionsTestCase(
                 flow=generate_pauli_flow_0(),
@@ -267,7 +313,46 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                 flow=generate_pauli_flow_1(),
                 x_corr={0: {7}, 1: {3}, 2: {7}, 3: {6, 7}, 4: {6}, 5: {7}},
                 z_corr={0: {7}, 1: {6}, 2: {6}, 3: {7}},
-                pattern=Pattern(input_nodes=[0, 1], cmds=[N(2), N(3), N(4), N(5), N(6), N(7), E((0, 2)), E((2, 3)), E((2, 4)), E((1, 3)), E((3, 5)), E((4, 5)), E((4, 6)), E((5, 7)), M(0, angle=0.1), Z(3, {0}), Z(4, {0}), X(2, {0}), M(1, angle=0.1), Z(2, {1}), Z(5, {1}), X(3, {1}), M(2), Z(5, {2}), Z(6, {2}), X(4, {2}), M(3, angle=0.1), Z(4, {3}), Z(7, {3}), X(5, {3}), M(4), X(6, {4}), M(5, angle=0.5), X(7, {5})], output_nodes=[6, 7])
+                pattern=Pattern(
+                    input_nodes=[0, 1],
+                    cmds=[
+                        N(2),
+                        N(3),
+                        N(4),
+                        N(5),
+                        N(6),
+                        N(7),
+                        E((0, 2)),
+                        E((2, 3)),
+                        E((2, 4)),
+                        E((1, 3)),
+                        E((3, 5)),
+                        E((4, 5)),
+                        E((4, 6)),
+                        E((5, 7)),
+                        M(0, angle=0.1),
+                        Z(3, {0}),
+                        Z(4, {0}),
+                        X(2, {0}),
+                        M(1, angle=0.1),
+                        Z(2, {1}),
+                        Z(5, {1}),
+                        X(3, {1}),
+                        M(2),
+                        Z(5, {2}),
+                        Z(6, {2}),
+                        X(4, {2}),
+                        M(3, angle=0.1),
+                        Z(4, {3}),
+                        Z(7, {3}),
+                        X(5, {3}),
+                        M(4),
+                        X(6, {4}),
+                        M(5, angle=0.5),
+                        X(7, {5}),
+                    ],
+                    output_nodes=[6, 7],
+                ),
             ),
         )
     )
@@ -349,9 +434,7 @@ class TestXZCorrections:
             measurements=dict.fromkeys(range(2), Measurement(angle=0, plane=Plane.XY)),
         )
 
-        corrections = XZCorrections.from_measured_nodes_mapping(
-            og=og, x_corrections={1: {0}}
-        )
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={1: {0}})
 
         assert corrections.partial_order_layers == [{2, 3}, {0}, {1}]
         assert corrections.is_compatible([1, 0])
@@ -360,9 +443,4 @@ class TestXZCorrections:
         assert not corrections.is_compatible([0, 0, 1])  # Duplicates
         assert not corrections.is_compatible([1, 0, 2, 3])  # Contains outputs
 
-        assert nx.utils.graphs_equal(
-            corrections.extract_dag(), nx.DiGraph([(1, 0)])
-        )
-
-
-# TODO: add pattern
+        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(1, 0)]))

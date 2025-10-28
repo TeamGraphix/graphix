@@ -240,7 +240,7 @@ class PauliFlow(Generic[_M_co]):
     partial_order_layers: Sequence[AbstractSet[int]]
 
     @classmethod
-    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix) -> Self | None:
+    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
         correction_function = correction_matrix.to_correction_function()
         partial_order_layers = compute_partial_order_layers(correction_matrix)
         if partial_order_layers is None:
@@ -360,7 +360,7 @@ class CausalFlow(
 ):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
     @override
     @classmethod
-    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix) -> None:
+    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
         raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
@@ -403,7 +403,6 @@ def _corrections_to_dag(
 
 
 def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]]:
-
     try:
         topo_gen = reversed(list(nx.topological_generations(dag)))
     except nx.NetworkXUnfeasible:
