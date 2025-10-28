@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import networkx as nx
 import pytest
 
-from graphix.flow.core import CausalFlow, GFlow, PauliFlow
+from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph_ import OpenGraph
@@ -268,5 +268,67 @@ class TestXZCorrections:
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
 
+    def test_order_0(self) -> None:
+        corrections = generate_causal_flow_0().to_corrections()
 
-# TODO: add pattern, add dag, order
+        assert corrections.generate_total_measurement_order() == [0, 1, 2]
+        assert corrections.is_compatible([0, 1, 2])  # Correct order
+        assert not corrections.is_compatible([1, 0, 2])  # Wrong order
+        assert not corrections.is_compatible([1, 2])  # Incomplete order
+        assert not corrections.is_compatible([0, 1, 2, 3])  # Contains outputs
+
+        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2), (1, 2), (2, 3), (1, 3)]))
+
+    def test_order_1(self) -> None:
+        # See `:func: generate_causal_flow_1`
+
+        og = OpenGraph(
+            graph=nx.Graph([(0, 2), (2, 3), (1, 3), (2, 4), (3, 5)]),
+            input_nodes=[0, 1],
+            output_nodes=[4, 5],
+            measurements=dict.fromkeys(range(4), Measurement(angle=0, plane=Plane.XY)),
+        )
+
+        corrections = XZCorrections.from_measured_nodes_mapping(
+            og=og, x_corrections={0: {2}, 1: {3}, 2: {4}, 3: {5}}, z_corrections={0: {3, 4}, 1: {2, 5}}
+        )
+
+        assert corrections.is_compatible([0, 1, 2, 3])
+        assert corrections.is_compatible([1, 0, 2, 3])
+        assert corrections.is_compatible([1, 0, 3, 2])
+        assert not corrections.is_compatible([0, 2, 1, 3])  # Wrong order
+        assert not corrections.is_compatible([1, 0, 3])  # Incomplete order
+        assert not corrections.is_compatible([0, 1, 1, 2, 3])  # Duplicates
+        assert not corrections.is_compatible([0, 1, 2, 3, 4, 5])  # Contains outputs
+
+        assert nx.utils.graphs_equal(
+            corrections.extract_dag(), nx.DiGraph([(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)])
+        )
+
+    def test_order_2(self) -> None:
+        # Incomplete corrections
+
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (1, 3)]),
+            input_nodes=[0],
+            output_nodes=[2, 3],
+            measurements=dict.fromkeys(range(2), Measurement(angle=0, plane=Plane.XY)),
+        )
+
+        corrections = XZCorrections.from_measured_nodes_mapping(
+            og=og, x_corrections={1: {0}}
+        )
+
+        assert corrections.partial_order_layers == [{2, 3}, {0}, {1}]
+        assert corrections.is_compatible([1, 0])
+        assert not corrections.is_compatible([0, 1])  # Wrong order
+        assert not corrections.is_compatible([0])  # Incomplete order
+        assert not corrections.is_compatible([0, 0, 1])  # Duplicates
+        assert not corrections.is_compatible([1, 0, 2, 3])  # Contains outputs
+
+        assert nx.utils.graphs_equal(
+            corrections.extract_dag(), nx.DiGraph([(1, 0)])
+        )
+
+
+# TODO: add pattern

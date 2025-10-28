@@ -9,7 +9,6 @@ This module tests the following:
 The second part of the flow-finding algorithm (namely, verifying if the correction matrix is compatible with a DAG) is not done in this test module. For a complete test on the flow-finding algorithms see `tests.test_opengraph.py`.
 """
 
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple

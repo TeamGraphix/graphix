@@ -26,27 +26,79 @@ if TYPE_CHECKING:
 TotalOrder = Sequence[int]
 
 
-@dataclass
+@dataclass(frozen=True)
 class XZCorrections(Generic[_M_co]):
     og: OpenGraph[_M_co]
-    x_corrections: dict[int, set[int]]  # {domain: nodes}
-    z_corrections: dict[int, set[int]]  # {domain: nodes}
-    _partial_order_layers: Sequence[AbstractSet[int]] | None = None
-    # Often xz-corrections are extracted from a flow whose partial order can be used to construct a pattern from the corrections. We store it to avoid recalculating it twice.
+    x_corrections: Mapping[int, AbstractSet[int]]  # {domain: nodes}
+    z_corrections: Mapping[int, AbstractSet[int]]  # {domain: nodes}
+    partial_order_layers: Sequence[AbstractSet[int]]
+    # Often XZ-corrections are extracted from a flow whose partial order can be used to construct a pattern from the corrections. We store it to avoid recalculating it twice.
+
+    @staticmethod
+    def from_measured_nodes_mapping(
+        og: OpenGraph[_M_co],
+        x_corrections: Mapping[int, AbstractSet[int]] | None = None,
+        z_corrections: Mapping[int, AbstractSet[int]] | None = None,
+    ) -> XZCorrections[_M_co]:
+        """Create an `XZCorrections` instance from the XZ-corrections mappings.
+
+        Parameters
+        ----------
+        og : OpenGraph[_M_co]
+            Open graph with respect to which the corrections are defined.
+        x_corrections : Mapping[int, AbstractSet[int]] | None
+            Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
+        z_corrections : Mapping[int, AbstractSet[int]] | None
+            Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
+
+        Returns
+        -------
+        XZCorrections[_M_co]
+
+        Notes
+        -----
+        This method computes the partial order induced by the XZ-corrections.
+        """
+        x_corrections = x_corrections or {}
+        z_corrections = z_corrections or {}
+
+        nodes_set = set(og.graph.nodes)
+        outputs_set = set(og.output_nodes)
+        non_outputs_set = nodes_set - outputs_set
+
+        if not set(x_corrections).issubset(non_outputs_set):
+            raise ValueError("Keys of input X-corrections contain non-measured nodes.")
+        if not set(z_corrections).issubset(non_outputs_set):
+            raise ValueError("Keys of input Z-corrections contain non-measured nodes.")
+
+        dag = _corrections_to_dag(x_corrections, z_corrections)
+        partial_order_layers = _dag_to_partial_order_layers(dag)
+
+        # The first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes.
+        # The first element in `XZCorrections.partial_order_layers` should contain all output nodes.
+
+        shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
+        partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
+
+        ordered_nodes = {node for layer in partial_order_layers for node in layer}
+        if not ordered_nodes.issubset(nodes_set):
+            raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
+
+        # We append to the last layer (first measured nodes) all the non-output nodes not involved in the corrections
+        if unordered_nodes := nodes_set - ordered_nodes:
+            partial_order_layers.append(unordered_nodes)
+
+        return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
     def to_pattern(
         self: XZCorrections[Measurement],
         total_measurement_order: TotalOrder | None = None,
     ) -> Pattern:
-        # TODO: Should we verify thar corrections are well formed ? If we did so, and the total order is inferred from the corrections, we are doing a topological sort twice
-
         if total_measurement_order is None:
-            total_measurement_order = []
-            # TODO: Compute total measurement order
-            # total_order = list(reversed(list(nx.topological_sort(self.extract_dag()))))
+            total_measurement_order = self.generate_total_measurement_order()
         elif not self.is_compatible(total_measurement_order):
             raise ValueError(
-                "The input total order is not compatible with the partial order induced by the correction sets."
+                "The input total measurement order is not compatible with the partial order induced by the correction sets."
             )
 
         pattern = Pattern(input_nodes=self.og.input_nodes)
@@ -58,7 +110,6 @@ class XZCorrections(Generic[_M_co]):
             pattern.add(E(nodes=e))
 
         for measured_node in total_measurement_order:
-
             measurement = self.og.measurements[measured_node]
             pattern.add(M(node=measured_node, plane=measurement.plane, angle=measurement.angle))
 
@@ -71,26 +122,20 @@ class XZCorrections(Generic[_M_co]):
         pattern.reorder_output_nodes(self.og.output_nodes)
         return pattern
 
-    def generate_total_order(self) -> TotalOrder:
+    def generate_total_measurement_order(self) -> TotalOrder:
+        """Generate a sequence of all the non-output nodes in the open graph in an arbitrary order compatible with the intrinsic partial order of the XZ-corrections.
 
-        if self._partial_order_layers is None:
-            self._partial_order_layers = self.compute_partial_order_layers()
+        Returns
+        -------
+        TotalOrder
+        """
+        total_order = [node for layer in reversed(self.partial_order_layers[1:]) for node in layer]
 
-        return [node for layer in reversed(self._partial_order_layers[1:]) for node in layer]
-
-    def compute_partial_order_layers(self) -> list[set[int]]:
-
-        layers = [set(self.og.output_nodes)]
-        dag = self.extract_dag()
-        try:
-            layers.extend(set(layer) for layer in nx.topological_generations(dag))
-        except nx.NetworkXUnfeasible:
-            raise ValueError("XZ-corrections are not runnable since the induced directed graph contains closed loops.") from nx.NetworkXUnfeasible
-
-        return layers
+        assert set(total_order) == set(self.og.graph.nodes) - set(self.og.output_nodes)
+        return total_order
 
     def extract_dag(self) -> nx.DiGraph[int]:
-        """Extract directed graph induced by the corrections.
+        """Extract the directed graph induced by the corrections.
 
         Returns
         -------
@@ -102,52 +147,74 @@ class XZCorrections(Generic[_M_co]):
         - Not all nodes of the underlying open graph are nodes of the returned directed graph, but only those involved in a correction, either as corrected qubits or belonging to a correction domain.
         - Despite the name, the output of this method is not guranteed to be a directed acyclical graph (i.e., a directed graph without any loops). This is only the case if the `XZCorrections` object is well formed, which is verified by the method :func:`XZCorrections.is_wellformed`.
         """
-        relations: set[tuple[int, int]] = set()
+        return _corrections_to_dag(self.x_corrections, self.z_corrections)
 
-        for measured_node, corrected_nodes in self.x_corrections.items():
-            relations.update(product([measured_node], corrected_nodes))
+    def is_compatible(self, total_measurement_order: TotalOrder) -> bool:
+        """Verify if a given total measurement order is compatible with the intrisic partial order of the XZ-corrections.
 
-        for measured_node, corrected_nodes in self.z_corrections.items():
-            relations.update(product([measured_node], corrected_nodes))
-
-        return nx.DiGraph(relations)
-
-    def is_wellformed(self) -> bool:
-        """Verify if `Corrections` object is well formed.
+        Parameters
+        ----------
+        total_measurement_order: TotalOrder
+            An ordered sequence of all the non-output nodes in the open graph.
 
         Returns
         -------
         bool
-            `True` if `self` is well formed, `False` otherwise.
-
-        Notes
-        -----
-        This method verifies that:
-            - Corrected nodes belong to the underlying open graph.
-            - Nodes in domain set are measured.
-            - Corrections are runnable. This amounts to verifying that the corrections-induced directed graph does not have loops.
+            `True` if `total_measurement_order` is compatible with `self.partial_order_layers`, `False` otherwise.
         """
-        for corr_type in ["X", "Z"]:
-            corrections = getattr(self, f"{corr_type.lower()}_corrections")
-            for node, domain in corrections.items():
-                if node not in self.og.graph.nodes:
-                    print(
-                        f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph."
-                    )
-                    return False
-                if not domain.issubset(self.og.measurements):
-                    print(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
-                    return False
-        if nx.is_directed_acyclic_graph(self.extract_dag()):
-            print("Corrections are not runnable since the induced directed graph contains cycles.")
+        non_outputs_set = set(self.og.graph.nodes) - set(self.og.output_nodes)
+
+        if set(total_measurement_order) != non_outputs_set:
+            print("The input total measurement order does not contain all non-output nodes.")
             return False
 
+        if len(total_measurement_order) != len(non_outputs_set):
+            print("The input total measurement order contains duplicates.")
+            return False
+
+        layer = len(self.partial_order_layers) - 1  # First layer to be measured.
+
+        for node in total_measurement_order:
+            while True:
+                if node in self.partial_order_layers[layer]:
+                    break
+                layer -= 1
+                if layer == 0:  # Layer 0 only contains output nodes.
+                    return False
+
         return True
 
-    def is_compatible(self, total_order: TotalOrder) -> bool:
-        # Verify compatibility
-        # Verify nodes are in open graph
-        return True
+    # def is_wellformed(self) -> bool:
+    #     """Verify if `Corrections` object is well formed.
+
+    #     Returns
+    #     -------
+    #     bool
+    #         `True` if `self` is well formed, `False` otherwise.
+
+    #     Notes
+    #     -----
+    #     This method verifies that:
+    #         - Corrected nodes belong to the underlying open graph.
+    #         - Nodes in domain set are measured.
+    #         - Corrections are runnable. This amounts to verifying that the corrections-induced directed graph does not have loops.
+    #     """
+    #     for corr_type in ["X", "Z"]:
+    #         corrections = getattr(self, f"{corr_type.lower()}_corrections")
+    #         for node, domain in corrections.items():
+    #             if node not in self.og.graph.nodes:
+    #                 print(
+    #                     f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph."
+    #                 )
+    #                 return False
+    #             if not domain.issubset(self.og.measurements):
+    #                 print(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
+    #                 return False
+    #     if nx.is_directed_acyclic_graph(self.extract_dag()):
+    #         print("Corrections are not runnable since the induced directed graph contains cycles.")
+    #         return False
+
+    #     return True
 
 
 @dataclass(frozen=True)
@@ -156,7 +223,6 @@ class PauliFlow(Generic[_M_co]):
     correction_function: Mapping[int, set[int]]
     partial_order_layers: Sequence[AbstractSet[int]]
 
-    # TODO: Add parametric dependence of AlgebraicOpenGraph
     @classmethod
     def from_correction_matrix(cls, correction_matrix: CorrectionMatrix) -> Self | None:
         correction_function = correction_matrix.to_correction_function()
@@ -192,7 +258,7 @@ class PauliFlow(Generic[_M_co]):
 
             future |= layer
 
-        return XZCorrections(self.og, x_corrections, z_corrections)
+        return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
     def is_well_formed(self) -> bool:
         r"""Verify if flow object is well formed.
@@ -242,15 +308,6 @@ class PauliFlow(Generic[_M_co]):
 
         return True
 
-    # TODO: for compatibility with previous encoding of layers.
-    # def node_layer_mapping(self) -> dict[int, int]:
-    #     """Return layers in the form `{node: layer}`."""
-    #     mapping: dict[int, int] = {}
-    #     for layer, nodes in self.layers.items():
-    #         mapping.update(dict.fromkeys(nodes, layer))
-
-    #     return mapping
-
 
 @dataclass(frozen=True)
 class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
@@ -278,7 +335,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
             if z_corrected_nodes := self.og.odd_neighbors(correcting_set) - {measured_node}:
                 z_corrections[measured_node] = z_corrected_nodes
 
-        return XZCorrections(self.og, x_corrections, z_corrections)
+        return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
 
 @dataclass(frozen=True)
@@ -312,7 +369,33 @@ class CausalFlow(
             if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
                 z_corrections[measured_node] = z_corrected_nodes
 
-        return XZCorrections(self.og, x_corrections, z_corrections)
+        return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+
+def _corrections_to_dag(
+    x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
+) -> nx.DiGraph[int]:
+    relations: set[tuple[int, int]] = set()
+
+    for measured_node, corrected_nodes in x_corrections.items():
+        relations.update(product([measured_node], corrected_nodes))
+
+    for measured_node, corrected_nodes in z_corrections.items():
+        relations.update(product([measured_node], corrected_nodes))
+
+    return nx.DiGraph(relations)
+
+
+def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]]:
+
+    try:
+        topo_gen = reversed(list(nx.topological_generations(dag)))
+    except nx.NetworkXUnfeasible:
+        raise ValueError(
+            "XZ-corrections are not runnable since the induced directed graph contains closed loops."
+        ) from nx.NetworkXUnfeasible
+
+    return [set(layer) for layer in topo_gen]
 
 
 ###########
