@@ -94,11 +94,27 @@ class XZCorrections(Generic[_M_co]):
         self: XZCorrections[Measurement],
         total_measurement_order: TotalOrder | None = None,
     ) -> Pattern:
+        """Generate a unique pattern from an instance of `XZCorrections[Measurement]`.
+
+        Parameters
+        ----------
+        total_measurement_order : TotalOrder | None
+            Ordered sequence of all the non-output nodes in the open graph indicating the measurement order. This parameter must be compatible with the partial order induced by the XZ-corrections.
+            Optional, defaults to `None`. If `None` an arbitrary total order compatible with `self.partial_order_layers` is generated.
+
+        Returns
+        -------
+        Pattern
+
+        Notes
+        -----
+        The resulting pattern is guaranteed to be runnable if the `XZCorrections` object is well formed, but does not need to be deterministic. It will be deterministic if the XZ-corrections were inferred from a flow. In this case, this routine follows the recipe in Theorems 1, 2 and 4 of Browne et al., NJP 9, 250 (2007).
+        """
         if total_measurement_order is None:
             total_measurement_order = self.generate_total_measurement_order()
         elif not self.is_compatible(total_measurement_order):
             raise ValueError(
-                "The input total measurement order is not compatible with the partial order induced by the correction sets."
+                "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
             )
 
         pattern = Pattern(input_nodes=self.og.input_nodes)
