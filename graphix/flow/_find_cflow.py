@@ -34,7 +34,11 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
 
     Notes
     -----
-    See Definition 2, Theorem 1 and Algorithm 1 in Mhalla and Perdrix, Finding Optimal Flows Efficiently, 2008 (arXiv:0709.2670).
+    See Definition 2, Theorem 1 and Algorithm 1 in Ref. [1].
+
+    References
+    ----------
+    [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
     """
     for measurement in og.measurements.values():
         if measurement.to_plane() in {Plane.XZ, Plane.YZ}:
