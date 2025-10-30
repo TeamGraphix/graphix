@@ -1,7 +1,7 @@
 """Pauli flow finding algorithm.
 
 This module implements the algorithm presented in [1]. For a given labelled open graph (G, I, O, meas_plane), this algorithm finds a maximally delayed Pauli flow [2] in polynomial time with the number of nodes, :math:`O(N^3)`.
-If the input graph does not have Pauli measurements, the algorithm returns a general flow (gflow) if it exists by definition.
+If the input graph does not have Pauli measurements, the algorithm returns a generalised flow (gflow) if it exists by definition.
 
 References
 ----------
@@ -33,7 +33,7 @@ _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 class AlgebraicOpenGraph(Generic[_M_co]):
-    """A class for providing an algebraic representation of open graphs as introduced in [1]. In particular, it allows managing the mapping between node labels of the graph and the relevant matrix indices. The flow demand and order demand matrices appear as cached properties.
+    """A class for providing an algebraic representation of open graphs as introduced in [1]. In particular, it allows managing the mapping between node labels of the graph and the relevant matrix indices. The flow-demand and order-demand matrices are cached properties.
 
     It reuses the class `:class: graphix.sim.base_backend.NodeIndex` introduced for managing the mapping between node numbers and qubit indices in the internal state of the backend.
 
@@ -46,7 +46,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
     Notes
     -----
-    At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the P matrix more efficiently in the `:func: _compute_correction_matrix_general` routine.
+    At initialization, `non_outputs_optim` is a copy of `non_outputs`. The nodes corresponding to zero-rows of the order-demand matrix are removed for calculating the :math:`P` matrix more efficiently in the `:func: _compute_correction_matrix_general` routine.
 
     References
     ----------
@@ -54,6 +54,13 @@ class AlgebraicOpenGraph(Generic[_M_co]):
     """
 
     def __init__(self, og: OpenGraph[_M_co]) -> None:
+        """Initialize AlgebraicOpenGraph objects.
+
+        Parameters
+        ----------
+        og : OpenGraph[_M_co]
+            The open graph in its standard representation.
+        """
         self.og = og
         nodes = set(og.graph.nodes)
 
@@ -73,19 +80,36 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
     @property
     def flow_demand_matrix(self) -> MatGF2:
+        """Return the flow-demand matrix.
+
+        Returns
+        -------
+        MatGF2
+            Flow-demand matrix
+
+        Notes
+        -----
+        See Definition 3.4 and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
         return self._compute_og_matrices[0]
 
     @property
     def order_demand_matrix(self) -> MatGF2:
+        """Return the flow-demand matrix.
+
+        Returns
+        -------
+        MatGF2
+            Order-demand matrix
+
+        Notes
+        -----
+        See Definition 3.5 and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
         return self._compute_og_matrices[1]
 
     def _compute_reduced_adj(self) -> MatGF2:
-        r"""Return the reduced adjacency matrix (RAdj) of the input open graph.
-
-        Parameters
-        ----------
-        aog : AlgebraicOpenGraph
-            Open graph whose RAdj is computed.
+        r"""Return the reduced adjacency matrix (RAdj) of the open graph.
 
         Returns
         -------
@@ -116,7 +140,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
     @cached_property
     def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
-        r"""Construct flow-demand and order-demand matrices.
+        r"""Construct the flow-demand and order-demand matrices.
 
         Returns
         -------
@@ -125,7 +149,8 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
         Notes
         -----
-        See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        - Measurements with a Pauli angle are intepreted as `Axis` instances.
+        - See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
         flow_demand_matrix = self._compute_reduced_adj()
         order_demand_matrix = flow_demand_matrix.copy()
@@ -154,6 +179,12 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
 
 class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
+    """A subclass of `AlgebraicOpenGraph`.
+
+    This class differs from its parent class only in that Pauli measurements are interpreted as `Plane` instances (instead of `Axis`) when constructing the flow-demand and order-demand matrices. This allows to verify if open graphs with measurements along Pauli angles interpreted as planes have generalised flow.
+
+    """
+
     @cached_property
     def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct flow-demand and order-demand matrices assuming that the underlying open graph has planar measurements only.
@@ -165,7 +196,8 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
 
         Notes
         -----
-        See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        - Measurements with a Pauli angle are intepreted as `Plane` instances.
+        - See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
         flow_demand_matrix = self._compute_reduced_adj()
         order_demand_matrix = flow_demand_matrix.copy()
@@ -194,7 +226,7 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
 
 
 class CorrectionMatrix(NamedTuple, Generic[_M_co]):
-    r"""A dataclass to bundle the correction matrix and the open graph to which it refers.
+    r"""A dataclass to bundle the correction matrix and its associated open graph.
 
     Attributes
     ----------
@@ -211,6 +243,7 @@ class CorrectionMatrix(NamedTuple, Generic[_M_co]):
     aog: AlgebraicOpenGraph[_M_co]
     c_matrix: MatGF2
 
+    # TODO this method is not tested yet
     @staticmethod
     def from_correction_function(
         og: OpenGraph[_M_co], correction_function: Mapping[int, set[int]]
@@ -219,23 +252,23 @@ class CorrectionMatrix(NamedTuple, Generic[_M_co]):
 
         Parameters
         ----------
-        og : OpenGraph
+        og : OpenGraph[_M_co]
             The open graph relative to which the correction function is defined.
         correction_function : dict[int, set[int]]
             Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
 
         Returns
         -------
-        c_matrix : MatGF2
-            Matrix encoding the correction function.
+        CorrectionMatrix[_M_co]
+            Algebraic representation of the correction function.
 
         Notes
         -----
-        This function is not required to find a Pauli (or generalised) flow on an open graph but is a useful auxiliary method to verify the validity of a flow encoded in a correction function.
+        This function is not required to find a Pauli (or generalised) flow on an open graph but is an auxiliary method to initialize a flow from a correction function.
         """
         aog = AlgebraicOpenGraph(
             og
-        )  # TODO: Is it a problem that we instatiate an AOGPauliFlow, regardless of the type of og ?
+        )  # TODO: Is it a problem that we instatiate an AlgebraicOpenGraph (instead of Planar...), regardless of the type of og ?
         row_tags = aog.non_inputs
         col_tags = aog.non_outputs
 
@@ -594,10 +627,8 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
 
     Parameters
     ----------
-    aog : AlgebraicOpenGraph
-        Open graph whose Pauli flow is calculated.
-    correction_matrix : MatGF2
-        Matrix encoding the correction function.
+    correction_matrix : CorrectionMatrix[_M_co]
+        Algebraic representation of the correction function.
 
     Returns
     -------
@@ -605,9 +636,7 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
         Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer 0 are the "largest" nodes in the partial order.
 
     or `None`
-        If the correction matrix is not compatible with a partial order on the the open graph,
-
-        if the ordering matrix is not a DAG, in which case the input open graph does not have Pauli flow.
+        If the correction matrix is not compatible with a partial order on the the open graph, in which case the associated ordering matrix is not a DAG. In the context of the flow-finding algorithm, this means that the input open graph does not have Pauli (or generalised) flow.
 
     Notes
     -----
@@ -636,24 +665,22 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatri
 
     Parameters
     ----------
-    og : OpenGraph
-        Open graph whose correction matrix is calculated.
+    aog : AlgebraicOpenGraph[_M_co]
+        Algberaic representation of the open graph whose correction matrix is calculated.
 
     Returns
     -------
-    aog : AlgebraicOpenGraph
-        Algebraic representation of the open graph. This object encodes the mapping between the node labels in the input open graph and the row and column indices of the returned correction matrix
-    correction_matrix : MatGF2
-        Matrix encoding the correction function.
+    correction_matrix : CorrectionMatrix[_M_co]
+        Algebraic representation of the correction function.
 
     or `None`
         if the input open graph does not have Pauli (or generalised) flow.
 
     Notes
     -----
-    - In the case of open graphs with equal number of inputs and outputs, the function only returns `None` when the flow-demand matrix is not invertible (meaning that `aog` does not have Pauli flow). The additional condition for the existence of Pauli flow that the ordering matrix :math:`NC` must encode a directed acyclic graph (DAG) is verified by :func:`compute_partial_order`, which is called from the `graphix.flow.flow.PauliFlow` constructor.
+    - In the case of open graphs with equal number of inputs and outputs, the function only returns `None` when the flow-demand matrix is not invertible (meaning that `aog` does not have Pauli flow). The additional condition for the existence of Pauli flow that the ordering matrix :math:`NC` must encode a directed acyclic graph (DAG) is verified by :func:`compute_partial_order`, which is called from the `graphix.flow.core.PauliFlow` constructor.
 
-    See Definitions 3.4, 3.5 and 3.6, Theorems 3.1, 4.2 and 4.4, and Algorithms 2 and 3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+    - See Definitions 3.4, 3.5 and 3.6, Theorems 3.1, 4.2 and 4.4, and Algorithms 2 and 3 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
     ni = len(aog.og.input_nodes)
     no = len(aog.og.output_nodes)
@@ -674,6 +701,3 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatri
         return None
 
     return CorrectionMatrix(aog, correction_matrix)
-
-
-# TODO: When should inputs be parametrized with `_M_co` and when with `AbstractMeasurement` ?
