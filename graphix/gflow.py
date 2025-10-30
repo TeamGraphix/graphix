@@ -282,7 +282,7 @@ def find_pauliflow(
     return pf[0], pf[1]
 
 
-def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
+def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Check if the pattern has a valid flow. If so, return the flow and layers.
 
     Parameters
@@ -292,9 +292,11 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
 
     Returns
     -------
-    f: dict
+    None, None:
+        The tuple ``(None, None)`` is returned if the pattern does not have a valid causal flow.
+    f: dict[int, set[int]]
         flow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
-    l_k: dict
+    l_k: dict[int, int]
         layers obtained by flow algorithm. l_k[d] is a node set of depth d.
     """
     if not pattern.is_standard(strict=True):
@@ -332,7 +334,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     return None, None
 
 
-def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]]:
+def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, int]] | tuple[None, None]:
     """Check if the pattern has a valid gflow. If so, return the gflow and layers.
 
     Parameters
@@ -342,9 +344,11 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
 
     Returns
     -------
-    g: dict
+    None, None:
+        The tuple ``(None, None)`` is returned if the pattern does not have a valid gflow.
+    g: dict[int, set[int]]
         gflow function. g[i] is the set of qubits to be corrected for the measurement of qubit i.
-    l_k: dict
+    l_k: dict[int, int]
         layers obtained by gflow algorithm. l_k[d] is a node set of depth d.
     """
     if not pattern.is_standard(strict=True):
@@ -404,9 +408,11 @@ def pauliflow_from_pattern(
 
     Returns
     -------
-    p: dict
+    None, None:
+        The tuple ``(None, None)`` is returned if the pattern does not have a valid Pauli flow.
+    p: dict[int, set[int]]
         Pauli flow function. p[i] is the set of qubits to be corrected for the measurement of qubit i.
-    l_k: dict
+    l_k: dict[int, int]
         layers obtained by Pauli flow algorithm. l_k[d] is a node set of depth d.
     """
     if not pattern.is_standard(strict=True):

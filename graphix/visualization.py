@@ -16,6 +16,8 @@ from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Hashable, Iterable, Mapping, Sequence
+    from collections.abc import Set as AbstractSet
+    from pathlib import Path
     from typing import TypeAlias, TypeVar
 
     import numpy.typing as npt
@@ -83,7 +85,7 @@ class GraphVisualizer:
         self.v_in = v_in
         self.v_out = v_out
         if meas_plane is None:
-            self.meas_planes = dict.fromkeys(iter(g.nodes), Plane.XY)
+            self.meas_planes = dict.fromkeys(g.nodes - set(v_out), Plane.XY)
         else:
             self.meas_planes = dict(meas_plane)
         self.meas_angles = meas_angles
@@ -97,8 +99,7 @@ class GraphVisualizer:
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
-        save: bool = False,
-        filename: str | None = None,
+        filename: Path | None = None,
     ) -> None:
         """
         Visualize the graph with flow or gflow structure.
@@ -122,52 +123,40 @@ class GraphVisualizer:
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
-        save : bool
-            If True, the plot is saved as a png file.
-        filename : str
-            Filename of the saved plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
         """
         f, l_k = gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
         if f is not None and l_k is not None:
             print("Flow detected in the graph.")
-            self.visualize_w_flow(
-                f,
-                l_k,
-                show_pauli_measurement,
-                show_local_clifford,
-                show_measurement_planes,
-                node_distance,
-                figsize,
-                save,
-                filename,
-            )
+            pos = self.get_pos_from_flow(f, l_k)
+            edge_path, arrow_path = self.get_edge_path(f, pos)
         else:
             g, l_k = gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
             if g is not None and l_k is not None:
                 print("Gflow detected in the graph. (flow not detected)")
-                self.visualize_w_gflow(
-                    g,
-                    l_k,
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    show_loop,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
+                pos = self.get_pos_from_gflow(g, l_k)
+                edge_path, arrow_path = self.get_edge_path(g, pos)
             else:
                 print("No flow or gflow detected in the graph.")
-                self.visualize_wo_structure(
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
+                pos = self.get_pos_wo_structure()
+                edge_path = self.get_edge_path_wo_structure(pos)
+                arrow_path = None
+        self.visualize_graph(
+            pos,
+            edge_path,
+            arrow_path,
+            l_k,
+            None,
+            show_pauli_measurement,
+            show_local_clifford,
+            show_measurement_planes,
+            show_loop,
+            node_distance,
+            figsize,
+            filename,
+        )
 
     def visualize_from_pattern(
         self,
@@ -178,8 +167,7 @@ class GraphVisualizer:
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
-        save: bool = False,
-        filename: str | None = None,
+        filename: Path | None = None,
     ) -> None:
         """
         Visualize the graph with flow or gflow structure found from the given pattern.
@@ -204,41 +192,23 @@ class GraphVisualizer:
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
-        save : bool
-            If True, the plot is saved as a png file.
-        filename : str
-            Filename of the saved plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
         """
         f, l_k = gflow.flow_from_pattern(pattern)  # try flow
-        if f:
+        if f is not None and l_k is not None:
             print("The pattern is consistent with flow structure.")
-            self.visualize_w_flow(
-                f,
-                l_k,
-                show_pauli_measurement,
-                show_local_clifford,
-                show_measurement_planes,
-                node_distance,
-                figsize,
-                save,
-                filename,
-            )
+            pos = self.get_pos_from_flow(f, l_k)
+            edge_path, arrow_path = self.get_edge_path(f, pos)
+            corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None = None
         else:
             g, l_k = gflow.gflow_from_pattern(pattern)  # try gflow
-            if g:
+            if g is not None and l_k is not None:
                 print("The pattern is consistent with gflow structure. (not with flow)")
-                self.visualize_w_gflow(
-                    g,
-                    l_k,
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    show_loop,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
+                pos = self.get_pos_from_gflow(g, l_k)
+                edge_path, arrow_path = self.get_edge_path(g, pos)
+                corrections = None
             else:
                 print("The pattern is not consistent with flow or gflow structure.")
                 depth, layers = pattern.get_layers()
@@ -246,123 +216,29 @@ class GraphVisualizer:
                 for output in pattern.output_nodes:
                     unfolded_layers[output] = depth + 1
                 xflow, zflow = gflow.get_corrections_from_pattern(pattern)
-                self.visualize_all_correction(
-                    unfolded_layers,
-                    xflow,
-                    zflow,
-                    show_pauli_measurement,
-                    show_local_clifford,
-                    show_measurement_planes,
-                    node_distance,
-                    figsize,
-                    save,
-                    filename,
-                )
-
-    def visualize_w_flow(
-        self,
-        f: Mapping[int, set[int]],
-        l_k: Mapping[int, int],
-        show_pauli_measurement: bool = True,
-        show_local_clifford: bool = False,
-        show_measurement_planes: bool = False,
-        node_distance: tuple[float, float] = (1, 1),
-        figsize: _Point | None = None,
-        save: bool = False,
-        filename: str | None = None,
-    ) -> None:
-        """
-        Visualizes the graph with flow structure.
-
-        Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
-        or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
-        different layers of the graph. This function does not return anything but plots the graph
-        using matplotlib's pyplot.
-
-        Parameters
-        ----------
-        f : dict
-            flow mapping.
-        l_k : dict
-            Layer mapping.
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, the measurement planes are displayed adjacent to the nodes.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        save : bool
-            If True, the plot is saved.
-        filename : str
-            Filename of the saved plot.
-        """
-        if figsize is None:
-            figsize = self.get_figsize(l_k, node_distance=node_distance)
-        plt.figure(figsize=figsize)
-        pos = self.get_pos_from_flow(f, l_k)
-
-        edge_path, arrow_path = self.get_edge_path(f, pos)
-
-        for edge in edge_path:
-            if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
-            else:
-                curve = self._bezier_curve_linspace(edge_path[edge])
-                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
-
-        for arrow, path in arrow_path.items():
-            if len(path) == 2:
-                nx.draw_networkx_edges(
-                    self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
-                )
-            else:
-                GraphVisualizer._shorten_path(path)
-                curve = self._bezier_curve_linspace(path)
-
-                plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
-                plt.annotate(
-                    "",
-                    xy=curve[-1],
-                    xytext=curve[-2],
-                    arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
-                )
-
-        self.__draw_nodes_role(pos, show_pauli_measurement)
-
-        if show_local_clifford:
-            self.__draw_local_clifford(pos)
-
-        if show_measurement_planes:
-            self.__draw_measurement_planes(pos)
-
-        self._draw_labels(pos)
-
-        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
-        x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
-        y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
-        y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
-
-        # Draw the vertical lines to separate different layers
-        for layer in range(min(l_k.values()), max(l_k.values())):
-            plt.axvline(
-                x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
-            )  # Draw line between layers
-        for layer in range(min(l_k.values()), max(l_k.values()) + 1):
-            plt.text(
-                layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
-            )  # Add layer label at bottom
-
-        plt.xlim(
-            x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
-        )  # Add some padding to the left and right
-        plt.ylim(y_min - 1, y_max + 0.5)  # Add some padding to the top and bottom
-        if save:
-            plt.savefig(filename)
-        plt.show()
+                xzflow: dict[int, set[int]] = deepcopy(xflow)
+                for key, value in zflow.items():
+                    if key in xzflow:
+                        xzflow[key] |= value
+                    else:
+                        xzflow[key] = set(value)  # copy
+                pos = self.get_pos_all_correction(unfolded_layers)
+                edge_path, arrow_path = self.get_edge_path(xzflow, pos)
+                corrections = xflow, zflow
+        self.visualize_graph(
+            pos,
+            edge_path,
+            arrow_path,
+            l_k,
+            corrections,
+            show_pauli_measurement,
+            show_local_clifford,
+            show_measurement_planes,
+            show_loop,
+            node_distance,
+            figsize,
+            filename,
+        )
 
     @staticmethod
     def _shorten_path(path: list[_Point]) -> None:
@@ -406,21 +282,23 @@ class GraphVisualizer:
                 *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
             )  # Draw the nodes manually with scatter()
 
-    def visualize_w_gflow(
+    def visualize_graph(
         self,
-        g: Mapping[int, set[int]],
-        l_k: Mapping[int, int],
+        pos: Mapping[int, _Point],
+        edge_path: Mapping[_Edge, Sequence[_Point]],
+        arrow_path: Mapping[_Edge, list[_Point]] | None,
+        l_k: Mapping[int, int] | None,
+        corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None,
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: _Point | None = None,
-        save: bool = False,
-        filename: str | None = None,
+        filename: Path | None = None,
     ) -> None:
         """
-        Visualizes the graph with flow structure.
+        Visualizes the graph.
 
         Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
         or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
@@ -429,10 +307,16 @@ class GraphVisualizer:
 
         Parameters
         ----------
-        g : dict
-            gflow mapping.
-        l_k : dict
-            Layer mapping.
+        pos: Mapping[int, _Point]
+            Node positions.
+        edge_path: Sequence[Mapping[int, Sequence[_Point]]]
+            Mapping of edge paths.
+        arrow_path: Mapping[_Edge, list[_Point]] | None
+            Mapping of arrow paths.
+        l_k: Mapping[int, int] | None
+            Layer mapping if any.
+        corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None
+            X and Z corrections if any.
         show_pauli_measurement : bool
             If True, the nodes with Pauli measurement angles are colored light blue.
         show_local_clifford : bool
@@ -445,18 +329,19 @@ class GraphVisualizer:
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
-        save : bool
-            If True, the plot is saved as a png file.
-        filename : str
-            Filename of the saved plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
         """
-        pos = self.get_pos_from_gflow(g, l_k)
         pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}  # Scale the layout
-
-        edge_path, arrow_path = self.get_edge_path(g, pos)
 
         if figsize is None:
             figsize = self.get_figsize(l_k, pos, node_distance=node_distance)
+
+        if corrections is not None:
+            # add some padding to the right for the legend
+            figsize = (figsize[0] + 3.0, figsize[1])
+
         plt.figure(figsize=figsize)
 
         for edge in edge_path:
@@ -466,32 +351,42 @@ class GraphVisualizer:
                 curve = self._bezier_curve_linspace(edge_path[edge])
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
-        for arrow, path in arrow_path.items():
-            if arrow[0] == arrow[1]:  # self loop
-                if show_loop:
+        if arrow_path is not None:
+            for arrow, path in arrow_path.items():
+                if corrections is None:
+                    color = "k"
+                else:
+                    xflow, zflow = corrections
+                    if arrow[1] not in xflow.get(arrow[0], set()):
+                        color = "tab:green"
+                    elif arrow[1] not in zflow.get(arrow[0], set()):
+                        color = "tab:red"
+                    else:
+                        color = "tab:brown"
+                if arrow[0] == arrow[1]:  # self loop
+                    if show_loop:
+                        curve = self._bezier_curve_linspace(path)
+                        plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
+                        plt.annotate(
+                            "",
+                            xy=curve[-1],
+                            xytext=curve[-2],
+                            arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
+                        )
+                elif len(path) == 2:  # straight line
+                    nx.draw_networkx_edges(
+                        self.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
+                    )
+                else:
+                    GraphVisualizer._shorten_path(path)
                     curve = self._bezier_curve_linspace(path)
-                    plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
+                    plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
                     plt.annotate(
                         "",
                         xy=curve[-1],
                         xytext=curve[-2],
-                        arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
+                        arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
                     )
-            elif len(path) == 2:  # straight line
-                nx.draw_networkx_edges(
-                    self.graph, pos, edgelist=[arrow], edge_color="black", arrowstyle="->", arrows=True
-                )
-            else:
-                GraphVisualizer._shorten_path(path)
-                curve = self._bezier_curve_linspace(path)
-
-                plt.plot(curve[:, 0], curve[:, 1], c="k", linewidth=1)
-                plt.annotate(
-                    "",
-                    xy=curve[-1],
-                    xytext=curve[-2],
-                    arrowprops={"arrowstyle": "->", "color": "k", "lw": 1},
-                )
 
         self.__draw_nodes_role(pos, show_pauli_measurement)
 
@@ -503,26 +398,38 @@ class GraphVisualizer:
 
         self._draw_labels(pos)
 
+        if corrections is not None:
+            # legend for arrow colors
+            plt.plot([], [], "k--", alpha=0.7, label="graph edge")
+            plt.plot([], [], color="tab:red", label="xflow")
+            plt.plot([], [], color="tab:green", label="zflow")
+            plt.plot([], [], color="tab:brown", label="xflow and zflow")
+
         x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
         x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
         y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
         y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
 
-        # Draw the vertical lines to separate different layers
-        for layer in range(min(l_k.values()), max(l_k.values())):
-            plt.axvline(
-                x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
-            )  # Draw line between layers
-        for layer in range(min(l_k.values()), max(l_k.values()) + 1):
-            plt.text(
-                layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
-            )  # Add layer label at bottom
+        if l_k is not None:
+            # Draw the vertical lines to separate different layers
+            for layer in range(min(l_k.values()), max(l_k.values())):
+                plt.axvline(
+                    x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
+                )  # Draw line between layers
+            for layer in range(min(l_k.values()), max(l_k.values()) + 1):
+                plt.text(
+                    layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
+                )  # Add layer label at bottom
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
         )  # Add some padding to the left and right
         plt.ylim(y_min - 1, y_max + 0.5)  # Add some padding to the top and bottom
-        if save:
+
+        if corrections is not None:
+            plt.legend(loc="upper right", fontsize=10)
+
+        if filename is not None:
             plt.savefig(filename)
         plt.show()
 
@@ -538,207 +445,6 @@ class GraphVisualizer:
             if node in self.meas_planes:
                 x, y = pos[node] + np.array([0.22, -0.2])
                 plt.text(x, y, f"{self.meas_planes[node]}", fontsize=9, zorder=3)
-
-    def visualize_wo_structure(
-        self,
-        show_pauli_measurement: bool = True,
-        show_local_clifford: bool = False,
-        show_measurement_planes: bool = False,
-        node_distance: tuple[float, float] = (1, 1),
-        figsize: _Point | None = None,
-        save: bool = False,
-        filename: str | None = None,
-    ) -> None:
-        """
-        Visualizes the graph without flow or gflow.
-
-        Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
-        or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
-        different layers of the graph. This function does not return anything but plots the graph
-        using matplotlib's pyplot.
-
-        Parameters
-        ----------
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, the measurement planes are displayed adjacent to the nodes.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        save : bool
-            If True, the plot is saved as a png file.
-        filename : str
-            Filename of the saved plot.
-        """
-        pos = self.get_pos_wo_structure()
-        pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}  # Scale the layout
-
-        if figsize is None:
-            figsize = self.get_figsize(None, pos, node_distance=node_distance)
-        plt.figure(figsize=figsize)
-
-        edge_path = self.get_edge_path_wo_structure(pos)
-
-        for edge in edge_path:
-            if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
-            else:
-                curve = self._bezier_curve_linspace(edge_path[edge])
-                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
-
-        self.__draw_nodes_role(pos, show_pauli_measurement)
-
-        if show_local_clifford:
-            self.__draw_local_clifford(pos)
-
-        if show_measurement_planes:
-            self.__draw_measurement_planes(pos)
-
-        self._draw_labels(pos)
-
-        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
-        x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
-        y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
-        y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
-
-        plt.xlim(
-            x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
-        )  # Add some padding to the left and right
-        plt.ylim(y_min - 0.5, y_max + 0.5)  # Add some padding to the top and bottom
-
-        if save:
-            plt.savefig(filename)
-        plt.show()
-
-    def visualize_all_correction(
-        self,
-        layers: Mapping[int, int],
-        xflow: Mapping[int, set[int]],
-        zflow: Mapping[int, set[int]],
-        show_pauli_measurement: bool = True,
-        show_local_clifford: bool = False,
-        show_measurement_planes: bool = False,
-        node_distance: tuple[float, float] = (1, 1),
-        figsize: _Point | None = None,
-        save: bool = False,
-        filename: str | None = None,
-    ) -> None:
-        """
-        Visualizes the graph of pattern with all correction flows.
-
-        Nodes are colored based on their role (input, output, or other) and edges of graph are depicted as dashed lines.
-        Xflow is depicted as red arrows and Zflow is depicted as blue arrows. The function does not return anything but plots the graph using matplotlib's pyplot.
-
-        Parameters
-        ----------
-        layers : dict
-            Layer mapping obtained from the measurement order of the pattern.
-        xflow : dict
-            Dictionary for x correction of the pattern.
-        zflow : dict
-            Dictionary for z correction of the pattern.
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, the measurement planes are displayed adjacent to the nodes.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        save : bool
-            If True, the plot is saved as a png file.
-        filename : str
-            Filename of the saved plot.
-        """
-        pos = self.get_pos_all_correction(layers)
-        pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}  # Scale the layout
-
-        if figsize is None:
-            figsize = self.get_figsize(layers, pos, node_distance=node_distance)
-        # add some padding to the right for the legend
-        figsize = (figsize[0] + 3.0, figsize[1])
-        plt.figure(figsize=figsize)
-
-        xzflow: dict[int, set[int]] = {}
-        for key, value in deepcopy(xflow).items():
-            if key in xzflow:
-                xzflow[key] |= value
-            else:
-                xzflow[key] = value
-        for key, value in deepcopy(zflow).items():
-            if key in xzflow:
-                xzflow[key] |= value
-            else:
-                xzflow[key] = value
-        edge_path, arrow_path = self.get_edge_path(xzflow, pos)
-
-        for edge in edge_path:
-            if len(edge_path[edge]) == 2:
-                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
-            else:
-                curve = self._bezier_curve_linspace(edge_path[edge])
-                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
-        for arrow in arrow_path:
-            if arrow[1] not in xflow.get(arrow[0], set()):
-                color = "tab:green"
-            elif arrow[1] not in zflow.get(arrow[0], set()):
-                color = "tab:red"
-            else:
-                color = "tab:brown"
-            if len(arrow_path[arrow]) == 2:  # straight line
-                nx.draw_networkx_edges(
-                    self.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
-                )
-            else:
-                path = arrow_path[arrow]
-                GraphVisualizer._shorten_path(path)
-                curve = self._bezier_curve_linspace(path)
-
-                plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
-                plt.annotate(
-                    "",
-                    xy=curve[-1],
-                    xytext=curve[-2],
-                    arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
-                )
-
-        self.__draw_nodes_role(pos, show_pauli_measurement)
-
-        if show_local_clifford:
-            self.__draw_local_clifford(pos)
-
-        if show_measurement_planes:
-            self.__draw_measurement_planes(pos)
-
-        self._draw_labels(pos)
-
-        # legend for arrow colors
-        plt.plot([], [], "k--", alpha=0.7, label="graph edge")
-        plt.plot([], [], color="tab:red", label="xflow")
-        plt.plot([], [], color="tab:green", label="zflow")
-        plt.plot([], [], color="tab:brown", label="xflow and zflow")
-
-        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
-        x_max = max(pos[node][0] for node in self.graph.nodes())
-        y_min = min(pos[node][1] for node in self.graph.nodes())
-        y_max = max(pos[node][1] for node in self.graph.nodes())
-
-        plt.xlim(
-            x_min - 0.5 * node_distance[0], x_max + 3.5 * node_distance[0]
-        )  # Add some padding to the left and right
-        plt.ylim(y_min - 0.5, y_max + 0.5)  # Add some padding to the top and bottom
-
-        plt.legend(loc="upper right", fontsize=10)
-
-        if save:
-            plt.savefig(filename)
-        plt.show()
 
     def get_figsize(
         self,
@@ -765,7 +471,7 @@ class GraphVisualizer:
         """
         if l_k is None:
             if pos is None:
-                raise ValueError("l_k and pos cannot be both None")
+                raise ValueError("Figure size can only be computed given a layer mapping (l_k) or node positions (pos)")
             width = len({pos[node][0] for node in self.graph.nodes()}) * 0.8
         else:
             width = (max(l_k.values()) + 1) * 0.8
@@ -774,7 +480,7 @@ class GraphVisualizer:
 
     def get_edge_path(
         self, flow: Mapping[int, int | set[int]], pos: Mapping[int, _Point]
-    ) -> tuple[dict[int, list[_Point]], dict[_Edge, list[_Point]]]:
+    ) -> tuple[dict[_Edge, list[_Point]], dict[_Edge, list[_Point]]]:
         """
         Return the path of edges and gflow arrows.
 
@@ -792,7 +498,6 @@ class GraphVisualizer:
         arrow_path : dict
             dictionary of arrow paths.
         """
-        max_iter = 5
         edge_path = self.get_edge_path_wo_structure(pos)
         edge_set = set(self.graph.edges())
         arrow_path: dict[_Edge, list[_Point]] = {}
@@ -832,8 +537,6 @@ class GraphVisualizer:
                     _point_from_node(pos[arrow[0]], 0.17, 95),
                 ]
             else:
-                iteration = 0
-                nodes = set(self.graph.nodes())
                 bezier_path = [pos[arrow[0]], pos[arrow[1]]]
                 if arrow in edge_set or (arrow[1], arrow[0]) in edge_set:
                     mid_point = (
@@ -843,38 +546,45 @@ class GraphVisualizer:
                     if self._edge_intersects_node(pos[arrow[0]], pos[arrow[1]], mid_point, buffer=0.05):
                         ctrl_point = self._control_point(pos[arrow[0]], pos[arrow[1]], mid_point, distance=0.2)
                         bezier_path.insert(1, ctrl_point)
-                while True:
-                    iteration += 1
-                    intersect = False
-                    if iteration > max_iter:
-                        break
-                    ctrl_points = []
-                    for i in range(len(bezier_path) - 1):
-                        start = bezier_path[i]
-                        end = bezier_path[i + 1]
-                        for node in nodes:
-                            if (
-                                node != arrow[0]
-                                and node != arrow[1]
-                                and self._edge_intersects_node(start, end, pos[node])
-                            ):
-                                intersect = True
-                                ctrl_points.append(
-                                    (
-                                        i,
-                                        self._control_point(start, end, pos[node], distance=0.6 / iteration),
-                                    )
-                                )
-                    if not intersect:
-                        break
-                    for i, (index, ctrl_point) in enumerate(ctrl_points):
-                        bezier_path.insert(index + i + 1, ctrl_point)
-                bezier_path = self._check_path(bezier_path, pos[arrow[1]])
+                bezier_path = self._find_bezier_path(arrow, bezier_path, pos)
+
             arrow_path[arrow] = bezier_path
 
         return edge_path, arrow_path
 
-    def get_edge_path_wo_structure(self, pos: Mapping[int, _Point]) -> dict[int, list[_Point]]:
+    def _find_bezier_path(
+        self, arrow: _Edge, bezier_path: Iterable[tuple[float, float]], pos: Mapping[int, _Point]
+    ) -> list[_Point]:
+        bezier_path = list(bezier_path)
+        max_iter = 5
+        iteration = 0
+        nodes = set(self.graph.nodes())
+        while True:
+            iteration += 1
+            intersect = False
+            if iteration > max_iter:
+                break
+            ctrl_points = []
+            for i in range(len(bezier_path) - 1):
+                start = bezier_path[i]
+                end = bezier_path[i + 1]
+                for node in set(nodes):
+                    if node != arrow[0] and node != arrow[1] and self._edge_intersects_node(start, end, pos[node]):
+                        intersect = True
+                        ctrl_points.append(
+                            (
+                                i,
+                                self._control_point(start, end, pos[node], distance=0.6 / iteration),
+                            )
+                        )
+                        nodes -= {node}
+            if not intersect:
+                break
+            for i, (index, ctrl_point) in enumerate(ctrl_points):
+                bezier_path.insert(index + i + 1, ctrl_point)
+        return self._check_path(bezier_path, pos[arrow[1]])
+
+    def get_edge_path_wo_structure(self, pos: Mapping[int, _Point]) -> dict[_Edge, list[_Point]]:
         """
         Return the path of edges.
 
@@ -888,41 +598,7 @@ class GraphVisualizer:
         edge_path : dict
             dictionary of edge paths.
         """
-        max_iter = 5
-        edge_path: dict[int, list[_Point]] = {}
-        edge_set = set(self.graph.edges())
-        for edge in edge_set:
-            iteration = 0
-            nodes = set(self.graph.nodes())
-            bezier_path = [pos[edge[0]], pos[edge[1]]]
-            while True:
-                iteration += 1
-                intersect = False
-                if iteration > max_iter:
-                    break
-                ctrl_points: list[tuple[int, _Point]] = []
-                for i in range(len(bezier_path) - 1):
-                    start = bezier_path[i]
-                    end = bezier_path[i + 1]
-                    for node in list(nodes):
-                        if node != edge[0] and node != edge[1] and self._edge_intersects_node(start, end, pos[node]):
-                            intersect = True
-                            ctrl_points.append(
-                                (
-                                    i,
-                                    self._control_point(
-                                        bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
-                                    ),
-                                )
-                            )
-                            nodes -= {node}
-                if not intersect:
-                    break
-                for i, ctrl_point in enumerate(ctrl_points):
-                    bezier_path.insert(ctrl_point[0] + i + 1, ctrl_point[1])
-            bezier_path = self._check_path(bezier_path)
-            edge_path[edge] = bezier_path
-        return edge_path
+        return {edge: self._find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in self.graph.edges()}
 
     def get_pos_from_flow(self, f: Mapping[int, set[int]], l_k: Mapping[int, int]) -> dict[int, _Point]:
         """
