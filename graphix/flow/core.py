@@ -1,16 +1,14 @@
-"""Module for flow classes."""
+"""Class for flow objects and XZ-corrections."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import product
-from typing import TYPE_CHECKING, Generic, Self, override
+from typing import TYPE_CHECKING, Generic, override
 
 import networkx as nx
-import numpy as np
 
-from graphix._linalg import MatGF2
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
 from graphix.pattern import Pattern
@@ -28,11 +26,29 @@ TotalOrder = Sequence[int]
 
 @dataclass(frozen=True)
 class XZCorrections(Generic[_M_co]):
+    """An unmutable dataclass providing a representation of XZ-corrections.
+
+    Attributes
+    ----------
+    og : OpenGraph[_M_co]
+        The open graph with respect to which the XZ-corrections are defined.
+    x_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
+    z_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
+    partial_order_layers : Sequence[AbstractSet[int]]
+        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+
+    Notes
+    -----
+    The XZ-corrections mappings define a partial order, therefore, only `og`, `x_corrections` and `z_corrections` are necessary to initialize an `XZCorrections` instance (see :func:`XZCorrections.from_measured_nodes_mapping`). However, XZ-corrections are often extracted from a flow whose partial order is known and can be used to construct a pattern, so it can also be passed as an argument to the `dataclass` constructor. The correctness of the input parameters is not verified automatically.
+
+    """
+
     og: OpenGraph[_M_co]
     x_corrections: Mapping[int, AbstractSet[int]]  # {domain: nodes}
     z_corrections: Mapping[int, AbstractSet[int]]  # {domain: nodes}
     partial_order_layers: Sequence[AbstractSet[int]]
-    # Often XZ-corrections are extracted from a flow whose partial order can be used to construct a pattern from the corrections. We store it to avoid recalculating it twice.
 
     @staticmethod
     def from_measured_nodes_mapping(
@@ -74,6 +90,11 @@ class XZCorrections(Generic[_M_co]):
         dag = _corrections_to_dag(x_corrections, z_corrections)
         partial_order_layers = _dag_to_partial_order_layers(dag)
 
+        if partial_order_layers is None:
+            raise ValueError(
+                "Input XZ-corrections are not runnable since the induced directed graph contains closed loops."
+            )
+
         # The first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes,  but the first element in `XZCorrections.partial_order_layers` should contain all output nodes.
 
         shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
@@ -107,7 +128,13 @@ class XZCorrections(Generic[_M_co]):
 
         Notes
         -----
-        The resulting pattern is guaranteed to be runnable if the `XZCorrections` object is well formed, but does not need to be deterministic. It will be deterministic if the XZ-corrections were inferred from a flow. In this case, this routine follows the recipe in Theorems 1, 2 and 4 of Browne et al., NJP 9, 250 (2007).
+        - The `XZCorrections` instance must be of parametric type `Measurement` to allow for a pattern extraction, otherwise the underlying open graph does not contain information about the measurement angles.
+
+        - The resulting pattern is guaranteed to be runnable if the `XZCorrections` object is well formed, but does not need to be deterministic. It will be deterministic if the XZ-corrections were inferred from a flow. In this case, this routine follows the recipe in Theorems 1, 2 and 4 in Ref. [1].
+
+        References
+        ----------
+        [1] Browne et al., NJP 9, 250 (2007).
         """
         if total_measurement_order is None:
             total_measurement_order = self.generate_total_measurement_order()
@@ -150,7 +177,7 @@ class XZCorrections(Generic[_M_co]):
         return total_order
 
     def extract_dag(self) -> nx.DiGraph[int]:
-        """Extract the directed graph induced by the corrections.
+        """Extract the directed graph induced by the XZ-corrections.
 
         Returns
         -------
@@ -199,47 +226,59 @@ class XZCorrections(Generic[_M_co]):
 
         return True
 
-    # def is_wellformed(self) -> bool:
-    #     """Verify if `Corrections` object is well formed.
-
-    #     Returns
-    #     -------
-    #     bool
-    #         `True` if `self` is well formed, `False` otherwise.
-
-    #     Notes
-    #     -----
-    #     This method verifies that:
-    #         - Corrected nodes belong to the underlying open graph.
-    #         - Nodes in domain set are measured.
-    #         - Corrections are runnable. This amounts to verifying that the corrections-induced directed graph does not have loops.
-    #     """
-    #     for corr_type in ["X", "Z"]:
-    #         corrections = getattr(self, f"{corr_type.lower()}_corrections")
-    #         for node, domain in corrections.items():
-    #             if node not in self.og.graph.nodes:
-    #                 print(
-    #                     f"Cannot apply {corr_type} correction. Corrected node {node} does not belong to the open graph."
-    #                 )
-    #                 return False
-    #             if not domain.issubset(self.og.measurements):
-    #                 print(f"Cannot apply {corr_type} correction. Domain nodes {domain} are not measured.")
-    #                 return False
-    #     if nx.is_directed_acyclic_graph(self.extract_dag()):
-    #         print("Corrections are not runnable since the induced directed graph contains cycles.")
-    #         return False
-
-    #     return True
-
 
 @dataclass(frozen=True)
 class PauliFlow(Generic[_M_co]):
+    """An unmutable dataclass providing a representation of a Pauli flow.
+
+    Attributes
+    ----------
+    og : OpenGraph[_M_co]
+        The open graph with respect to which the Pauli flow is defined.
+    correction_function : Mapping[int, AbstractSet[int]
+        Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
+    partial_order_layers : Sequence[AbstractSet[int]]
+        Partial order between corrected qubits in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+
+    Notes
+    -----
+    - See Definition 5 in Ref. [1] for a definition of Pauli flow.
+
+    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
+
+    References
+    ----------
+    [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+    [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+
+    """
+
     og: OpenGraph[_M_co]
-    correction_function: Mapping[int, set[int]]
+    correction_function: Mapping[int, AbstractSet[int]]
     partial_order_layers: Sequence[AbstractSet[int]]
 
     @classmethod
     def from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
+        """Initialize a Pauli flow object from a matrix encoding a correction function.
+
+        Attributes
+        ----------
+        correction_matrix : CorrectionMatrix[_M_co]
+            Algebraic representation of the correction function.
+
+        Returns
+        -------
+        Self | None
+            A Pauli flow if it exists, `None` otherwise.
+
+        Notes
+        -----
+        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a Pauli flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
+
+        References
+        ----------
+        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
         correction_function = correction_matrix.to_correction_function()
         partial_order_layers = compute_partial_order_layers(correction_matrix)
         if partial_order_layers is None:
@@ -252,15 +291,19 @@ class PauliFlow(Generic[_M_co]):
 
         Returns
         -------
-        Corrections[_M_co]
+        XZCorrections[_M_co]
 
         Notes
         -----
-        This function partially implements Theorem 4 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+        This method partially implements Theorem 4 in [1]. The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
         future = self.partial_order_layers[0]
-        x_corrections: dict[int, set[int]] = {}  # {domain: nodes}
-        z_corrections: dict[int, set[int]] = {}  # {domain: nodes}
+        x_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
+        z_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
 
         for layer in self.partial_order_layers[1:]:
             for measured_node in layer:
@@ -275,73 +318,42 @@ class PauliFlow(Generic[_M_co]):
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
-    def is_well_formed(self) -> bool:
-        r"""Verify if flow object is well formed.
-
-        Returns
-        -------
-        bool
-            `True` if `self` is well formed, `False` otherwise.
-
-        Notes
-        -----
-        This method verifies that:
-            - The correction function's domain and codomain respectively are non-output and non-input nodes.
-            - The product of the flow-demand and the correction matrices is the identity matrix, :math:`MC = \mathbb{1}`.
-            - The product of the order-demand and the correction matrices is the adjacency matrix of a DAG compatible with `self.partial_order_layers`.
-        """
-        domain = set(self.correction_function)
-        if not domain.intersection(self.og.output_nodes):
-            print("Invalid flow. Domain of the correction function includes output nodes.")
-            return False
-
-        codomain = set().union(*self.correction_function.values())
-        if not codomain.intersection(self.og.input_nodes):
-            print("Invalid flow. Codomain of the correction function includes input nodes.")
-            return False
-
-        correction_matrix = CorrectionMatrix.from_correction_function(self.og, self.correction_function)
-
-        aog, c_matrix = correction_matrix
-
-        identity = MatGF2(np.eye(len(aog.non_outputs), dtype=np.uint8))
-        mc_matrix = aog.flow_demand_matrix.mat_mul(c_matrix)
-        if not np.all(mc_matrix == identity):
-            print(
-                "Invalid flow. The product of the flow-demand and the correction matrices is not the identity matrix, MC ≠ 1"
-            )
-            return False
-
-        partial_order_layers = compute_partial_order_layers(correction_matrix)
-        if partial_order_layers is None:
-            print(
-                "Invalid flow. The correction function is not compatible with a partial order on the open graph. The product of the order-demand and the correction matrices NC does not form a DAG."
-            )
-            return False
-
-        # TODO: Verify that self.partial_order_layers is compatible with partial_order_layers
-
-        return True
-
 
 @dataclass(frozen=True)
 class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
+    """An unmutable subclass of `PauliFlow` providing a representation of a generalised flow (gflow).
+
+    This class differs from its parent class in the following:
+        - It cannot be constructed from `OpenGraph[Axis]` instances, since the gflow is only defined for planar measurements.
+        - The extraction of XZ-corrections from the gflow does not require knowledge on the partial order.
+        - The method :func:`GFlow.is_well_formed` verifies the definition of gflow (Definition 2.36 in Ref. [1]).
+
+    References
+    ----------
+    [1] Backens et al., Quantum 5, 421 (2021), doi.org/10.22331/q-2021-03-25-421
+
+    """
+
     @override
     def to_corrections(self) -> XZCorrections[_PM_co]:
-        r"""Compute the X and Z corrections induced by the generalised flow encoded in `self`.
+        r"""Compute the XZ-corrections induced by the generalised flow encoded in `self`.
 
         Returns
         -------
-        Corrections[Plane]
+        XZCorrections[_PM_co]
 
         Notes
         -----
-        - This function partially implements Theorem 2 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+        - This function partially implements Theorem 2 in Ref. [1]. The generated XZ-corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
 
         - Contrary to the overridden method in the parent class, here we do not need any information on the partial order to build the corrections since a valid correction function :math:`g` guarantees that both :math:`g(i)\setminus \{i\}` and :math:`Odd(g(i))` are in the future of :math:`i`.
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
-        x_corrections: dict[int, set[int]] = {}  # {domain: nodes}
-        z_corrections: dict[int, set[int]] = {}  # {domain: nodes}
+        x_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
+        z_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
 
         for measured_node, correcting_set in self.correction_function.items():
             # Conditionals avoid storing empty correction sets
@@ -354,9 +366,19 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
 
 @dataclass(frozen=True)
-class CausalFlow(
-    GFlow[_PM_co], Generic[_PM_co]
-):  # TODO: change parametric type to Plane.XY. Requires defining Plane.XY as subclasses of Plane
+class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
+    """An unmutable subclass of `GFlow` providing a representation of a causal flow.
+
+    This class differs from its parent class in the following:
+        - The extraction of XZ-corrections from the causal flow does assumes that correction sets have one element only.
+        - The method :func:`CausalFlow.is_well_formed` verifies the definition of causal flow (Definition 2 in Ref. [1]).
+
+    References
+    ----------
+    [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+
+    """
+
     @override
     @classmethod
     def from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
@@ -364,18 +386,22 @@ class CausalFlow(
 
     @override
     def to_corrections(self) -> XZCorrections[_PM_co]:
-        r"""Compute the X and Z corrections induced by the causal flow encoded in `self`.
+        r"""Compute the XZ-corrections induced by the causal flow encoded in `self`.
 
         Returns
         -------
-        Corrections[Plane]
+        XZCorrections[_PM_co]
 
         Notes
         -----
-        This function partially implements Theorem 1 of Browne et al., NJP 9, 250 (2007). The generated X and Z corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+        This function partially implements Theorem 1 in Ref. [1]. The generated XZ-corrections can be used to obtain a robustly deterministic pattern on the underlying open graph.
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
-        x_corrections: dict[int, set[int]] = {}  # {domain: nodes}
-        z_corrections: dict[int, set[int]] = {}  # {domain: nodes}
+        x_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
+        z_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
 
         for measured_node, correcting_set in self.correction_function.items():
             # Conditionals avoid storing empty correction sets
@@ -390,6 +416,24 @@ class CausalFlow(
 def _corrections_to_dag(
     x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
 ) -> nx.DiGraph[int]:
+    """Convert an XZ-corrections mapping into a directed graph.
+
+    Parameters
+    ----------
+    x_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
+    z_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
+
+    Returns
+    -------
+    nx.DiGraph[int]
+        Directed graph in which an edge `i -> j` represents a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
+
+    Notes
+    -----
+    See :func:`XZCorrections.extract_dag`.
+    """
     relations: set[tuple[int, int]] = set()
 
     for measured_node, corrected_nodes in x_corrections.items():
@@ -401,212 +445,23 @@ def _corrections_to_dag(
     return nx.DiGraph(relations)
 
 
-def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]]:
+def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]] | None:
+    """Return the partial order encoded in a directed graph in a layer form if it exists.
+
+    Parameters
+    ----------
+    dag : nx.DiGraph[int]
+        A directed graph.
+
+    Returns
+    -------
+    list[set[int]] | None
+        Partial order between corrected qubits in a layer form or `None` if the input directed graph is not acyclical.
+        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+    """
     try:
         topo_gen = reversed(list(nx.topological_generations(dag)))
     except nx.NetworkXUnfeasible:
-        raise ValueError(
-            "XZ-corrections are not runnable since the induced directed graph contains closed loops."
-        ) from nx.NetworkXUnfeasible
+        return None
 
     return [set(layer) for layer in topo_gen]
-
-
-###########
-# OLD functions
-###########
-
-
-# @dataclass(frozen=True)
-# class PartialOrder:
-#     """Class for storing and manipulating the partial order in a flow.
-
-#     Attributes
-#     ----------
-#     dag: nx.DiGraph[int]
-#         Directed Acyclical Graph (DAG) representing the partial order. The transitive closure of `dag` yields all the relations in the partial order.
-
-#     layers: Mapping[int, AbstractSet[int]]
-#         Mapping storing the partial order in a layer structure.
-#         The pair `(key, value)` corresponds to the layer and the set of nodes in that layer.
-#         Layer 0 corresponds to the largest nodes in the partial order. In general, if `i > j`, then nodes in `layers[j]` are in the future of nodes in `layers[i]`.
-
-#     """
-
-#     dag: nx.DiGraph[int]
-#     layers: Mapping[int, AbstractSet[int]]
-
-#     @classmethod
-#     def from_adj_matrix(cls, adj_mat: npt.NDArray[np.uint8], nodelist: Collection[int] | None = None) -> PartialOrder:
-#         """Construct a partial order from an adjacency matrix representing a DAG.
-
-#         Parameters
-#         ----------
-#         adj_mat: npt.NDArray[np.uint8]
-#             Adjacency matrix of the DAG. A nonzero element `adj_mat[i,j]` represents a link `i -> j`.
-#         node_list: Collection[int] | None
-#             Mapping between matrix indices and node labels. Optional, defaults to `None`.
-
-#         Returns
-#         -------
-#         PartialOrder
-
-#         Notes
-#         -----
-#         The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
-#         """
-#         dag = nx.from_numpy_array(adj_mat, create_using=nx.DiGraph, nodelist=nodelist)
-#         layers = _compute_layers_from_dag(dag)
-#         return cls(dag=dag, layers=layers)
-
-#     @classmethod
-#     def from_relations(cls, relations: Collection[tuple[int, int]]) -> PartialOrder:
-#         """Construct a partial order from the order relations.
-
-#         Parameters
-#         ----------
-#         relations: Collection[tuple[int, int]]
-#             Collection of relations in the partial order. A tuple `(a, b)` represents `a > b` in the partial order.
-
-#         Returns
-#         -------
-#         PartialOrder
-
-#         Notes
-#         -----
-#         The `layers` attribute of the `PartialOrder` attribute is obtained by performing a topological sort on the DAG. This routine verifies that the input directed graph is indeed acyclical. See :func:`_compute_layers_from_dag` for more details.
-#         """
-#         dag = nx.DiGraph(relations)
-#         layers = _compute_layers_from_dag(dag)
-#         return cls(dag=dag, layers=layers)
-
-#     @classmethod
-#     def from_layers(cls, layers: Mapping[int, AbstractSet[int]]) -> PartialOrder:
-#         dag = _compute_dag_from_layers(layers)
-#         return cls(dag=dag, layers=layers)
-
-#     @classmethod
-#     def from_corrections(cls, corrections: XZCorrections) -> PartialOrder:
-#         relations: set[tuple[int, int]] = set()
-
-#         for node, domain in corrections.x_corrections.items():
-#             relations.update(product([node], domain))
-
-#         for node, domain in corrections.z_corrections.items():
-#             relations.update(product([node], domain))
-
-#         return cls.from_relations(relations)
-
-#     @property
-#     def nodes(self) -> set[int]:
-#         """Return nodes in the partial order."""
-#         return set(self.dag.nodes)
-
-#     @property
-#     def node_layer_mapping(self) -> dict[int, int]:
-#         """Return layers in the form `{node: layer}`."""
-#         mapping: dict[int, int] = {}
-#         for layer, nodes in self.layers.items():
-#             mapping.update(dict.fromkeys(nodes, layer))
-
-#         return mapping
-
-#     @cached_property
-#     def transitive_closure(self) -> set[tuple[int, int]]:
-#         """Return the transitive closure of the Directed Acyclic Graph (DAG) encoding the partial order.
-
-#         Returns
-#         -------
-#         set[tuple[int, int]]
-#             A tuple `(i, j)` belongs to the transitive closure of the DAG if `i > j` according to the partial order.
-#         """
-#         return set(nx.transitive_closure_dag(self.dag).edges())
-
-#     def greater(self, a: int, b: int) -> bool:
-#         """Verify order between two nodes.
-
-#         Parameters
-#         ----------
-#         a : int
-#         b : int
-
-#         Returns
-#         -------
-#         bool
-#             `True` if `a > b` in the partial order, `False` otherwise.
-
-#         Raises
-#         ------
-#         ValueError
-#             If either node `a` or `b` is not included in the definition of the partial order.
-#         """
-#         if a not in self.nodes:
-#             raise ValueError(f"Node a = {a} is not included in the partial order.")
-#         if b not in self.nodes:
-#             raise ValueError(f"Node b = {b} is not included in the partial order.")
-#         return (a, b) in self.transitive_closure
-
-#     def compute_future(self, node: int) -> set[int]:
-#         """Compute the future of `node`.
-
-#         Parameters
-#         ----------
-#         node : int
-#             Node for which the future is computed.
-
-#         Returns
-#         -------
-#         set[int]
-#             Set of nodes `i` such that `i > node` in the partial order.
-#         """
-#         if node not in self.nodes:
-#             raise ValueError(f"Node {node} is not included in the partial order.")
-
-#         return {i for i, j in self.transitive_closure if j == node}
-
-#     def is_compatible(self, other: PartialOrder) -> bool:
-#         r"""Verify compatibility between two partial orders.
-
-#         Parameters
-#         ----------
-#         other : PartialOrder
-
-#         Returns
-#         -------
-#         bool
-#             `True` if partial order `self` is compatible with partial order `other`, `False` otherwise.
-
-#         Notes
-#         -----
-#         We define partial-order compatibility as follows:
-#             A partial order :math:`<_P` on a set :math:`U` is compatible with a partial order :math:`<_Q` on a set :math:`V` iff :math:`a <_P b \rightarrow a <_Q b \forall a, b \in U`.
-#             This definition of compatibility requires that :math:`U \subseteq V`.
-#             Further, it is not symmetric.
-#         """
-#         return self.transitive_closure.issubset(other.transitive_closure)
-
-
-# def _compute_layers_from_dag(dag: nx.DiGraph[int]) -> dict[int, set[int]]:
-#     try:
-#         generations = reversed(list(nx.topological_generations(dag)))
-#         return {layer: set(generation) for layer, generation in enumerate(generations)}
-#     except nx.NetworkXUnfeasible as exc:
-#         raise ValueError("Partial order contains loops.") from exc
-
-
-# def _compute_dag_from_layers(layers: Mapping[int, AbstractSet[int]]) -> nx.DiGraph[int]:
-#     max_layer = max(layers)
-#     relations: list[tuple[int, int]] = []
-#     visited_nodes: set[int] = set()
-
-#     for i, j in pairwise(reversed(range(max_layer + 1))):
-#         layer_curr, layer_next = layers[i], layers[j]
-#         if layer_curr & visited_nodes:
-#             raise ValueError(f"Layer {i} contains nodes in previous layers.")
-#         visited_nodes |= layer_curr
-#         relations.extend(product(layer_curr, layer_next))
-
-#     if layers[0] & visited_nodes:
-#         raise ValueError(f"Layer {i} contains nodes in previous layers.")
-
-#     return nx.DiGraph(relations)

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
+# They are redefined in graphix.flow._find_gpflow, not very elegant.
 _M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
 _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
@@ -29,14 +30,14 @@ class OpenGraph(Generic[_M_co]):
 
     Attributes
     ----------
-        graph : networkx.Graph[int]
-            The underlying resource-state graph. Nodes represent qubits and edges represent the application of :math:`CZ` gate on the linked nodes.
-        input_nodes : Sequence[int]
-            An ordered sequence of node labels corresponding to the open graph inputs.
-        output_nodes : Sequence[int]
-            An ordered sequence of node labels corresponding to the open graph outputs.
-        measurements : Mapping[int, _M_co]
-            A mapping between the non-output nodes of the open graph (`key`) and their corresponding measurement label (`value`). Measurement labels can be specified as `Measurement` or `Plane|Axis` instances.
+    graph : networkx.Graph[int]
+        The underlying resource-state graph. Nodes represent qubits and edges represent the application of :math:`CZ` gate on the linked nodes.
+    input_nodes : Sequence[int]
+        An ordered sequence of node labels corresponding to the open graph inputs.
+    output_nodes : Sequence[int]
+        An ordered sequence of node labels corresponding to the open graph outputs.
+    measurements : Mapping[int, _M_co]
+        A mapping between the non-output nodes of the open graph (`key`) and their corresponding measurement label (`value`). Measurement labels can be specified as `Measurement` or `Plane|Axis` instances.
 
     Notes
     -----
@@ -117,7 +118,7 @@ class OpenGraph(Generic[_M_co]):
 
         Notes
         -----
-        - The open graph instance must be of parametric type `Measurement` to allow for a pattern extraction, otherwise is does not contain information about the measurement angles.
+        - The open graph instance must be of parametric type `Measurement` to allow for a pattern extraction, otherwise it does not contain information about the measurement angles.
 
         - This method proceeds by searching a flow on the open graph and converting it into a pattern as prescripted in Ref. [1].
         It first attempts to find a causal flow because the corresponding flow-finding algorithm has lower complexity. If it fails, it attemps to find a Pauli flow because this property is more general than a generalised flow, and the corresponding flow-finding algorithms have the same complexity in the current implementation.
@@ -173,7 +174,7 @@ class OpenGraph(Generic[_M_co]):
         return odd_neighbors_set
 
     def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow | None:
-        """Attempt to find a causal flow on the open graph.
+        """Return a causal flow on the open graph if it exists.
 
         Returns
         -------
@@ -192,7 +193,7 @@ class OpenGraph(Generic[_M_co]):
         return find_cflow(self)
 
     def find_gflow(self: OpenGraph[_PM_co]) -> GFlow | None:
-        r"""Attempt to find a generalised flow (gflow) on the open graph.
+        r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
 
         Returns
         -------
@@ -217,7 +218,7 @@ class OpenGraph(Generic[_M_co]):
         )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
 
     def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow | None:
-        r"""Attempt to find a generalised flow (gflow) on the open graph.
+        r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
 
         Returns
         -------

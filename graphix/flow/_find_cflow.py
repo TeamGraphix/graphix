@@ -84,7 +84,7 @@ def _flow_aux(
     cf : dict[int, set[int]]
         Causal flow correction function. `cf[i]` is the one-qubit set correcting the measurement of qubit `i`.
     layers : list[set[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer 0 are the "largest" nodes in the partial order.
+        Partial order between corrected qubits in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
 
 
     Returns

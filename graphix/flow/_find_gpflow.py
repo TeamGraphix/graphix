@@ -22,7 +22,6 @@ from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement,
 from graphix.sim.base_backend import NodeIndex
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
     from collections.abc import Set as AbstractSet
 
     from graphix.opengraph_ import OpenGraph
@@ -242,44 +241,6 @@ class CorrectionMatrix(NamedTuple, Generic[_M_co]):
 
     aog: AlgebraicOpenGraph[_M_co]
     c_matrix: MatGF2
-
-    # TODO this method is not tested yet
-    @staticmethod
-    def from_correction_function(
-        og: OpenGraph[_M_co], correction_function: Mapping[int, set[int]]
-    ) -> CorrectionMatrix[_M_co]:
-        r"""Initialise a `CorrectionMatrix` object from a correction function.
-
-        Parameters
-        ----------
-        og : OpenGraph[_M_co]
-            The open graph relative to which the correction function is defined.
-        correction_function : dict[int, set[int]]
-            Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
-
-        Returns
-        -------
-        CorrectionMatrix[_M_co]
-            Algebraic representation of the correction function.
-
-        Notes
-        -----
-        This function is not required to find a Pauli (or generalised) flow on an open graph but is an auxiliary method to initialize a flow from a correction function.
-        """
-        aog = AlgebraicOpenGraph(
-            og
-        )  # TODO: Is it a problem that we instatiate an AlgebraicOpenGraph (instead of Planar...), regardless of the type of og ?
-        row_tags = aog.non_inputs
-        col_tags = aog.non_outputs
-
-        c_matrix = MatGF2(np.zeros((len(row_tags), len(col_tags)), dtype=np.uint8))
-
-        for node, correction_set in correction_function.items():
-            col = col_tags.index(node)
-            for corrector in correction_set:
-                row = row_tags.index(corrector)
-                c_matrix[row, col] = 1
-        return CorrectionMatrix(aog, c_matrix)
 
     def to_correction_function(self) -> dict[int, set[int]]:
         r"""Transform the correction matrix into a correction function.
@@ -633,7 +594,7 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
     Returns
     -------
     layers : list[set[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer 0 are the "largest" nodes in the partial order.
+        Partial order between corrected qubits in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
 
     or `None`
         If the correction matrix is not compatible with a partial order on the the open graph, in which case the associated ordering matrix is not a DAG. In the context of the flow-finding algorithm, this means that the input open graph does not have Pauli (or generalised) flow.
