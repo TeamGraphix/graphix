@@ -4,7 +4,6 @@ This module tests the full conversion Open Graph -> Flow -> XZ-corrections -> Pa
 Output correctness is verified by checking if the resulting pattern is deterministic (when the flow exists).
 """
 
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
@@ -288,7 +287,7 @@ def _og_10() -> OpenGraphFlowTestCase:
             1: Measurement(0.1, Plane.XZ),  # XZ
             2: Measurement(0.5, Plane.YZ),  # Y
             3: Measurement(0.1, Plane.XY),  # XY
-            4: Measurement(0, Plane.XZ),    # Z
+            4: Measurement(0, Plane.XZ),  # Z
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)

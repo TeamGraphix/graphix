@@ -74,8 +74,7 @@ class XZCorrections(Generic[_M_co]):
         dag = _corrections_to_dag(x_corrections, z_corrections)
         partial_order_layers = _dag_to_partial_order_layers(dag)
 
-        # The first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes.
-        # The first element in `XZCorrections.partial_order_layers` should contain all output nodes.
+        # The first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes,  but the first element in `XZCorrections.partial_order_layers` should contain all output nodes.
 
         shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
         partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
@@ -84,7 +83,7 @@ class XZCorrections(Generic[_M_co]):
         if not ordered_nodes.issubset(nodes_set):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
-        # We append to the last layer (first measured nodes) all the non-output nodes not involved in the corrections
+        # We append to the last layer (first measured nodes) all the non-output nodes not involved in the .
         if unordered_nodes := nodes_set - ordered_nodes:
             partial_order_layers.append(unordered_nodes)
 

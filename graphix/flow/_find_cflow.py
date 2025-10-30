@@ -1,3 +1,13 @@
+"""Causal flow finding algorithm.
+
+This module implements Algorithm 1 from Ref. [1]. For a given labelled open graph (G, I, O, meas_plane), this algorithm finds a causal flow [2] in polynomial time with the number of nodes, :math:`O(N^2)`.
+
+References
+----------
+[1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
+[2] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212)
+"""
+
 from __future__ import annotations
 
 from copy import copy
@@ -11,30 +21,24 @@ if TYPE_CHECKING:
 
     from graphix.opengraph_ import OpenGraph, _PM_co
 
-# TODO: Up doc strings
-
 
 def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     """Return the causal flow of the input open graph if it exists.
 
     Parameters
     ----------
-    og : OpenGraph[Plane]
+    og : OpenGraph[_PM_co]
         Open graph whose causal flow is calculated.
 
     Returns
     -------
-    cf : dict[int, set[int]]
-        Causal flow correction function. `cf[i]` is the one-qubit set correcting the measurement of qubit `i`.
-    layers : list[set[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer 0 are the "largest" nodes in the partial order.
-
-    or `None`
-        if the input open graph does not have a causal flow.
+    CausalFlow | None
+        A causal flow object if the open graph has causal flow, `None` otherwise.
 
     Notes
     -----
-    See Definition 2, Theorem 1 and Algorithm 1 in Ref. [1].
+    - See Definition 2, Theorem 1 and Algorithm 1 in Ref. [1].
+    - The open graph instance must be of parametric type `Measurement` or `Plane` since the causal flow is only defined on open graphs with :math:`XY` measurements.
 
     References
     ----------
@@ -72,7 +76,7 @@ def _flow_aux(
     og : OpenGraph[Plane]
         Open graph whose causal flow is calculated.
     non_input_nodes : AbstractSet[int]
-        Non-input nodes of the input open graph. This parameter remains constant throughout the execution of the algorithm and can be derived from `og` at any time. It is passed as an argument to avoid unnecessary recalulations.
+        Non-input nodes of the input open graph. This parameter remains constant throughout the execution of the algorithm and can be derived from `og` at any time. It is passed as an argument to avoid unnecessary recalculations.
     corrected_nodes : AbstractSet[int]
         Nodes which have already been corrected.
     corrector_candidates : AbstractSet[int]
@@ -85,13 +89,8 @@ def _flow_aux(
 
     Returns
     -------
-    cf : dict[int, set[int]]
-        Causal flow correction function. `cf[i]` is the one-qubit set correcting the measurement of qubit `i`.
-    layers : list[set[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer 0 are the "largest" nodes in the partial order.
-
-    or `None`
-        if the input open graph does not have a causal flow.
+    CausalFlow | None
+        A causal flow object if the open graph has causal flow, `None` otherwise.
     """
     corrected_nodes_new: set[int] = set()
     corrector_nodes_new: set[int] = set()
@@ -114,9 +113,6 @@ def _flow_aux(
     layers.append(curr_layer)
 
     if len(corrected_nodes_new) == 0:
-        # TODO: This is the structure in the original graphix code. I think that we could check if non_corrected_nodes == empty before the loop and here just return None.
-        # if corrected_nodes == set(og.graph.nodes):
-        #     return CausalFlow(og, cf, layers)
         return None
 
     corrected_nodes |= corrected_nodes_new
