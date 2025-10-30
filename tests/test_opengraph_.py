@@ -12,15 +12,16 @@ import networkx as nx
 import numpy as np
 import pytest
 
+from graphix.command import E
 from graphix.fundamentals import Plane
 from graphix.measurements import Measurement
 from graphix.opengraph_ import OpenGraph
+from graphix.pattern import Pattern
+from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
     from numpy.random import Generator
-
-    from graphix.pattern import Pattern
 
 
 class OpenGraphFlowTestCase(NamedTuple):
@@ -592,3 +593,30 @@ class TestOpenGraph:
             assert check_determinism(pattern, fx_rng)
         else:
             assert pflow is None
+
+    def test_double_entanglement(self) -> None:
+        pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
+        pattern2 = OpenGraph.from_pattern(pattern).to_pattern()
+        state = pattern.simulate_pattern()
+        assert pattern2 is not None
+        state2 = pattern2.simulate_pattern()
+        assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+
+    def test_from_to_pattern(self, fx_rng: Generator) -> None:
+        n_qubits = 2
+        depth = 2
+        circuit = rand_circuit(n_qubits, depth, fx_rng)
+        pattern_ref = circuit.transpile().pattern
+        pattern = OpenGraph.from_pattern(pattern_ref).to_pattern()
+        assert pattern is not None
+
+        results = []
+
+        for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
+            alpha = 2 * np.pi * fx_rng.random()
+            state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha))
+            state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+            results.append(np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())))
+
+        avg = sum(results) / 3
+        assert avg == pytest.approx(1)

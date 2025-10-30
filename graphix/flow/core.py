@@ -37,7 +37,7 @@ class XZCorrections(Generic[_M_co]):
     z_corrections : Mapping[int, AbstractSet[int]]
         Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
     partial_order_layers : Sequence[AbstractSet[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Layer 0 always contains all the output nodes (an empty set if the open graph does not have any outputs).
 
     Notes
     -----
@@ -457,7 +457,7 @@ def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]] | None:
     -------
     list[set[int]] | None
         Partial order between corrected qubits in a layer form or `None` if the input directed graph is not acyclical.
-        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Layer 0 always contains all the output nodes (an empty set if the open graph does not have any outputs).
     """
     try:
         topo_gen = reversed(list(nx.topological_generations(dag)))

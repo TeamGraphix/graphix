@@ -360,7 +360,12 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
     return test_cases
 
 
-class TestXZCorrections:
+class TestFlowPatternConversion:
+    """Bundle for unit tests of the flow to XZ-corrections to pattern methods.
+
+    The module `tests.test_opengraph.py` provides an additional (more comprehensive) suite of unit tests on this transformation.
+    """
+
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_flow_to_corrections(self, test_case: XZCorrectionsTestCase) -> None:
         flow = test_case.flow
@@ -387,6 +392,11 @@ class TestXZCorrections:
 
             assert avg == pytest.approx(1)
 
+
+class TestXZCorrections:
+    """Bundle for unit tests of :class:`XZCorrections`."""
+
+    # See `:func: generate_causal_flow_0`
     def test_order_0(self) -> None:
         corrections = generate_causal_flow_0().to_corrections()
 
@@ -398,9 +408,8 @@ class TestXZCorrections:
 
         assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2), (1, 2), (2, 3), (1, 3)]))
 
+    # See `:func: generate_causal_flow_1`
     def test_order_1(self) -> None:
-        # See `:func: generate_causal_flow_1`
-
         og = OpenGraph(
             graph=nx.Graph([(0, 2), (2, 3), (1, 3), (2, 4), (3, 5)]),
             input_nodes=[0, 1],
@@ -424,9 +433,8 @@ class TestXZCorrections:
             corrections.extract_dag(), nx.DiGraph([(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)])
         )
 
+    # Incomplete corrections
     def test_order_2(self) -> None:
-        # Incomplete corrections
-
         og = OpenGraph(
             graph=nx.Graph([(0, 1), (1, 2), (1, 3)]),
             input_nodes=[0],
@@ -444,3 +452,48 @@ class TestXZCorrections:
         assert not corrections.is_compatible([1, 0, 2, 3])  # Contains outputs
 
         assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(1, 0)]))
+
+    # OG without outputs
+    def test_order_3(self) -> None:
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2)]),
+            input_nodes=[0],
+            output_nodes=[],
+            measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
+        )
+
+        corrections = XZCorrections.from_measured_nodes_mapping(
+            og=og, x_corrections={0: {1, 2}}, z_corrections={0: {1}}
+        )
+
+        assert corrections.partial_order_layers == [set(), {1, 2}, {0}]  # Layer 0 always contains output nodes
+        assert corrections.is_compatible([0, 1, 2])
+        assert not corrections.is_compatible([2, 0, 1])  # Wrong order
+        assert not corrections.is_compatible([0, 1])  # Incomplete order
+
+        assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2)]))
+
+    # Test exceptions
+    def test_from_measured_nodes_mapping_exceptions(self) -> None:
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
+        )
+        with pytest.raises(ValueError, match=r"Keys of input X-corrections contain non-measured nodes."):
+            XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={3: {1, 2}})
+
+        with pytest.raises(ValueError, match=r"Keys of input Z-corrections contain non-measured nodes."):
+            XZCorrections.from_measured_nodes_mapping(og=og, z_corrections={3: {1, 2}})
+
+        with pytest.raises(
+            ValueError,
+            match=r"Input XZ-corrections are not runnable since the induced directed graph contains closed loops.",
+        ):
+            XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {1}, 1: {2}}, z_corrections={2: {0}})
+
+        with pytest.raises(
+            ValueError, match=r"Values of input mapping contain labels which are not nodes of the input open graph."
+        ):
+            XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})

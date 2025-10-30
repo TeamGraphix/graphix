@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 
     from graphix.pattern import Pattern
 
-# TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ?
-# They are redefined in graphix.flow._find_gpflow, not very elegant.
+# TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
 _M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
 _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
