@@ -37,10 +37,14 @@ class Domains:
 
 @dataclass
 class Measurement(AbstractPlanarMeasurement):
-    """An MBQC measurement.
+    r"""An MBQC measurement.
 
-    :param angle: the angle of the measurement. Should be between [0, 2)
-    :param plane: the measurement plane
+    Attributes
+    ----------
+    angle : Expressionor Float
+        The angle of the measurement in units of :math:`\pi`. Should be between [0, 2).
+    plane : graphix.fundamentals.Plane
+        The measurement plane.
     """
 
     angle: ExpressionOrFloat
@@ -67,11 +71,27 @@ class Measurement(AbstractPlanarMeasurement):
         ) and self.plane == other.plane
 
     def to_plane_or_axis(self) -> Plane | Axis:
+        """Return the measurements's plane or axis.
+
+        Returns
+        -------
+        Plane | Axis
+
+        Notes
+        -----
+        Measurements with Pauli angles (i.e., `self.angle == n/2` with `n` an integer) are interpreted as `Axis` instances.
+        """
         if pm := PauliMeasurement.try_from(self.plane, self.angle):
             return pm.axis
         return self.plane
 
     def to_plane(self) -> Plane:
+        """Return the measurement's plane.
+
+        Returns
+        -------
+        Plane
+        """
         return self.plane
 
 

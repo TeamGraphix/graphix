@@ -220,13 +220,42 @@ class CustomMeta(ABCMeta, EnumMeta):
 
 
 class AbstractMeasurement(ABC):
+    """Abstract base class for measurement objects.
+
+    Measurement objects are:
+    - :class:`graphix.measurements.Measurement`.
+    - :class:`graphix.fundamentals.Plane`.
+    - :class:`graphix.fundamentals.Axis`.
+
+    """
+
     @abstractmethod
-    def to_plane_or_axis(self) -> Plane | Axis: ...
+    def to_plane_or_axis(self) -> Plane | Axis:
+        """Return the plane or axis of a measurement object.
+
+        Returns
+        -------
+        Plane | Axis
+        """
 
 
 class AbstractPlanarMeasurement(AbstractMeasurement):
+    """Abstract base class for planar measurement objects.
+
+    Planar measurement objects are:
+    - :class:`graphix.measurements.Measurement`.
+    - :class:`graphix.fundamentals.Plane`.
+
+    """
+
     @abstractmethod
-    def to_plane(self) -> Plane: ...
+    def to_plane(self) -> Plane:
+        """Return the plane of a measurement object.
+
+        Returns
+        -------
+        Plane
+        """
 
 
 class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
@@ -339,7 +368,19 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
 
     @override
     def to_plane_or_axis(self) -> Plane:
+        """Return the plane.
+
+        Returns
+        -------
+        Plane
+        """
         return self
 
     def to_plane(self) -> Plane:
+        """Return the plane.
+
+        Returns
+        -------
+        Plane
+        """
         return self
