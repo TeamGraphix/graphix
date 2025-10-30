@@ -172,7 +172,7 @@ class OpenGraph(Generic[_M_co]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow | None:
+    def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
         """Return a causal flow on the open graph if it exists.
 
         Returns
@@ -191,7 +191,7 @@ class OpenGraph(Generic[_M_co]):
         """
         return find_cflow(self)
 
-    def find_gflow(self: OpenGraph[_PM_co]) -> GFlow | None:
+    def find_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
         r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
 
         Returns
@@ -216,7 +216,7 @@ class OpenGraph(Generic[_M_co]):
             correction_matrix
         )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow | None:
+    def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co] | None:
         r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
 
         Returns

@@ -533,7 +533,7 @@ def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> 
 
     avg = sum(results) / (n_shots * 3)
 
-    return avg == pytest.approx(1)
+    return bool(avg == pytest.approx(1))
 
 
 class TestOpenGraph:
