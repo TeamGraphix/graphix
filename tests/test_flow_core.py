@@ -466,11 +466,11 @@ class TestXZCorrections:
             og=og, x_corrections={0: {1, 2}}, z_corrections={0: {1}}
         )
 
-        assert corrections.partial_order_layers == [set(), {1, 2}, {0}]  # Layer 0 always contains output nodes
+        assert corrections.partial_order_layers == [{1, 2}, {0}]
         assert corrections.is_compatible([0, 1, 2])
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
         assert not corrections.is_compatible([0, 1])  # Incomplete order
-
+        assert corrections.generate_total_measurement_order() in ([0, 1, 2], [0, 2, 1])
         assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2)]))
 
     # Test exceptions

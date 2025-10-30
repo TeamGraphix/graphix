@@ -611,7 +611,9 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
     if (topo_gen := _compute_topological_generations(ordering_matrix)) is None:
         return None  # The NC matrix is not a DAG, therefore there's no flow.
 
-    layers = [set(aog.og.output_nodes)]  # Output nodes are always in layer 0.
+    layers = [
+        set(aog.og.output_nodes)
+    ]  # Output nodes are always in layer 0. If the open graph has flow, it must have outputs, so we never end up with an empty set at `layers[0]`.
 
     # If m >_c n, with >_c the flow partial order for two nodes m, n, then layer(n) > layer(m).
     # Therefore, we iterate the topological sort of the graph in _reverse_ order to obtain the order of measurements.

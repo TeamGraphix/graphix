@@ -50,13 +50,13 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
 
     corrected_nodes = set(og.output_nodes)
     corrector_candidates = corrected_nodes - set(og.input_nodes)
+    non_input_nodes = og.graph.nodes - set(og.input_nodes)
 
     cf: dict[int, set[int]] = {}
+    # Output nodes are always in layer 0. If the open graph has flow, it must have outputs, so we never end up with an empty set at `layers[0]`.
     layers: list[set[int]] = [
         copy(corrected_nodes)
     ]  # A copy is necessary because `corrected_nodes` is mutable and changes during the algorithm.
-
-    non_input_nodes = og.graph.nodes - set(og.input_nodes)
 
     return _flow_aux(og, non_input_nodes, corrected_nodes, corrector_candidates, cf, layers)
 

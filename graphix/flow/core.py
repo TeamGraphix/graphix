@@ -37,7 +37,7 @@ class XZCorrections(Generic[_M_co]):
     z_corrections : Mapping[int, AbstractSet[int]]
         Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
     partial_order_layers : Sequence[AbstractSet[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Layer 0 always contains all the output nodes (an empty set if the open graph does not have any outputs).
+        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
 
     Notes
     -----
@@ -95,16 +95,16 @@ class XZCorrections(Generic[_M_co]):
                 "Input XZ-corrections are not runnable since the induced directed graph contains closed loops."
             )
 
-        # The first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes,  but the first element in `XZCorrections.partial_order_layers` should contain all output nodes.
-
-        shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
-        partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
+        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes.
+        if outputs_set:
+            shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
+            partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
 
         ordered_nodes = {node for layer in partial_order_layers for node in layer}
         if not ordered_nodes.issubset(nodes_set):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
-        # We append to the last layer (first measured nodes) all the non-output nodes not involved in the .
+        # We append to the last layer (first measured nodes) all the non-output nodes not involved in the corrections.
         if unordered_nodes := nodes_set - ordered_nodes:
             partial_order_layers.append(unordered_nodes)
 
@@ -171,7 +171,8 @@ class XZCorrections(Generic[_M_co]):
         -------
         TotalOrder
         """
-        total_order = [node for layer in reversed(self.partial_order_layers[1:]) for node in layer]
+        shift = 1 if self.og.output_nodes else 0
+        total_order = [node for layer in reversed(self.partial_order_layers[shift:]) for node in layer]
 
         assert set(total_order) == set(self.og.graph.nodes) - set(self.og.output_nodes)
         return total_order
@@ -187,7 +188,7 @@ class XZCorrections(Generic[_M_co]):
         Notes
         -----
         - Not all nodes of the underlying open graph are nodes of the returned directed graph, but only those involved in a correction, either as corrected qubits or belonging to a correction domain.
-        - Despite the name, the output of this method is not guranteed to be a directed acyclical graph (i.e., a directed graph without any loops). This is only the case if the `XZCorrections` object is well formed, which is verified by the method :func:`XZCorrections.is_wellformed`.
+        - The output of this method is not guaranteed to be a directed acyclical graph (i.e., a directed graph without any loops). This is only the case if the `XZCorrections` object is well formed, which is verified by the method :func:`XZCorrections.is_wellformed`.
         """
         return _corrections_to_dag(self.x_corrections, self.z_corrections)
 
@@ -214,15 +215,19 @@ class XZCorrections(Generic[_M_co]):
             print("The input total measurement order contains duplicates.")
             return False
 
-        layer = len(self.partial_order_layers) - 1  # First layer to be measured.
+        shift = 1 if self.og.output_nodes else 0
+        measured_layers = list(reversed(self.partial_order_layers[shift:]))
+
+        i = 0
+        n_measured_layers = len(measured_layers)
+        layer = measured_layers[0]
 
         for node in total_measurement_order:
-            while True:
-                if node in self.partial_order_layers[layer]:
-                    break
-                layer -= 1
-                if layer == 0:  # Layer 0 only contains output nodes.
+            while node not in layer:
+                i += 1
+                if i == n_measured_layers:
                     return False
+                layer = measured_layers[i]
 
         return True
 
@@ -457,7 +462,7 @@ def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]] | None:
     -------
     list[set[int]] | None
         Partial order between corrected qubits in a layer form or `None` if the input directed graph is not acyclical.
-        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Layer 0 always contains all the output nodes (an empty set if the open graph does not have any outputs).
+        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
     """
     try:
         topo_gen = reversed(list(nx.topological_generations(dag)))
