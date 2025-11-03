@@ -23,7 +23,7 @@ from graphix.pattern import Pattern
 from graphix.sim import Data, Statevec, base_backend
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from numpy.random import Generator
 
@@ -350,7 +350,7 @@ class Circuit:
         out: list[int | None] = list(range(self.width))
         pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
-        for instr in self.instruction:
+        for instr in _remove_rzz(self.instruction):
             if instr.kind == instruction.InstructionKind.CNOT:
                 ancilla = [n_node, n_node + 1]
                 control = _check_target(out, instr.control)
@@ -1013,3 +1013,13 @@ def _extend_domain(measure: M, domain: set[int]) -> None:
         measure.s_domain ^= domain
     else:
         measure.t_domain ^= domain
+
+
+def _remove_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]:
+    for instr in instructions:
+        if instr.kind == InstructionKind.RZZ:
+            yield instruction.CNOT(control=instr.control, target=instr.target)
+            yield instruction.RZ(target=instr.target, angle=instr.angle)
+            yield instruction.CNOT(control=instr.control, target=instr.target)
+        else:
+            yield instr
