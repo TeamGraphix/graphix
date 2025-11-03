@@ -26,7 +26,7 @@ from graphix.flow._find_gpflow import (
 )
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement
-from graphix.opengraph_ import OpenGraph
+from graphix.opengraph import OpenGraph
 
 if TYPE_CHECKING:
     from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement

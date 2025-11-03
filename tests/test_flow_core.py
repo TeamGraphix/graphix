@@ -10,7 +10,7 @@ from graphix.command import E, M, N, X, Z
 from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
-from graphix.opengraph_ import OpenGraph
+from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern
 from graphix.states import PlanarState
 

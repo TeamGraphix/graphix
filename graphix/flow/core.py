@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     from graphix.measurements import Measurement
-    from graphix.opengraph_ import OpenGraph
+    from graphix.opengraph import OpenGraph
 
 TotalOrder = Sequence[int]
 

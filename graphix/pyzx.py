@@ -31,7 +31,8 @@ def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
     return Fraction(angle)
 
 
-def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
+# TODO: Adapt to new OpenGrpah APi
+def to_pyzx_graph(og: OpenGraph[Measurement]) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
 
     Example
@@ -42,7 +43,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     >>> inputs = [0]
     >>> outputs = [2]
     >>> measurements = {0: Measurement(0, Plane.XY), 1: Measurement(1, Plane.YZ)}
-    >>> og = OpenGraph(g, measurements, inputs, outputs)
+    >>> og = OpenGraph(g, inputs, outputs, measurements)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
     if zx.__version__ != "0.9.0":
@@ -61,11 +62,11 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
         return verts
 
     # Add input boundary nodes
-    in_verts = add_vertices(len(og.inputs), VertexType.BOUNDARY)
+    in_verts = add_vertices(len(og.input_nodes), VertexType.BOUNDARY)
     g.set_inputs(tuple(in_verts))
 
     # Add nodes for internal Z spiders - not including the phase gadgets
-    body_verts = add_vertices(len(og.inside), VertexType.Z)
+    body_verts = add_vertices(len(og.graph), VertexType.Z)
 
     # Add nodes for the phase gadgets. In OpenGraph we don't store the
     # effect as a separate node, it is instead just stored in the
@@ -73,23 +74,23 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
     x_meas = [i for i, m in og.measurements.items() if m.plane == Plane.YZ]
     x_meas_verts = add_vertices(len(x_meas), VertexType.Z)
 
-    out_verts = add_vertices(len(og.outputs), VertexType.BOUNDARY)
+    out_verts = add_vertices(len(og.output_nodes), VertexType.BOUNDARY)
     g.set_outputs(tuple(out_verts))
 
     # Maps a node's ID in the Open Graph to it's corresponding node ID in
     # the PyZX graph and vice versa.
-    map_to_og = dict(zip(body_verts, og.inside.nodes()))
+    map_to_og = dict(zip(body_verts, og.graph.nodes()))
     map_to_pyzx = {v: i for i, v in map_to_og.items()}
 
     # Open Graph's don't have boundary nodes, so we need to connect the
     # input and output Z spiders to their corresponding boundary nodes in
     # pyzx.
-    for pyzx_index, og_index in zip(in_verts, og.inputs):
+    for pyzx_index, og_index in zip(in_verts, og.input_nodes):
         g.add_edge((pyzx_index, map_to_pyzx[og_index]))
-    for pyzx_index, og_index in zip(out_verts, og.outputs):
+    for pyzx_index, og_index in zip(out_verts, og.output_nodes):
         g.add_edge((pyzx_index, map_to_pyzx[og_index]))
 
-    og_edges = og.inside.edges()
+    og_edges = og.graph.edges()
     pyzx_edges = ((map_to_pyzx[a], map_to_pyzx[b]) for a, b in og_edges)
     g.add_edges(pyzx_edges, EdgeType.HADAMARD)
 
@@ -114,7 +115,7 @@ def _checked_float(x: FractionLike) -> float:
     return float(x)
 
 
-def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
+def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement]:
     """Construct an :class:`OpenGraph` from a :mod:`pyzx` graph.
 
     This method may add additional nodes to the graph so that it adheres
@@ -193,4 +194,4 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph:
         # expects a float
         measurements[v] = Measurement(-_checked_float(g.phase(v)), Plane.XY)
 
-    return OpenGraph(g_nx, measurements, inputs, outputs)
+    return OpenGraph(g_nx, inputs, outputs, measurements)

@@ -88,6 +88,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
     state = pattern.simulate_pattern()
+    assert pattern2 is not None
     pattern2.perform_pauli_measurements()
     pattern2.minimize_space()
     state2 = pattern2.simulate_pattern()
@@ -103,6 +104,7 @@ def test_rz() -> None:
     g = circ.to_graph()
     og = from_pyzx_graph(g)
     pattern_zx = og.to_pattern()
+    assert pattern_zx is not None
     state = pattern.simulate_pattern()
     state_zx = pattern_zx.simulate_pattern()
     assert np.abs(np.dot(state_zx.flatten().conjugate(), state.flatten())) == pytest.approx(1)
@@ -124,6 +126,7 @@ def test_full_reduce_toffoli() -> None:
     assert zx.compare_tensors(t, t2)
     og2 = from_pyzx_graph(pyg)
     p2 = og2.to_pattern()
+    assert p2 is not None
     s = p.simulate_pattern()
     s2 = p2.simulate_pattern()
     print(np.abs(np.dot(s.flatten().conj(), s2.flatten())))

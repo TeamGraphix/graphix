@@ -19,7 +19,7 @@ from graphix.fundamentals import Plane
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
-    from graphix.opengraph_ import OpenGraph, _PM_co
+    from graphix.opengraph import OpenGraph, _PM_co
 
 
 def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:

@@ -24,7 +24,7 @@ from graphix.sim.base_backend import NodeIndex
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
-    from graphix.opengraph_ import OpenGraph
+    from graphix.opengraph import OpenGraph
 
 
 _M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
