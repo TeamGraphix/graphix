@@ -55,7 +55,7 @@ class Measurement(AbstractPlanarMeasurement):
 
         Example
         -------
-        >>> from graphix.opengraph import Measurement
+        >>> from graphix.measurements import Measurement
         >>> from graphix.fundamentals import Plane
         >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         True

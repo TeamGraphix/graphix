@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Generic, override
 
 import networkx as nx
 
+import graphix.pattern
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
-from graphix.pattern import Pattern
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     from graphix.measurements import Measurement
     from graphix.opengraph import OpenGraph
+    from graphix.pattern import Pattern
 
 TotalOrder = Sequence[int]
 
@@ -143,7 +144,7 @@ class XZCorrections(Generic[_M_co]):
                 "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
             )
 
-        pattern = Pattern(input_nodes=self.og.input_nodes)
+        pattern = graphix.pattern.Pattern(input_nodes=self.og.input_nodes)
         non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
 
         for i in non_input_nodes:

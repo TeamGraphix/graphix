@@ -16,9 +16,9 @@ from typing import TYPE_CHECKING
 
 from typing_extensions import assert_never
 
+import graphix.find_pflow
 import graphix.opengraph
 from graphix.command import CommandKind
-from graphix.find_pflow import find_pflow as _find_pflow
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.parameter import Placeholder
@@ -86,12 +86,12 @@ def find_gflow(
     """
     meas = {node: Measurement(Placeholder("Angle"), plane) for node, plane in meas_planes.items()}
     og = graphix.opengraph.OpenGraph(
-        inside=graph,
-        inputs=list(iset),
-        outputs=list(oset),
+        graph=graph,
+        input_nodes=list(iset),
+        output_nodes=list(oset),
         measurements=meas,
     )
-    gf = _find_pflow(og)
+    gf = graphix.find_pflow.find_pflow(og)
     if gf is None:
         return None, None  # This is to comply with old API. It will be change in the future to `None``
     return gf[0], gf[1]
@@ -271,12 +271,12 @@ def find_pauliflow(
     """
     meas = {node: Measurement(angle, meas_planes[node]) for node, angle in meas_angles.items()}
     og = graphix.opengraph.OpenGraph(
-        inside=graph,
-        inputs=list(iset),
-        outputs=list(oset),
+        graph=graph,
+        input_nodes=list(iset),
+        output_nodes=list(oset),
         measurements=meas,
     )
-    pf = _find_pflow(og)
+    pf = graphix.find_pflow.find_pflow(og)
     if pf is None:
         return None, None  # This is to comply with old API. It will be change in the future to `None``
     return pf[0], pf[1]
