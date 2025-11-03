@@ -12,8 +12,9 @@ References
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Generic, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import numpy as np
 
@@ -224,7 +225,8 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
         return flow_demand_matrix, order_demand_matrix
 
 
-class CorrectionMatrix(NamedTuple, Generic[_M_co]):
+@dataclass(frozen=True)  # `NamedTuple` does not support multiple inheritance in Python 3.9 and 3.10
+class CorrectionMatrix(Generic[_M_co]):
     r"""A dataclass to bundle the correction matrix and its associated open graph.
 
     Attributes
@@ -605,7 +607,7 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
 
     See Lemma 3.12, and Theorem 3.1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
-    aog, c_matrix = correction_matrix
+    aog, c_matrix = correction_matrix.aog, correction_matrix.c_matrix
     ordering_matrix = aog.order_demand_matrix.mat_mul(c_matrix)
 
     if (topo_gen := _compute_topological_generations(ordering_matrix)) is None:
