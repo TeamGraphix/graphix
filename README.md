@@ -85,10 +85,12 @@ state_out = pattern.simulate_pattern(backend="statevector")
 - [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
 - [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
 - [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
+- [graphix-qasm-parser](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit directly from specifications.
 
 ### Projects using `graphix`
 
 - [Veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
+- [optyx](https://github.com/quantinuum-dev/optyx): ZX-based software for networked quantum computing
 
 ## Citing
 
@@ -102,31 +104,35 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Discussion channels
 
-- Please visit [Unitary Fund's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix`. There, you can also find a link to our slack channel for regular discussions and questions.
+- Please visit [Unitary Foundation's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix`. There, you can also find a link to our slack channel for regular discussions and questions.
 
-## Core Contributors (alphabetical order)
+## Maintainers (alphabetical order)
 
 - Masato Fukushima (University of Tokyo, Fixstars Amplify)
 - Maxime Garnier (Inria Paris)
+- Emlyn Graham (Inria Paris)
 - Thierry Martinez (Inria Paris)
+- Pranav Nair (Inria Paris)
 - Sora Shiratani (University of Tokyo, Fixstars Amplify)
 - Shinichi Sunami (University of Oxford)
+- Mateo Uldemolins (Inria Paris)
 
-## Acknowledgements
+## Acknowledgements (alphabetical order)
 
-Special thanks to [Unitary Foundation](https://unitary.fund/grants.html), [Inria QAT](https://qat.inria.fr/presentation/) and [Fixstars Amplify](https://amplify.fixstars.com/en/).
+Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [Inria QAT](https://qat.inria.fr/presentation/) and  [Unitary Foundation](https://unitary.fund/grants.html).
 
-<p><a href="https://unitary.fund/grants.html">
-<img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
+<p><a href="https://amplify.fixstars.com/en/">
+<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="230"/>
 </a></p>
 
 <p><a href="https://qat.inria.fr/presentation/">
 <img src="https://github.com/user-attachments/assets/a822175d-94e8-4388-8bee-34f4fecf9c01" alt="qat" width="90"/>
 </a></p>
 
-<p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="230"/>
+<p><a href="https://unitary.fund/grants.html">
+<img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
 </a></p>
+
 
 ## License
 
