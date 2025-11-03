@@ -621,6 +621,7 @@ class TestOpenGraph:
         avg = sum(results) / 3
         assert avg == pytest.approx(1)
 
+
 # TODO: Add test `OpenGraph.is_close`
 # TODO: rewrite as parametric tests
 

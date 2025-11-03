@@ -7,9 +7,12 @@ import sys
 import typing
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload, override
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload
 
 import typing_extensions
+
+# override introduced in Python 3.12
+from typing_extensions import override
 
 from graphix.ops import Ops
 from graphix.parameter import cos_sin

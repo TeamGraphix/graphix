@@ -5,9 +5,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import product
-from typing import TYPE_CHECKING, Generic, override
+from typing import TYPE_CHECKING, Generic
 
 import networkx as nx
+
+# override introduced in Python 3.12
+from typing_extensions import override
 
 import graphix.pattern
 from graphix.command import E, M, N, X, Z
