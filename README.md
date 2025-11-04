@@ -133,7 +133,6 @@ Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [Inria Q
 <img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
 </a></p>
 
-
 ## License
 
 [Apache License 2.0](LICENSE)
