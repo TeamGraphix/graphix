@@ -119,7 +119,7 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Acknowledgements (alphabetical order)
 
-Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [Inria QAT](https://qat.inria.fr/presentation/) and  [Unitary Foundation](https://unitary.fund/grants.html).
+Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [Inria QAT](https://qat.inria.fr/presentation/) and [Unitary Foundation](https://unitary.fund/grants.html).
 
 <p><a href="https://amplify.fixstars.com/en/">
 <img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="230"/>
