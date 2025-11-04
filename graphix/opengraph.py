@@ -36,7 +36,7 @@ class OpenGraph(Generic[_M_co]):
     output_nodes : Sequence[int]
         An ordered sequence of node labels corresponding to the open graph outputs.
     measurements : Mapping[int, _M_co]
-        A mapping between the non-output nodes of the open graph (`key`) and their corresponding measurement label (`value`). Measurement labels can be specified as `Measurement` or `Plane|Axis` instances.
+        A mapping between the non-output nodes of the open graph (``key``) and their corresponding measurement label (``value``). Measurement labels can be specified as `Measurement`, `Plane` or `Axis` instances.
 
     Notes
     -----
