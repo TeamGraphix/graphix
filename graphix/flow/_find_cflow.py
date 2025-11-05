@@ -10,7 +10,6 @@ References
 
 from __future__ import annotations
 
-from copy import copy
 from typing import TYPE_CHECKING
 
 from graphix.flow.core import CausalFlow
@@ -52,10 +51,10 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
     corrector_candidates = corrected_nodes - set(og.input_nodes)
     non_input_nodes = og.graph.nodes - set(og.input_nodes)
 
-    cf: dict[int, set[int]] = {}
+    cf: dict[int, frozenset[int]] = {}
     # Output nodes are always in layer 0. If the open graph has flow, it must have outputs, so we never end up with an empty set at `layers[0]`.
-    layers: list[set[int]] = [
-        copy(corrected_nodes)
+    layers: list[frozenset[int]] = [
+        frozenset(corrected_nodes)
     ]  # A copy is necessary because `corrected_nodes` is mutable and changes during the algorithm.
 
     return _flow_aux(og, non_input_nodes, corrected_nodes, corrector_candidates, cf, layers)
@@ -66,8 +65,8 @@ def _flow_aux(
     non_input_nodes: AbstractSet[int],
     corrected_nodes: AbstractSet[int],
     corrector_candidates: AbstractSet[int],
-    cf: dict[int, set[int]],
-    layers: list[set[int]],
+    cf: dict[int, frozenset[int]],
+    layers: list[frozenset[int]],
 ) -> CausalFlow[_PM_co] | None:
     """Find one layer of the causal flow.
 
@@ -81,9 +80,9 @@ def _flow_aux(
         Nodes which have already been corrected.
     corrector_candidates : AbstractSet[int]
         Nodes which could correct a node at the time of calling the function. This set can never contain input nodes, uncorrected nodes or nodes which already correct another node.
-    cf : dict[int, set[int]]
+    cf : dict[int, frozenset[int]]
         Causal flow correction function. `cf[i]` is the one-qubit set correcting the measurement of qubit `i`.
-    layers : list[set[int]]
+    layers : list[frozenset[int]]
         Partial order between corrected qubits in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
 
 
@@ -99,18 +98,18 @@ def _flow_aux(
     non_corrected_nodes = og.graph.nodes - corrected_nodes
 
     if corrected_nodes == set(og.graph.nodes):
-        return CausalFlow(og, cf, layers)
+        return CausalFlow(og, cf, tuple(layers))
 
     for p in corrector_candidates:
         non_corrected_neighbors = og.neighbors({p}) & non_corrected_nodes
         if len(non_corrected_neighbors) == 1:
             (q,) = non_corrected_neighbors
-            cf[q] = {p}
+            cf[q] = frozenset({p})
             curr_layer.add(q)
             corrected_nodes_new |= {q}
             corrector_nodes_new |= {p}
 
-    layers.append(curr_layer)
+    layers.append(frozenset(curr_layer))
 
     if len(corrected_nodes_new) == 0:
         return None

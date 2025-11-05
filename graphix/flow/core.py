@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import copy
 from dataclasses import dataclass
 from itertools import product
 from typing import TYPE_CHECKING, Generic
@@ -83,7 +84,7 @@ class XZCorrections(Generic[_M_co]):
         z_corrections = z_corrections or {}
 
         nodes_set = set(og.graph.nodes)
-        outputs_set = set(og.output_nodes)
+        outputs_set = frozenset(og.output_nodes)
         non_outputs_set = nodes_set - outputs_set
 
         if not set(x_corrections).issubset(non_outputs_set):
@@ -109,10 +110,10 @@ class XZCorrections(Generic[_M_co]):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
         # We append to the last layer (first measured nodes) all the non-output nodes not involved in the corrections.
-        if unordered_nodes := nodes_set - ordered_nodes:
+        if unordered_nodes := frozenset(nodes_set - ordered_nodes):
             partial_order_layers.append(unordered_nodes)
 
-        return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
+        return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
     def to_pattern(
         self: XZCorrections[Measurement],
@@ -310,7 +311,7 @@ class PauliFlow(Generic[_M_co]):
         ----------
         [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
         """
-        future = self.partial_order_layers[0]
+        future = copy(self.partial_order_layers[0])  # Sets are mutable
         x_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
         z_corrections: dict[int, AbstractSet[int]] = {}  # {domain: nodes}
 
@@ -454,7 +455,7 @@ def _corrections_to_dag(
     return nx.DiGraph(relations)
 
 
-def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]] | None:
+def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[frozenset[int]] | None:
     """Return the partial order encoded in a directed graph in a layer form if it exists.
 
     Parameters
@@ -473,4 +474,4 @@ def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[set[int]] | None:
     except nx.NetworkXUnfeasible:
         return None
 
-    return [set(layer) for layer in topo_gen]
+    return [frozenset(layer) for layer in topo_gen]

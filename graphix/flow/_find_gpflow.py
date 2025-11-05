@@ -244,21 +244,21 @@ class CorrectionMatrix(Generic[_M_co]):
     aog: AlgebraicOpenGraph[_M_co]
     c_matrix: MatGF2
 
-    def to_correction_function(self) -> dict[int, set[int]]:
+    def to_correction_function(self) -> dict[int, frozenset[int]]:
         r"""Transform the correction matrix into a correction function.
 
         Returns
         -------
-        correction_function : dict[int, set[int]]
+        correction_function : dict[int, frozenset[int]]
             Pauli (or generalised) flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
         """
         row_tags = self.aog.non_inputs
         col_tags = self.aog.non_outputs
-        correction_function: dict[int, set[int]] = {}
+        correction_function: dict[int, frozenset[int]] = {}
         for node in col_tags:
             i = col_tags.index(node)
             correction_set = {row_tags[j] for j in np.flatnonzero(self.c_matrix[:, i])}
-            correction_function[node] = correction_set
+            correction_function[node] = frozenset(correction_set)
         return correction_function
 
 
@@ -585,7 +585,7 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
     return generations
 
 
-def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> list[set[int]] | None:
+def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> tuple[frozenset[int], ...] | None:
     r"""Compute the partial order compatible with the correction matrix if it exists.
 
     Parameters
@@ -595,8 +595,8 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
 
     Returns
     -------
-    layers : list[set[int]]
-        Partial order between corrected qubits in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+    layers : tuple[frozenset[int], ...]
+        Partial order between corrected qubits in a layer form. The frozenset `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
 
     or `None`
         If the correction matrix is not compatible with a partial order on the the open graph, in which case the associated ordering matrix is not a DAG. In the context of the flow-finding algorithm, this means that the input open graph does not have Pauli (or generalised) flow.
@@ -614,15 +614,15 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
         return None  # The NC matrix is not a DAG, therefore there's no flow.
 
     layers = [
-        set(aog.og.output_nodes)
+        frozenset(aog.og.output_nodes)
     ]  # Output nodes are always in layer 0. If the open graph has flow, it must have outputs, so we never end up with an empty set at `layers[0]`.
 
     # If m >_c n, with >_c the flow partial order for two nodes m, n, then layer(n) > layer(m).
     # Therefore, we iterate the topological sort of the graph in _reverse_ order to obtain the order of measurements.
     col_tags = aog.non_outputs
-    layers.extend({col_tags[i] for i in idx_layer} for idx_layer in reversed(topo_gen))
+    layers.extend(frozenset({col_tags[i] for i in idx_layer}) for idx_layer in reversed(topo_gen))
 
-    return layers
+    return tuple(layers)
 
 
 def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatrix[_M_co] | None:

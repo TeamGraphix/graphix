@@ -444,7 +444,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={1: {0}})
 
-        assert corrections.partial_order_layers == [{2, 3}, {0}, {1}]
+        assert corrections.partial_order_layers == (frozenset({2, 3}), frozenset({0}), frozenset({1}))
         assert corrections.is_compatible([1, 0])
         assert not corrections.is_compatible([0, 1])  # Wrong order
         assert not corrections.is_compatible([0])  # Incomplete order
@@ -466,7 +466,7 @@ class TestXZCorrections:
             og=og, x_corrections={0: {1, 2}}, z_corrections={0: {1}}
         )
 
-        assert corrections.partial_order_layers == [{1, 2}, {0}]
+        assert corrections.partial_order_layers == (frozenset({1, 2}), frozenset({0}))
         assert corrections.is_compatible([0, 1, 2])
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
         assert not corrections.is_compatible([0, 1])  # Incomplete order
