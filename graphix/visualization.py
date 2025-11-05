@@ -241,12 +241,14 @@ class GraphVisualizer:
         )
 
     @staticmethod
-    def _shorten_path(path: list[_Point]) -> None:
+    def _shorten_path(path: Sequence[_Point]) -> list[_Point]:
         """Shorten the last edge not to hide arrow under the node."""
-        last = np.array(path[-1])
-        second_last = np.array(path[-2])
+        new_path = list(path)
+        last = np.array(new_path[-1])
+        second_last = np.array(new_path[-2])
         last_edge: _Point = tuple(last - (last - second_last) / np.linalg.norm(last - second_last) * 0.2)
-        path[-1] = last_edge
+        new_path[-1] = last_edge
+        return new_path
 
     def _draw_labels(self, pos: Mapping[int, _Point]) -> None:
         fontsize = 12
@@ -286,7 +288,7 @@ class GraphVisualizer:
         self,
         pos: Mapping[int, _Point],
         edge_path: Mapping[_Edge, Sequence[_Point]],
-        arrow_path: Mapping[_Edge, list[_Point]] | None,
+        arrow_path: Mapping[_Edge, Sequence[_Point]] | None,
         l_k: Mapping[int, int] | None,
         corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None,
         show_pauli_measurement: bool = True,
@@ -309,9 +311,9 @@ class GraphVisualizer:
         ----------
         pos: Mapping[int, _Point]
             Node positions.
-        edge_path: Sequence[Mapping[int, Sequence[_Point]]]
+        edge_path: Mapping[int, Sequence[_Point]]
             Mapping of edge paths.
-        arrow_path: Mapping[_Edge, list[_Point]] | None
+        arrow_path: Mapping[_Edge, Sequence[_Point]] | None
             Mapping of arrow paths.
         l_k: Mapping[int, int] | None
             Layer mapping if any.
@@ -333,7 +335,11 @@ class GraphVisualizer:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}  # Scale the layout
+        # Scale the layout.
+        pos = {k: _scale_pos(v, node_distance) for k, v in pos.items()}
+        edge_path = {k: [_scale_pos(p, node_distance) for p in l] for k, l in edge_path.items()}
+        if arrow_path is not None:
+            arrow_path = {k: [_scale_pos(p, node_distance) for p in l] for k, l in arrow_path.items()}
 
         if figsize is None:
             figsize = self.get_figsize(l_k, pos, node_distance=node_distance)
@@ -378,8 +384,8 @@ class GraphVisualizer:
                         self.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
                     )
                 else:
-                    GraphVisualizer._shorten_path(path)
-                    curve = self._bezier_curve_linspace(path)
+                    new_path = GraphVisualizer._shorten_path(path)
+                    curve = self._bezier_curve_linspace(new_path)
                     plt.plot(curve[:, 0], curve[:, 1], c=color, linewidth=1)
                     plt.annotate(
                         "",
@@ -444,7 +450,7 @@ class GraphVisualizer:
         for node in self.graph.nodes():
             if node in self.meas_planes:
                 x, y = pos[node] + np.array([0.22, -0.2])
-                plt.text(x, y, f"{self.meas_planes[node]}", fontsize=9, zorder=3)
+                plt.text(x, y, f"{self.meas_planes[node].name}", fontsize=9, zorder=3)
 
     def get_figsize(
         self,
@@ -552,9 +558,7 @@ class GraphVisualizer:
 
         return edge_path, arrow_path
 
-    def _find_bezier_path(
-        self, arrow: _Edge, bezier_path: Iterable[tuple[float, float]], pos: Mapping[int, _Point]
-    ) -> list[_Point]:
+    def _find_bezier_path(self, arrow: _Edge, bezier_path: Iterable[_Point], pos: Mapping[int, _Point]) -> list[_Point]:
         bezier_path = list(bezier_path)
         max_iter = 5
         iteration = 0
@@ -887,3 +891,7 @@ class GraphVisualizer:
 
 def _set_node_attributes(graph: nx.Graph[_HashableT], attrs: Mapping[_HashableT, object], name: str) -> None:
     nx.set_node_attributes(graph, attrs, name=name)  # type: ignore[arg-type]
+
+
+def _scale_pos(pos: _Point, node_distance: tuple[float, float]) -> _Point:
+    return (pos[0] * node_distance[0], pos[1] * node_distance[1])
