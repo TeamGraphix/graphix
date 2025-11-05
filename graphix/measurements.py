@@ -44,7 +44,7 @@ class Measurement(AbstractPlanarMeasurement):
 
     Attributes
     ----------
-    angle : Expressionor Float
+    angle : ExpressionOrFloat
         The angle of the measurement in units of :math:`\pi`. Should be between [0, 2).
     plane : graphix.fundamentals.Plane
         The measurement plane.
