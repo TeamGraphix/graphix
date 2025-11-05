@@ -350,7 +350,7 @@ class Circuit:
         out: list[int | None] = list(range(self.width))
         pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
-        for instr in _remove_rzz(self.instruction):
+        for instr in _transpile_rzz(self.instruction):
             if instr.kind == instruction.InstructionKind.CNOT:
                 ancilla = [n_node, n_node + 1]
                 control = _check_target(out, instr.control)
@@ -1015,7 +1015,7 @@ def _extend_domain(measure: M, domain: set[int]) -> None:
         measure.t_domain ^= domain
 
 
-def _remove_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]:
+def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]:
     for instr in instructions:
         if instr.kind == InstructionKind.RZZ:
             yield instruction.CNOT(control=instr.control, target=instr.target)
