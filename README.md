@@ -121,7 +121,7 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Acknowledgements
 
-Graphix is developed partly by the Qode group of the [QAT]((https://qat.inria.fr/presentation/)) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/).
+Graphix is developed partly by the Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/).
 
 Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [HQI](https://www.hqi.fr) and [Unitary Foundation](https://unitary.foundation/grants.html).
 
