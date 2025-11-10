@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/github/license/TeamGraphix/graphix)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/graphix)
 [![Downloads](https://static.pepy.tech/badge/graphix)](https://pepy.tech/project/graphix)
-[![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg)](https://unitary.fund/)
+[![Unitary Foundation](https://img.shields.io/badge/Supported%20By-Unitary%20Foundation-brightgreen.svg)](https://unitary.foundation/)
 [![DOI](https://zenodo.org/badge/573466585.svg)](https://zenodo.org/badge/latestdoi/573466585)
 [![CI](https://github.com/TeamGraphix/graphix/actions/workflows/ci.yml/badge.svg)](https://github.com/TeamGraphix/graphix/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/TeamGraphix/graphix/graph/badge.svg?token=E41MLUTYXU)](https://codecov.io/gh/TeamGraphix/graphix)
@@ -85,7 +85,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 - [graphix-symbolic](https://github.com/TeamGraphix/graphix-symbolic): parameterized patterns with symbolic simulation
 - [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
 - [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
-- [graphix-qasm-parser](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit directly from specifications.
+- [graphix-qasm-parser](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
 
 ### Projects using `graphix`
 
@@ -104,7 +104,9 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Discussion channels
 
-- Please visit [Unitary Foundation's Discord server](https://discord.com/servers/unitary-fund-764231928676089909), where you can find a channel for `graphix`. There, you can also find a link to our slack channel for regular discussions and questions.
+- Our Slack channel, for regular discussions and questions: https://graphix-org.slack.com
+
+- Please visit [Unitary Foundation's Discord server](https://discord.com/servers/unitary-foundation-764231928676089909), where you can find a channel for `graphix`.
 
 ## Maintainers (alphabetical order)
 
@@ -117,20 +119,33 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 - Shinichi Sunami (University of Oxford)
 - Mateo Uldemolins (Inria Paris)
 
-## Acknowledgements (alphabetical order)
+## Acknowledgements
 
-Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [Inria QAT](https://qat.inria.fr/presentation/) and [Unitary Foundation](https://unitary.fund/grants.html).
+Graphix is developed partly by the Qode group of the [QAT]((https://qat.inria.fr/presentation/)) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/).
+
+Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [HQI](https://www.hqi.fr) and [Unitary Foundation](https://unitary.foundation/grants.html).
 
 <p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="amplify" width="230"/>
+<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="Fixstars Amplify logo" width="230"/>
 </a></p>
 
-<p><a href="https://qat.inria.fr/presentation/">
-<img src="https://github.com/user-attachments/assets/a822175d-94e8-4388-8bee-34f4fecf9c01" alt="qat" width="90"/>
-</a></p>
+<p>
+<a href="https://www.inria.fr/">
+<img src="https://www.inria.fr/sites/default/files/2025-04/RF-Inria_Logo_RVB.jpg" alt="Inria logo" width="150"/>
+</a>
+<a href="https://www.ens.psl.eu/">
+<img src="https://www.ens.psl.eu/sites/default/files/logo_ens_psl_en_png.png" alt="ENS PSL logo" width="150"/>
+</a>
+<a href="https://qat.inria.fr/presentation/">
+<img src="https://qat.inria.fr/assets/icons/icon-512x512.png" alt="QAT logo" width="90"/>
+</a>
+<a href="https://www.hqi.fr">
+<img src="https://www.hqi.fr/wp-content/uploads/2022/06/logo_HQI_RVB.jpg" alt="HQI logo" width=150"/>
+</a>
+</p>
 
-<p><a href="https://unitary.fund/grants.html">
-<img src="https://user-images.githubusercontent.com/33350509/233384863-654485cf-b7d0-449e-8868-265c6fea2ced.png" alt="unitary-fund" width="150"/>
+<p><a href="https://unitary.foundation/grants/">
+<img src="https://unitary.foundation/images/UFoundation.png" alt="Unitary Foundation logo" width="150"/>
 </a></p>
 
 ## License
