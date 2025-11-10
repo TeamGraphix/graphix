@@ -92,19 +92,11 @@ def test_draw_graph_show_loop(fx_rng: Generator) -> None:
     )
 
 
-@pytest.mark.usefixtures("mock_plot")
 def test_draw_graph_save() -> None:
-    circuit = Circuit(3)
-    circuit.cnot(0, 1)
-    circuit.cnot(2, 1)
-    circuit.rx(0, pi / 3)
-    circuit.x(2)
-    circuit.cnot(2, 1)
-    pattern = circuit.transpile().pattern
-    pattern.perform_pauli_measurements(leave_input=True)
+    pattern = example_hadamard()
     with TemporaryDirectory() as dirname:
         filename = Path(dirname) / "image.png"
-        pattern.draw_graph(node_distance=(0.7, 0.6), filename=filename)
+        pattern.draw_graph(filename=filename)
         assert filename.exists()
 
 

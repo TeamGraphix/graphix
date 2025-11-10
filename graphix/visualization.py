@@ -435,9 +435,10 @@ class GraphVisualizer:
         if corrections is not None:
             plt.legend(loc="upper right", fontsize=10)
 
-        if filename is not None:
+        if filename is None:
+            plt.show()
+        else:
             plt.savefig(filename)
-        plt.show()
 
     def __draw_local_clifford(self, pos: Mapping[int, _Point]) -> None:
         if self.local_clifford is not None:
