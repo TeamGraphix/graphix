@@ -146,3 +146,19 @@ def test_custom_corrections() -> None:
     graph = pattern.extract_graph()
     vis = GraphVisualizer(graph, pattern.input_nodes, pattern.output_nodes)
     vis.visualize_from_pattern(pattern)
+
+# Compare with baseline/test_draw_graph_reference.png
+# Update baseline by running: pytest --mpl-generate-path=tests/baseline
+@pytest.mark.usefixtures("mock_plot")
+@pytest.mark.mpl_image_compare
+def test_draw_graph_reference() -> plt.Figure:
+    circuit = Circuit(3)
+    circuit.cnot(0, 1)
+    circuit.cnot(2, 1)
+    circuit.rx(0, pi / 3)
+    circuit.x(2)
+    circuit.cnot(2, 1)
+    pattern = circuit.transpile().pattern
+    pattern.perform_pauli_measurements(leave_input=True)
+    pattern.draw_graph(node_distance=(0.7, 0.6))
+    return plt.gcf()
