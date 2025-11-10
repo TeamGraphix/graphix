@@ -15,6 +15,7 @@ from tests.test_generator import example_flow, example_gflow, example_pflow
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from matplotlib.figure import Figure
     from numpy.random import Generator
 
 
@@ -147,11 +148,12 @@ def test_custom_corrections() -> None:
     vis = GraphVisualizer(graph, pattern.input_nodes, pattern.output_nodes)
     vis.visualize_from_pattern(pattern)
 
+
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
 @pytest.mark.usefixtures("mock_plot")
 @pytest.mark.mpl_image_compare
-def test_draw_graph_reference() -> plt.Figure:
+def test_draw_graph_reference() -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
     circuit.cnot(2, 1)
