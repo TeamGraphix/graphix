@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #173, #332: `Pattern.extract_measurement_commands` does not
   modify the pattern and returns unstandardized measurements.
 
+- #354, #357: `RZZ` gates are now supported by the transpiler.
+
 ### Changed
 
 - #337: Dropped dependence on `sympy` and `galois`.
