@@ -91,6 +91,7 @@ state_out = pattern.simulate_pattern(backend="statevector")
 
 - [Veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
 - [optyx](https://github.com/quantinuum-dev/optyx): ZX-based software for networked quantum computing
+- [GraphQOMB](https://github.com/TeamGraphix/graphqomb): modular graph state compiler for fault-tolerant MBQC.
 
 ## Citing
 
@@ -121,32 +122,41 @@ We use [GitHub issues](https://github.com/TeamGraphix/graphix/issues) for tracki
 
 ## Acknowledgements
 
-Graphix is developed partly by the Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/).
-
-Special thanks to [Fixstars Amplify](https://amplify.fixstars.com/en/), [HQI](https://www.hqi.fr) and [Unitary Foundation](https://unitary.foundation/grants.html).
-
-<p><a href="https://amplify.fixstars.com/en/">
-<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="Fixstars Amplify logo" width="230"/>
-</a></p>
+Graphix was founded in 2022 by Shinichi Sunami (University of Oxford) and Masato Fukushima (University of Tokyo, Fixstars Amplify) with support from [Fixstars Amplify](https://amplify.fixstars.com/en/) and [Unitary Foundation](https://unitary.foundation/grants.html), and later joined by Daichi Sasaki, Yuki Watanabe and Sora Shiratani (University of Tokyo, Fixstars Amplify).
 
 <p>
-<a href="https://www.inria.fr/">
-<img src="https://www.inria.fr/sites/default/files/2025-04/RF-Inria_Logo_RVB.jpg" alt="Inria logo" width="150"/>
+<a href="https://unitary.foundation/grants/" style="margin-right: 30px;">
+<img src="https://unitary.foundation/images/UFoundation.png" alt="Unitary Foundation logo" width="180"/>
 </a>
-<a href="https://www.ens.psl.eu/">
-<img src="https://www.ens.psl.eu/sites/default/files/logo_ens_psl_en_png.png" alt="ENS PSL logo" width="150"/>
-</a>
-<a href="https://qat.inria.fr/presentation/">
-<img src="https://qat.inria.fr/assets/icons/icon-512x512.png" alt="QAT logo" width="90"/>
-</a>
-<a href="https://www.hqi.fr">
-<img src="https://www.hqi.fr/wp-content/uploads/2022/06/logo_HQI_RVB.jpg" alt="HQI logo" width=150"/>
+<a href="https://amplify.fixstars.com/en/" style="margin-right: 30px;">
+<img src="https://github.com/user-attachments/assets/ffbf7ff6-14b8-448c-86a1-39583f30a0f4" alt="Fixstars Amplify logo" width="230"/>
 </a>
 </p>
 
-<p><a href="https://unitary.foundation/grants/">
-<img src="https://unitary.foundation/images/UFoundation.png" alt="Unitary Foundation logo" width="150"/>
-</a></p>
+Since 2023, Graphix team is joined by Qode group of the [QAT](https://qat.inria.fr/presentation/) team, co-hosted by [Inria](https://www.inria.fr/) and [ENS](https://www.ens.psl.eu/), who develops and maintains the library.
+
+<p>
+<a href="https://www.inria.fr/" style="margin-right: 30px;">
+  <img src="https://www.inria.fr/sites/default/files/2025-04/RF-Inria_Logo_RVB.jpg" alt="Inria logo" width="150"/>
+</a>
+&nbsp;
+<a href="https://www.ens.psl.eu/" style="margin-right: 30px;">
+  <img src="https://www.ens.psl.eu/sites/default/files/logo_ens_psl_en_png.png" alt="ENS PSL logo" width="150"/>
+</a>
+&nbsp;
+<a href="https://qat.inria.fr/presentation/" style="margin-right: 30px;">
+  <img src="https://qat.inria.fr/assets/icons/icon-512x512.png" alt="QAT logo" width="90"/>
+</a>
+</p>
+
+
+Special thanks also to [HQI](https://www.hqi.fr).
+
+<a href="https://www.hqi.fr">
+  <img src="https://www.hqi.fr/wp-content/uploads/2022/06/logo_HQI_RVB.jpg" alt="HQI logo" width="150"/>
+</a>
+
+
 
 ## License
 
