@@ -86,12 +86,13 @@ state_out = pattern.simulate_pattern(backend="statevector")
 - [graphix-ibmq](https://github.com/TeamGraphix/graphix-ibmq): pattern transpiler for IBMQ / `qiskit`
 - [graphix-perceval](https://github.com/TeamGraphix/graphix-perceval): pattern transpiler for Quandela's `perceval` simulator and QPU
 - [graphix-qasm-parser](https://github.com/TeamGraphix/graphix-qasm-parser): a plugin for parsing OpenQASM circuit.
+- [swiflow](https://github.com/TeamGraphix/swiflow): rust-based implementation of flow-finding algorithms
 
 ### Projects using `graphix`
 
-- [Veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
+- [veriphix](https://github.com/qat-inria/veriphix): verified blind quantum computation and benchmarking.
 - [optyx](https://github.com/quantinuum-dev/optyx): ZX-based software for networked quantum computing
-- [GraphQOMB](https://github.com/TeamGraphix/graphqomb): modular graph state compiler for fault-tolerant MBQC.
+- [graphqomb](https://github.com/TeamGraphix/graphqomb): modular graph state compiler for fault-tolerant MBQC and more.
 
 ## Citing
 
