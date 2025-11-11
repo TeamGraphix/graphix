@@ -150,7 +150,6 @@ Since 2023, Graphix team is joined by Qode group of the [QAT](https://qat.inria.
 </a>
 </p>
 
-
 Special thanks also to [HQI](https://www.hqi.fr).
 
 <a href="https://www.hqi.fr">
