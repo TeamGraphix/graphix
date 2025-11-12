@@ -279,6 +279,11 @@ class GraphVisualizer:
                 and self.meas_angles is not None
                 and PauliMeasurement.try_from(Plane.XY, self.meas_angles[node]) is not None
             ):
+                # Pauli nodes are checked with Plane.XY by default,
+                # because the actual plane does not change whether the
+                # node is Pauli or node, and the current API allows
+                # self.meas_plane to be None while self.meas_angles is
+                # defined.
                 inner_color = "lightblue"
             plt.scatter(
                 *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
@@ -350,11 +355,11 @@ class GraphVisualizer:
 
         plt.figure(figsize=figsize)
 
-        for edge in edge_path:
-            if len(edge_path[edge]) == 2:
+        for edge, path in edge_path.items():
+            if len(path) == 2:
                 nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
-                curve = self._bezier_curve_linspace(edge_path[edge])
+                curve = self._bezier_curve_linspace(path)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
 
         if arrow_path is not None:
@@ -410,6 +415,7 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
+            plt.legend(loc="upper right", fontsize=10)
 
         x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
         x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
@@ -432,9 +438,6 @@ class GraphVisualizer:
         )  # Add some padding to the left and right
         plt.ylim(y_min - 1, y_max + 0.5)  # Add some padding to the top and bottom
 
-        if corrections is not None:
-            plt.legend(loc="upper right", fontsize=10)
-
         if filename is None:
             plt.show()
         else:
@@ -442,16 +445,14 @@ class GraphVisualizer:
 
     def __draw_local_clifford(self, pos: Mapping[int, _Point]) -> None:
         if self.local_clifford is not None:
-            for node in self.graph.nodes():
-                if node in self.local_clifford:
-                    x, y = pos[node] + np.array([0.2, 0.2])
-                    plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
+            for node in self.local_clifford:
+                x, y = pos[node] + np.array([0.2, 0.2])
+                plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
     def __draw_measurement_planes(self, pos: Mapping[int, _Point]) -> None:
-        for node in self.graph.nodes():
-            if node in self.meas_planes:
-                x, y = pos[node] + np.array([0.22, -0.2])
-                plt.text(x, y, f"{self.meas_planes[node].name}", fontsize=9, zorder=3)
+        for node in self.meas_planes:
+            x, y = pos[node] + np.array([0.22, -0.2])
+            plt.text(x, y, f"{self.meas_planes[node].name}", fontsize=9, zorder=3)
 
     def get_figsize(
         self,
@@ -579,7 +580,9 @@ class GraphVisualizer:
                         ctrl_points.append(
                             (
                                 i,
-                                self._control_point(start, end, pos[node], distance=0.6 / iteration),
+                                self._control_point(
+                                    bezier_path[0], bezier_path[-1], pos[node], distance=0.6 / iteration
+                                ),
                             )
                         )
                         nodes -= {node}
