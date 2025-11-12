@@ -424,7 +424,7 @@ class GraphVisualizer:
                 )  # Draw line between layers
             for layer in range(min(l_k.values()), max(l_k.values()) + 1):
                 plt.text(
-                    layer * node_distance[0], y_min - 0.5, f"l: {max(l_k.values()) - layer}", ha="center", va="top"
+                    layer * node_distance[0], y_min - 0.5, f"L: {max(l_k.values()) - layer}", ha="center", va="top"
                 )  # Add layer label at bottom
 
         plt.xlim(
