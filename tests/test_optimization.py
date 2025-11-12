@@ -5,10 +5,10 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix.clifford import Clifford
-from graphix.command import C, Command, CommandKind, E, N
+from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.gflow import gflow_from_pattern
-from graphix.optimization import incorporate_pauli_results
+from graphix.optimization import StandardizedPattern, incorporate_pauli_results
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
@@ -83,3 +83,25 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern2.standardize()
     f, _l = gflow_from_pattern(pattern2)
     assert f is not None
+
+
+def test_to_space_optimal_pattern() -> None:
+    pattern = Pattern(
+        cmds=[
+            N(8),
+            N(17),
+            N(18),
+            E((8, 17)),
+            E((17, 18)),
+            M(8, angle=-0.75),
+            Z(18, {8}),
+            X(17, {8}),
+            C(17, (Clifford.S @ Clifford.Z)),
+            C(18, (Clifford.S @ Clifford.Z)),
+        ],
+        output_nodes=[17, 18],
+    )
+    pattern2 = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
+    state = pattern.simulate_pattern()
+    state2 = pattern2.simulate_pattern()
+    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)

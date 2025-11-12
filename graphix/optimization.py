@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from copy import copy
+from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -11,11 +13,12 @@ import graphix.pattern
 from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
-from graphix.measurements import Domains
+from graphix.measurements import Domains, Outcome
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
     from collections.abc import Set as AbstractSet
+    from typing import Self
 
     from graphix import Pattern
 
@@ -45,86 +48,126 @@ def standardize(pattern: Pattern) -> Pattern:
     standardized : Pattern
         The standardized pattern, if it exists.
     """
-    return StandardizedPattern(pattern).to_pattern()
+    return StandardizedPattern.from_pattern(pattern).to_pattern()
 
 
+@dataclass(frozen=True)
 class StandardizedPattern:
     """Pattern in standardized form.
 
     Use the method :meth:`to_pattern()` to get the standardized pattern.
-    Note that the attribute :attr:`pattern` contains the original pattern.
+
+    This dataclass uses immutable data structures for fields
+    (frozenset and MappingProxyType).  Instances can be generated with
+    the class method `new` from any compatible data structures, and
+    an instance can be generated directly from a pattern with the
+    class method `from_pattern`.
+
 
     Attributes
     ----------
-    pattern: Pattern
-        The original pattern.
-    n_list: list[command.N]
+    input_nodes: tuple[Node, ...]
+        Input nodes.
+    output_nodes: tuple[Node, ...]
+        Output nodes.
+    results: MappingProxyType[Node, Outcome]
+        Already measured nodes (by Pauli presimulation).
+    n_list: tuple[command.N]
         The N commands.
-    e_set: set[frozenset[int]]
-        Set of edges.
-    m_list: list[command.M]
+    e_set: frozenset[frozenset[int]]
+        Set of edges. Each edge is a set with two elements.
+    m_list: tuple[command.M]
         The M commands.
-    c_dict: dict[int, Clifford]
+    c_dict: MappingProxyType[int, Clifford]
         Mapping associating Clifford corrections to some nodes.
-    z_dict: dict[int, set[Node]]
+    z_dict: MappingProxyType[int, frozenset[Node]]
         Mapping associating Z-domains to some nodes.
-    x_dict: dict[int, set[Node]]
+    x_dict: MappingProxyType[int, frozenset[Node]]
         Mapping associating X-domains to some nodes.
+
     """
 
-    pattern: Pattern
-    n_list: list[command.N]
-    e_set: set[frozenset[int]]
-    m_list: list[command.M]
-    c_dict: dict[int, Clifford]
-    z_dict: dict[int, set[Node]]
-    x_dict: dict[int, set[Node]]
+    input_nodes: tuple[Node, ...]
+    output_nodes: tuple[Node, ...]
+    results: MappingProxyType[Node, Outcome]
+    n_list: tuple[command.N, ...]
+    e_set: frozenset[frozenset[Node]]
+    m_list: tuple[command.M, ...]
+    c_dict: MappingProxyType[Node, Clifford]
+    z_dict: MappingProxyType[Node, frozenset[Node]]
+    x_dict: MappingProxyType[Node, frozenset[Node]]
 
-    def __init__(self, pattern: Pattern) -> None:
+    @classmethod
+    def new(
+        cls,
+        input_nodes: Iterable[int],
+        output_nodes: Iterable[int],
+        results: Mapping[int, Outcome],
+        n_list: Iterable[command.N],
+        edges: Iterable[Iterable[int]],
+        m_list: Iterable[command.M],
+        c_dict: Mapping[int, Clifford],
+        z_dict: Mapping[int, Iterable[Node]],
+        x_dict: Mapping[int, Iterable[Node]],
+    ) -> Self:
+        """Return a new StandardizedPattern with immutable data structures."""
+        return cls(
+            tuple(input_nodes),
+            tuple(output_nodes),
+            MappingProxyType(dict(results)),
+            tuple(n_list),
+            frozenset(frozenset(edge) for edge in edges),
+            tuple(m_list),
+            MappingProxyType(dict(c_dict)),
+            MappingProxyType({node: frozenset(nodes) for node, nodes in z_dict.items()}),
+            MappingProxyType({node: frozenset(nodes) for node, nodes in x_dict.items()}),
+        )
+
+    @classmethod
+    def from_pattern(cls, pattern: Pattern) -> Self:
         """Compute the standardized form of the given pattern."""
         s_domain: set[Node]
         t_domain: set[Node]
         s_domain_opt: set[Node] | None
         t_domain_opt: set[Node] | None
 
-        self.pattern = pattern
-        self.n_list = []
-        self.e_set = set()
-        self.m_list = []
-        self.c_dict = {}
-        self.z_dict = {}
-        self.x_dict = {}
+        n_list: list[command.N] = []
+        e_set: set[frozenset[Node]] = set()
+        m_list: list[command.M] = []
+        c_dict: dict[Node, Clifford] = {}
+        z_dict: dict[Node, set[Node]] = {}
+        x_dict: dict[Node, set[Node]] = {}
 
         for cmd in pattern:
             if cmd.kind == CommandKind.N:
-                self.n_list.append(cmd)
+                n_list.append(cmd)
             elif cmd.kind == CommandKind.E:
                 for side in (0, 1):
                     i, j = cmd.nodes[side], cmd.nodes[1 - side]
-                    if clifford_gate := self.c_dict.get(i):
-                        _commute_clifford(clifford_gate, self.c_dict, i, j)
-                    if s_domain_opt := self.x_dict.get(i):
-                        _add_correction_domain(self.z_dict, j, s_domain_opt)
+                    if clifford_gate := c_dict.get(i):
+                        _commute_clifford(clifford_gate, c_dict, i, j)
+                    if s_domain_opt := x_dict.get(i):
+                        _add_correction_domain(z_dict, j, s_domain_opt)
                 edge = frozenset(cmd.nodes)
-                self.e_set.symmetric_difference_update((edge,))
+                e_set.symmetric_difference_update((edge,))
             elif cmd.kind == CommandKind.M:
                 new_cmd = None
-                if clifford_gate := self.c_dict.pop(cmd.node, None):
+                if clifford_gate := c_dict.pop(cmd.node, None):
                     new_cmd = cmd.clifford(clifford_gate)
-                if t_domain_opt := self.z_dict.pop(cmd.node, None):
+                if t_domain_opt := z_dict.pop(cmd.node, None):
                     if new_cmd is None:
                         new_cmd = copy(cmd)
                     # The original domain should not be mutated
                     new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
-                if s_domain_opt := self.x_dict.pop(cmd.node, None):
+                if s_domain_opt := x_dict.pop(cmd.node, None):
                     if new_cmd is None:
                         new_cmd = copy(cmd)
                     # The original domain should not be mutated
                     new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
                 if new_cmd is None:
-                    self.m_list.append(cmd)
+                    m_list.append(cmd)
                 else:
-                    self.m_list.append(new_cmd)
+                    m_list.append(new_cmd)
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                 if cmd.kind == CommandKind.X:
@@ -133,16 +176,19 @@ class StandardizedPattern:
                 else:
                     s_domain = set()
                     t_domain = cmd.domain
-                domains = self.c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
+                domains = c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
                 if domains.t_domain:
-                    _add_correction_domain(self.z_dict, cmd.node, domains.t_domain)
+                    _add_correction_domain(z_dict, cmd.node, domains.t_domain)
                 if domains.s_domain:
-                    _add_correction_domain(self.x_dict, cmd.node, domains.s_domain)
+                    _add_correction_domain(x_dict, cmd.node, domains.s_domain)
             elif cmd.kind == CommandKind.C:
                 # Each pattern command is applied by left multiplication: if a clifford `C`
                 # has been already applied to a node, applying a clifford `C'` to the same
                 # node is equivalent to apply `C'C` to a fresh node.
-                self.c_dict[cmd.node] = cmd.clifford @ self.c_dict.get(cmd.node, Clifford.I)
+                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
+        return cls.new(
+            pattern.input_nodes, pattern.output_nodes, pattern.results, n_list, e_set, m_list, c_dict, z_dict, x_dict
+        )
 
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
@@ -152,7 +198,7 @@ class StandardizedPattern:
         graph_state: nx.Graph
         """
         graph: nx.Graph[int] = nx.Graph()
-        graph.add_nodes_from(self.pattern.input_nodes)
+        graph.add_nodes_from(self.input_nodes)
         for cmd_n in self.n_list:
             graph.add_node(cmd_n.node)
         for u, v in self.e_set:
@@ -161,17 +207,53 @@ class StandardizedPattern:
 
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""
-        pattern = graphix.pattern.Pattern(input_nodes=self.pattern.input_nodes)
-        pattern.results = self.pattern.results
+        pattern = graphix.pattern.Pattern(input_nodes=self.input_nodes)
+        pattern.results = dict(self.results)
         pattern.extend(
             self.n_list,
             (command.E((u, v)) for u, v in self.e_set),
             self.m_list,
-            (command.Z(node=node, domain=domain) for node, domain in self.z_dict.items()),
-            (command.X(node=node, domain=domain) for node, domain in self.x_dict.items()),
+            (command.Z(node=node, domain=set(domain)) for node, domain in self.z_dict.items()),
+            (command.X(node=node, domain=set(domain)) for node, domain in self.x_dict.items()),
             (command.C(node=node, clifford=clifford_gate) for node, clifford_gate in self.c_dict.items()),
         )
-        pattern.reorder_output_nodes(self.pattern.output_nodes)
+        pattern.reorder_output_nodes(self.output_nodes)
+        return pattern
+
+    def to_space_optimal_pattern(self) -> Pattern:
+        """Return a pattern that is space-optimal for the given measurement order."""
+        pattern = graphix.pattern.Pattern(input_nodes=self.input_nodes)
+        pattern.results = dict(self.results)
+        active = set(self.input_nodes)
+        done: set[Node] = set()
+        n_dict = {n.node: n for n in self.n_list}
+        graph = self.extract_graph()
+
+        def ensure_active(node: Node) -> None:
+            if node not in active:
+                pattern.add(n_dict[node])
+                active.add(node)
+
+        def ensure_neighborhood(node: Node) -> None:
+            ensure_active(node)
+            for neighbor in graph.neighbors(node):
+                if neighbor not in done:
+                    ensure_active(neighbor)
+                    pattern.add(command.E((node, neighbor)))
+
+        for m in self.m_list:
+            ensure_neighborhood(m.node)
+            pattern.add(m)
+            done.add(m.node)
+        for node in self.output_nodes:
+            ensure_neighborhood(node)
+            if domain := self.z_dict.get(node):
+                pattern.add(command.Z(node, set(domain)))
+            if domain := self.x_dict.get(node):
+                pattern.add(command.X(node, set(domain)))
+            if clifford_gate := self.c_dict.get(node):
+                pattern.add(command.C(node, clifford_gate))
+            done.add(node)
         return pattern
 
 
