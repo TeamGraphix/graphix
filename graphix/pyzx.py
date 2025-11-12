@@ -31,7 +31,7 @@ def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
     return Fraction(angle)
 
 
-# TODO: Adapt to new OpenGrpah APi
+# TODO: Adapt to new OpenGraph API
 def to_pyzx_graph(og: OpenGraph[Measurement]) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
 

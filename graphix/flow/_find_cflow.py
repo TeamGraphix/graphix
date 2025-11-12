@@ -31,7 +31,7 @@ def find_cflow(og: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
 
     Returns
     -------
-    CausalFlow | None
+    CausalFlow[_PM_co] | None
         A causal flow object if the open graph has causal flow, `None` otherwise.
 
     Notes
@@ -72,7 +72,7 @@ def _flow_aux(
 
     Parameters
     ----------
-    og : OpenGraph[Plane]
+    og : OpenGraph[_PM_co]
         Open graph whose causal flow is calculated.
     non_input_nodes : AbstractSet[int]
         Non-input nodes of the input open graph. This parameter remains constant throughout the execution of the algorithm and can be derived from `og` at any time. It is passed as an argument to avoid unnecessary recalculations.
@@ -88,7 +88,7 @@ def _flow_aux(
 
     Returns
     -------
-    CausalFlow | None
+    CausalFlow[_PM_co] | None
         A causal flow object if the open graph has causal flow, `None` otherwise.
     """
     corrected_nodes_new: set[int] = set()

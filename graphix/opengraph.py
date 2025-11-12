@@ -75,7 +75,7 @@ class OpenGraph(Generic[_M_co]):
         if outputs & self.measurements.keys():
             raise ValueError("Output nodes cannot be measured.")
         if all_nodes - outputs != self.measurements.keys():
-            raise ValueError("All non-ouptut nodes must be measured.")
+            raise ValueError("All non-output nodes must be measured.")
         if len(inputs) != len(self.input_nodes):
             raise ValueError("Input nodes contain duplicates.")
         if len(outputs) != len(self.output_nodes):

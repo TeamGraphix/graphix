@@ -87,7 +87,7 @@ class XZCorrections(Generic[_M_co]):
         outputs_set = frozenset(og.output_nodes)
         non_outputs_set = nodes_set - outputs_set
 
-        if not set(x_corrections).issubset(non_outputs_set):
+        if not non_outputs_set.issuperset(x_corrections):
             raise ValueError("Keys of input X-corrections contain non-measured nodes.")
         if not set(z_corrections).issubset(non_outputs_set):
             raise ValueError("Keys of input Z-corrections contain non-measured nodes.")
@@ -105,7 +105,7 @@ class XZCorrections(Generic[_M_co]):
             shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
             partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
 
-        ordered_nodes = {node for layer in partial_order_layers for node in layer}
+        ordered_nodes = set.union(*partial_order_layers)
         if not ordered_nodes.issubset(nodes_set):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
@@ -446,11 +446,12 @@ def _corrections_to_dag(
     """
     relations: set[tuple[int, int]] = set()
 
-    for measured_node, corrected_nodes in x_corrections.items():
-        relations.update(product([measured_node], corrected_nodes))
-
-    for measured_node, corrected_nodes in z_corrections.items():
-        relations.update(product([measured_node], corrected_nodes))
+    relations = (
+        (measured_node, corrected_node)
+        for corrections in (x_corrections, z_corrections)
+        for measured_node, corrected_nodes in corrections.items()
+        for corrected_node in corrected_nodes
+    )
 
     return nx.DiGraph(relations)
 
