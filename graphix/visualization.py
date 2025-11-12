@@ -569,7 +569,7 @@ class GraphVisualizer:
             intersect = False
             if iteration > max_iter:
                 break
-            ctrl_points = []
+            ctrl_points: list[tuple[int, _Point]] = []
             for i in range(len(bezier_path) - 1):
                 start = bezier_path[i]
                 end = bezier_path[i + 1]
