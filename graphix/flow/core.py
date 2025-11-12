@@ -41,7 +41,7 @@ class XZCorrections(Generic[_M_co]):
     z_corrections : Mapping[int, AbstractSet[int]]
         Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
     partial_order_layers : Sequence[AbstractSet[int]]
-        Partial order between corrected qubits in a layer form. In particular, the set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+        Partial order between the open graph's nodes in a layer form determined by the corrections. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. If the open graph has output nodes, they are always in layer 0. Non-corrected, measured nodes are always in the last layer.
 
     Notes
     -----
@@ -99,10 +99,20 @@ class XZCorrections(Generic[_M_co]):
                 "Input XZ-corrections are not runnable since the induced directed graph contains closed loops."
             )
 
-        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain a subset of the output nodes.
+        # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
+        if len(partial_order_layers) == 0:
+            partial_order_layers = [outputs_set] if outputs_set else []
+            if non_outputs_set:
+                partial_order_layers.append(frozenset(non_outputs_set))
+            return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
+
+        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain output nodes.
         if outputs_set:
-            shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
-            partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
+            partial_order_layers = [
+                outputs_set,
+                frozenset(partial_order_layers[0] - outputs_set),
+                *partial_order_layers[1:],
+            ]
 
         ordered_nodes = {node for layer in partial_order_layers for node in layer}
         if not ordered_nodes.issubset(nodes_set):
@@ -247,13 +257,15 @@ class PauliFlow(Generic[_M_co]):
     correction_function : Mapping[int, AbstractSet[int]
         Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
     partial_order_layers : Sequence[AbstractSet[int]]
-        Partial order between corrected qubits in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+        Partial order between the open graph's nodes in a layer form. The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0.
 
     Notes
     -----
     - See Definition 5 in Ref. [1] for a definition of Pauli flow.
 
     - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
+
+    - A correct flow can only exist on an open graph with output nodes, so `layers[0]` always contains a finite set of nodes.
 
     References
     ----------

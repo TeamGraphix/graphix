@@ -473,6 +473,51 @@ class TestXZCorrections:
         assert corrections.generate_total_measurement_order() in ([0, 1, 2], [0, 2, 1])
         assert nx.utils.graphs_equal(corrections.extract_dag(), nx.DiGraph([(0, 1), (0, 2)]))
 
+    # Graph state
+    def test_from_measured_nodes_mapping_0(self) -> None:
+        og: OpenGraph[Plane] = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[],
+            output_nodes=[0, 1],
+            measurements={},
+        )
+
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+        assert corrections.x_corrections == {}
+        assert corrections.z_corrections == {}
+        assert len(corrections.partial_order_layers) == 1
+        assert corrections.partial_order_layers[0] == frozenset(og.output_nodes)
+
+    def test_from_measured_nodes_mapping_1(self) -> None:
+        og: OpenGraph[Plane] = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[],
+            output_nodes=[1],
+            measurements={0: Plane.XY},
+        )
+
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+        assert corrections.x_corrections == {}
+        assert corrections.z_corrections == {}
+        assert len(corrections.partial_order_layers) == 2
+        assert corrections.partial_order_layers[0] == frozenset(og.output_nodes)
+        assert corrections.partial_order_layers[1] == frozenset(og.measurements)
+
+    def test_partial_order_layers_partition(self) -> None:
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (2, 3)]),
+            input_nodes=[],
+            output_nodes=[3],
+            measurements=dict.fromkeys([0, 1, 2], Measurement(angle=0, plane=Plane.XY)),
+        )
+        x_corrections = {0: {1}, 2: {3}}
+
+        corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
+
+        assert all(
+            sum(1 for layer in corrections.partial_order_layers if node in layer) == 1 for node in og.graph.nodes
+        )
+
     # Test exceptions
     def test_from_measured_nodes_mapping_exceptions(self) -> None:
         og = OpenGraph(

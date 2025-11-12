@@ -596,7 +596,7 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
     Returns
     -------
     layers : tuple[frozenset[int], ...]
-        Partial order between corrected qubits in a layer form. The frozenset `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+        Partial order between corrected qubits in a layer form. The frozenset `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`. Output nodes are always in layer 0.
 
     or `None`
         If the correction matrix is not compatible with a partial order on the the open graph, in which case the associated ordering matrix is not a DAG. In the context of the flow-finding algorithm, this means that the input open graph does not have Pauli (or generalised) flow.
@@ -604,6 +604,8 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
     Notes
     -----
     - The partial order of the Pauli (or generalised) flow :math:`<_c` is the transitive closure of :math:`\lhd_c`, where the latter is related to the ordering matrix :math:`NC` as :math:`v \lhd_c w \Leftrightarrow (NC)_{w,v} = 1`, for :math:`v, w, \in O^c` two non-output nodes of `aog`. The ordering matrix is the product of the order-demand and the correction matrices and it is the adjacency matrix of the directed acyclical graph encoding the partial order.
+
+    - If the open graph has flow, it must have outputs, so `layers[0]` always contains a finite set of nodes.
 
     See Lemma 3.12, and Theorem 3.1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
