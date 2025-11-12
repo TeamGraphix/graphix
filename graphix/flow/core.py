@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
-from itertools import product
 from typing import TYPE_CHECKING, Generic
 
 import networkx as nx
@@ -105,7 +104,7 @@ class XZCorrections(Generic[_M_co]):
             shift = 1 if partial_order_layers[0].issubset(outputs_set) else 0
             partial_order_layers = [outputs_set, *partial_order_layers[shift:]]
 
-        ordered_nodes = set.union(*partial_order_layers)
+        ordered_nodes = {node for layer in partial_order_layers for node in layer}
         if not ordered_nodes.issubset(nodes_set):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
@@ -444,8 +443,6 @@ def _corrections_to_dag(
     -----
     See :func:`XZCorrections.extract_dag`.
     """
-    relations: set[tuple[int, int]] = set()
-
     relations = (
         (measured_node, corrected_node)
         for corrections in (x_corrections, z_corrections)

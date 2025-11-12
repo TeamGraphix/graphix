@@ -17,6 +17,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import numpy as np
+from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
@@ -91,7 +92,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
         -----
         See Definition 3.4 and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
-        return self._compute_og_matrices[0]
+        return self._og_matrices[0]
 
     @property
     def order_demand_matrix(self) -> MatGF2:
@@ -106,7 +107,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
         -----
         See Definition 3.5 and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
-        return self._compute_og_matrices[1]
+        return self._og_matrices[1]
 
     def _compute_reduced_adj(self) -> MatGF2:
         r"""Return the reduced adjacency matrix (RAdj) of the open graph.
@@ -139,7 +140,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
         return adj_red
 
     @cached_property
-    def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
+    def _og_matrices(self) -> tuple[MatGF2, MatGF2]:
         r"""Construct the flow-demand and order-demand matrices.
 
         Returns
@@ -149,7 +150,6 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
         Notes
         -----
-        - Measurements with a Pauli angle are intepreted as `Axis` instances.
         - See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
         flow_demand_matrix = self._compute_reduced_adj()
@@ -162,7 +162,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
         for v in row_tags:  # v is a node tag
             i = row_tags.index(v)
-            plane_axis_v = self.og.measurements[v].to_plane_or_axis()
+            plane_axis_v = self._get_measurement_label(v)
 
             if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Z}:
                 flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
@@ -177,6 +177,25 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
         return flow_demand_matrix, order_demand_matrix
 
+    def _get_measurement_label(self, node: int) -> Plane | Axis:
+        """Return the measurement label (plane or axis) of a node in the open graph.
+
+        Parameters
+        ----------
+        node : int
+            Measured node.
+
+        Returns
+        -------
+        Plane | Axis
+            Measurement label.
+
+        Notes
+        -----
+        Measurements with a Pauli angle are intepreted as `Axis` instances.
+        """
+        return self.og.measurements[node].to_plane_or_axis()
+
 
 class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
     """A subclass of `AlgebraicOpenGraph`.
@@ -185,44 +204,25 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
 
     """
 
-    @cached_property
-    def _compute_og_matrices(self) -> tuple[MatGF2, MatGF2]:
-        r"""Construct flow-demand and order-demand matrices assuming that the underlying open graph has planar measurements only.
+    @override
+    def _get_measurement_label(self, node: int) -> Plane:
+        """Return the measurement label (plane) of a node in the open graph.
+
+        Parameters
+        ----------
+        node : int
+            Measured node.
 
         Returns
         -------
-        flow_demand_matrix : MatGF2
-        order_demand_matrix : MatGF2
+        Plane
+            Measurement label.
 
         Notes
         -----
-        - Measurements with a Pauli angle are intepreted as `Plane` instances.
-        - See Definitions 3.4 and 3.5, and Algorithm 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
+        Measurements with a Pauli angle are intepreted as `Plane` instances.
         """
-        flow_demand_matrix = self._compute_reduced_adj()
-        order_demand_matrix = flow_demand_matrix.copy()
-
-        inputs_set = set(self.og.input_nodes)
-
-        row_tags = self.non_outputs
-        col_tags = self.non_inputs
-
-        for v in row_tags:  # v is a node tag
-            i = row_tags.index(v)
-            plane_v = self.og.measurements[v].to_plane()
-
-            if plane_v in {Plane.YZ, Plane.XZ}:
-                flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
-                if v not in inputs_set:
-                    j = col_tags.index(v)
-                    flow_demand_matrix[i, j] = 1  # Set element (v, v) = 0
-            if plane_v is Plane.XY:
-                order_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
-            if plane_v in {Plane.XY, Plane.XZ} and v not in inputs_set:
-                j = col_tags.index(v)
-                order_demand_matrix[i, j] = 1  # Set element (v, v) = 1
-
-        return flow_demand_matrix, order_demand_matrix
+        return self.og.measurements[node].to_plane()
 
 
 @dataclass(frozen=True)  # `NamedTuple` does not support multiple inheritance in Python 3.9 and 3.10
@@ -655,7 +655,7 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatri
 
     # Steps 1 and 2
     # Flow-demand and order-demand matrices are cached properties of `aog`.
-    flow_demand_matrix, order_demand_matrix = aog._compute_og_matrices
+    flow_demand_matrix, order_demand_matrix = aog._og_matrices
 
     if ni == no:
         correction_matrix = flow_demand_matrix.right_inverse()
