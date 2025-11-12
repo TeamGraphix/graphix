@@ -281,7 +281,7 @@ class GraphVisualizer:
             ):
                 # Pauli nodes are checked with Plane.XY by default,
                 # because the actual plane does not change whether the
-                # node is Pauli or node, and the current API allows
+                # node is Pauli or not, and the current API allows
                 # self.meas_plane to be None while self.meas_angles is
                 # defined.
                 inner_color = "lightblue"
