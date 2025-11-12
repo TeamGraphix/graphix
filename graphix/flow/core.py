@@ -114,7 +114,8 @@ class XZCorrections(Generic[_M_co]):
                 *partial_order_layers[1:],
             ]
 
-        ordered_nodes = {node for layer in partial_order_layers for node in layer}
+        ordered_nodes = frozenset.union(*partial_order_layers)
+
         if not ordered_nodes.issubset(nodes_set):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
