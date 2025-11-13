@@ -7,15 +7,17 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import enum
 import warnings
 from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 
 import networkx as nx
-from typing_extensions import assert_never, override
+from typing_extensions import assert_never
 
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
@@ -41,18 +43,6 @@ if TYPE_CHECKING:
 
 
 _StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
-
-
-@dataclass(frozen=True)
-class NodeAlreadyPreparedError(Exception):
-    """Exception raised if a node is already prepared."""
-
-    node: int
-
-    @override
-    def __str__(self) -> str:
-        """Return the message of the error."""
-        return f"Node already prepared: {self.node}"
 
 
 class Pattern:
@@ -135,10 +125,12 @@ class Pattern:
         """
         if cmd.kind == CommandKind.N:
             if cmd.node in self.__output_nodes:
-                raise NodeAlreadyPreparedError(cmd.node)
+                raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
         elif cmd.kind == CommandKind.M:
+            if cmd.node not in self.__output_nodes:
+                raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
             self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
@@ -537,7 +529,7 @@ class Pattern:
                 elif plane == Plane.XZ:
                     # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
                     #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
-                    #                  = M^{XZ,(-1)^{s+t}·α+sπ         (since (-1)^t·π ≡ π (mod 2π))
+                    #                  = M^{XZ,(-1)^{s+t}·α+sπ}         (since (-1)^t·π ≡ π (mod 2π))
                     #                  = S^s M^{XZ,(-1)^{s+t}·α}
                     #                  = S^s M^{XZ,α} Z^{s+t}
                     if s_domain:
@@ -900,6 +892,7 @@ class Pattern:
         layers : dict of set
             nodes grouped by layer index(k)
         """
+        self.check_runnability()  # prevent infinite loop: e.g., [N(0), M(0, s_domain={0})]
         dependency = self._get_dependency()
         measured = self.results.keys()
         self.update_dependency(measured, dependency)
@@ -1591,6 +1584,94 @@ class Pattern:
         if not pauli_nodes_inserted:
             new_seq.extend(pauli_nodes.values())
         self.__seq = new_seq
+
+    def check_runnability(self) -> None:
+        """Check whether the pattern is runnable.
+
+        Raises `RunnabilityError` exception if it is not.
+        """
+        active = set(self.input_nodes)
+        measured = set(self.results)
+
+        def check_active(cmd: Command, node: int) -> None:
+            if node in measured:
+                raise RunnabilityError(cmd, node, RunnabilityErrorReason.AlreadyMeasured)
+            if node not in active:
+                raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetActive)
+
+        def check_measured(cmd: Command, node: int) -> None:
+            if node not in measured:
+                raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
+
+        for cmd in self:
+            if cmd.kind == CommandKind.N:
+                if cmd.node in active:
+                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
+                if cmd.node in measured:
+                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
+                active.add(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                n0, n1 = cmd.nodes
+                check_active(cmd, n0)
+                check_active(cmd, n1)
+            elif cmd.kind == CommandKind.M:
+                check_active(cmd, cmd.node)
+                for domain in cmd.s_domain, cmd.t_domain:
+                    if cmd.node in domain:
+                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
+                    for node in domain:
+                        check_measured(cmd, node)
+                active.remove(cmd.node)
+                measured.add(cmd.node)
+            # Use of `==` here for mypy
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
+                check_active(cmd, cmd.node)
+                for node in cmd.domain:
+                    check_measured(cmd, node)
+            elif cmd.kind == CommandKind.C:
+                check_active(cmd, cmd.node)
+
+
+class RunnabilityErrorReason(Enum):
+    """Describe the reason for a pattern not being runnable."""
+
+    AlreadyActive = enum.auto()
+    """A node is prepared whereas it has already been prepared or it is an input node."""
+
+    AlreadyMeasured = enum.auto()
+    """A node is measured for a second time."""
+
+    NotYetActive = enum.auto()
+    """A node is entangled, measured or corrected whereas it has not been prepared yet and it is not an input node."""
+
+    NotYetMeasured = enum.auto()
+    """A node appears in the domain of a measurement of a correction whereas it has not been measured yet."""
+
+    DomainSelfLoop = enum.auto()
+    """A node appears in the domain of its own measurement. This is a particular case of `NotYetMeasured`, introduced to make the error message clearer."""
+
+
+@dataclass
+class RunnabilityError(Exception):
+    """Error raised by :method:`Pattern.check_runnability`."""
+
+    cmd: Command
+    node: int
+    reason: RunnabilityErrorReason
+
+    def __str__(self) -> str:
+        """Explain the error."""
+        if self.reason == RunnabilityErrorReason.AlreadyActive:
+            return f"{self.cmd}: node {self.node} is already active."
+        if self.reason == RunnabilityErrorReason.AlreadyMeasured:
+            return f"{self.cmd}: node {self.node} is already measured."
+        if self.reason == RunnabilityErrorReason.NotYetActive:
+            return f"{self.cmd}: node {self.node} is not yet active."
+        if self.reason == RunnabilityErrorReason.NotYetMeasured:
+            return f"{self.cmd}: node {self.node} is not yet measured."
+        if self.reason == RunnabilityErrorReason.DomainSelfLoop:
+            return f"{self.cmd}: node {self.node} appears in the domain of its own measurement command."
+        assert_never(self.reason)
 
 
 def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pattern:

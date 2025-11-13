@@ -15,7 +15,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.measurements import Outcome, PauliMeasurement
-from graphix.pattern import Pattern, shift_outcomes
+from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -683,6 +683,66 @@ class TestPattern:
             match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
         ):
             p1.compose(p2, mapping={0: 3})
+
+    def test_check_runnability_success(self, fx_rng: Generator) -> None:
+        nqubits = 5
+        depth = 5
+        circuit = rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
+        pattern.check_runnability()
+
+    def test_check_runnability_failures(self) -> None:
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern = Pattern(input_nodes=[0], cmds=[N(0)])
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyActive
+
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern = Pattern(cmds=[N(1), N(1)])
+        assert exc_info.value.node == 1
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyActive
+
+        pattern = Pattern(cmds=[E((2, 3))])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 2
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetActive
+
+        pattern = Pattern(cmds=[N(2), E((2, 3))])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 3
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetActive
+
+        pattern = Pattern(cmds=[N(1), M(1, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetMeasured
+
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern = Pattern(cmds=[N(1), M(1), M(1)])
+        assert exc_info.value.node == 1
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyMeasured
+
+        pattern = Pattern(cmds=[N(0), M(0)])
+        pattern.results = {0: 0}
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyMeasured
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.get_layers()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
