@@ -596,7 +596,7 @@ class TestOpenGraph:
 
     def test_double_entanglement(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
-        pattern2 = OpenGraph.from_pattern(pattern).to_pattern()
+        pattern2 = pattern.extract_opengraph().to_pattern()
         state = pattern.simulate_pattern()
         assert pattern2 is not None
         state2 = pattern2.simulate_pattern()
@@ -607,7 +607,7 @@ class TestOpenGraph:
         depth = 2
         circuit = rand_circuit(n_qubits, depth, fx_rng)
         pattern_ref = circuit.transpile().pattern
-        pattern = OpenGraph.from_pattern(pattern_ref).to_pattern()
+        pattern = pattern_ref.extract_opengraph().to_pattern()
         assert pattern is not None
 
         results = []

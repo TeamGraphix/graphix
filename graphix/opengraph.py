@@ -11,11 +11,11 @@ from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import CausalFlow, GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
-from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
 
+    from graphix.measurements import Measurement
     from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
@@ -106,32 +106,6 @@ class OpenGraph(Generic[_M_co]):
             m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
             for node, m in self.measurements.items()
         )
-
-    @staticmethod
-    def from_pattern(pattern: Pattern) -> OpenGraph[Measurement]:
-        """Initialise an `OpenGraph[Measurement]` object from the underlying resource-state graph of the input measurement pattern.
-
-        Parameters
-        ----------
-        pattern : Pattern
-            The input pattern.
-
-        Returns
-        -------
-        OpenGraph[Measurement]
-        """
-        graph = pattern.extract_graph()
-
-        input_nodes = pattern.input_nodes
-        output_nodes = pattern.output_nodes
-
-        meas_planes = pattern.get_meas_plane()
-        meas_angles = pattern.get_angles()
-        measurements: Mapping[int, Measurement] = {
-            node: Measurement(meas_angles[node], meas_planes[node]) for node in meas_angles
-        }
-
-        return OpenGraph(graph, input_nodes, output_nodes, measurements)
 
     def to_pattern(self: OpenGraph[Measurement]) -> Pattern | None:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.

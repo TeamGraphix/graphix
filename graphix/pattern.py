@@ -23,7 +23,8 @@ from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import Outcome, PauliMeasurement, toggle_outcome
+from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
+from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -996,7 +997,7 @@ class Pattern:
         graph = self.extract_graph()
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
+        meas_planes = self.extract_planes()
         f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
@@ -1022,7 +1023,7 @@ class Pattern:
             raise ValueError("The input graph must be connected")
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
+        meas_planes = self.extract_planes()
         flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
         if flow is None or l_k is None:  # We check both to avoid typing issues with `get_layers`.
             raise ValueError("No gflow found")
@@ -1067,33 +1068,54 @@ class Pattern:
         """
         yield from (cmd for cmd in self if cmd.kind == CommandKind.M)
 
-    def get_meas_plane(self) -> dict[int, Plane]:
-        """Get measurement plane from the pattern.
+    def extract_opengraph(self) -> OpenGraph[Measurement]:
+        """Extract the underlying resource-state open graph from the pattern.
 
         Returns
         -------
-        meas_plane: dict of graphix.pauli.Plane
-            list of planes representing measurement plane for each node.
-        """
-        meas_plane = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                meas_plane[cmd.node] = cmd.plane
-        return meas_plane
+        OpenGraph[Measurement]
 
-    def get_angles(self) -> dict[int, ExpressionOrFloat]:
-        """Get measurement angles of the pattern.
+        Notes
+        -----
+        This operation loses all the information on the Clifford commands.
+        """
+        graph: nx.Graph[int] = nx.Graph()
+        measurements: dict[int, Measurement] = {}
+        graph.add_nodes_from(self.input_nodes)
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                graph.add_node(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                if graph.has_edge(u, v):
+                    graph.remove_edge(u, v)
+                else:
+                    graph.add_edge(u, v)
+            elif cmd.kind == CommandKind.M:
+                measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
+        return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
+
+    def extract_planes(self) -> dict[int, Plane]:
+        """Return the measurement planes of the pattern.
 
         Returns
         -------
-        angles : dict
-            measurement angles of the each node.
+        dict[int, Plane]
+            measurement planes for each node.
         """
-        angles = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                angles[cmd.node] = cmd.angle
-        return angles
+        og = self.extract_opengraph()
+        return {node: m.plane for node, m in og.measurements.items()}
+
+    def extract_angles(self) -> dict[int, ExpressionOrFloat]:
+        """Return the measurement angles of the pattern.
+
+        Returns
+        -------
+        dict[int, ExpressionOrFloat]
+            measurement angles of each node.
+        """
+        og = self.extract_opengraph()
+        return {node: m.angle for node, m in og.measurements.items()}
 
     def compute_max_degree(self) -> int:
         """Get max degree of a pattern.
@@ -1113,36 +1135,25 @@ class Pattern:
 
         Returns
         -------
-        graph_state: nx.Graph[int]
+        nx.Graph[int]
         """
-        graph: nx.Graph[int] = nx.Graph()
-        graph.add_nodes_from(self.input_nodes)
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                graph.add_node(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if graph.has_edge(u, v):
-                    graph.remove_edge(u, v)
-                else:
-                    graph.add_edge(u, v)
-        return graph
+        return self.extract_opengraph().graph
 
     def extract_nodes(self) -> set[int]:
-        """Return the set of nodes of the pattern."""
-        nodes = set(self.input_nodes)
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes.add(cmd.node)
-        return nodes
-
-    def extract_isolated_nodes(self) -> set[int]:
-        """Get isolated nodes.
+        """Return the nodes of the pattern.
 
         Returns
         -------
-        isolated_nodes : set[int]
-            set of the isolated nodes
+        set[int]
+        """
+        return set(self.extract_graph().nodes)
+
+    def extract_isolated_nodes(self) -> set[int]:
+        """Return the isolated nodes in the pattern.
+
+        Returns
+        -------
+        set[int]
         """
         graph = self.extract_graph()
         return {node for node, d in graph.degree if d == 0}
@@ -1420,8 +1431,8 @@ class Pattern:
         graph = self.extract_graph()
         vin = self.input_nodes if self.input_nodes is not None else []
         vout = self.output_nodes
-        meas_planes = self.get_meas_plane()
-        meas_angles = self.get_angles()
+        meas_planes = self.extract_planes()
+        meas_angles = self.extract_angles()
         local_clifford = self.get_vops()
 
         vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
