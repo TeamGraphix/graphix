@@ -106,22 +106,30 @@ class XZCorrections(Generic[_M_co]):
                 partial_order_layers.append(frozenset(non_outputs_set))
             return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
-        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain output nodes.
+        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain all or some output nodes.
         if outputs_set:
-            partial_order_layers = [
-                outputs_set,
-                frozenset(partial_order_layers[0] - outputs_set),
-                *partial_order_layers[1:],
-            ]
+            if measured_layer_0 := partial_order_layers[0] - outputs_set:
+                # `partial_order_layers[0]` contains (some or all) outputs and measured nodes
+                partial_order_layers = [
+                    outputs_set,
+                    frozenset(measured_layer_0),
+                    *partial_order_layers[1:],
+                ]
+            else:
+                # `partial_order_layers[0]` contains only (some or all) outputs
+                partial_order_layers = [
+                    outputs_set,
+                    *partial_order_layers[1:],
+                ]
 
         ordered_nodes = frozenset.union(*partial_order_layers)
 
         if not ordered_nodes.issubset(nodes_set):
             raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
 
-        # We append to the last layer (first measured nodes) all the non-output nodes not involved in the corrections.
+        # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
         if unordered_nodes := frozenset(nodes_set - ordered_nodes):
-            partial_order_layers.append(unordered_nodes)
+            partial_order_layers[-1] |= unordered_nodes
 
         return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
