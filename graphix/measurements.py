@@ -79,7 +79,7 @@ class Measurement(AbstractPlanarMeasurement):
 
         Notes
         -----
-        Measurements with Pauli angles (i.e., `self.angle == n/2` with `n` an integer) are interpreted as `Axis` instances.
+        Measurements with Pauli angles (i.e., ``self.angle == n/2`` with ``n`` an integer) are interpreted as `Axis` instances.
         """
         if pm := PauliMeasurement.try_from(self.plane, self.angle):
             return pm.axis

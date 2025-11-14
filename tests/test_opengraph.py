@@ -598,7 +598,6 @@ class TestOpenGraph:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])
         pattern2 = pattern.extract_opengraph().to_pattern()
         state = pattern.simulate_pattern()
-        assert pattern2 is not None
         state2 = pattern2.simulate_pattern()
         assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
 
@@ -608,7 +607,6 @@ class TestOpenGraph:
         circuit = rand_circuit(n_qubits, depth, fx_rng)
         pattern_ref = circuit.transpile().pattern
         pattern = pattern_ref.extract_opengraph().to_pattern()
-        assert pattern is not None
 
         results = []
 

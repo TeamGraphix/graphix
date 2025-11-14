@@ -108,13 +108,18 @@ class OpenGraph(Generic[_M_co]):
             for node, m in self.measurements.items()
         )
 
-    def to_pattern(self: OpenGraph[Measurement]) -> Pattern | None:
+    def to_pattern(self: OpenGraph[Measurement]) -> Pattern:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
 
         Returns
         -------
-        Pattern | None
-            A deterministic pattern on the open graph. If it does not exist, it returns `None`.
+        Pattern
+            A deterministic pattern on the open graph.
+
+        Raises
+        ------
+        OpenGraphError
+            If the open graph does not have flow.
 
         Notes
         -----
@@ -135,7 +140,7 @@ class OpenGraph(Generic[_M_co]):
         if pflow is not None:
             return pflow.to_corrections().to_pattern()
 
-        return None
+        raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:
         """Return the set containing the neighborhood of a set of nodes in the open graph.
@@ -316,3 +321,7 @@ class OpenGraph(Generic[_M_co]):
         measurements = {**self.measurements, **measurements_shifted}
 
         return OpenGraph(g, inputs, outputs, measurements), mapping_complete
+
+
+class OpenGraphError(Exception):
+    """Exception subclass to handle incorrect open graphs."""
