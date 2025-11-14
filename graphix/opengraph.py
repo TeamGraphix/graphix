@@ -46,7 +46,8 @@ class OpenGraph(Generic[_M_co]):
     -------
     >>> import networkx as nx
     >>> from graphix.fundamentals import Plane
-    >>> from graphix.opengraph import OpenGraph, Measurement
+    >>> from graphix.opengraph import OpenGraph
+    >>> from graphix.measurements import Measurement
     >>>
     >>> graph = nx.Graph([(0, 1), (1, 2)])
     >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
