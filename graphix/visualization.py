@@ -15,7 +15,7 @@ from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Hashable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
     from pathlib import Path
     from typing import TypeAlias, TypeVar
@@ -131,22 +131,33 @@ class GraphVisualizer:
         if f is not None and l_k is not None:
             print("Flow detected in the graph.")
             pos = self.get_pos_from_flow(f, l_k)
-            edge_path, arrow_path = self.get_edge_path(f, pos)
+
+            def get_paths(
+                pos: Mapping[int, _Point],
+            ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+                return self.get_edge_path(f, pos)
         else:
             g, l_k = gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
             if g is not None and l_k is not None:
                 print("Gflow detected in the graph. (flow not detected)")
                 pos = self.get_pos_from_gflow(g, l_k)
-                edge_path, arrow_path = self.get_edge_path(g, pos)
+
+                def get_paths(
+                    pos: Mapping[int, _Point],
+                ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+                    return self.get_edge_path(g, pos)
             else:
                 print("No flow or gflow detected in the graph.")
                 pos = self.get_pos_wo_structure()
-                edge_path = self.get_edge_path_wo_structure(pos)
-                arrow_path = None
+
+                def get_paths(
+                    pos: Mapping[int, _Point],
+                ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+                    return (self.get_edge_path_wo_structure(pos), None)
+
         self.visualize_graph(
             pos,
-            edge_path,
-            arrow_path,
+            get_paths,
             l_k,
             None,
             show_pauli_measurement,
@@ -200,14 +211,24 @@ class GraphVisualizer:
         if f is not None and l_k is not None:
             print("The pattern is consistent with flow structure.")
             pos = self.get_pos_from_flow(f, l_k)
-            edge_path, arrow_path = self.get_edge_path(f, pos)
+
+            def get_paths(
+                pos: Mapping[int, _Point],
+            ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+                return self.get_edge_path(f, pos)
+
             corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None = None
         else:
             g, l_k = gflow.gflow_from_pattern(pattern)  # try gflow
             if g is not None and l_k is not None:
                 print("The pattern is consistent with gflow structure. (not with flow)")
                 pos = self.get_pos_from_gflow(g, l_k)
-                edge_path, arrow_path = self.get_edge_path(g, pos)
+
+                def get_paths(
+                    pos: Mapping[int, _Point],
+                ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+                    return self.get_edge_path(g, pos)
+
                 corrections = None
             else:
                 print("The pattern is not consistent with flow or gflow structure.")
@@ -223,12 +244,16 @@ class GraphVisualizer:
                     else:
                         xzflow[key] = set(value)  # copy
                 pos = self.get_pos_all_correction(unfolded_layers)
-                edge_path, arrow_path = self.get_edge_path(xzflow, pos)
+
+                def get_paths(
+                    pos: Mapping[int, _Point],
+                ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+                    return self.get_edge_path(xzflow, pos)
+
                 corrections = xflow, zflow
         self.visualize_graph(
             pos,
-            edge_path,
-            arrow_path,
+            get_paths,
             l_k,
             corrections,
             show_pauli_measurement,
@@ -292,8 +317,9 @@ class GraphVisualizer:
     def visualize_graph(
         self,
         pos: Mapping[int, _Point],
-        edge_path: Mapping[_Edge, Sequence[_Point]],
-        arrow_path: Mapping[_Edge, Sequence[_Point]] | None,
+        get_paths: Callable[
+            [Mapping[int, _Point]], tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]
+        ],
         l_k: Mapping[int, int] | None,
         corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None,
         show_pauli_measurement: bool = True,
@@ -316,10 +342,10 @@ class GraphVisualizer:
         ----------
         pos: Mapping[int, _Point]
             Node positions.
-        edge_path: Mapping[int, Sequence[_Point]]
-            Mapping of edge paths.
-        arrow_path: Mapping[_Edge, Sequence[_Point]] | None
-            Mapping of arrow paths.
+        get_paths: Callable[
+            [Mapping[int, _Point]], tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]
+        ]
+            Given scaled node positions, return the mapping of edge paths and the mapping of arrow paths.
         l_k: Mapping[int, int] | None
             Layer mapping if any.
         corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None
@@ -340,14 +366,12 @@ class GraphVisualizer:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        # Scale the layout.
-        pos = {k: _scale_pos(v, node_distance) for k, v in pos.items()}
-        edge_path = {k: [_scale_pos(p, node_distance) for p in l] for k, l in edge_path.items()}
-        if arrow_path is not None:
-            arrow_path = {k: [_scale_pos(p, node_distance) for p in l] for k, l in arrow_path.items()}
-
         if figsize is None:
             figsize = self.get_figsize(l_k, pos, node_distance=node_distance)
+
+        pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}
+
+        edge_path, arrow_path = get_paths(pos)
 
         if corrections is not None:
             # add some padding to the right for the legend
@@ -895,7 +919,3 @@ class GraphVisualizer:
 
 def _set_node_attributes(graph: nx.Graph[_HashableT], attrs: Mapping[_HashableT, object], name: str) -> None:
     nx.set_node_attributes(graph, attrs, name=name)  # type: ignore[arg-type]
-
-
-def _scale_pos(pos: _Point, node_distance: tuple[float, float]) -> _Point:
-    return (pos[0] * node_distance[0], pos[1] * node_distance[1])

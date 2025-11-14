@@ -152,8 +152,9 @@ def test_custom_corrections() -> None:
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
 @pytest.mark.usefixtures("mock_plot")
+@pytest.mark.parametrize("flow_from_pattern", [False, True])
 @pytest.mark.mpl_image_compare
-def test_draw_graph_reference() -> Figure:
+def test_draw_graph_reference(flow_from_pattern: bool) -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
     circuit.cnot(2, 1)
@@ -162,5 +163,5 @@ def test_draw_graph_reference() -> Figure:
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
     pattern.perform_pauli_measurements(leave_input=True)
-    pattern.draw_graph(node_distance=(0.7, 0.6))
+    pattern.draw_graph(flow_from_pattern=flow_from_pattern, node_distance=(0.7, 0.6))
     return plt.gcf()
