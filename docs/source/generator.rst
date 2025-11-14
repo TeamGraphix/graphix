@@ -41,12 +41,3 @@ Pattern Generation
 .. autoclass:: TranspileResult
 
 .. autoclass:: SimulateResult
-
-:mod:`graphix.generator` module
-+++++++++++++++++++++++++++++++
-
-.. automodule:: graphix.generator
-
-.. currentmodule:: graphix.generator
-
-.. autofunction:: graphix.generator.generate_from_graph

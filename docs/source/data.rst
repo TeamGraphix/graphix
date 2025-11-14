@@ -62,6 +62,18 @@ This module defines standard data structure for Pauli operators.
 
 .. autoclass:: Pauli
 
+:mod:`graphix.measurements` module
+++++++++++++++++++++++++++++++++++
+
+This module defines data structures for single-qubit measurements in MBQC.
+
+.. automodule:: graphix.measurements
+
+.. currentmodule:: graphix.measurements
+
+.. autoclass:: Measurement
+    :members:
+
 :mod:`graphix.instruction` module
 +++++++++++++++++++++++++++++++++
 
