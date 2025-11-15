@@ -236,6 +236,7 @@ class StandardizedPattern:
                 active.add(node)
 
         def ensure_neighborhood(node: Node) -> None:
+            """Initialize and entangle the inactive nodes in the neighbourhood of ``node``."""
             ensure_active(node)
             for neighbor in graph.neighbors(node):
                 if neighbor not in done:
