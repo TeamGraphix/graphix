@@ -28,9 +28,7 @@ def tests_minimal(session: Session) -> None:
     """Run the test suite with minimal dependencies."""
     session.install(".")
     install_pytest(session)
-    # We cannot run `pytest --doctest-modules` here, since some tests
-    # involve optional dependencies, like pyzx.
-    run_pytest(session, mpl=True)
+    run_pytest(session)  # no --mpl because matplotlib changes axes convention in 3.10
 
 
 # Note that recent types-networkx versions don't support Python 3.9
@@ -49,7 +47,7 @@ def tests_extra(session: Session) -> None:
     session.install(".[extra]")
     install_pytest(session)
     session.install("nox")  # needed for `--doctest-modules`
-    run_pytest(session, doctest_modules=True, mpl=True)
+    run_pytest(session, doctest_modules=True)
 
 
 @nox.session(python=["3.10", "3.11", "3.12", "3.13"])
