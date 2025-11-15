@@ -10,7 +10,17 @@ from nox import Session
 
 def install_pytest(session: Session) -> None:
     """Install pytest when requirements-dev.txt is not installed."""
-    session.install("pytest", "pytest-mock", "pytest-benchmark", "psutil")
+    session.install("pytest", "pytest-mock", "pytest-benchmark", "pytest-mpl", "psutil")
+
+
+def run_pytest(session: Session, doctest_modules: bool = False, mpl: bool = False) -> None:
+    """Run pytest."""
+    args = ["pytest"]
+    if doctest_modules:
+        args.append("--doctest-modules")
+    if mpl:
+        args.append("--mpl")
+    session.run(*args)
 
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
@@ -18,9 +28,7 @@ def tests_minimal(session: Session) -> None:
     """Run the test suite with minimal dependencies."""
     session.install(".")
     install_pytest(session)
-    # We cannot run `pytest --doctest-modules` here, since some tests
-    # involve optional dependencies, like pyzx.
-    session.run("pytest")
+    run_pytest(session)  # no --mpl because matplotlib changes axes convention in 3.10
 
 
 # Note that recent types-networkx versions don't support Python 3.9
@@ -30,7 +38,7 @@ def tests_dev(session: Session) -> None:
     session.install(".[dev]")
     # We cannot run `pytest --doctest-modules` here, since some tests
     # involve optional dependencies, like pyzx.
-    session.run("pytest")
+    run_pytest(session, mpl=True)
 
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
@@ -39,14 +47,14 @@ def tests_extra(session: Session) -> None:
     session.install(".[extra]")
     install_pytest(session)
     session.install("nox")  # needed for `--doctest-modules`
-    session.run("pytest", "--doctest-modules")
+    run_pytest(session, doctest_modules=True)
 
 
 @nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_all(session: Session) -> None:
     """Run the test suite with all dependencies."""
     session.install(".[dev,extra]")
-    session.run("pytest", "--doctest-modules")
+    run_pytest(session, doctest_modules=True, mpl=True)
 
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
@@ -64,7 +72,7 @@ def tests_symbolic(session: Session) -> None:
         # session.run("git", "clone", "-b", "branch-name", "https://github.com/TeamGraphix/graphix-symbolic")
         session.run("git", "clone", "https://github.com/TeamGraphix/graphix-symbolic")
         with session.cd("graphix-symbolic"):
-            session.run("pytest", "--doctest-modules")
+            run_pytest(session, doctest_modules=True)
 
 
 @nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
@@ -81,4 +89,4 @@ def tests_qasm_parser(session: Session) -> None:
         session.run("git", "clone", "https://github.com/TeamGraphix/graphix-qasm-parser")
         with session.cd("graphix-qasm-parser"):
             session.install(".")
-            session.run("pytest", "--doctest-modules")
+            run_pytest(session, doctest_modules=True)
