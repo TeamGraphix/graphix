@@ -230,6 +230,7 @@ class StandardizedPattern:
         graph = self.extract_graph()
 
         def ensure_active(node: Node) -> None:
+            """Initialize node in pattern if it has not been initialized before."""
             if node not in active:
                 pattern.add(n_dict[node])
                 active.add(node)
