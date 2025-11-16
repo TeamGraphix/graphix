@@ -52,17 +52,44 @@ def standardize(pattern: Pattern) -> Pattern:
 
 
 @dataclass(frozen=True)
-class StandardizedPattern:
+class _StandardizedPattern:
+    """Immutable internal storage for standardized patterns.
+
+    It is defined as a superclass to allow
+    :class:`StandardizedPattern` to define a custom ``__init__``
+    method accepting any compatible collections for initialization,
+    while keeping the dataclass frozen and avoiding direct
+    ``setattr``-based field initialization.
+    """
+
+    input_nodes: tuple[Node, ...]
+    output_nodes: tuple[Node, ...]
+    results: Mapping[Node, Outcome]
+    n_list: tuple[command.N, ...]
+    e_set: frozenset[frozenset[Node]]
+    m_list: tuple[command.M, ...]
+    c_dict: Mapping[Node, Clifford]
+    z_dict: Mapping[Node, frozenset[Node]]
+    x_dict: Mapping[Node, frozenset[Node]]
+
+
+class StandardizedPattern(_StandardizedPattern):
     """Pattern in standardized form.
 
     Use the method :meth:`to_pattern()` to get the standardized pattern.
 
-    This dataclass uses immutable data structures for fields
-    (frozenset and MappingProxyType).  Instances can be generated with
-    the class method `new` from any compatible data structures, and
-    an instance can be generated directly from a pattern with the
-    class method `from_pattern`.
+    This class uses immutable data structures for its fields
+    (``tuple``, ``frozenset`` and ``Mapping``).
 
+    Instances can be generated with the constructor from any
+    compatible data structures, and an instance can be generated
+    directly from a pattern with the class method `from_pattern`.
+
+    The constructor instantiates the ``Mapping`` fields as
+    ``MappingProxyType`` objects over fresh dictionaries, ensuring
+    their immutability. We expose the type ``Mapping`` instead of
+    ``MappingProxyType`` for the readability, as they provide the same
+    interface.
 
     Attributes
     ----------
@@ -70,48 +97,37 @@ class StandardizedPattern:
         Input nodes.
     output_nodes: tuple[Node, ...]
         Output nodes.
-    results: MappingProxyType[Node, Outcome]
+    results: Mapping[Node, Outcome]
         Already measured nodes (by Pauli presimulation).
     n_list: tuple[command.N]
         The N commands.
-    e_set: frozenset[frozenset[int]]
+    e_set: frozenset[frozenset[Node]]
         Set of edges. Each edge is a set with two elements.
     m_list: tuple[command.M]
         The M commands.
-    c_dict: MappingProxyType[int, Clifford]
+    c_dict: Mapping[Node, Clifford]
         Mapping associating Clifford corrections to some nodes.
-    z_dict: MappingProxyType[int, frozenset[Node]]
+    z_dict: Mapping[Node, frozenset[Node]]
         Mapping associating Z-domains to some nodes.
-    x_dict: MappingProxyType[int, frozenset[Node]]
+    x_dict: Mapping[Node, frozenset[Node]]
         Mapping associating X-domains to some nodes.
 
     """
 
-    input_nodes: tuple[Node, ...]
-    output_nodes: tuple[Node, ...]
-    results: MappingProxyType[Node, Outcome]
-    n_list: tuple[command.N, ...]
-    e_set: frozenset[frozenset[Node]]
-    m_list: tuple[command.M, ...]
-    c_dict: MappingProxyType[Node, Clifford]
-    z_dict: MappingProxyType[Node, frozenset[Node]]
-    x_dict: MappingProxyType[Node, frozenset[Node]]
-
-    @classmethod
-    def new(
-        cls,
-        input_nodes: Iterable[int],
-        output_nodes: Iterable[int],
-        results: Mapping[int, Outcome],
+    def __init__(
+        self,
+        input_nodes: Iterable[Node],
+        output_nodes: Iterable[Node],
+        results: Mapping[Node, Outcome],
         n_list: Iterable[command.N],
-        edges: Iterable[Iterable[int]],
+        edges: Iterable[Iterable[Node]],
         m_list: Iterable[command.M],
-        c_dict: Mapping[int, Clifford],
-        z_dict: Mapping[int, Iterable[Node]],
-        x_dict: Mapping[int, Iterable[Node]],
-    ) -> Self:
+        c_dict: Mapping[Node, Clifford],
+        z_dict: Mapping[Node, Iterable[Node]],
+        x_dict: Mapping[Node, Iterable[Node]],
+    ) -> None:
         """Return a new StandardizedPattern with immutable data structures."""
-        return cls(
+        super().__init__(
             tuple(input_nodes),
             tuple(output_nodes),
             MappingProxyType(dict(results)),
@@ -186,7 +202,7 @@ class StandardizedPattern:
                 # has been already applied to a node, applying a clifford `C'` to the same
                 # node is equivalent to apply `C'C` to a fresh node.
                 c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
-        return cls.new(
+        return cls(
             pattern.input_nodes, pattern.output_nodes, pattern.results, n_list, e_set, m_list, c_dict, z_dict, x_dict
         )
 
