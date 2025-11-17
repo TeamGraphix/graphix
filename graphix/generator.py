@@ -79,7 +79,7 @@ def generate_from_graph(
 
     # search for flow first
     f, l_k = graphix.gflow.find_flow(graph, inputs_set, outputs_set, meas_planes=meas_planes)
-    if f is not None:
+    if f is not None and l_k is not None:
         # flow found
         pattern = _flow2pattern(graph, angles, inputs, f, l_k)
         pattern.reorder_output_nodes(outputs)
