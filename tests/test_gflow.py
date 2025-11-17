@@ -523,7 +523,7 @@ class TestGflow:
         graph = pattern.extract_graph()
         input_ = set(pattern.input_nodes)
         output = set(pattern.output_nodes)
-        meas_planes = pattern.extract_planes()
+        meas_planes = pattern.get_meas_plane()
         f, _ = find_flow(graph, input_, output, meas_planes)
         valid = verify_flow(graph, input_, output, f, meas_planes)
 
@@ -542,7 +542,7 @@ class TestGflow:
         graph = pattern.extract_graph()
         input_ = set()
         output = set(pattern.output_nodes)
-        meas_planes = pattern.extract_planes()
+        meas_planes = pattern.get_meas_plane()
         g, _ = find_gflow(graph, input_, output, meas_planes)
 
         valid = verify_gflow(graph, input_, output, g, meas_planes)

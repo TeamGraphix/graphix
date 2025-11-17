@@ -287,7 +287,7 @@ class TestPattern:
 
         assert isolated_nodes == isolated_nodes_ref
 
-    def test_extract_planes(self) -> None:
+    def test_get_meas_plane(self) -> None:
         preset_meas_plane = [
             Plane.XY,
             Plane.XY,
@@ -314,7 +314,7 @@ class TestPattern:
             7: Plane.YZ,
             8: Plane.XZ,
         }
-        meas_plane = pattern.extract_planes()
+        meas_plane = pattern.get_meas_plane()
         assert meas_plane == ref_meas_plane
 
     @pytest.mark.parametrize("plane", Plane)

@@ -997,7 +997,7 @@ class Pattern:
         graph = self.extract_graph()
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_planes = self.extract_planes()
+        meas_planes = self.get_meas_plane()
         f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
         if f is None:
             return None
@@ -1023,7 +1023,7 @@ class Pattern:
             raise ValueError("The input graph must be connected")
         vin = set(self.input_nodes) if self.input_nodes is not None else set()
         vout = set(self.output_nodes)
-        meas_planes = self.extract_planes()
+        meas_planes = self.get_meas_plane()
         flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
         if flow is None or l_k is None:  # We check both to avoid typing issues with `get_layers`.
             raise ValueError("No gflow found")
@@ -1068,6 +1068,86 @@ class Pattern:
         """
         yield from (cmd for cmd in self if cmd.kind == CommandKind.M)
 
+    def get_meas_plane(self) -> dict[int, Plane]:
+        """Get measurement plane from the pattern.
+
+        Returns
+        -------
+        meas_plane: dict of graphix.pauli.Plane
+            list of planes representing measurement plane for each node.
+        """
+        meas_plane = {}
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.M:
+                meas_plane[cmd.node] = cmd.plane
+        return meas_plane
+
+    def get_angles(self) -> dict[int, ExpressionOrFloat]:
+        """Get measurement angles of the pattern.
+
+        Returns
+        -------
+        angles : dict
+            measurement angles of the each node.
+        """
+        angles = {}
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.M:
+                angles[cmd.node] = cmd.angle
+        return angles
+
+    def compute_max_degree(self) -> int:
+        """Get max degree of a pattern.
+
+        Returns
+        -------
+        max_degree : int
+            max degree of a pattern
+        """
+        graph = self.extract_graph()
+        degree = graph.degree()
+        assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
+        return int(max(dict(degree).values()))
+
+    def extract_graph(self) -> nx.Graph[int]:
+        """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
+
+        Returns
+        -------
+        graph_state: nx.Graph[int]
+        """
+        graph: nx.Graph[int] = nx.Graph()
+        graph.add_nodes_from(self.input_nodes)
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                graph.add_node(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                if graph.has_edge(u, v):
+                    graph.remove_edge(u, v)
+                else:
+                    graph.add_edge(u, v)
+        return graph
+
+    def extract_nodes(self) -> set[int]:
+        """Return the set of nodes of the pattern."""
+        nodes = set(self.input_nodes)
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                nodes.add(cmd.node)
+        return nodes
+
+    def extract_isolated_nodes(self) -> set[int]:
+        """Get isolated nodes.
+
+        Returns
+        -------
+        isolated_nodes : set[int]
+            set of the isolated nodes
+        """
+        graph = self.extract_graph()
+        return {node for node, d in graph.degree if d == 0}
+
     def extract_opengraph(self) -> OpenGraph[Measurement]:
         """Extract the underlying resource-state open graph from the pattern.
 
@@ -1094,69 +1174,6 @@ class Pattern:
             elif cmd.kind == CommandKind.M:
                 measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
         return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
-
-    def extract_planes(self) -> dict[int, Plane]:
-        """Return the measurement planes of the pattern.
-
-        Returns
-        -------
-        dict[int, Plane]
-            measurement planes for each node.
-        """
-        og = self.extract_opengraph()
-        return {node: m.plane for node, m in og.measurements.items()}
-
-    def extract_angles(self) -> dict[int, ExpressionOrFloat]:
-        """Return the measurement angles of the pattern.
-
-        Returns
-        -------
-        dict[int, ExpressionOrFloat]
-            measurement angles of each node.
-        """
-        og = self.extract_opengraph()
-        return {node: m.angle for node, m in og.measurements.items()}
-
-    def compute_max_degree(self) -> int:
-        """Get max degree of a pattern.
-
-        Returns
-        -------
-        max_degree : int
-            max degree of a pattern
-        """
-        graph = self.extract_graph()
-        degree = graph.degree()
-        assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
-        return int(max(dict(degree).values()))
-
-    def extract_graph(self) -> nx.Graph[int]:
-        """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
-
-        Returns
-        -------
-        nx.Graph[int]
-        """
-        return self.extract_opengraph().graph
-
-    def extract_nodes(self) -> set[int]:
-        """Return the nodes of the pattern.
-
-        Returns
-        -------
-        set[int]
-        """
-        return set(self.extract_graph().nodes)
-
-    def extract_isolated_nodes(self) -> set[int]:
-        """Return the isolated nodes in the pattern.
-
-        Returns
-        -------
-        set[int]
-        """
-        graph = self.extract_graph()
-        return {node for node, d in graph.degree if d == 0}
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.
@@ -1431,8 +1448,8 @@ class Pattern:
         graph = self.extract_graph()
         vin = self.input_nodes if self.input_nodes is not None else []
         vout = self.output_nodes
-        meas_planes = self.extract_planes()
-        meas_angles = self.extract_angles()
+        meas_planes = self.get_meas_plane()
+        meas_angles = self.get_angles()
         local_clifford = self.get_vops()
 
         vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)

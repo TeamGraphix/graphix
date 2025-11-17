@@ -299,7 +299,7 @@ def flow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int, 
     """
     if not pattern.is_standard(strict=True):
         raise ValueError("The pattern should be standardized first.")
-    meas_planes = pattern.extract_planes()
+    meas_planes = pattern.get_meas_plane()
     for plane in meas_planes.values():
         if plane != Plane.XY:
             return None, None
@@ -352,7 +352,7 @@ def gflow_from_pattern(pattern: Pattern) -> tuple[dict[int, set[int]], dict[int,
     graph = pattern.extract_graph()
     input_nodes = set(pattern.input_nodes) if pattern.input_nodes else set()
     output_nodes = set(pattern.output_nodes)
-    meas_planes = pattern.extract_planes()
+    meas_planes = pattern.get_meas_plane()
 
     layers = pattern.get_layers()
     l_k = {}
@@ -414,8 +414,8 @@ def pauliflow_from_pattern(
     graph = pattern.extract_graph()
     input_nodes = set(pattern.input_nodes) if pattern.input_nodes else set()
     output_nodes = set(pattern.output_nodes) if pattern.output_nodes else set()
-    meas_planes = pattern.extract_planes()
-    meas_angles = pattern.extract_angles()
+    meas_planes = pattern.get_meas_plane()
+    meas_angles = pattern.get_angles()
 
     return find_pauliflow(graph, input_nodes, output_nodes, meas_planes, meas_angles)
 
