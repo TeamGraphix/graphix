@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
+from graphix import instruction
 from graphix.fundamentals import Plane
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from graphix.instruction import Instruction
 
 
 class TestTranspilerUnitGates:
@@ -149,3 +155,28 @@ class TestTranspilerUnitGates:
         circuit.rz(1, 0.5)
         circuit2 = Circuit(3, instr=circuit.instruction)
         assert circuit.instruction == circuit2.instruction
+
+    @pytest.mark.parametrize(
+        "instruction",
+        [
+            instruction.CCX(0, (1, 2)),
+            instruction.RZZ(0, 1, np.pi / 4),
+            instruction.CNOT(0, 1),
+            instruction.SWAP((0, 1)),
+            instruction.H(0),
+            instruction.S(0),
+            instruction.X(0),
+            instruction.Y(0),
+            instruction.Z(0),
+            instruction.I(0),
+            instruction.RX(0, 0),
+            instruction.RY(0, 0),
+            instruction.RZ(0, 0),
+        ],
+    )
+    def test_instructions(self, fx_rng: Generator, instruction: Instruction) -> None:
+        circuit = Circuit(3, instr=[instruction])
+        pattern = circuit.transpile().pattern
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
