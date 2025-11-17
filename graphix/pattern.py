@@ -1159,20 +1159,24 @@ class Pattern:
         -----
         This operation loses all the information on the Clifford commands.
         """
-        graph: nx.Graph[int] = nx.Graph()
+        nodes = set(self.input_nodes)
+        edges: set[tuple[int, int]] = set()
         measurements: dict[int, Measurement] = {}
-        graph.add_nodes_from(self.input_nodes)
+
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N:
-                graph.add_node(cmd.node)
+                nodes.add(cmd.node)
             elif cmd.kind == CommandKind.E:
                 u, v = cmd.nodes
-                if graph.has_edge(u, v):
-                    graph.remove_edge(u, v)
-                else:
-                    graph.add_edge(u, v)
+                if u > v:
+                    u, v = v, u
+                edges.symmetric_difference_update({(u, v)})
             elif cmd.kind == CommandKind.M:
                 measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
+
+        graph = nx.Graph(edges)
+        graph.add_nodes_from(nodes)
+
         return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
