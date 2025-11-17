@@ -17,6 +17,7 @@ pytest
 pytest-benchmark
 pytest-cov
 pytest-mock
+pytest-mpl
 
 # Optional dependencies
 qiskit>=1.0
