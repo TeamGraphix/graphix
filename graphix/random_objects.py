@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import math
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -16,21 +17,24 @@ from graphix.rng import ensure_rng
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
+    from typing import Literal, TypeAlias
 
     from numpy.random import Generator
 
     from graphix.parameter import Parameter
 
+    IntLike: TypeAlias = int | np.integer
 
-def rand_herm(sz: int, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
+
+def rand_herm(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
     """Generate random hermitian matrix of size sz*sz."""
     rng = ensure_rng(rng)
     tmp = rng.random(size=(sz, sz)) + 1j * rng.random(size=(sz, sz))
     return tmp + tmp.conj().T
 
 
-def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
+def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.float64]:
     """Generate haar random unitary matrix of size sz*sz."""
     rng = ensure_rng(rng)
     if sz == 1:
@@ -41,7 +45,7 @@ def rand_unit(sz: int, rng: Generator | None = None) -> npt.NDArray[np.complex12
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: int, rng: Generator | None = None, rank: int | None = None) -> npt.NDArray[np.complex128]:
+def rand_dm(dim: IntLike, rng: Generator | None = None, rank: IntLike | None = None) -> npt.NDArray[np.float64]:
     """Generate random density matrices (positive semi-definite matrices with unit trace).
 
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter *dm_dtype*.
@@ -73,9 +77,20 @@ def rand_dm(dim: int, rng: Generator | None = None, rank: int | None = None) -> 
     return rand_u @ dm @ rand_u.transpose().conj()
 
 
-def rand_gauss_cpx_mat(
-    dim: int, rng: Generator | None = None, sig: float = 1 / np.sqrt(2)
-) -> npt.NDArray[np.complex128]:
+if TYPE_CHECKING:
+    _SIG: TypeAlias = float | Literal["ginibre"] | None
+
+
+def _make_sig(sig: _SIG, dim: IntLike) -> float:
+    if sig is None:
+        # B008 Do not perform function call in argument defaults
+        return 1 / math.sqrt(2)
+    if sig == "ginibre":
+        return 1 / math.sqrt(2 * dim)
+    return sig
+
+
+def rand_gauss_cpx_mat(dim: IntLike, rng: Generator | None = None, sig: _SIG = None) -> npt.NDArray[np.complex128]:
     """Return a square array of standard normal complex random variates.
 
     Code from QuTiP: https://qutip.org/docs/4.0.2/modules/qutip/random_objects.html
@@ -91,14 +106,14 @@ def rand_gauss_cpx_mat(
     """
     rng = ensure_rng(rng)
 
-    if sig == "ginibre":
-        sig = 1.0 / np.sqrt(2 * dim)
-
-    return np.sum(rng.normal(loc=0.0, scale=sig, size=((dim,) * 2 + (2,))) * UNITS, axis=-1)
+    result: npt.NDArray[np.complex128] = np.sum(
+        rng.normal(loc=0.0, scale=_make_sig(sig, dim), size=((dim,) * 2 + (2,))) * UNITS, axis=-1
+    )
+    return result
 
 
 def rand_channel_kraus(
-    dim: int, rng: Generator | None = None, rank: int | None = None, sig: float = 1 / np.sqrt(2)
+    dim: int, rng: Generator | None = None, rank: int | None = None, sig: _SIG = None
 ) -> KrausChannel:
     """Return a random :class:`graphix.sim.channels.KrausChannel` object of given dimension and rank.
 
@@ -122,16 +137,13 @@ def rand_channel_kraus(
     if rank is None:
         rank = dim**2
 
-    if sig == "ginibre":
-        sig = 1.0 / np.sqrt(2 * dim)
-
     if not isinstance(rank, int):
         raise TypeError("The rank of a Kraus expansion must be an integer.")
 
     if not rank >= 1:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
-    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=sig) for _ in range(rank)]
+    pre_kraus_list = [rand_gauss_cpx_mat(dim=dim, sig=_make_sig(sig, dim)) for _ in range(rank)]
     h_mat = np.sum([m.transpose().conjugate() @ m for m in pre_kraus_list], axis=0)
     kraus_list = np.array(pre_kraus_list) @ scipy.linalg.inv(scipy.linalg.sqrtm(h_mat))
 
@@ -397,7 +409,7 @@ def rand_circuit(
         for rotation in (circuit.rx, circuit.ry, circuit.rz)
         for parameter in parameters or []
     )
-    gate_choice = (
+    gate_choice: tuple[Callable[[int], None], ...] = (
         functools.partial(circuit.ry, angle=np.pi / 4),
         functools.partial(circuit.rz, angle=-np.pi / 4),
         functools.partial(circuit.rx, angle=-np.pi / 4),

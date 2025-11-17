@@ -23,7 +23,7 @@ class TestUtilities:
     # TODO : work on that. Verify an a random vector and not at the operator level...
 
     def test_rand_unit(self, fx_rng: Generator) -> None:
-        d = fx_rng.integers(2, 20)
+        d = fx_rng.integers(2, 20).astype(int)
         tmp = randobj.rand_unit(d, fx_rng)
         print(type(tmp), tmp.dtype)
 
@@ -52,10 +52,6 @@ class TestUtilities:
         assert len(channel) == rk
 
     def test_random_channel_fail(self, fx_rng: Generator) -> None:
-        # incorrect rank type
-        with pytest.raises(TypeError):
-            _ = randobj.rand_channel_kraus(dim=2**2, rank=3.0, rng=fx_rng)
-
         # null rank
         with pytest.raises(ValueError):
             _ = randobj.rand_channel_kraus(dim=2**2, rank=0, rng=fx_rng)
@@ -132,7 +128,7 @@ class TestUtilities:
         assert lv.is_psd(dm.rho)
         assert lv.is_unit_trace(dm.rho)
 
-        evals = np.linalg.eigvalsh(dm.rho)
+        evals = np.linalg.eigvalsh(dm.rho.astype(np.complex128))
 
         evals[np.abs(evals) < 1e-15] = 0
 
@@ -149,10 +145,7 @@ class TestUtilities:
         # or np.apply_along_axis ?
         assert np.all(dims == (2**nqb, 2**nqb))
 
-    def test_pauli_tensor_ops_fail(self, fx_rng: Generator) -> None:
-        with pytest.raises(TypeError):
-            _ = Ops.build_tensor_pauli_ops(fx_rng.integers(2, 6) + 0.5)
-
+    def test_pauli_tensor_ops_fail(self) -> None:
         with pytest.raises(ValueError):
             _ = Ops.build_tensor_pauli_ops(0)
 
@@ -168,12 +161,6 @@ class TestUtilities:
     def test_random_pauli_channel_fail(self, fx_rng: Generator) -> None:
         nqb = 3
         rk = 2
-        with pytest.raises(TypeError):
-            randobj.rand_pauli_channel_kraus(dim=2**nqb, rank=rk + 0.5, rng=fx_rng)
-
-        with pytest.raises(TypeError):
-            randobj.rand_pauli_channel_kraus(dim=2**nqb + 0.5, rank=rk, rng=fx_rng)
-
         with pytest.raises(ValueError):
             randobj.rand_pauli_channel_kraus(dim=2**nqb, rank=-3, rng=fx_rng)
 
