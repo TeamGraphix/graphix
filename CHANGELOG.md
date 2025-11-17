@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #354, #357: `RZZ` gates are now supported by the transpiler.
 
+- #347: The `visualization.py` module has been partially refactored
+  and is now well-typed. Pauli nodes are now systematically detected.
+
 ### Changed
 
 - #337: Dropped dependence on `sympy` and `galois`.
@@ -50,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #220, #332: `Pattern.get_measurements_commands` is renamed into
   `Pattern.extract_measurement_commands`.
+
+- #347: There is no longer `save` flag in `Pattern.draw_graph`: the
+  figure is saved to a file as soon as `filename` is not `None` (i.e.,
+  contains a `Path`). In this case, no window is opened to show the
+  plot interactively (i.e., the plot is shown interactively in a
+  window only if `filename` is `None`).
 
 ## [0.3.2] - 2025-08-12
 
