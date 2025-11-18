@@ -21,6 +21,8 @@ from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
+    from typing import Callable
+
     from numpy.random import Generator
 
 
@@ -31,6 +33,17 @@ class OpenGraphFlowTestCase(NamedTuple):
     has_pflow: bool
 
 
+OPEN_GRAPH_FLOW_TEST_CASES: list[OpenGraphFlowTestCase] = []
+
+
+def register_open_graph_flow_test_case(
+    test_case: Callable[[], OpenGraphFlowTestCase],
+) -> Callable[[], OpenGraphFlowTestCase]:
+    OPEN_GRAPH_FLOW_TEST_CASES.append(test_case())
+    return test_case
+
+
+@register_open_graph_flow_test_case
 def _og_0() -> OpenGraphFlowTestCase:
     """Generate open graph.
 
@@ -48,6 +61,7 @@ def _og_0() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_1() -> OpenGraphFlowTestCase:
     """Generate open graph.
 
@@ -70,6 +84,7 @@ def _og_1() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_2() -> OpenGraphFlowTestCase:
     """Generate open graph.
 
@@ -93,6 +108,7 @@ def _og_2() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_3() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -121,6 +137,7 @@ def _og_3() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_4() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -146,6 +163,7 @@ def _og_4() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_5() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -169,6 +187,7 @@ def _og_5() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
 
+@register_open_graph_flow_test_case
 def _og_6() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -194,6 +213,7 @@ def _og_6() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_7() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -213,6 +233,7 @@ def _og_7() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_8() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -238,6 +259,7 @@ def _og_8() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
 
+@register_open_graph_flow_test_case
 def _og_9() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -263,6 +285,7 @@ def _og_9() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_10() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -294,6 +317,7 @@ def _og_10() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_11() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -319,6 +343,7 @@ def _og_11() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=True, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_12() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -337,6 +362,7 @@ def _og_12() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_13() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -363,6 +389,7 @@ def _og_13() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_14() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -381,6 +408,7 @@ def _og_14() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=True, has_pflow=True)
 
 
+@register_open_graph_flow_test_case
 def _og_15() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -407,6 +435,7 @@ def _og_15() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
 
+@register_open_graph_flow_test_case
 def _og_16() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -425,6 +454,7 @@ def _og_16() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
 
+@register_open_graph_flow_test_case
 def _og_17() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -458,6 +488,7 @@ def _og_17() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
 
+@register_open_graph_flow_test_case
 def _og_18() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -483,6 +514,7 @@ def _og_18() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=False)
 
 
+@register_open_graph_flow_test_case
 def _og_19() -> OpenGraphFlowTestCase:
     r"""Generate open graph.
 
@@ -510,13 +542,6 @@ def _og_19() -> OpenGraphFlowTestCase:
         },
     )
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
-
-
-def prepare_test_og_flow() -> list[OpenGraphFlowTestCase]:
-    n_og_samples = 20
-    test_cases: list[OpenGraphFlowTestCase] = [globals()[f"_og_{i}"]() for i in range(n_og_samples)]
-
-    return test_cases
 
 
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
@@ -555,7 +580,7 @@ class TestOpenGraph:
         assert og.neighbors([1, 2, 3]) == {0, 1, 2, 3, 4}
         assert og.neighbors([]) == set()
 
-    @pytest.mark.parametrize("test_case", prepare_test_og_flow())
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_cflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
@@ -566,7 +591,7 @@ class TestOpenGraph:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a causal flow."):
                 og.extract_causal_flow()
 
-    @pytest.mark.parametrize("test_case", prepare_test_og_flow())
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_gflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
@@ -577,7 +602,7 @@ class TestOpenGraph:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a gflow."):
                 og.extract_gflow()
 
-    @pytest.mark.parametrize("test_case", prepare_test_og_flow())
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_FLOW_TEST_CASES)
     def test_pflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
