@@ -521,19 +521,19 @@ def prepare_test_og_flow() -> list[OpenGraphFlowTestCase]:
 
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
     """Verify if the input pattern is deterministic."""
-    results = []
-
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
         alpha = 2 * np.pi * fx_rng.random()
         state_ref = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
 
         for _ in range(n_shots):
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-            results.append(np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())))
+            result = np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten()))
 
-    avg = sum(results) / (n_shots * 3)
+            if result:
+                continue
+            return False
 
-    return bool(avg == pytest.approx(1))
+    return True
 
 
 class TestOpenGraph:
@@ -602,16 +602,11 @@ class TestOpenGraph:
         pattern_ref = circuit.transpile().pattern
         pattern = pattern_ref.extract_opengraph().to_pattern()
 
-        results = []
-
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
             alpha = 2 * np.pi * fx_rng.random()
             state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha))
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-            results.append(np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())))
-
-        avg = sum(results) / 3
-        assert avg == pytest.approx(1)
+            assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
 
 # TODO: Add test `OpenGraph.is_close`

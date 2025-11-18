@@ -379,6 +379,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
         """
         return self
 
+    @override
     def to_plane(self) -> Plane:
         """Return the plane.
 
