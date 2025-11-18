@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import networkx as nx
 
 from graphix.flow._find_cflow import find_cflow
-from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
-from graphix.flow.core import CausalFlow, GFlow, PauliFlow
+from graphix.flow._find_gpflow import find_gflow, find_pflow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
 
+    from graphix.flow.core import CausalFlow, GFlow, PauliFlow
     from graphix.measurements import Measurement
     from graphix.pattern import Pattern
 
@@ -132,11 +132,10 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Browne et al., NJP 9, 250 (2007)
         """
-        for extractor in (self.extract_causal_flow, self.extract_pauli_flow):
-            try:
-                return extractor().to_corrections().to_pattern()
-            except OpenGraphError:  # noqa: PERF203
-                continue
+        for extractor in (find_cflow, find_pflow):
+            flow = extractor(self)
+            if flow is not None:
+                return flow.to_corrections().to_pattern()
 
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
 
@@ -225,19 +224,13 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
-        aog = PlanarAlgebraicOpenGraph(self)
-        correction_matrix = compute_correction_matrix(aog)
-        if correction_matrix is None:
-            raise OpenGraphError("The open graph does not have a gflow.")
-        gf = GFlow.from_correction_matrix(
-            correction_matrix
-        )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+        gf = find_gflow(self)
         if gf is None:
             raise OpenGraphError("The open graph does not have a gflow.")
         return gf
 
     def extract_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co]:
-        r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
+        r"""Return a maximally delayed Pauli on the open graph if it exists.
 
         Returns
         -------
@@ -258,13 +251,7 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
-        aog = AlgebraicOpenGraph(self)
-        correction_matrix = compute_correction_matrix(aog)
-        if correction_matrix is None:
-            raise OpenGraphError("The open graph does not have a Pauli flow.")
-        pf = PauliFlow.from_correction_matrix(
-            correction_matrix
-        )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+        pf = find_pflow(self)
         if pf is None:
             raise OpenGraphError("The open graph does not have a Pauli flow.")
         return pf

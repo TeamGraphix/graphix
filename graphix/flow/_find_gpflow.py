@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import numpy as np
 from typing_extensions import override
 
+import graphix.flow.core as flw  # To avoid circular imports
 from graphix._linalg import MatGF2, solve_f2_linear_system
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.sim.base_backend import NodeIndex
@@ -26,6 +27,7 @@ from graphix.sim.base_backend import NodeIndex
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
+    from graphix.flow.core import GFlow, PauliFlow
     from graphix.opengraph import OpenGraph
 
 
@@ -668,3 +670,65 @@ def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatri
         return None
 
     return CorrectionMatrix(aog, correction_matrix)
+
+
+def find_gflow(og: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
+    r"""Return a maximally delayed generalised flow (gflow) on an open graph if it exists.
+
+    Parameters
+    ----------
+    og : OpenGraph[_PM_co]
+        The input open graph.
+
+    Returns
+    -------
+    GFlow[_PM_co] | None
+        A gflow object if the open graph has gflow or ``None`` otherwise.
+
+    Notes
+    -----
+    - The open graph instance must be of parametric type `Measurement` or `Plane` since the gflow is only defined on open graphs with planar measurements. Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Plane` instances, in contrast with :func:`graphix.flow._find_gpflow.find_pflow`.
+    - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
+
+    References
+    ----------
+    [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+    """
+    aog = PlanarAlgebraicOpenGraph(og)
+    correction_matrix = compute_correction_matrix(aog)
+    if correction_matrix is None:
+        return None
+    return flw.GFlow.from_correction_matrix(
+        correction_matrix
+    )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+
+
+def find_pflow(og: OpenGraph[_M_co]) -> PauliFlow[_M_co] | None:
+    r"""Return a maximally delayed Pauli flow on the open graph if it exists.
+
+    Parameters
+    ----------
+    og : OpenGraph[_M_co]
+        The input open graph.
+
+    Returns
+    -------
+    PauliFlow[_M_co] | None
+        A Pauli flow object if the open graph has Pauli flow or ``None`` otherwise.
+
+    Notes
+    -----
+    - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`graphix.flow._find_gpflow.find_gflow`.
+    - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
+
+    References
+    ----------
+    [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+    """
+    aog = AlgebraicOpenGraph(og)
+    correction_matrix = compute_correction_matrix(aog)
+    if correction_matrix is None:
+        return None
+    return flw.PauliFlow.from_correction_matrix(
+        correction_matrix
+    )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
