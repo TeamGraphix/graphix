@@ -15,7 +15,7 @@ import pytest
 from graphix.command import E
 from graphix.fundamentals import Plane
 from graphix.measurements import Measurement
-from graphix.opengraph import OpenGraph
+from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
@@ -559,40 +559,34 @@ class TestOpenGraph:
     def test_cflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
-        cflow = og.find_causal_flow()
-
         if test_case.has_cflow:
-            assert cflow is not None
-            pattern = cflow.to_corrections().to_pattern()
+            pattern = og.extract_causal_flow().to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
-            assert cflow is None
+            with pytest.raises(OpenGraphError, match=r"The open graph does not have a causal flow."):
+                og.extract_causal_flow()
 
     @pytest.mark.parametrize("test_case", prepare_test_og_flow())
     def test_gflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
-        gflow = og.find_gflow()
-
         if test_case.has_gflow:
-            assert gflow is not None
-            pattern = gflow.to_corrections().to_pattern()
+            pattern = og.extract_gflow().to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
-            assert gflow is None
+            with pytest.raises(OpenGraphError, match=r"The open graph does not have a gflow."):
+                og.extract_gflow()
 
     @pytest.mark.parametrize("test_case", prepare_test_og_flow())
     def test_pflow(self, test_case: OpenGraphFlowTestCase, fx_rng: Generator) -> None:
         og = test_case.og
 
-        pflow = og.find_pauli_flow()
-
         if test_case.has_pflow:
-            assert pflow is not None
-            pattern = pflow.to_corrections().to_pattern()
+            pattern = og.extract_pauli_flow().to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
-            assert pflow is None
+            with pytest.raises(OpenGraphError, match=r"The open graph does not have a Pauli flow."):
+                og.extract_pauli_flow()
 
     def test_double_entanglement(self) -> None:
         pattern = Pattern(input_nodes=[0, 1], cmds=[E((0, 1)), E((0, 1))])

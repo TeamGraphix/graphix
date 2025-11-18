@@ -132,13 +132,11 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Browne et al., NJP 9, 250 (2007)
         """
-        cflow = self.find_causal_flow()
-        if cflow is not None:
-            return cflow.to_corrections().to_pattern()
-
-        pflow = self.find_pauli_flow()
-        if pflow is not None:
-            return pflow.to_corrections().to_pattern()
+        for extractor in (self.extract_causal_flow, self.extract_pauli_flow):
+            try:
+                return extractor().to_corrections().to_pattern()
+            except OpenGraphError:  # noqa: PERF203
+                continue
 
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
 
@@ -178,13 +176,18 @@ class OpenGraph(Generic[_M_co]):
             odd_neighbors_set ^= self.neighbors([node])
         return odd_neighbors_set
 
-    def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
+    def extract_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co]:
         """Return a causal flow on the open graph if it exists.
 
         Returns
         -------
-        CausalFlow | None
-            A causal flow object if the open graph has causal flow, `None` otherwise.
+        CausalFlow[_PM_co]
+            A causal flow object if the open graph has causal flow.
+
+        Raises
+        ------
+        OpenGraphError
+            If the open graph does not have a causal flow.
 
         Notes
         -----
@@ -195,19 +198,27 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
         """
-        return find_cflow(self)
+        cf = find_cflow(self)
+        if cf is None:
+            raise OpenGraphError("The open graph does not have a causal flow.")
+        return cf
 
-    def find_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
+    def extract_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co]:
         r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
 
         Returns
         -------
-        GFlow | None
-            A gflow object if the open graph has gflow, `None` otherwise.
+        GFlow[_PM_co]
+            A gflow object if the open graph has gflow.
+
+        Raises
+        ------
+        OpenGraphError
+            If the open graph does not have a gflow.
 
         Notes
         -----
-        - The open graph instance must be of parametric type `Measurement` or `Plane` since the gflow is only defined on open graphs with planar measurements. Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Plane` instances, in contrast with :func:`OpenGraph.find_pauli_flow`.
+        - The open graph instance must be of parametric type `Measurement` or `Plane` since the gflow is only defined on open graphs with planar measurements. Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Plane` instances, in contrast with :func:`OpenGraph.extract_pauli_flow`.
         - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
 
         References
@@ -217,22 +228,30 @@ class OpenGraph(Generic[_M_co]):
         aog = PlanarAlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
-            return None
-        return GFlow.from_correction_matrix(
+            raise OpenGraphError("The open graph does not have a gflow.")
+        gf = GFlow.from_correction_matrix(
             correction_matrix
-        )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
+        )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+        if gf is None:
+            raise OpenGraphError("The open graph does not have a gflow.")
+        return gf
 
-    def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co] | None:
+    def extract_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co]:
         r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
 
         Returns
         -------
-        PauliFlow | None
-            A Pauli flow object if the open graph has Pauli flow, `None` otherwise.
+        PauliFlow[_M_co]
+            A Pauli flow object if the open graph has Pauli flow.
+
+        Raises
+        ------
+        OpenGraphError
+            If the open graph does not have a Pauli flow.
 
         Notes
         -----
-        - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`OpenGraph.find_gflow`.
+        - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`OpenGraph.extract_gflow`.
         - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
 
         References
@@ -242,10 +261,13 @@ class OpenGraph(Generic[_M_co]):
         aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
-            return None
-        return PauliFlow.from_correction_matrix(
+            raise OpenGraphError("The open graph does not have a Pauli flow.")
+        pf = PauliFlow.from_correction_matrix(
             correction_matrix
-        )  # The constructor can return `None` if the correction matrix is not compatible with any partial order on the open graph.
+        )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+        if pf is None:
+            raise OpenGraphError("The open graph does not have a Pauli flow.")
+        return pf
 
     # TODO: Generalise `compose` to any type of OpenGraph
     def compose(
@@ -324,4 +346,4 @@ class OpenGraph(Generic[_M_co]):
 
 
 class OpenGraphError(Exception):
-    """Exception subclass to handle incorrect open graphs."""
+    """Exception subclass to handle open graphs errors."""

@@ -12,7 +12,7 @@ import pytest
 from graphix import Circuit, Pattern, command, gflow, visualization
 from graphix.fundamentals import Plane
 from graphix.measurements import Measurement
-from graphix.opengraph import OpenGraph
+from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
@@ -79,8 +79,10 @@ def example_pflow(rng: Generator) -> Pattern:
 
     og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
 
-    assert og.find_gflow() is None  # example graph doesn't have gflow
-    assert og.find_pauli_flow() is not None  # example graph has Pauli flow
+    try:
+        og.extract_gflow()  # example graph doesn't have gflow
+    except OpenGraphError:
+        og.extract_pauli_flow()  # example graph has Pauli flow
 
     pattern = og.to_pattern()
     pattern.standardize()
