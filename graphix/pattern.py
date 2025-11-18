@@ -995,11 +995,11 @@ class Pattern:
             measurement order
         """
         graph = self.extract_graph()
-        vin = set(self.input_nodes) if self.input_nodes is not None else set()
+        vin = set(self.input_nodes)
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
         f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
-        if f is None:
+        if f is None or l_k is None:
             return None
         depth, layer = get_layers(l_k)
         meas_order: list[int] = []
@@ -1021,7 +1021,7 @@ class Pattern:
         isolated = list(nx.isolates(graph))
         if isolated:
             raise ValueError("The input graph must be connected")
-        vin = set(self.input_nodes) if self.input_nodes is not None else set()
+        vin = set(self.input_nodes)
         vout = set(self.output_nodes)
         meas_planes = self.get_meas_plane()
         flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
@@ -1421,10 +1421,9 @@ class Pattern:
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
         show_loop: bool = True,
-        node_distance: tuple[int, int] = (1, 1),
+        node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
-        save: bool = False,
-        filename: str | None = None,
+        filename: Path | None = None,
     ) -> None:
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
@@ -1444,13 +1443,12 @@ class Pattern:
             Distance multiplication factor between nodes for x and y directions.
         figsize : tuple
             Figure size of the plot.
-        save : bool
-            If True, the plot is saved as a png file.
-        filename : str
-            Filename of the saved plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
         """
         graph = self.extract_graph()
-        vin = self.input_nodes if self.input_nodes is not None else []
+        vin = self.input_nodes
         vout = self.output_nodes
         meas_planes = self.get_meas_plane()
         meas_angles = self.get_angles()
@@ -1467,7 +1465,6 @@ class Pattern:
                 show_loop=show_loop,
                 node_distance=node_distance,
                 figsize=figsize,
-                save=save,
                 filename=filename,
             )
         else:
@@ -1478,7 +1475,6 @@ class Pattern:
                 show_loop=show_loop,
                 node_distance=node_distance,
                 figsize=figsize,
-                save=save,
                 filename=filename,
             )
 
