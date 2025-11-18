@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import networkx as nx
 
 from graphix.flow._find_cflow import find_cflow
-from graphix.flow._find_gpflow import find_gflow, find_pflow
+from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
+from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
 
-    from graphix.flow.core import CausalFlow, GFlow, PauliFlow
+    from graphix.flow.core import CausalFlow
     from graphix.measurements import Measurement
     from graphix.pattern import Pattern
 
@@ -132,8 +133,8 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Browne et al., NJP 9, 250 (2007)
         """
-        for extractor in (find_cflow, find_pflow):
-            flow = extractor(self)
+        for extractor in (self.find_causal_flow, self.find_pauli_flow):
+            flow = extractor()
             if flow is not None:
                 return flow.to_corrections().to_pattern()
 
@@ -176,7 +177,9 @@ class OpenGraph(Generic[_M_co]):
         return odd_neighbors_set
 
     def extract_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co]:
-        """Return a causal flow on the open graph if it exists.
+        """Try to extract a causal flow on the open graph.
+
+        This method is a wrapper over :func:`OpenGraph.find_causal_flow` with a single return type.
 
         Returns
         -------
@@ -188,22 +191,19 @@ class OpenGraph(Generic[_M_co]):
         OpenGraphError
             If the open graph does not have a causal flow.
 
-        Notes
-        -----
-        - The open graph instance must be of parametric type `Measurement` or `Plane` since the causal flow is only defined on open graphs with :math:`XY` measurements.
-        - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^2)`.
-
-        References
-        ----------
-        [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
+        See Also
+        --------
+        :func:`OpenGraph.find_causal_flow`
         """
-        cf = find_cflow(self)
+        cf = self.find_causal_flow()
         if cf is None:
             raise OpenGraphError("The open graph does not have a causal flow.")
         return cf
 
     def extract_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co]:
-        r"""Return a maximally delayed generalised flow (gflow) on the open graph if it exists.
+        r"""Try to extract a maximally delayed generalised flow (gflow) on the open graph.
+
+        This method is a wrapper over :func:`OpenGraph.find_gflow` with a single return type.
 
         Returns
         -------
@@ -215,22 +215,19 @@ class OpenGraph(Generic[_M_co]):
         OpenGraphError
             If the open graph does not have a gflow.
 
-        Notes
-        -----
-        - The open graph instance must be of parametric type `Measurement` or `Plane` since the gflow is only defined on open graphs with planar measurements. Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Plane` instances, in contrast with :func:`OpenGraph.extract_pauli_flow`.
-        - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
-
-        References
-        ----------
-        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        See Also
+        --------
+        :func:`OpenGraph.find_gflow`
         """
-        gf = find_gflow(self)
+        gf = self.find_gflow()
         if gf is None:
             raise OpenGraphError("The open graph does not have a gflow.")
         return gf
 
     def extract_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co]:
-        r"""Return a maximally delayed Pauli on the open graph if it exists.
+        r"""Try to extract a maximally delayed Pauli on the open graph.
+
+        This method is a wrapper over :func:`OpenGraph.find_pauli_flow` with a single return type.
 
         Returns
         -------
@@ -242,19 +239,95 @@ class OpenGraph(Generic[_M_co]):
         OpenGraphError
             If the open graph does not have a Pauli flow.
 
+        See Also
+        --------
+        :func:`OpenGraph.find_pauli_flow`
+        """
+        pf = self.find_pauli_flow()
+        if pf is None:
+            raise OpenGraphError("The open graph does not have a Pauli flow.")
+        return pf
+
+    def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
+        """Return a causal flow on the open graph if it exists.
+
+        Returns
+        -------
+        CausalFlow[_PM_co] | None
+            A causal flow object if the open graph has causal flow  or ``None`` otherwise.
+
+        See Also
+        --------
+        :func:`OpenGraph.extract_causal_flow`
+
         Notes
         -----
-        - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`OpenGraph.extract_gflow`.
+        - The open graph instance must be of parametric type `Measurement` or `Plane` since the causal flow is only defined on open graphs with :math:`XY` measurements.
+        - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^2)`.
+
+        References
+        ----------
+        [1] Mhalla and Perdrix, (2008), Finding Optimal Flows Efficiently, doi.org/10.1007/978-3-540-70575-8_70
+        """
+        return find_cflow(self)
+
+    def find_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
+        r"""Return a maximally delayed Pauli on the open graph if it exists.
+
+        Returns
+        -------
+        GFlow[_PM_co] | None
+            A gflow object if the open graph has gflow or ``None`` otherwise.
+
+        See Also
+        --------
+        :func:`OpenGraph.extract_gflow`
+
+        Notes
+        -----
+        - The open graph instance must be of parametric type `Measurement` or `Plane` since the gflow is only defined on open graphs with planar measurements. Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Plane` instances, in contrast with :func:`OpenGraph.find_pauli_flow`.
         - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
 
         References
         ----------
         [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
         """
-        pf = find_pflow(self)
-        if pf is None:
-            raise OpenGraphError("The open graph does not have a Pauli flow.")
-        return pf
+        aog = PlanarAlgebraicOpenGraph(self)
+        correction_matrix = compute_correction_matrix(aog)
+        if correction_matrix is None:
+            return None
+        return GFlow.from_correction_matrix(
+            correction_matrix
+        )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
+
+    def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co] | None:
+        r"""Return a maximally delayed Pauli on the open graph if it exists.
+
+        Returns
+        -------
+        PauliFlow[_M_co] | None
+            A Pauli flow object if the open graph has Pauli flow or ``None`` otherwise.
+
+        See Also
+        --------
+        :func:`OpenGraph.extract_pauli_flow`
+
+        Notes
+        -----
+        - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`OpenGraph.find_gflow`.
+        - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
+
+        References
+        ----------
+        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        aog = AlgebraicOpenGraph(self)
+        correction_matrix = compute_correction_matrix(aog)
+        if correction_matrix is None:
+            return None
+        return PauliFlow.from_correction_matrix(
+            correction_matrix
+        )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
     # TODO: Generalise `compose` to any type of OpenGraph
     def compose(
