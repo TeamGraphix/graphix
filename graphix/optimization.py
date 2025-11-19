@@ -51,7 +51,7 @@ def standardize(pattern: Pattern) -> Pattern:
     return StandardizedPattern.from_pattern(pattern).to_pattern()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class _StandardizedPattern:
     """Immutable internal storage for standardized patterns.
 
