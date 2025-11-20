@@ -101,7 +101,7 @@ def rand_gauss_cpx_mat(dim: IntLike, rng: Generator | None = None, sig: _SIG = N
     ----------
     dim : int
         Linear dimension of the (square) matrix
-    sig : float
+    sig : float | Literal["ginibre"] | None
         standard deviation of random variates.
         ``sig = 'ginibre`` draws from the Ginibre ensemble ie  sig = 1 / sqrt(2 * dim).
 
