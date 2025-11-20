@@ -139,9 +139,6 @@ def rand_channel_kraus(
     if rank is None:
         rank = dim**2
 
-    if not isinstance(rank, int):
-        raise TypeError("The rank of a Kraus expansion must be an integer.")
-
     if not rank >= 1:
         raise ValueError("The rank of a Kraus expansion must be greater or equal than 1.")
 
@@ -158,9 +155,6 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     """Return a random Kraus channel operator."""
     rng = ensure_rng(rng)
 
-    if not isinstance(dim, int):
-        raise TypeError(f"The dimension must be an integer and not {dim}.")
-
     if not dim & (dim - 1) == 0:
         raise ValueError(f"The dimension must be a power of 2 and not {dim}.")
 
@@ -171,8 +165,6 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     if rank is None:
         rank = dim**2
     else:
-        if not isinstance(rank, int):
-            raise TypeError("The rank of a Kraus expansion must be an integer.")
         if not rank >= 1:
             raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
 
