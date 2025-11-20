@@ -1096,7 +1096,10 @@ class Pattern:
         graph = self.extract_graph()
         degree = graph.degree()
         assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
-        return int(max(dict(degree).values()))
+        degrees = dict(degree).values()
+        if len(degrees) == 0:
+            return 0
+        return int(max(degrees))
 
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.

@@ -747,6 +747,9 @@ class TestPattern:
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
+    def test_compute_max_degree_empty_pattern(self) -> None:
+        assert Pattern().compute_max_degree() == 0
+
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
