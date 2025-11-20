@@ -149,6 +149,12 @@ def test_custom_corrections() -> None:
     vis.visualize_from_pattern(pattern)
 
 
+@pytest.mark.usefixtures("mock_plot")
+def test_empty_pattern() -> None:
+    pattern = Pattern()
+    pattern.draw_graph()
+
+
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
 @pytest.mark.usefixtures("mock_plot")
