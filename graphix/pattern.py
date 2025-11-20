@@ -124,14 +124,11 @@ class Pattern:
             MBQC command.
         """
         if cmd.kind == CommandKind.N:
-            if cmd.node in self.__output_nodes:
-                raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
         elif cmd.kind == CommandKind.M:
-            if cmd.node not in self.__output_nodes:
-                raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
-            self.__output_nodes.remove(cmd.node)
+            if cmd.node in self.__output_nodes:
+                self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
     def extend(self, *cmds: Command | Iterable[Command]) -> None:

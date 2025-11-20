@@ -692,13 +692,15 @@ class TestPattern:
         pattern.check_runnability()
 
     def test_check_runnability_failures(self) -> None:
+        pattern = Pattern(input_nodes=[0], cmds=[N(0)])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern = Pattern(input_nodes=[0], cmds=[N(0)])
+            pattern.check_runnability()
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.AlreadyActive
 
+        pattern = Pattern(cmds=[N(1), N(1)])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern = Pattern(cmds=[N(1), N(1)])
+            pattern.check_runnability()
         assert exc_info.value.node == 1
         assert exc_info.value.reason == RunnabilityErrorReason.AlreadyActive
 
@@ -720,8 +722,9 @@ class TestPattern:
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.NotYetMeasured
 
+        pattern = Pattern(cmds=[N(1), M(1), M(1)])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern = Pattern(cmds=[N(1), M(1), M(1)])
+            pattern.check_runnability()
         assert exc_info.value.node == 1
         assert exc_info.value.reason == RunnabilityErrorReason.AlreadyMeasured
 
