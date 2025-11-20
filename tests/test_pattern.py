@@ -728,6 +728,12 @@ class TestPattern:
         assert exc_info.value.node == 1
         assert exc_info.value.reason == RunnabilityErrorReason.AlreadyMeasured
 
+        pattern = Pattern(cmds=[M(0)])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetActive
+
         pattern = Pattern(cmds=[N(0), M(0)])
         pattern.results = {0: 0}
         with pytest.raises(RunnabilityError) as exc_info:
@@ -744,6 +750,12 @@ class TestPattern:
         pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
         with pytest.raises(RunnabilityError) as exc_info:
             pattern.get_layers()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.simulate_pattern()
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 

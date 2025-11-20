@@ -95,6 +95,8 @@ class StandardizedPattern:
         self.z_dict = {}
         self.x_dict = {}
 
+        pattern.check_runnability()
+
         for cmd in pattern:
             if cmd.kind == CommandKind.N:
                 self.n_list.append(cmd)
