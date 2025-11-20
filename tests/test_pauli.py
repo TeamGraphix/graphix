@@ -90,7 +90,7 @@ class TestPauli:
     def test_iter_meta(self) -> None:
         it = Pauli.iterate(symbol_only=False)
         it_ = iter(Pauli)
-        for p, p_ in zip(it, it_, strict=False):
+        for p, p_ in zip(it, it_, strict=True):
             assert p == p_
         assert all(False for _ in it)
         assert all(False for _ in it_)

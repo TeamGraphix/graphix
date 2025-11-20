@@ -108,7 +108,7 @@ class TestDensityMatrix:
         print(f"nqb is {nqb}")
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
         # flattens input!
         expected_dm = np.outer(vec.psi, vec.psi.conj())
@@ -122,7 +122,7 @@ class TestDensityMatrix:
         nqb = 2
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
 
         with pytest.raises(ValueError):
             _dm = DensityMatrix(nqubit=1, data=states)
@@ -137,7 +137,7 @@ class TestDensityMatrix:
         nqb = int(fx_rng.integers(2, 5))
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
         # flattens input!
         expected_dm = np.outer(vec.psi, vec.psi.conj())
@@ -165,7 +165,7 @@ class TestDensityMatrix:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         print("planes", rand_planes)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
         expected_dm = np.outer(vec.psi, vec.psi.conj())
 
@@ -865,7 +865,7 @@ class TestDensityMatrixBackend:
 
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
 
         expected_dm = DensityMatrix(data=states).rho
 
@@ -880,7 +880,7 @@ class TestDensityMatrixBackend:
     def test_init_fail(self, fx_rng: Generator, nqb: int, randpattern: Pattern) -> None:
         rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb + 1)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
 
         # test init from State Iterable with incorrect size
         backend = DensityMatrixBackend()
