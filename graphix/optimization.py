@@ -95,6 +95,11 @@ class StandardizedPattern:
         self.z_dict = {}
         self.x_dict = {}
 
+        # Standardization could turn non-runnable patterns into
+        # runnable ones, so we check runnability first to avoid hiding
+        # code-logic errors.
+        # For example, the non-runnable pattern E(0,1) M(0) N(1) N(0) would
+        # become M(0) E(0,1) N(1) N(0), which is runnable.
         pattern.check_runnability()
 
         for cmd in pattern:

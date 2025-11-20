@@ -759,6 +759,12 @@ class TestPattern:
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={1})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.shift_signals()
+        assert exc_info.value.node == 1
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetMeasured
+
     def test_compute_max_degree_empty_pattern(self) -> None:
         assert Pattern().compute_max_degree() == 0
 

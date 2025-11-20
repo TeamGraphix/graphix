@@ -467,6 +467,13 @@ class Pattern:
         signal_dict : dict[int, set[int]]
             For each node, the signal that have been shifted.
         """
+        # Shifting signals could turn non-runnable patterns into
+        # runnable ones, so we check runnability first to avoid hiding
+        # code-logic errors.
+        # For example, the non-runnable pattern {1}[M(0)] N(0) would
+        # become M(0) N(0), which is runnable.
+        self.check_runnability()
+
         if method == "direct":
             return self.shift_signals_direct()
         if method == "mc":

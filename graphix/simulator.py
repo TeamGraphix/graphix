@@ -302,7 +302,9 @@ class PatternSimulator:
             pattern = self.noise_model.input_nodes(self.pattern.input_nodes, rng=rng) if input_state is not None else []
             pattern.extend(self.noise_model.transpile(self.pattern, rng=rng))
 
-        pattern.check_runnability()
+        # We check runnability first to provide clearer error messages and
+        # to catch these errors before starting the simulation.
+        self.pattern.check_runnability()
 
         for cmd in pattern:
             if cmd.kind == CommandKind.N:
