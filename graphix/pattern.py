@@ -1576,12 +1576,14 @@ class Pattern:
         new_seq: list[Command] = []
         pauli_nodes_inserted = False
         for cmd in self:
-            if cmd.kind == CommandKind.M:
-                if cmd.node not in pauli_nodes:
-                    if not pauli_nodes_inserted:
-                        new_seq.extend(pauli_nodes.values())
-                        pauli_nodes_inserted = True
-                    new_seq.append(cmd)
+            if (cmd.kind == CommandKind.M and cmd.node not in pauli_nodes) or cmd.kind in {
+                CommandKind.X,
+                CommandKind.Z,
+            }:
+                if not pauli_nodes_inserted:
+                    new_seq.extend(pauli_nodes.values())
+                    pauli_nodes_inserted = True
+                new_seq.append(cmd)
             else:
                 new_seq.append(cmd)
         if not pauli_nodes_inserted:

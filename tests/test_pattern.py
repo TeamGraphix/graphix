@@ -768,6 +768,13 @@ class TestPattern:
     def test_compute_max_degree_empty_pattern(self) -> None:
         assert Pattern().compute_max_degree() == 0
 
+    def test_move_pauli_measurements_to_the_front_preserves_runnability(self) -> None:
+        circuit = Circuit(width=1)
+        circuit.h(0)
+        pattern = circuit.transpile().pattern
+        pattern.move_pauli_measurements_to_the_front()
+        pattern.check_runnability()
+
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
