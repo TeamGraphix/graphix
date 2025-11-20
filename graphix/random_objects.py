@@ -164,9 +164,8 @@ def rand_pauli_channel_kraus(dim: int, rng: Generator | None = None, rank: int |
     # default is full rank.
     if rank is None:
         rank = dim**2
-    else:
-        if not rank >= 1:
-            raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
+    elif not rank >= 1:
+        raise ValueError("The rank of a Kraus expansion must be an integer greater or equal than 1.")
 
     # full probability has to have dim**2 operators.
     prob_list = np.zeros(dim**2)
