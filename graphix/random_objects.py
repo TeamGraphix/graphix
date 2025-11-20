@@ -34,20 +34,20 @@ def rand_herm(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.compl
     return tmp + tmp.conj().T
 
 
-def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.float64]:
+def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
     """Generate haar random unitary matrix of size sz*sz."""
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
-    # unitary_group.rvs returns onp.Array3D[np.float64]
-    # https://github.com/scipy/scipy-stubs/blob/3b629159e8da5cc3aa82b871135489d6d2fd5f8e/scipy-stubs/stats/_multivariate.pyi#L370
-    return unitary_group.rvs(sz, random_state=rng)
+    # unitary_group.rvs is currently annotated onp.Array3D[np.float64] in scipy-stubs
+    # See https://github.com/scipy/scipy-stubs/issues/987
+    return unitary_group.rvs(sz, random_state=rng).astype(np.complex128, copy=False)
 
 
 UNITS = np.array([1, 1j])
 
 
-def rand_dm(dim: IntLike, rng: Generator | None = None, rank: IntLike | None = None) -> npt.NDArray[np.float64]:
+def rand_dm(dim: IntLike, rng: Generator | None = None, rank: IntLike | None = None) -> npt.NDArray[np.complex128]:
     """Generate random density matrices (positive semi-definite matrices with unit trace).
 
     Returns either a :class:`graphix.sim.density_matrix.DensityMatrix` or a :class:`np.ndarray` depending on the parameter *dm_dtype*.
