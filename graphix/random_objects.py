@@ -39,6 +39,8 @@ def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.float
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
+    # unitary_group.rvs returns onp.Array3D[np.float64]
+    # https://github.com/scipy/scipy-stubs/blob/3b629159e8da5cc3aa82b871135489d6d2fd5f8e/scipy-stubs/stats/_multivariate.pyi#L370
     return unitary_group.rvs(sz, random_state=rng)
 
 
