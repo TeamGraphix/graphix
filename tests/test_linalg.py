@@ -214,7 +214,7 @@ class TestLinAlg:
         sizes = [(10, 10), (3, 7), (6, 2)]
         ncols = [4, 5, 2]
 
-        for size, ncol in zip(sizes, ncols):
+        for size, ncol in zip(sizes, ncols, strict=False):
             mat = MatGF2(fx_rng.integers(size=size, low=0, high=2, dtype=np.uint8))
             mat_red = mat.row_reduction(ncols=ncol, copy=True)
             verify_elimination(mat, mat_red, ncol, full_reduce=True)

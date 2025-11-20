@@ -76,7 +76,7 @@ class TestStatevec:
         # tensor of different states
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=False)]
         vec = Statevec(nqubit=nqb, data=states)
         sv_list = [state.get_statevector() for state in states]
         sv = functools.reduce(np.kron, sv_list)

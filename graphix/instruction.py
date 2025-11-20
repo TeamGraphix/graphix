@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import enum
 import math
-import sys
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar, Literal, SupportsFloat, Union
+from typing import ClassVar, Literal, SupportsFloat
 
 from graphix import utils
 from graphix.fundamentals import Plane
@@ -210,7 +209,4 @@ class _ZC(_KindChecker):
     kind: ClassVar[Literal[InstructionKind._ZC]] = field(default=InstructionKind._ZC, init=False)
 
 
-if sys.version_info >= (3, 10):
-    Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC
-else:
-    Instruction = Union[CCX, RZZ, CNOT, SWAP, H, S, X, Y, Z, I, M, RX, RY, RZ, _XC, _ZC]
+Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC

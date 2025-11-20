@@ -110,7 +110,7 @@ def get_og_dense(ni: int, no: int, m: int) -> OpenGraph:
 
     inputs = list(range(no))  # we remove inputs afterwards
     outputs = list(range(no, 2 * no))
-    edges = [(i, o) for i, o in zip(inputs[:-2], outputs[:-2])]
+    edges = [(i, o) for i, o in zip(inputs[:-2], outputs[:-2], strict=False)]
     edges.extend((node, node + 1) for node in range(2 * no - 1, m - 1))
     edges.append((inputs[-2], m - 1))
 

@@ -25,7 +25,7 @@ def example_flow(rng: Generator) -> Pattern:
     graph: nx.Graph[int] = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
     inputs = [1, 0, 2]  # non-trivial order to check order is conserved.
     outputs = [7, 6, 8]
-    angles = dict(zip(range(6), (2 * rng.random(6)).tolist()))
+    angles = dict(zip(range(6), (2 * rng.random(6)).tolist(), strict=False))
     meas_planes = dict.fromkeys(range(6), Plane.XY)
 
     pattern = generate_from_graph(graph, angles, inputs, outputs, meas_planes=meas_planes)
@@ -40,7 +40,7 @@ def example_gflow(rng: Generator) -> Pattern:
     graph: nx.Graph[int] = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
     inputs = [3, 1, 5]
     outputs = [4, 2, 6]
-    angles = dict(zip([1, 3, 5], (2 * rng.random(3)).tolist()))
+    angles = dict(zip([1, 3, 5], (2 * rng.random(3)).tolist(), strict=False))
     meas_planes = dict.fromkeys([1, 3, 5], Plane.XY)
 
     pattern = generate_from_graph(graph, angles, inputs, outputs, meas_planes=meas_planes)
@@ -72,10 +72,10 @@ def example_graph_pflow(rng: Generator) -> OpenGraph:
     # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
     meas_angles: dict[int, float] = {
         **dict.fromkeys(range(4), 0),
-        **dict(zip(range(4, 8), (2 * rng.random(4)).tolist())),
+        **dict(zip(range(4, 8), (2 * rng.random(4)).tolist(), strict=False)),
     }
     meas_planes = dict.fromkeys(range(8), Plane.XY)
-    meas = {i: Measurement(angle, plane) for (i, angle), plane in zip(meas_angles.items(), meas_planes.values())}
+    meas = {i: Measurement(angle, plane) for (i, angle), plane in zip(meas_angles.items(), meas_planes.values(), strict=False)}
 
     gf, _ = find_gflow(graph=graph, iset=set(inputs), oset=set(outputs), meas_planes=meas_planes)
     pf, _ = find_pauliflow(

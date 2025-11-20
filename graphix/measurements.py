@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from typing import Literal, NamedTuple, SupportsInt
-
-from typing_extensions import TypeAlias  # TypeAlias introduced in Python 3.10
+from typing import (
+    Literal,
+    NamedTuple,
+    SupportsInt,
+    TypeAlias,  # TypeAlias introduced in Python 3.10
+)
 
 from graphix import utils
 from graphix.fundamentals import Axis, Plane, Sign

@@ -78,15 +78,15 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
 
     # Maps a node's ID in the Open Graph to it's corresponding node ID in
     # the PyZX graph and vice versa.
-    map_to_og = dict(zip(body_verts, og.inside.nodes()))
+    map_to_og = dict(zip(body_verts, og.inside.nodes(), strict=True))
     map_to_pyzx = {v: i for i, v in map_to_og.items()}
 
     # Open Graph's don't have boundary nodes, so we need to connect the
     # input and output Z spiders to their corresponding boundary nodes in
     # pyzx.
-    for pyzx_index, og_index in zip(in_verts, og.inputs):
+    for pyzx_index, og_index in zip(in_verts, og.inputs, strict=True):
         g.add_edge((pyzx_index, map_to_pyzx[og_index]))
-    for pyzx_index, og_index in zip(out_verts, og.outputs):
+    for pyzx_index, og_index in zip(out_verts, og.outputs, strict=True):
         g.add_edge((pyzx_index, map_to_pyzx[og_index]))
 
     og_edges = og.inside.edges()
@@ -100,7 +100,7 @@ def to_pyzx_graph(og: OpenGraph) -> BaseGraph[int, tuple[int, int]]:
             g.set_phase(map_to_pyzx[og_index], -_fraction_of_angle(meas.angle))
 
     # Connect the X measured vertices
-    for og_index, pyzx_index in zip(x_meas, x_meas_verts):
+    for og_index, pyzx_index in zip(x_meas, x_meas_verts, strict=True):
         g.add_edge((map_to_pyzx[og_index], pyzx_index), EdgeType.HADAMARD)
         g.set_phase(pyzx_index, -_fraction_of_angle(og.measurements[og_index].angle))
 
