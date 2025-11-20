@@ -296,7 +296,7 @@ class OpenGraph(Generic[_M_co]):
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None
-        return GFlow.from_correction_matrix(
+        return GFlow.try_from_correction_matrix(
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
@@ -325,7 +325,7 @@ class OpenGraph(Generic[_M_co]):
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
             return None
-        return PauliFlow.from_correction_matrix(
+        return PauliFlow.try_from_correction_matrix(
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 

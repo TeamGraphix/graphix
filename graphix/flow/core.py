@@ -288,7 +288,7 @@ class PauliFlow(Generic[_M_co]):
     partial_order_layers: Sequence[AbstractSet[int]]
 
     @classmethod
-    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
+    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
         """Initialize a Pauli flow object from a matrix encoding a correction function.
 
         Attributes
@@ -411,7 +411,7 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
     @override
     @classmethod
-    def from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
+    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
         raise NotImplementedError("Initialization of a causal flow from a correction matrix is not supported.")
 
     @override
