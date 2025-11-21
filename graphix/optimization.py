@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING
+
+# assert_never added in Python 3.11
+from typing_extension import assert_never
 
 import networkx as nx
 
