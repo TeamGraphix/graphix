@@ -5,10 +5,10 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING
 
-# assert_never added in Python 3.11
-from typing_extension import assert_never
-
 import networkx as nx
+
+# assert_never added in Python 3.11
+from typing_extensions import assert_never
 
 import graphix.pattern
 from graphix import command
