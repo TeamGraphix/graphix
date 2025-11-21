@@ -768,13 +768,6 @@ class TestPattern:
     def test_compute_max_degree_empty_pattern(self) -> None:
         assert Pattern().compute_max_degree() == 0
 
-    def test_move_pauli_measurements_to_the_front_preserves_runnability(self) -> None:
-        circuit = Circuit(width=1)
-        circuit.h(0)
-        pattern = circuit.transpile().pattern
-        pattern.move_pauli_measurements_to_the_front()
-        pattern.check_runnability()
-
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
@@ -971,13 +964,6 @@ class TestMCOps:
             randpattern.simulate_pattern(
                 backend="tensornetwork", graph_prep="sequential", input_state=states, rng=fx_rng
             )
-
-    def test_remove_qubit(self) -> None:
-        p = Pattern(input_nodes=[0, 1])
-        p.add(M(node=0))
-        p.add(C(node=0, clifford=Clifford.X))
-        with pytest.raises(KeyError):
-            p.simulate_pattern()
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:

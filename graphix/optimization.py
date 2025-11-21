@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 import networkx as nx
 
@@ -11,7 +11,8 @@ import graphix.pattern
 from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
-from graphix.measurements import Domains
+from graphix.fundamentals import Axis
+from graphix.measurements import Domains, PauliMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -165,6 +166,74 @@ class StandardizedPattern:
         for u, v in self.e_set:
             graph.add_edge(u, v)
         return graph
+
+    def perform_pauli_pushing(self, leave_nodes: set[Node] | None = None) -> None:
+        """Move all Pauli measurements before the other measurements (except nodes in `leave_nodes`)."""
+        if leave_nodes is None:
+            leave_nodes = set()
+        shift_domains: dict[int, set[int]] = {}
+
+        def expand_domain(domain: set[int]) -> set[int]:
+            """Merge previously shifted domains into ``domain``.
+
+            Parameters
+            ----------
+            domain : set[int]
+                Domain to update with any accumulated shift information.
+            """
+            new_domain = set(domain)
+            for node in domain & shift_domains.keys():
+                new_domain ^= shift_domains[node]
+            return new_domain
+
+        pauli_list = []
+        non_pauli_list = []
+        for cmd in self.m_list:
+            s_domain = expand_domain(cmd.s_domain)
+            t_domain = expand_domain(cmd.t_domain)
+            pm = PauliMeasurement.try_from(
+                cmd.plane, cmd.angle
+            )  # None returned if the measurement is not in Pauli basis
+            if pm is None or cmd.node in leave_nodes:
+                non_pauli_list.append(
+                    command.M(node=cmd.node, angle=cmd.angle, plane=cmd.plane, s_domain=s_domain, t_domain=t_domain)
+                )
+            else:
+                if pm.axis == Axis.X:
+                    # M^X X^s Z^t = M^{XY,0} X^s Z^t
+                    #             = M^{XY,(-1)^s·0+tπ}
+                    #             = S^t M^X
+                    # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
+                    #                = M^{XY,(-1)^s·π+tπ}
+                    #                = S^t M^{-X}
+                    shift_domains[cmd.node] = t_domain
+                elif pm.axis == Axis.Y:
+                    # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
+                    #             = M^{XY,(-1)^s·π/2+tπ}
+                    #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
+                    #             = S^{s+t} M^Y
+                    # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
+                    #                = M^{XY,(-1)^s·(-π/2)+tπ}
+                    #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
+                    #                = S^{s+t} M^{-Y}
+                    shift_domains[cmd.node] = s_domain ^ t_domain
+                elif pm.axis == Axis.Z:
+                    # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
+                    #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
+                    #             = M^{XZ,(-1)^t·sπ}
+                    #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
+                    #             = S^s M^Z
+                    # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
+                    #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
+                    #                = M^{XZ,(s+1)π}
+                    #                = S^s M^{-Z}
+                    shift_domains[cmd.node] = s_domain
+                else:
+                    assert_never(pm.axis)
+                pauli_list.append(command.M(node=cmd.node, angle=cmd.angle, plane=cmd.plane))
+        self.m_list = pauli_list + non_pauli_list
+        self.z_dict = {node: expand_domain(domain) for node, domain in self.z_dict.items()}
+        self.x_dict = {node: expand_domain(domain) for node, domain in self.x_dict.items()}
 
     def to_pattern(self) -> Pattern:
         """Return the standardized pattern."""

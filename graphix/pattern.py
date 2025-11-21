@@ -1378,9 +1378,9 @@ class Pattern:
         .. seealso:: :func:`measure_pauli`
 
         """
-        if not ignore_pauli_with_deps:
-            self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False)
+        # if not ignore_pauli_with_deps:
+        #    self.move_pauli_measurements_to_the_front()
+        measure_pauli(self, leave_input, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
 
     def draw_graph(
         self,
@@ -1507,89 +1507,6 @@ class Pattern:
         result.results = self.results.copy()
         return result
 
-    def move_pauli_measurements_to_the_front(self, leave_nodes: set[int] | None = None) -> None:
-        """Move all the Pauli measurements to the front of the sequence (except nodes in `leave_nodes`)."""
-        if leave_nodes is None:
-            leave_nodes = set()
-        self.standardize()
-        pauli_nodes = {}
-        shift_domains: dict[int, set[int]] = {}
-
-        def expand_domain(domain: set[int]) -> None:
-            """Merge previously shifted domains into ``domain``.
-
-            Parameters
-            ----------
-            domain : set[int]
-                Domain to update with any accumulated shift information.
-            """
-            for node in domain & shift_domains.keys():
-                domain ^= shift_domains[node]
-
-        for cmd in self:
-            # Use of == for mypy
-            if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                expand_domain(cmd.domain)
-            if cmd.kind == CommandKind.M:
-                expand_domain(cmd.s_domain)
-                expand_domain(cmd.t_domain)
-                pm = PauliMeasurement.try_from(
-                    cmd.plane, cmd.angle
-                )  # None returned if the measurement is not in Pauli basis
-                if pm is not None and cmd.node not in leave_nodes:
-                    if pm.axis == Axis.X:
-                        # M^X X^s Z^t = M^{XY,0} X^s Z^t
-                        #             = M^{XY,(-1)^s·0+tπ}
-                        #             = S^t M^X
-                        # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
-                        #                = M^{XY,(-1)^s·π+tπ}
-                        #                = S^t M^{-X}
-                        shift_domains[cmd.node] = cmd.t_domain
-                    elif pm.axis == Axis.Y:
-                        # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
-                        #             = M^{XY,(-1)^s·π/2+tπ}
-                        #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
-                        #             = S^{s+t} M^Y
-                        # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
-                        #                = M^{XY,(-1)^s·(-π/2)+tπ}
-                        #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
-                        #                = S^{s+t} M^{-Y}
-                        shift_domains[cmd.node] = cmd.s_domain ^ cmd.t_domain
-                    elif pm.axis == Axis.Z:
-                        # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
-                        #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
-                        #             = M^{XZ,(-1)^t·sπ}
-                        #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
-                        #             = S^s M^Z
-                        # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
-                        #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
-                        #                = M^{XZ,(s+1)π}
-                        #                = S^s M^{-Z}
-                        shift_domains[cmd.node] = cmd.s_domain
-                    else:
-                        assert_never(pm.axis)
-                    cmd.s_domain = set()
-                    cmd.t_domain = set()
-                    pauli_nodes[cmd.node] = cmd
-
-        # Create a new sequence with all Pauli nodes to the front
-        new_seq: list[Command] = []
-        pauli_nodes_inserted = False
-        for cmd in self:
-            if (cmd.kind == CommandKind.M and cmd.node not in pauli_nodes) or cmd.kind in {
-                CommandKind.X,
-                CommandKind.Z,
-            }:
-                if not pauli_nodes_inserted:
-                    new_seq.extend(pauli_nodes.values())
-                    pauli_nodes_inserted = True
-                new_seq.append(cmd)
-            else:
-                new_seq.append(cmd)
-        if not pauli_nodes_inserted:
-            new_seq.extend(pauli_nodes.values())
-        self.__seq = new_seq
-
     def check_runnability(self) -> None:
         """Check whether the pattern is runnable.
 
@@ -1679,7 +1596,9 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pattern:
+def measure_pauli(
+    pattern: Pattern, leave_input: bool, *, copy: bool = False, ignore_pauli_with_deps: bool = False
+) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform
@@ -1697,6 +1616,10 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
+    ignore_pauli_with_deps : bool
+        Optional (*False* by default).
+        If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
+        If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
 
     Returns
     -------
@@ -1708,6 +1631,9 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
     standardized_pattern = optimization.StandardizedPattern(pattern)
+    if not ignore_pauli_with_deps:
+        standardized_pattern.perform_pauli_pushing()
+    output_nodes = pattern.output_nodes
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
@@ -1767,16 +1693,15 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
-        cmd.clifford(Clifford(vops[cmd.node]))
-        for cmd in pattern
-        if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
+        cmd.clifford(Clifford(vops[cmd.node])) for cmd in standardized_pattern.m_list if cmd.node in graph_state.nodes
     )
     new_seq.extend(
         command.C(node=index, clifford=Clifford(vops[index]))
         for index in pattern.output_nodes
         if vops[index] != Clifford.I
     )
-    new_seq.extend(cmd for cmd in pattern if cmd.kind in {CommandKind.X, CommandKind.Z})
+    new_seq.extend(command.Z(node=node, domain=domain) for node, domain in standardized_pattern.z_dict.items())
+    new_seq.extend(command.X(node=node, domain=domain) for node, domain in standardized_pattern.x_dict.items())
 
     pat = Pattern() if copy else pattern
 
