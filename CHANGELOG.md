@@ -8,10 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-
+- #358: Refactor of flow tools - Part I
+  - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future. 
+  - New module `graphix.flow._find_cflow` with the existing causal-flow finding algorithm.
+  - New module `graphix.flow._find_gpflow` with the existing g- and Pauli-flow finding algorithm introduced in #337.
+  - New abstract types `graphix.fundamentals.AbstractMeasurement` and `graphix.fundamentals.AbstractPlanarMeasurement` which serve as an umbrella of the existing types `graphix.measurements.Measurement`, `graphix.fundamentals.Plane` and `graphix.fundamentals.Axis`.
+  - New method `graphix.pattern.Pattern.extract_opengraph` which subsumes the static method `graphix.opengraph.OpenGraph.from_pattern`.
+  - New methods of `graphix.opengraph.OpenGraph` which allow to extract a causal, g- or Pauli flow.
 ### Fixed
 
 ### Changed
+ - #358: Refactor of flow tools - Part I
+  - API for the `graphix.opengraph.OpenGraph` class:
+    - `OpenGraphs` are parametrically typed so that they can be defined on planes and axes mappings in addition to measurements mappings.
+    - Attribute names are now `graph`, `input_nodes`, `output_nodes` and `measurements`.
+
 
 ## [0.3.3] - 2025-10-23
 
