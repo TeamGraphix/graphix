@@ -1292,37 +1292,10 @@ class Pattern:
         meas_commands : list of command
             list of measurement ('M') commands
         """
-        prepared = set(self.input_nodes)
-        measured: set[int] = set()
-        new: list[Command] = []
-        cmd: Command
-
-        for cmd in meas_commands:
-            node = cmd.node
-            if node not in prepared:
-                new.append(command.N(node=node))
-                prepared.add(node)
-            node_list = self.connected_nodes(node, measured)
-            for add_node in node_list:
-                if add_node not in prepared:
-                    new.append(command.N(node=add_node))
-                    prepared.add(add_node)
-                new.append(command.E(nodes=(node, add_node)))
-            new.append(cmd)
-            measured.add(node)
-
-        # add isolated nodes
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N and cmd.node not in prepared:
-                new.append(command.N(node=cmd.node))
-            elif (
-                (cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes))
-                or cmd.kind == CommandKind.C
-                or cmd.kind in {CommandKind.Z, CommandKind.X}
-            ):
-                new.append(cmd)
-
-        self.__seq = new
+        new = dataclasses.replace(
+            optimization.StandardizedPattern.from_pattern(self), m_list=tuple(meas_commands)
+        ).to_space_optimal_pattern()
+        self.__seq = new.__seq
 
     def max_space(self) -> int:
         """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
@@ -1651,7 +1624,7 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
 
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    standardized_pattern = optimization.StandardizedPattern(pattern)
+    standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
@@ -1754,7 +1727,7 @@ def pauli_nodes(
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
         pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None and (cmd.node not in pattern.pattern.input_nodes or not leave_input):
+        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
