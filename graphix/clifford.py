@@ -83,7 +83,7 @@ class Clifford(Enum):
             return None
         for ci in Clifford:
             mi = ci.matrix
-            for piv, piv_ in zip(mat.flat, mi.flat):
+            for piv, piv_ in zip(mat.flat, mi.flat, strict=True):
                 if math.isclose(abs(piv), 0):
                     continue
                 if math.isclose(abs(piv_), 0):

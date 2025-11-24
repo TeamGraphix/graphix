@@ -122,7 +122,7 @@ class MBQCVQEWithPlaceholders(MBQCVQE):
         self.pattern = super().build_mbqc_pattern(self.placeholders)
 
     def build_mbqc_pattern(self, params):
-        return self.pattern.xreplace(dict(zip(self.placeholders, params)))
+        return self.pattern.xreplace(dict(zip(self.placeholders, params, strict=True)))
 
 
 # %%

@@ -3,21 +3,19 @@
 from __future__ import annotations
 
 import string
-import sys
 import warnings
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex
+from typing import TYPE_CHECKING, SupportsComplex, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
-# TypeAlias introduced in Python 3.10
 # override introduced in Python 3.12
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
@@ -38,12 +36,7 @@ if TYPE_CHECKING:
     from graphix.sim import Data
     from graphix.simulator import MeasureMethod
 
-if sys.version_info >= (3, 10):
-    PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
-else:
-    from typing import Union
-
-    PrepareState: TypeAlias = Union[str, npt.NDArray[np.complex128]]
+PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
 
 
 class MBQCTensorNet(BackendState, TensorNetwork):
@@ -197,7 +190,7 @@ class MBQCTensorNet(BackendState, TensorNetwork):
                     return item
 
                 states_iter = [get_prepare_state(item) for item in states_list]
-        for ind, state in zip(indices, states_iter):
+        for ind, state in zip(indices, states_iter, strict=True):
             self.add_qubit(ind, state)
 
     def measure_single(

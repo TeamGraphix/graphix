@@ -266,7 +266,9 @@ class Pattern:
             preserve_mapping = False
 
         if preserve_mapping:
-            io_mapping = {mapping[i]: mapping_complete[o] for i, o in zip(other.input_nodes, other.output_nodes)}
+            io_mapping = {
+                mapping[i]: mapping_complete[o] for i, o in zip(other.input_nodes, other.output_nodes, strict=True)
+            }
             outputs = [io_mapping[n] if n in merged else n for n in self.__output_nodes]
         else:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs

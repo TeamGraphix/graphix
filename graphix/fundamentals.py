@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import enum
-import sys
 import typing
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
@@ -25,12 +24,7 @@ if TYPE_CHECKING:
     from graphix.parameter import Expression, ExpressionOrFloat
 
 
-if sys.version_info >= (3, 10):
-    SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
-else:  # pragma: no cover
-    from typing import Union
-
-    SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
+SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
 
 
 class Sign(EnumReprMixin, Enum):
