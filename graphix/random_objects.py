@@ -39,9 +39,7 @@ def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.compl
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
-    # unitary_group.rvs is currently annotated onp.Array3D[np.float64] in scipy-stubs
-    # See https://github.com/scipy/scipy-stubs/issues/987
-    return unitary_group.rvs(sz, random_state=rng).astype(np.complex128, copy=False)
+    return unitary_group.rvs(sz, random_state=rng)
 
 
 UNITS = np.array([1, 1j])
