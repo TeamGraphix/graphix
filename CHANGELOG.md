@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- #358: New flow API
+- #358: Refactor of flow tools - Part I
+  - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future. 
+  - New module `graphix.flow._find_cflow` with the existing causal-flow finding algorithm.
+  - New module `graphix.flow._find_gpflow` with the existing g- and Pauli-flow finding algorithm introduced in #337.
+  - New abstract types `graphix.fundamentals.AbstractMeasurement` and `graphix.fundamentals.AbstractPlanarMeasurement` which serve as an umbrella of the existing types `graphix.measurements.Measurement`, `graphix.fundamentals.Plane` and `graphix.fundamentals.Axis`.
+  - New method `graphix.pattern.Pattern.extract_opengraph` which subsumes the static method `graphix.opengraph.OpenGraph.from_pattern`.
+  - New methods of `graphix.opengraph.OpenGraph` which allow to extract a causal, g- or Pauli flow.
 
 - #360, #361: `StandardizedPattern.to_space_optimal_pattern` generates
   a pattern that is space-optimal for a given measurement order.
@@ -18,7 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- #361: `StandardizedPattern` is now an immutable dataclass
+- #358: Refactor of flow tools - Part I
+  - API for the `graphix.opengraph.OpenGraph` class:
+    - `OpenGraphs` are parametrically typed so that they can be defined on planes and axes mappings in addition to measurements mappings.
+    - Attribute names are now `graph`, `input_nodes`, `output_nodes` and `measurements`.
+
+- #361: `StandardizedPattern` is now an immutable dataclass. The class method `StandardizedPattern.from_pattern` instantiates a `StandardizedPattern` from `Pattern`.
 
 - #371: Drop support for Python 3.9
 

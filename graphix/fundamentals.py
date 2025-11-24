@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import enum
-import sys
 import typing
-from enum import Enum
+from abc import ABC, ABCMeta, abstractmethod
+from enum import Enum, EnumMeta
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload
 
 import typing_extensions
+
+# override introduced in Python 3.12
+from typing_extensions import override
 
 from graphix.ops import Ops
 from graphix.parameter import cos_sin
@@ -21,12 +24,7 @@ if TYPE_CHECKING:
     from graphix.parameter import Expression, ExpressionOrFloat
 
 
-if sys.version_info >= (3, 10):
-    SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
-else:  # pragma: no cover
-    from typing import Union
-
-    SupportsComplexCtor = Union[SupportsComplex, SupportsFloat, SupportsIndex, complex]
+SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
 
 
 class Sign(EnumReprMixin, Enum):
@@ -214,7 +212,50 @@ class IXYZ(Enum):
         typing_extensions.assert_never(self)
 
 
-class Axis(EnumReprMixin, Enum):
+class CustomMeta(ABCMeta, EnumMeta):
+    """Custom metaclass to allow multiple inheritance from `Enum` and `ABC`."""
+
+
+class AbstractMeasurement(ABC):
+    """Abstract base class for measurement objects.
+
+    Measurement objects are:
+    - :class:`graphix.measurements.Measurement`.
+    - :class:`graphix.fundamentals.Plane`.
+    - :class:`graphix.fundamentals.Axis`.
+
+    """
+
+    @abstractmethod
+    def to_plane_or_axis(self) -> Plane | Axis:
+        """Return the plane or axis of a measurement object.
+
+        Returns
+        -------
+        Plane | Axis
+        """
+
+
+class AbstractPlanarMeasurement(AbstractMeasurement):
+    """Abstract base class for planar measurement objects.
+
+    Planar measurement objects are:
+    - :class:`graphix.measurements.Measurement`.
+    - :class:`graphix.fundamentals.Plane`.
+
+    """
+
+    @abstractmethod
+    def to_plane(self) -> Plane:
+        """Return the plane of a measurement object.
+
+        Returns
+        -------
+        Plane
+        """
+
+
+class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     """Axis: *X*, *Y* or *Z*."""
 
     X = enum.auto()
@@ -232,8 +273,12 @@ class Axis(EnumReprMixin, Enum):
             return Ops.Z
         typing_extensions.assert_never(self)
 
+    @override
+    def to_plane_or_axis(self) -> Axis:
+        return self
 
-class Plane(EnumReprMixin, Enum):
+
+class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     # TODO: Refactor using match
     """Plane: *XY*, *YZ* or *XZ*."""
 
@@ -317,3 +362,23 @@ class Plane(EnumReprMixin, Enum):
             return Plane.XZ
         assert a == b
         raise ValueError(f"Cannot make a plane giving the same axis {a} twice.")
+
+    @override
+    def to_plane_or_axis(self) -> Plane:
+        """Return the plane.
+
+        Returns
+        -------
+        Plane
+        """
+        return self
+
+    @override
+    def to_plane(self) -> Plane:
+        """Return the plane.
+
+        Returns
+        -------
+        Plane
+        """
+        return self

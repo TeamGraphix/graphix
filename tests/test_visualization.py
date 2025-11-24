@@ -6,17 +6,89 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command, gflow, visualization
+from graphix.fundamentals import Plane
+from graphix.measurements import Measurement
+from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
-from tests.test_generator import example_flow, example_gflow, example_pflow
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from matplotlib.figure import Figure
     from numpy.random import Generator
+
+
+def example_flow(rng: Generator) -> Pattern:
+    graph: nx.Graph[int] = nx.Graph([(0, 3), (1, 4), (2, 5), (1, 3), (2, 4), (3, 6), (4, 7), (5, 8)])
+    inputs = [1, 0, 2]  # non-trivial order to check order is conserved.
+    outputs = [7, 6, 8]
+    angles = (2 * rng.random(6)).tolist()
+    measurements = {node: Measurement(angle, Plane.XY) for node, angle in enumerate(angles)}
+
+    pattern = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements).to_pattern()
+    pattern.standardize()
+
+    assert pattern.input_nodes == inputs
+    assert pattern.output_nodes == outputs
+    return pattern
+
+
+def example_gflow(rng: Generator) -> Pattern:
+    graph: nx.Graph[int] = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
+    inputs = [3, 1, 5]
+    outputs = [4, 2, 6]
+    angles = dict(zip([1, 3, 5], (2 * rng.random(3)).tolist(), strict=True))
+    measurements = {node: Measurement(angle, Plane.XY) for node, angle in angles.items()}
+
+    pattern = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements).to_pattern()
+    pattern.standardize()
+
+    assert pattern.input_nodes == inputs
+    assert pattern.output_nodes == outputs
+    return pattern
+
+
+def example_pflow(rng: Generator) -> Pattern:
+    """Create a graph which has pflow but no gflow.
+
+    Parameters
+    ----------
+    rng : :class:`numpy.random.Generator`
+        See graphix.tests.conftest.py
+
+    Returns
+    -------
+    Pattern: :class:`graphix.pattern.Pattern`
+    """
+    graph: nx.Graph[int] = nx.Graph(
+        [(0, 2), (1, 4), (2, 3), (3, 4), (2, 5), (3, 6), (4, 7), (5, 6), (6, 7), (5, 8), (7, 9)]
+    )
+    inputs = [1, 0]
+    outputs = [9, 8]
+
+    # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
+    meas_angles: dict[int, float] = {
+        **dict.fromkeys(range(4), 0),
+        **dict(zip(range(4, 8), (2 * rng.random(4)).tolist(), strict=True)),
+    }
+    measurements = {i: Measurement(angle, Plane.XY) for i, angle in meas_angles.items()}
+
+    og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
+
+    try:
+        og.extract_gflow()  # example graph doesn't have gflow
+    except OpenGraphError:
+        og.extract_pauli_flow()  # example graph has Pauli flow
+
+    pattern = og.to_pattern()
+    pattern.standardize()
+    assert og.input_nodes == pattern.input_nodes
+    assert og.output_nodes == pattern.output_nodes
+    return pattern
 
 
 def test_get_pos_from_flow() -> None:

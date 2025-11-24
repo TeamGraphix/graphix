@@ -657,7 +657,9 @@ class TestPattern:
         p1 = circuit_1.transpile().pattern
         p2 = circuit_2.transpile().pattern
         p = circuit.transpile().pattern
-        p_compose, _ = p1.compose(p2, mapping=dict(zip(p2.input_nodes, p1.output_nodes)), preserve_mapping=True)
+        p_compose, _ = p1.compose(
+            p2, mapping=dict(zip(p2.input_nodes, p1.output_nodes, strict=True)), preserve_mapping=True
+        )
         p.minimize_space()
         p_compose.minimize_space()
         s = p.simulate_pattern()
@@ -865,7 +867,7 @@ class TestMCOps:
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
         out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
@@ -874,7 +876,7 @@ class TestMCOps:
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):
             randpattern.simulate_pattern(
@@ -890,4 +892,4 @@ class TestMCOps:
 
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
-    return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))
+    return any(all(ei == ri for ei, ri in zip(edge, other, strict=True)) for other in (ref, reversed(ref)))
