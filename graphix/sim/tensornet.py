@@ -14,7 +14,6 @@ import numpy.typing as npt
 import quimb.tensor as qtn
 from quimb.tensor import Tensor, TensorNetwork
 
-# TypeAlias introduced in Python 3.10
 # override introduced in Python 3.12
 from typing_extensions import override
 

@@ -10,7 +10,7 @@ type-checking block of `base_backend`.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TypeAlias  # TypeAlias introduced in Python 3.10
+from typing import TypeAlias
 
 from graphix.parameter import ExpressionOrSupportsComplex
 from graphix.sim.density_matrix import DensityMatrix
