@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
-from graphix.opengraph import OpenGraph
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
 
@@ -81,7 +80,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng)
     pattern = circuit.transpile().pattern
-    opengraph = OpenGraph.from_pattern(pattern)
+    opengraph = pattern.extract_opengraph()
     zx_graph = to_pyzx_graph(opengraph)
     opengraph2 = from_pyzx_graph(zx_graph)
     pattern2 = opengraph2.to_pattern()
@@ -113,7 +112,7 @@ def test_full_reduce_toffoli() -> None:
     c = Circuit(3)
     c.ccx(0, 1, 2)
     p = c.transpile().pattern
-    og = OpenGraph.from_pattern(p)
+    og = p.extract_opengraph()
     pyg = to_pyzx_graph(og)
     pyg.normalize()
     pyg_copy = deepcopy(pyg)
