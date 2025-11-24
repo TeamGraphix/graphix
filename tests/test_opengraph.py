@@ -21,7 +21,7 @@ from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable
 
     from numpy.random import Generator
 

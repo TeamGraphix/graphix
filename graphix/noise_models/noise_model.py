@@ -9,7 +9,6 @@ overriding the abstract methods defined here.
 from __future__ import annotations
 
 import dataclasses
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Literal
@@ -50,12 +49,7 @@ class ApplyNoise(_KindChecker):
     nodes: list[Node]
 
 
-if sys.version_info >= (3, 10):
-    CommandOrNoise = Command | ApplyNoise
-else:
-    from typing import Union
-
-    CommandOrNoise = Union[Command, ApplyNoise]
+CommandOrNoise = Command | ApplyNoise
 
 
 class NoiseModel(ABC):

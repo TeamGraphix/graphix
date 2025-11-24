@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import sys
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -34,9 +33,6 @@ def check_kind(cls: type, scope: dict[str, Any]) -> None:
     if not hasattr(cls, "kind"):
         msg = f"{cls.__name__} must have a tag attribute named kind."
         raise TypeError(msg)
-    if sys.version_info < (3, 10):
-        # MEMO: `inspect.get_annotations` unavailable
-        return
 
     # Type annotation to work around a regression in mypy 1.17, see https://github.com/python/mypy/issues/19458
     ann: Any | None = inspect.get_annotations(cls, eval_str=True, locals=scope).get("kind")

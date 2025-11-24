@@ -10,7 +10,6 @@ import dataclasses
 import enum
 import warnings
 from collections.abc import Iterable, Iterator
-from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -255,7 +254,9 @@ class Pattern:
             preserve_mapping = False
 
         if preserve_mapping:
-            io_mapping = {mapping[i]: mapping_complete[o] for i, o in zip(other.input_nodes, other.output_nodes)}
+            io_mapping = {
+                mapping[i]: mapping_complete[o] for i, o in zip(other.input_nodes, other.output_nodes, strict=True)
+            }
             outputs = [io_mapping[n] if n in merged else n for n in self.__output_nodes]
         else:
             outputs = [n for n in self.__output_nodes if n not in merged] + mapped_outputs
@@ -1290,37 +1291,10 @@ class Pattern:
         meas_commands : list of command
             list of measurement ('M') commands
         """
-        prepared = set(self.input_nodes)
-        measured: set[int] = set()
-        new: list[Command] = []
-        cmd: Command
-
-        for cmd in meas_commands:
-            node = cmd.node
-            if node not in prepared:
-                new.append(command.N(node=node))
-                prepared.add(node)
-            node_list = self.connected_nodes(node, measured)
-            for add_node in node_list:
-                if add_node not in prepared:
-                    new.append(command.N(node=add_node))
-                    prepared.add(add_node)
-                new.append(command.E(nodes=(node, add_node)))
-            new.append(cmd)
-            measured.add(node)
-
-        # add isolated nodes
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N and cmd.node not in prepared:
-                new.append(command.N(node=cmd.node))
-            elif (
-                (cmd.kind == CommandKind.E and all(node in self.output_nodes for node in cmd.nodes))
-                or cmd.kind == CommandKind.C
-                or cmd.kind in {CommandKind.Z, CommandKind.X}
-            ):
-                new.append(cmd)
-
-        self.__seq = new
+        new = dataclasses.replace(
+            optimization.StandardizedPattern.from_pattern(self), m_list=tuple(meas_commands)
+        ).to_space_optimal_pattern()
+        self.__seq = new.__seq
 
     def max_space(self) -> int:
         """Compute the maximum number of nodes that must be present in the graph (graph space) during the execution of the pattern.
@@ -1662,10 +1636,10 @@ def measure_pauli(
 
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    standardized_pattern = optimization.StandardizedPattern(pattern)
+    standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
-        standardized_pattern.perform_pauli_pushing()
-    output_nodes = pattern.output_nodes
+        standardized_pattern = standardized_pattern.perform_pauli_pushing()
+    output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
@@ -1715,7 +1689,7 @@ def measure_pauli(
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = graph_state.get_isolates()
     for node in non_pauli_meas:
-        if (node in isolates) and (node not in pattern.output_nodes):
+        if (node in isolates) and (node not in output_nodes):
             graph_state.remove_node(node)
             results[node] = 0
 
@@ -1732,14 +1706,13 @@ def measure_pauli(
         for index in pattern.output_nodes
         if vops[index] != Clifford.I
     )
-    new_seq.extend(command.Z(node=node, domain=domain) for node, domain in standardized_pattern.z_dict.items())
-    new_seq.extend(command.X(node=node, domain=domain) for node, domain in standardized_pattern.x_dict.items())
+    new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
+    new_seq.extend(command.X(node=node, domain=set(domain)) for node, domain in standardized_pattern.x_dict.items())
 
     pat = Pattern() if copy else pattern
 
-    output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
-    pat.reorder_output_nodes(output_nodes)
+    pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True
@@ -1767,7 +1740,7 @@ def pauli_nodes(
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
         pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None and (cmd.node not in pattern.pattern.input_nodes or not leave_input):
+        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement

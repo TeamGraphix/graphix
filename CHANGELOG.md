@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
 - #358: Refactor of flow tools - Part I
   - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future. 
   - New module `graphix.flow._find_cflow` with the existing causal-flow finding algorithm.
@@ -15,14 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New abstract types `graphix.fundamentals.AbstractMeasurement` and `graphix.fundamentals.AbstractPlanarMeasurement` which serve as an umbrella of the existing types `graphix.measurements.Measurement`, `graphix.fundamentals.Plane` and `graphix.fundamentals.Axis`.
   - New method `graphix.pattern.Pattern.extract_opengraph` which subsumes the static method `graphix.opengraph.OpenGraph.from_pattern`.
   - New methods of `graphix.opengraph.OpenGraph` which allow to extract a causal, g- or Pauli flow.
+
+- #360, #361: `StandardizedPattern.to_space_optimal_pattern` generates
+  a pattern that is space-optimal for a given measurement order.
+
+- #193, #364: `Pattern.check_runnability` ensures that a pattern is runnable.
+
 ### Fixed
 
+- #364: `Pattern.simulate_pattern`, `Pattern.standardize`,
+  `Pattern.perform_pauli_measurements`, `Pattern.minimize_space`,
+  `Pattern.get_layers` check that the pattern is runnable beforehand.
+
 ### Changed
- - #358: Refactor of flow tools - Part I
+
+- #358: Refactor of flow tools - Part I
   - API for the `graphix.opengraph.OpenGraph` class:
     - `OpenGraphs` are parametrically typed so that they can be defined on planes and axes mappings in addition to measurements mappings.
     - Attribute names are now `graph`, `input_nodes`, `output_nodes` and `measurements`.
 
+- #361: `StandardizedPattern` is now an immutable dataclass. The class method `StandardizedPattern.from_pattern` instantiates a `StandardizedPattern` from `Pattern`.
+
+- #371: Drop support for Python 3.9
 
 ## [0.3.3] - 2025-10-23
 

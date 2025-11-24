@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import cmath
 import math
-import sys
-import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, TypeVar, overload
@@ -313,22 +311,13 @@ class Placeholder(AffineExpression, Parameter):
         return id(self)
 
 
-if sys.version_info >= (3, 10):
-    ExpressionOrFloat = Expression | float
+ExpressionOrFloat = Expression | float
 
-    ExpressionOrComplex = Expression | complex
+ExpressionOrComplex = Expression | complex
 
-    ExpressionOrSupportsFloat = Expression | SupportsFloat
+ExpressionOrSupportsFloat = Expression | SupportsFloat
 
-    ExpressionOrSupportsComplex = Expression | SupportsComplex
-else:
-    ExpressionOrFloat = typing.Union[Expression, float]
-
-    ExpressionOrComplex = typing.Union[Expression, complex]
-
-    ExpressionOrSupportsFloat = typing.Union[Expression, SupportsFloat]
-
-    ExpressionOrSupportsComplex = typing.Union[Expression, SupportsComplex]
+ExpressionOrSupportsComplex = Expression | SupportsComplex
 
 
 T = TypeVar("T")

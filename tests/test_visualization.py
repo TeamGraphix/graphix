@@ -41,7 +41,7 @@ def example_gflow(rng: Generator) -> Pattern:
     graph: nx.Graph[int] = nx.Graph([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 6), (1, 6)])
     inputs = [3, 1, 5]
     outputs = [4, 2, 6]
-    angles = dict(zip([1, 3, 5], (2 * rng.random(3)).tolist()))
+    angles = dict(zip([1, 3, 5], (2 * rng.random(3)).tolist(), strict=True))
     measurements = {node: Measurement(angle, Plane.XY) for node, angle in angles.items()}
 
     pattern = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements).to_pattern()
@@ -73,7 +73,7 @@ def example_pflow(rng: Generator) -> Pattern:
     # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
     meas_angles: dict[int, float] = {
         **dict.fromkeys(range(4), 0),
-        **dict(zip(range(4, 8), (2 * rng.random(4)).tolist())),
+        **dict(zip(range(4, 8), (2 * rng.random(4)).tolist(), strict=True)),
     }
     measurements = {i: Measurement(angle, Plane.XY) for i, angle in meas_angles.items()}
 
