@@ -23,7 +23,8 @@ from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
-from graphix.measurements import Outcome, PauliMeasurement, toggle_outcome
+from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
+from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
@@ -1148,6 +1149,37 @@ class Pattern:
         """
         graph = self.extract_graph()
         return {node for node, d in graph.degree if d == 0}
+
+    def extract_opengraph(self) -> OpenGraph[Measurement]:
+        """Extract the underlying resource-state open graph from the pattern.
+
+        Returns
+        -------
+        OpenGraph[Measurement]
+
+        Notes
+        -----
+        This operation loses all the information on the Clifford commands.
+        """
+        nodes = set(self.input_nodes)
+        edges: set[tuple[int, int]] = set()
+        measurements: dict[int, Measurement] = {}
+
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                nodes.add(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                if u > v:
+                    u, v = v, u
+                edges.symmetric_difference_update({(u, v)})
+            elif cmd.kind == CommandKind.M:
+                measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
+
+        graph = nx.Graph(edges)
+        graph.add_nodes_from(nodes)
+
+        return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.

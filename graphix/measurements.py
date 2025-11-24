@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import dataclasses
 import math
+from dataclasses import dataclass
 from typing import (
     Literal,
     NamedTuple,
     SupportsInt,
-    TypeAlias,  # TypeAlias introduced in Python 3.10
+    TypeAlias,
 )
 
 from graphix import utils
-from graphix.fundamentals import Axis, Plane, Sign
+from graphix.fundamentals import AbstractPlanarMeasurement, Axis, Plane, Sign
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
@@ -30,7 +30,7 @@ def toggle_outcome(outcome: Outcome) -> Outcome:
     return 1 if outcome == 0 else 0
 
 
-@dataclasses.dataclass
+@dataclass
 class Domains:
     """Represent `X^sZ^t` where s and t are XOR of results from given sets of indices."""
 
@@ -38,11 +38,16 @@ class Domains:
     t_domain: set[int]
 
 
-class Measurement(NamedTuple):
-    """An MBQC measurement.
+@dataclass
+class Measurement(AbstractPlanarMeasurement):
+    r"""An MBQC measurement.
 
-    :param angle: the angle of the measurement. Should be between [0, 2)
-    :param plane: the measurement plane
+    Attributes
+    ----------
+    angle : Expressionor Float
+        The angle of the measurement in units of :math:`\pi`. Should be between [0, 2).
+    plane : graphix.fundamentals.Plane
+        The measurement plane.
     """
 
     angle: ExpressionOrFloat
@@ -53,7 +58,7 @@ class Measurement(NamedTuple):
 
         Example
         -------
-        >>> from graphix.opengraph import Measurement
+        >>> from graphix.measurements import Measurement
         >>> from graphix.fundamentals import Plane
         >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         True
@@ -67,6 +72,30 @@ class Measurement(NamedTuple):
             if isinstance(self.angle, float) and isinstance(other.angle, float)
             else self.angle == other.angle
         ) and self.plane == other.plane
+
+    def to_plane_or_axis(self) -> Plane | Axis:
+        """Return the measurements's plane or axis.
+
+        Returns
+        -------
+        Plane | Axis
+
+        Notes
+        -----
+        Measurements with Pauli angles (i.e., ``self.angle == n/2`` with ``n`` an integer) are interpreted as `Axis` instances.
+        """
+        if pm := PauliMeasurement.try_from(self.plane, self.angle):
+            return pm.axis
+        return self.plane
+
+    def to_plane(self) -> Plane:
+        """Return the measurement's plane.
+
+        Returns
+        -------
+        Plane
+        """
+        return self.plane
 
 
 class PauliMeasurement(NamedTuple):
