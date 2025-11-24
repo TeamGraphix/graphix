@@ -9,9 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #358: New flow API
+
+- #360, #361: `StandardizedPattern.to_space_optimal_pattern` generates
+  a pattern that is space-optimal for a given measurement order.
+
 ### Fixed
 
 ### Changed
+
+- #361: `StandardizedPattern` is now an immutable dataclass
+
+- #371: Drop support for Python 3.9
 
 ## [0.3.3] - 2025-10-23
 
