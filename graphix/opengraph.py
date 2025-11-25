@@ -83,32 +83,6 @@ class OpenGraph(Generic[_M_co]):
         if len(outputs) != len(self.output_nodes):
             raise ValueError("Output nodes contain duplicates.")
 
-    # TODO: Up docstrings and generalise to any type
-    def isclose(
-        self: OpenGraph[Measurement], other: OpenGraph[Measurement], rel_tol: float = 1e-09, abs_tol: float = 0.0
-    ) -> bool:
-        """Return `True` if two open graphs implement approximately the same unitary operator.
-
-        Ensures the structure of the graphs are the same and all
-        measurement angles are sufficiently close.
-
-        This doesn't check they are equal up to an isomorphism.
-
-        """
-        if not nx.utils.graphs_equal(self.graph, other.graph):
-            return False
-
-        if self.input_nodes != other.input_nodes or self.output_nodes != other.output_nodes:
-            return False
-
-        if set(self.measurements.keys()) != set(other.measurements.keys()):
-            return False
-
-        return all(
-            m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
-            for node, m in self.measurements.items()
-        )
-
     def to_pattern(self: OpenGraph[Measurement]) -> Pattern:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
 
@@ -139,6 +113,63 @@ class OpenGraph(Generic[_M_co]):
                 return flow.to_corrections().to_pattern()
 
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two open graphs are equal.
+
+        Parameters
+        ----------
+        other : object
+
+        Returns
+        -------
+        bool
+            ``True`` if the two open graphs are equal.
+
+        Notes
+        -----
+        This method verifies the open graphs have:
+            - Truly equal underlying graphs (not up to an isomorphism).
+            - Equal input and output nodes.
+            - Same measurement planes or axis. It does not compare measurement angles (for that, see :func:`OpenGraph.isclose`).
+        """
+        if isinstance(other, OpenGraph):
+            return _compare_opengraph_structure(self, other) and all(
+                m1.to_plane_or_axis() == m2.to_plane_or_axis()
+                for m1, m2 in zip(self.measurements.values(), other.measurements.values(), strict=True)
+            )
+
+        return False
+
+    def isclose(
+        self: OpenGraph[Measurement], other: OpenGraph[Measurement], rel_tol: float = 1e-09, abs_tol: float = 0.0
+    ) -> bool:
+        """Check if two open graphs of `Measurement` type are similar.
+
+        Parameters
+        ----------
+        other : OpenGraph[Measurement]
+        rel_tol : float
+            Relative tolerance. Optional, defaults to ``1e-09``.
+        abs_tol : float
+            Absolute tolerance. Optional, defaults to ``0.0``.
+
+        Returns
+        -------
+        bool
+            ``True`` if the two open graphs are approximately equal.
+
+        Notes
+        -----
+        This method verifies the open graphs have:
+            - Truly equal underlying graphs (not up to an isomorphism).
+            - Equal input and output nodes.
+            - Same measurement planes and approximately equal measurement angles.
+        """
+        return _compare_opengraph_structure(self, other) and all(
+            m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
+            for node, m in self.measurements.items()
+        )
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:
         """Return the set containing the neighborhood of a set of nodes in the open graph.
@@ -406,6 +437,28 @@ class OpenGraph(Generic[_M_co]):
         measurements = {**self.measurements, **measurements_shifted}
 
         return OpenGraph(g, inputs, outputs, measurements), mapping_complete
+
+
+def _compare_opengraph_structure(og_1: OpenGraph[_M_co], og_2: OpenGraph[_M_co]) -> bool:
+    """Compare the underlying structure of two open graphs.
+
+    Parameters
+    ----------
+    og_1 : OpenGraph[_M_co]
+    og_2 : OpenGraph[_M_co]
+
+    Returns
+    -------
+    bool
+        ``True`` if both open graphs have the same underlying structure.
+    """
+    if not nx.utils.graphs_equal(og_1.graph, og_2.graph):
+        return False
+
+    if og_1.input_nodes != og_2.input_nodes or og_1.output_nodes != og_2.output_nodes:
+        return False
+
+    return set(og_1.measurements.keys()) == set(og_2.measurements.keys())
 
 
 class OpenGraphError(Exception):

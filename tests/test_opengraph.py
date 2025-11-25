@@ -14,15 +14,15 @@ import numpy as np
 import pytest
 
 from graphix.command import E
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement
-from graphix.opengraph import OpenGraph, OpenGraphError
+from graphix.opengraph import OpenGraph, OpenGraphError, _M_co
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from numpy.random import Generator
 
@@ -875,11 +875,85 @@ class TestOpenGraph:
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
             assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
+<<<<<<< HEAD
     @pytest.mark.parametrize("test_case", prepare_test_og_compose())
     def test_compose(self, test_case: OpenGraphComposeTestCase) -> None:
         og1, og2, og_ref, mapping, compare = test_case
 
         og, mapping_complete = og1.compose(og2, mapping)
+=======
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            (
+                OpenGraph(
+                    graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+                    input_nodes=[0],
+                    output_nodes=[3],
+                    measurements=dict.fromkeys(range(3), Plane.XY),
+                ),
+                OpenGraph(
+                    graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+                    input_nodes=[0],
+                    output_nodes=[3],
+                    measurements=dict.fromkeys(range(3), Axis.X),
+                ),
+            ),
+            (
+                OpenGraph(
+                    graph=nx.Graph([(0, 1)]),
+                    input_nodes=[0],
+                    output_nodes=[],
+                    measurements=dict.fromkeys(range(2), Plane.XY),
+                ),
+                OpenGraph(
+                    graph=nx.Graph([(0, 1)]),
+                    input_nodes=[0, 1],
+                    output_nodes=[],
+                    measurements=dict.fromkeys(range(2), Plane.XY),
+                ),
+            ),
+            (
+                OpenGraph(
+                    graph=nx.Graph([(0, 1)]),
+                    input_nodes=[0],
+                    output_nodes=[1],
+                    measurements={0: Measurement(0.6, Plane.XY)},
+                ),
+                OpenGraph(
+                    graph=nx.Graph([(0, 2)]),
+                    input_nodes=[0],
+                    output_nodes=[2],
+                    measurements={0: Measurement(0.6, Plane.XY)},
+                ),
+            ),
+        ],
+    )
+    def test_eq(self, test_case: Sequence[tuple[OpenGraph[_M_co], OpenGraph[_M_co]]]) -> None:
+        og_1, og_2 = test_case
+        assert og_1 == og_1  # noqa: PLR0124
+        assert og_1 != og_2
+        assert og_2 == og_2  # noqa: PLR0124
+
+    def test_isclose(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.1, Plane.XY)),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+        )
+        assert og_1.isclose(og_2, abs_tol=0.1)
+        assert not og_1.isclose(og_2)
+
+
+# TODO: rewrite as parametric tests
+>>>>>>> rf_og_compare
 
         assert compare(og, og_ref)
         assert mapping.keys() <= mapping_complete.keys()
