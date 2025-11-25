@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import dataclasses
 import math
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeVar
+from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
 
 import numpy as np
 import numpy.typing as npt
 
 # TypeAlias introduced in Python 3.10
 # override introduced in Python 3.12
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
@@ -37,12 +36,7 @@ if TYPE_CHECKING:
     from graphix.simulator import MeasureMethod
 
 
-if sys.version_info >= (3, 10):
-    Matrix: TypeAlias = npt.NDArray[np.object_ | np.complex128]
-else:
-    from typing import Union
-
-    Matrix: TypeAlias = npt.NDArray[Union[np.object_, np.complex128]]
+Matrix: TypeAlias = npt.NDArray[np.object_ | np.complex128]
 
 
 def tensordot(op: Matrix, psi: Matrix, axes: tuple[int | Sequence[int], int | Sequence[int]]) -> Matrix:

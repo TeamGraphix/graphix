@@ -23,15 +23,14 @@ def run_pytest(session: Session, doctest_modules: bool = False, mpl: bool = Fals
     session.run(*args)
 
 
-@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_minimal(session: Session) -> None:
     """Run the test suite with minimal dependencies."""
     session.install(".")
     install_pytest(session)
-    run_pytest(session)  # no --mpl because matplotlib changes axes convention in 3.10
+    run_pytest(session, mpl=True)
 
 
-# Note that recent types-networkx versions don't support Python 3.9
 @nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_dev(session: Session) -> None:
     """Run the test suite with dev dependencies."""
@@ -41,7 +40,7 @@ def tests_dev(session: Session) -> None:
     run_pytest(session, mpl=True)
 
 
-@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_extra(session: Session) -> None:
     """Run the test suite with extra dependencies."""
     session.install(".[extra]")
@@ -57,7 +56,7 @@ def tests_all(session: Session) -> None:
     run_pytest(session, doctest_modules=True, mpl=True)
 
 
-@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
     session.install(".")
@@ -75,7 +74,7 @@ def tests_symbolic(session: Session) -> None:
             run_pytest(session, doctest_modules=True)
 
 
-@nox.session(python=["3.9", "3.10", "3.11", "3.12", "3.13"])
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
 def tests_qasm_parser(session: Session) -> None:
     """Run the test suite of graphix-qasm-parser."""
     session.install(".")
