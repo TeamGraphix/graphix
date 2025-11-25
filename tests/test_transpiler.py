@@ -9,26 +9,31 @@ from numpy.random import PCG64, Generator
 from graphix import instruction
 from graphix.fundamentals import Plane
 from graphix.gflow import flow_from_pattern
-from graphix.random_objects import rand_circuit, rand_gate
+from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.transpiler import Circuit
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import TypeAlias
+
     from graphix.instruction import Instruction
 
-INSTRUCTION_TEST_CASES = [
-    instruction.CCX(0, (1, 2)),
-    instruction.RZZ(0, 1, np.pi / 4),
-    instruction.CNOT(0, 1),
-    instruction.SWAP((0, 1)),
-    instruction.H(0),
-    instruction.S(0),
-    instruction.X(0),
-    instruction.Y(0),
-    instruction.Z(0),
-    instruction.I(0),
-    instruction.RX(0, 0),
-    instruction.RY(0, 0),
-    instruction.RZ(0, 0),
+    InstructionTestCase: TypeAlias = Callable[[Generator], Instruction]
+
+INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
+    lambda _rng: instruction.CCX(0, (1, 2)),
+    lambda rng: instruction.RZZ(0, 1, rng.random() * 2 * np.pi),
+    lambda _rng: instruction.CNOT(0, 1),
+    lambda _rng: instruction.SWAP((0, 1)),
+    lambda _rng: instruction.H(0),
+    lambda _rng: instruction.S(0),
+    lambda _rng: instruction.X(0),
+    lambda _rng: instruction.Y(0),
+    lambda _rng: instruction.Z(0),
+    lambda _rng: instruction.I(0),
+    lambda rng: instruction.RX(0, rng.random() * 2 * np.pi),
+    lambda rng: instruction.RY(0, rng.random() * 2 * np.pi),
+    lambda rng: instruction.RZ(0, rng.random() * 2 * np.pi),
 ]
 
 
@@ -174,17 +179,20 @@ class TestTranspilerUnitGates:
         assert circuit.instruction == circuit2.instruction
 
     @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instruction_flow(self, instruction: Instruction) -> None:
-        circuit = Circuit(3, instr=[instruction])
+    def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
+        circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
         pattern.standardize()
         f, _l = flow_from_pattern(pattern)
         assert f is not None
 
+    @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
-    def test_instructions(self, fx_rng: Generator, instruction: Instruction) -> None:
-        circuit = Circuit(3, instr=[instruction])
+    def test_instructions(self, fx_bg: PCG64, jumps: int, instruction: InstructionTestCase) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        circuit = Circuit(3, instr=[instruction(rng)])
         pattern = circuit.transpile().pattern
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
+        input_state = rand_state_vector(3, rng=rng)
+        state = circuit.simulate_statevector(input_state=input_state).statevec
+        state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
