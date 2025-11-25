@@ -136,7 +136,7 @@ class OpenGraph(Generic[_M_co]):
         if isinstance(other, OpenGraph):
             return _compare_opengraph_structure(self, other) and all(
                 m1.to_plane_or_axis() == m2.to_plane_or_axis()
-                for m1, m2 in zip(self.measurements.values(), other.measurements.values(), strict=False)
+                for m1, m2 in zip(self.measurements.values(), other.measurements.values(), strict=True)
             )
 
         return False
@@ -437,6 +437,18 @@ class OpenGraph(Generic[_M_co]):
 
 
 def _compare_opengraph_structure(og_1: OpenGraph[_M_co], og_2: OpenGraph[_M_co]) -> bool:
+    """Compare the underlying structure of two open graphs.
+
+    Parameters
+    ----------
+    og_1 : OpenGraph[_M_co]
+    og_2 : OpenGraph[_M_co]
+
+    Returns
+    -------
+    bool
+        ``True`` if both open graphs have the same underlying structure.
+    """
     if not nx.utils.graphs_equal(og_1.graph, og_2.graph):
         return False
 
