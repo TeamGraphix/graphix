@@ -277,7 +277,7 @@ class GraphVisualizer:
 
     def _draw_labels(self, pos: Mapping[int, _Point]) -> None:
         fontsize = 12
-        if max(self.graph.nodes()) >= 100:
+        if max(self.graph.nodes(), default=0) >= 100:
             fontsize = int(fontsize * 2 / len(str(max(self.graph.nodes()))))
         nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
 
@@ -441,12 +441,12 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
             plt.legend(loc="upper right", fontsize=10)
 
-        x_min = min(pos[node][0] for node in self.graph.nodes())  # Get the minimum x coordinate
-        x_max = max(pos[node][0] for node in self.graph.nodes())  # Get the maximum x coordinate
-        y_min = min(pos[node][1] for node in self.graph.nodes())  # Get the minimum y coordinate
-        y_max = max(pos[node][1] for node in self.graph.nodes())  # Get the maximum y coordinate
+        x_min = min((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the minimum x coordinate
+        x_max = max((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the maximum x coordinate
+        y_min = min((pos[node][1] for node in self.graph.nodes()), default=0)  # Get the minimum y coordinate
+        y_max = max((pos[node][1] for node in self.graph.nodes()), default=0)  # Get the maximum y coordinate
 
-        if l_k is not None:
+        if l_k is not None and l_k:
             # Draw the vertical lines to separate different layers
             for layer in range(min(l_k.values()), max(l_k.values())):
                 plt.axvline(
@@ -506,7 +506,7 @@ class GraphVisualizer:
                 raise ValueError("Figure size can only be computed given a layer mapping (l_k) or node positions (pos)")
             width = len({pos[node][0] for node in self.graph.nodes()}) * 0.8
         else:
-            width = (max(l_k.values()) + 1) * 0.8
+            width = (max(l_k.values(), default=0) + 1) * 0.8
         height = len({pos[node][1] for node in self.graph.nodes()}) if pos is not None else len(self.v_out)
         return (width * node_distance[0], height * node_distance[1])
 
@@ -657,6 +657,9 @@ class GraphVisualizer:
             while node in f:
                 node = next(iter(f[node]))
                 pos[node][1] = i
+
+        if not l_k:
+            return {}
 
         lmax = max(l_k.values())
         # Change the x coordinates of the nodes based on their layer, sort in descending order

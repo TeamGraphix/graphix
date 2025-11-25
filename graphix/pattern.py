@@ -7,15 +7,16 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import enum
 import warnings
 from collections.abc import Iterable, Iterator
-from copy import deepcopy
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 
 import networkx as nx
-from typing_extensions import assert_never, override
+from typing_extensions import assert_never
 
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
@@ -42,18 +43,6 @@ if TYPE_CHECKING:
 
 
 _StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
-
-
-@dataclass(frozen=True)
-class NodeAlreadyPreparedError(Exception):
-    """Exception raised if a node is already prepared."""
-
-    node: int
-
-    @override
-    def __str__(self) -> str:
-        """Return the message of the error."""
-        return f"Node already prepared: {self.node}"
 
 
 class Pattern:
@@ -135,12 +124,11 @@ class Pattern:
             MBQC command.
         """
         if cmd.kind == CommandKind.N:
-            if cmd.node in self.__output_nodes:
-                raise NodeAlreadyPreparedError(cmd.node)
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
         elif cmd.kind == CommandKind.M:
-            self.__output_nodes.remove(cmd.node)
+            if cmd.node in self.__output_nodes:
+                self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
     def extend(self, *cmds: Command | Iterable[Command]) -> None:
@@ -481,6 +469,13 @@ class Pattern:
         signal_dict : dict[int, set[int]]
             For each node, the signal that have been shifted.
         """
+        # Shifting signals could turn non-runnable patterns into
+        # runnable ones, so we check runnability first to avoid hiding
+        # code-logic errors.
+        # For example, the non-runnable pattern {1}[M(0)] N(0) would
+        # become M(0) N(0), which is runnable.
+        self.check_runnability()
+
         if method == "direct":
             return self.shift_signals_direct()
         if method == "mc":
@@ -540,7 +535,7 @@ class Pattern:
                 elif plane == Plane.XZ:
                     # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
                     #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
-                    #                  = M^{XZ,(-1)^{s+t}·α+sπ         (since (-1)^t·π ≡ π (mod 2π))
+                    #                  = M^{XZ,(-1)^{s+t}·α+sπ}         (since (-1)^t·π ≡ π (mod 2π))
                     #                  = S^s M^{XZ,(-1)^{s+t}·α}
                     #                  = S^s M^{XZ,α} Z^{s+t}
                     if s_domain:
@@ -903,6 +898,7 @@ class Pattern:
         layers : dict of set
             nodes grouped by layer index(k)
         """
+        self.check_runnability()  # prevent infinite loop: e.g., [N(0), M(0, s_domain={0})]
         dependency = self._get_dependency()
         measured = self.results.keys()
         self.update_dependency(measured, dependency)
@@ -1109,7 +1105,10 @@ class Pattern:
         graph = self.extract_graph()
         degree = graph.degree()
         assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
-        return int(max(dict(degree).values()))
+        degrees = dict(degree).values()
+        if len(degrees) == 0:
+            return 0
+        return int(max(degrees))
 
     def extract_graph(self) -> nx.Graph[int]:
         """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
@@ -1385,9 +1384,9 @@ class Pattern:
         .. seealso:: :func:`measure_pauli`
 
         """
-        if not ignore_pauli_with_deps:
-            self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False)
+        # if not ignore_pauli_with_deps:
+        #    self.move_pauli_measurements_to_the_front()
+        measure_pauli(self, leave_input, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
 
     def draw_graph(
         self,
@@ -1514,89 +1513,98 @@ class Pattern:
         result.results = self.results.copy()
         return result
 
-    def move_pauli_measurements_to_the_front(self, leave_nodes: set[int] | None = None) -> None:
-        """Move all the Pauli measurements to the front of the sequence (except nodes in `leave_nodes`)."""
-        if leave_nodes is None:
-            leave_nodes = set()
-        self.standardize()
-        pauli_nodes = {}
-        shift_domains: dict[int, set[int]] = {}
+    def check_runnability(self) -> None:
+        """Check whether the pattern is runnable.
 
-        def expand_domain(domain: set[int]) -> None:
-            """Merge previously shifted domains into ``domain``.
+        Raises `RunnabilityError` exception if it is not.
+        """
+        active = set(self.input_nodes)
+        measured = set(self.results)
 
-            Parameters
-            ----------
-            domain : set[int]
-                Domain to update with any accumulated shift information.
-            """
-            for node in domain & shift_domains.keys():
-                domain ^= shift_domains[node]
+        def check_active(cmd: Command, node: int) -> None:
+            if node in measured:
+                raise RunnabilityError(cmd, node, RunnabilityErrorReason.AlreadyMeasured)
+            if node not in active:
+                raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetActive)
+
+        def check_measured(cmd: Command, node: int) -> None:
+            if node not in measured:
+                raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
 
         for cmd in self:
-            # Use of == for mypy
-            if cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                expand_domain(cmd.domain)
-            if cmd.kind == CommandKind.M:
-                expand_domain(cmd.s_domain)
-                expand_domain(cmd.t_domain)
-                pm = PauliMeasurement.try_from(
-                    cmd.plane, cmd.angle
-                )  # None returned if the measurement is not in Pauli basis
-                if pm is not None and cmd.node not in leave_nodes:
-                    if pm.axis == Axis.X:
-                        # M^X X^s Z^t = M^{XY,0} X^s Z^t
-                        #             = M^{XY,(-1)^s·0+tπ}
-                        #             = S^t M^X
-                        # M^{-X} X^s Z^t = M^{XY,π} X^s Z^t
-                        #                = M^{XY,(-1)^s·π+tπ}
-                        #                = S^t M^{-X}
-                        shift_domains[cmd.node] = cmd.t_domain
-                    elif pm.axis == Axis.Y:
-                        # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
-                        #             = M^{XY,(-1)^s·π/2+tπ}
-                        #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
-                        #             = S^{s+t} M^Y
-                        # M^{-Y} X^s Z^t = M^{XY,-π/2} X^s Z^t
-                        #                = M^{XY,(-1)^s·(-π/2)+tπ}
-                        #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
-                        #                = S^{s+t} M^{-Y}
-                        shift_domains[cmd.node] = cmd.s_domain ^ cmd.t_domain
-                    elif pm.axis == Axis.Z:
-                        # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
-                        #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
-                        #             = M^{XZ,(-1)^t·sπ}
-                        #             = M^{XZ,sπ}              (since (-1)^t·π ≡ π (mod 2π))
-                        #             = S^s M^Z
-                        # M^{-Z} X^s Z^t = M^{XZ,π} X^s Z^t
-                        #                = M^{XZ,(-1)^t((-1)^s·π+sπ)}
-                        #                = M^{XZ,(s+1)π}
-                        #                = S^s M^{-Z}
-                        shift_domains[cmd.node] = cmd.s_domain
-                    else:
-                        assert_never(pm.axis)
-                    cmd.s_domain = set()
-                    cmd.t_domain = set()
-                    pauli_nodes[cmd.node] = cmd
-
-        # Create a new sequence with all Pauli nodes to the front
-        new_seq: list[Command] = []
-        pauli_nodes_inserted = False
-        for cmd in self:
-            if cmd.kind == CommandKind.M:
-                if cmd.node not in pauli_nodes:
-                    if not pauli_nodes_inserted:
-                        new_seq.extend(pauli_nodes.values())
-                        pauli_nodes_inserted = True
-                    new_seq.append(cmd)
-            else:
-                new_seq.append(cmd)
-        if not pauli_nodes_inserted:
-            new_seq.extend(pauli_nodes.values())
-        self.__seq = new_seq
+            if cmd.kind == CommandKind.N:
+                if cmd.node in active:
+                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
+                if cmd.node in measured:
+                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
+                active.add(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                n0, n1 = cmd.nodes
+                check_active(cmd, n0)
+                check_active(cmd, n1)
+            elif cmd.kind == CommandKind.M:
+                check_active(cmd, cmd.node)
+                for domain in cmd.s_domain, cmd.t_domain:
+                    if cmd.node in domain:
+                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
+                    for node in domain:
+                        check_measured(cmd, node)
+                active.remove(cmd.node)
+                measured.add(cmd.node)
+            # Use of `==` here for mypy
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
+                check_active(cmd, cmd.node)
+                for node in cmd.domain:
+                    check_measured(cmd, node)
+            elif cmd.kind == CommandKind.C:
+                check_active(cmd, cmd.node)
 
 
-def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pattern:
+class RunnabilityErrorReason(Enum):
+    """Describe the reason for a pattern not being runnable."""
+
+    AlreadyActive = enum.auto()
+    """A node is prepared whereas it has already been prepared or it is an input node."""
+
+    AlreadyMeasured = enum.auto()
+    """A node is measured for a second time."""
+
+    NotYetActive = enum.auto()
+    """A node is entangled, measured or corrected whereas it has not been prepared yet and it is not an input node."""
+
+    NotYetMeasured = enum.auto()
+    """A node appears in the domain of a measurement of a correction whereas it has not been measured yet."""
+
+    DomainSelfLoop = enum.auto()
+    """A node appears in the domain of its own measurement. This is a particular case of `NotYetMeasured`, introduced to make the error message clearer."""
+
+
+@dataclass
+class RunnabilityError(Exception):
+    """Error raised by :method:`Pattern.check_runnability`."""
+
+    cmd: Command
+    node: int
+    reason: RunnabilityErrorReason
+
+    def __str__(self) -> str:
+        """Explain the error."""
+        if self.reason == RunnabilityErrorReason.AlreadyActive:
+            return f"{self.cmd}: node {self.node} is already active."
+        if self.reason == RunnabilityErrorReason.AlreadyMeasured:
+            return f"{self.cmd}: node {self.node} is already measured."
+        if self.reason == RunnabilityErrorReason.NotYetActive:
+            return f"{self.cmd}: node {self.node} is not yet active."
+        if self.reason == RunnabilityErrorReason.NotYetMeasured:
+            return f"{self.cmd}: node {self.node} is not yet measured."
+        if self.reason == RunnabilityErrorReason.DomainSelfLoop:
+            return f"{self.cmd}: node {self.node} appears in the domain of its own measurement command."
+        assert_never(self.reason)
+
+
+def measure_pauli(
+    pattern: Pattern, leave_input: bool, *, copy: bool = False, ignore_pauli_with_deps: bool = False
+) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform
@@ -1614,6 +1622,10 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
+    ignore_pauli_with_deps : bool
+        Optional (*False* by default).
+        If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
+        If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
 
     Returns
     -------
@@ -1625,6 +1637,9 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
+    if not ignore_pauli_with_deps:
+        standardized_pattern = standardized_pattern.perform_pauli_pushing()
+    output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
@@ -1674,7 +1689,7 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
     isolates = graph_state.get_isolates()
     for node in non_pauli_meas:
-        if (node in isolates) and (node not in pattern.output_nodes):
+        if (node in isolates) and (node not in output_nodes):
             graph_state.remove_node(node)
             results[node] = 0
 
@@ -1684,22 +1699,20 @@ def measure_pauli(pattern: Pattern, leave_input: bool, copy: bool = False) -> Pa
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
-        cmd.clifford(Clifford(vops[cmd.node]))
-        for cmd in pattern
-        if cmd.kind == CommandKind.M and cmd.node in graph_state.nodes
+        cmd.clifford(Clifford(vops[cmd.node])) for cmd in standardized_pattern.m_list if cmd.node in graph_state.nodes
     )
     new_seq.extend(
         command.C(node=index, clifford=Clifford(vops[index]))
         for index in pattern.output_nodes
         if vops[index] != Clifford.I
     )
-    new_seq.extend(cmd for cmd in pattern if cmd.kind in {CommandKind.X, CommandKind.Z})
+    new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
+    new_seq.extend(command.X(node=node, domain=set(domain)) for node, domain in standardized_pattern.x_dict.items())
 
     pat = Pattern() if copy else pattern
 
-    output_nodes = deepcopy(pattern.output_nodes)
     pat.replace(new_seq, input_nodes=new_inputs)
-    pat.reorder_output_nodes(output_nodes)
+    pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
     pat._pauli_preprocessed = True
