@@ -39,7 +39,7 @@ def rand_unit(sz: IntLike, rng: Generator | None = None) -> npt.NDArray[np.compl
     rng = ensure_rng(rng)
     if sz == 1:
         return np.array([np.exp(1j * rng.random(size=1) * 2 * np.pi)])
-    return unitary_group.rvs(sz, random_state=rng)
+    return unitary_group.rvs(int(sz), random_state=rng)
 
 
 UNITS = np.array([1, 1j])
