@@ -37,12 +37,20 @@ class OpenGraphFlowTestCase(NamedTuple):
 
 
 OPEN_GRAPH_FLOW_TEST_CASES: list[OpenGraphFlowTestCase] = []
+OPEN_GRAPH_COMPOSE_TEST_CASES: list[OpenGraphComposeTestCase] = []
 
 
 def register_open_graph_flow_test_case(
     test_case: Callable[[], OpenGraphFlowTestCase],
 ) -> Callable[[], OpenGraphFlowTestCase]:
     OPEN_GRAPH_FLOW_TEST_CASES.append(test_case())
+    return test_case
+
+
+def register_open_graph_compose_test_case(
+    test_case: Callable[[], OpenGraphComposeTestCase],
+) -> Callable[[], OpenGraphComposeTestCase]:
+    OPEN_GRAPH_COMPOSE_TEST_CASES.append(test_case())
     return test_case
 
 
@@ -558,6 +566,7 @@ class OpenGraphComposeTestCase(NamedTuple):
 
 
 # Parallel composition
+@register_open_graph_compose_test_case
 def _compose_0() -> OpenGraphComposeTestCase:
     """Generate composition test.
 
@@ -592,6 +601,7 @@ def _compose_0() -> OpenGraphComposeTestCase:
 
 
 # Series composition
+@register_open_graph_compose_test_case
 def _compose_1() -> OpenGraphComposeTestCase:
     """Generate composition test.
 
@@ -638,6 +648,7 @@ def _compose_1() -> OpenGraphComposeTestCase:
 
 
 # Full overlap
+@register_open_graph_compose_test_case
 def _compose_2() -> OpenGraphComposeTestCase:
     """Generate composition test.
 
@@ -667,6 +678,7 @@ def _compose_2() -> OpenGraphComposeTestCase:
 
 
 # Overlap inputs/outputs
+@register_open_graph_compose_test_case
 def _compose_3() -> OpenGraphComposeTestCase:
     """Generate composition test.
 
@@ -709,6 +721,7 @@ def _compose_3() -> OpenGraphComposeTestCase:
 
 
 # Inverse series composition
+@register_open_graph_compose_test_case
 def _compose_4() -> OpenGraphComposeTestCase:
     """Generate composition test.
 
@@ -750,6 +763,7 @@ def _compose_4() -> OpenGraphComposeTestCase:
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping, OpenGraph.isclose)
 
 
+@register_open_graph_compose_test_case
 def _compose_5() -> OpenGraphComposeTestCase:
     """Generate composition test.
 
@@ -777,13 +791,6 @@ def _compose_5() -> OpenGraphComposeTestCase:
     mapping = {1: 2}
 
     return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
-
-
-def prepare_test_og_compose() -> list[OpenGraphComposeTestCase]:
-    n_og_samples = 6
-    test_cases: list[OpenGraphComposeTestCase] = [globals()[f"_compose_{i}"]() for i in range(n_og_samples)]
-
-    return test_cases
 
 
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
@@ -875,13 +882,6 @@ class TestOpenGraph:
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
             assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-<<<<<<< HEAD
-    @pytest.mark.parametrize("test_case", prepare_test_og_compose())
-    def test_compose(self, test_case: OpenGraphComposeTestCase) -> None:
-        og1, og2, og_ref, mapping, compare = test_case
-
-        og, mapping_complete = og1.compose(og2, mapping)
-=======
     @pytest.mark.parametrize(
         "test_case",
         [
@@ -951,10 +951,10 @@ class TestOpenGraph:
         assert og_1.isclose(og_2, abs_tol=0.1)
         assert not og_1.isclose(og_2)
 
-
-# TODO: rewrite as parametric tests
->>>>>>> rf_og_compare
-
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_COMPOSE_TEST_CASES)
+    def test_compose(self, test_case: OpenGraphComposeTestCase) -> None:
+        og1, og2, og_ref, mapping, compare = test_case
+        og, mapping_complete = og1.compose(og2, mapping)
         assert compare(og, og_ref)
         assert mapping.keys() <= mapping_complete.keys()
         assert set(mapping.values()) <= set(mapping_complete.values())
