@@ -7,7 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Callable, SupportsFloat
+from typing import TYPE_CHECKING, SupportsFloat
 
 import numpy as np
 from typing_extensions import assert_never
@@ -23,7 +23,7 @@ from graphix.pattern import Pattern
 from graphix.sim import Data, Statevec, base_backend
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 
     from numpy.random import Generator
 

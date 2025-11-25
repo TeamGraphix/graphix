@@ -15,7 +15,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.measurements import Outcome, PauliMeasurement
-from graphix.pattern import Pattern, shift_outcomes
+from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -657,7 +657,9 @@ class TestPattern:
         p1 = circuit_1.transpile().pattern
         p2 = circuit_2.transpile().pattern
         p = circuit.transpile().pattern
-        p_compose, _ = p1.compose(p2, mapping=dict(zip(p2.input_nodes, p1.output_nodes)), preserve_mapping=True)
+        p_compose, _ = p1.compose(
+            p2, mapping=dict(zip(p2.input_nodes, p1.output_nodes, strict=True)), preserve_mapping=True
+        )
         p.minimize_space()
         p_compose.minimize_space()
         s = p.simulate_pattern()
@@ -683,6 +685,90 @@ class TestPattern:
             match=r"Pattern `self` contains Clifford commands and pattern `other` contains E commands. Standardization might not be possible for the resulting composed pattern.",
         ):
             p1.compose(p2, mapping={0: 3})
+
+    def test_check_runnability_success(self, fx_rng: Generator) -> None:
+        nqubits = 5
+        depth = 5
+        circuit = rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
+        pattern.check_runnability()
+
+    def test_check_runnability_failures(self) -> None:
+        pattern = Pattern(input_nodes=[0], cmds=[N(0)])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyActive
+
+        pattern = Pattern(cmds=[N(1), N(1)])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 1
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyActive
+
+        pattern = Pattern(cmds=[E((2, 3))])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 2
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetActive
+
+        pattern = Pattern(cmds=[N(2), E((2, 3))])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 3
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetActive
+
+        pattern = Pattern(cmds=[N(1), M(1, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetMeasured
+
+        pattern = Pattern(cmds=[N(1), M(1), M(1)])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 1
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyMeasured
+
+        pattern = Pattern(cmds=[M(0)])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetActive
+
+        pattern = Pattern(cmds=[N(0), M(0)])
+        pattern.results = {0: 0}
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.AlreadyMeasured
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.check_runnability()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.get_layers()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.simulate_pattern()
+        assert exc_info.value.node == 0
+        assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
+
+        pattern = Pattern(cmds=[N(0), M(0, s_domain={1})])
+        with pytest.raises(RunnabilityError) as exc_info:
+            pattern.shift_signals()
+        assert exc_info.value.node == 1
+        assert exc_info.value.reason == RunnabilityErrorReason.NotYetMeasured
+
+    def test_compute_max_degree_empty_pattern(self) -> None:
+        assert Pattern().compute_max_degree() == 0
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
@@ -865,7 +951,7 @@ class TestMCOps:
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
         out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
@@ -874,20 +960,13 @@ class TestMCOps:
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
-        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles)]
+        states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
         with pytest.raises(NotImplementedError):
             randpattern.simulate_pattern(
                 backend="tensornetwork", graph_prep="sequential", input_state=states, rng=fx_rng
             )
 
-    def test_remove_qubit(self) -> None:
-        p = Pattern(input_nodes=[0, 1])
-        p.add(M(node=0))
-        p.add(C(node=0, clifford=Clifford.X))
-        with pytest.raises(KeyError):
-            p.simulate_pattern()
-
 
 def assert_equal_edge(edge: Sequence[int], ref: Sequence[int]) -> bool:
-    return any(all(ei == ri for ei, ri in zip(edge, other)) for other in (ref, reversed(ref)))
+    return any(all(ei == ri for ei, ri in zip(edge, other, strict=True)) for other in (ref, reversed(ref)))

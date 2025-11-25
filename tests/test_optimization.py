@@ -5,10 +5,10 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix.clifford import Clifford
-from graphix.command import C, Command, CommandKind, E, N
+from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.gflow import gflow_from_pattern
-from graphix.optimization import incorporate_pauli_results, remove_useless_domains
+from graphix.optimization import StandardizedPattern, incorporate_pauli_results, remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
@@ -78,6 +78,7 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
+    # pattern.move_pauli_measurements_to_the_front()
     pattern.perform_pauli_measurements()
     pattern2 = incorporate_pauli_results(pattern)
     pattern2.standardize()
@@ -98,4 +99,26 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern2 = remove_useless_domains(pattern)
     state = pattern.simulate_pattern(rng=rng)
     state2 = pattern2.simulate_pattern(rng=rng)
+    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+
+
+def test_to_space_optimal_pattern() -> None:
+    pattern = Pattern(
+        cmds=[
+            N(8),
+            N(17),
+            N(18),
+            E((8, 17)),
+            E((17, 18)),
+            M(8, angle=-0.75),
+            Z(18, {8}),
+            X(17, {8}),
+            C(17, (Clifford.S @ Clifford.Z)),
+            C(18, (Clifford.S @ Clifford.Z)),
+        ],
+        output_nodes=[17, 18],
+    )
+    pattern2 = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
+    state = pattern.simulate_pattern()
+    state2 = pattern2.simulate_pattern()
     assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)

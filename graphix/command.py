@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-import sys
 from enum import Enum
-from typing import ClassVar, Literal, Union
+from typing import ClassVar, Literal
 
 import numpy as np
 
@@ -221,12 +220,8 @@ class T(_KindChecker):
     kind: ClassVar[Literal[CommandKind.T]] = dataclasses.field(default=CommandKind.T, init=False)
 
 
-if sys.version_info >= (3, 10):
-    Command = N | M | E | C | X | Z | S | T
-    Correction = X | Z
-else:
-    Command = Union[N, M, E, C, X, Z, S, T]
-    Correction = Union[X, Z]
+Command = N | M | E | C | X | Z | S | T
+Correction = X | Z
 
 
 @dataclasses.dataclass
