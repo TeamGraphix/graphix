@@ -441,5 +441,4 @@ def rand_state_vector(nqubits: int, rng: Generator | None = None) -> npt.NDArray
     """
     rng = ensure_rng(rng)
     vec = rng.random(2**nqubits) + 1j * rng.random(2**nqubits)
-    vec = vec / np.linalg.norm(vec)
-    return vec
+    return vec / np.linalg.norm(vec)
