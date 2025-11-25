@@ -11,12 +11,12 @@ from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
+from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
 
     from graphix.flow.core import CausalFlow
-    from graphix.measurements import Measurement
     from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
@@ -329,25 +329,22 @@ class OpenGraph(Generic[_M_co]):
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    # TODO: Generalise `compose` to any type of OpenGraph
-    def compose(
-        self: OpenGraph[Measurement], other: OpenGraph[Measurement], mapping: Mapping[int, int]
-    ) -> tuple[OpenGraph[Measurement], dict[int, int]]:
-        r"""Compose two open graphs by merging subsets of nodes from `self` and `other`, and relabeling the nodes of `other` that were not merged.
+    def compose(self, other: OpenGraph[_M_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_M_co], dict[int, int]]:
+        r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.
 
         Parameters
         ----------
-        other : OpenGraph
-            Open graph to be composed with `self`.
+        other : OpenGraph[_M_co]
+            Open graph to be composed with ``self``.
         mapping: dict[int, int]
-            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
+            Partial relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node labels, respectively.
 
         Returns
         -------
-        og: OpenGraph
-            composed open graph
+        og: OpenGraph[_M_co]
+            Composed open graph.
         mapping_complete: dict[int, int]
-            Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
+            Complete relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node label, respectively.
 
         Notes
         -----
@@ -368,13 +365,19 @@ class OpenGraph(Generic[_M_co]):
             raise ValueError("Keys of mapping must be correspond to nodes of other.")
         if len(mapping) != len(set(mapping.values())):
             raise ValueError("Values in mapping contain duplicates.")
+
+        def equal_measurements(vm: AbstractMeasurement, um: AbstractMeasurement) -> bool:
+            return vm.isclose(um) if isinstance(vm, Measurement) and isinstance(um, Measurement) else vm == um
+
         for v, u in mapping.items():
-            if (
-                (vm := other.measurements.get(v)) is not None
-                and (um := self.measurements.get(u)) is not None
-                and not vm.isclose(um)
-            ):
-                raise ValueError(f"Attempted to merge nodes {v}:{u} but have different measurements")
+            vm = other.measurements.get(v)
+            um = self.measurements.get(u)
+
+            if vm is None or um is None:
+                continue
+
+            if not equal_measurements(vm, um):
+                raise OpenGraphError(f"Attempted to merge nodes with different measurements: {v, vm} -> {u, um}.")
 
         shift = max(*self.graph.nodes, *mapping.values()) + 1
 
