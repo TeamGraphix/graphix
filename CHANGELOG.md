@@ -20,7 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #360, #361: `StandardizedPattern.to_space_optimal_pattern` generates
   a pattern that is space-optimal for a given measurement order.
 
+- #193, #364: `Pattern.check_runnability` ensures that a pattern is runnable.
+
 ### Fixed
+
+- #364: `Pattern.simulate_pattern`, `Pattern.shift_signals`,
+  `Pattern.standardize`, `Pattern.perform_pauli_measurements`,
+  `Pattern.minimize_space`, `Pattern.get_layers` check that the
+  pattern is runnable beforehand.
+
+- #364: `Pattern.compute_max_degree` and `Pattern.draw_graph` no longer
+  fail on empty patterns.
+
 
 ### Changed
 
@@ -30,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Attribute names are now `graph`, `input_nodes`, `output_nodes` and `measurements`.
 
 - #361: `StandardizedPattern` is now an immutable dataclass. The class method `StandardizedPattern.from_pattern` instantiates a `StandardizedPattern` from `Pattern`.
+
+- #364: `StandardizedPattern.perform_pauli_pushing` replaces `Pattern.move_pauli_measurements_to_the_front`.
 
 - #371: Drop support for Python 3.9
 
