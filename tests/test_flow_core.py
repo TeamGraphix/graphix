@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Generic, NamedTuple
 
 import networkx as nx
 import numpy as np
@@ -9,11 +9,21 @@ import pytest
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
+    CorrectionFunctionError,
+    CorrectionFunctionErrorReason,
     FlowError,
-    FlowErrorReason,
+    FlowPropositionError,
+    FlowPropositionErrorReason,
+    FlowPropositionOrderError,
+    FlowPropositionOrderErrorReason,
     GFlow,
+    PartialOrderError,
+    PartialOrderErrorReason,
+    PartialOrderLayerError,
+    PartialOrderLayerErrorReason,
     PauliFlow,
     XZCorrections,
+    _Reason,
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
@@ -589,9 +599,9 @@ class TestXZCorrections:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
 
 
-class IncorrectFlowTestCase(NamedTuple):
+class IncorrectFlowTestCase(NamedTuple, Generic[_Reason]):
     flow: PauliFlow[AbstractMeasurement]
-    exception: FlowError
+    exception: FlowError[_Reason]
 
 
 class TestIncorrectFlows:
@@ -626,7 +636,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}},
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                 ),
-                FlowError(FlowErrorReason.CorrectionFunctionDomain),
+                CorrectionFunctionError(CorrectionFunctionErrorReason.IncorrectDomain),
             ),
             # Extra node in correction function image
             IncorrectFlowTestCase(
@@ -635,7 +645,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {4}},
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                 ),
-                FlowError(FlowErrorReason.CorrectionFunctionImage),
+                CorrectionFunctionError(CorrectionFunctionErrorReason.IncorrectImage),
             ),
             # Empty partial order
             IncorrectFlowTestCase(
@@ -644,7 +654,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[],
                 ),
-                FlowError(FlowErrorReason.PartialOrderEmpty),
+                PartialOrderError(PartialOrderErrorReason.Empty),
             ),
             # Incomplete partial order (first layer)
             IncorrectFlowTestCase(
@@ -653,7 +663,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[{2}, {1}, {0}],
                 ),
-                FlowError(FlowErrorReason.PartialOrderFirstLayer, layer={2}),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer={2}),
             ),
             # Empty layer
             IncorrectFlowTestCase(
@@ -662,7 +672,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {1}, set(), {0}],
                 ),
-                FlowError(FlowErrorReason.PartialOrderNthLayer, layer_index=3, layer=set()),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=3, layer=set()),
             ),
             # Output node in nth layer
             IncorrectFlowTestCase(
@@ -671,7 +681,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {3}, {1}, {0}],
                 ),
-                FlowError(FlowErrorReason.PartialOrderNthLayer, layer_index=2, layer={3}),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=2, layer={3}),
             ),
             # Incomplete partial order (nth layer)
             IncorrectFlowTestCase(
@@ -680,16 +690,16 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {1}],
                 ),
-                FlowError(FlowErrorReason.PartialOrderNodes),
+                PartialOrderError(PartialOrderErrorReason.IncorrectNodes),
             ),
-            # Correction function with more than one node in domain
+            # C0
             IncorrectFlowTestCase(
                 CausalFlow(
                     og=og_c,
                     correction_function={0: {1}, 1: {2, 3}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                 ),
-                FlowError(FlowErrorReason.CorrectionSetCausalFlow, node=1, correction_set={2, 3}),
+                FlowPropositionError(FlowPropositionErrorReason.C0, node=1, correction_set={2, 3}),
             ),
             # C1
             IncorrectFlowTestCase(
@@ -698,7 +708,7 @@ class TestIncorrectFlows:
                     correction_function={0: {2}, 2: {1}, 1: {3}},
                     partial_order_layers=[{3}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.C1, node=0, correction_set={2}),
+                FlowPropositionError(FlowPropositionErrorReason.C1, node=0, correction_set={2}),
             ),
             # C2
             IncorrectFlowTestCase(
@@ -707,7 +717,9 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {0, 1}],
                 ),
-                FlowError(FlowErrorReason.C2, node=0, correction_set={1}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C2, node=0, correction_set={1}, past_and_present_nodes={0, 1}
+                ),
             ),
             # C3
             IncorrectFlowTestCase(
@@ -716,7 +728,9 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {3}},
                     partial_order_layers=[{3}, {1}, {0, 2}],
                 ),
-                FlowError(FlowErrorReason.C3, node=0, correction_set={1}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C3, node=0, correction_set={1}, past_and_present_nodes={0, 2}
+                ),
             ),
             # G1
             IncorrectFlowTestCase(
@@ -725,7 +739,9 @@ class TestIncorrectFlows:
                     correction_function={0: {3}, 1: {1, 2}, 2: {2, 3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {0, 2}],
                 ),
-                FlowError(FlowErrorReason.G1, node=1, correction_set={1, 2}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.G1, node=1, correction_set={1, 2}, past_and_present_nodes={0, 1, 2}
+                ),
             ),
             # G2
             IncorrectFlowTestCase(
@@ -734,7 +750,12 @@ class TestIncorrectFlows:
                     correction_function={0: {3}, 1: {1}, 2: {2, 3, 4}},
                     partial_order_layers=[{3, 4}, {1, 0, 2}],
                 ),
-                FlowError(FlowErrorReason.G2, node=2, correction_set={2, 3, 4}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.G2,
+                    node=2,
+                    correction_set={2, 3, 4},
+                    past_and_present_nodes={0, 1, 2},
+                ),
             ),
             # G3
             IncorrectFlowTestCase(
@@ -743,7 +764,7 @@ class TestIncorrectFlows:
                     correction_function={0: {3, 4}, 1: {1}, 2: {2, 3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.G3, node=0, correction_set={3, 4}),
+                FlowPropositionError(FlowPropositionErrorReason.G3, node=0, correction_set={3, 4}),
             ),
             # P4 (same as G3 but for Pauli flow)
             IncorrectFlowTestCase(
@@ -752,7 +773,7 @@ class TestIncorrectFlows:
                     correction_function={0: {3, 4}, 1: {1}, 2: {2, 3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.P4, node=0, correction_set={3, 4}),
+                FlowPropositionError(FlowPropositionErrorReason.P4, node=0, correction_set={3, 4}),
             ),
             # G4
             IncorrectFlowTestCase(
@@ -761,7 +782,7 @@ class TestIncorrectFlows:
                     correction_function={0: {3}, 1: {1}, 2: {3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.G4, node=2, correction_set={3, 4}),
+                FlowPropositionError(FlowPropositionErrorReason.G4, node=2, correction_set={3, 4}),
             ),
             # P5 (same as G4 but for Pauli flow)
             IncorrectFlowTestCase(
@@ -770,7 +791,7 @@ class TestIncorrectFlows:
                     correction_function={0: {3}, 1: {1}, 2: {3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.P5, node=2, correction_set={3, 4}),
+                FlowPropositionError(FlowPropositionErrorReason.P5, node=2, correction_set={3, 4}),
             ),
             # G5
             IncorrectFlowTestCase(
@@ -779,7 +800,7 @@ class TestIncorrectFlows:
                     correction_function={0: {3}, 1: set(), 2: {2, 3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.G5, node=1, correction_set=set()),
+                FlowPropositionError(FlowPropositionErrorReason.G5, node=1, correction_set=set()),
             ),
             # P6 (same as G5 but for Pauli flow)
             IncorrectFlowTestCase(
@@ -788,7 +809,7 @@ class TestIncorrectFlows:
                     correction_function={0: {3}, 1: set(), 2: {2, 3, 4}},
                     partial_order_layers=[{3, 4}, {1}, {2}, {0}],
                 ),
-                FlowError(FlowErrorReason.P6, node=1, correction_set=set()),
+                FlowPropositionError(FlowPropositionErrorReason.P6, node=1, correction_set=set()),
             ),
             # P1
             IncorrectFlowTestCase(
@@ -797,7 +818,9 @@ class TestIncorrectFlows:
                     correction_function={0: {1, 3}, 1: {2}, 2: {3}},
                     partial_order_layers=[{3}, {2, 0, 1}],
                 ),
-                FlowError(FlowErrorReason.P1, node=1, correction_set={2}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.P1, node=1, correction_set={2}, past_and_present_nodes={0, 1, 2}
+                ),
             ),
             # P2
             IncorrectFlowTestCase(
@@ -806,7 +829,9 @@ class TestIncorrectFlows:
                     correction_function={0: {1, 3}, 1: {3}, 2: {3}},
                     partial_order_layers=[{3}, {2, 0, 1}],
                 ),
-                FlowError(FlowErrorReason.P2, node=1, correction_set={3}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.P2, node=1, correction_set={3}, past_and_present_nodes={0, 1, 2}
+                ),
             ),
             # P3
             IncorrectFlowTestCase(
@@ -820,7 +845,9 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}},
                     partial_order_layers=[{2}, {0, 1}],
                 ),
-                FlowError(FlowErrorReason.P3, node=0, correction_set={1}),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.P3, node=0, correction_set={1}, past_and_present_nodes={0, 1}
+                ),  # Past and present nodes measured along Y.
             ),
             # P7
             IncorrectFlowTestCase(
@@ -829,7 +856,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1, 3}, 1: {3}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {0, 1}],
                 ),
-                FlowError(FlowErrorReason.P7, node=1, correction_set={3}),
+                FlowPropositionError(FlowPropositionErrorReason.P7, node=1, correction_set={3}),
             ),
             # P8
             IncorrectFlowTestCase(
@@ -843,7 +870,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}},
                     partial_order_layers=[{1}, {0}],
                 ),
-                FlowError(FlowErrorReason.P8, node=0, correction_set={1}),
+                FlowPropositionError(FlowPropositionErrorReason.P8, node=0, correction_set={1}),
             ),
             # P9
             IncorrectFlowTestCase(
@@ -857,15 +884,27 @@ class TestIncorrectFlows:
                     correction_function={0: {2, 3}, 1: {1, 2}, 2: {3}},
                     partial_order_layers=[{3}, {2}, {0}, {1}],
                 ),
-                FlowError(FlowErrorReason.P9, node=1, correction_set={1, 2}),
+                FlowPropositionError(FlowPropositionErrorReason.P9, node=1, correction_set={1, 2}),
             ),
         ],
     )
-    def test_check_flow_general_properties(self, test_case: IncorrectFlowTestCase) -> None:
+    def test_check_flow_general_properties(self, test_case: IncorrectFlowTestCase[_Reason]) -> None:
         with pytest.raises(FlowError) as exc_info:
             test_case.flow.check_well_formed()
         assert exc_info.value.reason == test_case.exception.reason
-        assert exc_info.value.node == test_case.exception.node
-        assert exc_info.value.correction_set == test_case.exception.correction_set
-        assert exc_info.value.layer_index == test_case.exception.layer_index
-        assert exc_info.value.layer == test_case.exception.layer
+
+        if isinstance(test_case.exception, FlowPropositionError):
+            assert isinstance(exc_info.value, FlowPropositionError)
+            assert exc_info.value.node == test_case.exception.node
+            assert exc_info.value.correction_set == test_case.exception.correction_set
+
+        if isinstance(test_case.exception, FlowPropositionOrderError):
+            assert isinstance(exc_info.value, FlowPropositionOrderError)
+            assert exc_info.value.node == test_case.exception.node
+            assert exc_info.value.correction_set == test_case.exception.correction_set
+            assert exc_info.value.past_and_present_nodes == test_case.exception.past_and_present_nodes
+
+        if isinstance(test_case.exception, PartialOrderLayerError):
+            assert isinstance(exc_info.value, PartialOrderLayerError)
+            assert exc_info.value.layer_index == test_case.exception.layer_index
+            assert exc_info.value.layer == test_case.exception.layer
