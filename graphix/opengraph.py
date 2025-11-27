@@ -137,7 +137,7 @@ class OpenGraph(Generic[_M_co]):
             - Equal input and output nodes.
             - Same measurement planes or axes and approximately equal measurement angles if the open graph is of parametric type `Measurement`.
 
-        The static typer does not allow comparing the structure of two open graphs with different parametric type.
+        The static typer does not allow an ``isclose`` comparison of two open graphs with different parametric type. For a structural comparison, see :func:`OpenGraph.is_equal_structurally`.
         """
         return self.is_equal_structurally(other) and all(
             m.isclose(other.measurements[node], rel_tol=rel_tol, abs_tol=abs_tol)
