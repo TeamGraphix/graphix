@@ -758,6 +758,8 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
             - :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
         where :math:`i \in O^c`, :math:`c` is the correction function and :math:`prec` denotes the partial order.
 
+        Causal flows are defined on open graphs with XY measurements only.
+
         See Definition 2 in Ref. [1].
 
         References

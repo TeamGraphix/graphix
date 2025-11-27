@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generic, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import numpy as np
@@ -23,7 +23,6 @@ from graphix.flow.core import (
     PartialOrderLayerErrorReason,
     PauliFlow,
     XZCorrections,
-    _Reason,
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
@@ -599,9 +598,19 @@ class TestXZCorrections:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
 
 
-class IncorrectFlowTestCase(NamedTuple, Generic[_Reason]):
+ErrorT = (
+    FlowError[str]
+    | CorrectionFunctionError
+    | FlowPropositionError
+    | FlowPropositionOrderError
+    | PartialOrderError
+    | PartialOrderLayerError
+)
+
+
+class IncorrectFlowTestCase(NamedTuple):
     flow: PauliFlow[AbstractMeasurement]
-    exception: FlowError[_Reason]
+    exception: ErrorT
 
 
 class TestIncorrectFlows:
@@ -902,7 +911,7 @@ class TestIncorrectFlows:
             ),
         ],
     )
-    def test_check_flow_general_properties(self, test_case: IncorrectFlowTestCase[_Reason]) -> None:
+    def test_check_flow_general_properties(self, test_case: IncorrectFlowTestCase) -> None:
         with pytest.raises(FlowError) as exc_info:
             test_case.flow.check_well_formed()
         assert exc_info.value.reason == test_case.exception.reason
