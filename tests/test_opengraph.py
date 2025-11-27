@@ -560,9 +560,6 @@ class OpenGraphComposeTestCase(NamedTuple):
     og2: OpenGraph[AbstractMeasurement]
     og_ref: OpenGraph[AbstractMeasurement]
     mapping: dict[int, int]
-    comparison_method: Callable[..., bool] = (
-        OpenGraph.__eq__
-    )  # Replace by `OpenGraph.isclose` if `OpenGraph` is of type `Measurement`.
 
 
 # Parallel composition
@@ -597,7 +594,7 @@ def _compose_0() -> OpenGraphComposeTestCase:
 
     mapping = {1: 100, 2: 200}
 
-    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping, OpenGraph.isclose)
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
 # Series composition
@@ -644,7 +641,7 @@ def _compose_1() -> OpenGraphComposeTestCase:
     meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_ref = OpenGraph(g, inputs, outputs, meas)
 
-    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping, OpenGraph.isclose)
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
 # Full overlap
@@ -674,7 +671,7 @@ def _compose_2() -> OpenGraphComposeTestCase:
 
     mapping = {i: i for i in g.nodes}
 
-    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping, OpenGraph.isclose)
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
 # Overlap inputs/outputs
@@ -717,7 +714,7 @@ def _compose_3() -> OpenGraphComposeTestCase:
     meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_ref = OpenGraph(g, inputs, outputs, meas)
 
-    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping, OpenGraph.isclose)
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
 # Inverse series composition
@@ -760,7 +757,7 @@ def _compose_4() -> OpenGraphComposeTestCase:
     meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
     og_ref = OpenGraph(g, inputs, outputs, meas)
 
-    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping, OpenGraph.isclose)
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
 
 
 @register_open_graph_compose_test_case
@@ -978,9 +975,9 @@ class TestOpenGraph:
 
     @pytest.mark.parametrize("test_case", OPEN_GRAPH_COMPOSE_TEST_CASES)
     def test_compose(self, test_case: OpenGraphComposeTestCase) -> None:
-        og1, og2, og_ref, mapping, compare = test_case
+        og1, og2, og_ref, mapping = test_case
         og, mapping_complete = og1.compose(og2, mapping)
-        assert compare(og, og_ref)
+        assert og.isclose(og_ref)
         assert mapping.keys() <= mapping_complete.keys()
         assert set(mapping.values()) <= set(mapping_complete.values())
 

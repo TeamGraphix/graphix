@@ -11,12 +11,12 @@ from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
-from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
 
     from graphix.flow.core import CausalFlow
+    from graphix.measurements import Measurement
     from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
@@ -399,17 +399,12 @@ class OpenGraph(Generic[_M_co]):
         if len(mapping) != len(set(mapping.values())):
             raise ValueError("Values in mapping contain duplicates.")
 
-        def equal_measurements(vm: AbstractMeasurement, um: AbstractMeasurement) -> bool:
-            return vm.isclose(um) if isinstance(vm, Measurement) and isinstance(um, Measurement) else vm == um
-
         for v, u in mapping.items():
-            vm = other.measurements.get(v)
-            um = self.measurements.get(u)
-
-            if vm is None or um is None:
-                continue
-
-            if not equal_measurements(vm, um):
+            if (
+                (vm := other.measurements.get(v)) is not None
+                and (um := self.measurements.get(u)) is not None
+                and not vm.isclose(um)
+            ):
                 raise OpenGraphError(f"Attempted to merge nodes with different measurements: {v, vm} -> {u, um}.")
 
         shift = max(*self.graph.nodes, *mapping.values()) + 1
