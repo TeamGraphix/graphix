@@ -629,6 +629,20 @@ class TestIncorrectFlows:
     @pytest.mark.parametrize(
         "test_case",
         [
+            # Correct flow on an open graph with XZ measurements.
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1)]),
+                        input_nodes=[0],
+                        output_nodes=[1],
+                        measurements={0: Plane.XZ},
+                    ),
+                    correction_function={0: {1}},
+                    partial_order_layers=[{1}, {0}],
+                ),
+                FlowError("Causal flow is only defined on open graphs with XY measurements."),
+            ),
             # Incomplete correction function
             IncorrectFlowTestCase(
                 CausalFlow(

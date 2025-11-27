@@ -426,7 +426,7 @@ class PauliFlow(Generic[_M_co]):
             for node in layer:
                 correction_set = set(self.correction_function[node])
 
-                meas = self.og.measurements[node].to_plane_or_axis()
+                meas = self.get_measurement_label(node)
 
                 for i in (correction_set - {node}) & past_and_present_nodes:
                     if self.og.measurements[i].to_plane_or_axis() not in {Axis.X, Axis.Y}:
@@ -495,6 +495,21 @@ class PauliFlow(Generic[_M_co]):
 
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+
+    def get_measurement_label(self, node: int) -> Plane | Axis:
+        """Get the measurement label of a given node in the open graph.
+
+        This method interprets measurements with a Pauli angle as `Axis` instances, in consistence with the Pauli flow extraction routine.
+
+        Parameters
+        ----------
+        node : int
+
+        Returns
+        -------
+        Plane | Axis
+        """
+        return self.og.measurements[node].to_plane_or_axis()
 
 
 @dataclass(frozen=True)
@@ -631,7 +646,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
                         past_and_present_nodes=past_and_present_nodes,
                     )
 
-                plane = self.og.measurements[node].to_plane()
+                plane = self.get_measurement_label(node)
 
                 if plane == Plane.XY:
                     if not (node not in correction_set and node in odd_neighbors):
@@ -655,6 +670,22 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+
+    @override
+    def get_measurement_label(self, node: int) -> Plane:
+        """Get the measurement label of a given node in the open graph.
+
+        This method interprets measurements with a Pauli angle as `Plane` instances, in consistence with the gflow extraction routine.
+
+        Parameters
+        ----------
+        node : int
+
+        Returns
+        -------
+        Plane
+        """
+        return self.og.measurements[node].to_plane()
 
 
 @dataclass(frozen=True)
@@ -751,6 +782,10 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
                 if len(correction_set) != 1:
                     raise FlowPropositionError(FlowPropositionErrorReason.C0, node=node, correction_set=correction_set)
+
+                meas = self.get_measurement_label(node)
+                if meas != Plane.XY:
+                    raise FlowError("Causal flow is only defined on open graphs with XY measurements.")
 
                 neighbors = self.og.neighbors(correction_set)
 
@@ -980,7 +1015,8 @@ class PartialOrderLayerErrorReason(FlowErrorReason, Enum):
     """Nodes in the partial order beyond the first layer are not non-output nodes (measured qubits) of the open graph or layer is empty."""
 
 
-_Reason = TypeVar("_Reason", bound=FlowErrorReason)
+# We bind `_Reason` to `str` to allow passing generic strings to a `FlowError` exception.
+_Reason = TypeVar("_Reason", bound=FlowErrorReason | str)
 
 
 @dataclass
