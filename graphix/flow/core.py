@@ -263,8 +263,25 @@ class XZCorrections(Generic[_M_co]):
         return True
 
     def check_well_formed(self) -> None:
+        r"""Verify if the the XZ-corrections are well formed.
+
+        Raises
+        ------
+        XZCorrectionsError
+            if the XZ-corrections are not well formed.
+
+        Notes
+        -----
+        A correct `XZCorrections` instance verifies the following properties:
+            - Keys of the correction dictionaries are measured nodes, i.e., a subset of :math:`O^c`.
+            - Corrections respect the partial order.
+            - The first layer of the partial order contains all the output nodes if there are any.
+            - The partial order contains all the nodes (without duplicates) and it does not have empty layers.
+
+        This method assumes that the open graph is well formed.
+        """
         if len(self.partial_order_layers) == 0:
-            if len(self.og.graph) == 0:
+            if not (self.og.graph or self.x_corrections or self.z_corrections):
                 return
             raise PartialOrderError(PartialOrderErrorReason.Empty)
 
@@ -1223,6 +1240,8 @@ class PartialOrderLayerError(FlowError[PartialOrderLayerErrorReason], XZCorrecti
 
 @dataclass
 class XZCorrectionsOrderError(XZCorrectionsError[XZCorrectionsOrderErrorReason]):
+    """Exception subclass to handle incorrect XZ-corrections objects which concern the correction dictionaries and the partial order."""
+
     node: int
     correction_set: AbstractSet[int]
     past_and_present_nodes: AbstractSet[int]
