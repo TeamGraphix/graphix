@@ -1,0 +1,1 @@
+graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git@add_cz

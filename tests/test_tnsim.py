@@ -288,6 +288,18 @@ class TestTN:
         value2 = tn_mbqc.expectation_value(random_op1, [0])
         assert value1 == pytest.approx(value2)
 
+    def test_cz(self, fx_rng: Generator) -> None:
+        circuit = Circuit(2)
+        circuit.cz(0, 1)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        state = circuit.simulate_statevector().statevec
+        tn_mbqc = pattern.simulate_pattern(backend="tensornetwork", rng=fx_rng)
+        random_op2 = random_op(2, np.complex128, fx_rng)
+        value1 = state.expectation_value(random_op2, [0, 1])
+        value2 = tn_mbqc.expectation_value(random_op2, [0, 1])
+        assert value1 == pytest.approx(value2)
+
     def test_cnot(self, fx_rng: Generator) -> None:
         circuit = Circuit(2)
         circuit.cnot(0, 1)
