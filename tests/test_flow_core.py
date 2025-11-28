@@ -387,6 +387,7 @@ class TestFlowPatternConversion:
         flow = test_case.flow
         flow.check_well_formed()
         corrections = flow.to_corrections()
+        corrections.check_well_formed()
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
 
@@ -434,6 +435,8 @@ class TestXZCorrections:
             og=og, x_corrections={0: {2}, 1: {3}, 2: {4}, 3: {5}}, z_corrections={0: {3, 4}, 1: {2, 5}}
         )
 
+        corrections.check_well_formed()
+
         assert corrections.is_compatible([0, 1, 2, 3])
         assert corrections.is_compatible([1, 0, 2, 3])
         assert corrections.is_compatible([1, 0, 3, 2])
@@ -457,6 +460,8 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={1: {0}})
 
+        corrections.check_well_formed()
+
         assert corrections.partial_order_layers == (frozenset({2, 3}), frozenset({0}), frozenset({1}))
         assert corrections.is_compatible([1, 0])
         assert not corrections.is_compatible([0, 1])  # Wrong order
@@ -479,6 +484,7 @@ class TestXZCorrections:
             og=og, x_corrections={0: {1, 2}}, z_corrections={0: {1}}
         )
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 2}), frozenset({0}))
         assert corrections.is_compatible([0, 1, 2])
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
@@ -496,6 +502,8 @@ class TestXZCorrections:
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+
+        corrections.check_well_formed()
         assert corrections.x_corrections == {}
         assert corrections.z_corrections == {}
         assert corrections.partial_order_layers == (frozenset({0, 1}),)
@@ -510,6 +518,8 @@ class TestXZCorrections:
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+
+        corrections.check_well_formed()
         assert corrections.x_corrections == {}
         assert corrections.z_corrections == {}
         assert corrections.partial_order_layers == (frozenset({1}), frozenset({0}))
@@ -525,6 +535,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert all(corrections.partial_order_layers)  # No empty sets
         assert all(
             sum(1 for layer in corrections.partial_order_layers if node in layer) == 1 for node in og.graph.nodes
@@ -542,6 +553,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({0, 2}))
 
     # Some output nodes in corrections
@@ -556,6 +568,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({0, 2}))
 
     # No output nodes in corrections
@@ -570,6 +583,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({2}), frozenset({0}))
 
     # Test exceptions
