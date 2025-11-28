@@ -9,42 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- #358: Refactor of flow tools - Part I
-  - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future. 
-  - New module `graphix.flow._find_cflow` with the existing causal-flow finding algorithm.
-  - New module `graphix.flow._find_gpflow` with the existing g- and Pauli-flow finding algorithm introduced in #337.
-  - New abstract types `graphix.fundamentals.AbstractMeasurement` and `graphix.fundamentals.AbstractPlanarMeasurement` which serve as an umbrella of the existing types `graphix.measurements.Measurement`, `graphix.fundamentals.Plane` and `graphix.fundamentals.Axis`.
-  - New method `graphix.pattern.Pattern.extract_opengraph` which subsumes the static method `graphix.opengraph.OpenGraph.from_pattern`.
-  - New methods of `graphix.opengraph.OpenGraph` which allow to extract a causal, g- or Pauli flow.
-
-- #360, #361: `StandardizedPattern.to_space_optimal_pattern` generates
-  a pattern that is space-optimal for a given measurement order.
-
-- #193, #364: `Pattern.check_runnability` ensures that a pattern is runnable.
-
 ### Fixed
 
-- #364: `Pattern.simulate_pattern`, `Pattern.shift_signals`,
-  `Pattern.standardize`, `Pattern.perform_pauli_measurements`,
-  `Pattern.minimize_space`, `Pattern.get_layers` check that the
-  pattern is runnable beforehand.
-
-- #364: `Pattern.compute_max_degree` and `Pattern.draw_graph` no longer
-  fail on empty patterns.
-
-
 ### Changed
-
-- #358: Refactor of flow tools - Part I
-  - API for the `graphix.opengraph.OpenGraph` class:
-    - `OpenGraphs` are parametrically typed so that they can be defined on planes and axes mappings in addition to measurements mappings.
-    - Attribute names are now `graph`, `input_nodes`, `output_nodes` and `measurements`.
-
-- #361: `StandardizedPattern` is now an immutable dataclass. The class method `StandardizedPattern.from_pattern` instantiates a `StandardizedPattern` from `Pattern`.
-
-- #364: `StandardizedPattern.perform_pauli_pushing` replaces `Pattern.move_pauli_measurements_to_the_front`.
-
-- #371: Drop support for Python 3.9
 
 ## [0.3.3] - 2025-10-23
 
@@ -63,6 +30,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #332: New method `Pattern.extract_nodes` to get the set of nodes in
   a pattern.
 
+- #358: Refactor of flow tools - Part I
+  - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future. 
+  - New module `graphix.flow._find_cflow` with the existing causal-flow finding algorithm.
+  - New module `graphix.flow._find_gpflow` with the existing g- and Pauli-flow finding algorithm introduced in #337.
+  - New abstract types `graphix.fundamentals.AbstractMeasurement` and `graphix.fundamentals.AbstractPlanarMeasurement` which serve as an umbrella of the existing types `graphix.measurements.Measurement`, `graphix.fundamentals.Plane` and `graphix.fundamentals.Axis`.
+  - New method `graphix.pattern.Pattern.extract_opengraph` which subsumes the static method `graphix.opengraph.OpenGraph.from_pattern`.
+  - New methods of `graphix.opengraph.OpenGraph` which allow to extract a causal, g- or Pauli flow.
+
+- #360, #361: `StandardizedPattern.to_space_optimal_pattern` generates
+  a pattern that is space-optimal for a given measurement order.
+
+- #193, #364: `Pattern.check_runnability` ensures that a pattern is runnable.
+
 ### Fixed
 
 - #339, #332: Standardization now considers that CZ ∘ CZ = I,
@@ -80,6 +60,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #347: The `visualization.py` module has been partially refactored
   and is now well-typed. Pauli nodes are now systematically detected.
+
+- #364: `Pattern.simulate_pattern`, `Pattern.shift_signals`,
+  `Pattern.standardize`, `Pattern.perform_pauli_measurements`,
+  `Pattern.minimize_space`, `Pattern.get_layers` check that the
+  pattern is runnable beforehand.
+
+- #364: `Pattern.compute_max_degree` and `Pattern.draw_graph` no longer
+  fail on empty patterns.
 
 ### Changed
 
@@ -100,6 +88,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contains a `Path`). In this case, no window is opened to show the
   plot interactively (i.e., the plot is shown interactively in a
   window only if `filename` is `None`).
+
+- #358: Refactor of flow tools - Part I
+  - API for the `graphix.opengraph.OpenGraph` class:
+    - `OpenGraphs` are parametrically typed so that they can be defined on planes and axes mappings in addition to measurements mappings.
+    - Attribute names are now `graph`, `input_nodes`, `output_nodes` and `measurements`.
+
+- #361: `StandardizedPattern` is now an immutable dataclass. The class method `StandardizedPattern.from_pattern` instantiates a `StandardizedPattern` from `Pattern`.
+
+- #364: `StandardizedPattern.perform_pauli_pushing` replaces `Pattern.move_pauli_measurements_to_the_front`.
+
+- #371: Drop support for Python 3.9
 
 ## [0.3.2] - 2025-08-12
 
