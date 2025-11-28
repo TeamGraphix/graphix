@@ -1067,7 +1067,6 @@ class FlowPropositionOrderErrorReason(FlowErrorReason, Enum):
     """Pauli flow (P3). Nodes that are measured along axis Y and that are not in the future of the corrected node (except the corrected node itself) cannot be in the closed odd neighbourhood of the correcting set."""
 
 
-# NOTE: In the near future, this class may inherit from `XZCorrectionsErrorReason` too.
 class PartialOrderErrorReason(FlowErrorReason, XZCorrectionsErrorReason, Enum):
     """Describe the reason of a `PartialOrderError` exception."""
 
