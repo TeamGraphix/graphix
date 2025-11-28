@@ -173,7 +173,6 @@ class RX(_KindChecker, DataclassReprMixin):
 
     target: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RX]] = field(default=InstructionKind.RX, init=False)
 
 
@@ -183,7 +182,6 @@ class RY(_KindChecker, DataclassReprMixin):
 
     target: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RY]] = field(default=InstructionKind.RY, init=False)
 
 
@@ -193,7 +191,6 @@ class RZ(_KindChecker, DataclassReprMixin):
 
     target: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
 
 
