@@ -697,6 +697,15 @@ class TestIncorrectFlows:
                 ),
                 PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=3, layer=set()),
             ),
+            # Duplicate layer
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {1}, {1}, {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=2, layer={1}),
+            ),
             # Output node in nth layer
             IncorrectFlowTestCase(
                 CausalFlow(

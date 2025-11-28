@@ -409,14 +409,14 @@ class PauliFlow(Generic[_M_co]):
         _check_flow_general_properties(self)
 
         o_set = set(self.og.output_nodes)
-        oc_set = set(self.og.graph.nodes - o_set)
+        oc_set = set(self.og.measurements)
 
         past_and_present_nodes: set[int] = set()
         past_and_present_nodes_y_meas: set[int] = set()
 
         layer_idx = len(self.partial_order_layers) - 1
         for layer in reversed(self.partial_order_layers[1:]):
-            if not oc_set.issuperset(layer) or not layer:
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
                 raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
 
             past_and_present_nodes.update(layer)
@@ -615,12 +615,12 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         _check_flow_general_properties(self)
 
         o_set = set(self.og.output_nodes)
-        oc_set = set(self.og.graph.nodes - o_set)
+        oc_set = set(self.og.measurements)
 
         layer_idx = len(self.partial_order_layers) - 1
         past_and_present_nodes: set[int] = set()
         for layer in reversed(self.partial_order_layers[1:]):
-            if not oc_set.issuperset(layer) or not layer:
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
                 raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
 
             past_and_present_nodes.update(layer)
@@ -769,12 +769,12 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
         _check_flow_general_properties(self)
 
         o_set = set(self.og.output_nodes)
-        oc_set = set(self.og.graph.nodes - o_set)
+        oc_set = set(self.og.measurements)
 
         layer_idx = len(self.partial_order_layers) - 1
         past_and_present_nodes: set[int] = set()
         for layer in reversed(self.partial_order_layers[1:]):
-            if not oc_set.issuperset(layer) or not layer:
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
                 raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
 
             past_and_present_nodes.update(layer)
@@ -1014,7 +1014,7 @@ class PartialOrderLayerErrorReason(FlowErrorReason, Enum):
     """The first layer of the partial order is not the set of output nodes (non-measured qubits) of the open graph or is empty."""  # A well-defined flow cannot exist on an open graph without outputs.
 
     NthLayer = enum.auto()
-    """Nodes in the partial order beyond the first layer are not non-output nodes (measured qubits) of the open graph or layer is empty."""
+    """Nodes in the partial order beyond the first layer are not non-output nodes (measured qubits) of the open graph, layer is empty or contains duplicates."""
 
 
 # We bind `_Reason` to `str` to allow passing generic strings to a `FlowError` exception.
@@ -1141,5 +1141,5 @@ class PartialOrderLayerError(FlowError[PartialOrderLayerErrorReason]):
             return f"The first layer of the partial order must contain all the output nodes of the open graph and cannot be empty. First layer: {self.layer}"
 
         if self.reason == PartialOrderLayerErrorReason.NthLayer:
-            return f"Partial order layer {self.layer_index} = {self.layer} contains non-measured nodes of the open graph or is empty."
+            return f"Partial order layer {self.layer_index} = {self.layer} contains non-measured nodes of the open graph, is empty or contains nodes in previous layers."
         assert_never(self.reason)
