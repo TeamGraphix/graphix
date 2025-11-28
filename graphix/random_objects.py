@@ -443,5 +443,6 @@ def rand_state_vector(nqubits: int, rng: Generator | None = None) -> npt.NDArray
         Normalized complex vector of size 2^nqubits
     """
     rng = ensure_rng(rng)
-    vec = rng.random(2**nqubits) + 1j * rng.random(2**nqubits)
+    dim = 1 << nqubits  # 2**nqubits is typed Any
+    vec = (rng.random(dim) + 1j * rng.random(dim)).astype(np.complex128)
     return vec / np.linalg.norm(vec)
