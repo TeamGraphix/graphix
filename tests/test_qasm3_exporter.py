@@ -52,6 +52,7 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
         instruction.RZZ(target=0, control=1, angle=pi / 4),
         instruction.CNOT(target=0, control=1),
         instruction.SWAP(targets=(0, 1)),
+        instruction.CZ(targets=(0, 1)),
         instruction.H(target=0),
         instruction.S(target=0),
         instruction.X(target=0),

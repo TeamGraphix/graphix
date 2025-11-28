@@ -16,6 +16,14 @@ if TYPE_CHECKING:
 
 
 class TestTranspilerUnitGates:
+    def test_cz(self, fx_rng: Generator) -> None:
+        circuit = Circuit(2)
+        circuit.cz(0, 1)
+        pattern = circuit.transpile().pattern
+        state = circuit.simulate_statevector().statevec
+        state_mbqc = pattern.simulate_pattern(rng=fx_rng)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+
     def test_cnot(self, fx_rng: Generator) -> None:
         circuit = Circuit(2)
         circuit.cnot(0, 1)
@@ -141,6 +149,7 @@ class TestTranspilerUnitGates:
         circuit = Circuit(3)
         circuit.ccx(0, 1, 2)
         circuit.rzz(0, 1, 2)
+        circuit.cz(0, 1)
         circuit.cnot(0, 1)
         circuit.swap(0, 1)
         circuit.h(0)
@@ -163,6 +172,7 @@ class TestTranspilerUnitGates:
             instruction.RZZ(0, 1, np.pi / 4),
             instruction.CNOT(0, 1),
             instruction.SWAP((0, 1)),
+            instruction.CZ((0, 1)),
             instruction.H(0),
             instruction.S(0),
             instruction.X(0),
