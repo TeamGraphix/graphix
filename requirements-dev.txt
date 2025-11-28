@@ -8,6 +8,7 @@ ruff==0.14.6
 types-networkx==3.5.0.20250712
 types-psutil
 types-setuptools
+scipy-stubs
 
 # Tests
 # Keep in sync with CI
