@@ -263,6 +263,38 @@ class XZCorrections(Generic[_M_co]):
         return True
 
 
+    def check_well_formed(self) -> None:
+
+        if len(self.partial_order_layers) == 0:
+            if len(self.og.graph) == 0:
+                return
+            raise PartialOrderError(PartialOrderErrorReason.Empty)
+
+        o_set = set(self.og.output_nodes)
+        oc_set = set(self.og.measurements)
+
+        first_layer = self.partial_order_layers[0]
+
+        # Unlike for flows, XZCorrections can be well defined on open graphs without outputs
+        if o_set:
+            if first_layer != o_set:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer=first_layer)
+            shift = 1
+        else:
+            shift = 0
+
+        measured_layers = reversed(self.partial_order_layers[shift:])
+        layer_idx = len(self.partial_order_layers) - 1
+        past_and_present_nodes: set[int] = set()
+        for layer in measured_layers:
+            if not oc_set.issuperset(layer) or not layer:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
+            if 
+
+            past_and_present_nodes.update(layer)
+
+
+
 @dataclass(frozen=True)
 class PauliFlow(Generic[_M_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
