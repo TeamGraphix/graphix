@@ -23,4 +23,4 @@ pytest-mpl
 qiskit>=1.0
 qiskit-aer
 
-graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git@add_cz
+openqasm-parser>=3.1.0
