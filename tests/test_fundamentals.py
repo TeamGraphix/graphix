@@ -161,3 +161,18 @@ class TestPlane:
             Plane.from_axes(Axis.Y, Axis.Y)
         with pytest.raises(ValueError):
             Plane.from_axes(Axis.Z, Axis.Z)
+
+    def test_isclose(self) -> None:
+        for p1, p2 in itertools.combinations(Plane, 2):
+            assert not p1.isclose(p2)
+
+        for a1, a2 in itertools.combinations(Axis, 2):
+            assert not a1.isclose(a2)
+
+        for p in Plane:
+            assert p.isclose(p)
+            for a in Axis:
+                assert not p.isclose(a)
+
+        for a in Axis:
+            assert a.isclose(a)
