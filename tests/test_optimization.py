@@ -8,7 +8,7 @@ from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import Plane
 from graphix.gflow import gflow_from_pattern
-from graphix.optimization import StandardizedPattern, incorporate_pauli_results
+from graphix.optimization import StandardizedPattern, incorporate_pauli_results, remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
@@ -84,6 +84,22 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     pattern2.standardize()
     f, _l = gflow_from_pattern(pattern2)
     assert f is not None
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    nqubits = 3
+    depth = 3
+    circuit = rand_circuit(nqubits, depth, rng)
+    pattern = circuit.transpile().pattern
+    pattern.standardize()
+    pattern.shift_signals()
+    pattern.perform_pauli_measurements()
+    pattern2 = remove_useless_domains(pattern)
+    state = pattern.simulate_pattern(rng=rng)
+    state2 = pattern2.simulate_pattern(rng=rng)
+    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
 
 
 def test_to_space_optimal_pattern() -> None:
