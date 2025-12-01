@@ -21,6 +21,7 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
+from graphix.flow._partial_order import compute_topological_generations
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
@@ -884,6 +885,64 @@ class Pattern:
         """
         for i in dependency:
             dependency[i] -= measured
+
+    def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
+        """Extract the measurement order of the pattern in the form of layers.
+
+        This method builds a directed acyclical diagram (DAG) from the pattern and then performs a topological sort.
+
+        Returns
+        -------
+        tuple[frozenset[int], ...]
+            Measurement partial order between the pattern's nodes in a layer form.
+
+        Raises
+        ------
+        RunnabilityError
+            If the pattern is not runnable.
+
+        Notes
+        -----
+        The returned object follows the same conventions as the ``partial_order_layers`` attribute of :class:`PauliFlow` and :class:`XZCorrections` objects:
+            - Nodes in the same layer can be measured simultaneously.
+            - Nodes in layer ``i`` must be measured before nodes in layer ``i + 1``.
+            - All output nodes (if any) are in the first layer.
+            - There cannot be any empty layers.
+        """
+        self.check_runnability()
+
+        oset = frozenset(self.output_nodes)  # First layer by convention
+        pre_measured_nodes = set(self.results.keys())  # Not included in the partial order layers
+        excluded_nodes = oset | pre_measured_nodes
+
+        zero_indegree = set(self.input_nodes) - excluded_nodes
+        dag: dict[int, set[int]] = {node: set() for node in zero_indegree}
+        indegree_map: dict[int, int] = {}
+
+        for cmd in self:
+            domain = set()
+            if cmd.kind == CommandKind.N:
+                if cmd.node not in oset:  # pre-measured nodes only appear in domains.
+                    dag[cmd.node] = set()
+                    zero_indegree.add(cmd.node)
+            elif cmd.kind == CommandKind.M:
+                node, domain = cmd.node, cmd.s_domain | cmd.t_domain
+            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
+                node, domain = cmd.node, cmd.domain
+
+            for dep_node in domain:
+                if not {node, dep_node} & excluded_nodes:
+                    dag[dep_node].add(node)
+                    indegree_map[node] = indegree_map.get(node, 0) + 1
+            if domain:
+                zero_indegree.discard(node)
+
+        generations = compute_topological_generations(dag, indegree_map, zero_indegree)
+        assert generations is not None  # DAG can't contain loops because pattern is runnable.
+
+        if oset:
+            return oset, *generations[::-1]
+        return generations[::-1]
 
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.

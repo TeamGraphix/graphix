@@ -28,7 +28,7 @@ def compute_topological_generations(
     Returns
     -------
     tuple[frozenset[int], ...] | None
-        Topological generations. `None` if the input DAG contains closed loops.
+        Topological generations. ``None`` if the input DAG contains closed loops.
 
     Notes
     -----

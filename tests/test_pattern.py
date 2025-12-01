@@ -751,7 +751,7 @@ class TestPattern:
 
         pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern.get_layers()
+            pattern.extract_partial_order_layers()
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
@@ -769,6 +769,37 @@ class TestPattern:
 
     def test_compute_max_degree_empty_pattern(self) -> None:
         assert Pattern().compute_max_degree() == 0
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            (
+                Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), M(1)]),
+                (frozenset({0, 1}),),
+            ),
+            (
+                Pattern(input_nodes=[0], cmds=[N(1), N(2), E((0, 1)), E((1, 2)), M(0), M(1), X(2, {1}), Z(2, {0})]),
+                (frozenset({2}), frozenset({0, 1})),
+            ),
+            (
+                Pattern(input_nodes=[0, 1], cmds=[M(1), M(0, s_domain={1}), N(2)]),
+                (frozenset({2}), frozenset({0}), frozenset({1})),
+            ),
+        ],
+    )
+    def test_extract_partial_order_layers(self, test_case: tuple[Pattern, tuple[frozenset[int], ...]]) -> None:
+        assert test_case[0].extract_partial_order_layers() == test_case[1]
+
+    def test_extract_partial_order_layers_results(self) -> None:
+        c = Circuit(1)
+        c.rz(0, 0.2)
+        p = c.transpile().pattern
+        p.perform_pauli_measurements()
+        assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
+
+        p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, angle=0.3)])
+        p.perform_pauli_measurements()
+        assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
