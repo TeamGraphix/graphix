@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, reveal_type
 
 import networkx as nx
 import numpy as np
@@ -697,6 +697,7 @@ class GraphVisualizer:
 
         _set_node_attributes(g_prime, l_reverse, "subset")
 
+        reveal_type(nx.multipartite_layout)
         pos = nx.multipartite_layout(g_prime)
 
         for node, layer in l_k.items():
