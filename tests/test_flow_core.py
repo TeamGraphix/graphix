@@ -597,22 +597,27 @@ class TestXZCorrections:
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
         )
-        with pytest.raises(ValueError, match=r"Keys of input X-corrections contain non-measured nodes."):
+        with pytest.raises(XZCorrectionsError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={3: {1, 2}})
+        assert exc_info.value.reason == "Keys of correction dictionaries are not a subset of the measured nodes."
 
-        with pytest.raises(ValueError, match=r"Keys of input Z-corrections contain non-measured nodes."):
+        with pytest.raises(XZCorrectionsError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, z_corrections={3: {1, 2}})
+        assert exc_info.value.reason == "Keys of correction dictionaries are not a subset of the measured nodes."
 
-        with pytest.raises(
-            ValueError,
-            match=r"Input XZ-corrections are not runnable since the induced directed graph contains closed loops.",
-        ):
+        with pytest.raises(XZCorrectionsError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {1}, 1: {2}}, z_corrections={2: {0}})
+        assert (
+            exc_info.value.reason
+            == "Input XZ-corrections are not runnable since the induced directed graph contains closed loops."
+        )
 
-        with pytest.raises(
-            ValueError, match=r"Values of input mapping contain labels which are not nodes of the input open graph."
-        ):
+        with pytest.raises(XZCorrectionsError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
+        assert (
+            exc_info.value.reason
+            == "Values of input mapping contain labels which are not nodes of the input open graph."
+        )
 
 
 FlowErrorT = (
@@ -998,7 +1003,7 @@ class TestIncorrectXZC:
                     z_corrections={3: {1, 2}},
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                 ),
-                XZCorrectionsError("Keys of corrections dictionaries are not a subset of the measured nodes."),
+                XZCorrectionsError("Keys of correction dictionaries are not a subset of the measured nodes."),
             ),
             # First layer contains non-output nodes
             IncorrectXZCTestCase(

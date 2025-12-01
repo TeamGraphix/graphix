@@ -83,6 +83,14 @@ class XZCorrections(Generic[_M_co]):
         -------
         XZCorrections[_M_co]
 
+        Raises
+        ------
+        XZCorrectionsError
+            If the input dictionaries are not well formed. In well-formed correction dictionaries:
+                - Keys are a subset of the measured nodes.
+                - Values correspond to nodes of the open graph.
+                - Corrections do not form closed loops.
+
         Notes
         -----
         This method computes the partial order induced by the XZ-corrections.
@@ -92,18 +100,16 @@ class XZCorrections(Generic[_M_co]):
 
         nodes_set = set(og.graph.nodes)
         outputs_set = frozenset(og.output_nodes)
-        non_outputs_set = nodes_set - outputs_set
+        non_outputs_set = set(og.measurements)
 
-        if not non_outputs_set.issuperset(x_corrections):
-            raise ValueError("Keys of input X-corrections contain non-measured nodes.")
-        if not set(z_corrections).issubset(non_outputs_set):
-            raise ValueError("Keys of input Z-corrections contain non-measured nodes.")
+        if not non_outputs_set.issuperset(x_corrections.keys() | z_corrections.keys()):
+            raise XZCorrectionsError("Keys of correction dictionaries are not a subset of the measured nodes.")
 
         dag = _corrections_to_dag(x_corrections, z_corrections)
         partial_order_layers = _dag_to_partial_order_layers(dag)
 
         if partial_order_layers is None:
-            raise ValueError(
+            raise XZCorrectionsError(
                 "Input XZ-corrections are not runnable since the induced directed graph contains closed loops."
             )
 
@@ -133,7 +139,9 @@ class XZCorrections(Generic[_M_co]):
         ordered_nodes = frozenset.union(*partial_order_layers)
 
         if not ordered_nodes.issubset(nodes_set):
-            raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
+            raise XZCorrectionsError(
+                "Values of input mapping contain labels which are not nodes of the input open graph."
+            )
 
         # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
         if unordered_nodes := frozenset(nodes_set - ordered_nodes):
@@ -157,6 +165,11 @@ class XZCorrections(Generic[_M_co]):
         -------
         Pattern
 
+        Raises
+        ------
+        XZCorrectionsError
+            If the input total measurement order is not compatible with the partial order induced by the XZ-corrections.
+
         Notes
         -----
         - The `XZCorrections` instance must be of parametric type `Measurement` to allow for a pattern extraction, otherwise the underlying open graph does not contain information about the measurement angles.
@@ -170,7 +183,7 @@ class XZCorrections(Generic[_M_co]):
         if total_measurement_order is None:
             total_measurement_order = self.generate_total_measurement_order()
         elif not self.is_compatible(total_measurement_order):
-            raise ValueError(
+            raise XZCorrectionsError(
                 "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
             )
 
@@ -263,7 +276,7 @@ class XZCorrections(Generic[_M_co]):
         return True
 
     def check_well_formed(self) -> None:
-        r"""Verify if the the XZ-corrections are well formed.
+        r"""Verify if the XZ-corrections are well formed.
 
         Raises
         ------
@@ -289,7 +302,7 @@ class XZCorrections(Generic[_M_co]):
         oc_set = set(self.og.measurements)
 
         if not oc_set.issuperset(self.x_corrections.keys() | self.z_corrections.keys()):
-            raise XZCorrectionsError("Keys of corrections dictionaries are not a subset of the measured nodes.")
+            raise XZCorrectionsError("Keys of correction dictionaries are not a subset of the measured nodes.")
 
         first_layer = self.partial_order_layers[0]
 
@@ -1239,7 +1252,7 @@ class PartialOrderLayerError(FlowError[PartialOrderLayerErrorReason], XZCorrecti
 
 @dataclass
 class XZCorrectionsOrderError(XZCorrectionsError[XZCorrectionsOrderErrorReason]):
-    """Exception subclass to handle incorrect XZ-corrections objects which concern the correction dictionaries and the partial order."""
+    """Exception subclass to handle incorrect XZ-corrections objects where the error concerns the correction dictionaries and the partial order."""
 
     node: int
     correction_set: AbstractSet[int]
