@@ -20,6 +20,7 @@ import numpy as np
 from typing_extensions import override
 
 from graphix._linalg import MatGF2, solve_f2_linear_system
+from graphix.flow._partial_order import compute_topological_generations
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.sim.base_backend import NodeIndex
 
@@ -533,7 +534,7 @@ def _compute_correction_matrix_general_case(
     return c_prime_matrix.mat_mul(cb_matrix)
 
 
-def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]] | None:
+def _try_ordering_matrix_to_topological_generations(ordering_matrix: MatGF2) -> tuple[frozenset[int], ...] | None:
     """Stratify the directed acyclic graph (DAG) represented by the ordering matrix into generations.
 
     Parameters
@@ -543,8 +544,8 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
 
     Returns
     -------
-    list[list[int]]
-        topological generations. Integers represent the indices of the matrix `ordering_matrix`, not the labelling of the nodes.
+    tuple[frozenset[int], ...]
+        Topological generations. Integers represent the indices of the matrix `ordering_matrix`, not the labelling of the nodes.
 
     or `None`
         if `ordering_matrix` is not a DAG.
@@ -558,31 +559,16 @@ def _compute_topological_generations(ordering_matrix: MatGF2) -> list[list[int]]
     adj_mat = ordering_matrix
 
     indegree_map: dict[int, int] = {}
-    zero_indegree: list[int] = []
+    zero_indegree: set[int] = set()
     neighbors = {node: set(np.flatnonzero(row).astype(int)) for node, row in enumerate(adj_mat.T)}
     for node, col in enumerate(adj_mat):
         parents = np.flatnonzero(col)
         if parents.size:
             indegree_map[node] = parents.size
         else:
-            zero_indegree.append(node)
+            zero_indegree.add(node)
 
-    generations: list[list[int]] = []
-
-    while zero_indegree:
-        this_generation = zero_indegree
-        zero_indegree = []
-        for node in this_generation:
-            for child in neighbors[node]:
-                indegree_map[child] -= 1
-                if indegree_map[child] == 0:
-                    zero_indegree.append(child)
-                    del indegree_map[child]
-        generations.append(this_generation)
-
-    if indegree_map:
-        return None
-    return generations
+    return compute_topological_generations(neighbors, indegree_map, zero_indegree)
 
 
 def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> tuple[frozenset[int], ...] | None:
@@ -612,7 +598,7 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
     aog, c_matrix = correction_matrix.aog, correction_matrix.c_matrix
     ordering_matrix = aog.order_demand_matrix.mat_mul(c_matrix)
 
-    if (topo_gen := _compute_topological_generations(ordering_matrix)) is None:
+    if (topo_gen := _try_ordering_matrix_to_topological_generations(ordering_matrix)) is None:
         return None  # The NC matrix is not a DAG, therefore there's no flow.
 
     layers = [
