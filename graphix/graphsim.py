@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, reveal_type
 
 import networkx as nx
 import typing_extensions
@@ -489,6 +489,7 @@ class GraphState(Graph):
         g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
+        reveal_type(nx.draw)
         nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
 
     def to_statevector(self) -> Statevec:
