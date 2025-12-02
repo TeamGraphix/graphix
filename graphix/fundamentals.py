@@ -235,6 +235,29 @@ class AbstractMeasurement(ABC):
         Plane | Axis
         """
 
+    @abstractmethod
+    def isclose(self, other: AbstractMeasurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+        """Determine whether this measurement is close to another.
+
+        Subclasses should implement a notion of “closeness” between two measurements, comparing measurement-specific attributes. The default comparison for ``float`` values involves checking equality within given relative or absolute tolerances.
+
+        Parameters
+        ----------
+        other : AbstractMeasurement
+            The measurement to compare against.
+        rel_tol : float, optional
+            Relative tolerance for determining closeness. Relevant for comparing angles in the `Measurement` subclass. Default is ``1e-9``.
+        abs_tol : float, optional
+            Absolute tolerance for determining closeness. Relevant for comparing angles in the `Measurement` subclass. Default is ``0.0``.
+
+        Returns
+        -------
+        bool
+            ``True`` if this measurement is considered close to ``other`` according
+            to the subclass's comparison rules; ``False`` otherwise.
+        """
+        return self == other
+
 
 class AbstractPlanarMeasurement(AbstractMeasurement):
     """Abstract base class for planar measurement objects.
