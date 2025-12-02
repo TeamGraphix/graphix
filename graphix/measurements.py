@@ -90,13 +90,15 @@ class Measurement(AbstractPlanarMeasurement):
         >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
         False
         """
-        if isinstance(other, Measurement):
-            return (
+        return (
+            isinstance(other, Measurement)
+            and (
                 math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
                 if isinstance(self.angle, float) and isinstance(other.angle, float)
                 else self.angle == other.angle
-            ) and self.plane == other.plane
-        return False
+            )
+            and self.plane == other.plane
+        )
 
     def to_plane_or_axis(self) -> Plane | Axis:
         """Return the measurements's plane or axis.
