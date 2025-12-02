@@ -6,6 +6,7 @@ Output correctness is verified by checking if the resulting pattern is determini
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -13,7 +14,7 @@ import numpy as np
 import pytest
 
 from graphix.command import E
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.pattern import Pattern
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.fundamentals import AbstractMeasurement
+
 
 class OpenGraphFlowTestCase(NamedTuple):
     og: OpenGraph[Measurement]
@@ -34,12 +37,20 @@ class OpenGraphFlowTestCase(NamedTuple):
 
 
 OPEN_GRAPH_FLOW_TEST_CASES: list[OpenGraphFlowTestCase] = []
+OPEN_GRAPH_COMPOSE_TEST_CASES: list[OpenGraphComposeTestCase] = []
 
 
 def register_open_graph_flow_test_case(
     test_case: Callable[[], OpenGraphFlowTestCase],
 ) -> Callable[[], OpenGraphFlowTestCase]:
     OPEN_GRAPH_FLOW_TEST_CASES.append(test_case())
+    return test_case
+
+
+def register_open_graph_compose_test_case(
+    test_case: Callable[[], OpenGraphComposeTestCase],
+) -> Callable[[], OpenGraphComposeTestCase]:
+    OPEN_GRAPH_COMPOSE_TEST_CASES.append(test_case())
     return test_case
 
 
@@ -544,6 +555,241 @@ def _og_19() -> OpenGraphFlowTestCase:
     return OpenGraphFlowTestCase(og, has_cflow=False, has_gflow=False, has_pflow=True)
 
 
+class OpenGraphComposeTestCase(NamedTuple):
+    og1: OpenGraph[AbstractMeasurement]
+    og2: OpenGraph[AbstractMeasurement]
+    og_ref: OpenGraph[AbstractMeasurement]
+    mapping: dict[int, int]
+
+
+# Parallel composition
+@register_open_graph_compose_test_case
+def _compose_0() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [1] -- (2)
+
+    Graph 2 = Graph 1
+
+    Mapping: 1 -> 100, 2 -> 200
+
+    Expected graph
+     [1]  --  (2)
+
+    [100] -- (200)
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og1 = OpenGraph(g, inputs, outputs, meas)
+    og2 = OpenGraph(g, inputs, outputs, meas)
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (100, 200)]),
+        input_nodes=[1, 100],
+        output_nodes=[2, 200],
+        measurements={1: Measurement(0, Plane.XY), 100: Measurement(0, Plane.XY)},
+    )
+
+    mapping = {1: 100, 2: 200}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Series composition
+@register_open_graph_compose_test_case
+def _compose_1() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [0] -- 17 -- (23)
+           |
+    [3] -- 4  -- (13)
+
+    Graph 2
+    [6] -- 17 -- (1)
+     |     |
+    [7] -- 4  -- (2)
+
+    Mapping: 6 -> 23, 7 -> 13, 1 -> 100, 2 -> 200, 17 -> 90
+
+    Expected graph
+    [0] -- 17 -- 23 -- 90 -- (100)
+           |     |     |
+    [3] -- 4  -- 13 -- 201 -- (200)
+    """
+    g: nx.Graph[int] = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
+    inputs = [0, 3]
+    outputs = [13, 23]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og1 = OpenGraph(g, inputs, outputs, meas)
+
+    g = nx.Graph([(6, 7), (6, 17), (17, 1), (7, 4), (17, 4), (4, 2)])
+    inputs = [6, 7]
+    outputs = [1, 2]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og2 = OpenGraph(g, inputs, outputs, meas)
+
+    mapping = {6: 23, 7: 13, 1: 100, 2: 200, 17: 90}
+
+    g = nx.Graph(
+        [(0, 17), (17, 23), (17, 4), (3, 4), (4, 13), (23, 13), (23, 90), (13, 201), (90, 201), (90, 100), (201, 200)]
+    )
+    inputs = [0, 3]
+    outputs = [100, 200]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og_ref = OpenGraph(g, inputs, outputs, meas)
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Full overlap
+@register_open_graph_compose_test_case
+def _compose_2() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [0] -- 17 -- (23)
+           |
+    [3] -- 4  -- (13)
+
+    Graph 2 = Graph 1
+
+    Mapping: 0 -> 0, 3 -> 3, 17 -> 17, 4 -> 4, 23 -> 23, 13 -> 13
+
+    Expected graph = Graph 1
+    """
+    g: nx.Graph[int]
+    g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
+    inputs = [0, 3]
+    outputs = [13, 23]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og1 = OpenGraph(g, inputs, outputs, meas)
+    og2 = OpenGraph(g, inputs, outputs, meas)
+    og_ref = OpenGraph(g, inputs, outputs, meas)
+
+    mapping = {i: i for i in g.nodes}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Overlap inputs/outputs
+@register_open_graph_compose_test_case
+def _compose_3() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    ([17]) -- (3)
+      |
+     [18]
+
+    Graph 2
+    [1] -- 2 -- (3)
+
+    Mapping: 1 -> 17, 3 -> 300
+
+    Expected graph
+    (300) -- 301 -- [17] -- (3)
+                     |
+                    [18]
+    """
+    g: nx.Graph[int] = nx.Graph([(18, 17), (17, 3)])
+    inputs = [17, 18]
+    outputs = [3, 17]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og1 = OpenGraph(g, inputs, outputs, meas)
+
+    g = nx.Graph([(1, 2), (2, 3)])
+    inputs = [1]
+    outputs = [3]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og2 = OpenGraph(g, inputs, outputs, meas)
+
+    mapping = {1: 17, 3: 300}
+
+    g = nx.Graph([(18, 17), (17, 3), (17, 301), (301, 300)])
+    inputs = [17, 18]  # the input character of node 17 is kept because node 1 (in G2) is an input.
+    outputs = [3, 300]  # the output character of node 17 is lost because node 1 (in G2) is not an output
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og_ref = OpenGraph(g, inputs, outputs, meas)
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+# Inverse series composition
+@register_open_graph_compose_test_case
+def _compose_4() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [1] -- (2)
+     |
+    [3]
+
+    Graph 2
+    [3] -- (4)
+
+    Mapping: 4 -> 1, 3 -> 300
+
+    Expected graph
+    [300] -- 1 -- (2)
+             |
+            [3]
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2), (1, 3)])
+    inputs = [1, 3]
+    outputs = [2]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og1 = OpenGraph(g, inputs, outputs, meas)
+
+    g = nx.Graph([(3, 4)])
+    inputs = [3]
+    outputs = [4]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og2 = OpenGraph(g, inputs, outputs, meas)
+
+    mapping = {4: 1, 3: 300}
+
+    g = nx.Graph([(1, 2), (1, 3), (1, 300)])
+    inputs = [3, 300]
+    outputs = [2]
+    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
+    og_ref = OpenGraph(g, inputs, outputs, meas)
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
+@register_open_graph_compose_test_case
+def _compose_5() -> OpenGraphComposeTestCase:
+    """Generate composition test.
+
+    Graph 1
+    [1] -- (2)
+
+    Graph 2 = Graph 1
+
+    Mapping: 1 -> 2
+
+    Expected graph
+    [1] -- 2 -- (3)
+
+    """
+    g: nx.Graph[int] = nx.Graph([(1, 2)])
+    inputs = [1]
+    outputs = [2]
+    meas = dict.fromkeys(g.nodes - set(outputs), Plane.XY)
+    og1 = OpenGraph(g, inputs, outputs, meas)
+    og2 = OpenGraph(g, inputs, outputs, meas)
+    og_ref = OpenGraph(
+        nx.Graph([(1, 2), (2, 3)]), input_nodes=[1], output_nodes=[3], measurements={1: Plane.XY, 2: Plane.XY}
+    )
+
+    mapping = {1: 2}
+
+    return OpenGraphComposeTestCase(og1, og2, og_ref, mapping)
+
+
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
@@ -639,219 +885,130 @@ class TestOpenGraph:
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
             assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
+    def test_isclose_measurement(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.1, Plane.XY)),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+        )
+        og_3 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3), (0, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+        )
+        assert og_1.isclose(og_2, abs_tol=0.1)
+        assert not og_1.isclose(og_2)
+        assert not og_2.isclose(og_3)
 
-# TODO: Add test `OpenGraph.is_close`
-# TODO: rewrite as parametric tests
+    def test_isclose_plane(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Plane.XY),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Plane.XZ),
+        )
 
-# Tests composition of two graphs
+        assert not og_1.isclose(og_2)
+        assert og_1.isclose(og_1)
 
+    def test_isclose_axis(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.X),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.Y),
+        )
 
-# Parallel composition
-def test_compose_1() -> None:
-    # Graph 1
-    # [1] -- (2)
-    #
-    # Graph 2 = Graph 1
-    #
-    # Mapping: 1 -> 100, 2 -> 200
-    #
-    # Expected graph
-    #  [1]  --  (2)
-    #
-    # [100] -- (200)
+        assert not og_1.isclose(og_2)
+        assert og_1.isclose(og_1)
+        assert og_2.isclose(og_2)
 
-    g: nx.Graph[int]
-    g = nx.Graph([(1, 2)])
-    inputs = [1]
-    outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_1 = OpenGraph(g, inputs, outputs, meas)
+    def test_is_equal_structurally(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.1, Plane.XY)),
+        )
+        og_3 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Plane.XY),
+        )
+        og_4 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.X),
+        )
+        og_5 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3), (0, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.X),
+        )
+        assert og_1.is_equal_structurally(og_2)
+        assert og_1.is_equal_structurally(og_3)
+        assert og_1.is_equal_structurally(og_4)
+        assert not og_1.is_equal_structurally(og_5)
 
-    mapping = {1: 100, 2: 200}
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_COMPOSE_TEST_CASES)
+    def test_compose(self, test_case: OpenGraphComposeTestCase) -> None:
+        og1, og2, og_ref, mapping = test_case
+        og, mapping_complete = og1.compose(og2, mapping)
+        assert og.isclose(og_ref)
+        assert mapping.keys() <= mapping_complete.keys()
+        assert set(mapping.values()) <= set(mapping_complete.values())
 
-    og, mapping_complete = og_1.compose(og_1, mapping)
+    def test_compose_exception(self) -> None:
+        g: nx.Graph[int] = nx.Graph([(0, 1)])
+        inputs = [0]
+        outputs = [1]
+        mapping = {0: 0, 1: 1}
 
-    expected_graph: nx.Graph[int]
-    expected_graph = nx.Graph([(1, 2), (100, 200)])
-    assert nx.is_isomorphic(og.graph, expected_graph)
-    assert og.input_nodes == [1, 100]
-    assert og.output_nodes == [2, 200]
+        og1 = OpenGraph(g, inputs, outputs, measurements={0: Measurement(0, Plane.XY)})
+        og2 = OpenGraph(g, inputs, outputs, measurements={0: Measurement(0.5, Plane.XY)})
 
-    outputs_c = {i for i in og.graph.nodes if i not in og.output_nodes}
-    assert og.measurements.keys() == outputs_c
-    assert mapping.keys() <= mapping_complete.keys()
-    assert set(mapping.values()) <= set(mapping_complete.values())
+        with pytest.raises(
+            OpenGraphError,
+            match=re.escape(
+                "Attempted to merge nodes with different measurements: (0, Measurement(angle=0.5, plane=Plane.XY)) -> (0, Measurement(angle=0, plane=Plane.XY))."
+            ),
+        ):
+            og1.compose(og2, mapping)
 
+        og3 = OpenGraph(g, inputs, outputs, measurements={0: Plane.XY})
+        og4 = OpenGraph(g, inputs, outputs, measurements={0: Plane.XZ})
 
-# Series composition
-def test_compose_2() -> None:
-    # Graph 1
-    # [0] -- 17 -- (23)
-    #        |
-    # [3] -- 4  -- (13)
-    #
-    # Graph 2
-    # [6] -- 17 -- (1)
-    #  |     |
-    # [7] -- 4  -- (2)
-    #
-    # Mapping: 6 -> 23, 7 -> 13, 1 -> 100, 2 -> 200
-    #
-    # Expected graph
-    # [0] -- 17 -- 23 -- o -- (100)
-    #        |     |     |
-    # [3] -- 4  -- 13 -- o -- (200)
-
-    g: nx.Graph[int]
-    g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
-    inputs = [0, 3]
-    outputs = [13, 23]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_1 = OpenGraph(g, inputs, outputs, meas)
-
-    g = nx.Graph([(6, 7), (6, 17), (17, 1), (7, 4), (17, 4), (4, 2)])
-    inputs = [6, 7]
-    outputs = [1, 2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_2 = OpenGraph(g, inputs, outputs, meas)
-
-    mapping = {6: 23, 7: 13, 1: 100, 2: 200}
-
-    og, mapping_complete = og_1.compose(og_2, mapping)
-
-    expected_graph: nx.Graph[int]
-    expected_graph = nx.Graph(
-        [(0, 17), (17, 23), (17, 4), (3, 4), (4, 13), (23, 13), (23, 1), (13, 2), (1, 2), (1, 100), (2, 200)]
-    )
-    assert nx.is_isomorphic(og.graph, expected_graph)
-    assert og.input_nodes == [0, 3]
-    assert og.output_nodes == [100, 200]
-
-    outputs_c = {i for i in og.graph.nodes if i not in og.output_nodes}
-    assert og.measurements.keys() == outputs_c
-    assert mapping.keys() <= mapping_complete.keys()
-    assert set(mapping.values()) <= set(mapping_complete.values())
-
-
-# Full overlap
-def test_compose_3() -> None:
-    # Graph 1
-    # [0] -- 17 -- (23)
-    #        |
-    # [3] -- 4  -- (13)
-    #
-    # Graph 2 = Graph 1
-    #
-    # Mapping: 0 -> 0, 3 -> 3, 17 -> 17, 4 -> 4, 23 -> 23, 13 -> 13
-    #
-    # Expected graph = Graph 1
-
-    g: nx.Graph[int]
-    g = nx.Graph([(0, 17), (17, 23), (17, 4), (3, 4), (4, 13)])
-    inputs = [0, 3]
-    outputs = [13, 23]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_1 = OpenGraph(g, inputs, outputs, meas)
-
-    mapping = {i: i for i in g.nodes}
-
-    og, mapping_complete = og_1.compose(og_1, mapping)
-
-    assert og.isclose(og_1)
-    assert mapping.keys() <= mapping_complete.keys()
-    assert set(mapping.values()) <= set(mapping_complete.values())
-
-
-# Overlap inputs/outputs
-def test_compose_4() -> None:
-    # Graph 1
-    # ([17]) -- (3)
-    #   |
-    #  [18]
-    #
-    # Graph 2
-    # [1] -- 2 -- (3)
-    #
-    # Mapping: 1 -> 17, 3 -> 300
-    #
-    # Expected graph
-    # (300) -- 2 -- [17] -- (3)
-    #                |
-    #               [18]
-
-    g: nx.Graph[int]
-    g = nx.Graph([(18, 17), (17, 3)])
-    inputs = [17, 18]
-    outputs = [3, 17]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_1 = OpenGraph(g, inputs, outputs, meas)
-
-    g = nx.Graph([(1, 2), (2, 3)])
-    inputs = [1]
-    outputs = [3]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_2 = OpenGraph(g, inputs, outputs, meas)
-
-    mapping = {1: 17, 3: 300}
-
-    og, mapping_complete = og_1.compose(og_2, mapping)
-
-    expected_graph: nx.Graph[int]
-    expected_graph = nx.Graph([(18, 17), (17, 3), (17, 2), (2, 300)])
-    assert nx.is_isomorphic(og.graph, expected_graph)
-    assert og.input_nodes == [17, 18]  # the input character of node 17 is kept because node 1 (in G2) is an input
-    assert og.output_nodes == [
-        3,
-        300,
-    ]  # the output character of node 17 is lost because node 1 (in G2) is not an output
-
-    outputs_c = {i for i in og.graph.nodes if i not in og.output_nodes}
-    assert og.measurements.keys() == outputs_c
-    assert mapping.keys() <= mapping_complete.keys()
-    assert set(mapping.values()) <= set(mapping_complete.values())
-
-
-# Inverse series composition
-def test_compose_5() -> None:
-    # Graph 1
-    # [1] -- (2)
-    #  |
-    # [3]
-    #
-    # Graph 2
-    # [3] -- (4)
-    #
-    # Mapping: 4 -> 1, 3 -> 300
-    #
-    # Expected graph
-    # [300] -- 1 -- (2)
-    #          |
-    #         [3]
-
-    g: nx.Graph[int]
-    g = nx.Graph([(1, 2), (1, 3)])
-    inputs = [1, 3]
-    outputs = [2]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_1 = OpenGraph(g, inputs, outputs, meas)
-
-    g = nx.Graph([(3, 4)])
-    inputs = [3]
-    outputs = [4]
-    meas = {i: Measurement(0, Plane.XY) for i in g.nodes - set(outputs)}
-    og_2 = OpenGraph(g, inputs, outputs, meas)
-
-    mapping = {4: 1, 3: 300}
-
-    og, mapping_complete = og_1.compose(og_2, mapping)
-
-    expected_graph: nx.Graph[int]
-    expected_graph = nx.Graph([(1, 2), (1, 3), (1, 300)])
-    assert nx.is_isomorphic(og.graph, expected_graph)
-    assert og.input_nodes == [3, 300]
-    assert og.output_nodes == [2]
-
-    outputs_c = {i for i in og.graph.nodes if i not in og.output_nodes}
-    assert og.measurements.keys() == outputs_c
-    assert mapping.keys() <= mapping_complete.keys()
-    assert set(mapping.values()) <= set(mapping_complete.values())
+        with pytest.raises(
+            OpenGraphError,
+            match=re.escape("Attempted to merge nodes with different measurements: (0, Plane.XZ) -> (0, Plane.XY)."),
+        ):
+            og3.compose(og4, mapping)
