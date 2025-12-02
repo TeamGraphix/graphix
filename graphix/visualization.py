@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from copy import deepcopy
-from typing import TYPE_CHECKING, reveal_type
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -697,18 +697,12 @@ class GraphVisualizer:
 
         _set_node_attributes(g_prime, l_reverse, "subset")
 
-        reveal_type(nx.multipartite_layout)
         pos = nx.multipartite_layout(g_prime)
-
-        for node, layer in l_k.items():
-            pos[node][0] = l_max - layer
 
         vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()
-        for node in self.graph.nodes():
-            pos[node][1] = vert.index(pos[node][1])
-
-        return pos
+        index = {y: i for i, y in enumerate(vert)}
+        return {node: (l_max - layer, index[pos[node][1]]) for node, layer in l_k.items()}
 
     def get_pos_wo_structure(self) -> dict[int, _Point]:
         """
@@ -797,9 +791,8 @@ class GraphVisualizer:
             pos[node][0] = l_max - layer
         vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()
-        for node in self.graph.nodes():
-            pos[node][1] = vert.index(pos[node][1])
-        return pos
+        index = {y: i for i, y in enumerate(vert)}
+        return {node: (pos[node][0], index[pos[node][1]]) for node in self.graph.nodes()}
 
     def get_pos_all_correction(self, layers: Mapping[int, int]) -> dict[int, _Point]:
         """
@@ -822,7 +815,8 @@ class GraphVisualizer:
         layout = nx.multipartite_layout(g_prime)
         vert = list({layout[node][1] for node in self.graph.nodes()})
         vert.sort()
-        return {node: (layers[node], vert.index(layout[node][1])) for node in self.graph.nodes()}
+        index = {y: i for i, y in enumerate(vert)}
+        return {node: (layers[node], index[layout[node][1]]) for node in self.graph.nodes()}
 
     @staticmethod
     def _edge_intersects_node(
