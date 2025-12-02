@@ -995,7 +995,15 @@ class TestOpenGraph:
         assert og_1.is_equal_structurally(og_4)
         assert not og_1.is_equal_structurally(og_5)
 
+    @pytest.mark.parametrize("test_case", OPEN_GRAPH_COMPOSE_TEST_CASES)
+    def test_compose(self, test_case: OpenGraphComposeTestCase) -> None:
+        og1, og2, og_ref, mapping = test_case
+        og, mapping_complete = og1.compose(og2, mapping)
+        assert og.isclose(og_ref)
+        assert mapping.keys() <= mapping_complete.keys()
+        assert set(mapping.values()) <= set(mapping_complete.values())
 
+<<<<<<< HEAD
 # TODO: rewrite as parametric tests
 >>>>>>> 7cb93c6 (Refactor of flow tools - `OpenGraph.isclose` (#374))
 
@@ -1084,6 +1092,28 @@ class TestOpenGraph:
         og3 = OpenGraph(g, inputs, outputs, measurements={0: Plane.XY})
         og4 = OpenGraph(g, inputs, outputs, measurements={0: Plane.XZ})
 
+=======
+    def test_compose_exception(self) -> None:
+        g: nx.Graph[int] = nx.Graph([(0, 1)])
+        inputs = [0]
+        outputs = [1]
+        mapping = {0: 0, 1: 1}
+
+        og1 = OpenGraph(g, inputs, outputs, measurements={0: Measurement(0, Plane.XY)})
+        og2 = OpenGraph(g, inputs, outputs, measurements={0: Measurement(0.5, Plane.XY)})
+
+        with pytest.raises(
+            OpenGraphError,
+            match=re.escape(
+                "Attempted to merge nodes with different measurements: (0, Measurement(angle=0.5, plane=Plane.XY)) -> (0, Measurement(angle=0, plane=Plane.XY))."
+            ),
+        ):
+            og1.compose(og2, mapping)
+
+        og3 = OpenGraph(g, inputs, outputs, measurements={0: Plane.XY})
+        og4 = OpenGraph(g, inputs, outputs, measurements={0: Plane.XZ})
+
+>>>>>>> 1af27db (Refactor of flow tools - `OpenGraph.compose` (#375))
         with pytest.raises(
             OpenGraphError,
             match=re.escape("Attempted to merge nodes with different measurements: (0, Plane.XZ) -> (0, Plane.XY)."),
