@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from copy import copy
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -16,7 +17,7 @@ import graphix.pattern
 from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
-from graphix.fundamentals import Axis
+from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Domains, Outcome, PauliMeasurement
 
 if TYPE_CHECKING:
@@ -460,3 +461,23 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
             result.add(cmd)
     result.reorder_output_nodes(pattern.output_nodes)
     return result
+
+
+def remove_useless_domains(pattern: Pattern) -> Pattern:
+    """Return an equivalent pattern where measurement domains that are not used given the specific measurement angles and planes are removed."""
+    new_pattern = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
+    new_pattern.results = pattern.results
+    for cmd in pattern:
+        if cmd.kind == CommandKind.M:
+            if cmd.angle == 0:
+                if cmd.plane == Plane.XY:
+                    new_cmd = dataclasses.replace(cmd, s_domain=set())
+                else:
+                    new_cmd = dataclasses.replace(cmd, t_domain=set())
+            else:
+                new_cmd = cmd
+            new_pattern.add(new_cmd)
+        else:
+            new_pattern.add(cmd)
+    new_pattern.reorder_output_nodes(pattern.output_nodes)
+    return new_pattern
