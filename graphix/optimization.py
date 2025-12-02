@@ -464,7 +464,7 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
 
 
 def remove_useless_domains(pattern: Pattern) -> Pattern:
-    """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
+    """Return an equivalent pattern where measurement domains that are not used given the specific measurement angles and planes are removed."""
     new_pattern = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     new_pattern.results = pattern.results
     for cmd in pattern:
