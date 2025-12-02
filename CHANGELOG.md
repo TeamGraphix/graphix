@@ -8,14 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
 - #374:
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
   - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
 
+- #383: Simulators are now parameterized by `PrepareMethod` (which
+  defaults to `DefaultPrepareMethod`) to customize how `N` commands are
+  handled, and the class `BaseN` can be used as a base class for
+  custom preparation commands.
+
 ### Fixed
 
+- #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
+  commands without domain information.
+
 ### Changed
+
 - #374: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
+
 - #375: Adapted existing method `graphix.opengraph.OpenGraph.compose` to the new API introduced in #358.
 
 ## [0.3.3] - 2025-10-23
