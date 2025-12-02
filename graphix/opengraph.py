@@ -69,19 +69,19 @@ class OpenGraph(Generic[_M_co]):
         outputs = set(self.output_nodes)
 
         if not set(self.measurements).issubset(all_nodes):
-            raise ValueError("All measured nodes must be part of the graph's nodes.")
+            raise OpenGraphError("All measured nodes must be part of the graph's nodes.")
         if not inputs.issubset(all_nodes):
-            raise ValueError("All input nodes must be part of the graph's nodes.")
+            raise OpenGraphError("All input nodes must be part of the graph's nodes.")
         if not outputs.issubset(all_nodes):
-            raise ValueError("All output nodes must be part of the graph's nodes.")
+            raise OpenGraphError("All output nodes must be part of the graph's nodes.")
         if outputs & self.measurements.keys():
-            raise ValueError("Output nodes cannot be measured.")
+            raise OpenGraphError("Output nodes cannot be measured.")
         if all_nodes - outputs != self.measurements.keys():
-            raise ValueError("All non-output nodes must be measured.")
+            raise OpenGraphError("All non-output nodes must be measured.")
         if len(inputs) != len(self.input_nodes):
-            raise ValueError("Input nodes contain duplicates.")
+            raise OpenGraphError("Input nodes contain duplicates.")
         if len(outputs) != len(self.output_nodes):
-            raise ValueError("Output nodes contain duplicates.")
+            raise OpenGraphError("Output nodes contain duplicates.")
 
     def to_pattern(self: OpenGraph[Measurement]) -> Pattern:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
@@ -161,17 +161,15 @@ class OpenGraph(Generic[_M_co]):
         This method verifies the open graphs have:
             - Truly equal underlying graphs (not up to an isomorphism).
             - Equal input and output nodes.
+        It assumes the open graphs are well formed.
 
         The static typer allows comparing the structure of two open graphs with different parametric type.
         """
-        if (
-            not nx.utils.graphs_equal(self.graph, other.graph)
-            or self.input_nodes != other.input_nodes
-            or other.output_nodes != other.output_nodes
-        ):
-            return False
-
-        return set(self.measurements.keys()) == set(other.measurements.keys())
+        return (
+            nx.utils.graphs_equal(self.graph, other.graph)
+            and self.input_nodes == other.input_nodes
+            and other.output_nodes == other.output_nodes
+        )
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:
         """Return the set containing the neighborhood of a set of nodes in the open graph.
