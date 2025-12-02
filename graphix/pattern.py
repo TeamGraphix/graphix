@@ -1517,6 +1517,15 @@ class Pattern:
         """Check whether the pattern is runnable.
 
         Raises `RunnabilityError` exception if it is not.
+
+        Notes
+        -----
+        The runnability check can only guarantee the runnability of
+        MBQC+LC patterns.  Patterns that make use of custom `BaseN`
+        and `BaseM` commands can have additional runnability
+        constraints that are not checked by this method.  For instance,
+        in the Veriphix implementation of VBQC, blind measurements
+        have hidden domains that cannot be checked.
         """
         active = set(self.input_nodes)
         measured = set(self.results)
