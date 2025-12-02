@@ -170,11 +170,14 @@ class TestUtilities:
 
     def test_rand_state_vector(self, fx_rng: Generator) -> None:
         count = 10
-        sample = [randobj.rand_state_vector(4, rng=fx_rng) for _ in range(count)]
+        nqubits = 4
+        sample = [randobj.rand_state_vector(nqubits, rng=fx_rng) for _ in range(count)]
         sample_array = np.array(sample)
         # Sampled state vectors are pairwise distinct
         for u, v in itertools.combinations(sample, 2):
             assert not np.allclose(u, v)
+        # Every state vector is of the expected size
+        assert sample_array.shape == (count, 1 << nqubits)
         # Every state vector is normalized
         norms = np.linalg.norm(sample_array, axis=1)
         assert np.allclose(norms, 1)
