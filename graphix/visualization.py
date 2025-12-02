@@ -232,10 +232,8 @@ class GraphVisualizer:
                 corrections = None
             else:
                 print("The pattern is not consistent with flow or gflow structure.")
-                depth, layers = pattern.get_layers()
-                unfolded_layers = {element: key for key, value_set in layers.items() for element in value_set}
-                for output in pattern.output_nodes:
-                    unfolded_layers[output] = depth + 1
+                po_layers = pattern.extract_partial_order_layers()
+                unfolded_layers = {node: layer_idx for layer_idx, layer in enumerate(po_layers[::-1]) for node in layer}
                 xflow, zflow = gflow.get_corrections_from_pattern(pattern)
                 xzflow: dict[int, set[int]] = deepcopy(xflow)
                 for key, value in zflow.items():

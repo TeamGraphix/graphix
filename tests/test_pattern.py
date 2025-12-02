@@ -785,6 +785,10 @@ class TestPattern:
                 Pattern(input_nodes=[0, 1], cmds=[M(1), M(0, s_domain={1}), N(2)]),
                 (frozenset({2}), frozenset({0}), frozenset({1})),
             ),
+            (
+                Pattern(input_nodes=[0], cmds=[N(1), N(2), E((0, 1)), E((1, 2)), M(0), M(1), X(2, {1}), Z(2, {1}), M(2)]),
+                (frozenset({2}), frozenset({0, 1})),
+            ),  # double edge in DAG
         ],
     )
     def test_extract_partial_order_layers(self, test_case: tuple[Pattern, tuple[frozenset[int], ...]]) -> None:

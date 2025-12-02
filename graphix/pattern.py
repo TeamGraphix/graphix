@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 import networkx as nx
 from typing_extensions import assert_never
 
+import graphix.flow.core as flow
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
@@ -931,11 +932,11 @@ class Pattern:
                 node, domain = cmd.node, cmd.domain
 
             for dep_node in domain:
-                if not {node, dep_node} & excluded_nodes:
+                if not {node, dep_node} & excluded_nodes and node not in dag[dep_node]:
                     dag[dep_node].add(node)
                     indegree_map[node] = indegree_map.get(node, 0) + 1
-            if domain:
-                zero_indegree.discard(node)
+
+        zero_indegree -= indegree_map.keys()
 
         generations = compute_topological_generations(dag, indegree_map, zero_indegree)
         assert generations is not None  # DAG can't contain loops because pattern is runnable.
@@ -943,6 +944,70 @@ class Pattern:
         if oset:
             return oset, *generations[::-1]
         return generations[::-1]
+
+    def extract_causal_flow(self) -> flow.CausalFlow[Measurement]:
+        """Extract the causal flow structure from the current measurement pattern.
+
+        This method reconstructs the underlying open graph, validates measurement constraints, builds correction dependencies, and verifies that the resulting :class:`flow.CausalFlow` satisfies all well-formedness conditions.
+
+        Returns
+        -------
+        flow.CausalFlow[Measurement]
+            The causal flow associated with the current pattern.
+
+        Raises
+        ------
+        ValueError
+            If the pattern:
+            - contains measurements in forbidden planes (XZ or YZ),
+            - assigns more than one correcting node to the same measured node,
+            - is empty, or
+            - fails the well-formedness checks for a valid causal flow.
+
+        Notes
+        -----
+        A causal flow is a structural property of MBQC patterns ensuring that corrections can be assigned deterministically with *single-element* correcting sets and without requiring measurements in the XZ or YZ planes.
+        """
+        nodes = set(self.input_nodes)
+        edges: set[tuple[int, int]] = set()
+        measurements: dict[int, Measurement] = {}
+        correction_function: dict[int, set[int]] = {}
+
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                nodes.add(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                if u > v:
+                    u, v = v, u
+                edges.symmetric_difference_update({(u, v)})
+            elif cmd.kind == CommandKind.M:
+                node = cmd.node
+                measurements[node] = Measurement(cmd.angle, cmd.plane)
+                if cmd.plane in {Plane.XZ, Plane.YZ}:
+                    raise ValueError(f"Pattern does not have causal flow. Node {node} is measured in {cmd.plane}.")
+            elif cmd.kind == CommandKind.X:
+                corrected_node = cmd.node
+                for measured_node in cmd.domain:
+                    if measured_node in correction_function:
+                        raise ValueError(
+                            f"Pattern does not have causal flow. Node {measured_node} is corrected by nodes {correction_function[measured_node].pop()} and {corrected_node} but correcting sets in causal flows can have one element only."
+                        )
+                    correction_function[measured_node] = {corrected_node}
+
+        graph = nx.Graph(edges)
+        graph.add_nodes_from(nodes)
+        og = opengraph.OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
+
+        partial_order_layers = self.extract_partial_order_layers()
+        if len(partial_order_layers) == 0:
+            raise ValueError("Pattern is empty.")
+
+        cf = flow.CausalFlow(og, correction_function, partial_order_layers)
+
+        if not cf.is_well_formed():
+            raise ValueError("Pattern does not have causal flow.")
+        return cf
 
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.
