@@ -444,5 +444,6 @@ def rand_state_vector(nqubits: int, rng: Generator | None = None) -> npt.NDArray
     """
     rng = ensure_rng(rng)
     dim = 1 << nqubits  # 2**nqubits is typed Any
-    vec = (rng.random(dim) + 1j * rng.random(dim)).astype(np.complex128)
+    real, imag = rng.random((2, dim)) - 0.5
+    vec = (real + 1j * imag).astype(np.complex128)
     return vec / np.linalg.norm(vec)
