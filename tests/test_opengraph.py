@@ -907,6 +907,7 @@ class TestOpenGraph:
         assert og_1.isclose(og_2, abs_tol=0.1)
         assert not og_1.isclose(og_2)
         assert not og_2.isclose(og_3)
+<<<<<<< HEAD
 
     def test_isclose_plane(self) -> None:
         og_1 = OpenGraph(
@@ -921,6 +922,82 @@ class TestOpenGraph:
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Plane.XZ),
         )
+=======
+
+    def test_isclose_plane(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Plane.XY),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Plane.XZ),
+        )
+
+        assert not og_1.isclose(og_2)
+        assert og_1.isclose(og_1)
+
+    def test_isclose_axis(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.X),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.Y),
+        )
+
+        assert not og_1.isclose(og_2)
+        assert og_1.isclose(og_1)
+        assert og_2.isclose(og_2)
+
+    def test_is_equal_structurally(self) -> None:
+        og_1 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.15, Plane.XY)),
+        )
+        og_2 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Measurement(0.1, Plane.XY)),
+        )
+        og_3 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Plane.XY),
+        )
+        og_4 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.X),
+        )
+        og_5 = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2), (2, 3), (0, 3)]),
+            input_nodes=[0],
+            output_nodes=[3],
+            measurements=dict.fromkeys(range(3), Axis.X),
+        )
+        assert og_1.is_equal_structurally(og_2)
+        assert og_1.is_equal_structurally(og_3)
+        assert og_1.is_equal_structurally(og_4)
+        assert not og_1.is_equal_structurally(og_5)
+
+
+# TODO: rewrite as parametric tests
+>>>>>>> 7cb93c6 (Refactor of flow tools - `OpenGraph.isclose` (#374))
 
         assert not og_1.isclose(og_2)
         assert og_1.isclose(og_1)
