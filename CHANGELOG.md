@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- #347: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
+
+- #349, #362: Patterns transpiled from circuits always have causal flow.
+
 - #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
   commands without domain information.
 
