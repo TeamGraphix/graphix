@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import abc
 import warnings
-from typing import TYPE_CHECKING, Generic, overload
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -273,28 +273,8 @@ class PatternSimulator:
         """Return the measure method."""
         return self.__measure_method
 
-    @overload
     @staticmethod
-    def initialize_backend(pattern: Pattern, backend: StatevectorBackend, noise_model: NoiseModel | None, branch_selector: None, graph_prep: None, symbolic: bool) -> StatevectorBackend:
-        ...
-
-    @overload
-    @staticmethod
-    def initialize_backend(pattern: Pattern, backend: DensityMatrixBackend, noise_model: NoiseModel | None, branch_selector: None, graph_prep: None, symbolic: bool) -> DensityMatrixBackend:
-        ...
-
-    @overload
-    @staticmethod
-    def initialize_backend(pattern: Pattern, backend: TensorNetworkBackend, noise_model: None, branch_selector: BranchSelector, graph_prep: str | None, symbolic: bool) -> TensorNetworkBackend:
-        ...
-
-    @overload
-    @staticmethod
-    def initialize_backend(pattern: Pattern, backend: str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> Backend[object]:
-        ...
-
-    @staticmethod
-    def initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> Backend[_StateT_co]:
+    def initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> Backend[Any]:
         """
         Initialize the backend.
 
