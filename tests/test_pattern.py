@@ -923,16 +923,34 @@ class TestPattern:
     ]
 
     # Extract causal flow from random circuits
-    @pytest.mark.skip(reason="Fix transpilation #349")
     @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_extract_causal_flow_0(self, fx_bg: PCG64, jumps: int) -> None:
+    def test_extract_causal_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
         rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 4
+        nqubits = 2
         depth = 2
-        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=True)
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        cf = p_ref.extract_gflow()
-        p_test = cf.to_corrections().to_pattern()
+        p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
+
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
+
+        s_ref = p_ref.simulate_pattern(rng=rng)
+        s_test = p_test.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
+    # Extract gflow from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_extract_gflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_test = p_ref.extract_gflow().to_corrections().to_pattern()
+
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)

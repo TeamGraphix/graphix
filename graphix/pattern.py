@@ -9,7 +9,6 @@ import copy
 import dataclasses
 import enum
 import warnings
-from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
@@ -971,47 +970,7 @@ class Pattern:
         -----
         A causal flow is a structural property of MBQC patterns ensuring that corrections can be assigned deterministically with *single-element* correcting sets and without requiring measurements in the XZ or YZ planes.
         """
-        nodes = set(self.input_nodes)
-        edges: set[tuple[int, int]] = set()
-        measurements: dict[int, Measurement] = {}
-        correction_function: dict[int, set[int]] = {}
-
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes.add(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if u > v:
-                    u, v = v, u
-                edges.symmetric_difference_update({(u, v)})
-            elif cmd.kind == CommandKind.M:
-                node = cmd.node
-                measurements[node] = Measurement(cmd.angle, cmd.plane)
-                if cmd.plane in {Plane.XZ, Plane.YZ}:
-                    raise ValueError(f"Pattern does not have causal flow. Node {node} is measured in {cmd.plane}.")
-            elif cmd.kind == CommandKind.X:
-                corrected_node = cmd.node
-                for measured_node in cmd.domain:
-                    if measured_node in correction_function:
-                        raise ValueError(
-                            f"Pattern does not have causal flow. Node {measured_node} is corrected by nodes {correction_function[measured_node].pop()} and {corrected_node} but correcting sets in causal flows can have one element only."
-                        )
-                    correction_function[measured_node] = {corrected_node}
-
-        graph = nx.Graph(edges)
-        graph.add_nodes_from(nodes)
-        og = OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
-
-        # Calling `self.extract_partial_order_layers` iterates over the pattern two more times. We sacrifice efficiency to avoid excessive code repetition.
-        partial_order_layers = self.extract_partial_order_layers()
-        if len(partial_order_layers) == 0:
-            raise ValueError("Pattern is empty.")
-
-        cf = flow.CausalFlow(og, correction_function, partial_order_layers)
-
-        if not cf.is_well_formed():
-            raise ValueError("Pattern does not have causal flow.")
-        return cf
+        return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
     def extract_gflow(self) -> flow.GFlow[Measurement]:
         """Extract the generalized flow (gflow) structure from the current measurement pattern.
@@ -1036,43 +995,7 @@ class Pattern:
         A gflow is a structural property of measurement-based quantum computation
         (MBQC) patterns that ensures determinism and proper correction propagation.
         """
-        nodes = set(self.input_nodes)
-        edges: set[tuple[int, int]] = set()
-        measurements: dict[int, Measurement] = {}
-        correction_function: dict[int, set[int]] = defaultdict(set)
-
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes.add(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if u > v:
-                    u, v = v, u
-                edges.symmetric_difference_update({(u, v)})
-            elif cmd.kind == CommandKind.M:
-                node = cmd.node
-                measurements[node] = Measurement(cmd.angle, cmd.plane)
-                if cmd.plane in {Plane.XZ, Plane.YZ}:
-                    correction_function[node].add(node)
-            elif cmd.kind == CommandKind.X:
-                corrected_node = cmd.node
-                for measured_node in cmd.domain:
-                    correction_function[measured_node].add(corrected_node)
-
-        graph = nx.Graph(edges)
-        graph.add_nodes_from(nodes)
-        og = OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
-
-        # Calling `self.extract_partial_order_layers` iterates over the pattern two more times. We sacrifice efficiency to avoid excessive code repetition.
-        partial_order_layers = self.extract_partial_order_layers()
-        if len(partial_order_layers) == 0:
-            raise ValueError("Pattern is empty.")
-
-        gf = flow.GFlow(og, correction_function, partial_order_layers)
-
-        if not gf.is_well_formed():
-            raise ValueError("Pattern does not have gflow.")
-        return gf
+        return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.
