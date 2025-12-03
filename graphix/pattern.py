@@ -13,7 +13,11 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+<<<<<<< HEAD
 from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
+=======
+from typing import TYPE_CHECKING, SupportsFloat, overload
+>>>>>>> 8353f6e (trying to remove BackendState still causing problems)
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -1339,6 +1343,7 @@ class Pattern:
     @overload
     def simulate_pattern(
         self,
+<<<<<<< HEAD
         backend: StatevectorBackend | Literal["statevector"],
         input_state: State
         | Statevec
@@ -1348,10 +1353,19 @@ class Pattern:
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> Statevec: ...
+=======
+        backend: StatevectorBackend,
+        input_state: State | Statevec | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None = None,
+        **kwargs: Any,
+    ) -> Statevec:
+        ...
+>>>>>>> 8353f6e (trying to remove BackendState still causing problems)
 
     @overload
     def simulate_pattern(
         self,
+<<<<<<< HEAD
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: State
         | DensityMatrix
@@ -1361,10 +1375,19 @@ class Pattern:
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> DensityMatrix: ...
+=======
+        backend: DensityMatrixBackend,
+        input_state: State | DensityMatrix | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None,
+        **kwargs: Any,
+    ) -> DensityMatrix:
+        ...
+>>>>>>> 8353f6e (trying to remove BackendState still causing problems)
 
     @overload
     def simulate_pattern(
         self,
+<<<<<<< HEAD
         backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
         input_state: State
         | Iterable[State]
@@ -1373,15 +1396,32 @@ class Pattern:
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> MBQCTensorNet: ...
+=======
+        backend: TensorNetworkBackend,
+        input_state: State | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None,
+        **kwargs: Any,
+    ) -> MBQCTensorNet:
+        ...
+>>>>>>> 8353f6e (trying to remove BackendState still causing problems)
 
     @overload
     def simulate_pattern(
         self,
+<<<<<<< HEAD
         backend: str = ...,
         input_state: Data = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> Statevec | DensityMatrix | MBQCTensorNet: ...
+=======
+        backend: str,
+        input_state: Data,
+        rng: Generator | None,
+        **kwargs: Any,
+    ) -> Statevec | DensityMatrix | MBQCTensorNet:
+        ...
+>>>>>>> 8353f6e (trying to remove BackendState still causing problems)
 
     def simulate_pattern(
         self,
