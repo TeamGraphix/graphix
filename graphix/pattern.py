@@ -13,7 +13,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, SupportsFloat, TypeVar
+from typing import TYPE_CHECKING, SupportsFloat, overload
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -38,11 +38,11 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
-    from graphix.sim import Backend, BackendState, Data
-
-
-_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
+    from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
+    from graphix.sim import Backend, Data, DensityMatrix, DensityMatrixBackend, Statevec, StatevectorBackend
+    from graphix.sim.base_backend import _StateT_co
+    from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
+    from graphix.states import State
 
 
 class Pattern:
@@ -1336,13 +1336,53 @@ class Pattern:
                 n_list.append(nodes)
         return n_list
 
+    @overload
+    def simulate_pattern(
+        self,
+        backend: StatevectorBackend,
+        input_state: State | Statevec | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None = None,
+        **kwargs: Any,
+    ) -> Statevec:
+        ...
+
+    @overload
+    def simulate_pattern(
+        self,
+        backend: DensityMatrixBackend,
+        input_state: State | DensityMatrix | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None,
+        **kwargs: Any,
+    ) -> DensityMatrix:
+        ...
+
+    @overload
+    def simulate_pattern(
+        self,
+        backend: TensorNetworkBackend,
+        input_state: State | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None,
+        **kwargs: Any,
+    ) -> MBQCTensorNet:
+        ...
+
+    @overload
+    def simulate_pattern(
+        self,
+        backend: str,
+        input_state: Data,
+        rng: Generator | None,
+        **kwargs: Any,
+    ) -> Statevec | DensityMatrix | MBQCTensorNet:
+        ...
+
     def simulate_pattern(
         self,
         backend: Backend[_StateT_co] | str = "statevector",
         input_state: Data = BasicStates.PLUS,
         rng: Generator | None = None,
         **kwargs: Any,
-    ) -> BackendState:
+    ) -> Statevec | DensityMatrix | MBQCTensorNet:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
         Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
