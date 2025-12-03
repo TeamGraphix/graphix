@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import enum
+import itertools
 import warnings
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
@@ -24,7 +25,6 @@ from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.flow._partial_order import compute_topological_generations
 from graphix.fundamentals import Axis, Plane, Sign
-from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -1096,54 +1096,6 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
-    def get_measurement_order_from_flow(self) -> list[int] | None:
-        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
-
-        Returns
-        -------
-        meas_order: list of int
-            measurement order
-        """
-        graph = self.extract_graph()
-        vin = set(self.input_nodes)
-        vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
-        if f is None or l_k is None:
-            return None
-        depth, layer = get_layers(l_k)
-        meas_order: list[int] = []
-        for i in range(depth):
-            k = depth - i
-            nodes = layer[k]
-            meas_order += nodes  # NOTE this is list concatenation
-        return meas_order
-
-    def get_measurement_order_from_gflow(self) -> list[int]:
-        """Return a list containing the node indices, in the order of measurements which can be performed with minimum depth.
-
-        Returns
-        -------
-        meas_order : list of int
-            measurement order
-        """
-        graph = self.extract_graph()
-        isolated = list(nx.isolates(graph))
-        if isolated:
-            raise ValueError("The input graph must be connected")
-        vin = set(self.input_nodes)
-        vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
-        if flow is None or l_k is None:  # We check both to avoid typing issues with `get_layers`.
-            raise ValueError("No gflow found")
-        k, layers = get_layers(l_k)
-        meas_order: list[int] = []
-        while k > 0:
-            meas_order.extend(layers[k])
-            k -= 1
-        return meas_order
-
     def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M]:
         """Convert measurement order to sequence of measurement commands.
 
@@ -1390,7 +1342,8 @@ class Pattern:
             self.standardize()
         meas_order = None
         if not self._pauli_preprocessed:
-            meas_order = self.get_measurement_order_from_flow()
+            cf = self.extract_opengraph().find_causal_flow()
+            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
