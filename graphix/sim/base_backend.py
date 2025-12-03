@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 
 Matrix: TypeAlias = npt.NDArray[np.object_ | np.complex128]
 
+_StateT_co = TypeVar("_StateT_co", covariant=True)
+
 
 def tensordot(op: Matrix, psi: Matrix, axes: tuple[int | Sequence[int], int | Sequence[int]]) -> Matrix:
     """Tensor dot product that preserves the type of `psi`.
@@ -326,37 +328,7 @@ class NoiseNotSupportedError(Exception):
         return "This backend does not support noise."
 
 
-class BackendState(ABC):
-    """
-    Abstract base class for representing the quantum state of a backend.
-
-    `BackendState` defines the interface for quantum state representations used by
-    various backend implementations. It provides a common foundation for different
-    simulation strategies, such as dense linear algebra or tensor network contraction.
-
-    Concrete subclasses must implement the storage and manipulation logic appropriate
-    for a specific backend and representation strategy.
-
-    Notes
-    -----
-    This class is abstract and cannot be instantiated directly.
-
-    Examples of concrete subclasses include:
-    - :class:`Statevec` (for pure states represented as state vectors)
-    - :class:`DensityMatrix` (for mixed states represented as density matrices)
-    - :class:`MBQCTensorNet` (for compressed representations using tensor networks)
-
-    See Also
-    --------
-    :class:`DenseState`, :class:`MBQCTensorNet`, :class:`Statevec`, :class:`DensityMatrix`
-    """
-
-    @abstractmethod
-    def flatten(self) -> Matrix:
-        """Return flattened state."""
-
-
-class DenseState(BackendState):
+class DenseState(ABC):
     """
     Abstract base class for quantum states with full dense representations.
 
@@ -374,7 +346,7 @@ class DenseState(BackendState):
     -----
     This class is abstract and cannot be instantiated directly.
 
-    Not all :class:`BackendState` subclasses are dense. For example, :class:`MBQCTensorNet` is a
+    Not all internal states are dense. For example, :class:`MBQCTensorNet` is a
     `BackendState` that represents the quantum state using a tensor network, rather than
     a single dense array.
 
@@ -388,6 +360,10 @@ class DenseState(BackendState):
     @abstractmethod
     def nqubit(self) -> int:
         """Return the number of qubits."""
+
+    @abstractmethod
+    def flatten(self) -> Matrix:
+        """Return flattened state."""
 
     @abstractmethod
     def add_nodes(self, nqubit: int, data: Data) -> None:
@@ -559,9 +535,6 @@ def perform_measure(
     op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic) if result else get_op_mat0()
     state.evolve_single(op_mat, qubit_loc)
     return result
-
-
-_StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
 @dataclass(frozen=True)
