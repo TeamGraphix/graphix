@@ -13,6 +13,8 @@ from matplotlib import pyplot as plt
 from graphix import gflow
 from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
+from graphix.opengraph import OpenGraph
+from graphix.optimization import StandardizedPattern
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
@@ -24,6 +26,8 @@ if TYPE_CHECKING:
 
     # MEMO: Potential circular import
     from graphix.clifford import Clifford
+    from graphix.flow.core import CausalFlow, GFlow
+    from graphix.fundamentals import AbstractPlanarMeasurement
     from graphix.parameter import ExpressionOrFloat
     from graphix.pattern import Pattern
 
@@ -127,28 +131,38 @@ class GraphVisualizer:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        f, l_k = gflow.find_flow(self.graph, set(self.v_in), set(self.v_out), meas_planes=self.meas_planes)  # try flow
-        if f is not None and l_k is not None:
+        og = OpenGraph(self.graph, list(self.v_in), list(self.v_out), self.meas_planes)
+        causal_flow = og.find_causal_flow()
+        if causal_flow is not None:
             print("Flow detected in the graph.")
-            pos = self.get_pos_from_flow(f, l_k)
+            pos = self.get_pos_from_flow(causal_flow)
+            cf = causal_flow.correction_function
+            l_k = {
+                node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
+            }
 
             def get_paths(
                 pos: Mapping[int, _Point],
             ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                return self.get_edge_path(f, pos)
+                return self.get_edge_path(cf, pos)
+
         else:
-            g, l_k = gflow.find_gflow(self.graph, set(self.v_in), set(self.v_out), self.meas_planes)  # try gflow
-            if g is not None and l_k is not None:
+            g_flow = og.find_gflow()
+            if g_flow is not None:
                 print("Gflow detected in the graph. (flow not detected)")
-                pos = self.get_pos_from_gflow(g, l_k)
+                pos = self.get_pos_from_gflow(g_flow)
+                cf = g_flow.correction_function
+                l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
 
                 def get_paths(
                     pos: Mapping[int, _Point],
                 ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                    return self.get_edge_path(g, pos)
+                    return self.get_edge_path(cf, pos)
+
             else:
                 print("No flow or gflow detected in the graph.")
                 pos = self.get_pos_wo_structure()
+                l_k = None
 
                 def get_paths(
                     pos: Mapping[int, _Point],
@@ -207,30 +221,26 @@ class GraphVisualizer:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        f, l_k = gflow.flow_from_pattern(pattern)  # try flow
-        if f is not None and l_k is not None:
+        pattern_std = StandardizedPattern.from_pattern(pattern)
+
+        try:
+            causal_flow = pattern_std.extract_causal_flow()
             print("The pattern is consistent with flow structure.")
-            pos = self.get_pos_from_flow(f, l_k)
-
-            def get_paths(
-                pos: Mapping[int, _Point],
-            ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                return self.get_edge_path(f, pos)
-
+            pos = self.get_pos_from_flow(causal_flow)
+            cf = causal_flow.correction_function
+            l_k = {
+                node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
+            }
             corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None = None
-        else:
-            g, l_k = gflow.gflow_from_pattern(pattern)  # try gflow
-            if g is not None and l_k is not None:
+        except ValueError:
+            try:
+                g_flow = pattern_std.extract_gflow()
                 print("The pattern is consistent with gflow structure. (not with flow)")
-                pos = self.get_pos_from_gflow(g, l_k)
-
-                def get_paths(
-                    pos: Mapping[int, _Point],
-                ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                    return self.get_edge_path(g, pos)
-
+                pos = self.get_pos_from_gflow(g_flow)
+                cf = g_flow.correction_function
+                l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
                 corrections = None
-            else:
+            except ValueError:
                 print("The pattern is not consistent with flow or gflow structure.")
                 po_layers = pattern.extract_partial_order_layers()
                 unfolded_layers = {node: layer_idx for layer_idx, layer in enumerate(po_layers[::-1]) for node in layer}
@@ -242,13 +252,15 @@ class GraphVisualizer:
                     else:
                         xzflow[key] = set(value)  # copy
                 pos = self.get_pos_all_correction(unfolded_layers)
-
-                def get_paths(
-                    pos: Mapping[int, _Point],
-                ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                    return self.get_edge_path(xzflow, pos)
-
+                cf = xzflow
+                l_k = None
                 corrections = xflow, zflow
+
+        def get_paths(
+            pos: Mapping[int, _Point],
+        ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
+            return self.get_edge_path(cf, pos)
+
         self.visualize_graph(
             pos,
             get_paths,
@@ -509,7 +521,7 @@ class GraphVisualizer:
         return (width * node_distance[0], height * node_distance[1])
 
     def get_edge_path(
-        self, flow: Mapping[int, int | set[int]], pos: Mapping[int, _Point]
+        self, flow: Mapping[int, AbstractSet[int]], pos: Mapping[int, _Point]
     ) -> tuple[dict[_Edge, list[_Point]], dict[_Edge, list[_Point]]]:
         """
         Return the path of edges and gflow arrows.
@@ -531,7 +543,7 @@ class GraphVisualizer:
         edge_path = self.get_edge_path_wo_structure(pos)
         edge_set = set(self.graph.edges())
         arrow_path: dict[_Edge, list[_Point]] = {}
-        flow_arrows = {(k, v) for k, values in flow.items() for v in ((values,) if isinstance(values, int) else values)}
+        flow_arrows = {(k, v) for k, values in flow.items() for v in values}
 
         for arrow in flow_arrows:
             if arrow[0] == arrow[1]:  # Self loop
@@ -630,7 +642,7 @@ class GraphVisualizer:
         """
         return {edge: self._find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in self.graph.edges()}
 
-    def get_pos_from_flow(self, f: Mapping[int, set[int]], l_k: Mapping[int, int]) -> dict[int, _Point]:
+    def get_pos_from_flow(self, flow: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
         """
         Return the position of nodes based on the flow.
 
@@ -646,6 +658,7 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
+        f = flow.correction_function
         values_union = set().union(*f.values())
         start_nodes = set(self.graph.nodes()) - values_union
         pos = {node: [0, 0] for node in self.graph.nodes()}
@@ -656,16 +669,15 @@ class GraphVisualizer:
                 node = next(iter(f[node]))
                 pos[node][1] = i
 
-        if not l_k:
-            return {}
-
-        lmax = max(l_k.values())
+        layers = flow.partial_order_layers
+        lmax = len(layers) - 1
         # Change the x coordinates of the nodes based on their layer, sort in descending order
-        for node, layer in l_k.items():
-            pos[node][0] = lmax - layer
+        for layer_idx, layer in enumerate(layers):
+            for node in layer:
+                pos[node][0] = lmax - layer_idx
         return {k: (x, y) for k, (x, y) in pos.items()}
 
-    def get_pos_from_gflow(self, g: Mapping[int, set[int]], l_k: Mapping[int, int]) -> dict[int, _Point]:
+    def get_pos_from_gflow(self, flow: GFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
         """
         Return the position of nodes based on the gflow.
 
@@ -683,6 +695,8 @@ class GraphVisualizer:
         """
         g_edges: list[_Edge] = []
 
+        g = flow.correction_function
+
         for node, node_list in g.items():
             g_edges.extend((node, n) for n in node_list)
 
@@ -690,15 +704,16 @@ class GraphVisualizer:
         g_prime.add_nodes_from(self.graph.nodes())
         g_prime.add_edges_from(g_edges)
 
-        l_max = max(l_k.values())
-        l_reverse = {v: l_max - l for v, l in l_k.items()}
+        layers = flow.partial_order_layers
+        l_max = len(layers) - 1
 
+        l_reverse = {node: l_max - layer_idx for layer_idx, layer in enumerate(layers) for node in layer}
         _set_node_attributes(g_prime, l_reverse, "subset")
-
         pos = nx.multipartite_layout(g_prime)
 
-        for node, layer in l_k.items():
-            pos[node][0] = l_max - layer
+        for layer_idx, layer in enumerate(layers):
+            for node in layer:
+                pos[node][0] = l_max - layer_idx
 
         vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()

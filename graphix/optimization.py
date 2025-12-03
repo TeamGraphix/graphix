@@ -492,8 +492,6 @@ class StandardizedPattern(_StandardizedPattern):
         ValueError
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
-        RunnabilityError
-            If the pattern is not runnable.
 
         Notes
         -----
