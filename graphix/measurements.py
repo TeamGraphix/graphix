@@ -11,8 +11,11 @@ from typing import (
     TypeAlias,
 )
 
+# override introduced in Python 3.12
+from typing_extensions import override
+
 from graphix import utils
-from graphix.fundamentals import AbstractPlanarMeasurement, Axis, Plane, Sign
+from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane, Sign
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
@@ -44,7 +47,7 @@ class Measurement(AbstractPlanarMeasurement):
 
     Attributes
     ----------
-    angle : Expressionor Float
+    angle : ExpressionOrFloat
         The angle of the measurement in units of :math:`\pi`. Should be between [0, 2).
     plane : graphix.fundamentals.Plane
         The measurement plane.
@@ -53,11 +56,31 @@ class Measurement(AbstractPlanarMeasurement):
     angle: ExpressionOrFloat
     plane: Plane
 
-    def isclose(self, other: Measurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
-        """Compare if two measurements have the same plane and their angles are close.
+    @override
+    def isclose(self, other: AbstractMeasurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+        """Determine whether two measurements are close in angle and share the same plane.
 
-        Example
+        This method compares the angle of the current measurement with that of
+        another measurement, using :func:`math.isclose` when both angles are floats.
+        The planes must match exactly for the measurements to be considered close.
+
+        Parameters
+        ----------
+        other : AbstractMeasurement
+            The measurement to compare against.
+        rel_tol : float, optional
+            Relative tolerance for comparing angles, passed to :func:`math.isclose`. Default is ``1e-9``.
+        abs_tol : float, optional
+            Absolute tolerance for comparing angles, passed to :func:`math.isclose`. Default is ``0.0``.
+
+        Returns
         -------
+        bool
+        ``True`` if both measurements lie in the same plane and their angles
+        are equal or close within the given tolerances; ``False`` otherwise.
+
+        Examples
+        --------
         >>> from graphix.measurements import Measurement
         >>> from graphix.fundamentals import Plane
         >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
@@ -68,10 +91,14 @@ class Measurement(AbstractPlanarMeasurement):
         False
         """
         return (
-            math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
-            if isinstance(self.angle, float) and isinstance(other.angle, float)
-            else self.angle == other.angle
-        ) and self.plane == other.plane
+            isinstance(other, Measurement)
+            and (
+                math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
+                if isinstance(self.angle, float) and isinstance(other.angle, float)
+                else self.angle == other.angle
+            )
+            and self.plane == other.plane
+        )
 
     def to_plane_or_axis(self) -> Plane | Axis:
         """Return the measurements's plane or axis.

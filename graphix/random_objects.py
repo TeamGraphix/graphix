@@ -426,3 +426,24 @@ def rand_circuit(
             ind = rng.integers(len(gate_choice))
             gate_choice[ind](j)
     return circuit
+
+
+def rand_state_vector(nqubits: int, rng: Generator | None = None) -> npt.NDArray[np.complex128]:
+    """
+    Generate a random normalized complex state vector of size 2^n.
+
+    Parameters
+    ----------
+    nqubits : int
+        The power of 2 for the vector size
+
+    Returns
+    -------
+    numpy.ndarray
+        Normalized complex vector of size 2^nqubits
+    """
+    rng = ensure_rng(rng)
+    dim = 1 << nqubits  # 2**nqubits is typed Any
+    real, imag = rng.random((2, dim)) - 0.5
+    vec: npt.NDArray[np.complex128] = (real + 1j * imag).astype(np.complex128)
+    return vec / np.linalg.norm(vec)
