@@ -15,8 +15,6 @@ from graphix.flow.core import (
     XZCorrections,
 )
 from graphix.flow.exceptions import (
-    CorrectionFunctionError,
-    CorrectionFunctionErrorReason,
     FlowError,
     FlowGenericError,
     FlowGenericErrorReason,
@@ -672,7 +670,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}},
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                 ),
-                CorrectionFunctionError(CorrectionFunctionErrorReason.IncorrectDomain),
+                FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain),
             ),
             # Extra node in correction function image
             IncorrectFlowTestCase(
@@ -681,7 +679,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}, 1: {2}, 2: {4}},
                     partial_order_layers=[{3}, {2}, {1}, {0}],
                 ),
-                CorrectionFunctionError(CorrectionFunctionErrorReason.IncorrectImage),
+                FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage),
             ),
             # Empty partial order
             IncorrectFlowTestCase(

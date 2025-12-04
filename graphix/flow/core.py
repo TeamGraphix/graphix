@@ -21,8 +21,6 @@ from graphix.flow._find_gpflow import (
     compute_partial_order_layers,
 )
 from graphix.flow.exceptions import (
-    CorrectionFunctionError,
-    CorrectionFunctionErrorReason,
     FlowError,
     FlowGenericError,
     FlowGenericErrorReason,
@@ -997,10 +995,10 @@ def _check_flow_general_properties(flow: PauliFlow[_M_co]) -> None:
         - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
     """
     if not _check_correction_function_domain(flow.og, flow.correction_function):
-        raise CorrectionFunctionError(CorrectionFunctionErrorReason.IncorrectDomain)
+        raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain)
 
     if not _check_correction_function_image(flow.og, flow.correction_function):
-        raise CorrectionFunctionError(CorrectionFunctionErrorReason.IncorrectImage)
+        raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage)
 
     if len(flow.partial_order_layers) == 0:
         raise PartialOrderError(PartialOrderErrorReason.Empty)
