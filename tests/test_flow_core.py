@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -9,20 +10,24 @@ import pytest
 from graphix.command import E, M, N, X, Z
 from graphix.flow.core import (
     CausalFlow,
+    GFlow,
+    PauliFlow,
+    XZCorrections,
+)
+from graphix.flow.exceptions import (
     CorrectionFunctionError,
     CorrectionFunctionErrorReason,
     FlowError,
+    FlowGenericError,
+    FlowGenericErrorReason,
     FlowPropositionError,
     FlowPropositionErrorReason,
     FlowPropositionOrderError,
     FlowPropositionOrderErrorReason,
-    GFlow,
     PartialOrderError,
     PartialOrderErrorReason,
     PartialOrderLayerError,
     PartialOrderLayerErrorReason,
-    PauliFlow,
-    XZCorrections,
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
@@ -598,19 +603,9 @@ class TestXZCorrections:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
 
 
-ErrorT = (
-    FlowError[str]
-    | CorrectionFunctionError
-    | FlowPropositionError
-    | FlowPropositionOrderError
-    | PartialOrderError
-    | PartialOrderLayerError
-)
-
-
 class IncorrectFlowTestCase(NamedTuple):
     flow: PauliFlow[AbstractMeasurement]
-    exception: ErrorT
+    exception: FlowError
 
 
 class TestIncorrectFlows:
@@ -650,7 +645,7 @@ class TestIncorrectFlows:
                     correction_function={0: {1}},
                     partial_order_layers=[{1}, {0}],
                 ),
-                FlowError("Causal flow is only defined on open graphs with XY measurements."),
+                FlowGenericError(FlowGenericErrorReason.XYPlane),
             ),
             # Incomplete correction function
             IncorrectFlowTestCase(
@@ -923,20 +918,7 @@ class TestIncorrectFlows:
     def test_check_flow_general_properties(self, test_case: IncorrectFlowTestCase) -> None:
         with pytest.raises(FlowError) as exc_info:
             test_case.flow.check_well_formed()
-        assert exc_info.value.reason == test_case.exception.reason
 
-        if isinstance(test_case.exception, FlowPropositionError):
-            assert isinstance(exc_info.value, FlowPropositionError)
-            assert exc_info.value.node == test_case.exception.node
-            assert exc_info.value.correction_set == test_case.exception.correction_set
-
-        if isinstance(test_case.exception, FlowPropositionOrderError):
-            assert isinstance(exc_info.value, FlowPropositionOrderError)
-            assert exc_info.value.node == test_case.exception.node
-            assert exc_info.value.correction_set == test_case.exception.correction_set
-            assert exc_info.value.past_and_present_nodes == test_case.exception.past_and_present_nodes
-
-        if isinstance(test_case.exception, PartialOrderLayerError):
-            assert isinstance(exc_info.value, PartialOrderLayerError)
-            assert exc_info.value.layer_index == test_case.exception.layer_index
-            assert exc_info.value.layer == test_case.exception.layer
+        for field in fields(exc_info.value):
+            attr = field.name
+            assert getattr(exc_info.value, attr) == getattr(test_case.exception, attr)
