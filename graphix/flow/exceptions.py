@@ -89,6 +89,32 @@ class FlowGenericErrorReason(Enum):
     "A causal flow is defined on an open graphs with non-XY measurements."
 
 
+class XZCorrectionsOrderErrorReason(Enum):
+    """Describe the reason of an `XZCorrectionsOrderError` exception."""
+
+    X = enum.auto()
+    """An X-correction set contains nodes in the present or the past of the corrected node."""
+
+    Z = enum.auto()
+    """An X-correction set contains nodes in the present or the past of the corrected node."""
+
+
+class XZCorrectionsGenericErrorReason(Enum):
+    """Describe the reason of an `XZCorrectionsGenericError`."""
+
+    IncorrectKeys = enum.auto()
+    """Keys of correction dictionaries are not a subset of the measured nodes."""
+
+    IncorrectValues = enum.auto()
+    """Values of correction dictionaries contain labels which are not nodes of the open graph."""
+
+    ClosedLoop = enum.auto()
+    """XZ-corrections are not runnable since the induced directed graph contains closed loops."""
+
+    IncompatibleOrder = enum.auto()
+    """The input total measurement order is not compatible with the partial order induced by the XZ-corrections."""
+
+
 class PartialOrderErrorReason(Enum):
     """Describe the reason of a `PartialOrderError` exception."""
 
@@ -103,7 +129,10 @@ class PartialOrderLayerErrorReason(Enum):
     """Describe the reason of a `PartialOrderLayerError` exception."""
 
     FirstLayer = enum.auto()
-    """The first layer of the partial order is not the set of output nodes (non-measured qubits) of the open graph or is empty."""  # A well-defined flow cannot exist on an open graph without outputs.
+    """The first layer of the partial order is not the set of output nodes (non-measured qubits) of the open graph or is empty.
+
+    XZ-corrections can be defined on open graphs without outputs. That is not the case for correct flows.
+    """
 
     NthLayer = enum.auto()
     """Nodes in the partial order beyond the first layer are not non-output nodes (measured qubits) of the open graph, layer is empty or contains duplicates."""
@@ -112,6 +141,11 @@ class PartialOrderLayerErrorReason(Enum):
 @dataclass
 class FlowError(Exception):
     """Exception subclass to handle flow errors."""
+
+
+@dataclass
+class XZCorrectionsError(Exception):
+    """Exception subclass to handle XZ-corrections errors."""
 
 
 @dataclass
@@ -208,8 +242,8 @@ class FlowGenericError(FlowError):
 
 
 @dataclass
-class PartialOrderError(FlowError):
-    """Exception subclass to handle general flow errors in the partial order."""
+class PartialOrderError(FlowError, XZCorrectionsError):
+    """Exception subclass to handle general flow and XZ-corrections errors in the partial order."""
 
     reason: PartialOrderErrorReason
 
@@ -224,8 +258,8 @@ class PartialOrderError(FlowError):
 
 
 @dataclass
-class PartialOrderLayerError(FlowError):
-    """Exception subclass to handle flow errors concerning a specific layer of the partial order."""
+class PartialOrderLayerError(FlowError, XZCorrectionsError):
+    """Exception subclass to handle flow and XZ-corrections errors concerning a specific layer of the partial order."""
 
     reason: PartialOrderLayerErrorReason
     layer_index: int
@@ -236,6 +270,48 @@ class PartialOrderLayerError(FlowError):
         if self.reason == PartialOrderLayerErrorReason.FirstLayer:
             return f"The first layer of the partial order must contain all the output nodes of the open graph and cannot be empty. First layer: {self.layer}"
 
+        # Note: A flow defined on an open graph without outputs will trigger this error. This is not the case for an XZ-corrections object.
+
         if self.reason == PartialOrderLayerErrorReason.NthLayer:
             return f"Partial order layer {self.layer_index} = {self.layer} contains non-measured nodes of the open graph, is empty or contains nodes in previous layers."
+        assert_never(self.reason)
+
+
+@dataclass
+class XZCorrectionsOrderError(XZCorrectionsError):
+    """Exception subclass to handle incorrect XZ-corrections objects where the error concerns the correction dictionaries and the partial order."""
+
+    reason: XZCorrectionsOrderErrorReason
+    node: int
+    correction_set: AbstractSet[int]
+    past_and_present_nodes: AbstractSet[int]
+
+    def __str__(self) -> str:
+        """Explain the error."""
+        if self.reason == XZCorrectionsOrderErrorReason.X:
+            return "The X-correction set {self.node} -> {self.correction_set} is incompatible with the partial order: {self.past_and_present_nodes - {self.node}} ≼ {self.node}."
+
+        if self.reason == XZCorrectionsOrderErrorReason.Z:
+            return "The Z-correction set {self.node} -> {self.correction_set} is incompatible with the partial order: {self.past_and_present_nodes - {self.node}} ≼ {self.node}."
+
+        assert_never(self.reason)
+
+
+@dataclass
+class XZCorrectionsGenericError(XZCorrectionsError):
+    """Exception subclass to handle generic flow errors."""
+
+    reason: XZCorrectionsGenericErrorReason
+
+    def __str__(self) -> str:
+        """Explain the error."""
+        if self.reason == XZCorrectionsGenericErrorReason.IncorrectKeys:
+            return "Keys of correction dictionaries must be a subset of the measured nodes."
+        if self.reason == XZCorrectionsGenericErrorReason.IncorrectValues:
+            return "Values of correction dictionaries must contain labels which are nodes of the open graph."
+        if self.reason == XZCorrectionsGenericErrorReason.ClosedLoop:
+            return "XZ-corrections are not runnable since the induced directed graph contains closed loops."
+        if self.reason == XZCorrectionsGenericErrorReason.IncompatibleOrder:
+            return "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
+
         assert_never(self.reason)

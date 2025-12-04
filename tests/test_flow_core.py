@@ -26,6 +26,11 @@ from graphix.flow.exceptions import (
     PartialOrderErrorReason,
     PartialOrderLayerError,
     PartialOrderLayerErrorReason,
+    XZCorrectionsError,
+    XZCorrectionsGenericError,
+    XZCorrectionsGenericErrorReason,
+    XZCorrectionsOrderError,
+    XZCorrectionsOrderErrorReason,
 )
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
@@ -390,6 +395,7 @@ class TestFlowPatternConversion:
         flow = test_case.flow
         flow.check_well_formed()
         corrections = flow.to_corrections()
+        corrections.check_well_formed()
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
 
@@ -437,6 +443,8 @@ class TestXZCorrections:
             og=og, x_corrections={0: {2}, 1: {3}, 2: {4}, 3: {5}}, z_corrections={0: {3, 4}, 1: {2, 5}}
         )
 
+        corrections.check_well_formed()
+
         assert corrections.is_compatible([0, 1, 2, 3])
         assert corrections.is_compatible([1, 0, 2, 3])
         assert corrections.is_compatible([1, 0, 3, 2])
@@ -460,6 +468,8 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={1: {0}})
 
+        corrections.check_well_formed()
+
         assert corrections.partial_order_layers == (frozenset({2, 3}), frozenset({0}), frozenset({1}))
         assert corrections.is_compatible([1, 0])
         assert not corrections.is_compatible([0, 1])  # Wrong order
@@ -482,6 +492,7 @@ class TestXZCorrections:
             og=og, x_corrections={0: {1, 2}}, z_corrections={0: {1}}
         )
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 2}), frozenset({0}))
         assert corrections.is_compatible([0, 1, 2])
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
@@ -499,6 +510,8 @@ class TestXZCorrections:
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+
+        corrections.check_well_formed()
         assert corrections.x_corrections == {}
         assert corrections.z_corrections == {}
         assert corrections.partial_order_layers == (frozenset({0, 1}),)
@@ -513,6 +526,8 @@ class TestXZCorrections:
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+
+        corrections.check_well_formed()
         assert corrections.x_corrections == {}
         assert corrections.z_corrections == {}
         assert corrections.partial_order_layers == (frozenset({1}), frozenset({0}))
@@ -528,6 +543,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert all(corrections.partial_order_layers)  # No empty sets
         assert all(
             sum(1 for layer in corrections.partial_order_layers if node in layer) == 1 for node in og.graph.nodes
@@ -545,6 +561,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({0, 2}))
 
     # Some output nodes in corrections
@@ -559,6 +576,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({0, 2}))
 
     # No output nodes in corrections
@@ -573,6 +591,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({2}), frozenset({0}))
 
     # Test exceptions
@@ -583,22 +602,21 @@ class TestXZCorrections:
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
         )
-        with pytest.raises(ValueError, match=r"Keys of input X-corrections contain non-measured nodes."):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={3: {1, 2}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectKeys
 
-        with pytest.raises(ValueError, match=r"Keys of input Z-corrections contain non-measured nodes."):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, z_corrections={3: {1, 2}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectKeys
 
-        with pytest.raises(
-            ValueError,
-            match=r"Input XZ-corrections are not runnable since the induced directed graph contains closed loops.",
-        ):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {1}, 1: {2}}, z_corrections={2: {0}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.ClosedLoop
 
-        with pytest.raises(
-            ValueError, match=r"Values of input mapping contain labels which are not nodes of the input open graph."
-        ):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectValues
 
 
 class IncorrectFlowTestCase(NamedTuple):
@@ -607,7 +625,7 @@ class IncorrectFlowTestCase(NamedTuple):
 
 
 class TestIncorrectFlows:
-    """Bundle for unit tests of :func:`PauliFlow.is_well_formed` (and children) on incorrect flows. Correct flows are extensively tested in `tests.test_opengraph.py`."""
+    """Bundle for unit tests of :func:`PauliFlow.check_well_formed` (and children) on incorrect flows. Correct flows are extensively tested in `tests.test_opengraph.py`."""
 
     og_c = OpenGraph(
         graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
@@ -913,9 +931,126 @@ class TestIncorrectFlows:
             ),
         ],
     )
-    def test_check_flow_general_properties(self, test_case: IncorrectFlowTestCase) -> None:
+    def test_flow_well_formed(self, test_case: IncorrectFlowTestCase) -> None:
         with pytest.raises(FlowError) as exc_info:
             test_case.flow.check_well_formed()
+
+        for field in fields(exc_info.value):
+            attr = field.name
+            assert getattr(exc_info.value, attr) == getattr(test_case.exception, attr)
+
+
+class IncorrectXZCTestCase(NamedTuple):
+    xzcorr: XZCorrections[AbstractMeasurement]
+    exception: XZCorrectionsError
+
+
+class TestIncorrectXZC:
+    """Bundle for unit tests of :func:`XZCorrections.check_well_formed` on incorrect instances. Correct instances are extensively tested in class:`TestXZCorrections`."""
+
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements=dict.fromkeys(range(3), Plane.XY),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            # Empty partial order
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[],
+                ),
+                PartialOrderError(PartialOrderErrorReason.Empty),
+            ),
+            # Non-measured node in corrections dictionary keys
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={3: {1, 2}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys),
+            ),
+            # First layer contains non-output nodes
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[{3, 2}, {1}, {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer={2, 3}),
+            ),
+            # Duplicate nodes in partial order
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[{3}, {2, 1}, {0, 1}],
+                ),
+                PartialOrderLayerError(
+                    PartialOrderLayerErrorReason.NthLayer,
+                    layer_index=1,
+                    layer={1, 2},
+                ),
+            ),
+            # Output nodes in nth layer
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[{3}, {2}, {0, 1, 3}],
+                ),
+                PartialOrderLayerError(
+                    PartialOrderLayerErrorReason.NthLayer,
+                    layer_index=2,
+                    layer={0, 1, 3},
+                ),
+            ),
+            # Closed loop
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={0: {1}, 1: {2}},
+                    z_corrections={2: {0}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                XZCorrectionsOrderError(
+                    XZCorrectionsOrderErrorReason.Z,
+                    node=2,
+                    correction_set={0},
+                    past_and_present_nodes={0, 1, 2},
+                ),
+            ),
+            # Self-correcting node
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={0: {1}, 1: {1}},
+                    z_corrections={0: {1}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                XZCorrectionsOrderError(
+                    XZCorrectionsOrderErrorReason.X,
+                    node=1,
+                    correction_set={1},
+                    past_and_present_nodes={0, 1},
+                ),
+            ),
+        ],
+    )
+    def test_xzc_well_formed(self, test_case: IncorrectXZCTestCase) -> None:
+        with pytest.raises(XZCorrectionsError) as exc_info:
+            test_case.xzcorr.check_well_formed()
 
         for field in fields(exc_info.value):
             attr = field.name
