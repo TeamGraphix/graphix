@@ -14,16 +14,6 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
 
-class CorrectionFunctionErrorReason(Enum):
-    """Describe the reason of a `CorrectionFunctionError` exception."""
-
-    IncorrectDomain = enum.auto()
-    """The domain of the correction function is not the set of non-output nodes (measured qubits) of the open graph."""
-
-    IncorrectImage = enum.auto()
-    """The image of the correction function is not a subset of non-input nodes (prepared qubits) of the open graph."""
-
-
 class FlowPropositionErrorReason(Enum):
     """Describe the reason of a `FlowPropositionError` exception."""
 
@@ -89,6 +79,12 @@ class FlowPropositionOrderErrorReason(Enum):
 class FlowGenericErrorReason(Enum):
     """Describe the reason of a `FlowGenericError`."""
 
+    IncorrectCorrectionFunctionDomain = enum.auto()
+    """The domain of the correction function is not the set of non-output nodes (measured qubits) of the open graph."""
+
+    IncorrectCorrectionFunctionImage = enum.auto()
+    """The image of the correction function is not a subset of non-input nodes (prepared qubits) of the open graph."""
+
     XYPlane = enum.auto()
     "A causal flow is defined on an open graphs with non-XY measurements."
 
@@ -116,23 +112,6 @@ class PartialOrderLayerErrorReason(Enum):
 @dataclass
 class FlowError(Exception):
     """Exception subclass to handle flow errors."""
-
-
-@dataclass
-class CorrectionFunctionError(FlowError):
-    """Exception subclass to handle general flow errors in the correction function."""
-
-    reason: CorrectionFunctionErrorReason
-
-    def __str__(self) -> str:
-        """Explain the error."""
-        if self.reason == CorrectionFunctionErrorReason.IncorrectDomain:
-            return "The domain of the correction function must be the set of non-output nodes (measured qubits) of the open graph."
-
-        if self.reason == CorrectionFunctionErrorReason.IncorrectImage:
-            return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
-
-        assert_never(self.reason)
 
 
 @dataclass
@@ -216,6 +195,12 @@ class FlowGenericError(FlowError):
 
     def __str__(self) -> str:
         """Explain the error."""
+        if self.reason == FlowGenericErrorReason.IncorrectCorrectionFunctionDomain:
+            return "The domain of the correction function must be the set of non-output nodes (measured qubits) of the open graph."
+
+        if self.reason == FlowGenericErrorReason.IncorrectCorrectionFunctionImage:
+            return "The image of the correction function must be a subset of non-input nodes (prepared qubits) of the open graph."
+
         if self.reason == FlowGenericErrorReason.XYPlane:
             return "Causal flow is only defined on open graphs with XY measurements."
 
