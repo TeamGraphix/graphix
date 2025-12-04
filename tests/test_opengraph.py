@@ -800,7 +800,7 @@ def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> 
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
             result = np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten()))
 
-            if result:
+            if result == pytest.approx(1):
                 continue
             return False
 
@@ -831,7 +831,9 @@ class TestOpenGraph:
         og = test_case.og
 
         if test_case.has_cflow:
-            pattern = og.extract_causal_flow().to_corrections().to_pattern()
+            cf = og.extract_causal_flow()
+            cf.check_well_formed()
+            pattern = cf.to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a causal flow."):
@@ -842,7 +844,9 @@ class TestOpenGraph:
         og = test_case.og
 
         if test_case.has_gflow:
-            pattern = og.extract_gflow().to_corrections().to_pattern()
+            gf = og.extract_gflow()
+            gf.check_well_formed()
+            pattern = gf.to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a gflow."):
@@ -853,7 +857,9 @@ class TestOpenGraph:
         og = test_case.og
 
         if test_case.has_pflow:
-            pattern = og.extract_pauli_flow().to_corrections().to_pattern()
+            pf = og.extract_pauli_flow()
+            pf.check_well_formed()
+            pattern = pf.to_corrections().to_pattern()
             assert check_determinism(pattern, fx_rng)
         else:
             with pytest.raises(OpenGraphError, match=r"The open graph does not have a Pauli flow."):

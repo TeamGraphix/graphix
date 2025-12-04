@@ -9,12 +9,31 @@ from typing import TYPE_CHECKING, Generic
 
 import networkx as nx
 
-# override introduced in Python 3.12
-from typing_extensions import override
+# `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
+from typing_extensions import assert_never, override
 
 import graphix.pattern
 from graphix.command import E, M, N, X, Z
-from graphix.flow._find_gpflow import CorrectionMatrix, _M_co, _PM_co, compute_partial_order_layers
+from graphix.flow._find_gpflow import (
+    CorrectionMatrix,
+    _M_co,
+    _PM_co,
+    compute_partial_order_layers,
+)
+from graphix.flow.exceptions import (
+    FlowError,
+    FlowGenericError,
+    FlowGenericErrorReason,
+    FlowPropositionError,
+    FlowPropositionErrorReason,
+    FlowPropositionOrderError,
+    FlowPropositionOrderErrorReason,
+    PartialOrderError,
+    PartialOrderErrorReason,
+    PartialOrderLayerError,
+    PartialOrderLayerErrorReason,
+)
+from graphix.fundamentals import Axis, Plane
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -272,7 +291,7 @@ class PauliFlow(Generic[_M_co]):
     -----
     - See Definition 5 in Ref. [1] for a definition of Pauli flow.
 
-    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
+    - The flow's correction function defines a partial order (see Def. 2.8 and 2.9, Lemma 2.11 and Theorem 2.12 in Ref. [2]), therefore, only `og` and `correction_function` are necessary to initialize an `PauliFlow` instance (see :func:`PauliFlow.try_from_correction_matrix`). However, flow-finding algorithms generate a partial order in a layer form, which is necessary to extract the flow's XZ-corrections, so it is stored as an attribute.
 
     - A correct flow can only exist on an open graph with output nodes, so `layers[0]` always contains a finite set of nodes.
 
@@ -289,9 +308,9 @@ class PauliFlow(Generic[_M_co]):
 
     @classmethod
     def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
-        """Initialize a Pauli flow object from a matrix encoding a correction function.
+        """Initialize a `PauliFlow` object from a matrix encoding a correction function.
 
-        Attributes
+        Parameters
         ----------
         correction_matrix : CorrectionMatrix[_M_co]
             Algebraic representation of the correction function.
@@ -348,6 +367,161 @@ class PauliFlow(Generic[_M_co]):
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
+    def is_well_formed(self) -> bool:
+        """Verify if flow is well formed.
+
+        This method is a wrapper over :func:`self.check_well_formed` catching the `FlowError` exceptions.
+
+        Returns
+        -------
+        ``True`` if ``self`` is a well-formed  flow, ``False`` otherwise.
+        """
+        try:
+            self.check_well_formed()
+        except FlowError:
+            return False
+        return True
+
+    def check_well_formed(self) -> None:
+        r"""Verify if the Pauli flow is well formed.
+
+        Raises
+        ------
+        FlowError
+            if the Pauli flow is not well formed.
+
+        Notes
+        -----
+        General properties of flows:
+            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
+            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
+            - The nodes in the partial order are the nodes in the open graph.
+            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+
+        Specific properties of Pauli flows:
+            - If :math:`j \in p(i), i \neq j, \lambda(j) \notin \{X, Y\}`, then :math:`i \prec j` (P1).
+            - If :math:`j \in Odd(p(i)), i \neq j, \lambda(j) \notin \{Y, Z\}`, then :math:`i \prec j` (P2).
+            - If :math:`neg i \prec j, i \neq j, \lambda(j) = Y`, then either :math:`j \notin p(i)` and :math:`j \in Odd((p(i)))` or :math:`j \in p(i)` and :math:`j \notin Odd((p(i)))` (P3).
+            - If :math:`\lambda(i) = XY`, then :math:`i \notin p(i)` and :math:`i \in Odd((p(i)))` (P4).
+            - If :math:`\lambda(i) = XZ`, then :math:`i \in p(i)` and :math:`i \in Odd((p(i)))` (P5).
+            - If :math:`\lambda(i) = YZ`, then :math:`i \in p(i)` and :math:`i \notin Odd((p(i)))` (P6).
+            - If :math:`\lambda(i) = X`, then :math:`i \in Odd((p(i)))` (P7).
+            - If :math:`\lambda(i) = Z`, then :math:`i \in p(i)` (P8).
+            - If :math:`\lambda(i) = Y`, then either :math:`i \notin p(i)` and :math:`i \in Odd((p(i)))` or :math:`i \in p(i)` and :math:`i \notin Odd((p(i)))` (P9),
+        where :math:`i \in O^c`, :math:`c` is the correction function, :math:`prec` denotes the partial order, :math:`\lambda(i)` is the measurement plane or axis of node :math:`i`, and :math:`Odd(s)` is the odd neighbourhood of the set :math:`s` in the open graph.
+
+        See Definition 5 in Ref. [1] or Definition 2.4 in Ref. [2].
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        _check_flow_general_properties(self)
+
+        o_set = set(self.og.output_nodes)
+        oc_set = set(self.og.measurements)
+
+        past_and_present_nodes: set[int] = set()
+        past_and_present_nodes_y_meas: set[int] = set()
+
+        layer_idx = len(self.partial_order_layers) - 1
+        for layer in reversed(self.partial_order_layers[1:]):
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
+
+            past_and_present_nodes.update(layer)
+            past_and_present_nodes_y_meas.update(
+                node for node in layer if self.og.measurements[node].to_plane_or_axis() == Axis.Y
+            )
+            for node in layer:
+                correction_set = set(self.correction_function[node])
+
+                meas = self.get_measurement_label(node)
+
+                for i in (correction_set - {node}) & past_and_present_nodes:
+                    if self.og.measurements[i].to_plane_or_axis() not in {Axis.X, Axis.Y}:
+                        raise FlowPropositionOrderError(
+                            FlowPropositionOrderErrorReason.P1,
+                            node=node,
+                            correction_set=correction_set,
+                            past_and_present_nodes=past_and_present_nodes,
+                        )
+
+                odd_neighbors = self.og.odd_neighbors(correction_set)
+
+                for i in (odd_neighbors - {node}) & past_and_present_nodes:
+                    if self.og.measurements[i].to_plane_or_axis() not in {Axis.Y, Axis.Z}:
+                        raise FlowPropositionOrderError(
+                            FlowPropositionOrderErrorReason.P2,
+                            node=node,
+                            correction_set=correction_set,
+                            past_and_present_nodes=past_and_present_nodes,
+                        )
+
+                closed_odd_neighbors = (odd_neighbors | correction_set) - (odd_neighbors & correction_set)
+
+                if (past_and_present_nodes_y_meas - {node}) & closed_odd_neighbors:
+                    raise FlowPropositionOrderError(
+                        FlowPropositionOrderErrorReason.P3,
+                        node=node,
+                        correction_set=correction_set,
+                        past_and_present_nodes=past_and_present_nodes_y_meas,
+                    )
+
+                if meas == Plane.XY:
+                    if not (node not in correction_set and node in odd_neighbors):
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.P4, node=node, correction_set=correction_set
+                        )
+                elif meas == Plane.XZ:
+                    if not (node in correction_set and node in odd_neighbors):
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.P5, node=node, correction_set=correction_set
+                        )
+                elif meas == Plane.YZ:
+                    if not (node in correction_set and node not in odd_neighbors):
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.P6, node=node, correction_set=correction_set
+                        )
+                elif meas == Axis.X:
+                    if node not in odd_neighbors:
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.P7, node=node, correction_set=correction_set
+                        )
+                elif meas == Axis.Z:
+                    if node not in correction_set:
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.P8, node=node, correction_set=correction_set
+                        )
+                elif meas == Axis.Y:
+                    if node not in closed_odd_neighbors:
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.P9, node=node, correction_set=correction_set
+                        )
+                else:
+                    assert_never(meas)
+
+            layer_idx -= 1
+
+        if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
+            raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+
+    def get_measurement_label(self, node: int) -> Plane | Axis:
+        """Get the measurement label of a given node in the open graph.
+
+        This method interprets measurements with a Pauli angle as `Axis` instances, in consistence with the Pauli flow extraction routine.
+
+        Parameters
+        ----------
+        node : int
+
+        Returns
+        -------
+        Plane | Axis
+        """
+        return self.og.measurements[node].to_plane_or_axis()
+
 
 @dataclass(frozen=True)
 class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
@@ -363,6 +537,31 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
     [1] Backens et al., Quantum 5, 421 (2021), doi.org/10.22331/q-2021-03-25-421
 
     """
+
+    @override
+    @classmethod
+    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> Self | None:
+        """Initialize a `GFlow` object from a matrix encoding a correction function.
+
+        Parameters
+        ----------
+        correction_matrix : CorrectionMatrix[_PM_co]
+            Algebraic representation of the correction function.
+
+        Returns
+        -------
+        Self | None
+            A gflow if it exists, ``None`` otherwise.
+
+        Notes
+        -----
+        This method verifies if there exists a partial measurement order on the input open graph compatible with the input correction matrix. See Lemma 3.12, and Theorem 3.1 in Ref. [1]. Failure to find a partial order implies the non-existence of a generalised flow if the correction matrix was calculated by means of Algorithms 2 and 3 in [1].
+
+        References
+        ----------
+        [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        return super().try_from_correction_matrix(correction_matrix)
 
     @override
     def to_corrections(self) -> XZCorrections[_PM_co]:
@@ -393,6 +592,111 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
                 z_corrections[measured_node] = z_corrected_nodes
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+    def check_well_formed(self) -> None:
+        r"""Verify if the generalised flow is well formed.
+
+        Raises
+        ------
+        FlowError
+            if the gflow is not well formed.
+
+        Notes
+        -----
+        General properties of flows:
+            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
+            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
+            - The nodes in the partial order are the nodes in the open graph.
+            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+
+        Specific properties of gflows:
+            - If :math:`j \in g(i), i \neq j`, then :math:`i \prec j` (G1).
+            - If :math:`j \in Odd(g(i)), i \neq j`, then :math:`i \prec j` (G2).
+            - If :math:`\lambda(i) = XY`, then :math:`i \notin g(i)` and :math:`i \in Odd((g(i)))` (G3).
+            - If :math:`\lambda(i) = XZ`, then :math:`i \in g(i)` and :math:`i \in Odd((g(i)))` (G4).
+            - If :math:`\lambda(i) = YZ`, then :math:`i \in g(i)` and :math:`i \notin Odd((g(i)))` (G5),
+        where :math:`i \in O^c`, :math:`g` is the correction function, :math:`prec` denotes the partial order, :math:`\lambda(i)` is the measurement plane of node :math:`i`, and :math:`Odd(s)` is the odd neighbourhood of the set :math:`s` in the open graph.
+
+        See Definition 2.36 in Ref. [1].
+
+        References
+        ----------
+        [1] Backens et al., Quantum 5, 421 (2021), doi.org/10.22331/q-2021-03-25-421
+        """
+        _check_flow_general_properties(self)
+
+        o_set = set(self.og.output_nodes)
+        oc_set = set(self.og.measurements)
+
+        layer_idx = len(self.partial_order_layers) - 1
+        past_and_present_nodes: set[int] = set()
+        for layer in reversed(self.partial_order_layers[1:]):
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
+
+            past_and_present_nodes.update(layer)
+
+            for node in layer:
+                correction_set = set(self.correction_function[node])
+
+                if (correction_set - {node}) & past_and_present_nodes:
+                    raise FlowPropositionOrderError(
+                        FlowPropositionOrderErrorReason.G1,
+                        node=node,
+                        correction_set=correction_set,
+                        past_and_present_nodes=past_and_present_nodes,
+                    )
+
+                odd_neighbors = self.og.odd_neighbors(correction_set)
+
+                if (odd_neighbors - {node}) & past_and_present_nodes:
+                    raise FlowPropositionOrderError(
+                        FlowPropositionOrderErrorReason.G2,
+                        node=node,
+                        correction_set=correction_set,
+                        past_and_present_nodes=past_and_present_nodes,
+                    )
+
+                plane = self.get_measurement_label(node)
+
+                if plane == Plane.XY:
+                    if not (node not in correction_set and node in odd_neighbors):
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.G3, node=node, correction_set=correction_set
+                        )
+                elif plane == Plane.XZ:
+                    if not (node in correction_set and node in odd_neighbors):
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.G4, node=node, correction_set=correction_set
+                        )
+                elif plane == Plane.YZ:
+                    if not (node in correction_set and node not in odd_neighbors):
+                        raise FlowPropositionError(
+                            FlowPropositionErrorReason.G5, node=node, correction_set=correction_set
+                        )
+                else:
+                    assert_never(plane)
+
+            layer_idx -= 1
+
+        if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
+            raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+
+    @override
+    def get_measurement_label(self, node: int) -> Plane:
+        """Get the measurement label of a given node in the open graph.
+
+        This method interprets measurements with a Pauli angle as `Plane` instances, in consistence with the gflow extraction routine.
+
+        Parameters
+        ----------
+        node : int
+
+        Returns
+        -------
+        Plane
+        """
+        return self.og.measurements[node].to_plane()
 
 
 @dataclass(frozen=True)
@@ -441,6 +745,87 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
                 z_corrections[measured_node] = z_corrected_nodes
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
+
+    def check_well_formed(self) -> None:
+        r"""Verify if the causal flow is well formed.
+
+        Raises
+        ------
+        FlowError
+            if the causal flow is not well formed.
+
+        Notes
+        -----
+        General properties of flows:
+            - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
+            - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
+            - The nodes in the partial order are the nodes in the open graph.
+            - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+
+        Specific properties of causal flows:
+            - Correction sets have one element only (C0),
+            - :math:`i \sim c(i)` (C1),
+            - :math:`i \prec c(i)` (C2),
+            - :math:`\forall k \in N_G(c(i)) \setminus \{i\}, i \prec k` (C3),
+        where :math:`i \in O^c`, :math:`c` is the correction function and :math:`prec` denotes the partial order.
+
+        Causal flows are defined on open graphs with XY measurements only.
+
+        See Definition 2 in Ref. [1].
+
+        References
+        ----------
+        [1] Browne et al., 2007 New J. Phys. 9 250 (arXiv:quant-ph/0702212).
+        """
+        _check_flow_general_properties(self)
+
+        o_set = set(self.og.output_nodes)
+        oc_set = set(self.og.measurements)
+
+        layer_idx = len(self.partial_order_layers) - 1
+        past_and_present_nodes: set[int] = set()
+        for layer in reversed(self.partial_order_layers[1:]):
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
+
+            past_and_present_nodes.update(layer)
+
+            for node in layer:
+                correction_set = set(self.correction_function[node])
+
+                if len(correction_set) != 1:
+                    raise FlowPropositionError(FlowPropositionErrorReason.C0, node=node, correction_set=correction_set)
+
+                meas = self.get_measurement_label(node)
+                if meas != Plane.XY:
+                    raise FlowGenericError(FlowGenericErrorReason.XYPlane)
+
+                neighbors = self.og.neighbors(correction_set)
+
+                if node not in neighbors:
+                    raise FlowPropositionError(FlowPropositionErrorReason.C1, node=node, correction_set=correction_set)
+
+                # If some nodes of the correction set are in the past or in the present of the current node, they cannot be in its future, so the flow is incorrrect.
+                if correction_set & past_and_present_nodes:
+                    raise FlowPropositionOrderError(
+                        FlowPropositionOrderErrorReason.C2,
+                        node=node,
+                        correction_set=correction_set,
+                        past_and_present_nodes=past_and_present_nodes,
+                    )
+
+                if (neighbors - {node}) & past_and_present_nodes:
+                    raise FlowPropositionOrderError(
+                        FlowPropositionOrderErrorReason.C3,
+                        node=node,
+                        correction_set=correction_set,
+                        past_and_present_nodes=past_and_present_nodes,
+                    )
+
+            layer_idx -= 1
+
+        if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
+            raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
 
 def _corrections_to_dag(
@@ -494,3 +879,53 @@ def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[frozenset[int]] |
         return None
 
     return [frozenset(layer) for layer in topo_gen]
+
+
+def _check_correction_function_domain(
+    og: OpenGraph[_M_co], correction_function: Mapping[int, AbstractSet[int]]
+) -> bool:
+    """Verify that the domain of the correction function is the set of non-output nodes of the open graph."""
+    oc_set = og.graph.nodes - set(og.output_nodes)
+    return correction_function.keys() == oc_set
+
+
+def _check_correction_function_image(og: OpenGraph[_M_co], correction_function: Mapping[int, AbstractSet[int]]) -> bool:
+    """Verify that the image of the correction function is a subset of non-input nodes of the open graph."""
+    ic_set = og.graph.nodes - set(og.input_nodes)
+    image = set().union(*correction_function.values())
+    return image.issubset(ic_set)
+
+
+def _check_flow_general_properties(flow: PauliFlow[_M_co]) -> None:
+    """Verify the general properties of a flow.
+
+    Parameters
+    ----------
+    flow : PauliFlow[_M_co]
+
+    Raises
+    ------
+    FlowError
+        If the causal flow is not well formed.
+
+    Notes
+    -----
+    General properties of flows:
+        - The domain of the correction function is :math:`O^c`, the non-output nodes of the open graph.
+        - The image of the correction function is a subset of :math:`I^c`, the non-input nodes of the open graph.
+        - The nodes in the partial order are the nodes in the open graph.
+        - The first layer of the partial order layers is :math:`O`, the output nodes of the open graph. This is guaranteed because open graphs without outputs do not have flow.
+    """
+    if not _check_correction_function_domain(flow.og, flow.correction_function):
+        raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain)
+
+    if not _check_correction_function_image(flow.og, flow.correction_function):
+        raise FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage)
+
+    if len(flow.partial_order_layers) == 0:
+        raise PartialOrderError(PartialOrderErrorReason.Empty)
+
+    first_layer = flow.partial_order_layers[0]
+    o_set = set(flow.og.output_nodes)
+    if first_layer != o_set or not first_layer:
+        raise PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer=first_layer)
