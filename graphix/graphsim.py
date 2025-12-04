@@ -462,7 +462,7 @@ class GraphState(Graph):
         self.remove_node(node)
         return result
 
-    def draw(self, fill_color: str = "C0", **kwargs: dict[str, Any]) -> None:
+    def draw(self, fill_color: str = "C0") -> None:
         """Draw decorated graph state.
 
         Negative nodes are indicated by negative sign of node labels.
@@ -471,8 +471,6 @@ class GraphState(Graph):
         ----------
         fill_color : str
             optional, fill color of nodes
-        kwargs :
-            optional, additional arguments to supply networkx.draw().
         """
         nqubit = len(self.nodes)
         nodes = list(self.nodes)
@@ -489,7 +487,7 @@ class GraphState(Graph):
         g: nx.Graph[int] = nx.Graph()
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
-        nx.draw(g, labels=labels, node_color=colors, edgecolors="k", **kwargs)
+        nx.draw(g, labels=labels, node_color=colors, edgecolors="k")
 
     def to_statevector(self) -> Statevec:
         """Convert the graph state into a state vector."""
