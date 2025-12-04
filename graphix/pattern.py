@@ -1517,6 +1517,15 @@ class Pattern:
         """Check whether the pattern is runnable.
 
         Raises `RunnabilityError` exception if it is not.
+
+        Notes
+        -----
+        The runnability check can only guarantee the runnability of
+        MBQC+LC patterns.  Patterns that make use of custom `BaseN`
+        and `BaseM` commands can have additional runnability
+        constraints that are not checked by this method.  For instance,
+        in the Veriphix implementation of VBQC, blind measurements
+        have hidden domains that cannot be checked.
         """
         active = set(self.input_nodes)
         measured = set(self.results)
@@ -1544,11 +1553,18 @@ class Pattern:
                 check_active(cmd, n1)
             elif cmd.kind == CommandKind.M:
                 check_active(cmd, cmd.node)
-                for domain in cmd.s_domain, cmd.t_domain:
-                    if cmd.node in domain:
-                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
-                    for node in domain:
-                        check_measured(cmd, node)
+                if isinstance(cmd, command.M):
+                    # `cmd.s_domain` and `cmd.t_domain` are only
+                    # defined if the command is an actual `M` command,
+                    # which may not be the case if the method is
+                    # called with a pattern constructed with another
+                    # implementation of `BaseM` (for instance, a blind
+                    # pattern from Veriphix).
+                    for domain in cmd.s_domain, cmd.t_domain:
+                        if cmd.node in domain:
+                            raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
+                        for node in domain:
+                            check_measured(cmd, node)
                 active.remove(cmd.node)
                 measured.add(cmd.node)
             # Use of `==` here for mypy
