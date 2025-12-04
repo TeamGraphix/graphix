@@ -241,7 +241,11 @@ class PatternSimulator:
     def __init__(
         self,
         pattern: Pattern,
+<<<<<<< HEAD
         backend: Backend[_StateT_co] | str = "statevector",
+=======
+        backend: Backend[BackendState] | str = "statevector",
+>>>>>>> a437e92 (Introduce `BaseN` and `PrepareMethod` (#383))
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
