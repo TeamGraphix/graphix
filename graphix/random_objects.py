@@ -411,6 +411,8 @@ def rand_circuit(
     for _ in range(depth):
         for j, k in _genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
+        for j, k in _genpair(nqubits, 2, rng):
+            circuit.cz(j, k)
         if use_rzz:
             for j, k in _genpair(nqubits, 2, rng):
                 circuit.rzz(j, k, np.pi / 4)
