@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING, TypeVar
 import numpy as np
 
 # assert_never introduced in Python 3.11
-from typing_extensions import assert_never
+# override introduced in Python 3.12
+from typing_extensions import assert_never, override
 
 from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import BaseM, CommandKind, MeasureUpdate
+from graphix.command import BaseM, CommandKind, MeasureUpdate, N
 from graphix.measurements import Measurement, Outcome
 from graphix.sim.base_backend import Backend
 from graphix.sim.density_matrix import DensityMatrixBackend
@@ -31,12 +32,39 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.command import BaseN
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
     from graphix.sim import BackendState, Data
 
 
 _StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
+
+
+class PrepareMethod(abc.ABC):
+    """Prepare method used by the simulator.
+
+    See `DefaultPrepareMethod` for the default prepare method that implements MBQC.
+
+    To be overwritten by custom preparation methods in the case of delegated QC protocols.
+
+    Example: class `ClientPrepareMethod` in https://github.com/qat-inria/veriphix
+    """
+
+    @abc.abstractmethod
+    def prepare(self, backend: Backend[_StateT_co], cmd: BaseN, rng: Generator | None = None) -> None:
+        """Prepare a node."""
+
+
+class DefaultPrepareMethod(PrepareMethod):
+    """Default prepare method implementing standard preparation for MBQC."""
+
+    @override
+    def prepare(self, backend: Backend[_StateT_co], cmd: BaseN, rng: Generator | None = None) -> None:
+        """Prepare a node."""
+        if not isinstance(cmd, N):
+            raise TypeError("The default prepare method requires all preparation commands to be of type `N`.")
+        backend.add_nodes(nodes=[cmd.node], data=cmd.state)
 
 
 class MeasureMethod(abc.ABC):
@@ -192,6 +220,7 @@ class PatternSimulator:
         self,
         pattern: Pattern,
         backend: Backend[BackendState] | str = "statevector",
+        prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
         branch_selector: BranchSelector | None = None,
@@ -208,6 +237,8 @@ class PatternSimulator:
         backend: :class:`Backend` object,
             or 'statevector', or 'densitymatrix', or 'tensornetwork'
             simulation backend (optional), default is 'statevector'.
+        prepare_method: :class:`PrepareMethod`, optional
+            Prepare method used by the simulator. Default is :class:`DefaultPrepareMethod`.
         measure_method: :class:`MeasureMethod`, optional
             Measure method used by the simulator. Default is :class:`DefaultMeasureMethod`.
         noise_model: :class:`NoiseModel`, optional
@@ -262,6 +293,9 @@ class PatternSimulator:
         self.backend = initialize_backend()
         self.noise_model = noise_model
         self.__pattern = pattern
+        if prepare_method is None:
+            prepare_method = DefaultPrepareMethod()
+        self.__prepare_method = prepare_method
         if measure_method is None:
             measure_method = DefaultMeasureMethod(pattern.results)
         self.__measure_method = measure_method
@@ -308,7 +342,7 @@ class PatternSimulator:
 
         for cmd in pattern:
             if cmd.kind == CommandKind.N:
-                self.backend.add_nodes(nodes=[cmd.node], data=cmd.state)
+                self.__prepare_method.prepare(self.backend, cmd, rng=rng)
             elif cmd.kind == CommandKind.E:
                 self.backend.entangle_nodes(edge=cmd.nodes)
             elif cmd.kind == CommandKind.M:
