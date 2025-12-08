@@ -12,6 +12,7 @@ import networkx as nx
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
+# `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 import graphix.pattern
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
