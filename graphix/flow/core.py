@@ -324,7 +324,9 @@ class XZCorrections(Generic[_M_co]):
             shift = 0
 
         measured_layers = reversed(self.partial_order_layers[shift:])
-        layer_idx = len(self.partial_order_layers) - 1
+        layer_idx = (
+            len(self.partial_order_layers) - 1
+        )  # To keep track of the layer index when iterating `self.partial_order_layers` in reverse order.
         past_and_present_nodes: set[int] = set()
 
         for layer in measured_layers:
