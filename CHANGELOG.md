@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9fdb980 (Refactor of flow tools - Verification of flow objects (#378))
 - #378:
   - Introduced new method `graphix.flow.core.PauliFlow.check_well_formed`, `graphix.flow.core.GFlow.check_well_formed` and `graphix.flow.core.CausalFlow.check_well_formed` which verify the correctness of flow objects and raise exceptions when the flow is incorrect.
   - Introduced new method `graphix.flow.core.PauliFlow.is_well_formed` which verify the correctness of flow objects and returns a boolean when the flow is incorrect.
