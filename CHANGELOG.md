@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- #385
+  - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
+  - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
+  
 - #378:
   - Introduced new method `graphix.flow.core.PauliFlow.check_well_formed`, `graphix.flow.core.GFlow.check_well_formed` and `graphix.flow.core.CausalFlow.check_well_formed` which verify the correctness of flow objects and raise exceptions when the flow is incorrect.
   - Introduced new method `graphix.flow.core.PauliFlow.is_well_formed` which verify the correctness of flow objects and returns a boolean when the flow is incorrect.
