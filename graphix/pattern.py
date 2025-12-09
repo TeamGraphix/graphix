@@ -921,6 +921,7 @@ class Pattern:
             node: set() for node in zero_indegree
         }  # `i: {j}` represents `i -> j` which means that node `i` must be measured before node `j`.
         indegree_map: dict[int, int] = {}
+        node: int | None = None  # To avoid Pyright's "PossiblyUnboundVariable" error
 
         for cmd in self:
             domain = set()
@@ -934,6 +935,7 @@ class Pattern:
                 node, domain = cmd.node, cmd.domain
 
             for dep_node in domain:
+                assert node is not None
                 if (
                     not {node, dep_node} & excluded_nodes and node not in dag[dep_node]
                 ):  # Don't include multiple edges in the dag.
