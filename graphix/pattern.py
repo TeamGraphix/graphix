@@ -1377,14 +1377,11 @@ class Pattern:
         sim.run(input_state, rng=rng)
         return sim.backend.state
 
-    def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
+    def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
         ----------
-        leave_input : bool
-            Optional (*False* by default).
-            If *True*, measurements on input nodes are preserved as-is in the pattern.
         ignore_pauli_with_deps : bool
             Optional (*False* by default).
             If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1395,7 +1392,7 @@ class Pattern:
         """
         # if not ignore_pauli_with_deps:
         #    self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
 
     def draw_graph(
         self,
@@ -1627,9 +1624,7 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(
-    pattern: Pattern, leave_input: bool, *, copy: bool = False, ignore_pauli_with_deps: bool = False
-) -> Pattern:
+def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform
@@ -1641,9 +1636,6 @@ def measure_pauli(
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    leave_input : bool
-        True: input nodes will not be removed
-        False: all the nodes measured in Pauli bases will be removed
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
@@ -1668,8 +1660,8 @@ def measure_pauli(
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
-    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern, leave_input)
-    if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
+    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
+    if len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
         new_inputs = []
     else:
         new_inputs = pattern.input_nodes
@@ -1744,15 +1736,12 @@ def measure_pauli(
     return pat
 
 
-def pauli_nodes(
-    pattern: optimization.StandardizedPattern, leave_input: bool
-) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
     ----------
     pattern : optimization.StandardizedPattern
-    leave_input : bool
 
     Returns
     -------
@@ -1765,7 +1754,7 @@ def pauli_nodes(
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
         pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
+        if pm is not None:
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement

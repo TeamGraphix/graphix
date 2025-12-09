@@ -240,6 +240,6 @@ def test_draw_graph_reference(flow_from_pattern: bool) -> Figure:
     circuit.x(2)
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
-    pattern.perform_pauli_measurements(leave_input=True)
+    pattern.perform_pauli_measurements()
     pattern.draw_graph(flow_from_pattern=flow_from_pattern, node_distance=(0.7, 0.6))
     return plt.gcf()
