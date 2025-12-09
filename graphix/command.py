@@ -46,7 +46,31 @@ class _KindChecker:
 
 
 @dataclasses.dataclass(repr=False)
-class N(_KindChecker, DataclassReprMixin):
+class BaseN(DataclassReprMixin):
+    r"""Base preparation command.
+
+    Represent a preparation of a node. In `graphix`, a preparation is
+    an instance of class `N`, with an initial state (defaults to
+    :class:`~graphix.states.BasicStates.PLUS`). The base class `BaseN`
+    allows users to define new class of preparation commands with
+    different abstractions.  For example, in the context of blind
+    computations, the server only knows which node is prepared, and
+    the initial state are given by the
+    :class:`graphix.simulator.PrepareMethod` provided by the client.
+
+    Parameters
+    ----------
+    node : int
+        Index of the qubit to prepare.
+
+    """
+
+    node: int
+    kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
+
+
+@dataclasses.dataclass(repr=False)
+class N(BaseN, _KindChecker):
     r"""Preparation command.
 
     Parameters
@@ -57,7 +81,6 @@ class N(_KindChecker, DataclassReprMixin):
         Initial state, defaults to :class:`~graphix.states.BasicStates.PLUS`.
     """
 
-    node: Node
     state: State = dataclasses.field(default_factory=lambda: BasicStates.PLUS)
     kind: ClassVar[Literal[CommandKind.N]] = dataclasses.field(default=CommandKind.N, init=False)
 
