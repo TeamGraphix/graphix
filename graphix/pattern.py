@@ -906,7 +906,7 @@ class Pattern:
         -----
         The returned object follows the same conventions as the ``partial_order_layers`` attribute of :class:`PauliFlow` and :class:`XZCorrections` objects:
             - Nodes in the same layer can be measured simultaneously.
-            - Nodes in layer ``i`` must be measured before nodes in layer ``i + 1``.
+            - Nodes in layer ``i`` must be measured after nodes in layer ``i + 1``.
             - All output nodes (if any) are in the first layer.
             - There cannot be any empty layers.
         """
@@ -1037,14 +1037,11 @@ class Pattern:
 
         Returns
         -------
-        meas_order: list of int
+        list[int]
             optimal measurement order for parallel computing
         """
-        d, l_k = self.get_layers()
-        meas_order: list[int] = []
-        for i in range(d):
-            meas_order.extend(l_k[i])
-        return meas_order
+        partial_order_layers = self.extract_partial_order_layers()
+        return list(itertools.chain(*reversed(partial_order_layers[1:])))
 
     @staticmethod
     def connected_edges(node: int, edges: set[tuple[int, int]]) -> set[tuple[int, int]]:

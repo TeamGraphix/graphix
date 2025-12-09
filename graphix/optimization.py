@@ -386,7 +386,7 @@ class StandardizedPattern(_StandardizedPattern):
         -----
         The returned object follows the same conventions as the ``partial_order_layers`` attribute of :class:`PauliFlow` and :class:`XZCorrections` objects:
             - Nodes in the same layer can be measured simultaneously.
-            - Nodes in layer ``i`` must be measured before nodes in layer ``i + 1``.
+            - Nodes in layer ``i`` must be measured after nodes in layer ``i + 1``.
             - All output nodes (if any) are in the first layer.
             - There cannot be any empty layers.
         """
