@@ -466,15 +466,9 @@ class StandardizedPattern(_StandardizedPattern):
             process_domain(node, domain)
 
         partial_order_layers = self.extract_partial_order_layers()
-        if len(partial_order_layers) == 0:
-            raise ValueError("Pattern is empty.")
-
         og = OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
-
         cf = CausalFlow(og, correction_function, partial_order_layers)
-
-        if not cf.is_well_formed():
-            raise ValueError("Pattern does not have causal flow.")
+        cf.check_well_formed()
         return cf
 
     def extract_gflow(self) -> GFlow[Measurement]:
@@ -515,15 +509,9 @@ class StandardizedPattern(_StandardizedPattern):
             process_domain(node, domain)
 
         partial_order_layers = self.extract_partial_order_layers()
-        if len(partial_order_layers) == 0:
-            raise ValueError("Pattern is empty.")
-
         og = OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
-
         gf = GFlow(og, correction_function, partial_order_layers)
-
-        if not gf.is_well_formed():
-            raise ValueError("Pattern does not have gflow.")
+        gf.check_well_formed()
         return gf
 
 
