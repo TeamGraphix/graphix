@@ -917,7 +917,9 @@ class Pattern:
         excluded_nodes = oset | pre_measured_nodes
 
         zero_indegree = set(self.input_nodes) - excluded_nodes
-        dag: dict[int, set[int]] = {node: set() for node in zero_indegree}
+        dag: dict[int, set[int]] = {
+            node: set() for node in zero_indegree
+        }  # `i: {j}` represents `i -> j` which means that node `i` must be measured before node `j`.
         indegree_map: dict[int, int] = {}
 
         for cmd in self:
@@ -932,7 +934,9 @@ class Pattern:
                 node, domain = cmd.node, cmd.domain
 
             for dep_node in domain:
-                if not {node, dep_node} & excluded_nodes and node not in dag[dep_node]:
+                if (
+                    not {node, dep_node} & excluded_nodes and node not in dag[dep_node]
+                ):  # Don't include multiple edges in the dag.
                     dag[dep_node].add(node)
                     indegree_map[node] = indegree_map.get(node, 0) + 1
 
@@ -957,7 +961,7 @@ class Pattern:
 
         Raises
         ------
-        ValueError
+        FlowError
             If the pattern:
             - contains measurements in forbidden planes (XZ or YZ),
             - assigns more than one correcting node to the same measured node,
@@ -984,7 +988,7 @@ class Pattern:
 
         Raises
         ------
-        ValueError
+        FlowError
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
         RunnabilityError

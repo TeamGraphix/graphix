@@ -390,22 +390,26 @@ class StandardizedPattern(_StandardizedPattern):
             - All output nodes (if any) are in the first layer.
             - There cannot be any empty layers.
         """
-        oset = frozenset(self.output_nodes)  # First layer by convention
-        pre_measured_nodes = set(self.results.keys())  # Not included in the partial order layers
+        oset = frozenset(self.output_nodes)  # First layer by convention.
+        pre_measured_nodes = set(self.results.keys())  # Not included in the partial order layers.
         excluded_nodes = oset | pre_measured_nodes
 
         zero_indegree = set(self.input_nodes) - excluded_nodes
-        dag: dict[int, set[int]] = {node: set() for node in zero_indegree}
+        dag: dict[int, set[int]] = {
+            node: set() for node in zero_indegree
+        }  # `i: {j}` represents `i -> j` which means that node `i` must be measured before node `j`.
         indegree_map: dict[int, int] = {}
 
         for n in self.n_list:
-            if n.node not in oset:  # pre-measured nodes only appear in domains.
+            if n.node not in oset:  # Pre-measured nodes only appear in domains.
                 dag[n.node] = set()
                 zero_indegree.add(n.node)
 
         def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
             for dep_node in domain:
-                if not {node, dep_node} & excluded_nodes and node not in dag[dep_node]:
+                if (
+                    not {node, dep_node} & excluded_nodes and node not in dag[dep_node]
+                ):  # Don't include multiple edges in the dag.
                     dag[dep_node].add(node)
                     indegree_map[node] = indegree_map.get(node, 0) + 1
 
@@ -422,7 +426,7 @@ class StandardizedPattern(_StandardizedPattern):
         zero_indegree -= indegree_map.keys()
 
         generations = compute_topological_generations(dag, indegree_map, zero_indegree)
-        assert generations is not None  # DAG can't contain loops because pattern is runnable.
+        assert generations is not None  # DAG can't contain loops because `self` is a runnable pattern.
 
         if oset:
             return oset, *generations[::-1]
