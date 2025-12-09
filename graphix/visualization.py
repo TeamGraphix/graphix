@@ -11,6 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from graphix import gflow
+from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
 from graphix.opengraph import OpenGraph
@@ -222,25 +223,15 @@ class GraphVisualizer:
             Default in None.
         """
         pattern_std = StandardizedPattern.from_pattern(pattern)
+        cf: Mapping[int, AbstractSet[int]]
+        corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None
 
         try:
             causal_flow = pattern_std.extract_causal_flow()
-            print("The pattern is consistent with flow structure.")
-            pos = self.get_pos_from_flow(causal_flow)
-            cf = causal_flow.correction_function
-            l_k = {
-                node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
-            }
-            corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None = None
-        except ValueError:
+        except FlowError:
             try:
                 g_flow = pattern_std.extract_gflow()
-                print("The pattern is consistent with gflow structure. (not with flow)")
-                pos = self.get_pos_from_gflow(g_flow)
-                cf = g_flow.correction_function
-                l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
-                corrections = None
-            except ValueError:
+            except FlowError:
                 print("The pattern is not consistent with flow or gflow structure.")
                 po_layers = pattern.extract_partial_order_layers()
                 unfolded_layers = {node: layer_idx for layer_idx, layer in enumerate(po_layers[::-1]) for node in layer}
@@ -255,6 +246,20 @@ class GraphVisualizer:
                 cf = xzflow
                 l_k = None
                 corrections = xflow, zflow
+            else:
+                print("The pattern is consistent with gflow structure. (not with flow)")
+                pos = self.get_pos_from_gflow(g_flow)
+                cf = g_flow.correction_function
+                l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
+                corrections = None
+        else:
+            print("The pattern is consistent with flow structure.")
+            pos = self.get_pos_from_flow(causal_flow)
+            cf = causal_flow.correction_function
+            l_k = {
+                node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
+            }
+            corrections = None
 
         def get_paths(
             pos: Mapping[int, _Point],

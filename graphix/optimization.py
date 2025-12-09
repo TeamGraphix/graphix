@@ -20,6 +20,12 @@ from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
 from graphix.flow.core import CausalFlow, GFlow
+from graphix.flow.exceptions import (
+    FlowGenericError,
+    FlowGenericErrorReason,
+    FlowPropositionError,
+    FlowPropositionErrorReason,
+)
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Domains, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
@@ -434,7 +440,7 @@ class StandardizedPattern(_StandardizedPattern):
 
         Raises
         ------
-        ValueError
+        FlowError
             If the pattern:
             - contains measurements in forbidden planes (XZ or YZ),
             - assigns more than one correcting node to the same measured node,
@@ -451,14 +457,14 @@ class StandardizedPattern(_StandardizedPattern):
         def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
             for measured_node in domain:
                 if measured_node in correction_function:
-                    raise ValueError(
-                        f"Pattern does not have causal flow. Node {measured_node} is corrected by nodes {correction_function[measured_node].pop()} and {node} but correcting sets in causal flows can have one element only."
+                    raise FlowPropositionError(
+                        FlowPropositionErrorReason.C0, measured_node, {node, *correction_function[measured_node]}
                     )
                 correction_function[measured_node] = {node}
 
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
-                raise ValueError(f"Pattern does not have causal flow. Node {m.node} is measured in {m.plane}.")
+                raise FlowGenericError(FlowGenericErrorReason.XYPlane)
             measurements[m.node] = Measurement(m.angle, m.plane)
             process_domain(m.node, m.s_domain)
 
@@ -483,7 +489,7 @@ class StandardizedPattern(_StandardizedPattern):
 
         Raises
         ------
-        ValueError
+        FlowError
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
 

@@ -13,6 +13,9 @@ from numpy.random import PCG64, Generator
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
+from graphix.flow.exceptions import (
+    FlowError,
+)
 from graphix.fundamentals import Plane
 from graphix.measurements import Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
@@ -812,8 +815,6 @@ class TestPattern:
         pattern: Pattern
         has_cflow: bool
         has_gflow: bool
-        error_cflow: str | None = None
-        error_gflow: str | None = None
 
     PATTERN_FLOW_TEST_CASES: list[PatternFlowTestCase] = [  # noqa: RUF012
         PatternFlowTestCase(
@@ -878,7 +879,6 @@ class TestPattern:
             Pattern(cmds=[N(0), N(1), E((0, 1)), M(0, Plane.XZ, 0.3), Z(1, {0}), X(1, {0})], output_nodes=[1]),
             has_cflow=False,
             has_gflow=True,
-            error_cflow="Pattern does not have causal flow. Node 0 is measured in Plane.XZ.",
         ),
         PatternFlowTestCase(
             # Pattern with gflow but without causal flow and XY measurements.
@@ -910,15 +910,12 @@ class TestPattern:
             ),
             has_cflow=False,
             has_gflow=True,
-            error_cflow="Pattern does not have causal flow. Node 1 is corrected by nodes 5 and 6 but correcting sets in causal flows can have one element only.",
         ),
         PatternFlowTestCase(
             # Non-deterministic pattern
             Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Plane.XY, 0.3)]),
             has_cflow=False,
             has_gflow=False,
-            error_cflow="Pattern does not have causal flow.",
-            error_gflow="Pattern does not have gflow.",
         ),
     ]
 
@@ -967,9 +964,8 @@ class TestPattern:
 
             assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
         else:
-            with pytest.raises(ValueError) as err:
+            with pytest.raises(FlowError):
                 test_case.pattern.extract_causal_flow()
-            assert str(err.value) == test_case.error_cflow
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_extract_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
@@ -982,9 +978,8 @@ class TestPattern:
 
             assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
         else:
-            with pytest.raises(ValueError) as err:
+            with pytest.raises(FlowError):
                 test_case.pattern.extract_gflow()
-            assert str(err.value) == test_case.error_gflow
 
     # From open graph
     def test_extract_cflow_og(self, fx_rng: Generator) -> None:
