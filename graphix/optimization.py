@@ -29,6 +29,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Domains, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -450,6 +451,8 @@ class StandardizedPattern(_StandardizedPattern):
             - assigns more than one correcting node to the same measured node,
             - is empty, or
             - fails the well-formedness checks for a valid causal flow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state.
 
         Notes
         -----
@@ -457,6 +460,12 @@ class StandardizedPattern(_StandardizedPattern):
         """
         measurements: dict[int, Measurement] = {}
         correction_function: dict[int, set[int]] = {}
+
+        for n in self.n_list:
+            if n.state != BasicStates.PLUS:
+                raise ValueError(
+                    f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
+                )
 
         def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
             for measured_node in domain:
@@ -496,6 +505,8 @@ class StandardizedPattern(_StandardizedPattern):
         FlowError
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state.
 
         Notes
         -----
@@ -504,6 +515,12 @@ class StandardizedPattern(_StandardizedPattern):
         """
         measurements: dict[int, Measurement] = {}
         correction_function: dict[int, set[int]] = defaultdict(set)
+
+        for n in self.n_list:
+            if n.state != BasicStates.PLUS:
+                raise ValueError(
+                    f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
+                )
 
         def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
             for measured_node in domain:

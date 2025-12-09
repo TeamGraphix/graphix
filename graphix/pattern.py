@@ -967,6 +967,8 @@ class Pattern:
             - assigns more than one correcting node to the same measured node,
             - is empty, or
             - fails the well-formedness checks for a valid causal flow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state.
         RunnabilityError
             If the pattern is not runnable.
 
@@ -991,6 +993,8 @@ class Pattern:
         FlowError
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state.
         RunnabilityError
             If the pattern is not runnable.
 
