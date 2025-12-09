@@ -235,11 +235,9 @@ def test_empty_pattern() -> None:
 def test_draw_graph_reference(flow_from_pattern: bool) -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
-    circuit.cnot(2, 1)
-    circuit.rx(0, pi / 3)
-    circuit.x(2)
-    circuit.cnot(2, 1)
+    circuit.ccx(0, 1, 2)
     pattern = circuit.transpile().pattern
     pattern.perform_pauli_measurements()
+    pattern.standardize()
     pattern.draw_graph(flow_from_pattern=flow_from_pattern, node_distance=(0.7, 0.6))
     return plt.gcf()
