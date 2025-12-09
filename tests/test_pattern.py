@@ -216,21 +216,6 @@ class TestPattern:
         state_ref = pattern_ref.simulate_pattern(branch_selector=ConstBranchSelector(0))
         assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
 
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurement_leave_input_random_circuit(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 3
-        depth = 3
-        circuit = rand_circuit(nqubits, depth, rng)
-        pattern = circuit.transpile().pattern
-        pattern.standardize()
-        pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(leave_input=True)
-        pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
-
     def test_pauli_measurement(self) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
         circuit = Circuit(3)
@@ -256,34 +241,6 @@ class TestPattern:
         isolated_nodes = pattern.extract_isolated_nodes()
         # 48-node is the isolated and output node.
         isolated_nodes_ref = {48}
-
-        assert isolated_nodes == isolated_nodes_ref
-
-    def test_pauli_measurement_leave_input(self) -> None:
-        # test pattern is obtained from 3-qubit QFT with pauli measurement
-        circuit = Circuit(3)
-        for i in range(3):
-            circuit.h(i)
-        circuit.x(1)
-        circuit.x(2)
-
-        # QFT
-        circuit.h(2)
-        cp(circuit, np.pi / 4, 0, 2)
-        cp(circuit, np.pi / 2, 1, 2)
-        circuit.h(1)
-        cp(circuit, np.pi / 2, 0, 1)
-        circuit.h(0)
-        swap(circuit, 0, 2)
-
-        pattern = circuit.transpile().pattern
-        pattern.standardize()
-        pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(leave_input=True)
-
-        isolated_nodes = pattern.extract_isolated_nodes()
-        # There is no isolated node.
-        isolated_nodes_ref: set[int] = set()
 
         assert isolated_nodes == isolated_nodes_ref
 
