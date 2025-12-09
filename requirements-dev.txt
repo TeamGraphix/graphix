@@ -25,4 +25,4 @@ qiskit>=1.0
 qiskit-aer
 
 openqasm-parser>=3.1.0
-graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git@add_cz
+graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git

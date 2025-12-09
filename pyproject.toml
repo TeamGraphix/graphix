@@ -39,7 +39,6 @@ dependencies = { file = ["requirements.txt"] }
 dev = { file = ["requirements-dev.txt"] }
 extra = { file = ["requirements-extra.txt"] }
 doc = { file = ["requirements-doc.txt"] }
-no-deps = { file = ["requirements-no-deps.txt"] }
 
 [tool.setuptools.packages.find]
 include = ["graphix", "stubs"]
