@@ -787,12 +787,10 @@ class GraphVisualizer:
         l_reverse = {v: l_max - l for v, l in layers.items()}
         _set_node_attributes(g_prime, l_reverse, "subset")
         pos = nx.multipartite_layout(g_prime)
-        for node, layer in layers.items():
-            pos[node][0] = l_max - layer
         vert = list({pos[node][1] for node in self.graph.nodes()})
         vert.sort()
         index = {y: i for i, y in enumerate(vert)}
-        return {node: (pos[node][0], index[pos[node][1]]) for node in self.graph.nodes()}
+        return {node: (l_max - layers[node], index[pos[node][1]]) for node in self.graph.nodes()}
 
     def get_pos_all_correction(self, layers: Mapping[int, int]) -> dict[int, _Point]:
         """
