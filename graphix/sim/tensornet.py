@@ -7,7 +7,7 @@ import warnings
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, SupportsComplex, TypeAlias
+from typing import TYPE_CHECKING, SupportsComplex, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
@@ -22,10 +22,14 @@ from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.ops import Ops
 from graphix.parameter import Expression
 <<<<<<< HEAD
+<<<<<<< HEAD
 from graphix.sim.base_backend import Backend
 =======
 from graphix.sim.base_backend import Backend, _StateT_co
 >>>>>>> 8353f6e (trying to remove BackendState still causing problems)
+=======
+from graphix.sim.base_backend import Backend
+>>>>>>> fef9623 (Fixed typing after removing backend state.)
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:

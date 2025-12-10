@@ -266,6 +266,7 @@ class PatternSimulator:
 
     @overload
     @staticmethod
+<<<<<<< HEAD
     def initialize_backend(pattern: Pattern, backend: StatevectorBackend | Literal["statevector"], noise_model: NoiseModel | None, branch_selector: None, graph_prep: None, symbolic: bool) -> StatevectorBackend:
         ...
 
@@ -286,6 +287,16 @@ class PatternSimulator:
 
     @staticmethod
     def initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> Backend[object]:
+=======
+    def initialize_backend(
+        pattern: Pattern,
+        backend: Backend[_StateT_co] | str,
+        noise_model: NoiseModel | None,
+        branch_selector: BranchSelector | None,
+        graph_prep: str | None,
+        symbolic: bool,
+    ) -> Backend[Any]:
+>>>>>>> fef9623 (Fixed typing after removing backend state.)
         """
         Initialize the backend.
 
