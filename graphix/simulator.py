@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from graphix.command import BaseN
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Backend, Data, DensityMatrix, DensityMatrixBackend, Statevec, StatevectorBackend
+    from graphix.sim import Data
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
 
@@ -254,22 +254,15 @@ class PatternSimulator:
         self.backend = self.initialize_backend(pattern, backend, noise_model, branch_selector, graph_prep, symbolic)
         self.noise_model = noise_model
         self.__pattern = pattern
+        if prepare_method is None:
+            prepare_method = DefaultPrepareMethod()
+        self.__prepare_method = prepare_method
         if measure_method is None:
             measure_method = DefaultMeasureMethod(pattern.results)
         self.__measure_method = measure_method
         if prepare_method is None:
             prepare_method = DefaultPrepareMethod()
         self.__prepare_method = prepare_method
-
-    @property
-    def pattern(self) -> Pattern:
-        """Return the pattern."""
-        return self.__pattern
-
-    @property
-    def measure_method(self) -> MeasureMethod:
-        """Return the measure method."""
-        return self.__measure_method
 
     @overload
     @staticmethod
@@ -347,6 +340,16 @@ class PatternSimulator:
                 )
             return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
         raise ValueError(f"Unknown backend {backend}.")
+
+    @property
+    def pattern(self) -> Pattern:
+        """Return the pattern."""
+        return self.__pattern
+
+    @property
+    def measure_method(self) -> MeasureMethod:
+        """Return the measure method."""
+        return self.__measure_method
 
     def set_noise_model(self, model: NoiseModel | None) -> None:
         """Set a noise model."""
