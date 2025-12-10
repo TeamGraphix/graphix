@@ -35,9 +35,34 @@ if TYPE_CHECKING:
     from graphix.command import BaseN
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Backend, Data, DensityMatrix, DensityMatrixBackend, Statevec, StatevectorBackend
+    from graphix.sim import Data
     from graphix.sim.base_backend import _StateT_co
-    from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
+
+
+class PrepareMethod(abc.ABC):
+    """Prepare method used by the simulator.
+
+    See `DefaultPrepareMethod` for the default prepare method that implements MBQC.
+
+    To be overwritten by custom preparation methods in the case of delegated QC protocols.
+
+    Example: class `ClientPrepareMethod` in https://github.com/qat-inria/veriphix
+    """
+
+    @abc.abstractmethod
+    def prepare(self, backend: Backend[_StateT_co], cmd: BaseN, rng: Generator | None = None) -> None:
+        """Prepare a node."""
+
+
+class DefaultPrepareMethod(PrepareMethod):
+    """Default prepare method implementing standard preparation for MBQC."""
+
+    @override
+    def prepare(self, backend: Backend[_StateT_co], cmd: BaseN, rng: Generator | None = None) -> None:
+        """Prepare a node."""
+        if not isinstance(cmd, N):
+            raise TypeError("The default prepare method requires all preparation commands to be of type `N`.")
+        backend.add_nodes(nodes=[cmd.node], data=cmd.state)
 
 
 class PrepareMethod(abc.ABC):
@@ -263,16 +288,6 @@ class PatternSimulator:
             measure_method = DefaultMeasureMethod(pattern.results)
         self.__measure_method = measure_method
 
-    @property
-    def pattern(self) -> Pattern:
-        """Return the pattern."""
-        return self.__pattern
-
-    @property
-    def measure_method(self) -> MeasureMethod:
-        """Return the measure method."""
-        return self.__measure_method
-
     @staticmethod
     def initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> Backend[Any]:
         """
@@ -329,6 +344,16 @@ class PatternSimulator:
                 )
             return DensityMatrixBackend(branch_selector=branch_selector, symbolic=symbolic)
         raise ValueError(f"Unknown backend {backend}.")
+
+    @property
+    def pattern(self) -> Pattern:
+        """Return the pattern."""
+        return self.__pattern
+
+    @property
+    def measure_method(self) -> MeasureMethod:
+        """Return the measure method."""
+        return self.__measure_method
 
     def set_noise_model(self, model: NoiseModel | None) -> None:
         """Set a noise model."""
