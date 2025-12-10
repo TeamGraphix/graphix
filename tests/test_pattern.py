@@ -1028,6 +1028,23 @@ class TestPattern:
 
         assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
 
+    # Extract xz-corrections from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_extract_xzc_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_test = p_ref.extract_xzcorrections().to_pattern()
+
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
+
+        s_ref = p_ref.simulate_pattern(rng=rng)
+        s_test = p_test.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
