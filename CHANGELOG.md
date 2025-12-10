@@ -8,23 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 9fdb980 (Refactor of flow tools - Verification of flow objects (#378))
 - #378:
   - Introduced new method `graphix.flow.core.PauliFlow.check_well_formed`, `graphix.flow.core.GFlow.check_well_formed` and `graphix.flow.core.CausalFlow.check_well_formed` which verify the correctness of flow objects and raise exceptions when the flow is incorrect.
   - Introduced new method `graphix.flow.core.PauliFlow.is_well_formed` which verify the correctness of flow objects and returns a boolean when the flow is incorrect.
   - Introduced new module `graphix.flow.exceptions` grouping flow exceptions.
   - Introduced new methods `graphix.flow.core.PauliFlow.get_measurement_label` and `graphix.flow.core.GFlow.get_measurement_label` which return the measurement label of a given node following same criteria employed in the flow-finding algorithms.
 
-=======
->>>>>>> 1af27db (Refactor of flow tools - `OpenGraph.compose` (#375))
-=======
-
->>>>>>> ee04322 (Fix #349: ensure flow for patterns transpiled from circuit (#362))
 - #374:
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
   - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
@@ -33,14 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   defaults to `DefaultPrepareMethod`) to customize how `N` commands are
   handled, and the class `BaseN` can be used as a base class for
   custom preparation commands.
-<<<<<<< HEAD
-=======
+
 - #347:
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
   - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
->>>>>>> 7cb93c6 (Refactor of flow tools - `OpenGraph.isclose` (#374))
-=======
->>>>>>> 8340e29 (Fixing typing.)
 
 ### Fixed
 
@@ -48,18 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #349, #362: Patterns transpiled from circuits always have causal flow.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 - #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
   commands without domain information.
 
-=======
->>>>>>> ee04322 (Fix #349: ensure flow for patterns transpiled from circuit (#362))
-=======
 - #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
   commands without domain information.
 
->>>>>>> 8340e29 (Fixing typing.)
 ### Changed
 
 - #374: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
