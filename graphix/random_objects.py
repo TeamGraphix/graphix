@@ -367,6 +367,7 @@ def rand_circuit(
     depth: int,
     rng: Generator | None = None,
     *,
+    use_cz: bool = True,
     use_rzz: bool = False,
     use_ccx: bool = False,
     parameters: Iterable[Parameter] | None = None,
@@ -381,10 +382,12 @@ def rand_circuit(
         Number of alternating entangling and single-qubit layers.
     rng : numpy.random.Generator, optional
         Random number generator. A default generator is created if ``None``.
+    use_cz : bool, optional
+        If ``True`` add CZ gates in each layer (default: ``True``).
     use_rzz : bool, optional
-        If ``True`` add :math:`R_{ZZ}` gates in each layer.
+        If ``True`` add :math:`R_{ZZ}` gates in each layer (default: ``False``).
     use_ccx : bool, optional
-        If ``True`` add CCX gates in each layer.
+        If ``True`` add CCX gates in each layer (default: ``False``).
     parameters : Iterable[Parameter], optional
         Parameters used for randomly chosen rotation gates.
 
@@ -414,8 +417,9 @@ def rand_circuit(
     for _ in range(depth):
         for j, k in _genpair(nqubits, 2, rng):
             circuit.cnot(j, k)
-        for j, k in _genpair(nqubits, 2, rng):
-            circuit.cz(j, k)
+        if use_cz:
+            for j, k in _genpair(nqubits, 2, rng):
+                circuit.cz(j, k)
         if use_rzz:
             for j, k in _genpair(nqubits, 2, rng):
                 circuit.rzz(j, k, np.pi / 4)
