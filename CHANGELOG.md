@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #379: Added a new instruction `CZ` which can be added as a circuit gate using `circuit.cz`.
+
 - #374:
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
   - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
@@ -19,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   custom preparation commands.
 
 ### Fixed
+
+- #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
 
 - #347: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
 
