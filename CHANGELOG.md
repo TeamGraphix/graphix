@@ -23,10 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   handled, and the class `BaseN` can be used as a base class for
   custom preparation commands.
 
-- #347:
-  - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
-  - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
-
 ### Fixed
 
 - #347: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
