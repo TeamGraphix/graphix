@@ -12,6 +12,7 @@ import networkx as nx
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never, override
 
+# `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 import graphix.pattern
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
@@ -32,6 +33,10 @@ from graphix.flow.exceptions import (
     PartialOrderErrorReason,
     PartialOrderLayerError,
     PartialOrderLayerErrorReason,
+    XZCorrectionsGenericError,
+    XZCorrectionsGenericErrorReason,
+    XZCorrectionsOrderError,
+    XZCorrectionsOrderErrorReason,
 )
 from graphix.fundamentals import Axis, Plane
 
@@ -94,6 +99,14 @@ class XZCorrections(Generic[_M_co]):
         -------
         XZCorrections[_M_co]
 
+        Raises
+        ------
+        XZCorrectionsError
+            If the input dictionaries are not well formed. In well-formed correction dictionaries:
+                - Keys are a subset of the measured nodes.
+                - Values correspond to nodes of the open graph.
+                - Corrections do not form closed loops.
+
         Notes
         -----
         This method computes the partial order induced by the XZ-corrections.
@@ -103,20 +116,16 @@ class XZCorrections(Generic[_M_co]):
 
         nodes_set = set(og.graph.nodes)
         outputs_set = frozenset(og.output_nodes)
-        non_outputs_set = nodes_set - outputs_set
+        non_outputs_set = set(og.measurements)
 
-        if not non_outputs_set.issuperset(x_corrections):
-            raise ValueError("Keys of input X-corrections contain non-measured nodes.")
-        if not set(z_corrections).issubset(non_outputs_set):
-            raise ValueError("Keys of input Z-corrections contain non-measured nodes.")
+        if not non_outputs_set.issuperset(x_corrections.keys() | z_corrections.keys()):
+            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys)
 
         dag = _corrections_to_dag(x_corrections, z_corrections)
         partial_order_layers = _dag_to_partial_order_layers(dag)
 
         if partial_order_layers is None:
-            raise ValueError(
-                "Input XZ-corrections are not runnable since the induced directed graph contains closed loops."
-            )
+            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
 
         # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
         if len(partial_order_layers) == 0:
@@ -144,7 +153,7 @@ class XZCorrections(Generic[_M_co]):
         ordered_nodes = frozenset.union(*partial_order_layers)
 
         if not ordered_nodes.issubset(nodes_set):
-            raise ValueError("Values of input mapping contain labels which are not nodes of the input open graph.")
+            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
 
         # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
         if unordered_nodes := frozenset(nodes_set - ordered_nodes):
@@ -168,6 +177,11 @@ class XZCorrections(Generic[_M_co]):
         -------
         Pattern
 
+        Raises
+        ------
+        XZCorrectionsError
+            If the input total measurement order is not compatible with the partial order induced by the XZ-corrections.
+
         Notes
         -----
         - The `XZCorrections` instance must be of parametric type `Measurement` to allow for a pattern extraction, otherwise the underlying open graph does not contain information about the measurement angles.
@@ -181,9 +195,7 @@ class XZCorrections(Generic[_M_co]):
         if total_measurement_order is None:
             total_measurement_order = self.generate_total_measurement_order()
         elif not self.is_compatible(total_measurement_order):
-            raise ValueError(
-                "The input total measurement order is not compatible with the partial order induced by the XZ-corrections."
-            )
+            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncompatibleOrder)
 
         pattern = graphix.pattern.Pattern(input_nodes=self.og.input_nodes)
         non_input_nodes = set(self.og.graph.nodes) - set(self.og.input_nodes)
@@ -272,6 +284,75 @@ class XZCorrections(Generic[_M_co]):
                 layer = measured_layers[i]
 
         return True
+
+    def check_well_formed(self) -> None:
+        r"""Verify if the XZ-corrections are well formed.
+
+        Raises
+        ------
+        XZCorrectionsError
+            if the XZ-corrections are not well formed.
+
+        Notes
+        -----
+        A correct `XZCorrections` instance verifies the following properties:
+            - Keys of the correction dictionaries are measured nodes, i.e., a subset of :math:`O^c`.
+            - Corrections respect the partial order.
+            - The first layer of the partial order contains all the output nodes if there are any.
+            - The partial order contains all the nodes (without duplicates) and it does not have empty layers.
+
+        This method assumes that the open graph is well formed.
+        """
+        if len(self.partial_order_layers) == 0:
+            if not (self.og.graph or self.x_corrections or self.z_corrections):
+                return
+            raise PartialOrderError(PartialOrderErrorReason.Empty)
+
+        o_set = set(self.og.output_nodes)
+        oc_set = set(self.og.measurements)
+
+        if not oc_set.issuperset(self.x_corrections.keys() | self.z_corrections.keys()):
+            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys)
+
+        first_layer = self.partial_order_layers[0]
+
+        # Unlike for flows, XZCorrections can be well defined on open graphs without outputs
+        if o_set:
+            if first_layer != o_set:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer=first_layer)
+            shift = 1
+        else:
+            shift = 0
+
+        measured_layers = reversed(self.partial_order_layers[shift:])
+        layer_idx = (
+            len(self.partial_order_layers) - 1
+        )  # To keep track of the layer index when iterating `self.partial_order_layers` in reverse order.
+        past_and_present_nodes: set[int] = set()
+
+        for layer in measured_layers:
+            if not oc_set.issuperset(layer) or not layer or layer & past_and_present_nodes:
+                raise PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=layer_idx, layer=layer)
+
+            past_and_present_nodes.update(layer)
+
+            for node in layer:
+                for corrections, reason in zip(
+                    [self.x_corrections, self.z_corrections], XZCorrectionsOrderErrorReason, strict=True
+                ):
+                    correction_set = corrections.get(node, set())
+                    if correction_set & past_and_present_nodes:
+                        raise XZCorrectionsOrderError(
+                            reason,
+                            node=node,
+                            correction_set=correction_set,
+                            past_and_present_nodes=past_and_present_nodes,
+                        )
+
+            layer_idx -= 1
+
+        if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
+            raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
 
 @dataclass(frozen=True)
