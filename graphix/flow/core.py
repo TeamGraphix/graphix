@@ -116,52 +116,12 @@ class XZCorrections(Generic[_M_co]):
         x_corrections = x_corrections or {}
         z_corrections = z_corrections or {}
 
-        nodes_set = set(og.graph.nodes)
-        outputs_set = frozenset(og.output_nodes)
         non_outputs_set = set(og.measurements)
 
         if not non_outputs_set.issuperset(x_corrections.keys() | z_corrections.keys()):
             raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys)
 
-        partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)
-
-        # dag = _corrections_to_dag(x_corrections, z_corrections)
-        # partial_order_layers = _dag_to_partial_order_layers(dag)
-
-        # if partial_order_layers is None:
-        #     raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
-
-        # # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
-        # if len(partial_order_layers) == 0:
-        #     partial_order_layers = [outputs_set] if outputs_set else []
-        #     if non_outputs_set:
-        #         partial_order_layers.append(frozenset(non_outputs_set))
-        #     return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
-
-        # # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain all or some output nodes.
-        # if outputs_set:
-        #     if measured_layer_0 := partial_order_layers[0] - outputs_set:
-        #         # `partial_order_layers[0]` contains (some or all) outputs and measured nodes
-        #         partial_order_layers = [
-        #             outputs_set,
-        #             frozenset(measured_layer_0),
-        #             *partial_order_layers[1:],
-        #         ]
-        #     else:
-        #         # `partial_order_layers[0]` contains only (some or all) outputs
-        #         partial_order_layers = [
-        #             outputs_set,
-        #             *partial_order_layers[1:],
-        #         ]
-
-        # ordered_nodes = frozenset.union(*partial_order_layers)
-
-        # if not ordered_nodes.issubset(nodes_set):
-        #     raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
-
-        # # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
-        # if unordered_nodes := frozenset(nodes_set - ordered_nodes):
-        #     partial_order_layers[-1] |= unordered_nodes
+        partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)  # Raises an `XZCorrectionsError` if mappings are not well formed.
 
         return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
@@ -943,10 +903,37 @@ def _corrections_to_dag(
 
     return nx.DiGraph(relations)
 
+# TODO: UP docstring
+
 
 def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
     x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
 ) -> tuple[frozenset[int], ...]:
+    """Return the partial order encoded in a directed graph in a layer form if it exists.
+
+    Parameters
+    ----------
+    og : OpenGraph[_M_co]
+        The open graph with respect to which the XZ-corrections are defined.
+    x_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
+    z_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
+
+    Returns
+    -------
+    tuple[frozenset[int], ...]
+        Partial order between the open graph's in a layer form.
+        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
+
+    Raises
+    ------
+    XZCorrectionsError
+        If the input dictionaries are not well formed. In well-formed correction dictionaries:
+            - Keys are a subset of the measured nodes.
+                - Values correspond to nodes of the open graph.
+                - Corrections do not form closed loops.
+    """
     oset = frozenset(og.output_nodes)  # First layer by convention if not empty
     dag: dict[int, set[int]] = defaultdict(set)  # `i: {j}` represents `i -> j`, i.e., a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
     indegree_map: dict[int, int] = {}
@@ -983,28 +970,6 @@ def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
     if oset:
         return oset, *generations[::-1]
     return generations[::-1]
-
-
-def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[frozenset[int]] | None:
-    """Return the partial order encoded in a directed graph in a layer form if it exists.
-
-    Parameters
-    ----------
-    dag : nx.DiGraph[int]
-        A directed graph.
-
-    Returns
-    -------
-    list[set[int]] | None
-        Partial order between corrected qubits in a layer form or `None` if the input directed graph is not acyclical.
-        The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
-    """
-    try:
-        topo_gen = reversed(list(nx.topological_generations(dag)))
-    except nx.NetworkXUnfeasible:
-        return None
-
-    return [frozenset(layer) for layer in topo_gen]
 
 
 def _check_correction_function_domain(
