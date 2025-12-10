@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+
 - #379: Added a new instruction `CZ` which can be added as a circuit gate using `circuit.cz`.
 
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
