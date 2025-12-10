@@ -13,7 +13,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, SupportsFloat, overload
+from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -1339,42 +1339,49 @@ class Pattern:
     @overload
     def simulate_pattern(
         self,
-        backend: StatevectorBackend,
-        input_state: State | Statevec | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
-        rng: Generator | None = None,
+        backend: StatevectorBackend | Literal["statevector"],
+        input_state: State
+        | Statevec
+        | Iterable[State]
+        | Iterable[ExpressionOrSupportsComplex]
+        | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None = ...,
         **kwargs: Any,
-    ) -> Statevec:
-        ...
+    ) -> Statevec: ...
 
     @overload
     def simulate_pattern(
         self,
-        backend: DensityMatrixBackend,
-        input_state: State | DensityMatrix | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
-        rng: Generator | None,
+        backend: DensityMatrixBackend | Literal["densitymatrix"],
+        input_state: State
+        | DensityMatrix
+        | Iterable[State]
+        | Iterable[ExpressionOrSupportsComplex]
+        | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None = ...,
         **kwargs: Any,
-    ) -> DensityMatrix:
-        ...
+    ) -> DensityMatrix: ...
 
     @overload
     def simulate_pattern(
         self,
-        backend: TensorNetworkBackend,
-        input_state: State | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
-        rng: Generator | None,
+        backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
+        input_state: State
+        | Iterable[State]
+        | Iterable[ExpressionOrSupportsComplex]
+        | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        rng: Generator | None = ...,
         **kwargs: Any,
-    ) -> MBQCTensorNet:
-        ...
+    ) -> MBQCTensorNet: ...
 
     @overload
     def simulate_pattern(
         self,
-        backend: str,
-        input_state: Data,
-        rng: Generator | None,
+        backend: str = ...,
+        input_state: Data = ...,
+        rng: Generator | None = ...,
         **kwargs: Any,
-    ) -> Statevec | DensityMatrix | MBQCTensorNet:
-        ...
+    ) -> Statevec | DensityMatrix | MBQCTensorNet: ...
 
     def simulate_pattern(
         self,
@@ -1406,7 +1413,8 @@ class Pattern:
         """
         sim = PatternSimulator(self, backend=backend, **kwargs)
         sim.run(input_state, rng=rng)
-        return sim.backend.state
+        state: Statevec | DensityMatrix | MBQCTensorNet = sim.backend.state
+        return state
 
     def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.

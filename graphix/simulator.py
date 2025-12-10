@@ -21,9 +21,7 @@ from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, MeasureUpdate, N
 from graphix.measurements import Measurement, Outcome
-from graphix.sim.base_backend import Backend
-from graphix.sim.density_matrix import DensityMatrixBackend
-from graphix.sim.statevec import StatevectorBackend
+from graphix.sim import Backend, DensityMatrixBackend, StatevectorBackend
 from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
@@ -289,7 +287,14 @@ class PatternSimulator:
         self.__measure_method = measure_method
 
     @staticmethod
-    def initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> Backend[Any]:
+    def initialize_backend(
+        pattern: Pattern,
+        backend: Backend[_StateT_co] | str,
+        noise_model: NoiseModel | None,
+        branch_selector: BranchSelector | None,
+        graph_prep: str | None,
+        symbolic: bool,
+    ) -> Backend[Any]:
         """
         Initialize the backend.
 

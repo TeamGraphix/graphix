@@ -27,10 +27,8 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from graphix.sim.base_backend import BackendState
 
-
-def compare_backend_result_with_statevec(backend_state: BackendState, statevec: Statevec) -> float:
+def compare_backend_result_with_statevec(backend_state: object, statevec: Statevec) -> float:
     if isinstance(backend_state, Statevec):
         return float(np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten())))
     if isinstance(backend_state, DensityMatrix):
