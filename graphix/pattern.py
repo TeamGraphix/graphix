@@ -10,6 +10,7 @@ import dataclasses
 import enum
 import itertools
 import warnings
+from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
@@ -1004,6 +1005,50 @@ class Pattern:
         (MBQC) patterns that ensures determinism and proper correction propagation.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
+
+    def extract_xzcorrections(self) -> flow.XZCorrections[Measurement]:
+        nodes = set(self.input_nodes)
+        edges: set[tuple[int, int]] = set()
+        measurements: dict[int, Measurement] = {}
+        x_corr: dict[int, set[int]] = defaultdict(set)
+        z_corr: dict[int, set[int]] = defaultdict(set)
+
+        pre_measured_nodes = set(self.results.keys())  # Not included in the xz-corrections.
+
+        def update_corrections(
+            node: int, domain: AbstractSet[int], corrections: dict[int, set[int]]
+        ) -> dict[int, set[int]]:
+            for measured_node in domain:
+                corrections[measured_node].symmetric_difference_update({node})
+            return corrections
+
+        for cmd in self.__seq:
+            if cmd.kind == CommandKind.N:
+                if cmd.state != BasicStates.PLUS:
+                    raise ValueError(
+                        f"Open graph construction in XZ-corrections extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
+                    )
+                nodes.add(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                if u > v:
+                    u, v = v, u
+                edges.symmetric_difference_update({(u, v)})
+            elif cmd.kind == CommandKind.M:
+                node = cmd.node
+                measurements[node] = Measurement(cmd.angle, cmd.plane)
+                x_corr = update_corrections(node, cmd.s_domain - pre_measured_nodes, x_corr)
+                z_corr = update_corrections(node, cmd.t_domain - pre_measured_nodes, z_corr)
+            elif cmd.kind == CommandKind.X:
+                x_corr = update_corrections(cmd.node, cmd.domain - pre_measured_nodes, x_corr)
+            elif cmd.kind == CommandKind.Z:
+                z_corr = update_corrections(cmd.node, cmd.domain - pre_measured_nodes, z_corr)
+
+        graph = nx.Graph(edges)
+        graph.add_nodes_from(nodes)
+        og = OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
+
+        return flow.XZCorrections.from_measured_nodes_mapping(og, dict(x_corr), dict(z_corr))
 
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.
