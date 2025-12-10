@@ -537,7 +537,7 @@ class StandardizedPattern(_StandardizedPattern):
 
         partial_order_layers = self.extract_partial_order_layers()
         og = OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
-        gf = GFlow(og, correction_function, partial_order_layers)
+        gf = GFlow(og, dict(correction_function), partial_order_layers)
         gf.check_well_formed()
         return gf
 
