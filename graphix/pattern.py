@@ -13,15 +13,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-<<<<<<< HEAD
-<<<<<<< HEAD
 from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
-=======
-from typing import TYPE_CHECKING, SupportsFloat, overload
->>>>>>> 8353f6e (trying to remove BackendState still causing problems)
-=======
-from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
->>>>>>> fef9623 (Fixed typing after removing backend state.)
 
 import networkx as nx
 from typing_extensions import assert_never
@@ -1347,10 +1339,6 @@ class Pattern:
     @overload
     def simulate_pattern(
         self,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> fef9623 (Fixed typing after removing backend state.)
         backend: StatevectorBackend | Literal["statevector"],
         input_state: State
         | Statevec
@@ -1358,29 +1346,12 @@ class Pattern:
         | Iterable[ExpressionOrSupportsComplex]
         | Iterable[Iterable[ExpressionOrSupportsComplex]],
         rng: Generator | None = ...,
-<<<<<<< HEAD
         **kwargs: Any,
     ) -> Statevec: ...
-=======
-        backend: StatevectorBackend,
-        input_state: State | Statevec | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
-        rng: Generator | None = None,
-        **kwargs: Any,
-    ) -> Statevec:
-        ...
->>>>>>> 8353f6e (trying to remove BackendState still causing problems)
-=======
-        **kwargs: Any,
-    ) -> Statevec: ...
->>>>>>> fef9623 (Fixed typing after removing backend state.)
 
     @overload
     def simulate_pattern(
         self,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> fef9623 (Fixed typing after removing backend state.)
         backend: DensityMatrixBackend | Literal["densitymatrix"],
         input_state: State
         | DensityMatrix
@@ -1388,76 +1359,29 @@ class Pattern:
         | Iterable[ExpressionOrSupportsComplex]
         | Iterable[Iterable[ExpressionOrSupportsComplex]],
         rng: Generator | None = ...,
-<<<<<<< HEAD
         **kwargs: Any,
     ) -> DensityMatrix: ...
-=======
-        backend: DensityMatrixBackend,
-        input_state: State | DensityMatrix | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
-        rng: Generator | None,
-        **kwargs: Any,
-    ) -> DensityMatrix:
-        ...
->>>>>>> 8353f6e (trying to remove BackendState still causing problems)
-=======
-        **kwargs: Any,
-    ) -> DensityMatrix: ...
->>>>>>> fef9623 (Fixed typing after removing backend state.)
 
     @overload
     def simulate_pattern(
         self,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> fef9623 (Fixed typing after removing backend state.)
         backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
         input_state: State
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
         | Iterable[Iterable[ExpressionOrSupportsComplex]],
         rng: Generator | None = ...,
-<<<<<<< HEAD
         **kwargs: Any,
     ) -> MBQCTensorNet: ...
-=======
-        backend: TensorNetworkBackend,
-        input_state: State | Iterable[State] | Iterable[ExpressionOrSupportsComplex] | Iterable[Iterable[ExpressionOrSupportsComplex]],
-        rng: Generator | None,
-        **kwargs: Any,
-    ) -> MBQCTensorNet:
-        ...
->>>>>>> 8353f6e (trying to remove BackendState still causing problems)
-=======
-        **kwargs: Any,
-    ) -> MBQCTensorNet: ...
->>>>>>> fef9623 (Fixed typing after removing backend state.)
 
     @overload
     def simulate_pattern(
         self,
-<<<<<<< HEAD
-<<<<<<< HEAD
         backend: str = ...,
         input_state: Data = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> Statevec | DensityMatrix | MBQCTensorNet: ...
-=======
-        backend: str,
-        input_state: Data,
-        rng: Generator | None,
-        **kwargs: Any,
-    ) -> Statevec | DensityMatrix | MBQCTensorNet:
-        ...
->>>>>>> 8353f6e (trying to remove BackendState still causing problems)
-=======
-        backend: str = ...,
-        input_state: Data = ...,
-        rng: Generator | None = ...,
-        **kwargs: Any,
-    ) -> Statevec | DensityMatrix | MBQCTensorNet: ...
->>>>>>> fef9623 (Fixed typing after removing backend state.)
 
     def simulate_pattern(
         self,
