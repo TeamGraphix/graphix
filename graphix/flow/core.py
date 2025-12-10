@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from graphix.flow._find_gpflow import (
     _PM_co,
     compute_partial_order_layers,
 )
+from graphix.flow._partial_order import compute_topological_generations
 from graphix.flow.exceptions import (
     FlowError,
     FlowGenericError,
@@ -121,43 +123,45 @@ class XZCorrections(Generic[_M_co]):
         if not non_outputs_set.issuperset(x_corrections.keys() | z_corrections.keys()):
             raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys)
 
-        dag = _corrections_to_dag(x_corrections, z_corrections)
-        partial_order_layers = _dag_to_partial_order_layers(dag)
+        partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)
 
-        if partial_order_layers is None:
-            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
+        # dag = _corrections_to_dag(x_corrections, z_corrections)
+        # partial_order_layers = _dag_to_partial_order_layers(dag)
 
-        # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
-        if len(partial_order_layers) == 0:
-            partial_order_layers = [outputs_set] if outputs_set else []
-            if non_outputs_set:
-                partial_order_layers.append(frozenset(non_outputs_set))
-            return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
+        # if partial_order_layers is None:
+        #     raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
 
-        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain all or some output nodes.
-        if outputs_set:
-            if measured_layer_0 := partial_order_layers[0] - outputs_set:
-                # `partial_order_layers[0]` contains (some or all) outputs and measured nodes
-                partial_order_layers = [
-                    outputs_set,
-                    frozenset(measured_layer_0),
-                    *partial_order_layers[1:],
-                ]
-            else:
-                # `partial_order_layers[0]` contains only (some or all) outputs
-                partial_order_layers = [
-                    outputs_set,
-                    *partial_order_layers[1:],
-                ]
+        # # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
+        # if len(partial_order_layers) == 0:
+        #     partial_order_layers = [outputs_set] if outputs_set else []
+        #     if non_outputs_set:
+        #         partial_order_layers.append(frozenset(non_outputs_set))
+        #     return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
-        ordered_nodes = frozenset.union(*partial_order_layers)
+        # # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain all or some output nodes.
+        # if outputs_set:
+        #     if measured_layer_0 := partial_order_layers[0] - outputs_set:
+        #         # `partial_order_layers[0]` contains (some or all) outputs and measured nodes
+        #         partial_order_layers = [
+        #             outputs_set,
+        #             frozenset(measured_layer_0),
+        #             *partial_order_layers[1:],
+        #         ]
+        #     else:
+        #         # `partial_order_layers[0]` contains only (some or all) outputs
+        #         partial_order_layers = [
+        #             outputs_set,
+        #             *partial_order_layers[1:],
+        #         ]
 
-        if not ordered_nodes.issubset(nodes_set):
-            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
+        # ordered_nodes = frozenset.union(*partial_order_layers)
 
-        # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
-        if unordered_nodes := frozenset(nodes_set - ordered_nodes):
-            partial_order_layers[-1] |= unordered_nodes
+        # if not ordered_nodes.issubset(nodes_set):
+        #     raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
+
+        # # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
+        # if unordered_nodes := frozenset(nodes_set - ordered_nodes):
+        #     partial_order_layers[-1] |= unordered_nodes
 
         return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
@@ -938,6 +942,47 @@ def _corrections_to_dag(
     )
 
     return nx.DiGraph(relations)
+
+
+def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
+    x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
+) -> tuple[frozenset[int], ...]:
+    oset = frozenset(og.output_nodes)  # First layer by convention if not empty
+    dag: dict[int, set[int]] = defaultdict(set)  # `i: {j}` represents `i -> j`, i.e., a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
+    indegree_map: dict[int, int] = {}
+
+    for corrections in [x_corrections, z_corrections]:
+        for measured_node, corrected_nodes in corrections.items():
+            if measured_node not in oset:
+                for corrected_node in corrected_nodes - oset:
+                    if corrected_node not in dag[measured_node]:  # Don't include multiple edges in the dag.
+                        dag[measured_node].add(corrected_node)
+                        indegree_map[corrected_node] = indegree_map.get(corrected_node, 0) + 1
+
+    zero_indegree = og.graph.nodes - oset - indegree_map.keys()
+    generations = compute_topological_generations(dag, indegree_map, zero_indegree)
+    if generations is None:
+        raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
+
+    # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
+    if len(generations) == 0:
+        if oset:
+            return (oset, )
+        return ()
+
+    ordered_nodes = frozenset.union(*generations)
+
+    if not ordered_nodes.issubset(og.graph.nodes):
+        raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
+
+    # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
+    if unordered_nodes := frozenset(og.graph.nodes - ordered_nodes - oset):
+        if oset:
+            return oset, *generations[::-1], unordered_nodes
+        return *generations[::-1], unordered_nodes
+    if oset:
+        return oset, *generations[::-1]
+    return generations[::-1]
 
 
 def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[frozenset[int]] | None:
