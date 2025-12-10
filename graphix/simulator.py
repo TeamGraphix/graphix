@@ -328,26 +328,57 @@ class PatternSimulator:
 
 
 @overload
-def _initialize_backend(pattern: Pattern, backend: StatevectorBackend | Literal["statevector"], noise_model: None, branch_selector: BranchSelector | None, graph_prep: None, symbolic: bool) -> StatevectorBackend:
-    ...
+def _initialize_backend(
+    pattern: Pattern,
+    backend: StatevectorBackend | Literal["statevector"],
+    noise_model: None,
+    branch_selector: BranchSelector | None,
+    graph_prep: None,
+    symbolic: bool,
+) -> StatevectorBackend: ...
 
 
 @overload
-def _initialize_backend(pattern: Pattern, backend: DensityMatrixBackend | Literal["densitymatrix"], noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: None, symbolic: bool) -> DensityMatrixBackend:
-    ...
+def _initialize_backend(
+    pattern: Pattern,
+    backend: DensityMatrixBackend | Literal["densitymatrix"],
+    noise_model: NoiseModel | None,
+    branch_selector: BranchSelector | None,
+    graph_prep: None,
+    symbolic: bool,
+) -> DensityMatrixBackend: ...
 
 
 @overload
-def _initialize_backend(pattern: Pattern, backend: TensorNetworkBackend | Literal["tensornetwork", "mps"], noise_model: None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> TensorNetworkBackend:
-    ...
+def _initialize_backend(
+    pattern: Pattern,
+    backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
+    noise_model: None,
+    branch_selector: BranchSelector | None,
+    graph_prep: str | None,
+    symbolic: bool,
+) -> TensorNetworkBackend: ...
 
 
 @overload
-def _initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> StatevectorBackend | DensityMatrixBackend | TensorNetworkBackend:
-    ...
+def _initialize_backend(
+    pattern: Pattern,
+    backend: Backend[_StateT_co] | str,
+    noise_model: NoiseModel | None,
+    branch_selector: BranchSelector | None,
+    graph_prep: str | None,
+    symbolic: bool,
+) -> StatevectorBackend | DensityMatrixBackend | TensorNetworkBackend: ...
 
 
-def _initialize_backend(pattern: Pattern, backend: Backend[_StateT_co] | str, noise_model: NoiseModel | None, branch_selector: BranchSelector | None, graph_prep: str | None, symbolic: bool) -> StatevectorBackend | DensityMatrixBackend | TensorNetworkBackend:
+def _initialize_backend(
+    pattern: Pattern,
+    backend: Backend[_StateT_co] | str,
+    noise_model: NoiseModel | None,
+    branch_selector: BranchSelector | None,
+    graph_prep: str | None,
+    symbolic: bool,
+) -> StatevectorBackend | DensityMatrixBackend | TensorNetworkBackend:
     """
     Initialize the backend.
 
