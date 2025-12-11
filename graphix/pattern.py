@@ -1028,41 +1028,6 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_xzcorrections()
 
-    def get_layers(self) -> tuple[int, dict[int, set[int]]]:
-        """Construct layers(l_k) from dependency information.
-
-        kth layer must be measured before measuring k+1th layer
-        and nodes in the same layer can be measured simultaneously.
-
-        Returns
-        -------
-        depth : int
-            depth of graph
-        layers : dict of set
-            nodes grouped by layer index(k)
-        """
-        self.check_runnability()  # prevent infinite loop: e.g., [N(0), M(0, s_domain={0})]
-        dependency = self._get_dependency()
-        measured = self.results.keys()
-        self.update_dependency(measured, dependency)
-        not_measured = set(self.__input_nodes)
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
-                not_measured |= {cmd.node}
-        depth = 0
-        l_k: dict[int, set[int]] = {}
-        k = 0
-        while not_measured:
-            l_k[k] = set()
-            for i in not_measured:
-                if not dependency[i]:
-                    l_k[k] |= {i}
-            self.update_dependency(l_k[k], dependency)
-            not_measured -= l_k[k]
-            k += 1
-            depth = k
-        return depth, l_k
-
     def _measurement_order_depth(self) -> list[int]:
         """Obtain a measurement order which reduces the depth of a pattern.
 
