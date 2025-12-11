@@ -1377,6 +1377,13 @@ class Pattern:
         sim.run(input_state, rng=rng)
         return sim.backend.state
 
+    def remove_input_nodes(self) -> None:
+        """Remove the input nodes from the pattern."""
+        for node in reversed(self.input_nodes):
+            self.__seq.insert(0, command.N(node=node))
+        empty_nodes: list[int] = []
+        self.__input_nodes = empty_nodes
+
     def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
@@ -1390,8 +1397,8 @@ class Pattern:
         .. seealso:: :func:`measure_pauli`
 
         """
-        # if not ignore_pauli_with_deps:
-        #    self.move_pauli_measurements_to_the_front()
+        if self.input_nodes:
+            raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
         measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
 
     def draw_graph(
@@ -1661,10 +1668,6 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
-    if len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
-        new_inputs = []
-    else:
-        new_inputs = pattern.input_nodes
     for cmd in to_measure:
         pattern_cmd = cmd[0]
         measurement_basis = cmd[1]
@@ -1713,7 +1716,7 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     # update command sequence
     vops = graph_state.get_vops()
     new_seq: list[Command] = []
-    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
+    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
         cmd.clifford(Clifford(vops[cmd.node])) for cmd in standardized_pattern.m_list if cmd.node in graph_state.nodes
@@ -1728,7 +1731,7 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
 
     pat = Pattern() if copy else pattern
 
-    pat.replace(new_seq, input_nodes=new_inputs)
+    pat.replace(new_seq, input_nodes=[])
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
