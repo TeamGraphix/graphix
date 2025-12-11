@@ -1660,6 +1660,9 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
 
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
+    pat = Pattern() if copy else pattern
+    if pat._pauli_preprocessed is True:
+        return pat
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
@@ -1668,6 +1671,8 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
     results: dict[int, Outcome] = {}
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
+    if not to_measure:
+        return pattern
     for cmd in to_measure:
         pattern_cmd = cmd[0]
         measurement_basis = cmd[1]
@@ -1728,9 +1733,6 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     )
     new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
     new_seq.extend(command.X(node=node, domain=set(domain)) for node, domain in standardized_pattern.x_dict.items())
-
-    pat = Pattern() if copy else pattern
-
     pat.replace(new_seq, input_nodes=[])
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
