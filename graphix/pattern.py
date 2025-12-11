@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, SupportsFloat, TypeVar
 import networkx as nx
 from typing_extensions import assert_never
 
-import graphix.flow.core as flow
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.flow.core import CausalFlow, GFlow
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
 
@@ -953,43 +953,40 @@ class Pattern:
             return oset, *generations[::-1]
         return generations[::-1]
 
-    def extract_causal_flow(self) -> flow.CausalFlow[Measurement]:
+    def extract_causal_flow(self) -> CausalFlow[Measurement]:
         """Extract the causal flow structure from the current measurement pattern.
 
-        This method reconstructs the underlying open graph, validates measurement constraints, builds correction dependencies, and verifies that the resulting :class:`flow.CausalFlow` satisfies all well-formedness conditions.
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
 
         Returns
         -------
-        flow.CausalFlow[Measurement]
+        CausalFlow[Measurement]
             The causal flow associated with the current pattern.
 
         Raises
         ------
         FlowError
             If the pattern:
-            - contains measurements in forbidden planes (XZ or YZ),
-            - assigns more than one correcting node to the same measured node,
-            - is empty, or
-            - fails the well-formedness checks for a valid causal flow.
+            - Contains measurements in forbidden planes (XZ or YZ),
+            - Is empty, or
+            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
-        RunnabilityError
-            If the pattern is not runnable.
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
 
         Notes
         -----
-        A causal flow is a structural property of MBQC patterns ensuring that corrections can be assigned deterministically with *single-element* correcting sets and without requiring measurements in the XZ or YZ planes.
+        See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
-    def extract_gflow(self) -> flow.GFlow[Measurement]:
+    def extract_gflow(self) -> GFlow[Measurement]:
         """Extract the generalized flow (gflow) structure from the current measurement pattern.
 
-        The method reconstructs the underlying open graph, and determines the correction dependencies and the partial order required for a valid gflow. It then constructs and validates a :class:`flow.GFlow` object.
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
 
         Returns
         -------
-        flow.GFlow[Measurement]
+        GFlow[Measurement]
             The gflow associated with the current pattern.
 
         Raises
@@ -998,14 +995,11 @@ class Pattern:
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
-        RunnabilityError
-            If the pattern is not runnable.
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
 
         Notes
         -----
-        A gflow is a structural property of measurement-based quantum computation
-        (MBQC) patterns that ensures determinism and proper correction propagation.
+        See :func:`optimization.StandardizedPattern.extract_gflow` for additional information on why it is required to standardized the pattern to extract a gflow.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
