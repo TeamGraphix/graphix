@@ -975,7 +975,8 @@ class Pattern:
 
         Notes
         -----
-        See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
+        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
+        - Applying the chain ``Pattern.extract_causal_flow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
@@ -999,7 +1000,8 @@ class Pattern:
 
         Notes
         -----
-        See :func:`optimization.StandardizedPattern.extract_gflow` for additional information on why it is required to standardized the pattern to extract a gflow.
+        - See :func:`optimization.StandardizedPattern.extract_gflow` for additional information on why it is required to standardized the pattern to extract a gflow.
+        - Applying the chain ``Pattern.extract_gflow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
