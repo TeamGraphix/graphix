@@ -167,8 +167,8 @@ class OpenGraph(Generic[_M_co]):
         """
         return (
             nx.utils.graphs_equal(self.graph, other.graph)
-            and self.input_nodes == other.input_nodes
-            and other.output_nodes == other.output_nodes
+            and tuple(self.input_nodes) == tuple(other.input_nodes)
+            and tuple(self.output_nodes) == tuple(other.output_nodes)
         )
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:

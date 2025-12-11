@@ -13,6 +13,7 @@ from numpy.random import PCG64, Generator
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
+from graphix.flow.core import XZCorrections
 from graphix.flow.exceptions import (
     FlowError,
 )
@@ -1053,6 +1054,21 @@ class TestPattern:
         assert dict(xzc.x_corrections) == {}
         assert dict(xzc.z_corrections) == {}
         assert xzc.partial_order_layers == (frozenset({0, 1}),)
+
+    def test_extract_xzc_easy_example(self) -> None:
+        pattern = Pattern(
+            input_nodes=list(range(5)),
+            cmds=[M(0), M(1), M(2, s_domain={0}, t_domain={1}), X(3, domain={2}), M(3), Z(4, domain={3})],
+        )
+
+        xzc = pattern.extract_xzcorrections()
+        xzc_ref = XZCorrections.from_measured_nodes_mapping(
+            pattern.extract_opengraph(), x_corrections={0: {2}, 2: {3}}, z_corrections={1: {2}, 3: {4}}
+        )
+        assert xzc.og.isclose(xzc_ref.og)
+        assert xzc.x_corrections == xzc_ref.x_corrections
+        assert xzc.z_corrections == xzc_ref.z_corrections
+        assert xzc.partial_order_layers == xzc_ref.partial_order_layers
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
