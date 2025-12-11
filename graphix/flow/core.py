@@ -121,7 +121,9 @@ class XZCorrections(Generic[_M_co]):
         if not non_outputs_set.issuperset(x_corrections.keys() | z_corrections.keys()):
             raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys)
 
-        partial_order_layers = _corrections_to_partial_order_layers(og, x_corrections, z_corrections)  # Raises an `XZCorrectionsError` if mappings are not well formed.
+        partial_order_layers = _corrections_to_partial_order_layers(
+            og, x_corrections, z_corrections
+        )  # Raises an `XZCorrectionsError` if mappings are not well formed.
 
         return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
 
@@ -903,11 +905,12 @@ def _corrections_to_dag(
 
     return nx.DiGraph(relations)
 
+
 # TODO: UP docstring
 
 
-def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
-    x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
+def _corrections_to_partial_order_layers(
+    og: OpenGraph[_M_co], x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
 ) -> tuple[frozenset[int], ...]:
     """Return the partial order encoded in a directed graph in a layer form if it exists.
 
@@ -935,7 +938,9 @@ def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
                 - Corrections do not form closed loops.
     """
     oset = frozenset(og.output_nodes)  # First layer by convention if not empty
-    dag: dict[int, set[int]] = defaultdict(set)  # `i: {j}` represents `i -> j`, i.e., a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
+    dag: dict[int, set[int]] = defaultdict(
+        set
+    )  # `i: {j}` represents `i -> j`, i.e., a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
     indegree_map: dict[int, int] = {}
 
     for corrections in [x_corrections, z_corrections]:
@@ -954,7 +959,7 @@ def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
     # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
     if len(generations) == 0:
         if oset:
-            return (oset, )
+            return (oset,)
         return ()
 
     ordered_nodes = frozenset.union(*generations)
@@ -964,9 +969,8 @@ def _corrections_to_partial_order_layers(og: OpenGraph[_M_co],
 
     # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
     if unordered_nodes := frozenset(og.graph.nodes - ordered_nodes - oset):
-        if oset:
-            return oset, *generations[::-1], unordered_nodes
-        return *generations[::-1], unordered_nodes
+        generations = *generations[:-1], frozenset(generations[-1] | unordered_nodes)
+
     if oset:
         return oset, *generations[::-1]
     return generations[::-1]

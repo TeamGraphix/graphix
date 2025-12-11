@@ -1036,7 +1036,11 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.extract_xzcorrections().to_pattern()
+        pc = p_ref.copy()
+        pc.standardize()
+        xzc = pc.extract_xzcorrections()
+        xzc.check_well_formed()
+        p_test = xzc.to_pattern()
 
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
