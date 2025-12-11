@@ -376,12 +376,17 @@ class StandardizedPattern(_StandardizedPattern):
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
         """Extract the measurement order of the pattern in the form of layers.
 
-        This method builds a directed acyclical diagram (DAG) from the pattern and then performs a topological sort.
+        This method builds a directed acyclical graph (DAG) from the pattern and then performs a topological sort.
 
         Returns
         -------
         tuple[frozenset[int], ...]
             Measurement partial order between the pattern's nodes in a layer form.
+
+        Raises
+        ------
+        ValueError
+            If the correction domains in the pattern form closed loops. This implies that the pattern is not runnable.
 
         Notes
         -----
@@ -427,7 +432,8 @@ class StandardizedPattern(_StandardizedPattern):
         zero_indegree -= indegree_map.keys()
 
         generations = compute_topological_generations(dag, indegree_map, zero_indegree)
-        assert generations is not None  # DAG can't contain loops because `self` is a runnable pattern.
+        if generations is None:
+            raise ValueError("Pattern domains form closed loops.")
 
         if oset:
             return oset, *generations[::-1]
@@ -436,7 +442,7 @@ class StandardizedPattern(_StandardizedPattern):
     def extract_causal_flow(self) -> CausalFlow[Measurement]:
         """Extract the causal flow structure from the current measurement pattern.
 
-        This method reconstructs the underlying open graph, validates measurement constraints, builds correction dependencies, and verifies that the resulting :class:`flow.CausalFlow` satisfies all well-formedness conditions.
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
 
         Returns
         -------
@@ -447,16 +453,17 @@ class StandardizedPattern(_StandardizedPattern):
         ------
         FlowError
             If the pattern:
-            - contains measurements in forbidden planes (XZ or YZ),
-            - assigns more than one correcting node to the same measured node,
-            - is empty, or
-            - fails the well-formedness checks for a valid causal flow.
+            - Contains measurements in forbidden planes (XZ or YZ),
+            - Assigns more than one correcting node to the same measured node,
+            - Is empty, or
+            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
 
         Notes
         -----
-        A causal flow is a structural property of MBQC patterns ensuring that corrections can be assigned deterministically with *single-element* correcting sets and without requiring measurements in the XZ or YZ planes.
+        This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
+        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which  guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
         measurements: dict[int, Measurement] = {}
         correction_function: dict[int, set[int]] = {}
@@ -493,7 +500,7 @@ class StandardizedPattern(_StandardizedPattern):
     def extract_gflow(self) -> GFlow[Measurement]:
         """Extract the generalized flow (gflow) structure from the current measurement pattern.
 
-        The method reconstructs the underlying open graph, and determines the correction dependencies and the partial order required for a valid gflow. It then constructs and validates a :class:`flow.GFlow` object.
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
 
         Returns
         -------
@@ -506,12 +513,12 @@ class StandardizedPattern(_StandardizedPattern):
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
 
         Notes
         -----
-        A gflow is a structural property of measurement-based quantum computation
-        (MBQC) patterns that ensures determinism and proper correction propagation.
+        This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
+        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which  guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
         measurements: dict[int, Measurement] = {}
         correction_function: dict[int, set[int]] = defaultdict(set)
@@ -537,7 +544,7 @@ class StandardizedPattern(_StandardizedPattern):
 
         partial_order_layers = self.extract_partial_order_layers()
         og = OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
-        gf = GFlow(og, correction_function, partial_order_layers)
+        gf = GFlow(og, dict(correction_function), partial_order_layers)
         gf.check_well_formed()
         return gf
 

@@ -891,7 +891,7 @@ class Pattern:
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
         """Extract the measurement order of the pattern in the form of layers.
 
-        This method builds a directed acyclical diagram (DAG) from the pattern and then performs a topological sort.
+        This method builds a directed acyclical graph (DAG) from the pattern and then performs a topological sort.
 
         Returns
         -------
@@ -910,6 +910,8 @@ class Pattern:
             - Nodes in layer ``i`` must be measured after nodes in layer ``i + 1``.
             - All output nodes (if any) are in the first layer.
             - There cannot be any empty layers.
+
+        The partial order layerings obtained with this method before and after standardizing a pattern may differ, but they will always be compatible. This occurs because the commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections which add additional constrains to pattern's induced DAG.
         """
         self.check_runnability()
 
@@ -922,6 +924,7 @@ class Pattern:
             node: set() for node in zero_indegree
         }  # `i: {j}` represents `i -> j` which means that node `i` must be measured before node `j`.
         indegree_map: dict[int, int] = {}
+        node: int | None = None  # To avoid Pyright's "PossiblyUnboundVariable" error
 
         for cmd in self:
             domain = set()
@@ -935,6 +938,7 @@ class Pattern:
                 node, domain = cmd.node, cmd.domain
 
             for dep_node in domain:
+                assert node is not None
                 if (
                     not {node, dep_node} & excluded_nodes and node not in dag[dep_node]
                 ):  # Don't include multiple edges in the dag.
