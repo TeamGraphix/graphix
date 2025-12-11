@@ -1036,9 +1036,7 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        pc = p_ref.copy()
-        pc.standardize()
-        xzc = pc.extract_xzcorrections()
+        xzc = p_ref.extract_xzcorrections()
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
@@ -1048,6 +1046,13 @@ class TestPattern:
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
         assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
+    def test_extract_xzc_empty_domains(self) -> None:
+        p = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1))])
+        xzc = p.extract_xzcorrections()
+        assert dict(xzc.x_corrections) == {}
+        assert dict(xzc.z_corrections) == {}
+        assert xzc.partial_order_layers == (frozenset({0, 1}),)
 
 
 def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:

@@ -1006,6 +1006,26 @@ class Pattern:
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
     def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+        """Extract the XZ-corrections from the current measurement pattern.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            The XZ-corrections associated with the current pattern.
+
+        Raises
+        ------
+        XZCorrectionsError
+            If the extracted correction dictionaries are not well formed.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        To ensure that applying the chain ``Pattern.extract_xzcorrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation, XZ-corrections must be extracted from a standardized pattern. This requirement arises for the same reason that flow extraction also operates correctly on standardized patterns only.
+        This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        See docstring in :func:`optimization.StandardizedPattern.extract_gflow` for additional information.
+        """
         return optimization.StandardizedPattern.from_pattern(self).extract_xzcorrections()
 
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
