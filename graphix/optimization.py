@@ -23,8 +23,6 @@ from graphix.flow.core import CausalFlow, GFlow
 from graphix.flow.exceptions import (
     FlowGenericError,
     FlowGenericErrorReason,
-    FlowPropositionError,
-    FlowPropositionErrorReason,
 )
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Domains, Measurement, Outcome, PauliMeasurement
@@ -373,6 +371,30 @@ class StandardizedPattern(_StandardizedPattern):
             done.add(node)
         return pattern
 
+    def extract_opengraph(self) -> OpenGraph[Measurement]:
+        """Extract the underlying resource-state open graph from the pattern.
+
+        Returns
+        -------
+        OpenGraph[Measurement]
+
+        Raises
+        ------
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state.
+
+        Notes
+        -----
+        This operation loses all the information on the Clifford commands.
+        """
+        for n in self.n_list:
+            if n.state != BasicStates.PLUS:
+                raise ValueError(
+                    f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
+                )
+        measurements = {m.node: Measurement(m.angle, m.plane) for m in self.m_list}
+        return OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
+
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
         """Extract the measurement order of the pattern in the form of layers.
 
@@ -454,7 +476,6 @@ class StandardizedPattern(_StandardizedPattern):
         FlowError
             If the pattern:
             - Contains measurements in forbidden planes (XZ or YZ),
-            - Assigns more than one correcting node to the same measured node,
             - Is empty, or
             - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
@@ -463,38 +484,26 @@ class StandardizedPattern(_StandardizedPattern):
         Notes
         -----
         This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
-        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which  guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
+        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
-        measurements: dict[int, Measurement] = {}
-        correction_function: dict[int, set[int]] = {}
-
-        for n in self.n_list:
-            if n.state != BasicStates.PLUS:
-                raise ValueError(
-                    f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
-                )
-
-        def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
-            for measured_node in domain:
-                if measured_node in correction_function:
-                    raise FlowPropositionError(
-                        FlowPropositionErrorReason.C0, measured_node, {node, *correction_function[measured_node]}
-                    )
-                correction_function[measured_node] = {node}
+        correction_function: dict[int, set[int]] = defaultdict(set)
 
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
                 raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-            measurements[m.node] = Measurement(m.angle, m.plane)
-            process_domain(m.node, m.s_domain)
+            correction_function = _update_corrections(m.node, m.s_domain, correction_function)
 
         for node, domain in self.x_dict.items():
-            process_domain(node, domain)
+            correction_function = _update_corrections(node, domain, correction_function)
 
-        partial_order_layers = self.extract_partial_order_layers()
-        og = OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
-        cf = CausalFlow(og, correction_function, partial_order_layers)
-        cf.check_well_formed()
+        og = (
+            self.extract_opengraph()
+        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
+        partial_order_layers = (
+            self.extract_partial_order_layers()
+        )  # Raises a `ValueError` if the pattern corrections form closed loops.
+        cf = CausalFlow(og, dict(correction_function), partial_order_layers)
+        cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible, or if a measured node is corrected by more than one node.
         return cf
 
     def extract_gflow(self) -> GFlow[Measurement]:
@@ -518,32 +527,24 @@ class StandardizedPattern(_StandardizedPattern):
         Notes
         -----
         This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
-        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which  guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
+        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
-        measurements: dict[int, Measurement] = {}
         correction_function: dict[int, set[int]] = defaultdict(set)
 
-        for n in self.n_list:
-            if n.state != BasicStates.PLUS:
-                raise ValueError(
-                    f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
-                )
-
-        def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
-            for measured_node in domain:
-                correction_function[measured_node].add(node)
-
         for m in self.m_list:
-            measurements[m.node] = Measurement(m.angle, m.plane)
             if m.plane in {Plane.XZ, Plane.YZ}:
                 correction_function[m.node].add(m.node)
-            process_domain(m.node, m.s_domain)
+            correction_function = _update_corrections(m.node, m.s_domain, correction_function)
 
         for node, domain in self.x_dict.items():
-            process_domain(node, domain)
+            correction_function = _update_corrections(node, domain, correction_function)
 
-        partial_order_layers = self.extract_partial_order_layers()
-        og = OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
+        og = (
+            self.extract_opengraph()
+        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
+        partial_order_layers = (
+            self.extract_partial_order_layers()
+        )  # Raises a `ValueError` if the pattern corrections form closed loops.
         gf = GFlow(og, dict(correction_function), partial_order_layers)
         gf.check_well_formed()
         return gf
@@ -602,6 +603,36 @@ def _incorporate_pauli_results_in_domain(
     new_domain = set(domain - results.keys())
     odd_outcome = sum(outcome for node, outcome in results.items() if node in domain) % 2
     return odd_outcome == 1, new_domain
+
+
+def _update_corrections(
+    node: Node, domain: AbstractSet[Node], correction: dict[Node, set[Node]]
+) -> dict[Node, set[Node]]:
+    """Update the correction mapping by adding a node to all entries in a domain.
+
+    Parameters
+    ----------
+    node : Node
+        The node to add as a correction.
+    domain : AbstractSet[Node]
+        A set of measured nodes whose corresponding correction sets should be updated.
+    correction : dict[Node, set[Node]]
+        A mapping from measured nodes to sets of nodes on which corrections are applied. This
+        dictionary is modified in place.
+
+    Returns
+    -------
+    dict[Node, set[Node]]
+        The updated correction dictionary with `node` added to the correction
+        sets of all nodes in `domain`.
+
+    Notes
+    -----
+    This function is used to extract the correction function from :math:`X`, :math:`Z` and :math:`M` commands when constructing a flow.
+    """
+    for measured_node in domain:
+        correction[measured_node].add(node)
+    return correction
 
 
 def incorporate_pauli_results(pattern: Pattern) -> Pattern:
