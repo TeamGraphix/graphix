@@ -487,14 +487,15 @@ class StandardizedPattern(_StandardizedPattern):
         In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
         correction_function: dict[int, set[int]] = defaultdict(set)
+        pre_measured_nodes = set(self.results.keys())  # Not included in the flow.
 
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
                 raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-            correction_function = _update_corrections(m.node, m.s_domain, correction_function)
+            correction_function = _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
         for node, domain in self.x_dict.items():
-            correction_function = _update_corrections(node, domain, correction_function)
+            correction_function = _update_corrections(node, domain - pre_measured_nodes, correction_function)
 
         og = (
             self.extract_opengraph()
@@ -530,14 +531,15 @@ class StandardizedPattern(_StandardizedPattern):
         In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
         correction_function: dict[int, set[int]] = defaultdict(set)
+        pre_measured_nodes = set(self.results.keys())  # Not included in the flow.
 
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
                 correction_function[m.node].add(m.node)
-            correction_function = _update_corrections(m.node, m.s_domain, correction_function)
+            correction_function = _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
         for node, domain in self.x_dict.items():
-            correction_function = _update_corrections(node, domain, correction_function)
+            correction_function = _update_corrections(node, domain - pre_measured_nodes, correction_function)
 
         og = (
             self.extract_opengraph()
