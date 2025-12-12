@@ -29,12 +29,14 @@ class CheckedBranchSelector(RandomBranchSelector):
     """Random branch selector that verifies that expectation values match the expected ones."""
 
     expected: Mapping[int, float] = dataclasses.field(default_factory=dict)
+    rel_tol: float = 1e-09
+    abs_tol: float = 0.0
 
     @override
     def measure(self, qubit: int, f_expectation0: Callable[[], float], rng: Generator | None = None) -> Outcome:
         """Return the measurement outcome of ``qubit``."""
         expectation0 = f_expectation0()
-        assert math.isclose(expectation0, self.expected[qubit])
+        assert math.isclose(expectation0, self.expected[qubit], rel_tol=self.rel_tol, abs_tol=self.abs_tol)
         return super().measure(qubit, lambda: expectation0)
 
 

@@ -7,6 +7,7 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
+from math import pi
 from typing import TYPE_CHECKING, SupportsFloat
 
 import numpy as np
@@ -15,12 +16,13 @@ from typing_extensions import assert_never
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 from graphix.instruction import Instruction, InstructionKind
+from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.parameter import ExpressionOrFloat, Parameter
 from graphix.pattern import Pattern
-from graphix.sim import Data, Statevec, base_backend
+from graphix.sim.statevec import Statevec, StatevectorBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -28,6 +30,8 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.command import Command
+    from graphix.sim import Data
+    from graphix.sim.base_backend import Matrix
 
 
 @dataclasses.dataclass
@@ -122,7 +126,7 @@ class Circuit:
         elif instr.kind == InstructionKind.I:
             self.i(instr.target)
         elif instr.kind == InstructionKind.M:
-            self.m(instr.target, instr.plane, instr.angle)
+            self.m(instr.target, instr.axis)
         elif instr.kind == InstructionKind.RX:
             self.rx(instr.target, instr.angle)
         elif instr.kind == InstructionKind.RY:
@@ -323,7 +327,7 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.I(target=qubit))
 
-    def m(self, qubit: int, plane: Plane, angle: Angle) -> None:
+    def m(self, qubit: int, axis: Axis) -> None:
         """Measure a quantum qubit.
 
         The measured qubit cannot be used afterwards.
@@ -332,11 +336,11 @@ class Circuit:
         ----------
         qubit : int
             target qubit
-        plane : Plane
-        angle : Angle
+        axis : Axis
+            measurement basis
         """
         assert qubit in self.active_qubits
-        self.instruction.append(instruction.M(target=qubit, plane=plane, angle=angle))
+        self.instruction.append(instruction.M(target=qubit, axis=axis))
         self.active_qubits.remove(qubit)
 
     def transpile(self) -> TranspileResult:
@@ -435,7 +439,7 @@ class Circuit:
                 n_node += 18
             elif instr.kind == instruction.InstructionKind.M:
                 target = _check_target(out, instr.target)
-                seq = self._m_command(target, instr.plane, instr.angle)
+                seq = self._m_command(target, instr.axis)
                 pattern.extend(seq)
                 classical_outputs.append(target)
                 out[instr.target] = None
@@ -486,24 +490,23 @@ class Circuit:
         return control_node, ancilla[1], seq
 
     @classmethod
-    def _m_command(cls, input_node: int, plane: Plane, angle: Angle) -> list[Command]:
+    def _m_command(cls, input_node: int, axis: Axis) -> list[Command]:
         """MBQC commands for measuring qubit.
 
         Parameters
         ----------
         input_node : int
             target node on graph
-        plane : Plane
-            plane of the measure
-        angle : Angle
-            angle of the measure (unit: pi radian)
+        axis : Axis
+            measurement basis
 
         Returns
         -------
         commands : list
             list of MBQC commands
         """
-        return [M(node=input_node, plane=plane, angle=angle)]
+        measurement = _measurement_of_axis(axis)
+        return [M(node=input_node, plane=measurement.plane, angle=measurement.angle / pi)]
 
     @classmethod
     def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command]]:
@@ -887,57 +890,63 @@ class Circuit:
         result : :class:`SimulateResult`
             output state of the statevector simulation and results of classical measures.
         """
-        symbolic = self.is_parameterized()
         if branch_selector is None:
             branch_selector = RandomBranchSelector()
 
-        state = Statevec(nqubit=self.width) if input_state is None else Statevec(nqubit=self.width, data=input_state)
+        backend = StatevectorBackend(branch_selector=branch_selector)
+        if input_state is None:
+            backend.add_nodes(range(self.width))
+        else:
+            backend.add_nodes(range(self.width), input_state)
 
         classical_measures = []
 
         for i in range(len(self.instruction)):
             instr = self.instruction[i]
+
+            def evolve_single(op: Matrix, target: int) -> None:
+                backend.state.evolve_single(op, backend.node_index.index(target))
+
+            def evolve(op: Matrix, qargs: Iterable[int]) -> None:
+                backend.state.evolve(op, [backend.node_index.index(qarg) for qarg in qargs])
+
             if instr.kind == instruction.InstructionKind.CNOT:
-                state.cnot((instr.control, instr.target))
+                backend.state.cnot((backend.node_index.index(instr.control), backend.node_index.index(instr.target)))
             elif instr.kind == instruction.InstructionKind.SWAP:
-                state.swap(instr.targets)
+                u, v = instr.targets
+                backend.state.swap((backend.node_index.index(u), backend.node_index.index(v)))
             elif instr.kind == instruction.InstructionKind.I:
                 pass
             elif instr.kind == instruction.InstructionKind.S:
-                state.evolve_single(Ops.S, instr.target)
+                evolve_single(Ops.S, instr.target)
             elif instr.kind == instruction.InstructionKind.H:
-                state.evolve_single(Ops.H, instr.target)
+                evolve_single(Ops.H, instr.target)
             elif instr.kind == instruction.InstructionKind.X:
-                state.evolve_single(Ops.X, instr.target)
+                evolve_single(Ops.X, instr.target)
             elif instr.kind == instruction.InstructionKind.Y:
-                state.evolve_single(Ops.Y, instr.target)
+                evolve_single(Ops.Y, instr.target)
             elif instr.kind == instruction.InstructionKind.Z:
-                state.evolve_single(Ops.Z, instr.target)
+                evolve_single(Ops.Z, instr.target)
             elif instr.kind == instruction.InstructionKind.RX:
-                state.evolve_single(Ops.rx(instr.angle), instr.target)
+                evolve_single(Ops.rx(instr.angle), instr.target)
             elif instr.kind == instruction.InstructionKind.RY:
-                state.evolve_single(Ops.ry(instr.angle), instr.target)
+                evolve_single(Ops.ry(instr.angle), instr.target)
             elif instr.kind == instruction.InstructionKind.RZ:
-                state.evolve_single(Ops.rz(instr.angle), instr.target)
+                evolve_single(Ops.rz(instr.angle), instr.target)
             elif instr.kind == instruction.InstructionKind.RZZ:
-                state.evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
+                evolve(Ops.rzz(instr.angle), [instr.control, instr.target])
             elif instr.kind == instruction.InstructionKind.CCX:
-                state.evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
+                evolve(Ops.CCX, [instr.controls[0], instr.controls[1], instr.target])
             elif instr.kind == instruction.InstructionKind.M:
-                result = base_backend.perform_measure(
+                result = backend.measure(
                     instr.target,
-                    instr.target,
-                    instr.plane,
-                    instr.angle * np.pi,
-                    state,
-                    branch_selector,
+                    _measurement_of_axis(instr.axis),
                     rng=rng,
-                    symbolic=symbolic,
                 )
                 classical_measures.append(result)
             else:
                 raise ValueError(f"Unknown instruction: {instr}")
-        return SimulateResult(state, tuple(classical_measures))
+        return SimulateResult(backend.state, tuple(classical_measures))
 
     def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:
         """Apply `f` to all angles that occur in the circuit."""
@@ -946,7 +955,6 @@ class Circuit:
             # Use == for mypy
             if (
                 instr.kind == InstructionKind.RZZ  # noqa: PLR1714
-                or instr.kind == InstructionKind.M
                 or instr.kind == InstructionKind.RX
                 or instr.kind == InstructionKind.RY
                 or instr.kind == InstructionKind.RZ
@@ -972,7 +980,6 @@ class Circuit:
             not isinstance(instr.angle, SupportsFloat)
             for instr in self.instruction
             if instr.kind == InstructionKind.RZZ  # noqa: PLR1714
-            or instr.kind == InstructionKind.M
             or instr.kind == InstructionKind.RX
             or instr.kind == InstructionKind.RY
             or instr.kind == InstructionKind.RZ
@@ -985,6 +992,23 @@ class Circuit:
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrFloat]) -> Circuit:
         """Return a copy of the circuit where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
         return self.map_angle(lambda angle: parameter.xreplace(angle, assignment))
+
+    def transpile_measurements_to_z_axis(self) -> Circuit:
+        """Return an equivalent circuit where all measurements are on Z axis."""
+        circuit = Circuit(width=self.width)
+        for instr in self.instruction:
+            if instr.kind == InstructionKind.M:
+                if instr.axis == Axis.X:
+                    circuit.h(instr.target)
+                    circuit.m(instr.target, Axis.Z)
+                elif instr.axis == Axis.Y:
+                    circuit.rx(instr.target, pi / 2)
+                    circuit.m(instr.target, Axis.Z)
+                else:
+                    circuit.add(instr)
+            else:
+                circuit.add(instr)
+        return circuit
 
 
 def _extend_domain(measure: M, domain: set[int]) -> None:
@@ -1011,3 +1035,11 @@ def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]
             yield instruction.CNOT(control=instr.control, target=instr.target)
         else:
             yield instr
+
+
+def _measurement_of_axis(axis: Axis) -> Measurement:
+    if axis == Axis.X:
+        return Measurement(plane=Plane.XY, angle=0)
+    if axis == Axis.Y:
+        return Measurement(plane=Plane.YZ, angle=pi / 2)
+    return Measurement(plane=Plane.XZ, angle=0)
