@@ -251,9 +251,6 @@ class Statevec(DenseState):
             Care needs to be taken when using this method.
             Checks for separability will be implemented soon as an option.
 
-        .. seealso::
-            :meth:`graphix.sim.statevec.Statevec.ptrace` and warning therein.
-
         Parameters
         ----------
         qarg : int
