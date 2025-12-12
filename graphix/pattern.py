@@ -123,6 +123,7 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
+        self._pauli_preprocessed = False
         if cmd.kind == CommandKind.N:
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
@@ -136,6 +137,7 @@ class Pattern:
 
         :param cmds: sequences of commands
         """
+        self._pauli_preprocessed = False
         for item in cmds:
             if isinstance(item, Iterable):
                 for cmd in item:
@@ -145,6 +147,7 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
+        self._pauli_preprocessed = False
         self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
@@ -156,6 +159,7 @@ class Pattern:
 
         :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
+        self._pauli_preprocessed = False
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
         self.clear()
@@ -201,6 +205,7 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
+        self._pauli_preprocessed = False
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
@@ -1669,7 +1674,7 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = {}
+    results: dict[int, Outcome] = pat.results
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
     if not to_measure:
         return pattern

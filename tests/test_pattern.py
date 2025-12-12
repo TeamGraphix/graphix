@@ -266,6 +266,41 @@ class TestPattern:
         state1 = pattern1.simulate_pattern(rng=rng)
         assert np.abs(np.dot(state.flatten().conjugate(), state1.flatten())) == pytest.approx(1)
 
+    @pytest.mark.parametrize("jumps", range(1, 4))
+    def test_pauli_repeated_measurement(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        pattern = circuit.transpile().pattern
+        pattern.remove_input_nodes()
+        assert not pattern.results
+        pattern.perform_pauli_measurements()
+        assert pattern.results
+        pattern.perform_pauli_measurements()
+        assert pattern.results
+
+    @pytest.mark.parametrize("jumps", range(1, 4))
+    def test_pauli_repeated_measurement_compose(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        circuit1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        pattern = circuit.transpile().pattern
+        pattern1 = circuit1.transpile().pattern
+        pattern.remove_input_nodes()
+        assert not pattern.results
+        assert not pattern1.results
+        pattern.perform_pauli_measurements()
+        assert pattern.results
+        composed_pattern, _ = pattern.compose(
+            pattern1, mapping=dict(zip(pattern1.input_nodes, pattern.output_nodes, strict=True)), preserve_mapping=True
+        )
+        composed_pattern.remove_input_nodes()
+        composed_pattern.perform_pauli_measurements()
+        assert len(composed_pattern.results) > len(pattern.results)
+
     def test_get_meas_plane(self) -> None:
         preset_meas_plane = [
             Plane.XY,
