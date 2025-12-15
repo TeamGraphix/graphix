@@ -21,7 +21,7 @@ from graphix._linalg import MatGF2
 from graphix.flow._find_gpflow import (
     AlgebraicOpenGraph,
     PlanarAlgebraicOpenGraph,
-    _compute_topological_generations,
+    _try_ordering_matrix_to_topological_generations,
     compute_correction_matrix,
 )
 from graphix.fundamentals import Axis, Plane
@@ -42,7 +42,7 @@ class AlgebraicOpenGraphTestCase(NamedTuple):
 
 class DAGTestCase(NamedTuple):
     adj_mat: MatGF2
-    generations: list[list[int]] | None
+    generations: tuple[frozenset[int], ...] | None
 
 
 def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
@@ -230,14 +230,15 @@ def prepare_test_dag() -> list[DAGTestCase]:
     test_cases.extend(
         (  # Simple DAG
             DAGTestCase(
-                adj_mat=MatGF2([[0, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0], [0, 1, 1, 0]]), generations=[[0], [1, 2], [3]]
+                adj_mat=MatGF2([[0, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0], [0, 1, 1, 0]]),
+                generations=(frozenset({0}), frozenset({1, 2}), frozenset({3})),
             ),
             # Graph with loop
             DAGTestCase(adj_mat=MatGF2([[0, 0, 0, 0], [1, 0, 0, 1], [1, 0, 0, 0], [0, 1, 1, 0]]), generations=None),
             # Disconnected graph
             DAGTestCase(
                 adj_mat=MatGF2([[0, 0, 0, 0, 0], [1, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 1, 0, 0]]),
-                generations=[[0, 2], [1, 3, 4]],
+                generations=(frozenset({0, 2}), frozenset({1, 3, 4})),
             ),
         )
     )
@@ -273,8 +274,8 @@ class TestAlgebraicFlow:
             assert corr_matrix is None
 
     @pytest.mark.parametrize("test_case", prepare_test_dag())
-    def test_compute_topological_generations(self, test_case: DAGTestCase) -> None:
+    def test_try_ordering_matrix_to_topological_generations(self, test_case: DAGTestCase) -> None:
         adj_mat = test_case.adj_mat
         generations_ref = test_case.generations
 
-        assert generations_ref == _compute_topological_generations(adj_mat)
+        assert generations_ref == _try_ordering_matrix_to_topological_generations(adj_mat)
