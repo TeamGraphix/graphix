@@ -33,8 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #349, #362: Patterns transpiled from circuits always have causal flow.
 
-- #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
-  commands without domain information.
+- #383: `Pattern.check_runnability` no longer fails on custom `BaseM` commands without domain information.
+
+- #389, #391: `Pattern.extract_opengraph` raises an exception if pattern has `N` commands which do not represent a |+> state.
 
 ### Changed
 

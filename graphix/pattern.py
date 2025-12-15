@@ -1156,6 +1156,11 @@ class Pattern:
         -------
         OpenGraph[Measurement]
 
+        Raises
+        ------
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state.
+
         Notes
         -----
         This operation loses all the information on the Clifford commands.
@@ -1166,6 +1171,10 @@ class Pattern:
 
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N:
+                if cmd.state != BasicStates.PLUS:
+                    raise ValueError(
+                        f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
+                    )
                 nodes.add(cmd.node)
             elif cmd.kind == CommandKind.E:
                 u, v = cmd.nodes
