@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -7,7 +8,30 @@ import numpy as np
 import pytest
 
 from graphix.command import E, M, N, X, Z
-from graphix.flow.core import CausalFlow, GFlow, PauliFlow, XZCorrections
+from graphix.flow.core import (
+    CausalFlow,
+    GFlow,
+    PauliFlow,
+    XZCorrections,
+)
+from graphix.flow.exceptions import (
+    FlowError,
+    FlowGenericError,
+    FlowGenericErrorReason,
+    FlowPropositionError,
+    FlowPropositionErrorReason,
+    FlowPropositionOrderError,
+    FlowPropositionOrderErrorReason,
+    PartialOrderError,
+    PartialOrderErrorReason,
+    PartialOrderLayerError,
+    PartialOrderLayerErrorReason,
+    XZCorrectionsError,
+    XZCorrectionsGenericError,
+    XZCorrectionsGenericErrorReason,
+    XZCorrectionsOrderError,
+    XZCorrectionsOrderErrorReason,
+)
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
@@ -81,11 +105,11 @@ def generate_gflow_0() -> GFlow[Measurement]:
 
     GFlow:
         g(0) = {2, 5}, g(1) = {3, 4}, g(2) = {4}, g(3) = {5}
-        {4, 5} > {0, 1, 2, 3}
+        {4, 5} > {2, 3} > {0, 1}
 
     Notes
     -----
-    This is the same open graph as in `:func: generate_causal_flow_1` but now we consider a gflow which has lower depth than the causal flow.
+    This is the same open graph as in `:func: generate_causal_flow_1` but now we consider a gflow.
     """
     og = OpenGraph(
         graph=nx.Graph([(0, 2), (2, 3), (1, 3), (2, 4), (3, 5)]),
@@ -96,7 +120,7 @@ def generate_gflow_0() -> GFlow[Measurement]:
     return GFlow(
         og=og,
         correction_function={0: {2, 5}, 1: {3, 4}, 2: {4}, 3: {5}},
-        partial_order_layers=[{4, 5}, {0, 1, 2, 3}],
+        partial_order_layers=[{4, 5}, {2, 3}, {0, 1}],
     )
 
 
@@ -152,7 +176,7 @@ def generate_gflow_2() -> GFlow[Plane]:
     return GFlow(
         og=og,
         correction_function={0: {4, 5}, 1: {3, 4, 5}, 2: {3, 4}},
-        partial_order_layers=[{3, 4}, {1}, {0, 2}],
+        partial_order_layers=[{3, 4, 5}, {1}, {0, 2}],
     )
 
 
@@ -279,13 +303,13 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                         E((3, 1)),
                         E((3, 5)),
                         M(0),
-                        Z(3, {0}),
                         Z(4, {0}),
                         X(2, {0}),
+                        X(5, {0}),
                         M(1),
-                        Z(2, {1}),
                         Z(5, {1}),
                         X(3, {1}),
+                        X(4, {1}),
                         M(2),
                         X(4, {2}),
                         M(3),
@@ -369,7 +393,9 @@ class TestFlowPatternConversion:
     @pytest.mark.parametrize("test_case", prepare_test_xzcorrections())
     def test_flow_to_corrections(self, test_case: XZCorrectionsTestCase) -> None:
         flow = test_case.flow
+        flow.check_well_formed()
         corrections = flow.to_corrections()
+        corrections.check_well_formed()
         assert corrections.z_corrections == test_case.z_corr
         assert corrections.x_corrections == test_case.x_corr
 
@@ -378,7 +404,6 @@ class TestFlowPatternConversion:
         if test_case.pattern is not None:
             pattern = test_case.flow.to_corrections().to_pattern()  # type: ignore[misc]
             n_shots = 2
-            results = []
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
                 alpha = 2 * np.pi * fx_rng.random()
@@ -386,11 +411,8 @@ class TestFlowPatternConversion:
 
                 for _ in range(n_shots):
                     state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-                    results.append(np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())))
-
-            avg = sum(results) / (n_shots * 3)
-
-            assert avg == pytest.approx(1)
+                    result = np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten()))
+                    assert result == pytest.approx(1)
 
 
 class TestXZCorrections:
@@ -421,6 +443,8 @@ class TestXZCorrections:
             og=og, x_corrections={0: {2}, 1: {3}, 2: {4}, 3: {5}}, z_corrections={0: {3, 4}, 1: {2, 5}}
         )
 
+        corrections.check_well_formed()
+
         assert corrections.is_compatible([0, 1, 2, 3])
         assert corrections.is_compatible([1, 0, 2, 3])
         assert corrections.is_compatible([1, 0, 3, 2])
@@ -444,6 +468,8 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={1: {0}})
 
+        corrections.check_well_formed()
+
         assert corrections.partial_order_layers == (frozenset({2, 3}), frozenset({0}), frozenset({1}))
         assert corrections.is_compatible([1, 0])
         assert not corrections.is_compatible([0, 1])  # Wrong order
@@ -466,6 +492,7 @@ class TestXZCorrections:
             og=og, x_corrections={0: {1, 2}}, z_corrections={0: {1}}
         )
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 2}), frozenset({0}))
         assert corrections.is_compatible([0, 1, 2])
         assert not corrections.is_compatible([2, 0, 1])  # Wrong order
@@ -483,6 +510,8 @@ class TestXZCorrections:
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+
+        corrections.check_well_formed()
         assert corrections.x_corrections == {}
         assert corrections.z_corrections == {}
         assert corrections.partial_order_layers == (frozenset({0, 1}),)
@@ -497,6 +526,8 @@ class TestXZCorrections:
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og)
+
+        corrections.check_well_formed()
         assert corrections.x_corrections == {}
         assert corrections.z_corrections == {}
         assert corrections.partial_order_layers == (frozenset({1}), frozenset({0}))
@@ -512,6 +543,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert all(corrections.partial_order_layers)  # No empty sets
         assert all(
             sum(1 for layer in corrections.partial_order_layers if node in layer) == 1 for node in og.graph.nodes
@@ -529,6 +561,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({0, 2}))
 
     # Some output nodes in corrections
@@ -543,6 +576,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({0, 2}))
 
     # No output nodes in corrections
@@ -557,6 +591,7 @@ class TestXZCorrections:
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections=x_corrections)
 
+        corrections.check_well_formed()
         assert corrections.partial_order_layers == (frozenset({1, 3}), frozenset({2}), frozenset({0}))
 
     # Test exceptions
@@ -567,19 +602,456 @@ class TestXZCorrections:
             output_nodes=[3],
             measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
         )
-        with pytest.raises(ValueError, match=r"Keys of input X-corrections contain non-measured nodes."):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={3: {1, 2}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectKeys
 
-        with pytest.raises(ValueError, match=r"Keys of input Z-corrections contain non-measured nodes."):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, z_corrections={3: {1, 2}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectKeys
 
-        with pytest.raises(
-            ValueError,
-            match=r"Input XZ-corrections are not runnable since the induced directed graph contains closed loops.",
-        ):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {1}, 1: {2}}, z_corrections={2: {0}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.ClosedLoop
 
-        with pytest.raises(
-            ValueError, match=r"Values of input mapping contain labels which are not nodes of the input open graph."
-        ):
+        with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
+        assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectValues
+
+
+class IncorrectFlowTestCase(NamedTuple):
+    flow: PauliFlow[AbstractMeasurement]
+    exception: FlowError
+
+
+class TestIncorrectFlows:
+    """Bundle for unit tests of :func:`PauliFlow.check_well_formed` (and children) on incorrect flows. Correct flows are extensively tested in `tests.test_opengraph.py`."""
+
+    og_c = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements=dict.fromkeys(range(3), Plane.XY),
+    )
+    og_g = OpenGraph(
+        graph=nx.Graph([(0, 3), (0, 4), (1, 4), (2, 4)]),
+        input_nodes=[0],
+        output_nodes=[3, 4],
+        measurements={0: Plane.XY, 1: Plane.YZ, 2: Plane.XZ},
+    )
+    og_p = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements={0: Plane.XY, 1: Axis.X, 2: Plane.XY},
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            # Correct flow on an open graph with XZ measurements.
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1)]),
+                        input_nodes=[0],
+                        output_nodes=[1],
+                        measurements={0: Plane.XZ},
+                    ),
+                    correction_function={0: {1}},
+                    partial_order_layers=[{1}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.XYPlane),
+            ),
+            # Incomplete correction function
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionDomain),
+            ),
+            # Extra node in correction function image
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {4}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                FlowGenericError(FlowGenericErrorReason.IncorrectCorrectionFunctionImage),
+            ),
+            # Empty partial order
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[],
+                ),
+                PartialOrderError(PartialOrderErrorReason.Empty),
+            ),
+            # Incomplete partial order (first layer)
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{2}, {1}, {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer={2}),
+            ),
+            # Empty layer
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {1}, set(), {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=3, layer=set()),
+            ),
+            # Duplicate layer
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {1}, {1}, {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=2, layer={1}),
+            ),
+            # Output node in nth layer
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {3}, {1}, {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.NthLayer, layer_index=2, layer={3}),
+            ),
+            # Incomplete partial order (nth layer)
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {1}],
+                ),
+                PartialOrderError(PartialOrderErrorReason.IncorrectNodes),
+            ),
+            # C0
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2, 3}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.C0, node=1, correction_set={2, 3}),
+            ),
+            # C1
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {2}, 2: {1}, 1: {3}},
+                    partial_order_layers=[{3}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.C1, node=0, correction_set={2}),
+            ),
+            # C2
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {0, 1}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C2, node=0, correction_set={1}, past_and_present_nodes={0, 1}
+                ),
+            ),
+            # C3
+            IncorrectFlowTestCase(
+                CausalFlow(
+                    og=og_c,
+                    correction_function={0: {1}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {1}, {0, 2}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.C3, node=0, correction_set={1}, past_and_present_nodes={0, 2}
+                ),
+            ),
+            # G1
+            IncorrectFlowTestCase(
+                GFlow(
+                    og=og_g,
+                    correction_function={0: {3}, 1: {1, 2}, 2: {2, 3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {0, 2}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.G1, node=1, correction_set={1, 2}, past_and_present_nodes={0, 1, 2}
+                ),
+            ),
+            # G2
+            IncorrectFlowTestCase(
+                GFlow(
+                    og=og_g,
+                    correction_function={0: {3}, 1: {1}, 2: {2, 3, 4}},
+                    partial_order_layers=[{3, 4}, {1, 0, 2}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.G2,
+                    node=2,
+                    correction_set={2, 3, 4},
+                    past_and_present_nodes={0, 1, 2},
+                ),
+            ),
+            # G3
+            IncorrectFlowTestCase(
+                GFlow(
+                    og=og_g,
+                    correction_function={0: {3, 4}, 1: {1}, 2: {2, 3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.G3, node=0, correction_set={3, 4}),
+            ),
+            # P4 (same as G3 but for Pauli flow)
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=og_g,
+                    correction_function={0: {3, 4}, 1: {1}, 2: {2, 3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.P4, node=0, correction_set={3, 4}),
+            ),
+            # G4
+            IncorrectFlowTestCase(
+                GFlow(
+                    og=og_g,
+                    correction_function={0: {3}, 1: {1}, 2: {3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.G4, node=2, correction_set={3, 4}),
+            ),
+            # P5 (same as G4 but for Pauli flow)
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=og_g,
+                    correction_function={0: {3}, 1: {1}, 2: {3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.P5, node=2, correction_set={3, 4}),
+            ),
+            # G5
+            IncorrectFlowTestCase(
+                GFlow(
+                    og=og_g,
+                    correction_function={0: {3}, 1: set(), 2: {2, 3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.G5, node=1, correction_set=set()),
+            ),
+            # P6 (same as G5 but for Pauli flow)
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=og_g,
+                    correction_function={0: {3}, 1: set(), 2: {2, 3, 4}},
+                    partial_order_layers=[{3, 4}, {1}, {2}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.P6, node=1, correction_set=set()),
+            ),
+            # P1
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=og_p,
+                    correction_function={0: {1, 3}, 1: {2}, 2: {3}},
+                    partial_order_layers=[{3}, {2, 0, 1}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.P1, node=1, correction_set={2}, past_and_present_nodes={0, 1, 2}
+                ),
+            ),
+            # P2
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=og_p,
+                    correction_function={0: {1, 3}, 1: {3}, 2: {3}},
+                    partial_order_layers=[{3}, {2, 0, 1}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.P2, node=1, correction_set={3}, past_and_present_nodes={0, 1, 2}
+                ),
+            ),
+            # P3
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1), (1, 2)]),
+                        input_nodes=[0],
+                        output_nodes=[2],
+                        measurements=dict.fromkeys(range(2), Measurement(0.5, Plane.XY)),
+                    ),
+                    correction_function={0: {1}, 1: {2}},
+                    partial_order_layers=[{2}, {0, 1}],
+                ),
+                FlowPropositionOrderError(
+                    FlowPropositionOrderErrorReason.P3, node=0, correction_set={1}, past_and_present_nodes={0, 1}
+                ),  # Past and present nodes measured along Y.
+            ),
+            # P7
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=og_p,
+                    correction_function={0: {1, 3}, 1: {3}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {0, 1}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.P7, node=1, correction_set={3}),
+            ),
+            # P8
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1)]),
+                        input_nodes=[0],
+                        output_nodes=[1],
+                        measurements={0: Measurement(0, Plane.XZ)},
+                    ),
+                    correction_function={0: {1}},
+                    partial_order_layers=[{1}, {0}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.P8, node=0, correction_set={1}),
+            ),
+            # P9
+            IncorrectFlowTestCase(
+                PauliFlow(
+                    og=OpenGraph(
+                        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+                        input_nodes=[0],
+                        output_nodes=[3],
+                        measurements={0: Plane.XY, 1: Axis.Y, 2: Plane.XY},
+                    ),
+                    correction_function={0: {2, 3}, 1: {1, 2}, 2: {3}},
+                    partial_order_layers=[{3}, {2}, {0}, {1}],
+                ),
+                FlowPropositionError(FlowPropositionErrorReason.P9, node=1, correction_set={1, 2}),
+            ),
+        ],
+    )
+    def test_flow_well_formed(self, test_case: IncorrectFlowTestCase) -> None:
+        with pytest.raises(FlowError) as exc_info:
+            test_case.flow.check_well_formed()
+
+        for field in fields(exc_info.value):
+            attr = field.name
+            assert getattr(exc_info.value, attr) == getattr(test_case.exception, attr)
+
+
+class IncorrectXZCTestCase(NamedTuple):
+    xzcorr: XZCorrections[AbstractMeasurement]
+    exception: XZCorrectionsError
+
+
+class TestIncorrectXZC:
+    """Bundle for unit tests of :func:`XZCorrections.check_well_formed` on incorrect instances. Correct instances are extensively tested in class:`TestXZCorrections`."""
+
+    og = OpenGraph(
+        graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
+        input_nodes=[0],
+        output_nodes=[3],
+        measurements=dict.fromkeys(range(3), Plane.XY),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            # Empty partial order
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[],
+                ),
+                PartialOrderError(PartialOrderErrorReason.Empty),
+            ),
+            # Non-measured node in corrections dictionary keys
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={3: {1, 2}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys),
+            ),
+            # First layer contains non-output nodes
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[{3, 2}, {1}, {0}],
+                ),
+                PartialOrderLayerError(PartialOrderLayerErrorReason.FirstLayer, layer_index=0, layer={2, 3}),
+            ),
+            # Duplicate nodes in partial order
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[{3}, {2, 1}, {0, 1}],
+                ),
+                PartialOrderLayerError(
+                    PartialOrderLayerErrorReason.NthLayer,
+                    layer_index=1,
+                    layer={1, 2},
+                ),
+            ),
+            # Output nodes in nth layer
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={},
+                    z_corrections={},
+                    partial_order_layers=[{3}, {2}, {0, 1, 3}],
+                ),
+                PartialOrderLayerError(
+                    PartialOrderLayerErrorReason.NthLayer,
+                    layer_index=2,
+                    layer={0, 1, 3},
+                ),
+            ),
+            # Closed loop
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={0: {1}, 1: {2}},
+                    z_corrections={2: {0}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                XZCorrectionsOrderError(
+                    XZCorrectionsOrderErrorReason.Z,
+                    node=2,
+                    correction_set={0},
+                    past_and_present_nodes={0, 1, 2},
+                ),
+            ),
+            # Self-correcting node
+            IncorrectXZCTestCase(
+                XZCorrections(
+                    og=og,
+                    x_corrections={0: {1}, 1: {1}},
+                    z_corrections={0: {1}},
+                    partial_order_layers=[{3}, {2}, {1}, {0}],
+                ),
+                XZCorrectionsOrderError(
+                    XZCorrectionsOrderErrorReason.X,
+                    node=1,
+                    correction_set={1},
+                    past_and_present_nodes={0, 1},
+                ),
+            ),
+        ],
+    )
+    def test_xzc_well_formed(self, test_case: IncorrectXZCTestCase) -> None:
+        with pytest.raises(XZCorrectionsError) as exc_info:
+            test_case.xzcorr.check_well_formed()
+
+        for field in fields(exc_info.value):
+            attr = field.name
+            assert getattr(exc_info.value, attr) == getattr(test_case.exception, attr)

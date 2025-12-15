@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- #385
+  - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
+  - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
+  
+- #378:
+  - Introduced new method `graphix.flow.core.PauliFlow.check_well_formed`, `graphix.flow.core.GFlow.check_well_formed` and `graphix.flow.core.CausalFlow.check_well_formed` which verify the correctness of flow objects and raise exceptions when the flow is incorrect.
+  - Introduced new method `graphix.flow.core.PauliFlow.is_well_formed` which verify the correctness of flow objects and returns a boolean when the flow is incorrect.
+  - Introduced new module `graphix.flow.exceptions` grouping flow exceptions.
+  - Introduced new methods `graphix.flow.core.PauliFlow.get_measurement_label` and `graphix.flow.core.GFlow.get_measurement_label` which return the measurement label of a given node following same criteria employed in the flow-finding algorithms.
 
 
 - #379: Added a new instruction `CZ` which can be added as a circuit gate using `circuit.cz`.
@@ -28,8 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #349, #362: Patterns transpiled from circuits always have causal flow.
 
-- #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
-  commands without domain information.
+- #383: `Pattern.check_runnability` no longer fails on custom `BaseM` commands without domain information.
+
+- #389, #391: `Pattern.extract_opengraph` raises an exception if pattern has `N` commands which do not represent a |+> state.
 
 ### Changed
 
