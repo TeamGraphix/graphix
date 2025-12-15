@@ -228,26 +228,22 @@ class TestPattern:
             circuit.h(i)
         circuit.x(1)
         circuit.x(2)
-
         # QFT
         circuit.h(2)
-        cp(circuit, np.pi / 4, 0, 2)
-        cp(circuit, np.pi / 2, 1, 2)
+        circuit.rzz(1, 2, np.pi / 4)
+        circuit.rzz(0, 2, np.pi / 8)
         circuit.h(1)
-        cp(circuit, np.pi / 2, 0, 1)
+        circuit.rzz(0, 1, np.pi / 4)
         circuit.h(0)
-        swap(circuit, 0, 2)
-
+        circuit.swap(0, 2)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
-
         isolated_nodes = pattern.extract_isolated_nodes()
-        # 48-node is the isolated and output node.
-        isolated_nodes_ref = {48}
-
+        # 30-node is the isolated and output node.
+        isolated_nodes_ref = {30}
         assert isolated_nodes == isolated_nodes_ref
 
     @pytest.mark.parametrize("jumps", range(1, 6))
@@ -750,22 +746,6 @@ class TestPattern:
 
     def test_compute_max_degree_empty_pattern(self) -> None:
         assert Pattern().compute_max_degree() == 0
-
-
-def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
-    """Controlled rotation gate, decomposed."""  # noqa: D401
-    circuit.rz(control, theta / 2)
-    circuit.rz(target, theta / 2)
-    circuit.cnot(control, target)
-    circuit.rz(target, -1 * theta / 2)
-    circuit.cnot(control, target)
-
-
-def swap(circuit: Circuit, a: int, b: int) -> None:
-    """Swap gate, decomposed."""
-    circuit.cnot(a, b)
-    circuit.cnot(b, a)
-    circuit.cnot(a, b)
 
 
 class TestMCOps:
