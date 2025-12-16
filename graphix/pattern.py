@@ -1384,8 +1384,7 @@ class Pattern:
 
     def remove_input_nodes(self) -> None:
         """Remove the input nodes from the pattern."""
-        for node in reversed(self.input_nodes):
-            self.__seq.insert(0, command.N(node=node))
+        self.__seq[0:0] = [command.N(node=node) for node in self.input_nodes]
         empty_nodes: list[int] = []
         self.__input_nodes = empty_nodes
 
