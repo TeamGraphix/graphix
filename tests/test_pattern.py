@@ -246,6 +246,15 @@ class TestPattern:
         isolated_nodes_ref = {30}
         assert isolated_nodes == isolated_nodes_ref
 
+    def test_pauli_measurement_error(self, fx_rng: Generator) -> None:
+        nqubits = 2
+        depth = 1
+        circuit = rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        with pytest.raises(ValueError):
+            pattern.perform_pauli_measurements()
+
     @pytest.mark.parametrize("jumps", range(1, 6))
     @pytest.mark.parametrize("ignore_pauli_with_deps", [False, True])
     def test_pauli_measured_against_nonmeasured(self, fx_bg: PCG64, jumps: int, ignore_pauli_with_deps: bool) -> None:
@@ -285,17 +294,18 @@ class TestPattern:
         circuit1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         pattern = circuit.transpile().pattern
         pattern1 = circuit1.transpile().pattern
-        pattern.remove_input_nodes()
-        assert not pattern.results
-        assert not pattern1.results
-        pattern.perform_pauli_measurements()
-        assert pattern.results
         composed_pattern, _ = pattern.compose(
             pattern1, mapping=dict(zip(pattern1.input_nodes, pattern.output_nodes, strict=True)), preserve_mapping=True
         )
+        pattern.remove_input_nodes()
+        pattern1.remove_input_nodes()
+        assert not pattern.results
+        assert not pattern1.results
+        pattern.perform_pauli_measurements()
+        pattern1.perform_pauli_measurements()
         composed_pattern.remove_input_nodes()
         composed_pattern.perform_pauli_measurements()
-        assert len(composed_pattern.results) > len(pattern.results)
+        assert abs(len(composed_pattern.results) - len(pattern.results) - len(pattern1.results)) <= 2
 
     def test_get_meas_plane(self) -> None:
         preset_meas_plane = [
