@@ -109,6 +109,8 @@ class Circuit:
             self.cnot(instr.control, instr.target)
         elif instr.kind == InstructionKind.SWAP:
             self.swap(instr.targets[0], instr.targets[1])
+        elif instr.kind == InstructionKind.CZ:
+            self.cz(instr.targets[0], instr.targets[1])
         elif instr.kind == InstructionKind.H:
             self.h(instr.target)
         elif instr.kind == InstructionKind.S:
@@ -173,6 +175,21 @@ class Circuit:
         assert qubit2 in self.active_qubits
         assert qubit1 != qubit2
         self.instruction.append(instruction.SWAP(targets=(qubit1, qubit2)))
+
+    def cz(self, qubit1: int, qubit2: int) -> None:
+        """Apply a CNOT gate.
+
+        Parameters
+        ----------
+        qubit1 : int
+            control qubit
+        qubit2 : int
+            target qubit
+        """
+        assert qubit1 in self.active_qubits
+        assert qubit2 in self.active_qubits
+        assert qubit1 != qubit2
+        self.instruction.append(instruction.CZ(targets=(qubit1, qubit2)))
 
     def h(self, qubit: int) -> None:
         """Apply a Hadamard gate.
@@ -351,7 +368,12 @@ class Circuit:
         pattern = Pattern(input_nodes=list(range(self.width)))
         classical_outputs = []
         for instr in _transpile_rzz(self.instruction):
-            if instr.kind == instruction.InstructionKind.CNOT:
+            if instr.kind == instruction.InstructionKind.CZ:
+                target0 = _check_target(out, instr.targets[0])
+                target1 = _check_target(out, instr.targets[1])
+                seq = self._cz_command(target0, target1)
+                pattern.extend(seq)
+            elif instr.kind == instruction.InstructionKind.CNOT:
                 ancilla = [n_node, n_node + 1]
                 control = _check_target(out, instr.control)
                 target = _check_target(out, instr.target)
@@ -484,6 +506,24 @@ class Circuit:
             )
         )
         return control_node, ancilla[1], seq
+
+    @classmethod
+    def _cz_command(cls, target_1: int, target_2: int) -> list[Command]:
+        """MBQC commands for CZ gate.
+
+        Parameters
+        ----------
+        target_1 : int
+            target node on graph
+        target_2 : int
+            other target node on graph
+
+        Returns
+        -------
+        commands : list
+            list of MBQC commands
+        """
+        return [E(nodes=(target_1, target_2))]
 
     @classmethod
     def _m_command(cls, input_node: int, plane: Plane, angle: Angle) -> list[Command]:
@@ -901,6 +941,8 @@ class Circuit:
                 state.cnot((instr.control, instr.target))
             elif instr.kind == instruction.InstructionKind.SWAP:
                 state.swap(instr.targets)
+            elif instr.kind == instruction.InstructionKind.CZ:
+                state.entangle(instr.targets)
             elif instr.kind == instruction.InstructionKind.I:
                 pass
             elif instr.kind == instruction.InstructionKind.S:
