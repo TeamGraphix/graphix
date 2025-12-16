@@ -2,10 +2,10 @@
 mypy==1.19.0
 pre-commit # for language-agnostic hooks
 pyright
-ruff==0.14.7
+ruff==0.14.9
 
 # Stubs
-types-networkx==3.6.0.20251127
+types-networkx==3.6.1.20251212
 types-psutil
 types-setuptools
 scipy-stubs
@@ -24,4 +24,5 @@ pytest-mpl
 qiskit>=1.0
 qiskit-aer
 
+openqasm-parser>=3.1.0
 graphix-qasm-parser
