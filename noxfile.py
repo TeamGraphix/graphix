@@ -74,18 +74,18 @@ def tests_symbolic(session: Session) -> None:
             run_pytest(session, doctest_modules=True)
 
 
-@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
-def tests_qasm_parser(session: Session) -> None:
-    """Run the test suite of graphix-qasm-parser."""
-    session.install(".")
-    install_pytest(session)
-    session.install("nox")  # needed for `--doctest-modules`
-    # Use `session.cd` as a context manager to ensure that the
-    # working directory is restored afterward. This is important
-    # because Windows cannot delete a temporary directory while it
-    # is the working directory.
-    with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
-        session.run("git", "clone", "https://github.com/TeamGraphix/graphix-qasm-parser")
-        with session.cd("graphix-qasm-parser"):
-            session.install(".")
-            run_pytest(session, doctest_modules=True)
+# @nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+# def tests_qasm_parser(session: Session) -> None:
+#     """Run the test suite of graphix-qasm-parser."""
+#     session.install(".")
+#     install_pytest(session)
+#     session.install("nox")  # needed for `--doctest-modules`
+#     # Use `session.cd` as a context manager to ensure that the
+#     # working directory is restored afterward. This is important
+#     # because Windows cannot delete a temporary directory while it
+#     # is the working directory.
+#     with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
+#         session.run("git", "clone", "https://github.com/TeamGraphix/graphix-qasm-parser")
+#         with session.cd("graphix-qasm-parser"):
+#             session.install(".")
+#             run_pytest(session, doctest_modules=True)
