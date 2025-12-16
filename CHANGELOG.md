@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #392: Added `graphix.pattern.Pattern.remove_input_nodes` method which removes the input nodes from the pattern and replaces them with N commands.
+
 - #385
   - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
   - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
@@ -26,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #383: Simulators are now parameterized by `PrepareMethod` (which defaults to `DefaultPrepareMethod`) to customize how `N` commands are handled, and the class `BaseN` can be used as a base class for custom preparation commands.
 
 ### Fixed
+
+- #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
 
 - #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
 
