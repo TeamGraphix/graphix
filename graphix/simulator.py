@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import abc
 import warnings
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Generic, Literal, overload
 
 import numpy as np
 
@@ -22,6 +22,7 @@ from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, MeasureUpdate, N
 from graphix.measurements import Measurement, Outcome
 from graphix.sim import Backend, DensityMatrixBackend, StatevectorBackend
+from graphix.sim.base_backend import _StateT_co
 from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
@@ -33,8 +34,7 @@ if TYPE_CHECKING:
     from graphix.command import BaseN
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Data
-    from graphix.sim.base_backend import _StateT_co
+    from graphix.sim import Data, _BackendLiteral, _BuiltinBackend
 
 
 class PrepareMethod(abc.ABC):
@@ -204,18 +204,19 @@ class DefaultMeasureMethod(MeasureMethod):
         self.results[node] = result
 
 
-class PatternSimulator:
+class PatternSimulator(Generic[_StateT_co]):
     """MBQC simulator.
 
     Executes the measurement pattern.
     """
 
     noise_model: NoiseModel | None
+    backend: Backend[_StateT_co] | _BuiltinBackend
 
     def __init__(
         self,
         pattern: Pattern,
-        backend: Backend[_StateT_co] | str = "statevector",
+        backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
@@ -331,9 +332,9 @@ class PatternSimulator:
 def _initialize_backend(
     pattern: Pattern,
     backend: StatevectorBackend | Literal["statevector"],
-    noise_model: None,
+    noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
-    graph_prep: None,
+    graph_prep: str | None,
     symbolic: bool,
 ) -> StatevectorBackend: ...
 
@@ -344,7 +345,7 @@ def _initialize_backend(
     backend: DensityMatrixBackend | Literal["densitymatrix"],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
-    graph_prep: None,
+    graph_prep: str | None,
     symbolic: bool,
 ) -> DensityMatrixBackend: ...
 
@@ -353,7 +354,7 @@ def _initialize_backend(
 def _initialize_backend(
     pattern: Pattern,
     backend: TensorNetworkBackend | Literal["tensornetwork", "mps"],
-    noise_model: None,
+    noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
@@ -363,22 +364,22 @@ def _initialize_backend(
 @overload
 def _initialize_backend(
     pattern: Pattern,
-    backend: Backend[_StateT_co] | str,
+    backend: Backend[_StateT_co],
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
-) -> StatevectorBackend | DensityMatrixBackend | TensorNetworkBackend: ...
+) -> Backend[_StateT_co]: ...
 
 
 def _initialize_backend(
     pattern: Pattern,
-    backend: Backend[_StateT_co] | str,
+    backend: Backend[_StateT_co] | _BackendLiteral,
     noise_model: NoiseModel | None,
     branch_selector: BranchSelector | None,
     graph_prep: str | None,
     symbolic: bool,
-) -> StatevectorBackend | DensityMatrixBackend | TensorNetworkBackend:
+) -> _BuiltinBackend | Backend[_StateT_co]:
     """
     Initialize the backend.
 
@@ -401,7 +402,7 @@ def _initialize_backend(
     :class:`Backend`
         matching the appropriate backend
     """
-    if isinstance(backend, (StatevectorBackend, DensityMatrixBackend, TensorNetworkBackend)):
+    if isinstance(backend, Backend):
         if branch_selector is not None:
             raise ValueError("`branch_selector` cannot be specified if `backend` is already instantiated.")
         if graph_prep is not None:

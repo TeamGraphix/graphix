@@ -39,7 +39,16 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
-    from graphix.sim import Backend, Data, DensityMatrix, DensityMatrixBackend, Statevec, StatevectorBackend
+    from graphix.sim import (
+        Backend,
+        Data,
+        DensityMatrix,
+        DensityMatrixBackend,
+        Statevec,
+        StatevectorBackend,
+        _BackendLiteral,
+        _BuiltinBackendState,
+    )
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
     from graphix.states import State
@@ -1348,12 +1357,12 @@ class Pattern:
     @overload
     def simulate_pattern(
         self,
-        backend: StatevectorBackend | Literal["statevector"],
+        backend: StatevectorBackend | Literal["statevector"] = "statevector",
         input_state: State
         | Statevec
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        | Iterable[Iterable[ExpressionOrSupportsComplex]] = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> Statevec: ...
@@ -1366,7 +1375,7 @@ class Pattern:
         | DensityMatrix
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        | Iterable[Iterable[ExpressionOrSupportsComplex]] = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> DensityMatrix: ...
@@ -1378,7 +1387,7 @@ class Pattern:
         input_state: State
         | Iterable[State]
         | Iterable[ExpressionOrSupportsComplex]
-        | Iterable[Iterable[ExpressionOrSupportsComplex]],
+        | Iterable[Iterable[ExpressionOrSupportsComplex]] = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
     ) -> MBQCTensorNet: ...
@@ -1386,19 +1395,19 @@ class Pattern:
     @overload
     def simulate_pattern(
         self,
-        backend: str = ...,
+        backend: Backend[_StateT_co],
         input_state: Data = ...,
         rng: Generator | None = ...,
         **kwargs: Any,
-    ) -> Statevec | DensityMatrix | MBQCTensorNet: ...
+    ) -> _StateT_co: ...
 
     def simulate_pattern(
         self,
-        backend: Backend[_StateT_co] | str = "statevector",
+        backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
         input_state: Data = BasicStates.PLUS,
         rng: Generator | None = None,
         **kwargs: Any,
-    ) -> Statevec | DensityMatrix | MBQCTensorNet:
+    ) -> _StateT_co | _BuiltinBackendState:
         """Simulate the execution of the pattern by using :class:`graphix.simulator.PatternSimulator`.
 
         Available backend: ['statevector', 'densitymatrix', 'tensornetwork']
@@ -1420,10 +1429,9 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        sim = PatternSimulator(self, backend=backend, **kwargs)
+        sim: PatternSimulator[_StateT_co] = PatternSimulator(self, backend=backend, **kwargs)
         sim.run(input_state, rng=rng)
-        state: Statevec | DensityMatrix | MBQCTensorNet = sim.backend.state
-        return state
+        return sim.backend.state
 
     def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
