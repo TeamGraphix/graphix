@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import itertools
-import typing
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -27,10 +26,10 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from graphix.sim.base_backend import BackendState
+    from graphix.sim import _BackendLiteral
 
 
-def compare_backend_result_with_statevec(backend_state: BackendState, statevec: Statevec) -> float:
+def compare_backend_result_with_statevec(backend_state: object, statevec: Statevec) -> float:
     if isinstance(backend_state, Statevec):
         return float(np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten())))
     if isinstance(backend_state, DensityMatrix):
@@ -112,14 +111,12 @@ class TestPattern:
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
-    def test_empty_output_nodes(
-        self, backend_type: typing.Literal["statevector", "densitymatrix", "tensornetwork"]
-    ) -> None:
+    def test_empty_output_nodes(self, backend_type: _BackendLiteral) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.add(M(node=0, angle=0.5))
 
         def simulate_and_measure() -> int:
-            sim = PatternSimulator(pattern, backend_type)
+            sim: PatternSimulator[object] = PatternSimulator(pattern, backend_type)
             sim.run()
             state = sim.backend.state
             if isinstance(state, Statevec):
@@ -173,7 +170,7 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
-    def test_pauli_measurement_random_circuit(self, fx_bg: PCG64, jumps: int, backend: str) -> None:
+    def test_pauli_measurement_random_circuit(self, fx_bg: PCG64, jumps: int, backend: _BackendLiteral) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -948,7 +945,7 @@ class TestMCOps:
         p.perform_pauli_measurements()
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
-    def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
+    def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: _BackendLiteral) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * np.pi
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
