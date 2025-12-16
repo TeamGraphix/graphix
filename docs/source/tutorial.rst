@@ -175,12 +175,13 @@ It is known that quantum circuit consisting of Pauli basis states, Clifford gate
 <https://en.wikipedia.org/wiki/Gottesman%E2%80%93Knill_theorem>`_; e.g. the graph state simulator runs in :math:`\mathcal{O}(n \log n)` time).
 The Pauli measurement part of the MBQC is exactly this, and they can be preprocessed by our graph state simulator :class:`~graphix.graphsim.GraphState` - see :doc:`lc-mbqc` for more detailed description.
 
-We can call this in a line by calling :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` of :class:`~graphix.pattern.Pattern` object, which acts as the optimization routine of the measurement pattern.
+We can call this in a line by calling :meth:`~graphix.pattern.Pattern.remove_input_nodes` followed by ` :meth:`~graphix.pattern.Pattern.perform_pauli_measurements()` (both methods of the :class:`~graphix.pattern.Pattern` object). The first method removes the input nodes, while the second method optimizes the measurement pattern.
 We get an updated measurement pattern without Pauli measurements as follows:
 
+>>> pattern.remove_input_nodes()
 >>> pattern.perform_pauli_measurements()
 >>> pattern
-Pattern(input_nodes=[0, 1], cmds=[N(3), N(7), E((0, 3)), E((1, 3)), E((1, 7)), M(0, Plane.YZ, 0.2907266109187514), M(1, Plane.YZ, 0.01258854060311348), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
+Pattern(input_nodes=[], cmds=[N(0), N(1), N(3), N(7), E((0, 3)), E((1, 3)), E((1, 7)), M(0, Plane.YZ, 0.2907266109187514), M(1, Plane.YZ, 0.01258854060311348), C(3, Clifford.I), C(7, Clifford.I), Z(3, {0, 1, 5}), Z(7, {1, 5}), X(3, {2}), X(7, {2, 4, 6})], output_nodes=[3, 7])
 
 
 Notice that all measurements with angle=0 (Pauli X measurements) disappeared - this means that a part of quantum computation was *classically* (and efficiently) preprocessed such that we only need much smaller quantum resource.

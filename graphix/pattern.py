@@ -1383,7 +1383,11 @@ class Pattern:
         return sim.backend.state
 
     def remove_input_nodes(self) -> None:
-        """Remove the input nodes from the pattern."""
+        """Remove the input nodes from the pattern and replace them with N commands.
+
+        This removes the possibility of choosing the input state, fixing the input state to the plus state.
+        .. seealso:: :class:`graphix.command.N`
+        """
         self.__seq[0:0] = [command.N(node=node) for node in self.input_nodes]
         empty_nodes: list[int] = []
         self.__input_nodes = empty_nodes
@@ -1638,9 +1642,8 @@ class RunnabilityError(Exception):
 def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
-    Uses the decorated-graph method implemented in graphix.graphsim to perform
-    the measurements in Pauli bases, and then sort remaining nodes back into
-    pattern together with Clifford commands.
+    Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
+    pattern together with Clifford commands. Users are required to ensure there are no input nodes with :func:`graphix.pattern.Pattern.remove_input_nodes` before using this function.
 
     TODO: non-XY plane measurements in original pattern
 
@@ -1662,11 +1665,10 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
         only returned if copy argument is True.
 
 
+    .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
     pat = Pattern() if copy else pattern
-    if pat._pauli_preprocessed is True:
-        return pat
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
