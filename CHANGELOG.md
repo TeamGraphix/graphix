@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
 - #385
   - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
   - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
@@ -18,23 +19,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Introduced new module `graphix.flow.exceptions` grouping flow exceptions.
   - Introduced new methods `graphix.flow.core.PauliFlow.get_measurement_label` and `graphix.flow.core.GFlow.get_measurement_label` which return the measurement label of a given node following same criteria employed in the flow-finding algorithms.
 
-- #374:
+- #379: Added a new instruction `CZ` which can be added as a circuit gate using `circuit.cz`.
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
   - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
 
-- #383: Simulators are now parameterized by `PrepareMethod` (which
-  defaults to `DefaultPrepareMethod`) to customize how `N` commands are
-  handled, and the class `BaseN` can be used as a base class for
-  custom preparation commands.
+- #383: Simulators are now parameterized by `PrepareMethod` (which defaults to `DefaultPrepareMethod`) to customize how `N` commands are handled, and the class `BaseN` can be used as a base class for custom preparation commands.
 
 ### Fixed
+
+- #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
 
 - #347: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
 
 - #349, #362: Patterns transpiled from circuits always have causal flow.
 
-- #383: `Pattern.check_runnability` no longer fails on custom `BaseM`
-  commands without domain information.
+- #383: `Pattern.check_runnability` no longer fails on custom `BaseM` commands without domain information.
+
+- #389, #391: `Pattern.extract_opengraph` raises an exception if pattern has `N` commands which do not represent a |+> state.
 
 ### Changed
 

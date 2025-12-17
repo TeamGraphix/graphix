@@ -101,6 +101,8 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
         return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
     if instruction.kind == InstructionKind.SWAP:
         return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+    if instruction.kind == InstructionKind.CZ:
+        return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
     if instruction.kind == InstructionKind.RZZ:
         angle = angle_to_qasm3(instruction.angle)
         return qasm3_gate_call(
