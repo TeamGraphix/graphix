@@ -506,7 +506,8 @@ class Circuit:
             list of MBQC commands
         """
         measurement = _measurement_of_axis(axis)
-        return [M(node=input_node, plane=measurement.plane, angle=measurement.angle / pi)]
+        # `measurement.angle` and `M.angle` are both expressed in units of π.
+        return [M(node=input_node, plane=measurement.plane, angle=measurement.angle)]
 
     @classmethod
     def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command]]:
@@ -1038,8 +1039,16 @@ def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]
 
 
 def _measurement_of_axis(axis: Axis) -> Measurement:
+    """Return the MBQC measurement (plane + angle) corresponding to a measurement on the given axis.
+
+    The returned measurement `m` satisfies `m.plane.polar(m.angle) = (x, y, z)`,
+    where `x` (resp. `y` or `z`) is 1 if `axis` is `Axis.X` (resp. `Axis.Y` or
+    `Axis.Z`), and 0 otherwise.
+    """
+    # The definition of `polar` for each plane is given in the comments below.
     if axis == Axis.X:
-        return Measurement(plane=Plane.XY, angle=0)
+        return Measurement(plane=Plane.XY, angle=0)  # (cos, sin, 0)
     if axis == Axis.Y:
-        return Measurement(plane=Plane.YZ, angle=pi / 2)
-    return Measurement(plane=Plane.XZ, angle=0)
+        # `Measurement.angle` is expressed in units of π.
+        return Measurement(plane=Plane.YZ, angle=0.5)  # (0, sin, cos)
+    return Measurement(plane=Plane.XZ, angle=0)  # (sin, 0, cos)
