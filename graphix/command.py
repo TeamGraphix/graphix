@@ -258,7 +258,7 @@ class MeasureUpdate:
     coeff : int
         Coefficient by which the angle is multiplied.
     add_term : float
-        Additional term to add to the measurement angle.
+        Additional term to add to the measurement angle (in radians).
     """
 
     new_plane: Plane

@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #383: Simulators are now parameterized by `PrepareMethod` (which defaults to `DefaultPrepareMethod`) to customize how `N` commands are handled, and the class `BaseN` can be used as a base class for custom preparation commands.
 
+- #394: The method `Circuit.transpile_measurements_to_z_axis` returns an equivalent circuit where all measurements are on the Z axis. This can be used to prepare a circuit for export to OpenQASM with `circuit_to_qasm3`.
+
 ### Fixed
 
 - #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
@@ -42,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #374: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
 
 - #375: Adapted existing method `graphix.opengraph.OpenGraph.compose` to the new API introduced in #358.
+
+- #352, #394: Circuit measurements are now limited to axes X, Y, and Z.
 
 ## [0.3.3] - 2025-10-23
 
