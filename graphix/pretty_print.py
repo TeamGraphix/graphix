@@ -10,12 +10,13 @@ from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
 from graphix import command
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Plane, rad_of_angle
 
 if TYPE_CHECKING:
     from collections.abc import Container
 
     from graphix.command import Node
+    from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
 
 
@@ -28,7 +29,7 @@ class OutputFormat(Enum):
 
 
 def angle_to_str(
-    angle: float, output: OutputFormat, max_denominator: int = 1000, multiplication_sign: bool = False
+    angle: Angle, output: OutputFormat, max_denominator: int = 1000, multiplication_sign: bool = False
 ) -> str:
     r"""
     Return a string representation of an angle given in units of π.
@@ -61,7 +62,7 @@ def angle_to_str(
     frac = Fraction(angle).limit_denominator(max_denominator)
 
     if not math.isclose(angle, float(frac)):
-        rad = angle * math.pi
+        rad = rad_of_angle(angle)
 
         return f"{rad}"
 

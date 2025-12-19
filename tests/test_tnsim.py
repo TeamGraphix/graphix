@@ -11,6 +11,7 @@ from quimb.tensor import Tensor
 from graphix.branch_selector import RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, E, X, Z
+from graphix.fundamentals import ANGLE_PI
 from graphix.ops import Ops
 from graphix.random_objects import rand_circuit
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
@@ -242,7 +243,7 @@ class TestTN:
         assert value1 == pytest.approx(value2)
 
     def test_rx(self, fx_rng: Generator) -> None:
-        theta = fx_rng.uniform() * 2 * np.pi
+        theta = fx_rng.uniform() * 2 * ANGLE_PI
         circuit = Circuit(1)
         circuit.rx(0, theta)
         pattern = circuit.transpile().pattern
@@ -254,7 +255,7 @@ class TestTN:
         assert value1 == pytest.approx(value2)
 
     def test_ry(self, fx_rng: Generator) -> None:
-        theta = fx_rng.uniform() * 2 * np.pi
+        theta = fx_rng.uniform() * 2 * ANGLE_PI
         circuit = Circuit(1)
         circuit.ry(0, theta)
         pattern = circuit.transpile().pattern
@@ -266,7 +267,7 @@ class TestTN:
         assert value1 == pytest.approx(value2)
 
     def test_rz(self, fx_rng: Generator) -> None:
-        theta = fx_rng.uniform() * 2 * np.pi
+        theta = fx_rng.uniform() * 2 * ANGLE_PI
         circuit = Circuit(1)
         circuit.rz(0, theta)
         pattern = circuit.transpile().pattern

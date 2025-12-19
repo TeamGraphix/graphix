@@ -37,8 +37,10 @@ def test_noiseless_noise_model_simulation(fx_rng: Generator) -> None:
     nqubits = 5
     depth = 5
     circuit = rand_circuit(nqubits, depth, rng=fx_rng)
+    print(circuit)
     state = circuit.simulate_statevector().statevec
     pattern = circuit.transpile().pattern
+    print(repr(pattern))
     pattern.standardize()
     pattern.minimize_space()
     noise_model = NoiselessNoiseModel()

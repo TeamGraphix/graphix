@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import itertools
-import math
 
 import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
 from graphix.command import MeasureUpdate
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Angle, Plane
 
 
 @pytest.mark.parametrize(
@@ -18,7 +17,7 @@ from graphix.fundamentals import Plane
         (False, True),
         (False, True),
         Clifford,
-        (0, math.pi),
+        (0, ANGLE_PI),
         (False, True),
     ),
 )
@@ -27,7 +26,7 @@ def test_measure_update(
     s: bool,
     t: bool,
     clifford: Clifford,
-    angle: float,
+    angle: Angle,
     choice: bool,
 ) -> None:
     measure_update = MeasureUpdate.compute(plane, s, t, clifford)
