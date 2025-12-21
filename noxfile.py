@@ -86,7 +86,7 @@ def tests_qasm_parser(session: Session) -> None:
     # is the working directory.
     with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
         session.run(
-            "git", "clone", "-b", "graphix_angle_convention_changed https://github.com/TeamGraphix/graphix-qasm-parser"
+            "git", "clone", "-b", "graphix_angle_convention_changed", "https://github.com/TeamGraphix/graphix-qasm-parser"
         )
         with session.cd("graphix-qasm-parser"):
             session.install(".")
