@@ -31,14 +31,14 @@ ANGLE_PI: Angle = 1
 
 
 @overload
-def rad_to_angle(angle: Angle) -> float: ...
+def rad_to_angle(angle: float) -> Angle: ...
 
 
 @overload
 def rad_to_angle(angle: Expression) -> Expression: ...
 
 
-def rad_to_angle(angle: ParameterizedAngle) -> ExpressionOrFloat:
+def rad_to_angle(angle: ExpressionOrFloat) -> ParameterizedAngle:
     """Convert an angle expressed in radians to a Graphix angle.
 
     In Graphix, angles are expressed in units of π.
