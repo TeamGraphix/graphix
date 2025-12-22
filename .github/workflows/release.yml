@@ -5,7 +5,7 @@ on:
     types: [published]
 
 env:
-  python-version: "3.13"
+  python-version: "3.14"
 
 jobs:
   publish:
