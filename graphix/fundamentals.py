@@ -28,14 +28,14 @@ ANGLE_PI = 1
 
 
 @overload
-def angle_of_rad(angle: Angle) -> float: ...
+def rad_to_angle(angle: Angle) -> float: ...
 
 
 @overload
-def angle_of_rad(angle: Expression) -> Expression: ...
+def rad_to_angle(angle: Expression) -> Expression: ...
 
 
-def angle_of_rad(angle: ParameterizedAngle) -> ExpressionOrFloat:
+def rad_to_angle(angle: ParameterizedAngle) -> ExpressionOrFloat:
     """Convert an angle expressed in radians to a Graphix angle.
 
     In Graphix, angles are expressed in units of π.
@@ -44,14 +44,14 @@ def angle_of_rad(angle: ParameterizedAngle) -> ExpressionOrFloat:
 
 
 @overload
-def rad_of_angle(angle: Angle) -> float: ...
+def angle_to_rad(angle: Angle) -> float: ...
 
 
 @overload
-def rad_of_angle(angle: Expression) -> Expression: ...
+def angle_to_rad(angle: Expression) -> Expression: ...
 
 
-def rad_of_angle(angle: ParameterizedAngle) -> ExpressionOrFloat:
+def angle_to_rad(angle: ParameterizedAngle) -> ExpressionOrFloat:
     """Convert a Graphix angle to radians.
 
     In Graphix, angles are expressed in units of π.
@@ -376,7 +376,7 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
         """Return the Cartesian coordinates of the point of module 1 at the given angle, following the conventional orientation for cos and sin."""
         pp = (self.cos, self.sin)
         # Angles are in units of π whereas `cos_sin` expects radians.
-        cos, sin = cos_sin(rad_of_angle(angle))
+        cos, sin = cos_sin(angle_to_rad(angle))
         if pp == (Axis.X, Axis.Y):
             return (cos, sin, 0)
         if pp == (Axis.Z, Axis.Y):

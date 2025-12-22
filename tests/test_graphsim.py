@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pytest
 
 from graphix.clifford import Clifford
-from graphix.fundamentals import ANGLE_PI, Plane, rad_of_angle
+from graphix.fundamentals import ANGLE_PI, Plane, angle_to_rad
 from graphix.graphsim import GraphState
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
@@ -63,11 +63,11 @@ def meas_op(
     """
     assert choice in {0, 1}
     if plane == Plane.XY:
-        vec = (np.cos(rad_of_angle(angle)), np.sin(rad_of_angle(angle)), 0)
+        vec = (np.cos(angle_to_rad(angle)), np.sin(angle_to_rad(angle)), 0)
     elif plane == Plane.YZ:
-        vec = (0, np.cos(rad_of_angle(angle)), np.sin(rad_of_angle(angle)))
+        vec = (0, np.cos(angle_to_rad(angle)), np.sin(angle_to_rad(angle)))
     elif plane == Plane.XZ:
-        vec = (np.cos(rad_of_angle(angle)), 0, np.sin(rad_of_angle(angle)))
+        vec = (np.cos(angle_to_rad(angle)), 0, np.sin(angle_to_rad(angle)))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
         op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2

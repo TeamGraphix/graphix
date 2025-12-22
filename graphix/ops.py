@@ -13,7 +13,7 @@ import numpy.typing as npt
 from typing_extensions import assert_never
 
 from graphix import utils
-from graphix.fundamentals import IXYZ, Axis, rad_of_angle
+from graphix.fundamentals import IXYZ, Axis, angle_to_rad
 from graphix.parameter import Expression, cos_sin, exp
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        cos, sin = cos_sin(rad_of_angle(theta) / 2)
+        cos, sin = cos_sin(angle_to_rad(theta) / 2)
         return Ops._cast_array([[cos, -1j * sin], [-1j * sin, cos]], theta)
 
     @overload
@@ -141,7 +141,7 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        cos, sin = cos_sin(rad_of_angle(theta) / 2)
+        cos, sin = cos_sin(angle_to_rad(theta) / 2)
         return Ops._cast_array([[cos, -sin], [sin, cos]], theta)
 
     @overload
@@ -165,7 +165,7 @@ class Ops:
         -------
         operator : 2*2 np.asarray
         """
-        return Ops._cast_array([[exp(-1j * rad_of_angle(theta) / 2), 0], [0, exp(1j * rad_of_angle(theta) / 2)]], theta)
+        return Ops._cast_array([[exp(-1j * angle_to_rad(theta) / 2), 0], [0, exp(1j * angle_to_rad(theta) / 2)]], theta)
 
     @overload
     @staticmethod

@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions
 
-from graphix.fundamentals import ANGLE_PI, Angle, Plane, rad_of_angle
+from graphix.fundamentals import ANGLE_PI, Angle, Plane, angle_to_rad
 
 
 # generic class State for all States
@@ -65,16 +65,16 @@ class PlanarState(State):
     def get_statevector(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
         if self.plane == Plane.XY:
-            return np.asarray([1 / np.sqrt(2), np.exp(1j * rad_of_angle(self.angle)) / np.sqrt(2)], dtype=np.complex128)
+            return np.asarray([1 / np.sqrt(2), np.exp(1j * angle_to_rad(self.angle)) / np.sqrt(2)], dtype=np.complex128)
 
         if self.plane == Plane.YZ:
             return np.asarray(
-                [np.cos(rad_of_angle(self.angle) / 2), 1j * np.sin(rad_of_angle(self.angle) / 2)], dtype=np.complex128
+                [np.cos(angle_to_rad(self.angle) / 2), 1j * np.sin(angle_to_rad(self.angle) / 2)], dtype=np.complex128
             )
 
         if self.plane == Plane.XZ:
             return np.asarray(
-                [np.cos(rad_of_angle(self.angle) / 2), np.sin(rad_of_angle(self.angle) / 2)], dtype=np.complex128
+                [np.cos(angle_to_rad(self.angle) / 2), np.sin(angle_to_rad(self.angle) / 2)], dtype=np.complex128
             )
         # other case never happens since exhaustive
         typing_extensions.assert_never(self.plane)

@@ -114,7 +114,6 @@ class TestTranspilerUnitGates:
         circuit = Circuit(1)
         circuit.ry(0, theta)
         pattern = circuit.transpile().pattern
-        print(circuit, pattern)
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)

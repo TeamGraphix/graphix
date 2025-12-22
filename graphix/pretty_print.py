@@ -10,7 +10,7 @@ from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
 from graphix import command
-from graphix.fundamentals import Plane, rad_of_angle
+from graphix.fundamentals import Plane, angle_to_rad
 
 if TYPE_CHECKING:
     from collections.abc import Container
@@ -62,7 +62,7 @@ def angle_to_str(
     frac = Fraction(angle).limit_denominator(max_denominator)
 
     if not math.isclose(angle, float(frac)):
-        rad = rad_of_angle(angle)
+        rad = angle_to_rad(angle)
 
         return f"{rad}"
 

@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from graphix.fundamentals import rad_of_angle
+from graphix.fundamentals import angle_to_rad
 from graphix.noise_models import DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 def rz_exact_res(alpha: Angle) -> npt.NDArray[np.float64]:
-    rad = rad_of_angle(alpha)
+    rad = angle_to_rad(alpha)
     return 0.5 * np.array([[1, np.exp(-1j * rad)], [np.exp(1j * rad), 1]])
 
 
@@ -201,7 +201,7 @@ class TestNoisyDensityMatrixBackend:
         )
         # analytical result
         assert isinstance(res, DensityMatrix)
-        rad = rad_of_angle(alpha)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5
@@ -257,7 +257,7 @@ class TestNoisyDensityMatrixBackend:
 
         # analytical result for true 2-qubit depolarizing channel
         assert isinstance(res, DensityMatrix)
-        rad = rad_of_angle(alpha)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5
@@ -288,7 +288,7 @@ class TestNoisyDensityMatrixBackend:
         )
 
         assert isinstance(res, DensityMatrix)
-        rad = rad_of_angle(alpha)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5
@@ -325,7 +325,7 @@ class TestNoisyDensityMatrixBackend:
         # only two cases: if no X correction, Z or no Z correction but exact result.
         # If X correction the noise result is the same with or without the PERFECT Z correction.
         assert isinstance(res, DensityMatrix)
-        rad = rad_of_angle(alpha)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]),
@@ -355,7 +355,7 @@ class TestNoisyDensityMatrixBackend:
         # only two cases: if no Z correction, X or no X correction but exact result.
         # If Z correction the noise result is the same with or without the PERFECT X correction.
         assert isinstance(res, DensityMatrix)
-        rad = rad_of_angle(alpha)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]),
@@ -386,7 +386,7 @@ class TestNoisyDensityMatrixBackend:
 
         # 4 cases : no corr, noisy X, noisy Z, noisy XZ.
         assert isinstance(res, DensityMatrix)
-        rad = rad_of_angle(alpha)
+        rad = angle_to_rad(alpha)
         assert (
             np.allclose(res.rho, 0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]))
             or np.allclose(
