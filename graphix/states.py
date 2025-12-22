@@ -64,18 +64,15 @@ class PlanarState(State):
 
     def get_statevector(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
+        angle_rad = angle_to_rad(self.angle)
         if self.plane == Plane.XY:
-            return np.asarray([1 / np.sqrt(2), np.exp(1j * angle_to_rad(self.angle)) / np.sqrt(2)], dtype=np.complex128)
+            return np.asarray([1 / np.sqrt(2), np.exp(1j * angle_rad) / np.sqrt(2)], dtype=np.complex128)
 
         if self.plane == Plane.YZ:
-            return np.asarray(
-                [np.cos(angle_to_rad(self.angle) / 2), 1j * np.sin(angle_to_rad(self.angle) / 2)], dtype=np.complex128
-            )
+            return np.asarray([np.cos(angle_rad / 2), 1j * np.sin(angle_rad / 2)], dtype=np.complex128)
 
         if self.plane == Plane.XZ:
-            return np.asarray(
-                [np.cos(angle_to_rad(self.angle) / 2), np.sin(angle_to_rad(self.angle) / 2)], dtype=np.complex128
-            )
+            return np.asarray([np.cos(angle_rad / 2), np.sin(angle_rad / 2)], dtype=np.complex128)
         # other case never happens since exhaustive
         typing_extensions.assert_never(self.plane)
 

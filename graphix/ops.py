@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from graphix.fundamentals import Angle, ParameterizedAngle
-    from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
+    from graphix.parameter import ExpressionOrComplex
 
 
 class Ops:
@@ -80,17 +80,17 @@ class Ops:
 
     @overload
     @staticmethod
-    def _cast_array(array: Iterable[Iterable[complex]], theta: float) -> npt.NDArray[np.complex128]: ...
+    def _cast_array(array: Iterable[Iterable[complex]], theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
+        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]: ...
 
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
+        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         if isinstance(theta, Expression):
             return np.asarray(array, dtype=np.object_)
@@ -110,7 +110,7 @@ class Ops:
 
         Parameters
         ----------
-        theta : float
+        theta : Angle | Expression
             rotation angle in units of π
 
         Returns
@@ -134,7 +134,7 @@ class Ops:
 
         Parameters
         ----------
-        theta : Angle
+        theta : Angle | Expression
             rotation angle in units of π
 
         Returns
@@ -158,7 +158,7 @@ class Ops:
 
         Parameters
         ----------
-        theta : Angle
+        theta : Angle | Expression
             rotation angle in units of π
 
         Returns
@@ -186,7 +186,7 @@ class Ops:
 
         Parameters
         ----------
-        theta : float
+        theta : Angle | Expression
             rotation angle in units of π
 
         Returns
