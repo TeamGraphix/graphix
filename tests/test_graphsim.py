@@ -62,12 +62,13 @@ def meas_op(
 
     """
     assert choice in {0, 1}
+    rad_angle = angle_to_rad(angle)
     if plane == Plane.XY:
-        vec = (np.cos(angle_to_rad(angle)), np.sin(angle_to_rad(angle)), 0)
+        vec = (np.cos(rad_angle), np.sin(rad_angle), 0)
     elif plane == Plane.YZ:
-        vec = (0, np.cos(angle_to_rad(angle)), np.sin(angle_to_rad(angle)))
+        vec = (0, np.cos(rad_angle), np.sin(rad_angle))
     elif plane == Plane.XZ:
-        vec = (np.cos(angle_to_rad(angle)), 0, np.sin(angle_to_rad(angle)))
+        vec = (np.cos(rad_angle), 0, np.sin(rad_angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
         op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2
