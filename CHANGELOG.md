@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #392: Added `graphix.pattern.Pattern.remove_input_nodes` method which removes the input nodes from the pattern and replaces them with N commands.
+
 - #385
   - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
   - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
@@ -28,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #394: The method `Circuit.transpile_measurements_to_z_axis` returns an equivalent circuit where all measurements are on the Z axis. This can be used to prepare a circuit for export to OpenQASM with `circuit_to_qasm3`.
 
 ### Fixed
+
+- #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
 
 - #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
 
