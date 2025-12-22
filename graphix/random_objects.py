@@ -12,6 +12,7 @@ import scipy.linalg
 from scipy.stats import unitary_group
 
 from graphix.channels import KrausChannel, KrausData
+from graphix.fundamentals import ANGLE_PI
 from graphix.ops import Ops
 from graphix.rng import ensure_rng
 from graphix.transpiler import Circuit
@@ -404,9 +405,9 @@ def rand_circuit(
         for parameter in parameters or []
     )
     gate_choice: tuple[Callable[[int], None], ...] = (
-        functools.partial(circuit.ry, angle=np.pi / 4),
-        functools.partial(circuit.rz, angle=-np.pi / 4),
-        functools.partial(circuit.rx, angle=-np.pi / 4),
+        functools.partial(circuit.ry, angle=ANGLE_PI / 4),
+        functools.partial(circuit.rz, angle=-ANGLE_PI / 4),
+        functools.partial(circuit.rx, angle=-ANGLE_PI / 4),
         circuit.h,
         circuit.s,
         circuit.x,
@@ -422,7 +423,7 @@ def rand_circuit(
                 circuit.cz(j, k)
         if use_rzz:
             for j, k in _genpair(nqubits, 2, rng):
-                circuit.rzz(j, k, np.pi / 4)
+                circuit.rzz(j, k, ANGLE_PI / 4)
         if use_ccx:
             for j, k, l in _gentriplet(nqubits, 2, rng):
                 circuit.ccx(j, k, l)

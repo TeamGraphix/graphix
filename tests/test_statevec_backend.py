@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
 from graphix.pauli import Pauli
 from graphix.sim.statevec import Statevec, StatevectorBackend
@@ -61,7 +61,7 @@ class TestStatevecNew:
         assert len(backend.state.dims()) == 1
 
         # random planar state
-        rand_angle = fx_rng.random() * 2 * np.pi
+        rand_angle = fx_rng.random() * 2 * ANGLE_PI
         rand_plane = fx_rng.choice(np.array(Plane))
         state = PlanarState(rand_plane, rand_angle)
         backend = StatevectorBackend()
@@ -74,7 +74,7 @@ class TestStatevecNew:
         # data input and Statevec input
 
     def test_init_fail(self, hadamardpattern, fx_rng: Generator) -> None:
-        rand_angle = fx_rng.random(2) * 2 * np.pi
+        rand_angle = fx_rng.random(2) * 2 * ANGLE_PI
         rand_plane = fx_rng.choice(np.array(Plane), 2)
 
         state = PlanarState(rand_plane[0], rand_angle[0])

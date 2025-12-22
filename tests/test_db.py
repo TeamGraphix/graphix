@@ -13,6 +13,7 @@ from graphix._db import (
     CLIFFORD_MUL,
 )
 from graphix.clifford import Clifford
+from graphix.ops import Ops
 
 
 class TestCliffordDB:
@@ -21,7 +22,7 @@ class TestCliffordDB:
         pauli = CLIFFORD[j + 1]
         arr = CLIFFORD[i].conjugate().T @ pauli @ CLIFFORD[i]
         sym, sgn = CLIFFORD_MEASURE[i][j]
-        arr_ = complex(sgn) * sym.matrix
+        arr_ = complex(sgn) * Ops.from_ixyz(sym)
         assert np.allclose(arr, arr_)
 
     @pytest.mark.parametrize(("i", "j"), itertools.product(range(24), range(24)))

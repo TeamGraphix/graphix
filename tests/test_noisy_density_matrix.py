@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
+from graphix.fundamentals import angle_to_rad
 from graphix.noise_models import DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
 from graphix.ops import Ops
@@ -15,32 +16,34 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from numpy.random import Generator
 
+    from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
+
+
+def rz_exact_res(alpha: Angle) -> npt.NDArray[np.float64]:
+    rad = angle_to_rad(alpha)
+    return 0.5 * np.array([[1, np.exp(-1j * rad)], [np.exp(1j * rad), 1]])
+
+
+def hpat() -> Pattern:
+    circ = Circuit(1)
+    circ.h(0)
+    return circ.transpile().pattern
+
+
+def rzpat(alpha: Angle) -> Pattern:
+    circ = Circuit(1)
+    circ.rz(0, alpha)
+    return circ.transpile().pattern
 
 
 class TestNoisyDensityMatrixBackend:
     """Test for Noisy DensityMatrixBackend simultation."""
 
-    @staticmethod
-    def rz_exact_res(alpha: float) -> npt.NDArray[np.float64]:
-        return 0.5 * np.array([[1, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1]])
-
-    @staticmethod
-    def hpat() -> Pattern:
-        circ = Circuit(1)
-        circ.h(0)
-        return circ.transpile().pattern
-
-    @staticmethod
-    def rzpat(alpha: float) -> Pattern:
-        circ = Circuit(1)
-        circ.rz(0, alpha)
-        return circ.transpile().pattern
-
     # test noiseless noisy vs noiseless
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_noiseless_noisy_hadamard(self, fx_rng: Generator) -> None:
-        hadamardpattern = self.hpat()
+        hadamardpattern = hpat()
         noiselessres = hadamardpattern.simulate_pattern(backend="densitymatrix", rng=fx_rng)
         # noiseless noise model
         noisynoiselessres = hadamardpattern.simulate_pattern(
@@ -56,7 +59,7 @@ class TestNoisyDensityMatrixBackend:
 
     # test measurement confuse outcome
     def test_noisy_measure_confuse_hadamard(self, fx_rng: Generator) -> None:
-        hadamardpattern = self.hpat()
+        hadamardpattern = hpat()
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_error_prob=1.0),
@@ -80,7 +83,7 @@ class TestNoisyDensityMatrixBackend:
         )
 
     def test_noisy_measure_channel_hadamard(self, fx_rng: Generator) -> None:
-        hadamardpattern = self.hpat()
+        hadamardpattern = hpat()
         measure_channel_pr = fx_rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
@@ -98,7 +101,7 @@ class TestNoisyDensityMatrixBackend:
 
     # test Pauli X error
     def test_noisy_x_hadamard(self, fx_rng: Generator) -> None:
-        hadamardpattern = self.hpat()
+        hadamardpattern = hpat()
         # x error only
         x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}")
@@ -118,7 +121,7 @@ class TestNoisyDensityMatrixBackend:
 
     # test entanglement error
     def test_noisy_entanglement_hadamard(self, fx_rng: Generator) -> None:
-        hadamardpattern = self.hpat()
+        hadamardpattern = hpat()
         entanglement_error_pr = fx_rng.uniform()
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
@@ -150,7 +153,7 @@ class TestNoisyDensityMatrixBackend:
 
     # test preparation error
     def test_noisy_preparation_hadamard(self, fx_rng: Generator) -> None:
-        hadamardpattern = self.hpat()
+        hadamardpattern = hpat()
         prepare_error_pr = fx_rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
         res = hadamardpattern.simulate_pattern(
@@ -171,7 +174,7 @@ class TestNoisyDensityMatrixBackend:
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     def test_noiseless_noisy_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         noiselessres = rzpattern.simulate_pattern(backend="densitymatrix")
         # noiseless noise model or DepolarisingNoiseModel() since all probas are 0
         noisynoiselessres = rzpattern.simulate_pattern(
@@ -180,21 +183,15 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )  # NoiselessNoiseModel()
         assert isinstance(noiselessres, DensityMatrix)
-        assert np.allclose(
-            noiselessres.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
-        )
+        assert np.allclose(noiselessres.rho, rz_exact_res(alpha))
         # result should be |0>
         assert isinstance(noisynoiselessres, DensityMatrix)
-        assert np.allclose(
-            noisynoiselessres.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
-        )
+        assert np.allclose(noisynoiselessres.rho, rz_exact_res(alpha))
 
     # test preparation error
     def test_noisy_preparation_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         prepare_error_pr = fx_rng.random()
         print(f"prepare_error_pr = {prepare_error_pr}")
         res = rzpattern.simulate_pattern(
@@ -204,6 +201,7 @@ class TestNoisyDensityMatrixBackend:
         )
         # analytical result
         assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5
@@ -212,12 +210,12 @@ class TestNoisyDensityMatrixBackend:
                     [
                         1.0,
                         (3 - 4 * prepare_error_pr) ** 2
-                        * (3 * np.cos(alpha) + 1j * (-3 + 4 * prepare_error_pr) * np.sin(alpha))
+                        * (3 * np.cos(rad) + 1j * (-3 + 4 * prepare_error_pr) * np.sin(rad))
                         / 27,
                     ],
                     [
                         (3 - 4 * prepare_error_pr) ** 2
-                        * (3 * np.cos(alpha) - 1j * (-3 + 4 * prepare_error_pr) * np.sin(alpha))
+                        * (3 * np.cos(rad) - 1j * (-3 + 4 * prepare_error_pr) * np.sin(rad))
                         / 27,
                         1.0,
                     ],
@@ -228,7 +226,7 @@ class TestNoisyDensityMatrixBackend:
     # test entanglement error
     def test_noisy_entanglement_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         entanglement_error_pr = fx_rng.uniform()
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
@@ -259,6 +257,7 @@ class TestNoisyDensityMatrixBackend:
 
         # analytical result for true 2-qubit depolarizing channel
         assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5
@@ -266,10 +265,10 @@ class TestNoisyDensityMatrixBackend:
                 [
                     [
                         1.0,
-                        np.exp(-1j * alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
+                        np.exp(-1j * rad) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
                     ],
                     [
-                        np.exp(1j * alpha) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
+                        np.exp(1j * rad) * (15 - 16 * entanglement_error_pr) ** 2 / 225,
                         1.0,
                     ],
                 ],
@@ -278,7 +277,7 @@ class TestNoisyDensityMatrixBackend:
 
     def test_noisy_measure_channel_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         measure_channel_pr = fx_rng.random()
         print(f"measure_channel_pr = {measure_channel_pr}")
         # measurement error only
@@ -289,6 +288,7 @@ class TestNoisyDensityMatrixBackend:
         )
 
         assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
             0.5
@@ -297,12 +297,12 @@ class TestNoisyDensityMatrixBackend:
                     [
                         1.0,
                         (-3 + 4 * measure_channel_pr)
-                        * (-3 * np.cos(alpha) + 1j * (3 - 4 * measure_channel_pr) * np.sin(alpha))
+                        * (-3 * np.cos(rad) + 1j * (3 - 4 * measure_channel_pr) * np.sin(rad))
                         / 9,
                     ],
                     [
                         (-3 + 4 * measure_channel_pr)
-                        * (-3 * np.cos(alpha) - 1j * (3 - 4 * measure_channel_pr) * np.sin(alpha))
+                        * (-3 * np.cos(rad) - 1j * (3 - 4 * measure_channel_pr) * np.sin(rad))
                         / 9,
                         1.0,
                     ],
@@ -312,7 +312,7 @@ class TestNoisyDensityMatrixBackend:
 
     def test_noisy_x_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         # x error only
         x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}")
@@ -325,23 +325,24 @@ class TestNoisyDensityMatrixBackend:
         # only two cases: if no X correction, Z or no Z correction but exact result.
         # If X correction the noise result is the same with or without the PERFECT Z correction.
         assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
+            0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]),
         ) or np.allclose(
             res.rho,
             0.5
             * np.array(
                 [
-                    [1.0, np.exp(-1j * alpha) * (3 - 4 * x_error_pr) / 3],
-                    [np.exp(1j * alpha) * (3 - 4 * x_error_pr) / 3, 1.0],
+                    [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
+                    [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
                 ],
             ),
         )
 
     def test_noisy_z_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         # z error only
         z_error_pr = fx_rng.random()
         print(f"z_error_pr = {z_error_pr}")
@@ -354,23 +355,24 @@ class TestNoisyDensityMatrixBackend:
         # only two cases: if no Z correction, X or no X correction but exact result.
         # If Z correction the noise result is the same with or without the PERFECT X correction.
         assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
         assert np.allclose(
             res.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]),
+            0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]),
         ) or np.allclose(
             res.rho,
             0.5
             * np.array(
                 [
-                    [1.0, np.exp(-1j * alpha) * (3 - 4 * z_error_pr) / 3],
-                    [np.exp(1j * alpha) * (3 - 4 * z_error_pr) / 3, 1.0],
+                    [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
+                    [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
                 ],
             ),
         )
 
     def test_noisy_xz_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         # x and z errors
         x_error_pr = fx_rng.random()
         print(f"x_error_pr = {x_error_pr}")
@@ -384,15 +386,16 @@ class TestNoisyDensityMatrixBackend:
 
         # 4 cases : no corr, noisy X, noisy Z, noisy XZ.
         assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
         assert (
-            np.allclose(res.rho, 0.5 * np.array([[1.0, np.exp(-1j * alpha)], [np.exp(1j * alpha), 1.0]]))
+            np.allclose(res.rho, 0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]))
             or np.allclose(
                 res.rho,
                 0.5
                 * np.array(
                     [
-                        [1.0, np.exp(-1j * alpha) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
-                        [np.exp(1j * alpha) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
                     ],
                 ),
             )
@@ -401,8 +404,8 @@ class TestNoisyDensityMatrixBackend:
                 0.5
                 * np.array(
                     [
-                        [1.0, np.exp(-1j * alpha) * (3 - 4 * z_error_pr) / 3],
-                        [np.exp(1j * alpha) * (3 - 4 * z_error_pr) / 3, 1.0],
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
                     ],
                 ),
             )
@@ -411,8 +414,8 @@ class TestNoisyDensityMatrixBackend:
                 0.5
                 * np.array(
                     [
-                        [1.0, np.exp(-1j * alpha) * (3 - 4 * x_error_pr) / 3],
-                        [np.exp(1j * alpha) * (3 - 4 * x_error_pr) / 3, 1.0],
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
                     ],
                 ),
             )
@@ -421,14 +424,14 @@ class TestNoisyDensityMatrixBackend:
     # test measurement confuse outcome
     def test_noisy_measure_confuse_rz(self, fx_rng: Generator) -> None:
         alpha = fx_rng.random()
-        rzpattern = self.rzpat(alpha)
+        rzpattern = rzpat(alpha)
         # probability 1 to shift both outcome
         res = rzpattern.simulate_pattern(
             backend="densitymatrix", noise_model=DepolarisingNoiseModel(measure_error_prob=1.0), rng=fx_rng
         )
         # result X, XZ or Z
 
-        exact = self.rz_exact_res(alpha)
+        exact = rz_exact_res(alpha)
 
         assert isinstance(res, DensityMatrix)
         assert (

@@ -15,7 +15,7 @@ from typing import (
 from typing_extensions import override
 
 from graphix import utils
-from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane, Sign
+from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, ParameterizedAngle, Plane, Sign
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
@@ -53,7 +53,7 @@ class Measurement(AbstractPlanarMeasurement):
         The measurement plane.
     """
 
-    angle: ExpressionOrFloat
+    angle: ParameterizedAngle
     plane: Plane
 
     @override

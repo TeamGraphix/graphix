@@ -13,7 +13,7 @@ from numpy.random import PCG64, Generator
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Outcome, PauliMeasurement
 from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
@@ -27,6 +27,7 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from graphix.fundamentals import Angle
     from graphix.sim.base_backend import BackendState
 
 
@@ -241,10 +242,10 @@ class TestPattern:
 
         # QFT
         circuit.h(2)
-        cp(circuit, np.pi / 4, 0, 2)
-        cp(circuit, np.pi / 2, 1, 2)
+        cp(circuit, ANGLE_PI / 4, 0, 2)
+        cp(circuit, ANGLE_PI / 2, 1, 2)
         circuit.h(1)
-        cp(circuit, np.pi / 2, 0, 1)
+        cp(circuit, ANGLE_PI / 2, 0, 1)
         circuit.h(0)
         swap(circuit, 0, 2)
 
@@ -269,10 +270,10 @@ class TestPattern:
 
         # QFT
         circuit.h(2)
-        cp(circuit, np.pi / 4, 0, 2)
-        cp(circuit, np.pi / 2, 1, 2)
+        cp(circuit, ANGLE_PI / 4, 0, 2)
+        cp(circuit, ANGLE_PI / 2, 1, 2)
         circuit.h(1)
-        cp(circuit, np.pi / 2, 0, 1)
+        cp(circuit, ANGLE_PI / 2, 0, 1)
         circuit.h(0)
         swap(circuit, 0, 2)
 
@@ -630,7 +631,7 @@ class TestPattern:
         circuit_1.h(0)
         p1 = circuit_1.transpile().pattern  # outputs: [1]
 
-        alpha = 2 * np.pi * fx_rng.random()
+        alpha = 2 * ANGLE_PI * fx_rng.random()
 
         circuit_2 = Circuit(1)
         circuit_2.rz(0, alpha)
@@ -668,7 +669,7 @@ class TestPattern:
 
     # Test warning composition after standardization
     def test_compose_7(self, fx_rng: Generator) -> None:
-        alpha = 2 * np.pi * fx_rng.random()
+        alpha = 2 * ANGLE_PI * fx_rng.random()
 
         circuit_1 = Circuit(1)
         circuit_1.h(0)
@@ -771,7 +772,7 @@ class TestPattern:
         assert Pattern().compute_max_degree() == 0
 
 
-def cp(circuit: Circuit, theta: float, control: int, target: int) -> None:
+def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
     """Controlled rotation gate, decomposed."""  # noqa: D401
     circuit.rz(control, theta / 2)
     circuit.rz(target, theta / 2)
@@ -813,10 +814,10 @@ class TestMCOps:
         circuit = Circuit(n)
         for u, v in g.edges:
             circuit.cnot(u, v)
-            circuit.rz(v, np.pi / 4)
+            circuit.rz(v, ANGLE_PI / 4)
             circuit.cnot(u, v)
         for v in g.nodes:
-            circuit.rx(v, np.pi / 9)
+            circuit.rx(v, ANGLE_PI / 9)
 
         pattern = circuit.transpile().pattern
         graph = pattern.extract_graph()
@@ -949,7 +950,7 @@ class TestMCOps:
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
@@ -958,7 +959,7 @@ class TestMCOps:
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern

@@ -6,7 +6,6 @@ import dataclasses
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from math import pi
 from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
 
 import numpy as np
@@ -786,8 +785,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         rng: Generator, optional
         """
         loc = self.node_index.index(node)
-        # `Plane.polar` expects the angle in radians, whereas `measurement.angle` is expressed in units of π.
-        vec = measurement.plane.polar(measurement.angle * pi)
+        vec = measurement.plane.polar(measurement.angle)
         # op_mat0 may contain the matrix operator associated with the outcome 0,
         # but the value is computed lazily, i.e., only if needed.
         op_mat0 = None

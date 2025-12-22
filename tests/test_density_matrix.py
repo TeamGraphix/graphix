@@ -12,7 +12,7 @@ import pytest
 import graphix.random_objects as randobj
 from graphix.branch_selector import RandomBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
@@ -106,7 +106,7 @@ class TestDensityMatrix:
 
         nqb = int(fx_rng.integers(2, 5))
         print(f"nqb is {nqb}")
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
@@ -120,7 +120,7 @@ class TestDensityMatrix:
 
     def test_init_with_state_fail(self, fx_rng: Generator) -> None:
         nqb = 2
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
 
@@ -135,7 +135,7 @@ class TestDensityMatrix:
         # relies on Statevec constructor validation
 
         nqb = int(fx_rng.integers(2, 5))
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
@@ -162,7 +162,7 @@ class TestDensityMatrix:
         # both "numerical" densitymatrix and DensityMatrix object
 
         nqb = int(fx_rng.integers(2, 5))
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         print("planes", rand_planes)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
@@ -863,7 +863,7 @@ class TestDensityMatrixBackend:
         # assert backend.state.nqubit == 1
         assert backend.state.dims() == (2**nqb, 2**nqb)
 
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
 
@@ -878,7 +878,7 @@ class TestDensityMatrixBackend:
         assert backend.nqubit == nqb
 
     def test_init_fail(self, fx_rng: Generator, nqb: int, randpattern: Pattern) -> None:
-        rand_angles = fx_rng.random(nqb + 1) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb + 1) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb + 1)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
 
@@ -889,7 +889,7 @@ class TestDensityMatrixBackend:
 
     def test_init_success_2(self) -> None:
         circ = Circuit(1)
-        circ.rx(0, np.pi / 2)
+        circ.rx(0, ANGLE_PI / 2)
         pattern = circ.transpile().pattern
         backend = DensityMatrixBackend()
         backend.add_nodes(pattern.input_nodes)
@@ -921,7 +921,7 @@ class TestDensityMatrixBackend:
     @pytest.mark.parametrize("pr_calc", [False, True])
     def test_measure(self, pr_calc: bool) -> None:
         circ = Circuit(1)
-        circ.rx(0, np.pi / 2)
+        circ.rx(0, ANGLE_PI / 2)
         pattern = circ.transpile().pattern
 
         measure_method = DefaultMeasureMethod()
@@ -938,7 +938,7 @@ class TestDensityMatrixBackend:
 
     def test_correct_byproduct(self) -> None:
         circ = Circuit(1)
-        circ.rx(0, np.pi / 2)
+        circ.rx(0, ANGLE_PI / 2)
         pattern = circ.transpile().pattern
         measure_method = DefaultMeasureMethod()
         backend = DensityMatrixBackend()

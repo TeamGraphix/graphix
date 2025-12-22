@@ -25,6 +25,7 @@ from paddle_quantum.mbqc.simulator import MBQC as PaddleMBQC  # noqa: N811
 from paddle_quantum.mbqc.transpiler import transpile as paddle_transpile
 
 from graphix import Circuit
+from graphix.fundamentals import ANGLE_PI
 
 rng = np.random.default_rng()
 
@@ -57,7 +58,7 @@ def simple_random_circuit(nqubit, depth):
         for j in range(len(qubit_index) // 2):
             circuit.cnot(qubit_index[2 * j], qubit_index[2 * j + 1])
         for j in range(len(qubit_index)):
-            circuit.rz(qubit_index[j], 2 * np.pi * rng.random())
+            circuit.rz(qubit_index[j], 2 * ANGLE_PI * rng.random())
     return circuit
 
 

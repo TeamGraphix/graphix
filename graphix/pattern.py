@@ -21,7 +21,7 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-from graphix.fundamentals import Axis, Plane, Sign
+from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
 
 
@@ -1080,7 +1080,7 @@ class Pattern:
                 meas_plane[cmd.node] = cmd.plane
         return meas_plane
 
-    def get_angles(self) -> dict[int, ExpressionOrFloat]:
+    def get_angles(self) -> dict[int, ParameterizedAngle]:
         """Get measurement angles of the pattern.
 
         Returns
