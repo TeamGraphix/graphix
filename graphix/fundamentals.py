@@ -17,14 +17,17 @@ from graphix.parameter import Expression, cos_sin
 from graphix.repr_mixins import EnumReprMixin
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
+
     from graphix.parameter import ExpressionOrFloat
 
-# In Graphix, angles are represented as floats and expressed in units of π.
-Angle = float
+Angle: TypeAlias = float
+"""In Graphix, angles are represented as floats and expressed in units of π."""
 
-ParameterizedAngle = Expression | Angle
+ParameterizedAngle: TypeAlias = Expression | Angle
 
-ANGLE_PI = 1
+ANGLE_PI: Angle = 1
+"""The constant ``ANGLE_PI = 1`` is defined for convenience to make expressions involving angles more readable."""
 
 
 @overload
