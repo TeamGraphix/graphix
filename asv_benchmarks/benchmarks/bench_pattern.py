@@ -45,9 +45,9 @@ class PatternSimulation:
     def time_statevector(self) -> None:
         """Time statevector backend."""
         for pattern in self.patterns:
-            pattern.simulate_pattern(backend='statevector')
+            pattern.simulate_pattern(backend="statevector")
 
     def time_densitymatrix(self) -> None:
         """Time density matrix backend."""
         for pattern in self.patterns:
-            pattern.simulate_pattern(backend='densitymatrix')
+            pattern.simulate_pattern(backend="densitymatrix")
