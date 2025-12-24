@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from graphix.clifford import Clifford
-from graphix.fundamentals import IXYZ, ComplexUnit, Sign
+from graphix.fundamentals import IXYZ_VALUES, ComplexUnit, Sign
 from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ class TestClifford:
             Clifford,
             (
                 Pauli(sym, u)
-                for sym in IXYZ
+                for sym in IXYZ_VALUES
                 for u in (
                     ComplexUnit.from_properties(sign=Sign.PLUS, is_imag=False),
                     ComplexUnit.from_properties(sign=Sign.MINUS, is_imag=False),
