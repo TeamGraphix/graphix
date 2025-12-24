@@ -23,6 +23,7 @@ pytest-mpl
 # Optional dependencies
 qiskit>=1.0
 qiskit-aer
+qiskit-qasm3-import
 
 openqasm-parser>=3.1.0
 graphix-qasm-parser
