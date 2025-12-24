@@ -1471,10 +1471,10 @@ class Pattern:
         Parameters
         ----------
         filename : Path | str
-            File name to export to. Example: "filename.qasm"
+            File name to export to. Example: ``"filename.qasm"``.
 
         input_state : dict[int, State] | State, default BasicStates.PLUS
-            The initial state for each input node. Only |0⟩ or |+⟩ states are supported.
+            The initial state for each input node. Only ``|0⟩`` or ``|+⟩`` states are supported.
         """
         with Path(filename).with_suffix(".qasm").open("w", encoding="utf-8") as file:
             file.writelines(pattern_to_qasm3_lines(self, input_state=input_state))
