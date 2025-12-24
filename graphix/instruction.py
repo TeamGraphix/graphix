@@ -65,8 +65,12 @@ class _KindChecker:
         utils.check_kind(cls, {"InstructionKind": InstructionKind, "Plane": Plane})
 
 
+class BaseInstruction(DataclassReprMixin):
+    """Base class for circuit instruction."""
+
+
 @dataclass(repr=False)
-class CCX(_KindChecker, DataclassReprMixin):
+class CCX(_KindChecker, BaseInstruction):
     """Toffoli circuit instruction."""
 
     target: int
@@ -75,7 +79,7 @@ class CCX(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class RZZ(_KindChecker, DataclassReprMixin):
+class RZZ(_KindChecker, BaseInstruction):
     """RZZ circuit instruction."""
 
     target: int
@@ -85,7 +89,7 @@ class RZZ(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class CNOT(_KindChecker, DataclassReprMixin):
+class CNOT(_KindChecker, BaseInstruction):
     """CNOT circuit instruction."""
 
     target: int
@@ -94,7 +98,7 @@ class CNOT(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class CZ(_KindChecker, DataclassReprMixin):
+class CZ(_KindChecker, BaseInstruction):
     """CZ circuit instruction."""
 
     targets: tuple[int, int]
@@ -102,7 +106,7 @@ class CZ(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class SWAP(_KindChecker, DataclassReprMixin):
+class SWAP(_KindChecker, BaseInstruction):
     """SWAP circuit instruction."""
 
     targets: tuple[int, int]
@@ -110,7 +114,7 @@ class SWAP(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class H(_KindChecker, DataclassReprMixin):
+class H(_KindChecker, BaseInstruction):
     """H circuit instruction."""
 
     target: int
@@ -118,7 +122,7 @@ class H(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class S(_KindChecker, DataclassReprMixin):
+class S(_KindChecker, BaseInstruction):
     """S circuit instruction."""
 
     target: int
@@ -126,7 +130,7 @@ class S(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class X(_KindChecker, DataclassReprMixin):
+class X(_KindChecker, BaseInstruction):
     """X circuit instruction."""
 
     target: int
@@ -134,7 +138,7 @@ class X(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class Y(_KindChecker, DataclassReprMixin):
+class Y(_KindChecker, BaseInstruction):
     """Y circuit instruction."""
 
     target: int
@@ -142,7 +146,7 @@ class Y(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class Z(_KindChecker, DataclassReprMixin):
+class Z(_KindChecker, BaseInstruction):
     """Z circuit instruction."""
 
     target: int
@@ -150,7 +154,7 @@ class Z(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class I(_KindChecker, DataclassReprMixin):
+class I(_KindChecker, BaseInstruction):
     """I circuit instruction."""
 
     target: int
@@ -158,7 +162,7 @@ class I(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class M(_KindChecker, DataclassReprMixin):
+class M(_KindChecker, BaseInstruction):
     """M circuit instruction."""
 
     target: int
@@ -167,7 +171,7 @@ class M(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class RX(_KindChecker, DataclassReprMixin):
+class RX(_KindChecker, BaseInstruction):
     """X rotation circuit instruction."""
 
     target: int
@@ -176,7 +180,7 @@ class RX(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class RY(_KindChecker, DataclassReprMixin):
+class RY(_KindChecker, BaseInstruction):
     """Y rotation circuit instruction."""
 
     target: int
@@ -185,7 +189,7 @@ class RY(_KindChecker, DataclassReprMixin):
 
 
 @dataclass(repr=False)
-class RZ(_KindChecker, DataclassReprMixin):
+class RZ(_KindChecker, BaseInstruction):
     """Z rotation circuit instruction."""
 
     target: int
@@ -193,22 +197,4 @@ class RZ(_KindChecker, DataclassReprMixin):
     kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
 
 
-@dataclass
-class _XC(_KindChecker):
-    """X correction circuit instruction. Used internally by the transpiler."""
-
-    target: int
-    domain: set[int]
-    kind: ClassVar[Literal[InstructionKind._XC]] = field(default=InstructionKind._XC, init=False)
-
-
-@dataclass
-class _ZC(_KindChecker):
-    """Z correction circuit instruction. Used internally by the transpiler."""
-
-    target: int
-    domain: set[int]
-    kind: ClassVar[Literal[InstructionKind._ZC]] = field(default=InstructionKind._ZC, init=False)
-
-
-Instruction = CCX | RZZ | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC
+Instruction = CCX | RZZ | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ
