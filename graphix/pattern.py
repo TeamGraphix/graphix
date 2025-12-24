@@ -41,6 +41,7 @@ if TYPE_CHECKING:
 
     from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
+    from graphix.states import State
 
 
 _StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
