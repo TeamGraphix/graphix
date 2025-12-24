@@ -1,5 +1,5 @@
 Optimization passes
-======================
+===================
 
 :mod:`graphix.optimization` module
 ++++++++++++++++++++++++++++++++++
