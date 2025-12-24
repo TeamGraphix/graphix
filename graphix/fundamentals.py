@@ -6,7 +6,7 @@ import enum
 import typing
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload
+from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, overload
 
 import typing_extensions
 
@@ -18,6 +18,8 @@ from graphix.parameter import cos_sin
 from graphix.repr_mixins import EnumReprMixin
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
+
     import numpy as np
     import numpy.typing as npt
 
@@ -190,28 +192,6 @@ class ComplexUnit(EnumReprMixin, Enum):
         return ComplexUnit((self.value + 2) % 4)
 
 
-class IXYZ(Enum):
-    """I, X, Y or Z."""
-
-    I = enum.auto()
-    X = enum.auto()
-    Y = enum.auto()
-    Z = enum.auto()
-
-    @property
-    def matrix(self) -> npt.NDArray[np.complex128]:
-        """Return the matrix representation."""
-        if self == IXYZ.I:
-            return Ops.I
-        if self == IXYZ.X:
-            return Ops.X
-        if self == IXYZ.Y:
-            return Ops.Y
-        if self == IXYZ.Z:
-            return Ops.Z
-        typing_extensions.assert_never(self)
-
-
 class CustomMeta(ABCMeta, EnumMeta):
     """Custom metaclass to allow multiple inheritance from `Enum` and `ABC`."""
 
@@ -299,6 +279,24 @@ class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     @override
     def to_plane_or_axis(self) -> Axis:
         return self
+
+
+class SingletonI(Enum):
+    """Singleton I."""
+
+    I = enum.auto()
+
+    @property
+    def matrix(self) -> npt.NDArray[np.complex128]:
+        """Return the matrix representation."""
+        return Ops.I
+
+
+I = SingletonI.I
+
+IXYZ: TypeAlias = Literal[SingletonI.I] | Axis
+
+IXYZ_VALUES: tuple[IXYZ, ...] = (I, Axis.X, Axis.Y, Axis.Z)
 
 
 class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):

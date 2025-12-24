@@ -19,7 +19,7 @@ from graphix._db import (
     CLIFFORD_MUL,
     CLIFFORD_TO_QASM3,
 )
-from graphix.fundamentals import IXYZ, ComplexUnit
+from graphix.fundamentals import Axis, ComplexUnit, I
 from graphix.measurements import Domains
 from graphix.pauli import Pauli
 
@@ -126,14 +126,14 @@ class Clifford(Enum):
 
     def measure(self, pauli: Pauli) -> Pauli:
         """Compute C† P C."""
-        if pauli.symbol == IXYZ.I:
+        if pauli.symbol == I:
             return copy.deepcopy(pauli)
         table = CLIFFORD_MEASURE[self.value]
-        if pauli.symbol == IXYZ.X:
+        if pauli.symbol == Axis.X:
             symbol, sign = table.x
-        elif pauli.symbol == IXYZ.Y:
+        elif pauli.symbol == Axis.Y:
             symbol, sign = table.y
-        elif pauli.symbol == IXYZ.Z:
+        elif pauli.symbol == Axis.Z:
             symbol, sign = table.z
         else:
             typing_extensions.assert_never(pauli.symbol)

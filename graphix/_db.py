@@ -7,7 +7,7 @@ from typing import NamedTuple
 import numpy as np
 
 from graphix import utils
-from graphix.fundamentals import IXYZ, Sign
+from graphix.fundamentals import Axis, Sign
 from graphix.ops import Ops
 
 # 24 unique 1-qubit Clifford gates
@@ -128,7 +128,7 @@ CLIFFORD_CONJ = (0, 1, 2, 3, 5, 4, 6, 15, 12, 9, 10, 11, 8, 13, 14, 7, 20, 22, 2
 class _CM(NamedTuple):
     """Pauli string and sign."""
 
-    pstr: IXYZ
+    pstr: Axis
     sign: Sign
 
 
@@ -144,30 +144,30 @@ class _CMTuple(NamedTuple):
 # i.e. C @ P @ C^dagger result in Pauli group, i.e. {\pm} \times {X, Y, Z}.
 # CLIFFORD_MEASURE contains the effect of Clifford conjugation of Pauli gates.
 CLIFFORD_MEASURE = (
-    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS), _CM(IXYZ.Y, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS), _CM(IXYZ.Y, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.PLUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.PLUS), _CM(IXYZ.Z, Sign.MINUS), _CM(IXYZ.X, Sign.MINUS)),
-    _CMTuple(_CM(IXYZ.Y, Sign.MINUS), _CM(IXYZ.Z, Sign.PLUS), _CM(IXYZ.X, Sign.MINUS)),
+    _CMTuple(_CM(Axis.X, Sign.PLUS), _CM(Axis.Y, Sign.PLUS), _CM(Axis.Z, Sign.PLUS)),
+    _CMTuple(_CM(Axis.X, Sign.PLUS), _CM(Axis.Y, Sign.MINUS), _CM(Axis.Z, Sign.MINUS)),
+    _CMTuple(_CM(Axis.X, Sign.MINUS), _CM(Axis.Y, Sign.PLUS), _CM(Axis.Z, Sign.MINUS)),
+    _CMTuple(_CM(Axis.X, Sign.MINUS), _CM(Axis.Y, Sign.MINUS), _CM(Axis.Z, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Y, Sign.MINUS), _CM(Axis.X, Sign.PLUS), _CM(Axis.Z, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Y, Sign.PLUS), _CM(Axis.X, Sign.MINUS), _CM(Axis.Z, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Z, Sign.PLUS), _CM(Axis.Y, Sign.MINUS), _CM(Axis.X, Sign.PLUS)),
+    _CMTuple(_CM(Axis.X, Sign.PLUS), _CM(Axis.Z, Sign.MINUS), _CM(Axis.Y, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Z, Sign.PLUS), _CM(Axis.Y, Sign.PLUS), _CM(Axis.X, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Y, Sign.MINUS), _CM(Axis.X, Sign.MINUS), _CM(Axis.Z, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Y, Sign.PLUS), _CM(Axis.X, Sign.PLUS), _CM(Axis.Z, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Z, Sign.MINUS), _CM(Axis.Y, Sign.MINUS), _CM(Axis.X, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Z, Sign.MINUS), _CM(Axis.Y, Sign.PLUS), _CM(Axis.X, Sign.PLUS)),
+    _CMTuple(_CM(Axis.X, Sign.MINUS), _CM(Axis.Z, Sign.MINUS), _CM(Axis.Y, Sign.MINUS)),
+    _CMTuple(_CM(Axis.X, Sign.MINUS), _CM(Axis.Z, Sign.PLUS), _CM(Axis.Y, Sign.PLUS)),
+    _CMTuple(_CM(Axis.X, Sign.PLUS), _CM(Axis.Z, Sign.PLUS), _CM(Axis.Y, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Z, Sign.PLUS), _CM(Axis.X, Sign.PLUS), _CM(Axis.Y, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Z, Sign.MINUS), _CM(Axis.X, Sign.PLUS), _CM(Axis.Y, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Z, Sign.MINUS), _CM(Axis.X, Sign.MINUS), _CM(Axis.Y, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Z, Sign.PLUS), _CM(Axis.X, Sign.MINUS), _CM(Axis.Y, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Y, Sign.PLUS), _CM(Axis.Z, Sign.PLUS), _CM(Axis.X, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Y, Sign.MINUS), _CM(Axis.Z, Sign.MINUS), _CM(Axis.X, Sign.PLUS)),
+    _CMTuple(_CM(Axis.Y, Sign.PLUS), _CM(Axis.Z, Sign.MINUS), _CM(Axis.X, Sign.MINUS)),
+    _CMTuple(_CM(Axis.Y, Sign.MINUS), _CM(Axis.Z, Sign.PLUS), _CM(Axis.X, Sign.MINUS)),
 )
 
 # Decomposition of Clifford gates with H, S and Z (up to phase).
