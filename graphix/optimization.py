@@ -487,10 +487,10 @@ class StandardizedPattern(_StandardizedPattern):
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
                 raise FlowGenericError(FlowGenericErrorReason.XYPlane)
-            correction_function = _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
+            _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
         for node, domain in self.x_dict.items():
-            correction_function = _update_corrections(node, domain - pre_measured_nodes, correction_function)
+            _update_corrections(node, domain - pre_measured_nodes, correction_function)
 
         og = (
             self.extract_opengraph()
@@ -530,10 +530,10 @@ class StandardizedPattern(_StandardizedPattern):
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
                 correction_function.setdefault(m.node, set()).add(m.node)
-            correction_function = _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
+            _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
         for node, domain in self.x_dict.items():
-            correction_function = _update_corrections(node, domain - pre_measured_nodes, correction_function)
+            _update_corrections(node, domain - pre_measured_nodes, correction_function)
 
         og = (
             self.extract_opengraph()
@@ -601,9 +601,7 @@ def _incorporate_pauli_results_in_domain(
     return odd_outcome == 1, new_domain
 
 
-def _update_corrections(
-    node: Node, domain: AbstractSet[Node], correction: dict[Node, set[Node]]
-) -> dict[Node, set[Node]]:
+def _update_corrections(node: Node, domain: AbstractSet[Node], correction: dict[Node, set[Node]]) -> None:
     """Update the correction mapping by adding a node to all entries in a domain.
 
     Parameters
@@ -616,19 +614,12 @@ def _update_corrections(
         A mapping from measured nodes to sets of nodes on which corrections are applied. This
         dictionary is modified in place.
 
-    Returns
-    -------
-    dict[Node, set[Node]]
-        The updated correction dictionary with `node` added to the correction
-        sets of all nodes in `domain`.
-
     Notes
     -----
     This function is used to extract the correction function from :math:`X`, :math:`Z` and :math:`M` commands when constructing a flow.
     """
     for measured_node in domain:
         correction.setdefault(measured_node, set()).add(node)
-    return correction
 
 
 def incorporate_pauli_results(pattern: Pattern) -> Pattern:
