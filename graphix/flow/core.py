@@ -906,13 +906,10 @@ def _corrections_to_dag(
     return nx.DiGraph(relations)
 
 
-# TODO: UP docstring
-
-
 def _corrections_to_partial_order_layers(
     og: OpenGraph[_M_co], x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
 ) -> tuple[frozenset[int], ...]:
-    """Return the partial order encoded in a directed graph in a layer form if it exists.
+    """Return the partial order encoded in the correction mappings in a layer form if it exists.
 
     Parameters
     ----------
@@ -934,11 +931,11 @@ def _corrections_to_partial_order_layers(
     XZCorrectionsError
         If the input dictionaries are not well formed. In well-formed correction dictionaries:
             - Keys are a subset of the measured nodes.
-                - Values correspond to nodes of the open graph.
-                - Corrections do not form closed loops.
+            - Values correspond to nodes of the open graph.
+            - Corrections do not form closed loops.
     """
     oset = frozenset(og.output_nodes)  # First layer by convention if not empty
-    dag: dict[int, set[int]] = defaultdict(
+    dag: defaultdict[int, set[int]] = defaultdict(
         set
     )  # `i: {j}` represents `i -> j`, i.e., a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
     indegree_map: dict[int, int] = {}
@@ -956,7 +953,6 @@ def _corrections_to_partial_order_layers(
     if generations is None:
         raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
 
-    # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
     if len(generations) == 0:
         if oset:
             return (oset,)
