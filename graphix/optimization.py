@@ -419,19 +419,14 @@ class StandardizedPattern(_StandardizedPattern):
             - There cannot be any empty layers.
         """
         oset = frozenset(self.output_nodes)  # First layer by convention.
-        pre_measured_nodes = set(self.results.keys())  # Not included in the partial order layers.
+        pre_measured_nodes = self.results.keys()  # Not included in the partial order layers.
         excluded_nodes = oset | pre_measured_nodes
 
-        zero_indegree = set(self.input_nodes) - excluded_nodes
+        zero_indegree = set(self.input_nodes).union(n.node for n in self.n_list) - excluded_nodes
         dag: dict[int, set[int]] = {
             node: set() for node in zero_indegree
         }  # `i: {j}` represents `i -> j` which means that node `i` must be measured before node `j`.
         indegree_map: dict[int, int] = {}
-
-        for n in self.n_list:
-            if n.node not in oset:  # Pre-measured nodes only appear in domains.
-                dag[n.node] = set()
-                zero_indegree.add(n.node)
 
         def process_domain(node: Node, domain: AbstractSet[Node]) -> None:
             for dep_node in domain:
@@ -487,7 +482,7 @@ class StandardizedPattern(_StandardizedPattern):
         In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
         """
         correction_function: dict[int, set[int]] = defaultdict(set)
-        pre_measured_nodes = set(self.results.keys())  # Not included in the flow.
+        pre_measured_nodes = self.results.keys()  # Not included in the flow.
 
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
@@ -527,15 +522,14 @@ class StandardizedPattern(_StandardizedPattern):
 
         Notes
         -----
-        This method makes use of :func:`StandardizedPattern.extract_partial_order_layers` which computes the pattern's direct acyclical graph (DAG) induced by the corrections and returns a particular layer stratification (obtained by doing a topological sort on the DAG). Further, it constructs the pattern's induced correction function from :math:`M` and :math:`X` commands.
-        In general, there may exist various layerings which represent the corrections of the pattern. To ensure that a given layering is compatible with the pattern's induced correction function, the partial order must be extracted from a standardized pattern. Commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections, which guarantees that all the topological information of the underlying graph is encoded in the extracted partial order.
+        The notes provided in :meth:`extract_causal_flow` apply here as well.
         """
-        correction_function: dict[int, set[int]] = defaultdict(set)
-        pre_measured_nodes = set(self.results.keys())  # Not included in the flow.
+        correction_function: dict[int, set[int]] = {}
+        pre_measured_nodes = self.results.keys()  # Not included in the flow.
 
         for m in self.m_list:
             if m.plane in {Plane.XZ, Plane.YZ}:
-                correction_function[m.node].add(m.node)
+                correction_function.setdefault(m.node, set()).add(m.node)
             correction_function = _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
         for node, domain in self.x_dict.items():
@@ -547,7 +541,7 @@ class StandardizedPattern(_StandardizedPattern):
         partial_order_layers = (
             self.extract_partial_order_layers()
         )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        gf = GFlow(og, dict(correction_function), partial_order_layers)
+        gf = GFlow(og, correction_function, partial_order_layers)
         gf.check_well_formed()
         return gf
 
@@ -633,7 +627,7 @@ def _update_corrections(
     This function is used to extract the correction function from :math:`X`, :math:`Z` and :math:`M` commands when constructing a flow.
     """
     for measured_node in domain:
-        correction[measured_node].add(node)
+        correction.setdefault(measured_node, set()).add(node)
     return correction
 
 
