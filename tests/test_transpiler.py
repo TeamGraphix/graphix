@@ -9,7 +9,6 @@ from numpy.random import PCG64, Generator
 from graphix import instruction
 from graphix.branch_selector import ConstBranchSelector
 from graphix.fundamentals import Axis, Sign
-from graphix.gflow import flow_from_pattern
 from graphix.instruction import InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.states import BasicStates
