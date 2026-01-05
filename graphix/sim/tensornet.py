@@ -7,6 +7,7 @@ import warnings
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
+from math import pi
 from typing import TYPE_CHECKING, SupportsComplex, TypeAlias
 
 import numpy as np
@@ -760,7 +761,8 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             buffer = 2**0.5
         if isinstance(measurement.angle, Expression):
             raise TypeError("Parameterized pattern unsupported.")
-        vec = PlanarState(measurement.plane, measurement.angle).get_statevector()
+        # `PlanarState` expects the angle in radians, whereas `measurement.angle` is expressed in units of π.
+        vec = PlanarState(measurement.plane, measurement.angle * pi).get_statevector()
         if result:
             vec = measurement.plane.orth.matrix @ vec
         proj_vec = vec * buffer

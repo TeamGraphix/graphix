@@ -9,7 +9,7 @@ from enum import Enum
 from typing import ClassVar, Literal, SupportsFloat
 
 from graphix import utils
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
@@ -40,6 +40,7 @@ class InstructionKind(Enum):
     RZZ = enum.auto()
     CNOT = enum.auto()
     SWAP = enum.auto()
+    CZ = enum.auto()
     H = enum.auto()
     S = enum.auto()
     X = enum.auto()
@@ -80,9 +81,6 @@ class RZZ(_KindChecker, DataclassReprMixin):
     target: int
     control: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    # FIXME: Remove `| None` from `meas_index`
-    # - `None` makes codes messy/type-unsafe
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
 
@@ -93,6 +91,14 @@ class CNOT(_KindChecker, DataclassReprMixin):
     target: int
     control: int
     kind: ClassVar[Literal[InstructionKind.CNOT]] = field(default=InstructionKind.CNOT, init=False)
+
+
+@dataclass(repr=False)
+class CZ(_KindChecker, DataclassReprMixin):
+    """CZ circuit instruction."""
+
+    targets: tuple[int, int]
+    kind: ClassVar[Literal[InstructionKind.CZ]] = field(default=InstructionKind.CZ, init=False)
 
 
 @dataclass(repr=False)
@@ -156,8 +162,7 @@ class M(_KindChecker, DataclassReprMixin):
     """M circuit instruction."""
 
     target: int
-    plane: Plane
-    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    axis: Axis
     kind: ClassVar[Literal[InstructionKind.M]] = field(default=InstructionKind.M, init=False)
 
 
@@ -167,7 +172,6 @@ class RX(_KindChecker, DataclassReprMixin):
 
     target: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RX]] = field(default=InstructionKind.RX, init=False)
 
 
@@ -177,7 +181,6 @@ class RY(_KindChecker, DataclassReprMixin):
 
     target: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RY]] = field(default=InstructionKind.RY, init=False)
 
 
@@ -187,7 +190,6 @@ class RZ(_KindChecker, DataclassReprMixin):
 
     target: int
     angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
-    meas_index: int | None = None
     kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
 
 
@@ -209,4 +211,4 @@ class _ZC(_KindChecker):
     kind: ClassVar[Literal[InstructionKind._ZC]] = field(default=InstructionKind._ZC, init=False)
 
 
-Instruction = CCX | RZZ | CNOT | SWAP | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC
+Instruction = CCX | RZZ | CNOT | SWAP | CZ | H | S | X | Y | Z | I | M | RX | RY | RZ | _XC | _ZC

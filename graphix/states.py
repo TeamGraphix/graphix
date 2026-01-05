@@ -46,7 +46,7 @@ class PlanarState(State):
     :param plane: One of the three planes (XY, XZ, YZ)
     :type plane: :class:`graphix.pauli.Plane`
     :param angle: angle IN RADIANS
-    :type angle: complex
+    :type angle: float
     :return: State
     :rtype: :class:`graphix.states.State` object
     """

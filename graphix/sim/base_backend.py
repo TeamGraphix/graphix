@@ -6,6 +6,7 @@ import dataclasses
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from math import pi
 from typing import TYPE_CHECKING, Generic, SupportsFloat, TypeAlias, TypeVar
 
 import numpy as np
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix import command
-    from graphix.fundamentals import Plane
     from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
@@ -528,39 +528,6 @@ def _op_mat_from_result(
     return op_mat_complex
 
 
-def perform_measure(
-    qubit_node: int,
-    qubit_loc: int,
-    plane: Plane,
-    angle: ExpressionOrFloat,
-    state: DenseState,
-    branch_selector: BranchSelector,
-    rng: Generator | None = None,
-    symbolic: bool = False,
-) -> Outcome:
-    """Perform measurement of a qubit."""
-    vec = plane.polar(angle)
-    # op_mat0 may contain the matrix operator associated with the outcome 0,
-    # but the value is computed lazily, i.e., only if needed.
-    op_mat0 = None
-
-    def get_op_mat0() -> Matrix:
-        nonlocal op_mat0
-        if op_mat0 is None:
-            op_mat0 = _op_mat_from_result(vec, 0, symbolic=symbolic)
-        return op_mat0
-
-    def f_expectation0() -> float:
-        exp_val = state.expectation_single(get_op_mat0(), qubit_loc)
-        assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
-        return exp_val.real
-
-    result = branch_selector.measure(qubit_node, f_expectation0, rng)
-    op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic) if result else get_op_mat0()
-    state.evolve_single(op_mat, qubit_loc)
-    return result
-
-
 _StateT_co = TypeVar("_StateT_co", bound="BackendState", covariant=True)
 
 
@@ -819,16 +786,26 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         rng: Generator, optional
         """
         loc = self.node_index.index(node)
-        result = perform_measure(
-            node,
-            loc,
-            measurement.plane,
-            measurement.angle,
-            self.state,
-            self.branch_selector,
-            rng=rng,
-            symbolic=self.symbolic,
-        )
+        # `Plane.polar` expects the angle in radians, whereas `measurement.angle` is expressed in units of π.
+        vec = measurement.plane.polar(measurement.angle * pi)
+        # op_mat0 may contain the matrix operator associated with the outcome 0,
+        # but the value is computed lazily, i.e., only if needed.
+        op_mat0 = None
+
+        def get_op_mat0() -> Matrix:
+            nonlocal op_mat0
+            if op_mat0 is None:
+                op_mat0 = _op_mat_from_result(vec, 0, symbolic=self.symbolic)
+            return op_mat0
+
+        def f_expectation0() -> float:
+            exp_val = self.state.expectation_single(get_op_mat0(), loc)
+            assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
+            return exp_val.real
+
+        result = self.branch_selector.measure(node, f_expectation0, rng)
+        op_mat = _op_mat_from_result(vec, 1, symbolic=self.symbolic) if result else get_op_mat0()
+        self.state.evolve_single(op_mat, loc)
         self.node_index.remove(node)
         self.state.remove_qubit(loc)
         return result
