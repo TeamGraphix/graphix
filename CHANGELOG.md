@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
+- #393
+  - Introduced new method `graphix.optimization.StandardizedPattern.extract_partial_order_layer` which constructs a partial order layering from the dependency domains of M, X and Z commands.
+  - Introduced new methods `graphix.optimization.StandardizedPattern.extract_causal_flow`, `graphix.optimization.StandardizedPattern.extract_gflow` which respectively attempt to extract a causal flow and a gflow from a standardized pattern.
+  - Introduced new wrapper methods in the `Pattern` class: `graphix.pattern.Pattern.extract_partial_order_layers`, `graphix.pattern.Pattern.extract_causal_flow` and `graphix.pattern.Pattern.extract_gflow`.
+  - Introduced new module `graphix.flow._partial_order` with the function :func:`compute_topological_generations`.
+
 - #385
   - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
   - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
@@ -18,16 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Introduced new module `graphix.flow.exceptions` grouping flow exceptions.
   - Introduced new methods `graphix.flow.core.PauliFlow.get_measurement_label` and `graphix.flow.core.GFlow.get_measurement_label` which return the measurement label of a given node following same criteria employed in the flow-finding algorithms.
 
-- #374:
+- #379: Added a new instruction `CZ` which can be added as a circuit gate using `circuit.cz`.
   - Introduced new method `graphix.opengraph.OpenGraph.is_equal_structurally` which compares the underlying structure of two open graphs.
   - Added new method `isclose` to `graphix.fundamentals.AbstractMeasurement` which defaults to `==` comparison.
 
-- #383: Simulators are now parameterized by `PrepareMethod` (which
-  defaults to `DefaultPrepareMethod`) to customize how `N` commands are
-  handled, and the class `BaseN` can be used as a base class for
-  custom preparation commands.
+- #383: Simulators are now parameterized by `PrepareMethod` (which defaults to `DefaultPrepareMethod`) to customize how `N` commands are handled, and the class `BaseN` can be used as a base class for custom preparation commands.
+
+- #394: The method `Circuit.transpile_measurements_to_z_axis` returns an equivalent circuit where all measurements are on the Z axis. This can be used to prepare a circuit for export to OpenQASM with `circuit_to_qasm3`.
 
 ### Fixed
+
+- #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
 
 - #347: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
 
@@ -42,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #374: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
 
 - #375: Adapted existing method `graphix.opengraph.OpenGraph.compose` to the new API introduced in #358.
+
+- #352, #394: Circuit measurements are now limited to axes X, Y, and Z.
 
 ## [0.3.3] - 2025-10-23
 

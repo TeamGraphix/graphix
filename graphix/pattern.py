@@ -22,7 +22,6 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-from graphix.flow._partial_order import compute_topological_generations
 from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
@@ -890,7 +889,7 @@ class Pattern:
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
         """Extract the measurement order of the pattern in the form of layers.
 
-        This method builds a directed acyclical graph (DAG) from the pattern and then performs a topological sort.
+        This method standardizes the pattern, builds a directed acyclical graph (DAG) from measurement and correction domains, and then performs a topological sort.
 
         Returns
         -------
@@ -904,54 +903,11 @@ class Pattern:
 
         Notes
         -----
-        The returned object follows the same conventions as the ``partial_order_layers`` attribute of :class:`PauliFlow` and :class:`XZCorrections` objects:
-            - Nodes in the same layer can be measured simultaneously.
-            - Nodes in layer ``i`` must be measured after nodes in layer ``i + 1``.
-            - All output nodes (if any) are in the first layer.
-            - There cannot be any empty layers.
+        - This function wraps :func:`optimization.StandardizedPattern.extract_partial_order_layers`, and the returned object is described in the notes of this method.
 
-        The partial order layerings obtained with this method before and after standardizing a pattern may differ, but they will always be compatible. This occurs because the commutation of entanglement commands with X and Z corrections in the standardization procedure may generate new corrections which add additional constrains to pattern's induced DAG.
+        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract the partial order layering.
         """
-        self.check_runnability()
-
-        oset = frozenset(self.output_nodes)  # First layer by convention
-        pre_measured_nodes = set(self.results.keys())  # Not included in the partial order layers
-        excluded_nodes = oset | pre_measured_nodes
-
-        zero_indegree = set(self.input_nodes) - excluded_nodes
-        dag: dict[int, set[int]] = {
-            node: set() for node in zero_indegree
-        }  # `i: {j}` represents `i -> j` which means that node `i` must be measured before node `j`.
-        indegree_map: dict[int, int] = {}
-        node: int | None = None  # To avoid Pyright's "PossiblyUnboundVariable" error
-
-        for cmd in self:
-            domain = set()
-            if cmd.kind == CommandKind.N:
-                if cmd.node not in oset:  # pre-measured nodes only appear in domains.
-                    dag[cmd.node] = set()
-                    zero_indegree.add(cmd.node)
-            elif cmd.kind == CommandKind.M:
-                node, domain = cmd.node, cmd.s_domain | cmd.t_domain
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                node, domain = cmd.node, cmd.domain
-
-            for dep_node in domain:
-                assert node is not None
-                if (
-                    not {node, dep_node} & excluded_nodes and node not in dag[dep_node]
-                ):  # Don't include multiple edges in the dag.
-                    dag[dep_node].add(node)
-                    indegree_map[node] = indegree_map.get(node, 0) + 1
-
-        zero_indegree -= indegree_map.keys()
-
-        generations = compute_topological_generations(dag, indegree_map, zero_indegree)
-        assert generations is not None  # DAG can't contain loops because pattern is runnable.
-
-        if oset:
-            return oset, *generations[::-1]
-        return generations[::-1]
+        return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 
     def extract_causal_flow(self) -> CausalFlow[Measurement]:
         """Extract the causal flow structure from the current measurement pattern.

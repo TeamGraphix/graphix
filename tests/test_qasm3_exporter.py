@@ -9,7 +9,7 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import Circuit, instruction
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis
 from graphix.qasm3_exporter import angle_to_qasm3, circuit_to_qasm3
 from graphix.random_objects import rand_circuit
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from graphix.instruction import Instruction
 
 try:
-    from graphix_qasm_parser import OpenQASMParser
+    from graphix_qasm_parser import OpenQASMParser  # type: ignore[import-not-found, unused-ignore]
 except ImportError:
     pytestmark = pytest.mark.skip(reason="graphix-qasm-parser not installed")
 
@@ -42,7 +42,8 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
     depth = 4
-    check_round_trip(rand_circuit(nqubits, depth, rng))
+    # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
+    check_round_trip(rand_circuit(nqubits, depth, rng, use_cz=False))
 
 
 @pytest.mark.parametrize(
@@ -52,6 +53,8 @@ def test_circuit_to_qasm3(fx_bg: PCG64, jumps: int) -> None:
         instruction.RZZ(target=0, control=1, angle=pi / 4),
         instruction.CNOT(target=0, control=1),
         instruction.SWAP(targets=(0, 1)),
+        # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/5
+        # instruction.CZ(targets=(0, 1)),
         instruction.H(target=0),
         instruction.S(target=0),
         instruction.X(target=0),
@@ -78,7 +81,7 @@ def test_measurement() -> None:
     # https://github.com/TeamGraphix/graphix-qasm-parser/issues/3
     # The best we can do is to check if the measurement instruction
     # is exported as expected.
-    circuit = Circuit(1, instr=[instruction.M(target=0, plane=Plane.XZ, angle=0)])
+    circuit = Circuit(1, instr=[instruction.M(target=0, axis=Axis.Z)])
     qasm = circuit_to_qasm3(circuit)
     assert (
         qasm

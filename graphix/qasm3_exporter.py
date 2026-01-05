@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
-from graphix.fundamentals import Axis, Sign
+from graphix.fundamentals import Axis
 from graphix.instruction import Instruction, InstructionKind
-from graphix.measurements import PauliMeasurement
 from graphix.pretty_print import OutputFormat, angle_to_str
 
 if TYPE_CHECKING:
@@ -73,8 +72,10 @@ def angle_to_qasm3(angle: ExpressionOrFloat) -> str:
 def instruction_to_qasm3(instruction: Instruction) -> str:
     """Get the OpenQASM3 representation of a single circuit instruction."""
     if instruction.kind == InstructionKind.M:
-        if PauliMeasurement.try_from(instruction.plane, instruction.angle) != PauliMeasurement(Axis.Z, Sign.PLUS):
-            raise ValueError("OpenQASM3 only supports measurements in Z axis.")
+        if instruction.axis != Axis.Z:
+            raise ValueError(
+                "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes."
+            )
         return f"b[{instruction.target}] = measure q[{instruction.target}]"
     # Use of `==` here for mypy
     if (
@@ -100,6 +101,8 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
         return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
     if instruction.kind == InstructionKind.SWAP:
         return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+    if instruction.kind == InstructionKind.CZ:
+        return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
     if instruction.kind == InstructionKind.RZZ:
         angle = angle_to_qasm3(instruction.angle)
         return qasm3_gate_call(

@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import abc
 import warnings
+from math import pi
 from typing import TYPE_CHECKING, TypeVar
-
-import numpy as np
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -172,12 +171,12 @@ class DefaultMeasureMethod(MeasureMethod):
             Updated measurement specification.
         """
         assert isinstance(cmd, command.M)
-        angle = cmd.angle * np.pi
         # extract signals for adaptive angle
         s_signal = sum(self.results[j] for j in cmd.s_domain)
         t_signal = sum(self.results[j] for j in cmd.t_domain)
         measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, Clifford.I)
-        angle = angle * measure_update.coeff + measure_update.add_term
+        # `MeasureUpdate.add_term` is expressed in radians.
+        angle = cmd.angle * measure_update.coeff + measure_update.add_term / pi
         return Measurement(angle, measure_update.new_plane)
 
     def get_measure_result(self, node: int) -> Outcome:
