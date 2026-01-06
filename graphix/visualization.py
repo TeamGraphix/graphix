@@ -474,9 +474,15 @@ class GraphVisualizer:
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
     def __draw_measurement_planes(self, pos: Mapping[int, _Point]) -> None:
+        angles = self.meas_angles or {}
         for node in self.meas_planes:
             x, y = pos[node] + np.array([0.22, -0.2])
-            plt.text(x, y, f"{self.meas_planes[node].name}", fontsize=9, zorder=3)
+            plane = self.meas_planes[node]
+            label = plane.name
+            if (angle := angles.get(node, None)) is not None and (pm := PauliMeasurement.try_from(plane, angle)):
+                label = pm.axis.name
+
+            plt.text(x, y, label, fontsize=9, zorder=3)
 
     def get_figsize(
         self,
