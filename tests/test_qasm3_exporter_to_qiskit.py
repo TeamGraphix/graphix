@@ -34,9 +34,9 @@ except ImportError:
     if TYPE_CHECKING:
         import sys
 
-        # We skip type-checking the case where there is no
-        # graphix-qasm-parser, since pyright cannot figure out that
-        # tests are skipped in this case.
+        # We skip type-checking the case where there is no qiskit,
+        # since pyright cannot figure out that tests are skipped in
+        # this case.
         sys.exit(1)
 
 
