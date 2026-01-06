@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix import command
+    from graphix.fundamentals import Plane
     from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
