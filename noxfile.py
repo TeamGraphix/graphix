@@ -88,8 +88,6 @@ def tests_qasm_parser(session: Session) -> None:
         session.run(
             "git",
             "clone",
-            "-b",
-            "graphix_angle_convention_changed",
             "https://github.com/TeamGraphix/graphix-qasm-parser",
         )
         with session.cd("graphix-qasm-parser"):
