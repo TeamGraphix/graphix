@@ -53,6 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #352, #394: Circuit measurements are now limited to axes X, Y, and Z.
 
+- #233, #398: The angle convention is now consistent across the
+  library: angles are represented as floats and expressed in units of
+  π. In particular, angles that appear in parameters of circuit
+  instructions are now expressed in units of π.
+
 ## [0.3.3] - 2025-10-23
 
 ### Added

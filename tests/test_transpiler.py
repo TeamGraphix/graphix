@@ -8,7 +8,7 @@ from numpy.random import PCG64, Generator
 
 from graphix import instruction
 from graphix.branch_selector import ConstBranchSelector
-from graphix.fundamentals import Axis, Sign
+from graphix.fundamentals import ANGLE_PI, Axis, Sign
 from graphix.instruction import InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.states import BasicStates
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
     lambda _rng: instruction.CCX(0, (1, 2)),
-    lambda rng: instruction.RZZ(0, 1, rng.random() * 2 * np.pi),
+    lambda rng: instruction.RZZ(0, 1, rng.random() * 2 * ANGLE_PI),
     lambda _rng: instruction.CZ((0, 1)),
     lambda _rng: instruction.CNOT(0, 1),
     lambda _rng: instruction.SWAP((0, 1)),
@@ -36,9 +36,9 @@ INSTRUCTION_TEST_CASES: list[InstructionTestCase] = [
     lambda _rng: instruction.Y(0),
     lambda _rng: instruction.Z(0),
     lambda _rng: instruction.I(0),
-    lambda rng: instruction.RX(0, rng.random() * 2 * np.pi),
-    lambda rng: instruction.RY(0, rng.random() * 2 * np.pi),
-    lambda rng: instruction.RZ(0, rng.random() * 2 * np.pi),
+    lambda rng: instruction.RX(0, rng.random() * 2 * ANGLE_PI),
+    lambda rng: instruction.RY(0, rng.random() * 2 * ANGLE_PI),
+    lambda rng: instruction.RZ(0, rng.random() * 2 * ANGLE_PI),
 ]
 
 
@@ -100,7 +100,7 @@ class TestTranspilerUnitGates:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_rx(self, fx_rng: Generator) -> None:
-        theta = fx_rng.uniform() * 2 * np.pi
+        theta = fx_rng.uniform() * 2 * ANGLE_PI
         circuit = Circuit(1)
         circuit.rx(0, theta)
         pattern = circuit.transpile().pattern
@@ -109,7 +109,7 @@ class TestTranspilerUnitGates:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_ry(self, fx_rng: Generator) -> None:
-        theta = fx_rng.uniform() * 2 * np.pi
+        theta = fx_rng.uniform() * 2 * ANGLE_PI
         circuit = Circuit(1)
         circuit.ry(0, theta)
         pattern = circuit.transpile().pattern
@@ -118,7 +118,7 @@ class TestTranspilerUnitGates:
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_rz(self, fx_rng: Generator) -> None:
-        theta = fx_rng.uniform() * 2 * np.pi
+        theta = fx_rng.uniform() * 2 * ANGLE_PI
         circuit = Circuit(1)
         circuit.rz(0, theta)
         pattern = circuit.transpile().pattern

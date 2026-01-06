@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import math
-
 import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import command, instruction
 from graphix.clifford import Clifford
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.pattern import Pattern
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.random_objects import rand_circuit
@@ -15,7 +13,7 @@ from graphix.transpiler import Circuit
 
 
 def test_circuit_repr() -> None:
-    circuit = Circuit(width=3, instr=[instruction.H(0), instruction.RX(1, math.pi), instruction.CCX(0, (1, 2))])
+    circuit = Circuit(width=3, instr=[instruction.H(0), instruction.RX(1, ANGLE_PI), instruction.CCX(0, (1, 2))])
     assert repr(circuit) == "Circuit(width=3, instr=[H(0), RX(1, pi), CCX(0, (1, 2))])"
 
 

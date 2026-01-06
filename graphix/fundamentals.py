@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import enum
-import typing
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
+from math import pi
 from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, overload
 
 import typing_extensions
@@ -13,17 +13,53 @@ import typing_extensions
 # override introduced in Python 3.12
 from typing_extensions import override
 
-from graphix.ops import Ops
-from graphix.parameter import cos_sin
+from graphix.parameter import Expression, cos_sin
 from graphix.repr_mixins import EnumReprMixin
 
 if TYPE_CHECKING:
     from typing import TypeAlias
 
-    import numpy as np
-    import numpy.typing as npt
+    from graphix.parameter import ExpressionOrFloat
 
-    from graphix.parameter import Expression, ExpressionOrFloat
+Angle: TypeAlias = float
+"""In Graphix, angles are represented as floats and expressed in units of π."""
+
+ParameterizedAngle: TypeAlias = Expression | Angle
+
+ANGLE_PI: Angle = 1
+"""The constant ``ANGLE_PI = 1`` is defined for convenience to make expressions involving angles more readable."""
+
+
+@overload
+def rad_to_angle(angle: float) -> Angle: ...
+
+
+@overload
+def rad_to_angle(angle: Expression) -> Expression: ...
+
+
+def rad_to_angle(angle: ExpressionOrFloat) -> ParameterizedAngle:
+    """Convert an angle expressed in radians to a Graphix angle.
+
+    In Graphix, angles are expressed in units of π.
+    """
+    return angle / pi
+
+
+@overload
+def angle_to_rad(angle: Angle) -> float: ...
+
+
+@overload
+def angle_to_rad(angle: Expression) -> Expression: ...
+
+
+def angle_to_rad(angle: ParameterizedAngle) -> ExpressionOrFloat:
+    """Convert a Graphix angle to radians.
+
+    In Graphix, angles are expressed in units of π.
+    """
+    return angle * pi
 
 
 SupportsComplexCtor = SupportsComplex | SupportsFloat | SupportsIndex | complex
@@ -59,16 +95,16 @@ class Sign(EnumReprMixin, Enum):
         """Swap the sign."""
         return Sign.minus_if(self == Sign.PLUS)
 
-    @typing.overload
+    @overload
     def __mul__(self, other: Sign) -> Sign: ...
 
-    @typing.overload
+    @overload
     def __mul__(self, other: int) -> int: ...
 
-    @typing.overload
+    @overload
     def __mul__(self, other: float) -> float: ...
 
-    @typing.overload
+    @overload
     def __mul__(self, other: complex) -> complex: ...
 
     def __mul__(self, other: Sign | complex) -> Sign | int | float | complex:
@@ -83,13 +119,13 @@ class Sign(EnumReprMixin, Enum):
             return complex(self) * other
         return NotImplemented
 
-    @typing.overload
+    @overload
     def __rmul__(self, other: int) -> int: ...
 
-    @typing.overload
+    @overload
     def __rmul__(self, other: float) -> float: ...
 
-    @typing.overload
+    @overload
     def __rmul__(self, other: complex) -> complex: ...
 
     def __rmul__(self, other: complex) -> int | float | complex:
@@ -265,17 +301,6 @@ class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     Y = enum.auto()
     Z = enum.auto()
 
-    @property
-    def matrix(self) -> npt.NDArray[np.complex128]:
-        """Return the matrix representation."""
-        if self == Axis.X:
-            return Ops.X
-        if self == Axis.Y:
-            return Ops.Y
-        if self == Axis.Z:
-            return Ops.Z
-        typing_extensions.assert_never(self)
-
     @override
     def to_plane_or_axis(self) -> Axis:
         return self
@@ -285,11 +310,6 @@ class SingletonI(Enum):
     """Singleton I."""
 
     I = enum.auto()
-
-    @property
-    def matrix(self) -> npt.NDArray[np.complex128]:
-        """Return the matrix representation."""
-        return Ops.I
 
 
 I = SingletonI.I
@@ -352,17 +372,18 @@ class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta
         typing_extensions.assert_never(self)
 
     @overload
-    def polar(self, angle: float) -> tuple[float, float, float]: ...
+    def polar(self, angle: Angle) -> tuple[float, float, float]: ...
 
     @overload
     def polar(self, angle: Expression) -> tuple[Expression, Expression, Expression]: ...
 
     def polar(
-        self, angle: ExpressionOrFloat
+        self, angle: ParameterizedAngle
     ) -> tuple[float, float, float] | tuple[ExpressionOrFloat, ExpressionOrFloat, ExpressionOrFloat]:
         """Return the Cartesian coordinates of the point of module 1 at the given angle, following the conventional orientation for cos and sin."""
         pp = (self.cos, self.sin)
-        cos, sin = cos_sin(angle)
+        # Angles are in units of π whereas `cos_sin` expects radians.
+        cos, sin = cos_sin(angle_to_rad(angle))
         if pp == (Axis.X, Axis.Y):
             return (cos, sin, 0)
         if pp == (Axis.Z, Axis.Y):
