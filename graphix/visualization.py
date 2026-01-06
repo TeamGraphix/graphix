@@ -454,7 +454,7 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
-            plt.legend(loc="upper right", fontsize=10)
+            plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
 
         x_min = min((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the minimum x coordinate
         x_max = max((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the maximum x coordinate
