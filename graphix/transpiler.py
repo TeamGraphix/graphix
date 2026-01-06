@@ -135,9 +135,6 @@ class Circuit:
             self.ry(instr.target, instr.angle)
         elif instr.kind == InstructionKind.RZ:
             self.rz(instr.target, instr.angle)
-        # Use of `==` here for mypy
-        elif instr.kind == InstructionKind._XC or instr.kind == InstructionKind._ZC:  # noqa: PLR1714
-            raise ValueError(f"Unsupported instruction: {instr}")
         else:
             assert_never(instr.kind)
 

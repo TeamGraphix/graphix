@@ -51,9 +51,6 @@ class InstructionKind(Enum):
     RX = enum.auto()
     RY = enum.auto()
     RZ = enum.auto()
-    # The two following instructions are used internally by the transpiler
-    _XC = enum.auto()
-    _ZC = enum.auto()
 
 
 class _KindChecker:
