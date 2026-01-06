@@ -21,15 +21,13 @@ with the pattern, graph or the (generalized-)flow.
 #
 from __future__ import annotations
 
-import numpy as np
-
 from graphix import Circuit
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
 circuit.cnot(2, 1)
-circuit.rx(0, np.pi / 3)
+circuit.rx(0, ANGLE_PI / 3)
 circuit.x(2)
 circuit.cnot(2, 1)
 pattern = circuit.transpile().pattern

@@ -6,8 +6,7 @@ from numpy.random import PCG64, Generator
 
 from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
-from graphix.fundamentals import Plane
-from graphix.gflow import gflow_from_pattern
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.optimization import StandardizedPattern, incorporate_pauli_results, remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
@@ -15,7 +14,7 @@ from graphix.states import PlanarState
 
 
 def test_standardize_clifford_entanglement(fx_rng: Generator) -> None:
-    alpha = 2 * np.pi * fx_rng.random()
+    alpha = 2 * ANGLE_PI * fx_rng.random()
     i_lst = [0]
     o_lst = [0, 1]
 
@@ -81,9 +80,8 @@ def test_flow_after_pauli_preprocessing(fx_bg: PCG64, jumps: int) -> None:
     # pattern.move_pauli_measurements_to_the_front()
     pattern.perform_pauli_measurements()
     pattern2 = incorporate_pauli_results(pattern)
-    pattern2.standardize()
-    f, _l = gflow_from_pattern(pattern2)
-    assert f is not None
+    gflow = pattern2.extract_gflow()
+    gflow.check_well_formed()
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))

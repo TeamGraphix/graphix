@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 import typing_extensions
 
 from graphix.fundamentals import IXYZ_VALUES, Axis, ComplexUnit, I, SupportsComplexCtor
+from graphix.ops import Ops
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -61,7 +62,7 @@ class Pauli(metaclass=_PauliMeta):
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Pauli gate."""
         co = complex(self.unit)
-        return co * self.symbol.matrix
+        return co * Ops.from_ixyz(self.symbol)
 
     def eigenstate(self, binary: int = 0) -> PlanarState:
         """Return the eigenstate of the Pauli."""

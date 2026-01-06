@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from math import pi
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
@@ -9,8 +8,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command, gflow, visualization
-from graphix.fundamentals import Plane
+from graphix import Circuit, Pattern, command, visualization
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
@@ -20,6 +19,8 @@ if TYPE_CHECKING:
 
     from matplotlib.figure import Figure
     from numpy.random import Generator
+
+    from graphix.fundamentals import Angle
 
 
 def example_flow(rng: Generator) -> Pattern:
@@ -71,7 +72,7 @@ def example_pflow(rng: Generator) -> Pattern:
     outputs = [9, 8]
 
     # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
-    meas_angles: dict[int, float] = {
+    meas_angles: dict[int, Angle] = {
         **dict.fromkeys(range(4), 0),
         **dict(zip(range(4, 8), (2 * rng.random(4)).tolist(), strict=True)),
     }
@@ -102,10 +103,9 @@ def test_get_pos_from_flow() -> None:
     meas_angles = pattern.get_angles()
     local_clifford = pattern.get_vops()
     vis = visualization.GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
-    f, l_k = gflow.find_flow(graph, set(vin), set(vout), meas_planes)
-    assert f is not None
-    assert l_k is not None
-    pos = vis.get_pos_from_flow(f, l_k)
+    og = OpenGraph(graph, vin, vout, meas_planes)
+    causal_flow = og.extract_causal_flow()
+    pos = vis.get_pos_from_flow(causal_flow)
     assert pos is not None
 
 
@@ -236,7 +236,7 @@ def test_draw_graph_reference(flow_from_pattern: bool) -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
     circuit.cnot(2, 1)
-    circuit.rx(0, pi / 3)
+    circuit.rx(0, ANGLE_PI / 3)
     circuit.x(2)
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern

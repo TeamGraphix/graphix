@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from graphix.command import E
-from graphix.fundamentals import Axis, Plane
+from graphix.fundamentals import ANGLE_PI, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.parameter import Placeholder
@@ -794,7 +794,7 @@ def _compose_5() -> OpenGraphComposeTestCase:
 def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> bool:
     """Verify if the input pattern is deterministic."""
     for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
-        alpha = 2 * np.pi * fx_rng.random()
+        alpha = 2 * ANGLE_PI * fx_rng.random()
         state_ref = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
 
         for _ in range(n_shots):
@@ -881,7 +881,7 @@ class TestOpenGraph:
         pattern = pattern_ref.extract_opengraph().to_pattern()
 
         for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
-            alpha = 2 * np.pi * fx_rng.random()
+            alpha = 2 * ANGLE_PI * fx_rng.random()
             state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha))
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
             assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
