@@ -10,7 +10,6 @@ Module reference
     simulator
     graphsim
     extraction
-    flow
     clifford
     visualization
     channels
