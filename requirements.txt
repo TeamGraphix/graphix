@@ -1,6 +1,6 @@
 matplotlib
 networkx
-numpy>=2,<2.4
+numpy>=2
 opt_einsum
 quimb
 scipy
