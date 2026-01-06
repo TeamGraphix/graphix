@@ -7,20 +7,17 @@ accepts desired gate operations and transpile into MBQC measurement patterns.
 from __future__ import annotations
 
 import dataclasses
-from math import pi
 from typing import TYPE_CHECKING, SupportsFloat
 
-import numpy as np
 from typing_extensions import assert_never
 
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
-from graphix.fundamentals import Axis, Plane
+from graphix.fundamentals import ANGLE_PI, Axis, Plane
 from graphix.instruction import Instruction, InstructionKind
 from graphix.measurements import Measurement
 from graphix.ops import Ops
-from graphix.parameter import ExpressionOrFloat, Parameter
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec, StatevectorBackend
 
@@ -30,6 +27,8 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.command import Command
+    from graphix.fundamentals import ParameterizedAngle
+    from graphix.parameter import ExpressionOrFloat, Parameter
     from graphix.sim import Data
     from graphix.sim.base_backend import Matrix
 
@@ -58,9 +57,6 @@ class SimulateResult:
 
     statevec: Statevec
     classical_measures: tuple[int, ...]
-
-
-Angle = ExpressionOrFloat
 
 
 def _check_target(out: Sequence[int | None], index: int) -> int:
@@ -247,46 +243,46 @@ class Circuit:
         assert qubit in self.active_qubits
         self.instruction.append(instruction.Z(target=qubit))
 
-    def rx(self, qubit: int, angle: Angle) -> None:
+    def rx(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply an X rotation gate.
 
         Parameters
         ----------
         qubit : int
             target qubit
-        angle : Angle
-            rotation angle in radian
+        angle : ParameterizedAngle
+            rotation angle in units of π
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RX(target=qubit, angle=angle))
 
-    def ry(self, qubit: int, angle: Angle) -> None:
+    def ry(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Y rotation gate.
 
         Parameters
         ----------
         qubit : int
             target qubit
-        angle : Angle
-            angle in radian
+        angle : ParameterizedAngle
+            angle in units of π
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RY(target=qubit, angle=angle))
 
-    def rz(self, qubit: int, angle: Angle) -> None:
+    def rz(self, qubit: int, angle: ParameterizedAngle) -> None:
         """Apply a Z rotation gate.
 
         Parameters
         ----------
         qubit : int
             target qubit
-        angle : Angle
-            rotation angle in radian
+        angle : ParameterizedAngle
+            rotation angle in units of π
         """
         assert qubit in self.active_qubits
         self.instruction.append(instruction.RZ(target=qubit, angle=angle))
 
-    def rzz(self, control: int, target: int, angle: Angle) -> None:
+    def rzz(self, control: int, target: int, angle: ParameterizedAngle) -> None:
         r"""Apply a ZZ-rotation gate.
 
         Equivalent to the sequence
@@ -303,8 +299,8 @@ class Circuit:
             control qubit
         target : int
             target qubit
-        angle : Angle
-            rotation angle in radian
+        angle : ParameterizedAngle
+            rotation angle in units of π
         """
         assert control in self.active_qubits
         assert target in self.active_qubits
@@ -592,7 +588,7 @@ class Circuit:
             (
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node, angle=-0.5),
+                M(node=input_node, angle=-ANGLE_PI / 2),
                 M(node=ancilla[0], s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
@@ -625,7 +621,7 @@ class Circuit:
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
                 M(node=input_node),
-                M(node=ancilla[0], angle=-1, s_domain={input_node}),
+                M(node=ancilla[0], angle=-ANGLE_PI, s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
             )
@@ -659,9 +655,9 @@ class Circuit:
                 E(nodes=(ancilla[0], ancilla[1])),
                 E(nodes=(ancilla[1], ancilla[2])),
                 E(nodes=(ancilla[2], ancilla[3])),
-                M(node=input_node, angle=0.5),
-                M(node=ancilla[0], angle=1.0, s_domain={input_node}),
-                M(node=ancilla[1], angle=-0.5, s_domain={ancilla[0]}, t_domain={input_node}),
+                M(node=input_node, angle=ANGLE_PI / 2),
+                M(node=ancilla[0], angle=ANGLE_PI, s_domain={input_node}),
+                M(node=ancilla[1], angle=-ANGLE_PI / 2, s_domain={ancilla[0]}, t_domain={input_node}),
                 M(node=ancilla[2], s_domain={ancilla[1]}, t_domain={ancilla[0]}),
                 X(node=ancilla[3], domain={ancilla[2]}),
                 Z(node=ancilla[3], domain={ancilla[1]}),
@@ -702,7 +698,9 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _rx_command(cls, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
+    def _rx_command(
+        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
+    ) -> tuple[int, list[command.Command]]:
         """MBQC commands for X rotation gate.
 
         Parameters
@@ -711,8 +709,8 @@ class Circuit:
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
-        angle : Angle
-            measurement angle in radian
+        angle : ParameterizedAngle
+            measurement angle in units of π
 
         Returns
         -------
@@ -728,7 +726,7 @@ class Circuit:
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
                 M(node=input_node),
-                M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}),
+                M(node=ancilla[0], angle=-angle, s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
             )
@@ -736,7 +734,9 @@ class Circuit:
         return ancilla[1], seq
 
     @classmethod
-    def _ry_command(cls, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
+    def _ry_command(
+        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
+    ) -> tuple[int, list[command.Command]]:
         """MBQC commands for Y rotation gate.
 
         Parameters
@@ -745,8 +745,8 @@ class Circuit:
             input node index
         ancilla : list of four ints
             ancilla node indices to be added to graph
-        angle : Angle
-            rotation angle in radian
+        angle : ParameterizedAngle
+            rotation angle in units of π
 
         Returns
         -------
@@ -764,9 +764,9 @@ class Circuit:
                 E(nodes=(ancilla[0], ancilla[1])),
                 E(nodes=(ancilla[1], ancilla[2])),
                 E(nodes=(ancilla[2], ancilla[3])),
-                M(node=input_node, angle=0.5),
-                M(node=ancilla[0], angle=-angle / np.pi, s_domain={input_node}),
-                M(node=ancilla[1], angle=-0.5, s_domain={ancilla[0]}, t_domain={input_node}),
+                M(node=input_node, angle=ANGLE_PI / 2),
+                M(node=ancilla[0], angle=-angle, s_domain={input_node}),
+                M(node=ancilla[1], angle=-ANGLE_PI / 2, s_domain={ancilla[0]}, t_domain={input_node}),
                 M(node=ancilla[2], s_domain={ancilla[1]}, t_domain={ancilla[0]}),
                 X(node=ancilla[3], domain={ancilla[2]}),
                 Z(node=ancilla[3], domain={ancilla[1]}),
@@ -775,7 +775,9 @@ class Circuit:
         return ancilla[3], seq
 
     @classmethod
-    def _rz_command(cls, input_node: int, ancilla: Sequence[int], angle: Angle) -> tuple[int, list[command.Command]]:
+    def _rz_command(
+        cls, input_node: int, ancilla: Sequence[int], angle: ParameterizedAngle
+    ) -> tuple[int, list[command.Command]]:
         """MBQC commands for Z rotation gate.
 
         Parameters
@@ -784,8 +786,8 @@ class Circuit:
             input node index
         ancilla : list of two ints
             ancilla node indices to be added to graph
-        angle : Angle
-            measurement angle in radian
+        angle : ParameterizedAngle
+            measurement angle in units of π
 
         Returns
         -------
@@ -800,7 +802,7 @@ class Circuit:
             (
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node, angle=-angle / np.pi),
+                M(node=input_node, angle=-angle),
                 M(node=ancilla[0], s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
@@ -872,24 +874,24 @@ class Circuit:
                 M(node=ancilla[0], s_domain={target_node}),
                 M(node=ancilla[1], s_domain={ancilla[0]}, t_domain={target_node}),
                 M(node=control_node1),
-                M(node=ancilla[2], angle=-1.75, s_domain={ancilla[1]}, t_domain={ancilla[0]}),
+                M(node=ancilla[2], angle=-7 * ANGLE_PI / 4, s_domain={ancilla[1]}, t_domain={ancilla[0]}),
                 M(node=ancilla[14], s_domain={control_node1}),
                 M(node=ancilla[3], s_domain={ancilla[2]}, t_domain={ancilla[1], ancilla[14]}),
-                M(node=ancilla[5], angle=-0.25, s_domain={ancilla[3]}, t_domain={ancilla[2]}),
-                M(node=control_node2, angle=-0.25, t_domain={ancilla[5], ancilla[0]}),
+                M(node=ancilla[5], angle=-ANGLE_PI / 4, s_domain={ancilla[3]}, t_domain={ancilla[2]}),
+                M(node=control_node2, angle=-ANGLE_PI / 4, t_domain={ancilla[5], ancilla[0]}),
                 M(node=ancilla[6], s_domain={ancilla[5]}, t_domain={ancilla[3]}),
                 M(node=ancilla[9], s_domain={control_node2}, t_domain={ancilla[14]}),
-                M(node=ancilla[7], angle=-1.75, s_domain={ancilla[6]}, t_domain={ancilla[5]}),
-                M(node=ancilla[10], angle=-1.75, s_domain={ancilla[9]}, t_domain={control_node2}),
+                M(node=ancilla[7], angle=-7 * ANGLE_PI / 4, s_domain={ancilla[6]}, t_domain={ancilla[5]}),
+                M(node=ancilla[10], angle=-7 * ANGLE_PI / 4, s_domain={ancilla[9]}, t_domain={control_node2}),
                 M(
                     node=ancilla[4],
-                    angle=-0.25,
+                    angle=-ANGLE_PI / 4,
                     s_domain={ancilla[14]},
                     t_domain={control_node1, control_node2, ancilla[2], ancilla[7], ancilla[10]},
                 ),
                 M(node=ancilla[8], s_domain={ancilla[7]}, t_domain={ancilla[14], ancilla[6]}),
                 M(node=ancilla[11], s_domain={ancilla[10]}, t_domain={ancilla[9], ancilla[14]}),
-                M(node=ancilla[12], angle=-0.25, s_domain={ancilla[8]}, t_domain={ancilla[7]}),
+                M(node=ancilla[12], angle=-ANGLE_PI / 4, s_domain={ancilla[8]}, t_domain={ancilla[7]}),
                 M(
                     node=ancilla[16],
                     s_domain={ancilla[4]},
@@ -989,7 +991,7 @@ class Circuit:
                 raise ValueError(f"Unknown instruction: {instr}")
         return SimulateResult(backend.state, tuple(classical_measures))
 
-    def map_angle(self, f: Callable[[Angle], Angle]) -> Circuit:
+    def map_angle(self, f: Callable[[ParameterizedAngle], ParameterizedAngle]) -> Circuit:
         """Apply `f` to all angles that occur in the circuit."""
         result = Circuit(self.width)
         for instr in self.instruction:
@@ -1043,7 +1045,7 @@ class Circuit:
                     circuit.h(instr.target)
                     circuit.m(instr.target, Axis.Z)
                 elif instr.axis == Axis.Y:
-                    circuit.rx(instr.target, pi / 2)
+                    circuit.rx(instr.target, ANGLE_PI / 2)
                     circuit.m(instr.target, Axis.Z)
                 else:
                     circuit.add(instr)
@@ -1090,5 +1092,5 @@ def _measurement_of_axis(axis: Axis) -> Measurement:
         return Measurement(plane=Plane.XY, angle=0)  # (cos, sin, 0)
     if axis == Axis.Y:
         # `Measurement.angle` is expressed in units of π.
-        return Measurement(plane=Plane.YZ, angle=0.5)  # (0, sin, cos)
+        return Measurement(plane=Plane.YZ, angle=ANGLE_PI / 2)  # (0, sin, cos)
     return Measurement(plane=Plane.XZ, angle=0)  # (sin, 0, cos)

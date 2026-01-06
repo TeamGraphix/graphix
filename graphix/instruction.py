@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import enum
-import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import ClassVar, Literal, SupportsFloat
 
 from graphix import utils
-from graphix.fundamentals import Axis, Plane
-
-# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
-from graphix.parameter import ExpressionOrFloat  # noqa: TC001
+from graphix.fundamentals import (
+    Axis,
+    ParameterizedAngle,
+    Plane,
+)
 from graphix.pretty_print import OutputFormat, angle_to_str
 from graphix.repr_mixins import DataclassReprMixin
 
 
-def repr_angle(angle: ExpressionOrFloat) -> str:
+def repr_angle(angle: ParameterizedAngle) -> str:
     """
     Return the representation string of an angle in radians.
 
@@ -28,9 +28,7 @@ def repr_angle(angle: ExpressionOrFloat) -> str:
     if not isinstance(angle, SupportsFloat):
         return str(angle)
 
-    # Convert to float, express in π units, and format in ASCII/plain mode
-    pi_units = float(angle) / math.pi
-    return angle_to_str(pi_units, OutputFormat.ASCII)
+    return angle_to_str(angle, OutputFormat.ASCII)
 
 
 class InstructionKind(Enum):
@@ -81,7 +79,7 @@ class RZZ(_KindChecker, BaseInstruction):
 
     target: int
     control: int
-    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RZZ]] = field(default=InstructionKind.RZZ, init=False)
 
 
@@ -172,7 +170,7 @@ class RX(_KindChecker, BaseInstruction):
     """X rotation circuit instruction."""
 
     target: int
-    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RX]] = field(default=InstructionKind.RX, init=False)
 
 
@@ -181,7 +179,7 @@ class RY(_KindChecker, BaseInstruction):
     """Y rotation circuit instruction."""
 
     target: int
-    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RY]] = field(default=InstructionKind.RY, init=False)
 
 
@@ -190,7 +188,7 @@ class RZ(_KindChecker, BaseInstruction):
     """Z rotation circuit instruction."""
 
     target: int
-    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    angle: ParameterizedAngle = field(metadata={"repr": repr_angle})
     kind: ClassVar[Literal[InstructionKind.RZ]] = field(default=InstructionKind.RZ, init=False)
 
 

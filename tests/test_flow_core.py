@@ -32,7 +32,7 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderError,
     XZCorrectionsOrderErrorReason,
 )
-from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
+from graphix.fundamentals import ANGLE_PI, AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern
@@ -406,7 +406,7 @@ class TestFlowPatternConversion:
             n_shots = 2
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
-                alpha = 2 * np.pi * fx_rng.random()
+                alpha = 2 * ANGLE_PI * fx_rng.random()
                 state_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
 
                 for _ in range(n_shots):
