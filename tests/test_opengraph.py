@@ -17,6 +17,7 @@ from graphix.command import E
 from graphix.fundamentals import Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
+from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
 from graphix.states import PlanarState
@@ -1012,3 +1013,39 @@ class TestOpenGraph:
             match=re.escape("Attempted to merge nodes with different measurements: (0, Plane.XZ) -> (0, Plane.XY)."),
         ):
             og3.compose(og4, mapping)
+
+    def test_subs(self) -> None:
+        alpha = Placeholder("alpha")
+        value = 0.3
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(alpha, Plane.XY)}
+        )
+
+        og_ref = OpenGraph(
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(value, Plane.XY)}
+        )
+        og_test = og.subs(alpha, value)
+
+        assert not og.isclose(og_test)
+        assert og_ref.isclose(og_test)
+
+    def test_xreplace(self) -> None:
+        parametric_angles = [Placeholder("alpha") for _ in range(2)]
+        value = 0.3
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[],
+            measurements={node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)},
+        )
+
+        og_ref = OpenGraph(
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[],
+            measurements={node: Measurement(value, Plane.XY) for node in range(2)},
+        )
+        og_test = og.xreplace(dict.fromkeys(parametric_angles, value))
+
+        assert not og.isclose(og_test)
+        assert og_ref.isclose(og_test)
