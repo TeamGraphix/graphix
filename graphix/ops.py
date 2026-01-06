@@ -13,7 +13,7 @@ import numpy.typing as npt
 from typing_extensions import assert_never
 
 from graphix import utils
-from graphix.fundamentals import IXYZ, Axis, angle_to_rad
+from graphix.fundamentals import IXYZ, Axis, I, angle_to_rad
 from graphix.parameter import Expression, cos_sin, exp
 
 if TYPE_CHECKING:
@@ -229,12 +229,6 @@ class Ops:
     @staticmethod
     def from_ixyz(ixyz: IXYZ) -> npt.NDArray[np.complex128]:
         """Return the matrix representation of an IXYZ."""
-        if ixyz == IXYZ.I:
+        if ixyz == I:
             return Ops.I
-        if ixyz == IXYZ.X:
-            return Ops.X
-        if ixyz == IXYZ.Y:
-            return Ops.Y
-        if ixyz == IXYZ.Z:
-            return Ops.Z
-        assert_never(ixyz)
+        return Ops.from_axis(ixyz)

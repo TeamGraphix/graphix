@@ -6,7 +6,7 @@ import enum
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 from math import pi
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, SupportsIndex, overload
+from typing import TYPE_CHECKING, Literal, SupportsComplex, SupportsFloat, SupportsIndex, overload
 
 import typing_extensions
 
@@ -228,15 +228,6 @@ class ComplexUnit(EnumReprMixin, Enum):
         return ComplexUnit((self.value + 2) % 4)
 
 
-class IXYZ(Enum):
-    """I, X, Y or Z."""
-
-    I = enum.auto()
-    X = enum.auto()
-    Y = enum.auto()
-    Z = enum.auto()
-
-
 class CustomMeta(ABCMeta, EnumMeta):
     """Custom metaclass to allow multiple inheritance from `Enum` and `ABC`."""
 
@@ -313,6 +304,19 @@ class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     @override
     def to_plane_or_axis(self) -> Axis:
         return self
+
+
+class SingletonI(Enum):
+    """Singleton I."""
+
+    I = enum.auto()
+
+
+I = SingletonI.I
+
+IXYZ: TypeAlias = Literal[SingletonI.I] | Axis
+
+IXYZ_VALUES: tuple[IXYZ, ...] = (I, Axis.X, Axis.Y, Axis.Z)
 
 
 class Plane(AbstractPlanarMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
