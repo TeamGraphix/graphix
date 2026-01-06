@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from numpy.random import PCG64, Generator
 
+from graphix.fundamentals import ANGLE_PI
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
 
@@ -95,7 +96,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
 
 def test_rz() -> None:
     circuit = Circuit(2)
-    circuit.rz(0, np.pi / 4)
+    circuit.rz(0, ANGLE_PI / 4)
     pattern = circuit.transpile().pattern
     # pyzx 0.8 does not support arithmetic expressions such as `pi / 4`.
     circ = zx.qasm(f"qreg q[2]; rz({np.pi / 4}) q[0];")  # type: ignore[attr-defined]

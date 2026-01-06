@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import itertools
 import math
+from math import pi
 
 import pytest
 
-from graphix.fundamentals import Axis, ComplexUnit, Plane, Sign
+from graphix.fundamentals import ANGLE_PI, Axis, ComplexUnit, Plane, Sign
 
 
 class TestSign:
@@ -141,9 +142,9 @@ class TestPlane:
         icos = _PLANE_INDEX[p.cos]
         isin = _PLANE_INDEX[p.sin]
         irest = 3 - icos - isin
-        po = p.polar(1)
-        assert po[icos] == pytest.approx(math.cos(1))
-        assert po[isin] == pytest.approx(math.sin(1))
+        po = p.polar(ANGLE_PI / 4)
+        assert po[icos] == pytest.approx(math.cos(pi / 4))
+        assert po[isin] == pytest.approx(math.sin(pi / 4))
         assert po[irest] == 0
 
     def test_from_axes(self) -> None:

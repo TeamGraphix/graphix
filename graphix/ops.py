@@ -9,13 +9,18 @@ from typing import TYPE_CHECKING, ClassVar, overload
 import numpy as np
 import numpy.typing as npt
 
+# assert_never added in Python 3.11
+from typing_extensions import assert_never
+
 from graphix import utils
+from graphix.fundamentals import IXYZ, Axis, I, angle_to_rad
 from graphix.parameter import Expression, cos_sin, exp
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
+    from graphix.fundamentals import Angle, ParameterizedAngle
+    from graphix.parameter import ExpressionOrComplex
 
 
 class Ops:
@@ -75,17 +80,17 @@ class Ops:
 
     @overload
     @staticmethod
-    def _cast_array(array: Iterable[Iterable[complex]], theta: float) -> npt.NDArray[np.complex128]: ...
+    def _cast_array(array: Iterable[Iterable[complex]], theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
+        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]: ...
 
     @staticmethod
     def _cast_array(
-        array: Iterable[Iterable[ExpressionOrComplex]], theta: ExpressionOrFloat
+        array: Iterable[Iterable[ExpressionOrComplex]], theta: ParameterizedAngle
     ) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         if isinstance(theta, Expression):
             return np.asarray(array, dtype=np.object_)
@@ -93,88 +98,85 @@ class Ops:
 
     @overload
     @staticmethod
-    def rx(theta: float) -> npt.NDArray[np.complex128]: ...
+    def rx(theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def rx(theta: Expression) -> npt.NDArray[np.object_]: ...
 
     @staticmethod
-    def rx(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+    def rx(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """X rotation.
 
         Parameters
         ----------
-        theta : float
-            rotation angle in radian
+        theta : Angle | Expression
+            rotation angle in units of π
 
         Returns
         -------
         operator : 2*2 np.asarray
         """
-        cos, sin = cos_sin(theta / 2)
-        return Ops._cast_array(
-            [[cos, -1j * sin], [-1j * sin, cos]],
-            theta,
-        )
+        cos, sin = cos_sin(angle_to_rad(theta) / 2)
+        return Ops._cast_array([[cos, -1j * sin], [-1j * sin, cos]], theta)
 
     @overload
     @staticmethod
-    def ry(theta: float) -> npt.NDArray[np.complex128]: ...
+    def ry(theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def ry(theta: Expression) -> npt.NDArray[np.object_]: ...
 
     @staticmethod
-    def ry(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+    def ry(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """Y rotation.
 
         Parameters
         ----------
-        theta : float
-            rotation angle in radian
+        theta : Angle | Expression
+            rotation angle in units of π
 
         Returns
         -------
         operator : 2*2 np.asarray
         """
-        cos, sin = cos_sin(theta / 2)
+        cos, sin = cos_sin(angle_to_rad(theta) / 2)
         return Ops._cast_array([[cos, -sin], [sin, cos]], theta)
 
     @overload
     @staticmethod
-    def rz(theta: float) -> npt.NDArray[np.complex128]: ...
+    def rz(theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def rz(theta: Expression) -> npt.NDArray[np.object_]: ...
 
     @staticmethod
-    def rz(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+    def rz(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """Z rotation.
 
         Parameters
         ----------
-        theta : float
-            rotation angle in radian
+        theta : Angle | Expression
+            rotation angle in units of π
 
         Returns
         -------
         operator : 2*2 np.asarray
         """
-        return Ops._cast_array([[exp(-1j * theta / 2), 0], [0, exp(1j * theta / 2)]], theta)
+        return Ops._cast_array([[exp(-1j * angle_to_rad(theta) / 2), 0], [0, exp(1j * angle_to_rad(theta) / 2)]], theta)
 
     @overload
     @staticmethod
-    def rzz(theta: float) -> npt.NDArray[np.complex128]: ...
+    def rzz(theta: Angle) -> npt.NDArray[np.complex128]: ...
 
     @overload
     @staticmethod
     def rzz(theta: Expression) -> npt.NDArray[np.object_]: ...
 
     @staticmethod
-    def rzz(theta: ExpressionOrFloat) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
+    def rzz(theta: ParameterizedAngle) -> npt.NDArray[np.complex128] | npt.NDArray[np.object_]:
         """zz-rotation.
 
         Equivalent to the sequence
@@ -184,8 +186,8 @@ class Ops:
 
         Parameters
         ----------
-        theta : float
-            rotation angle in radian
+        theta : Angle | Expression
+            rotation angle in units of π
 
         Returns
         -------
@@ -212,3 +214,21 @@ class Ops:
             return np.kron(lhs, rhs).astype(np.complex128, copy=False)
 
         return np.array([reduce(_reducer, i) for i in product((Ops.I, Ops.X, Ops.Y, Ops.Z), repeat=n_qubits)])
+
+    @staticmethod
+    def from_axis(axis: Axis) -> npt.NDArray[np.complex128]:
+        """Return the matrix representation of an AXIS."""
+        if axis == Axis.X:
+            return Ops.X
+        if axis == Axis.Y:
+            return Ops.Y
+        if axis == Axis.Z:
+            return Ops.Z
+        assert_never(axis)
+
+    @staticmethod
+    def from_ixyz(ixyz: IXYZ) -> npt.NDArray[np.complex128]:
+        """Return the matrix representation of an IXYZ."""
+        if ixyz == I:
+            return Ops.I
+        return Ops.from_axis(ixyz)
