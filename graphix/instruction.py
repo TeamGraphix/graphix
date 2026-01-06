@@ -9,7 +9,7 @@ from enum import Enum
 from typing import ClassVar, Literal, SupportsFloat
 
 from graphix import utils
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis, Plane
 
 # Ruff suggests to move this import to a type-checking block, but dataclass requires it here
 from graphix.parameter import ExpressionOrFloat  # noqa: TC001
@@ -162,8 +162,7 @@ class M(_KindChecker, DataclassReprMixin):
     """M circuit instruction."""
 
     target: int
-    plane: Plane
-    angle: ExpressionOrFloat = field(metadata={"repr": repr_angle})
+    axis: Axis
     kind: ClassVar[Literal[InstructionKind.M]] = field(default=InstructionKind.M, init=False)
 
 

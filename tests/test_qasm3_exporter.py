@@ -9,7 +9,7 @@ import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import Circuit, instruction
-from graphix.fundamentals import Plane
+from graphix.fundamentals import Axis
 from graphix.qasm3_exporter import angle_to_qasm3, circuit_to_qasm3
 from graphix.random_objects import rand_circuit
 
@@ -81,7 +81,7 @@ def test_measurement() -> None:
     # https://github.com/TeamGraphix/graphix-qasm-parser/issues/3
     # The best we can do is to check if the measurement instruction
     # is exported as expected.
-    circuit = Circuit(1, instr=[instruction.M(target=0, plane=Plane.XZ, angle=0)])
+    circuit = Circuit(1, instr=[instruction.M(target=0, axis=Axis.Z)])
     qasm = circuit_to_qasm3(circuit)
     assert (
         qasm
