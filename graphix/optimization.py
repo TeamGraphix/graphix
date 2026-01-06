@@ -522,7 +522,7 @@ class StandardizedPattern(_StandardizedPattern):
 
         Notes
         -----
-        The notes provided in :meth:`extract_causal_flow` apply here as well.
+        The notes provided in :func:`self.extract_causal_flow` apply here as well.
         """
         correction_function: dict[int, set[int]] = {}
         pre_measured_nodes = self.results.keys()  # Not included in the flow.
