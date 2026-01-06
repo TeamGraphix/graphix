@@ -517,7 +517,7 @@ class OpenGraph(Generic[_M_co]):
         >>> alpha = Placeholder("alpha")
         >>> beta = Placeholder("beta")
         >>> measurements = {0: Measurement(alpha, Plane.XY), 1: Measurement(beta, Plane.XY)}
-        >>> og = OpenGraph(nx.Graph([(0, 1)]), [0], [1], measurements)
+        >>> og = OpenGraph(nx.Graph([(0, 1)]), [0], [], measurements)
         >>> # Substitute multiple parameters at once
         >>> subs_map = {alpha: 0.5, beta: 1.2}
         >>> new_og = og.xreplace(subs_map)
