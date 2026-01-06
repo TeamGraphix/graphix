@@ -956,8 +956,7 @@ class Pattern:
 
         Notes
         -----
-        - See :func:`optimization.StandardizedPattern.extract_gflow` for additional information on why it is required to standardized the pattern to extract a gflow.
-        - Applying the chain ``Pattern.extract_gflow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        The notes provided in :func:`self.extract_causal_flow` apply here as well.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
