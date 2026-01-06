@@ -160,15 +160,15 @@ class OpenGraph(Generic[_M_co]):
         -----
         This method verifies the open graphs have:
             - Truly equal underlying graphs (not up to an isomorphism).
-            - Equal input and output nodes.
+            - Equal input and output nodes. This assumes equal types as well, i.e., if ``self.input_nodes`` is a ``list`` and ``other.input_nodes`` is a ``tuple``, this method will return ``False``.
         It assumes the open graphs are well formed.
 
         The static typer allows comparing the structure of two open graphs with different parametric type.
         """
         return (
             nx.utils.graphs_equal(self.graph, other.graph)
-            and tuple(self.input_nodes) == tuple(other.input_nodes)
-            and tuple(self.output_nodes) == tuple(other.output_nodes)
+            and self.input_nodes == other.input_nodes
+            and self.output_nodes == other.output_nodes
         )
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:

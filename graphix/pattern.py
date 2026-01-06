@@ -1200,7 +1200,8 @@ class Pattern:
         graph = nx.Graph(edges)
         graph.add_nodes_from(nodes)
 
-        return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
+        # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
+        return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.
