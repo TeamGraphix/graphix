@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command, gflow, visualization
+from graphix import Circuit, Pattern, command, visualization
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
@@ -103,10 +103,9 @@ def test_get_pos_from_flow() -> None:
     meas_angles = pattern.get_angles()
     local_clifford = pattern.get_vops()
     vis = visualization.GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
-    f, l_k = gflow.find_flow(graph, set(vin), set(vout), meas_planes)
-    assert f is not None
-    assert l_k is not None
-    pos = vis.get_pos_from_flow(f, l_k)
+    og = OpenGraph(graph, vin, vout, meas_planes)
+    causal_flow = og.extract_causal_flow()
+    pos = vis.get_pos_from_flow(causal_flow)
     assert pos is not None
 
 

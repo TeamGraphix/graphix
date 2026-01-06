@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import enum
+import itertools
 import warnings
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
@@ -22,7 +23,6 @@ from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
-from graphix.gflow import find_flow, find_gflow, get_layers
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.flow.core import CausalFlow, GFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
 
@@ -885,6 +886,80 @@ class Pattern:
         for i in dependency:
             dependency[i] -= measured
 
+    def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
+        """Extract the measurement order of the pattern in the form of layers.
+
+        This method standardizes the pattern, builds a directed acyclical graph (DAG) from measurement and correction domains, and then performs a topological sort.
+
+        Returns
+        -------
+        tuple[frozenset[int], ...]
+            Measurement partial order between the pattern's nodes in a layer form.
+
+        Raises
+        ------
+        RunnabilityError
+            If the pattern is not runnable.
+
+        Notes
+        -----
+        - This function wraps :func:`optimization.StandardizedPattern.extract_partial_order_layers`, and the returned object is described in the notes of this method.
+
+        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract the partial order layering.
+        """
+        return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
+
+    def extract_causal_flow(self) -> CausalFlow[Measurement]:
+        """Extract the causal flow structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
+
+        Returns
+        -------
+        CausalFlow[Measurement]
+            The causal flow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern:
+            - Contains measurements in forbidden planes (XZ or YZ),
+            - Is empty, or
+            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
+        - Applying the chain ``Pattern.extract_causal_flow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        """
+        return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
+
+    def extract_gflow(self) -> GFlow[Measurement]:
+        """Extract the generalized flow (gflow) structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
+
+        Returns
+        -------
+        GFlow[Measurement]
+            The gflow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern is empty or if the extracted structure does not satisfy
+            the well-formedness conditions required for a valid gflow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        The notes provided in :func:`self.extract_causal_flow` apply here as well.
+        """
+        return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
+
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.
 
@@ -925,14 +1000,11 @@ class Pattern:
 
         Returns
         -------
-        meas_order: list of int
+        list[int]
             optimal measurement order for parallel computing
         """
-        d, l_k = self.get_layers()
-        meas_order: list[int] = []
-        for i in range(d):
-            meas_order.extend(l_k[i])
-        return meas_order
+        partial_order_layers = self.extract_partial_order_layers()
+        return list(itertools.chain(*reversed(partial_order_layers[1:])))
 
     @staticmethod
     def connected_edges(node: int, edges: set[tuple[int, int]]) -> set[tuple[int, int]]:
@@ -982,54 +1054,6 @@ class Pattern:
             self.update_dependency({next_node}, dependency)
             not_measured -= {next_node}
             edges -= removable_edges
-        return meas_order
-
-    def get_measurement_order_from_flow(self) -> list[int] | None:
-        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
-
-        Returns
-        -------
-        meas_order: list of int
-            measurement order
-        """
-        graph = self.extract_graph()
-        vin = set(self.input_nodes)
-        vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
-        if f is None or l_k is None:
-            return None
-        depth, layer = get_layers(l_k)
-        meas_order: list[int] = []
-        for i in range(depth):
-            k = depth - i
-            nodes = layer[k]
-            meas_order += nodes  # NOTE this is list concatenation
-        return meas_order
-
-    def get_measurement_order_from_gflow(self) -> list[int]:
-        """Return a list containing the node indices, in the order of measurements which can be performed with minimum depth.
-
-        Returns
-        -------
-        meas_order : list of int
-            measurement order
-        """
-        graph = self.extract_graph()
-        isolated = list(nx.isolates(graph))
-        if isolated:
-            raise ValueError("The input graph must be connected")
-        vin = set(self.input_nodes)
-        vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
-        if flow is None or l_k is None:  # We check both to avoid typing issues with `get_layers`.
-            raise ValueError("No gflow found")
-        k, layers = get_layers(l_k)
-        meas_order: list[int] = []
-        while k > 0:
-            meas_order.extend(layers[k])
-            k -= 1
         return meas_order
 
     def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M]:
@@ -1287,7 +1311,8 @@ class Pattern:
             self.standardize()
         meas_order = None
         if not self._pauli_preprocessed:
-            meas_order = self.get_measurement_order_from_flow()
+            cf = self.extract_opengraph().find_causal_flow()
+            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))

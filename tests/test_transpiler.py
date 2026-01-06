@@ -9,7 +9,6 @@ from numpy.random import PCG64, Generator
 from graphix import instruction
 from graphix.branch_selector import ConstBranchSelector
 from graphix.fundamentals import ANGLE_PI, Axis, Sign
-from graphix.gflow import flow_from_pattern
 from graphix.instruction import InstructionKind
 from graphix.random_objects import rand_circuit, rand_gate, rand_state_vector
 from graphix.states import BasicStates
@@ -235,9 +234,8 @@ class TestTranspilerUnitGates:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
-        pattern.standardize()
-        f, _l = flow_from_pattern(pattern)
-        assert f is not None
+        flow = pattern.extract_causal_flow()
+        flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("instruction", INSTRUCTION_TEST_CASES)
