@@ -85,14 +85,9 @@ def tests_qasm_parser(session: Session) -> None:
     # because Windows cannot delete a temporary directory while it
     # is the working directory.
     with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
-        # Use branch graphix_angle_convention_changed, which is
-        # version-agnostic with respect to graphix.
-        # See https://github.com/TeamGraphix/graphix-qasm-parser/pull/8
         session.run(
             "git",
             "clone",
-            "-b",
-            "graphix_angle_convention_changed",
             "https://github.com/TeamGraphix/graphix-qasm-parser",
         )
         with session.cd("graphix-qasm-parser"):
