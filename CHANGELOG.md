@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #393
+  - Introduced new method `graphix.optimization.StandardizedPattern.extract_partial_order_layer` which constructs a partial order layering from the dependency domains of M, X and Z commands.
+  - Introduced new methods `graphix.optimization.StandardizedPattern.extract_causal_flow`, `graphix.optimization.StandardizedPattern.extract_gflow` which respectively attempt to extract a causal flow and a gflow from a standardized pattern.
+  - Introduced new wrapper methods in the `Pattern` class: `graphix.pattern.Pattern.extract_partial_order_layers`, `graphix.pattern.Pattern.extract_causal_flow` and `graphix.pattern.Pattern.extract_gflow`.
+  - Introduced new module `graphix.flow._partial_order` with the function :func:`compute_topological_generations`.
+
 - #385
   - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
   - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
