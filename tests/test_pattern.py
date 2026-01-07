@@ -247,8 +247,8 @@ class TestPattern:
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
         isolated_nodes = pattern.extract_isolated_nodes()
-        # 30-node is the isolated and output node.
-        isolated_nodes_ref = {30}
+        # 42-node is the isolated and output node.
+        isolated_nodes_ref = {42}
         assert isolated_nodes == isolated_nodes_ref
 
     def test_pauli_measurement_error(self, fx_rng: Generator) -> None:
@@ -813,6 +813,7 @@ class TestPattern:
         c = Circuit(1)
         c.rz(0, 0.2)
         p = c.transpile().pattern
+        p.remove_input_nodes()
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
 
@@ -938,6 +939,8 @@ class TestPattern:
         p_ref = circuit_1.transpile().pattern
         p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
 
+        p_ref.remove_input_nodes()
+        p_test.remove_input_nodes()
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
 
@@ -954,7 +957,8 @@ class TestPattern:
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
         p_test = p_ref.extract_gflow().to_corrections().to_pattern()
-
+        p_ref.remove_input_nodes()
+        p_test.remove_input_nodes()
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
 
