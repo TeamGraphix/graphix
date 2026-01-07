@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions
 
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Angle, Plane, angle_to_rad
 
 
 # generic class State for all States
@@ -45,14 +45,14 @@ class PlanarState(State):
 
     :param plane: One of the three planes (XY, XZ, YZ)
     :type plane: :class:`graphix.pauli.Plane`
-    :param angle: angle IN RADIANS
+    :param angle: Angle (in units of π)
     :type angle: float
     :return: State
     :rtype: :class:`graphix.states.State` object
     """
 
     plane: Plane
-    angle: float
+    angle: Angle
 
     def __repr__(self) -> str:
         """Return a string representation of the planar state."""
@@ -64,14 +64,15 @@ class PlanarState(State):
 
     def get_statevector(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
+        angle_rad = angle_to_rad(self.angle)
         if self.plane == Plane.XY:
-            return np.asarray([1 / np.sqrt(2), np.exp(1j * self.angle) / np.sqrt(2)], dtype=np.complex128)
+            return np.asarray([1 / np.sqrt(2), np.exp(1j * angle_rad) / np.sqrt(2)], dtype=np.complex128)
 
         if self.plane == Plane.YZ:
-            return np.asarray([np.cos(self.angle / 2), 1j * np.sin(self.angle / 2)], dtype=np.complex128)
+            return np.asarray([np.cos(angle_rad / 2), 1j * np.sin(angle_rad / 2)], dtype=np.complex128)
 
         if self.plane == Plane.XZ:
-            return np.asarray([np.cos(self.angle / 2), np.sin(self.angle / 2)], dtype=np.complex128)
+            return np.asarray([np.cos(angle_rad / 2), np.sin(angle_rad / 2)], dtype=np.complex128)
         # other case never happens since exhaustive
         typing_extensions.assert_never(self.plane)
 
@@ -81,11 +82,11 @@ class BasicStates:
     """Basic states."""
 
     ZERO: ClassVar[PlanarState] = PlanarState(Plane.XZ, 0)
-    ONE: ClassVar[PlanarState] = PlanarState(Plane.XZ, np.pi)
+    ONE: ClassVar[PlanarState] = PlanarState(Plane.XZ, ANGLE_PI)
     PLUS: ClassVar[PlanarState] = PlanarState(Plane.XY, 0)
-    MINUS: ClassVar[PlanarState] = PlanarState(Plane.XY, np.pi)
-    PLUS_I: ClassVar[PlanarState] = PlanarState(Plane.XY, np.pi / 2)
-    MINUS_I: ClassVar[PlanarState] = PlanarState(Plane.XY, -np.pi / 2)
+    MINUS: ClassVar[PlanarState] = PlanarState(Plane.XY, ANGLE_PI)
+    PLUS_I: ClassVar[PlanarState] = PlanarState(Plane.XY, ANGLE_PI / 2)
+    MINUS_I: ClassVar[PlanarState] = PlanarState(Plane.XY, -ANGLE_PI / 2)
     # remove that in the end
     # need in TN backend
     VEC: ClassVar[list[PlanarState]] = [PLUS, MINUS, ZERO, ONE, PLUS_I, MINUS_I]

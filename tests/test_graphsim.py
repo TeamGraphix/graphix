@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import pytest
 
 from graphix.clifford import Clifford
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane, angle_to_rad
 from graphix.graphsim import GraphState
 from graphix.ops import Ops
 from graphix.sim.statevec import Statevec
+
+if TYPE_CHECKING:
+    from graphix.fundamentals import Angle
 
 
 def get_state(g: GraphState) -> Statevec:
@@ -33,7 +38,7 @@ def get_state(g: GraphState) -> Statevec:
 
 
 def meas_op(
-    angle: float, vop: Clifford = Clifford.I, plane: Plane = Plane.XY, choice: int = 0
+    angle: Angle, vop: Clifford = Clifford.I, plane: Plane = Plane.XY, choice: int = 0
 ) -> npt.NDArray[np.complex128]:
     """Return the projection operator for given measurement angle and local Clifford op (VOP).
 
@@ -41,8 +46,8 @@ def meas_op(
 
     Parameters
     ----------
-    angle : float
-        original measurement angle in radian
+    angle : Angle
+        original measurement angle in units of π
     vop : int
         index of local Clifford (vop), see graphq.clifford.CLIFFORD
     plane : 'XY', 'YZ' or 'ZX'
@@ -57,12 +62,13 @@ def meas_op(
 
     """
     assert choice in {0, 1}
+    rad_angle = angle_to_rad(angle)
     if plane == Plane.XY:
-        vec = (np.cos(angle), np.sin(angle), 0)
+        vec = (np.cos(rad_angle), np.sin(rad_angle), 0)
     elif plane == Plane.YZ:
-        vec = (0, np.cos(angle), np.sin(angle))
+        vec = (0, np.cos(rad_angle), np.sin(rad_angle))
     elif plane == Plane.XZ:
-        vec = (np.cos(angle), 0, np.sin(angle))
+        vec = (np.cos(rad_angle), 0, np.sin(rad_angle))
     op_mat = np.eye(2, dtype=np.complex128) / 2
     for i in range(3):
         op_mat += (-1) ** (choice) * vec[i] * Clifford(i + 1).matrix / 2
@@ -84,14 +90,14 @@ class TestGraphSim:
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_y(1, choice=0)
-        gstate.evolve_single(meas_op(0.5 * np.pi), 0)  # y meas
+        gstate.evolve_single(meas_op(0.5 * ANGLE_PI), 0)  # y meas
         gstate.normalize()
         gstate.remove_qubit(0)
         gstate2 = get_state(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_z(3)
-        gstate.evolve_single(meas_op(0.5 * np.pi, plane=Plane.YZ), 1)  # z meas
+        gstate.evolve_single(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
         gstate2 = get_state(g)

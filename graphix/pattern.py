@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import enum
+import itertools
 import warnings
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
@@ -21,8 +22,7 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-from graphix.fundamentals import Axis, Plane, Sign
-from graphix.gflow import find_flow, find_gflow, get_layers
+from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -132,6 +132,7 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
+        self._pauli_preprocessed = False
         if cmd.kind == CommandKind.N:
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
@@ -145,6 +146,7 @@ class Pattern:
 
         :param cmds: sequences of commands
         """
+        self._pauli_preprocessed = False
         for item in cmds:
             if isinstance(item, Iterable):
                 for cmd in item:
@@ -154,6 +156,7 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
+        self._pauli_preprocessed = False
         self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
@@ -165,6 +168,7 @@ class Pattern:
 
         :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
+        self._pauli_preprocessed = False
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
         self.clear()
@@ -210,6 +214,7 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
+        self._pauli_preprocessed = False
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
@@ -894,6 +899,80 @@ class Pattern:
         for i in dependency:
             dependency[i] -= measured
 
+    def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
+        """Extract the measurement order of the pattern in the form of layers.
+
+        This method standardizes the pattern, builds a directed acyclical graph (DAG) from measurement and correction domains, and then performs a topological sort.
+
+        Returns
+        -------
+        tuple[frozenset[int], ...]
+            Measurement partial order between the pattern's nodes in a layer form.
+
+        Raises
+        ------
+        RunnabilityError
+            If the pattern is not runnable.
+
+        Notes
+        -----
+        - This function wraps :func:`optimization.StandardizedPattern.extract_partial_order_layers`, and the returned object is described in the notes of this method.
+
+        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract the partial order layering.
+        """
+        return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
+
+    def extract_causal_flow(self) -> CausalFlow[Measurement]:
+        """Extract the causal flow structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
+
+        Returns
+        -------
+        CausalFlow[Measurement]
+            The causal flow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern:
+            - Contains measurements in forbidden planes (XZ or YZ),
+            - Is empty, or
+            - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
+        - Applying the chain ``Pattern.extract_causal_flow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        """
+        return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
+
+    def extract_gflow(self) -> GFlow[Measurement]:
+        """Extract the generalized flow (gflow) structure from the current measurement pattern.
+
+        This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
+
+        Returns
+        -------
+        GFlow[Measurement]
+            The gflow associated with the current pattern.
+
+        Raises
+        ------
+        FlowError
+            If the pattern is empty or if the extracted structure does not satisfy
+            the well-formedness conditions required for a valid gflow.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        The notes provided in :func:`self.extract_causal_flow` apply here as well.
+        """
+        return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
+
     def get_layers(self) -> tuple[int, dict[int, set[int]]]:
         """Construct layers(l_k) from dependency information.
 
@@ -934,14 +1013,11 @@ class Pattern:
 
         Returns
         -------
-        meas_order: list of int
+        list[int]
             optimal measurement order for parallel computing
         """
-        d, l_k = self.get_layers()
-        meas_order: list[int] = []
-        for i in range(d):
-            meas_order.extend(l_k[i])
-        return meas_order
+        partial_order_layers = self.extract_partial_order_layers()
+        return list(itertools.chain(*reversed(partial_order_layers[1:])))
 
     @staticmethod
     def connected_edges(node: int, edges: set[tuple[int, int]]) -> set[tuple[int, int]]:
@@ -993,54 +1069,6 @@ class Pattern:
             edges -= removable_edges
         return meas_order
 
-    def get_measurement_order_from_flow(self) -> list[int] | None:
-        """Return a measurement order generated from flow. If a graph has flow, the minimum 'max_space' of a pattern is guaranteed to width+1.
-
-        Returns
-        -------
-        meas_order: list of int
-            measurement order
-        """
-        graph = self.extract_graph()
-        vin = set(self.input_nodes)
-        vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        f, l_k = find_flow(graph, vin, vout, meas_planes=meas_planes)
-        if f is None or l_k is None:
-            return None
-        depth, layer = get_layers(l_k)
-        meas_order: list[int] = []
-        for i in range(depth):
-            k = depth - i
-            nodes = layer[k]
-            meas_order += nodes  # NOTE this is list concatenation
-        return meas_order
-
-    def get_measurement_order_from_gflow(self) -> list[int]:
-        """Return a list containing the node indices, in the order of measurements which can be performed with minimum depth.
-
-        Returns
-        -------
-        meas_order : list of int
-            measurement order
-        """
-        graph = self.extract_graph()
-        isolated = list(nx.isolates(graph))
-        if isolated:
-            raise ValueError("The input graph must be connected")
-        vin = set(self.input_nodes)
-        vout = set(self.output_nodes)
-        meas_planes = self.get_meas_plane()
-        flow, l_k = find_gflow(graph, vin, vout, meas_planes=meas_planes)
-        if flow is None or l_k is None:  # We check both to avoid typing issues with `get_layers`.
-            raise ValueError("No gflow found")
-        k, layers = get_layers(l_k)
-        meas_order: list[int] = []
-        while k > 0:
-            meas_order.extend(layers[k])
-            k -= 1
-        return meas_order
-
     def sort_measurement_commands(self, meas_order: list[int]) -> list[command.M]:
         """Convert measurement order to sequence of measurement commands.
 
@@ -1089,7 +1117,7 @@ class Pattern:
                 meas_plane[cmd.node] = cmd.plane
         return meas_plane
 
-    def get_angles(self) -> dict[int, ExpressionOrFloat]:
+    def get_angles(self) -> dict[int, ParameterizedAngle]:
         """Get measurement angles of the pattern.
 
         Returns
@@ -1296,7 +1324,8 @@ class Pattern:
             self.standardize()
         meas_order = None
         if not self._pauli_preprocessed:
-            meas_order = self.get_measurement_order_from_flow()
+            cf = self.extract_opengraph().find_causal_flow()
+            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1433,14 +1462,21 @@ class Pattern:
         sim.run(input_state, rng=rng)
         return sim.backend.state
 
-    def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
+    def remove_input_nodes(self) -> None:
+        """Remove the input nodes from the pattern and replace them with N commands.
+
+        This removes the possibility of choosing the input state, fixing the input state to the plus state.
+        .. seealso:: :class:`graphix.command.N`
+        """
+        self.__seq[0:0] = [command.N(node=node) for node in self.input_nodes]
+        empty_nodes: list[int] = []
+        self.__input_nodes = empty_nodes
+
+    def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
         ----------
-        leave_input : bool
-            Optional (*False* by default).
-            If *True*, measurements on input nodes are preserved as-is in the pattern.
         ignore_pauli_with_deps : bool
             Optional (*False* by default).
             If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1449,9 +1485,9 @@ class Pattern:
         .. seealso:: :func:`measure_pauli`
 
         """
-        # if not ignore_pauli_with_deps:
-        #    self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        if self.input_nodes:
+            raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
+        measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
 
     def draw_graph(
         self,
@@ -1683,23 +1719,17 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(
-    pattern: Pattern, leave_input: bool, *, copy: bool = False, ignore_pauli_with_deps: bool = False
-) -> Pattern:
+def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
-    Uses the decorated-graph method implemented in graphix.graphsim to perform
-    the measurements in Pauli bases, and then sort remaining nodes back into
-    pattern together with Clifford commands.
+    Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
+    pattern together with Clifford commands. Users are required to ensure there are no input nodes with :func:`graphix.pattern.Pattern.remove_input_nodes` before using this function.
 
     TODO: non-XY plane measurements in original pattern
 
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    leave_input : bool
-        True: input nodes will not be removed
-        False: all the nodes measured in Pauli bases will be removed
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
@@ -1715,20 +1745,20 @@ def measure_pauli(
         only returned if copy argument is True.
 
 
+    .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
+    pat = Pattern() if copy else pattern
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = {}
-    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern, leave_input)
-    if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
-        new_inputs = []
-    else:
-        new_inputs = pattern.input_nodes
+    results: dict[int, Outcome] = pat.results
+    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
+    if not to_measure:
+        return pattern
     for cmd in to_measure:
         pattern_cmd = cmd[0]
         measurement_basis = cmd[1]
@@ -1777,7 +1807,7 @@ def measure_pauli(
     # update command sequence
     vops = graph_state.get_vops()
     new_seq: list[Command] = []
-    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
+    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
         cmd.clifford(Clifford(vops[cmd.node])) for cmd in standardized_pattern.m_list if cmd.node in graph_state.nodes
@@ -1789,10 +1819,7 @@ def measure_pauli(
     )
     new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
     new_seq.extend(command.X(node=node, domain=set(domain)) for node, domain in standardized_pattern.x_dict.items())
-
-    pat = Pattern() if copy else pattern
-
-    pat.replace(new_seq, input_nodes=new_inputs)
+    pat.replace(new_seq, input_nodes=[])
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
@@ -1800,15 +1827,12 @@ def measure_pauli(
     return pat
 
 
-def pauli_nodes(
-    pattern: optimization.StandardizedPattern, leave_input: bool
-) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
     ----------
     pattern : optimization.StandardizedPattern
-    leave_input : bool
 
     Returns
     -------
@@ -1821,7 +1845,7 @@ def pauli_nodes(
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
         pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
+        if pm is not None:
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement

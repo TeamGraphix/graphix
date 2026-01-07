@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import typing_extensions
 
-from graphix.fundamentals import IXYZ, Axis, ComplexUnit, SupportsComplexCtor
+from graphix.fundamentals import IXYZ_VALUES, Axis, ComplexUnit, I, SupportsComplexCtor
 from graphix.ops import Ops
 from graphix.states import BasicStates
 
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
 
+    from graphix.fundamentals import IXYZ
     from graphix.states import PlanarState
 
 
@@ -35,7 +36,7 @@ class Pauli(metaclass=_PauliMeta):
     and can be negated.
     """
 
-    symbol: IXYZ = IXYZ.I
+    symbol: IXYZ = I
     unit: ComplexUnit = ComplexUnit.ONE
     I: ClassVar[Pauli]
     X: ClassVar[Pauli]
@@ -45,7 +46,7 @@ class Pauli(metaclass=_PauliMeta):
     @staticmethod
     def from_axis(axis: Axis) -> Pauli:
         """Return the Pauli associated to the given axis."""
-        return Pauli(IXYZ[axis.name])
+        return Pauli(axis)
 
     @property
     def axis(self) -> Axis:
@@ -53,36 +54,28 @@ class Pauli(metaclass=_PauliMeta):
 
         Fails if the Pauli is identity.
         """
-        if self.symbol == IXYZ.I:
+        if self.symbol == I:
             raise ValueError("I is not an axis.")
-        return Axis[self.symbol.name]
+        return self.symbol
 
     @property
     def matrix(self) -> npt.NDArray[np.complex128]:
         """Return the matrix of the Pauli gate."""
         co = complex(self.unit)
-        if self.symbol == IXYZ.I:
-            return co * Ops.I
-        if self.symbol == IXYZ.X:
-            return co * Ops.X
-        if self.symbol == IXYZ.Y:
-            return co * Ops.Y
-        if self.symbol == IXYZ.Z:
-            return co * Ops.Z
-        typing_extensions.assert_never(self.symbol)
+        return co * Ops.from_ixyz(self.symbol)
 
     def eigenstate(self, binary: int = 0) -> PlanarState:
         """Return the eigenstate of the Pauli."""
         if binary not in {0, 1}:
             raise ValueError("b must be 0 or 1.")
-        if self.symbol == IXYZ.X:
+        if self.symbol == Axis.X:
             return BasicStates.PLUS if binary == 0 else BasicStates.MINUS
-        if self.symbol == IXYZ.Y:
+        if self.symbol == Axis.Y:
             return BasicStates.PLUS_I if binary == 0 else BasicStates.MINUS_I
-        if self.symbol == IXYZ.Z:
+        if self.symbol == Axis.Z:
             return BasicStates.ZERO if binary == 0 else BasicStates.ONE
         # Any state is eigenstate of the identity
-        if self.symbol == IXYZ.I:
+        if self.symbol == I:
             return BasicStates.PLUS
         typing_extensions.assert_never(self.symbol)
 
@@ -112,25 +105,25 @@ class Pauli(metaclass=_PauliMeta):
     @staticmethod
     def _matmul_impl(lhs: IXYZ, rhs: IXYZ) -> Pauli:
         """Return the product of ``lhs`` and ``rhs`` ignoring units."""
-        if lhs == IXYZ.I:
+        if lhs == I:
             return Pauli(rhs)
-        if rhs == IXYZ.I:
+        if rhs == I:
             return Pauli(lhs)
         if lhs == rhs:
             return Pauli()
         lr = (lhs, rhs)
-        if lr == (IXYZ.X, IXYZ.Y):
-            return Pauli(IXYZ.Z, ComplexUnit.J)
-        if lr == (IXYZ.Y, IXYZ.X):
-            return Pauli(IXYZ.Z, ComplexUnit.MINUS_J)
-        if lr == (IXYZ.Y, IXYZ.Z):
-            return Pauli(IXYZ.X, ComplexUnit.J)
-        if lr == (IXYZ.Z, IXYZ.Y):
-            return Pauli(IXYZ.X, ComplexUnit.MINUS_J)
-        if lr == (IXYZ.Z, IXYZ.X):
-            return Pauli(IXYZ.Y, ComplexUnit.J)
-        if lr == (IXYZ.X, IXYZ.Z):
-            return Pauli(IXYZ.Y, ComplexUnit.MINUS_J)
+        if lr == (Axis.X, Axis.Y):
+            return Pauli(Axis.Z, ComplexUnit.J)
+        if lr == (Axis.Y, Axis.X):
+            return Pauli(Axis.Z, ComplexUnit.MINUS_J)
+        if lr == (Axis.Y, Axis.Z):
+            return Pauli(Axis.X, ComplexUnit.J)
+        if lr == (Axis.Z, Axis.Y):
+            return Pauli(Axis.X, ComplexUnit.MINUS_J)
+        if lr == (Axis.Z, Axis.X):
+            return Pauli(Axis.Y, ComplexUnit.J)
+        if lr == (Axis.X, Axis.Z):
+            return Pauli(Axis.Y, ComplexUnit.MINUS_J)
         raise RuntimeError("Unreachable.")  # pragma: no cover
 
     def __matmul__(self, other: Pauli) -> Pauli:
@@ -162,12 +155,12 @@ class Pauli(metaclass=_PauliMeta):
             symbol_only (bool, optional): Exclude the unit in the iteration. Defaults to False.
         """
         us = (ComplexUnit.ONE,) if symbol_only else tuple(ComplexUnit)
-        for symbol in IXYZ:
+        for symbol in IXYZ_VALUES:
             for unit in us:
                 yield Pauli(symbol, unit)
 
 
-Pauli.I = Pauli(IXYZ.I)
-Pauli.X = Pauli(IXYZ.X)
-Pauli.Y = Pauli(IXYZ.Y)
-Pauli.Z = Pauli(IXYZ.Z)
+Pauli.I = Pauli(I)
+Pauli.X = Pauli(Axis.X)
+Pauli.Y = Pauli(Axis.Y)
+Pauli.Z = Pauli(Axis.Z)
