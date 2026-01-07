@@ -21,15 +21,13 @@ with the pattern, graph or the (generalized-)flow.
 #
 from __future__ import annotations
 
-import numpy as np
-
 from graphix import Circuit
-from graphix.fundamentals import Plane
+from graphix.fundamentals import ANGLE_PI, Plane
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
 circuit.cnot(2, 1)
-circuit.rx(0, np.pi / 3)
+circuit.rx(0, ANGLE_PI / 3)
 circuit.x(2)
 circuit.cnot(2, 1)
 pattern = circuit.transpile().pattern
@@ -39,8 +37,8 @@ pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True)
 
 # %%
 # next, show the gflow:
-
-pattern.perform_pauli_measurements(leave_input=True)
+pattern.remove_input_nodes()
+pattern.perform_pauli_measurements()
 pattern.draw_graph(flow_from_pattern=False, show_measurement_planes=True, node_distance=(1, 0.6))
 
 

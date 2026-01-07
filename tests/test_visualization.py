@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from math import pi
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
@@ -9,8 +8,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pytest
 
-from graphix import Circuit, Pattern, command, gflow, visualization
-from graphix.fundamentals import Plane
+from graphix import Circuit, Pattern, command, visualization
+from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
@@ -20,6 +19,8 @@ if TYPE_CHECKING:
 
     from matplotlib.figure import Figure
     from numpy.random import Generator
+
+    from graphix.fundamentals import Angle
 
 
 def example_flow(rng: Generator) -> Pattern:
@@ -71,7 +72,7 @@ def example_pflow(rng: Generator) -> Pattern:
     outputs = [9, 8]
 
     # Heuristic mixture of Pauli and non-Pauli angles ensuring there's no gflow but there's pflow.
-    meas_angles: dict[int, float] = {
+    meas_angles: dict[int, Angle] = {
         **dict.fromkeys(range(4), 0),
         **dict(zip(range(4, 8), (2 * rng.random(4)).tolist(), strict=True)),
     }
@@ -102,10 +103,9 @@ def test_get_pos_from_flow() -> None:
     meas_angles = pattern.get_angles()
     local_clifford = pattern.get_vops()
     vis = visualization.GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
-    f, l_k = gflow.find_flow(graph, set(vin), set(vout), meas_planes)
-    assert f is not None
-    assert l_k is not None
-    pos = vis.get_pos_from_flow(f, l_k)
+    og = OpenGraph(graph, vin, vout, meas_planes)
+    causal_flow = og.extract_causal_flow()
+    pos = vis.get_pos_from_flow(causal_flow)
     assert pos is not None
 
 
@@ -133,6 +133,7 @@ def example_hadamard() -> Pattern:
 
 def example_local_clifford() -> Pattern:
     pattern = example_hadamard()
+    pattern.remove_input_nodes()
     pattern.perform_pauli_measurements()
     return pattern
 
@@ -230,16 +231,19 @@ def test_empty_pattern() -> None:
 # Compare with baseline/test_draw_graph_reference.png
 # Update baseline by running: pytest --mpl-generate-path=tests/baseline
 @pytest.mark.usefixtures("mock_plot")
-@pytest.mark.parametrize("flow_from_pattern", [False, True])
+@pytest.mark.parametrize("flow_and_not_pauli_presimulate", [False, True])
 @pytest.mark.mpl_image_compare
-def test_draw_graph_reference(flow_from_pattern: bool) -> Figure:
+def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
     circuit = Circuit(3)
     circuit.cnot(0, 1)
     circuit.cnot(2, 1)
-    circuit.rx(0, pi / 3)
+    circuit.rx(0, ANGLE_PI / 3)
     circuit.x(2)
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
-    pattern.perform_pauli_measurements(leave_input=True)
-    pattern.draw_graph(flow_from_pattern=flow_from_pattern, node_distance=(0.7, 0.6))
+    if not flow_and_not_pauli_presimulate:
+        pattern.remove_input_nodes()
+        pattern.perform_pauli_measurements()
+    pattern.standardize()
+    pattern.draw_graph(flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6))
     return plt.gcf()
