@@ -505,39 +505,6 @@ def _op_mat_from_result(
     return op_mat_complex
 
 
-def perform_measure(
-    qubit_node: int,
-    qubit_loc: int,
-    plane: Plane,
-    angle: ExpressionOrFloat,
-    state: DenseState,
-    branch_selector: BranchSelector,
-    rng: Generator | None = None,
-    symbolic: bool = False,
-) -> Outcome:
-    """Perform measurement of a qubit."""
-    vec = plane.polar(angle)
-    # op_mat0 may contain the matrix operator associated with the outcome 0,
-    # but the value is computed lazily, i.e., only if needed.
-    op_mat0 = None
-
-    def get_op_mat0() -> Matrix:
-        nonlocal op_mat0
-        if op_mat0 is None:
-            op_mat0 = _op_mat_from_result(vec, 0, symbolic=symbolic)
-        return op_mat0
-
-    def f_expectation0() -> float:
-        exp_val = state.expectation_single(get_op_mat0(), qubit_loc)
-        assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
-        return exp_val.real
-
-    result = branch_selector.measure(qubit_node, f_expectation0, rng)
-    op_mat = _op_mat_from_result(vec, 1, symbolic=symbolic) if result else get_op_mat0()
-    state.evolve_single(op_mat, qubit_loc)
-    return result
-
-
 @dataclass(frozen=True)
 class Backend(Generic[_StateT_co]):
     """
