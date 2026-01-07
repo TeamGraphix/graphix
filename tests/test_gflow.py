@@ -538,6 +538,7 @@ class TestGflow:
         pattern = circ.transpile().pattern
         pattern.standardize()
         pattern.shift_signals()
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
         graph = pattern.extract_graph()
         input_ = set()
