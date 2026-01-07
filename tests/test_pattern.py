@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import itertools
-import typing
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
@@ -16,7 +15,7 @@ from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.flow.exceptions import (
     FlowError,
 )
-from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes

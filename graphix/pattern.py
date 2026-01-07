@@ -38,7 +38,8 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.parameter import ExpressionOrFloat, ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
+    from graphix.flow.core import CausalFlow, GFlow
+    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import (
         Backend,
         Data,

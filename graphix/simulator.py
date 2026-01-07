@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import abc
 import warnings
-from math import pi
 from typing import TYPE_CHECKING, Generic, Literal, overload
 
 # assert_never introduced in Python 3.11
