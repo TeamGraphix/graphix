@@ -10,9 +10,8 @@ Firstly, let us import relevant modules and define the circuit:
 # %%
 from __future__ import annotations
 
-import numpy as np
-
 from graphix import Circuit
+from graphix.fundamentals import ANGLE_PI
 
 
 def cp(circuit, theta, control, target):
@@ -26,7 +25,7 @@ def cp(circuit, theta, control, target):
 def qft_rotations(circuit, n):
     circuit.h(n)
     for qubit in range(n + 1, circuit.width):
-        cp(circuit, np.pi / 2 ** (qubit - n), qubit, n)
+        cp(circuit, ANGLE_PI / 2 ** (qubit - n), qubit, n)
 
 
 def swap_registers(circuit, n):

@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import itertools
 import typing
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
 import numpy as np
@@ -13,8 +13,12 @@ from numpy.random import PCG64, Generator
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
-from graphix.fundamentals import Plane
-from graphix.measurements import Outcome, PauliMeasurement
+from graphix.flow.exceptions import (
+    FlowError,
+)
+from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.measurements import Measurement, Outcome, PauliMeasurement
+from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
@@ -27,6 +31,7 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from graphix.fundamentals import Angle
     from graphix.sim.base_backend import BackendState
 
 
@@ -230,10 +235,10 @@ class TestPattern:
         circuit.x(2)
         # QFT
         circuit.h(2)
-        circuit.rzz(1, 2, np.pi / 4)
-        circuit.rzz(0, 2, np.pi / 8)
+        cp(circuit, ANGLE_PI / 4, 0, 2)
+        cp(circuit, ANGLE_PI / 2, 1, 2)
         circuit.h(1)
-        circuit.rzz(0, 1, np.pi / 4)
+        cp(circuit, ANGLE_PI / 2, 0, 1)
         circuit.h(0)
         circuit.swap(0, 2)
         pattern = circuit.transpile().pattern
@@ -250,6 +255,27 @@ class TestPattern:
         nqubits = 2
         depth = 1
         circuit = rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        with pytest.raises(ValueError):
+            pattern.perform_pauli_measurements()
+
+    def test_pauli_measurement_leave_input(self) -> None:
+        # test pattern is obtained from 3-qubit QFT with pauli measurement
+        circuit = Circuit(3)
+        for i in range(3):
+            circuit.h(i)
+        circuit.x(1)
+        circuit.x(2)
+
+        # QFT
+        circuit.h(2)
+        cp(circuit, ANGLE_PI / 4, 0, 2)
+        cp(circuit, ANGLE_PI / 2, 1, 2)
+        circuit.h(1)
+        cp(circuit, ANGLE_PI / 2, 0, 1)
+        circuit.h(0)
+        swap(circuit, 0, 2)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         with pytest.raises(ValueError):
@@ -616,7 +642,7 @@ class TestPattern:
         circuit_1.h(0)
         p1 = circuit_1.transpile().pattern  # outputs: [1]
 
-        alpha = 2 * np.pi * fx_rng.random()
+        alpha = 2 * ANGLE_PI * fx_rng.random()
 
         circuit_2 = Circuit(1)
         circuit_2.rz(0, alpha)
@@ -654,7 +680,7 @@ class TestPattern:
 
     # Test warning composition after standardization
     def test_compose_7(self, fx_rng: Generator) -> None:
-        alpha = 2 * np.pi * fx_rng.random()
+        alpha = 2 * ANGLE_PI * fx_rng.random()
 
         circuit_1 = Circuit(1)
         circuit_1.h(0)
@@ -738,7 +764,7 @@ class TestPattern:
 
         pattern = Pattern(cmds=[N(0), M(0, s_domain={0})])
         with pytest.raises(RunnabilityError) as exc_info:
-            pattern.get_layers()
+            pattern.extract_partial_order_layers()
         assert exc_info.value.node == 0
         assert exc_info.value.reason == RunnabilityErrorReason.DomainSelfLoop
 
@@ -756,6 +782,276 @@ class TestPattern:
 
     def test_compute_max_degree_empty_pattern(self) -> None:
         assert Pattern().compute_max_degree() == 0
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            (
+                Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0), M(1)]),
+                (frozenset({0, 1}),),
+            ),
+            (
+                Pattern(input_nodes=[0], cmds=[N(1), N(2), E((0, 1)), E((1, 2)), M(0), M(1), X(2, {1}), Z(2, {0})]),
+                (frozenset({2}), frozenset({0, 1})),
+            ),
+            (
+                Pattern(input_nodes=[0, 1], cmds=[M(1), M(0, s_domain={1}), N(2)]),
+                (frozenset({2}), frozenset({0}), frozenset({1})),
+            ),
+            (
+                Pattern(
+                    input_nodes=[0], cmds=[N(1), N(2), E((0, 1)), E((1, 2)), M(0), M(1), X(2, {1}), Z(2, {1}), M(2)]
+                ),
+                (frozenset({2}), frozenset({0, 1})),
+            ),  # double edge in DAG
+        ],
+    )
+    def test_extract_partial_order_layers(self, test_case: tuple[Pattern, tuple[frozenset[int], ...]]) -> None:
+        assert test_case[0].extract_partial_order_layers() == test_case[1]
+
+    def test_extract_partial_order_layers_results(self) -> None:
+        c = Circuit(1)
+        c.rz(0, 0.2)
+        p = c.transpile().pattern
+        p.perform_pauli_measurements()
+        assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
+
+        p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, angle=0.3)])
+        p.perform_pauli_measurements()
+        assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
+
+    class PatternFlowTestCase(NamedTuple):
+        pattern: Pattern
+        has_cflow: bool
+        has_gflow: bool
+
+    PATTERN_FLOW_TEST_CASES: list[PatternFlowTestCase] = [  # noqa: RUF012
+        PatternFlowTestCase(
+            # General example
+            Pattern(
+                input_nodes=[0, 1],
+                cmds=[
+                    N(2),
+                    N(3),
+                    N(4),
+                    N(5),
+                    N(6),
+                    N(7),
+                    E((0, 2)),
+                    E((2, 3)),
+                    E((2, 4)),
+                    E((1, 3)),
+                    E((3, 5)),
+                    E((4, 5)),
+                    E((4, 6)),
+                    E((5, 7)),
+                    M(0, angle=0.1),
+                    Z(3, {0}),
+                    Z(4, {0}),
+                    X(2, {0}),
+                    M(1, angle=0.1),
+                    Z(2, {1}),
+                    Z(5, {1}),
+                    X(3, {1}),
+                    M(2, angle=0.1),
+                    Z(5, {2}),
+                    Z(6, {2}),
+                    X(4, {2}),
+                    M(3, angle=0.1),
+                    Z(4, {3}),
+                    Z(7, {3}),
+                    X(5, {3}),
+                    M(4, angle=0.1),
+                    X(6, {4}),
+                    M(5, angle=0.4),
+                    X(7, {5}),
+                ],
+                output_nodes=[6, 7],
+            ),
+            has_cflow=True,
+            has_gflow=True,
+        ),
+        PatternFlowTestCase(
+            # No measurements or corrections
+            Pattern(input_nodes=[0, 1], cmds=[E((0, 1))]),
+            has_cflow=True,
+            has_gflow=True,
+        ),
+        PatternFlowTestCase(
+            # Disconnected nodes and unordered outputs
+            Pattern(input_nodes=[2], cmds=[N(0), N(1), E((0, 1)), M(0), X(1, {0})], output_nodes=[2, 1]),
+            has_cflow=True,
+            has_gflow=True,
+        ),
+        PatternFlowTestCase(
+            # Pattern with XZ measurements.
+            Pattern(cmds=[N(0), N(1), E((0, 1)), M(0, Plane.XZ, 0.3), Z(1, {0}), X(1, {0})], output_nodes=[1]),
+            has_cflow=False,
+            has_gflow=True,
+        ),
+        PatternFlowTestCase(
+            # Pattern with gflow but without causal flow and XY measurements.
+            Pattern(
+                input_nodes=[1, 2, 3],
+                cmds=[
+                    N(4),
+                    N(5),
+                    N(6),
+                    E((1, 4)),
+                    E((1, 6)),
+                    E((4, 2)),
+                    E((6, 2)),
+                    E((6, 3)),
+                    E((2, 5)),
+                    E((5, 3)),
+                    M(1, angle=0.1),
+                    X(5, {1}),
+                    X(6, {1}),
+                    M(2, angle=0.2),
+                    X(4, {2}),
+                    X(5, {2}),
+                    X(6, {2}),
+                    M(3, angle=0.3),
+                    X(4, {3}),
+                    X(6, {3}),
+                ],
+                output_nodes=[4, 5, 6],
+            ),
+            has_cflow=False,
+            has_gflow=True,
+        ),
+        PatternFlowTestCase(
+            # Non-deterministic pattern
+            Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Plane.XY, 0.3)]),
+            has_cflow=False,
+            has_gflow=False,
+        ),
+    ]
+
+    # Extract causal flow from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_extract_causal_flow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
+
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
+
+        s_ref = p_ref.simulate_pattern(rng=rng)
+        s_test = p_test.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
+    # Extract gflow from random circuits
+    @pytest.mark.parametrize("jumps", range(1, 11))
+    def test_extract_gflow_rnd_circuit(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        p_ref = circuit_1.transpile().pattern
+        p_test = p_ref.extract_gflow().to_corrections().to_pattern()
+
+        p_ref.perform_pauli_measurements()
+        p_test.perform_pauli_measurements()
+
+        s_ref = p_ref.simulate_pattern(rng=rng)
+        s_test = p_test.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
+    @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
+    def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+        if test_case.has_cflow:
+            alpha = 2 * np.pi * fx_rng.random()
+            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+
+            p_test = test_case.pattern.extract_causal_flow().to_corrections().to_pattern()
+            s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+            assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        else:
+            with pytest.raises(FlowError):
+                test_case.pattern.extract_causal_flow()
+
+    @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
+    def test_extract_gflow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
+        if test_case.has_gflow:
+            alpha = 2 * np.pi * fx_rng.random()
+            s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+
+            p_test = test_case.pattern.extract_gflow().to_corrections().to_pattern()
+            s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
+
+            assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        else:
+            with pytest.raises(FlowError):
+                test_case.pattern.extract_gflow()
+
+    # From open graph
+    def test_extract_cflow_og(self, fx_rng: Generator) -> None:
+        alpha = 2 * np.pi * fx_rng.random()
+
+        og = OpenGraph(
+            graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6)]),
+            input_nodes=[1, 2],
+            output_nodes=[6, 5],
+            measurements={
+                1: Measurement(0.1, Plane.XY),
+                2: Measurement(0.2, Plane.XY),
+                3: Measurement(0.3, Plane.XY),
+                4: Measurement(0.4, Plane.XY),
+            },
+        )
+        p_ref = og.extract_causal_flow().to_corrections().to_pattern()
+        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+
+        p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
+        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+
+        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
+    # From open graph
+    def test_extract_gflow_og(self, fx_rng: Generator) -> None:
+        alpha = 2 * np.pi * fx_rng.random()
+
+        og = OpenGraph(
+            graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6)]),
+            input_nodes=[1, 2],
+            output_nodes=[6, 5],
+            measurements={
+                1: Measurement(0.1, Plane.XY),
+                2: Measurement(0.2, Plane.XY),
+                3: Measurement(0.3, Plane.XY),
+                4: Measurement(0.4, Plane.XY),
+            },
+        )
+
+        p_ref = og.extract_gflow().to_corrections().to_pattern()
+        s_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+
+        p_test = p_ref.extract_gflow().to_corrections().to_pattern()
+        s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
+
+        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+
+
+def cp(circuit: Circuit, theta: Angle, control: int, target: int) -> None:
+    """Controlled rotation gate, decomposed."""  # noqa: D401
+    circuit.rz(control, theta / 2)
+    circuit.rz(target, theta / 2)
+    circuit.cnot(control, target)
+    circuit.rz(target, -1 * theta / 2)
+    circuit.cnot(control, target)
+
+
+def swap(circuit: Circuit, a: int, b: int) -> None:
+    """Swap gate, decomposed."""
+    circuit.cnot(a, b)
+    circuit.cnot(b, a)
+    circuit.cnot(a, b)
 
 
 class TestMCOps:
@@ -784,10 +1080,10 @@ class TestMCOps:
         circuit = Circuit(n)
         for u, v in g.edges:
             circuit.cnot(u, v)
-            circuit.rz(v, np.pi / 4)
+            circuit.rz(v, ANGLE_PI / 4)
             circuit.cnot(u, v)
         for v in g.nodes:
-            circuit.rx(v, np.pi / 9)
+            circuit.rx(v, ANGLE_PI / 9)
 
         pattern = circuit.transpile().pattern
         graph = pattern.extract_graph()
@@ -921,7 +1217,7 @@ class TestMCOps:
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: str) -> None:
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
@@ -930,7 +1226,7 @@ class TestMCOps:
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
     def test_arbitrary_inputs_tn(self, fx_rng: Generator, nqb: int, rand_circ: Circuit) -> None:
-        rand_angles = fx_rng.random(nqb) * 2 * np.pi
+        rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern

@@ -2,22 +2,19 @@
 
 from __future__ import annotations
 
-from math import pi
 from typing import TYPE_CHECKING
 
 # assert_never added in Python 3.11
 from typing_extensions import assert_never
 
-from graphix.fundamentals import Axis, Sign
+from graphix.fundamentals import Axis, ParameterizedAngle
 from graphix.instruction import Instruction, InstructionKind
-from graphix.measurements import PauliMeasurement
 from graphix.pretty_print import OutputFormat, angle_to_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from graphix import Circuit
-    from graphix.parameter import ExpressionOrFloat
 
 
 def circuit_to_qasm3(circuit: Circuit) -> str:
@@ -62,19 +59,20 @@ def qasm3_gate_call(gate: str, operands: Iterable[str], args: Iterable[str] | No
     return f"{gate}({args_str}) {operands_str}"
 
 
-def angle_to_qasm3(angle: ExpressionOrFloat) -> str:
+def angle_to_qasm3(angle: ParameterizedAngle) -> str:
     """Get the OpenQASM3 representation of an angle."""
     if not isinstance(angle, float):
         raise TypeError("QASM export of symbolic pattern is not supported")
-    rad_over_pi = angle / pi
-    return angle_to_str(rad_over_pi, output=OutputFormat.ASCII, multiplication_sign=True)
+    return angle_to_str(angle, output=OutputFormat.ASCII, multiplication_sign=True)
 
 
 def instruction_to_qasm3(instruction: Instruction) -> str:
     """Get the OpenQASM3 representation of a single circuit instruction."""
     if instruction.kind == InstructionKind.M:
-        if PauliMeasurement.try_from(instruction.plane, instruction.angle) != PauliMeasurement(Axis.Z, Sign.PLUS):
-            raise ValueError("OpenQASM3 only supports measurements in Z axis.")
+        if instruction.axis != Axis.Z:
+            raise ValueError(
+                "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes."
+            )
         return f"b[{instruction.target}] = measure q[{instruction.target}]"
     # Use of `==` here for mypy
     if (

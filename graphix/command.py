@@ -7,15 +7,16 @@ import enum
 from enum import Enum
 from typing import ClassVar, Literal
 
-import numpy as np
-
 from graphix import utils
 from graphix.clifford import Clifford
-from graphix.fundamentals import Plane, Sign
+from graphix.fundamentals import (
+    ANGLE_PI,
+    Angle,
+    ParameterizedAngle,
+    Plane,
+    Sign,
+)
 from graphix.measurements import Domains
-
-# Ruff suggests to move this import to a type-checking block, but dataclass requires it here
-from graphix.parameter import ExpressionOrFloat  # noqa: TC001
 from graphix.pauli import Pauli
 from graphix.repr_mixins import DataclassReprMixin
 from graphix.states import BasicStates, State
@@ -110,7 +111,7 @@ class M(BaseM, _KindChecker):
         Node index of the measured qubit.
     plane : Plane, optional
         Measurement plane, defaults to :class:`~graphix.fundamentals.Plane.XY`.
-    angle : ExpressionOrFloat, optional
+    angle : ParameterizedAngle, optional
         Rotation angle divided by :math:`\pi`.
     s_domain : set[int], optional
         Domain for the X byproduct operator.
@@ -119,7 +120,7 @@ class M(BaseM, _KindChecker):
     """
 
     plane: Plane = Plane.XY
-    angle: ExpressionOrFloat = 0.0
+    angle: ParameterizedAngle = 0
     s_domain: set[Node] = dataclasses.field(default_factory=set)
     t_domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
@@ -142,7 +143,7 @@ class M(BaseM, _KindChecker):
         return M(
             self.node,
             update.new_plane,
-            self.angle * update.coeff + update.add_term / np.pi,
+            self.angle * update.coeff + update.add_term,
             domains.s_domain,
             domains.t_domain,
         )
@@ -257,13 +258,13 @@ class MeasureUpdate:
         Updated measurement plane after commuting gates.
     coeff : int
         Coefficient by which the angle is multiplied.
-    add_term : float
+    add_term : Angle
         Additional term to add to the measurement angle.
     """
 
     new_plane: Plane
     coeff: int
-    add_term: float
+    add_term: Angle
 
     @staticmethod
     def compute(plane: Plane, s: bool, t: bool, clifford_gate: Clifford) -> MeasureUpdate:
@@ -296,9 +297,9 @@ class MeasureUpdate:
         sin_pauli = clifford_gate.measure(Pauli.from_axis(plane.sin))
         exchange = cos_pauli.axis != new_plane.cos
         coeff = -1 if exchange == (cos_pauli.unit.sign == sin_pauli.unit.sign) else 1
-        add_term: float = 0
+        add_term: Angle = 0
         if cos_pauli.unit.sign == Sign.MINUS:
-            add_term += np.pi
+            add_term += ANGLE_PI
         if exchange:
-            add_term = np.pi / 2 - add_term
+            add_term = ANGLE_PI / 2 - add_term
         return MeasureUpdate(new_plane, coeff, add_term)

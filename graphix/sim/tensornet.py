@@ -762,7 +762,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             raise TypeError("Parameterized pattern unsupported.")
         vec = PlanarState(measurement.plane, measurement.angle).get_statevector()
         if result:
-            vec = measurement.plane.orth.matrix @ vec
+            vec = Ops.from_axis(measurement.plane.orth) @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec, rng=rng)
         return result
