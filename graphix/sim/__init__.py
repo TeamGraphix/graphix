@@ -2,9 +2,26 @@
 
 from __future__ import annotations
 
-from graphix.sim.base_backend import Backend, BackendState
-from graphix.sim.data import Data
-from graphix.sim.density_matrix import DensityMatrix
-from graphix.sim.statevec import Statevec
+from typing import Literal
 
-__all__ = ["Backend", "BackendState", "Data", "DensityMatrix", "Statevec"]
+from graphix.sim.base_backend import Backend
+from graphix.sim.data import Data
+from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
+from graphix.sim.statevec import Statevec, StatevectorBackend
+from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
+
+_BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
+_BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBackend
+_BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
+
+__all__ = [
+    "Backend",
+    "Data",
+    "DensityMatrix",
+    "DensityMatrixBackend",
+    "Statevec",
+    "StatevectorBackend",
+    "_BackendLiteral",
+    "_BuiltinBackend",
+    "_BuiltinBackendState",
+]
