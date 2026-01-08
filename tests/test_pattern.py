@@ -98,6 +98,7 @@ class TestPattern:
                 M(node=0, plane=Plane.XY, angle=0.0, s_domain=set(), t_domain=set()),
             ]
         )
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -110,6 +111,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -187,6 +189,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
@@ -205,6 +208,7 @@ class TestPattern:
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         assert ignore_pauli_with_deps or not any(
             PauliMeasurement.try_from(cmd.plane, cmd.angle) for cmd in pattern if cmd.kind == CommandKind.M
@@ -217,25 +221,11 @@ class TestPattern:
         pattern.add(E(nodes=(0, 1)))
         pattern.add(M(node=0, plane=plane, angle=angle))
         pattern_ref = pattern.copy()
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
         state = pattern.simulate_pattern()
         state_ref = pattern_ref.simulate_pattern(branch_selector=ConstBranchSelector(0))
         assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
-
-    @pytest.mark.parametrize("jumps", range(1, 11))
-    def test_pauli_measurement_leave_input_random_circuit(self, fx_bg: PCG64, jumps: int) -> None:
-        rng = Generator(fx_bg.jumped(jumps))
-        nqubits = 3
-        depth = 3
-        circuit = rand_circuit(nqubits, depth, rng)
-        pattern = circuit.transpile().pattern
-        pattern.standardize()
-        pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(leave_input=True)
-        pattern.minimize_space()
-        state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
     def test_pauli_measurement(self) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
@@ -244,7 +234,6 @@ class TestPattern:
             circuit.h(i)
         circuit.x(1)
         circuit.x(2)
-
         # QFT
         circuit.h(2)
         cp(circuit, ANGLE_PI / 4, 0, 2)
@@ -252,18 +241,25 @@ class TestPattern:
         circuit.h(1)
         cp(circuit, ANGLE_PI / 2, 0, 1)
         circuit.h(0)
-        swap(circuit, 0, 2)
-
+        circuit.swap(0, 2)
         pattern = circuit.transpile().pattern
         pattern.standardize()
         pattern.shift_signals(method="mc")
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
-
         isolated_nodes = pattern.extract_isolated_nodes()
-        # 48-node is the isolated and output node.
-        isolated_nodes_ref = {48}
-
+        # 42-node is the isolated and output node.
+        isolated_nodes_ref = {42}
         assert isolated_nodes == isolated_nodes_ref
+
+    def test_pauli_measurement_error(self, fx_rng: Generator) -> None:
+        nqubits = 2
+        depth = 1
+        circuit = rand_circuit(nqubits, depth, fx_rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        with pytest.raises(ValueError):
+            pattern.perform_pauli_measurements()
 
     def test_pauli_measurement_leave_input(self) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
@@ -281,17 +277,62 @@ class TestPattern:
         cp(circuit, ANGLE_PI / 2, 0, 1)
         circuit.h(0)
         swap(circuit, 0, 2)
-
         pattern = circuit.transpile().pattern
         pattern.standardize()
-        pattern.shift_signals(method="mc")
-        pattern.perform_pauli_measurements(leave_input=True)
+        with pytest.raises(ValueError):
+            pattern.perform_pauli_measurements()
 
-        isolated_nodes = pattern.extract_isolated_nodes()
-        # There is no isolated node.
-        isolated_nodes_ref: set[int] = set()
+    @pytest.mark.parametrize("jumps", range(1, 6))
+    @pytest.mark.parametrize("ignore_pauli_with_deps", [False, True])
+    def test_pauli_measured_against_nonmeasured(self, fx_bg: PCG64, jumps: int, ignore_pauli_with_deps: bool) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit = rand_circuit(nqubits, depth, rng)
+        pattern = circuit.transpile().pattern
+        pattern.standardize()
+        pattern1 = copy.deepcopy(pattern)
+        pattern1.remove_input_nodes()
+        pattern1.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
+        state = pattern.simulate_pattern(rng=rng)
+        state1 = pattern1.simulate_pattern(rng=rng)
+        assert np.abs(np.dot(state.flatten().conjugate(), state1.flatten())) == pytest.approx(1)
 
-        assert isolated_nodes == isolated_nodes_ref
+    @pytest.mark.parametrize("jumps", range(1, 4))
+    def test_pauli_repeated_measurement(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        pattern = circuit.transpile().pattern
+        pattern.remove_input_nodes()
+        assert not pattern.results
+        pattern.perform_pauli_measurements()
+        assert pattern.results
+        pattern.perform_pauli_measurements()
+        assert pattern.results
+
+    @pytest.mark.parametrize("jumps", range(1, 4))
+    def test_pauli_repeated_measurement_compose(self, fx_bg: PCG64, jumps: int) -> None:
+        rng = Generator(fx_bg.jumped(jumps))
+        nqubits = 2
+        depth = 2
+        circuit = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        circuit1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
+        pattern = circuit.transpile().pattern
+        pattern1 = circuit1.transpile().pattern
+        composed_pattern, _ = pattern.compose(
+            pattern1, mapping=dict(zip(pattern1.input_nodes, pattern.output_nodes, strict=True)), preserve_mapping=True
+        )
+        pattern.remove_input_nodes()
+        pattern1.remove_input_nodes()
+        assert not pattern.results
+        assert not pattern1.results
+        pattern.perform_pauli_measurements()
+        pattern1.perform_pauli_measurements()
+        composed_pattern.remove_input_nodes()
+        composed_pattern.perform_pauli_measurements()
+        assert abs(len(composed_pattern.results) - len(pattern.results) - len(pattern1.results)) <= 2
 
     def test_get_meas_plane(self) -> None:
         preset_meas_plane = [
@@ -383,6 +424,7 @@ class TestPattern:
         depth = 3
         circuit = rand_circuit(nqubits, depth, rng)
         pattern = circuit.transpile().pattern
+        pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
         pattern.standardize()
         pattern.minimize_space()
@@ -595,41 +637,6 @@ class TestPattern:
         assert p_1 == pc_1
         assert p_2 == pc_2
 
-    #  Pattern composition with Pauli preprocessing
-    def test_compose_4(self, fx_rng: Generator) -> None:
-        alpha = fx_rng.random()
-        i1 = [0]
-        o1 = [2]
-        cmds1: list[Command] = [N(1), N(2), E((0, 1)), E((1, 2)), M(0, angle=-alpha), M(1), X(2, {1}), Z(2, {0})]
-        p1 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
-        p2 = Pattern(cmds=cmds1, input_nodes=i1, output_nodes=o1)
-
-        p1.perform_pauli_measurements()
-        p2.perform_pauli_measurements()
-
-        mapping = {0: 2, 1: 3, 2: 4}
-        pc, mapping_complete = p1.compose(p2, mapping=mapping)
-
-        i = [0]
-        o = [4]
-        cmds: list[Command] = [
-            N(2),
-            E((0, 2)),
-            M(0, plane=Plane.YZ, angle=alpha),
-            Z(2, {0}),
-            X(2, {1}),
-            N(4),
-            E((2, 4)),
-            M(2, plane=Plane.YZ, angle=alpha),
-            Z(4, {2}),
-            X(4, {3}),
-        ]
-        p = Pattern(cmds=cmds, input_nodes=i, output_nodes=o)
-        p.results = {1: 0, 3: 0}
-
-        assert p == pc
-        assert mapping_complete == mapping
-
     # Equivalence between pattern and circuit composition
     def test_compose_5(self, fx_rng: Generator) -> None:
         circuit_1 = Circuit(1)
@@ -680,6 +687,7 @@ class TestPattern:
         circuit_1.h(0)
         circuit_1.rz(0, alpha)
         p1 = circuit_1.transpile().pattern
+        p1.remove_input_nodes()
         p1.perform_pauli_measurements()
 
         circuit_2 = Circuit(1)
@@ -806,6 +814,7 @@ class TestPattern:
         c = Circuit(1)
         c.rz(0, 0.2)
         p = c.transpile().pattern
+        p.remove_input_nodes()
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
 
@@ -931,6 +940,8 @@ class TestPattern:
         p_ref = circuit_1.transpile().pattern
         p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
 
+        p_ref.remove_input_nodes()
+        p_test.remove_input_nodes()
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
 
@@ -947,7 +958,8 @@ class TestPattern:
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
         p_test = p_ref.extract_gflow().to_corrections().to_pattern()
-
+        p_ref.remove_input_nodes()
+        p_test.remove_input_nodes()
         p_ref.perform_pauli_measurements()
         p_test.perform_pauli_measurements()
 
@@ -1246,6 +1258,7 @@ class TestMCOps:
         p = Pattern(input_nodes=[0])
         p.add(N(node=1))
         p.add(M(node=1, plane=Plane.XY))
+        p.remove_input_nodes()
         p.perform_pauli_measurements()
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])

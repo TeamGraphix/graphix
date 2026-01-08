@@ -124,6 +124,7 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
+        self._pauli_preprocessed = False
         if cmd.kind == CommandKind.N:
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
@@ -137,6 +138,7 @@ class Pattern:
 
         :param cmds: sequences of commands
         """
+        self._pauli_preprocessed = False
         for item in cmds:
             if isinstance(item, Iterable):
                 for cmd in item:
@@ -146,6 +148,7 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
+        self._pauli_preprocessed = False
         self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
@@ -157,6 +160,7 @@ class Pattern:
 
         :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
+        self._pauli_preprocessed = False
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
         self.clear()
@@ -202,6 +206,7 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
+        self._pauli_preprocessed = False
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
@@ -1391,14 +1396,21 @@ class Pattern:
         sim.run(input_state, rng=rng)
         return sim.backend.state
 
-    def perform_pauli_measurements(self, leave_input: bool = False, ignore_pauli_with_deps: bool = False) -> None:
+    def remove_input_nodes(self) -> None:
+        """Remove the input nodes from the pattern and replace them with N commands.
+
+        This removes the possibility of choosing the input state, fixing the input state to the plus state.
+        .. seealso:: :class:`graphix.command.N`
+        """
+        self.__seq[0:0] = [command.N(node=node) for node in self.input_nodes]
+        empty_nodes: list[int] = []
+        self.__input_nodes = empty_nodes
+
+    def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
         ----------
-        leave_input : bool
-            Optional (*False* by default).
-            If *True*, measurements on input nodes are preserved as-is in the pattern.
         ignore_pauli_with_deps : bool
             Optional (*False* by default).
             If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1407,9 +1419,9 @@ class Pattern:
         .. seealso:: :func:`measure_pauli`
 
         """
-        # if not ignore_pauli_with_deps:
-        #    self.move_pauli_measurements_to_the_front()
-        measure_pauli(self, leave_input, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        if self.input_nodes:
+            raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
+        measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
 
     def draw_graph(
         self,
@@ -1641,23 +1653,17 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(
-    pattern: Pattern, leave_input: bool, *, copy: bool = False, ignore_pauli_with_deps: bool = False
-) -> Pattern:
+def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
-    Uses the decorated-graph method implemented in graphix.graphsim to perform
-    the measurements in Pauli bases, and then sort remaining nodes back into
-    pattern together with Clifford commands.
+    Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
+    pattern together with Clifford commands. Users are required to ensure there are no input nodes with :func:`graphix.pattern.Pattern.remove_input_nodes` before using this function.
 
     TODO: non-XY plane measurements in original pattern
 
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    leave_input : bool
-        True: input nodes will not be removed
-        False: all the nodes measured in Pauli bases will be removed
     copy : bool
         True: changes will be applied to new copied object and will be returned
         False: changes will be applied to the supplied Pattern object
@@ -1673,20 +1679,20 @@ def measure_pauli(
         only returned if copy argument is True.
 
 
+    .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
+    pat = Pattern() if copy else pattern
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = {}
-    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern, leave_input)
-    if not leave_input and len(list(set(pattern.input_nodes) & {i[0].node for i in to_measure})) > 0:
-        new_inputs = []
-    else:
-        new_inputs = pattern.input_nodes
+    results: dict[int, Outcome] = pat.results
+    to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
+    if not to_measure:
+        return pattern
     for cmd in to_measure:
         pattern_cmd = cmd[0]
         measurement_basis = cmd[1]
@@ -1735,7 +1741,7 @@ def measure_pauli(
     # update command sequence
     vops = graph_state.get_vops()
     new_seq: list[Command] = []
-    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes) - set(new_inputs))
+    new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
     new_seq.extend(
         cmd.clifford(Clifford(vops[cmd.node])) for cmd in standardized_pattern.m_list if cmd.node in graph_state.nodes
@@ -1747,10 +1753,7 @@ def measure_pauli(
     )
     new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
     new_seq.extend(command.X(node=node, domain=set(domain)) for node, domain in standardized_pattern.x_dict.items())
-
-    pat = Pattern() if copy else pattern
-
-    pat.replace(new_seq, input_nodes=new_inputs)
+    pat.replace(new_seq, input_nodes=[])
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
@@ -1758,15 +1761,12 @@ def measure_pauli(
     return pat
 
 
-def pauli_nodes(
-    pattern: optimization.StandardizedPattern, leave_input: bool
-) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
     ----------
     pattern : optimization.StandardizedPattern
-    leave_input : bool
 
     Returns
     -------
@@ -1779,7 +1779,7 @@ def pauli_nodes(
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
         pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None and (cmd.node not in pattern.input_nodes or not leave_input):
+        if pm is not None:
             # Pauli measurement to be removed
             if pm.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
