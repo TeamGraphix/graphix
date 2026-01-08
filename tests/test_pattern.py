@@ -1065,8 +1065,8 @@ class TestPattern:
     def test_extract_xzc_empty_domains(self) -> None:
         p = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1))])
         xzc = p.extract_xzcorrections()
-        assert dict(xzc.x_corrections) == {}
-        assert dict(xzc.z_corrections) == {}
+        assert xzc.x_corrections == {}
+        assert xzc.z_corrections == {}
         assert xzc.partial_order_layers == (frozenset({0, 1}),)
 
     def test_extract_xzc_easy_example(self) -> None:

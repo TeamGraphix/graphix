@@ -125,7 +125,7 @@ class XZCorrections(Generic[_M_co]):
             og, x_corrections, z_corrections
         )  # Raises an `XZCorrectionsError` if mappings are not well formed.
 
-        return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
+        return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
     def to_pattern(
         self: XZCorrections[Measurement],
