@@ -245,5 +245,7 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
     pattern.standardize()
-    pattern.draw_graph(flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurement_planes=True)
+    pattern.draw_graph(
+        flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurement_planes=True
+    )
     return plt.gcf()
