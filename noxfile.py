@@ -56,6 +56,16 @@ def tests_all(session: Session) -> None:
     run_pytest(session, doctest_modules=True, mpl=True)
 
 
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+def tests_qiskit_aer(session: Session) -> None:
+    """Run the test suite with qiskit-aer, which is not available yet for Python 3.14.
+
+    See https://github.com/Qiskit/qiskit-aer/issues/2378.
+    """
+    session.install(".[dev,extra]", "qiskit-aer")
+    run_pytest(session, doctest_modules=True, mpl=True)
+
+
 @nox.session(python=["3.10", "3.11", "3.12", "3.13", "3.14"])
 def tests_symbolic(session: Session) -> None:
     """Run the test suite of graphix-symbolic."""
