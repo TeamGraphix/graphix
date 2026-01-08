@@ -33,7 +33,9 @@ if TYPE_CHECKING:
     from graphix.sim import _BackendLiteral
 
 
-def compare_backend_result_with_statevec(backend_state: object, statevec: Statevec) -> float:
+def compare_backend_result_with_statevec(
+    backend_state: Statevec | DensityMatrix | MBQCTensorNet, statevec: Statevec
+) -> float:
     if isinstance(backend_state, Statevec):
         return float(np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten())))
     if isinstance(backend_state, DensityMatrix):
@@ -122,7 +124,7 @@ class TestPattern:
         pattern.add(M(node=0, angle=0.5))
 
         def simulate_and_measure() -> int:
-            sim: PatternSimulator[object] = PatternSimulator(pattern, backend_type)
+            sim: PatternSimulator[Statevec | DensityMatrix | MBQCTensorNet] = PatternSimulator(pattern, backend_type)
             sim.run()
             state = sim.backend.state
             if isinstance(state, Statevec):
