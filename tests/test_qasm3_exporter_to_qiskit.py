@@ -90,7 +90,9 @@ def test_to_qasm3_entanglement() -> None:
 
 
 @pytest.mark.parametrize("clifford", Clifford)
-@pytest.mark.parametrize("state", [BasicStates.ZERO, BasicStates.PLUS])
+@pytest.mark.parametrize(
+    "state", [BasicStates.ZERO, BasicStates.PLUS, pytest.param(BasicStates.MINUS, marks=pytest.mark.xfail)]
+)
 def test_to_qasm3_clifford(clifford: Clifford, state: State) -> None:
     check_qasm3(Pattern(cmds=[N(0, state), C(0, clifford)]))
 
