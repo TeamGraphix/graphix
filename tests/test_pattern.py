@@ -33,9 +33,7 @@ if TYPE_CHECKING:
     from graphix.sim import _BackendLiteral
 
 
-def compare_backend_result_with_statevec(
-    backend_state: Statevec | DensityMatrix | MBQCTensorNet, statevec: Statevec
-) -> float:
+def compare_backend_result_with_statevec(backend_state: Statevec | DensityMatrix, statevec: Statevec) -> float:
     if isinstance(backend_state, Statevec):
         return float(np.abs(np.dot(backend_state.flatten().conjugate(), statevec.flatten())))
     if isinstance(backend_state, DensityMatrix):
