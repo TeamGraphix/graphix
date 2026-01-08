@@ -188,7 +188,7 @@ class TestPattern:
         pattern.perform_pauli_measurements()
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
-        state_mbqc = pattern.simulate_pattern(backend, rng=rng)
+        state_mbqc: Statevec | DensityMatrix = pattern.simulate_pattern(backend, rng=rng)
         assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -1221,7 +1221,7 @@ class TestMCOps:
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         randpattern = rand_circ.transpile().pattern
-        out = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
+        out: Statevec | DensityMatrix = randpattern.simulate_pattern(backend=backend, input_state=states, rng=fx_rng)
         out_circ = rand_circ.simulate_statevector(input_state=states).statevec
         assert compare_backend_result_with_statevec(out, out_circ) == pytest.approx(1)
 
