@@ -1054,8 +1054,9 @@ class TestPattern:
         xzc.check_well_formed()
         p_test = xzc.to_pattern()
 
-        p_ref.perform_pauli_measurements()
-        p_test.perform_pauli_measurements()
+        for p in [p_ref, p_test]:
+            p.remove_input_nodes()
+            p.perform_pauli_measurements()
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
