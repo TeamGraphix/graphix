@@ -453,7 +453,7 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
-            plt.legend(loc="upper right", fontsize=10)
+            plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
 
         x_min = min((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the minimum x coordinate
         x_max = max((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the maximum x coordinate
@@ -488,9 +488,15 @@ class GraphVisualizer:
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
     def __draw_measurement_planes(self, pos: Mapping[int, _Point]) -> None:
+        angles = self.meas_angles or {}
         for node in self.meas_planes:
             x, y = pos[node] + np.array([0.22, -0.2])
-            plt.text(x, y, f"{self.meas_planes[node].name}", fontsize=9, zorder=3)
+            plane = self.meas_planes[node]
+            label = plane.name
+            if (angle := angles.get(node, None)) is not None and (pm := PauliMeasurement.try_from(plane, angle)):
+                label = pm.axis.name
+
+            plt.text(x, y, label, fontsize=9, zorder=3)
 
     def get_figsize(
         self,
