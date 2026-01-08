@@ -53,7 +53,7 @@ print(pattern.to_ascii(left_to_right=True, limit=10))
 # Since there's no two-qubit gates applied to the two qubits in the original gate sequence,
 # we see decoupled 1D graphs representing the evolution of single qubits.
 # The arrows are the ``information flow  <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.74.052310>``
-# of the MBQC pattern, obtained using the flow-finding algorithm implemented in :class:`graphix.gflow.flow`.
+# of the MBQC pattern, obtained using the flow-finding algorithm implemented in :class:`graphix.flow`.
 # Below we list the meaning of the node boundary and face colors.
 #
 # - Nodes with red boundaries are the *input nodes* where the computation starts.

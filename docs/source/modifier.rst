@@ -58,8 +58,6 @@ Pattern Manipulation
 
     .. automethod:: max_space
 
-    .. automethod:: get_layers
-
     .. automethod:: to_qasm3
 
 
