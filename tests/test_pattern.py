@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import itertools
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import networkx as nx
 import numpy as np
@@ -176,7 +176,9 @@ class TestPattern:
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
     # TODO: tensor network backend is excluded because "parallel preparation strategy does not support not-standardized pattern".
-    def test_pauli_measurement_random_circuit(self, fx_bg: PCG64, jumps: int, backend: _BackendLiteral) -> None:
+    def test_pauli_measurement_random_circuit(
+        self, fx_bg: PCG64, jumps: int, backend: Literal["statevector", "densitymatrix"]
+    ) -> None:
         rng = Generator(fx_bg.jumped(jumps))
         nqubits = 3
         depth = 3
@@ -1216,7 +1218,9 @@ class TestMCOps:
         p.perform_pauli_measurements()
 
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
-    def test_arbitrary_inputs(self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: _BackendLiteral) -> None:
+    def test_arbitrary_inputs(
+        self, fx_rng: Generator, nqb: int, rand_circ: Circuit, backend: Literal["statevector", "densitymatrix"]
+    ) -> None:
         rand_angles = fx_rng.random(nqb) * 2 * ANGLE_PI
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
