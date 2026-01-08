@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- #393
+  - Introduced new method `graphix.optimization.StandardizedPattern.extract_partial_order_layer` which constructs a partial order layering from the dependency domains of M, X and Z commands.
+  - Introduced new methods `graphix.optimization.StandardizedPattern.extract_causal_flow`, `graphix.optimization.StandardizedPattern.extract_gflow` which respectively attempt to extract a causal flow and a gflow from a standardized pattern.
+  - Introduced new wrapper methods in the `Pattern` class: `graphix.pattern.Pattern.extract_partial_order_layers`, `graphix.pattern.Pattern.extract_causal_flow` and `graphix.pattern.Pattern.extract_gflow`.
+  - Introduced new module `graphix.flow._partial_order` with the function :func:`compute_topological_generations`.
+
+- #392: Added `graphix.pattern.Pattern.remove_input_nodes` method which removes the input nodes from the pattern and replaces them with N commands.
+
 - #385
   - Introduced `graphix.flow.core.XZCorrections.check_well_formed` which verifies the correctness of an XZ-corrections instance and raises an exception if incorrect.
   - Added XZ-correction exceptions to module `graphix.flow.core.exceptions`.
@@ -29,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
+
 - #379: Removed unnecessary `meas_index` from API for rotation instructions `RZ`, `RY` and `RX`.
 
 - #347: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
@@ -46,6 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #375: Adapted existing method `graphix.opengraph.OpenGraph.compose` to the new API introduced in #358.
 
 - #352, #394: Circuit measurements are now limited to axes X, Y, and Z.
+
+- #233, #398: The angle convention is now consistent across the
+  library: angles are represented as floats and expressed in units of
+  π. In particular, angles that appear in parameters of circuit
+  instructions are now expressed in units of π.
 
 ## [0.3.3] - 2025-10-23
 

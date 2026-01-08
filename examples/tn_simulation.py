@@ -21,6 +21,7 @@ import quimb.tensor as qtn
 from scipy.optimize import minimize
 
 from graphix import Circuit
+from graphix.fundamentals import ANGLE_PI
 
 rng = np.random.default_rng()
 
@@ -48,8 +49,8 @@ def ansatz(circuit, n, gamma, beta, iterations):
 
 n = 5  # This will result in a graph that would be too large for statevector simulation.
 iterations = 2  # Define the number of iterations in the quantum circuit.
-gamma = 2 * np.pi * rng.random(iterations)
-beta = 2 * np.pi * rng.random(iterations)
+gamma = 2 * ANGLE_PI * rng.random(iterations)
+beta = 2 * ANGLE_PI * rng.random(iterations)
 # Define the circuit.
 circuit = Circuit(n)
 ansatz(circuit, n, gamma, beta, iterations)
@@ -69,7 +70,7 @@ print(f"Number of edges: {len(graph.edges)}")
 
 # %%
 # Optimizing by performing Pauli measurements in the pattern using efficient stabilizer simulator.
-
+pattern.remove_input_nodes()
 pattern.perform_pauli_measurements()
 
 # %%
@@ -180,6 +181,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     pattern = circuit.transpile().pattern
     pattern.standardize()
     pattern.shift_signals()
+    pattern.remove_input_nodes()
     pattern.perform_pauli_measurements()
     mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
     exp_val = 0
@@ -208,7 +210,7 @@ class MyOptimizer(oe.paths.PathOptimizer):
 
 opt = MyOptimizer()
 # Define initial parameters, which will be optimized through running the algorithm.
-params = 2 * np.pi * rng.random(len(gamma) + len(beta))
+params = 2 * ANGLE_PI * rng.random(len(gamma) + len(beta))
 # Run the classical optimizer and simulate the quantum circuit with TN backend.
 res = minimize(cost, params, args=(n, ham, iterations, len(gamma), opt), method="COBYLA")
 print(res.message)
