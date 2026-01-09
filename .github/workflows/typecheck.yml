@@ -12,7 +12,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  python-version: "3.14"
+  # We stick to Python 3.13 since qiskit-aer is not available yet for Python 3.14.
+  # See https://github.com/Qiskit/qiskit-aer/issues/2378.
+  python-version: "3.13"
 
 jobs:
   mypy-pyright:
