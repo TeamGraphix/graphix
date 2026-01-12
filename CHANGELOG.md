@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #394: The method `Circuit.transpile_measurements_to_z_axis` returns an equivalent circuit where all measurements are on the Z axis. This can be used to prepare a circuit for export to OpenQASM with `circuit_to_qasm3`.
 
+- #402: Support for Python 3.14.
+
 - #407: Introduced new method `graphix.optimization.StandardizedPattern.extract_xzcorrections` and its wrapper `graphix.pattern.Pattern.extract_xzcorrections` which extract an `XZCorrections` instance from a pattern. 
 
 
@@ -52,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #389, #391: `Pattern.extract_opengraph` raises an exception if pattern has `N` commands which do not represent a |+> state.
 
+- #404: Fixed pattern export to OpenQASM 3. Compatibility with Qiskit
+  is ensured with normalization passed `incorporate_pauli_results` and
+  `single_qubit_domains`.
+
 - #409: Axis labels are shown when visualizing a pattern. Legend is placed outside the plot so that the graph remains visible.
 
 - #407: Fixed an unreported bug in `OpenGraph.is_equal_structurally` which failed to compare open graphs differing on the output nodes only.
@@ -64,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #352, #394: Circuit measurements are now limited to axes X, Y, and Z.
 
-- #233, #398: The angle convention is now consistent across the
+- #233, #399: The angle convention is now consistent across the
   library: angles are represented as floats and expressed in units of
   π. In particular, angles that appear in parameters of circuit
   instructions are now expressed in units of π.

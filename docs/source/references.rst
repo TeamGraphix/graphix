@@ -15,3 +15,4 @@ Module reference
     channels
     random_objects
     open_graph
+    optimization
