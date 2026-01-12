@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from graphix.fundamentals import ANGLE_PI, Plane
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevec, _get_statevec_norm_numeric
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
@@ -143,3 +143,9 @@ class TestStatevec:
 
         with pytest.raises(ValueError):
             _vec = Statevec(nqubit=length - 1, data=test_vec)
+
+
+def test_normalize() -> None:
+    statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
+    statevec.remove_qubit(0)
+    assert _get_statevec_norm_numeric(statevec) == 1
