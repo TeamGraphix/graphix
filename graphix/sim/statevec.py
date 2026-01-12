@@ -336,10 +336,12 @@ class Statevec(DenseState):
             psi_o = self.psi.astype(np.object_, copy=False)
             norm_o = _get_statevec_norm_symbolic(psi_o)
             psi_o /= norm_o
+            self.psi = psi_o
         else:
             psi_c = self.psi.astype(np.complex128, copy=False)
             norm_c = _get_statevec_norm_numeric(psi_c)
             psi_c /= norm_c
+            self.psi = psi_c
 
     def flatten(self) -> Matrix:
         """Return flattened statevector."""

@@ -46,8 +46,12 @@ class _KindChecker:
         utils.check_kind(cls, {"CommandKind": CommandKind, "Clifford": Clifford})
 
 
+class BaseCommand(DataclassReprMixin):
+    """Base class for pattern command."""
+
+
 @dataclasses.dataclass(repr=False)
-class BaseN(DataclassReprMixin):
+class BaseN(BaseCommand):
     r"""Base preparation command.
 
     Represent a preparation of a node. In `graphix`, a preparation is
@@ -63,7 +67,6 @@ class BaseN(DataclassReprMixin):
     ----------
     node : int
         Index of the qubit to prepare.
-
     """
 
     node: int
@@ -87,7 +90,7 @@ class N(BaseN, _KindChecker):
 
 
 @dataclasses.dataclass(repr=False)
-class BaseM(DataclassReprMixin):
+class BaseM(BaseCommand):
     """Base measurement command.
 
     Represent a measurement of a node. In `graphix`, a measurement is an instance of
@@ -150,7 +153,7 @@ class M(BaseM, _KindChecker):
 
 
 @dataclasses.dataclass(repr=False)
-class E(_KindChecker, DataclassReprMixin):
+class E(_KindChecker, BaseCommand):
     r"""Entanglement command between two qubits.
 
     Parameters
@@ -164,7 +167,7 @@ class E(_KindChecker, DataclassReprMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class C(_KindChecker, DataclassReprMixin):
+class C(_KindChecker, BaseCommand):
     r"""Local Clifford gate command.
 
     Parameters
@@ -181,7 +184,7 @@ class C(_KindChecker, DataclassReprMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class X(_KindChecker, DataclassReprMixin):
+class X(_KindChecker, BaseCommand):
     r"""X correction command.
 
     Parameters
@@ -198,7 +201,7 @@ class X(_KindChecker, DataclassReprMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class Z(_KindChecker, DataclassReprMixin):
+class Z(_KindChecker, BaseCommand):
     r"""Z correction command.
 
     Parameters
@@ -215,7 +218,7 @@ class Z(_KindChecker, DataclassReprMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class S(_KindChecker, DataclassReprMixin):
+class S(_KindChecker, BaseCommand):
     r"""S command.
 
     Parameters
@@ -232,7 +235,7 @@ class S(_KindChecker, DataclassReprMixin):
 
 
 @dataclasses.dataclass(repr=False)
-class T(_KindChecker):
+class T(_KindChecker, BaseCommand):
     r"""T command.
 
     Parameters
