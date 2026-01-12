@@ -114,7 +114,4 @@ def instruction_to_qasm3(instruction: Instruction) -> str:
                 qasm3_qubit(instruction.target),
             ],
         )
-    # Use of `==` here for mypy
-    if instruction.kind == InstructionKind._XC or instruction.kind == InstructionKind._ZC:  # noqa: PLR1714
-        raise ValueError("Internal instruction should not appear")
     assert_never(instruction.kind)
