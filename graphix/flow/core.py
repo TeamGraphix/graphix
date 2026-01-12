@@ -475,9 +475,9 @@ class PauliFlow(Generic[_M_co]):
                 correcting_set = self.correction_function[measured_node]
                 # Conditionals avoid storing empty correction sets
                 if x_corrected_nodes := correcting_set & future:
-                    x_corrections[measured_node] = x_corrected_nodes
+                    x_corrections[measured_node] = frozenset(x_corrected_nodes)
                 if z_corrected_nodes := self.og.odd_neighbors(correcting_set) & future:
-                    z_corrections[measured_node] = z_corrected_nodes
+                    z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
             future |= layer
 
@@ -737,9 +737,9 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         for measured_node, correcting_set in self.correction_function.items():
             # Conditionals avoid storing empty correction sets
             if x_corrected_nodes := correcting_set - {measured_node}:
-                x_corrections[measured_node] = x_corrected_nodes
+                x_corrections[measured_node] = frozenset(x_corrected_nodes)
             if z_corrected_nodes := self.og.odd_neighbors(correcting_set) - {measured_node}:
-                z_corrections[measured_node] = z_corrected_nodes
+                z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
@@ -892,9 +892,9 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
         for measured_node, correcting_set in self.correction_function.items():
             # Conditionals avoid storing empty correction sets
             if x_corrected_nodes := correcting_set:
-                x_corrections[measured_node] = x_corrected_nodes
+                x_corrections[measured_node] = frozenset(x_corrected_nodes)
             if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
-                z_corrections[measured_node] = z_corrected_nodes
+                z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 

@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import networkx as nx
 import pytest
 from numpy.random import PCG64, Generator
 
 from graphix import command, instruction
 from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.measurements import Measurement
+from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.random_objects import rand_circuit
 from graphix.transpiler import Circuit
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from graphix.flow.core import PauliFlow
 
 
 def test_circuit_repr() -> None:
@@ -83,3 +93,75 @@ def test_pattern_pretty_print_random(fx_bg: PCG64, jumps: int, output: OutputFor
     rng = Generator(fx_bg.jumped(jumps))
     rand_pat = rand_circuit(5, 5, rng=rng).transpile().pattern
     pattern_to_str(rand_pat, output)
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+@pytest.mark.parametrize(
+    "flow_extractor", [OpenGraph.extract_causal_flow, OpenGraph.extract_gflow, OpenGraph.extract_pauli_flow]
+)
+def test_flow_pretty_print_random(
+    fx_bg: PCG64,
+    jumps: int,
+    flow_extractor: Callable[[OpenGraph[Measurement]], PauliFlow[Measurement]],
+) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    rand_og = rand_circuit(5, 5, rng=rng).transpile().pattern.extract_opengraph()
+    flow = flow_extractor(rand_og)
+
+    flow.to_ascii()
+    flow.to_latex()
+    flow.to_unicode()
+
+
+@pytest.mark.parametrize("jumps", range(1, 11))
+def test_xzcorr_pretty_print_random(
+    fx_bg: PCG64,
+    jumps: int,
+) -> None:
+    rng = Generator(fx_bg.jumped(jumps))
+    xzcorr = rand_circuit(5, 5, rng=rng).transpile().pattern.extract_opengraph().extract_causal_flow().to_corrections()
+
+    xzcorr.to_ascii()
+    xzcorr.to_latex()
+    xzcorr.to_unicode()
+
+
+def example_og() -> OpenGraph[Measurement]:
+    return OpenGraph(
+        graph=nx.Graph([(1, 3), (2, 4), (3, 4), (3, 5), (4, 6)]),
+        input_nodes=[1, 2],
+        output_nodes=[5, 6],
+        measurements={
+            1: Measurement(0.1, Plane.XY),
+            2: Measurement(0.2, Plane.XY),
+            3: Measurement(0.3, Plane.XY),
+            4: Measurement(0.4, Plane.XY),
+        },
+    )
+
+
+def test_cflow_str() -> None:
+    flow = example_og().extract_causal_flow()
+
+    assert str(flow) == "c(3) = {5}, c(4) = {6}, c(1) = {3}, c(2) = {4}\n{1, 2} < {3, 4} < {5, 6}"
+
+
+def test_gflow_str() -> None:
+    flow = example_og().extract_gflow()
+
+    assert str(flow) == "g(1) = {3, 6}, g(2) = {4, 5}, g(3) = {5}, g(4) = {6}\n{1, 2} < {3, 4} < {5, 6}"
+
+
+def test_pflow_str() -> None:
+    flow = example_og().extract_pauli_flow()
+
+    assert str(flow) == "p(1) = {3, 6}, p(2) = {4, 5}, p(3) = {5}, p(4) = {6}\n{1, 2} < {3, 4} < {5, 6}"
+
+
+def test_xzcorr_str() -> None:
+    flow = example_og().extract_causal_flow().to_corrections()
+
+    assert (
+        str(flow) == 'x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}\nz(1) = {4, 5}, z(2) = {3, 6}\n{1, 2} < {3, 4} < {5, 6}'
+
+    )
