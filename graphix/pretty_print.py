@@ -7,7 +7,10 @@ import math
 import string
 from enum import Enum
 from fractions import Fraction
-from typing import TYPE_CHECKING, SupportsFloat, assert_never
+from typing import TYPE_CHECKING, SupportsFloat
+
+# `assert_never` introduced in Python 3.11
+from typing_extensions import assert_never
 
 from graphix import command
 from graphix.fundamentals import AbstractMeasurement, Plane, angle_to_rad
