@@ -7,15 +7,17 @@ import math
 import string
 from enum import Enum
 from fractions import Fraction
-from typing import TYPE_CHECKING, SupportsFloat
+from typing import TYPE_CHECKING, SupportsFloat, assert_never
 
 from graphix import command
-from graphix.fundamentals import Plane, angle_to_rad
+from graphix.fundamentals import AbstractMeasurement, Plane, angle_to_rad
 
 if TYPE_CHECKING:
-    from collections.abc import Container
+    from collections.abc import Container, Mapping, Sequence
+    from collections.abc import Set as AbstractSet
 
     from graphix.command import Node
+    from graphix.flow.core import PauliFlow, XZCorrections
     from graphix.fundamentals import Angle
     from graphix.pattern import Pattern
 
@@ -233,3 +235,129 @@ def pattern_to_str(
     if truncated:
         return f"{result}...({len(command_list) - limit + 1} more commands)"
     return result
+
+
+def correction_function_to_str(
+    correction_function: Mapping[int, AbstractSet[int]], cf_name: str, output: OutputFormat, multiline: bool = False
+) -> str:
+    """Convert a correction function mapping to a formatted string representation.
+
+    Parameters
+    ----------
+    correction_function : Mapping[int, AbstractSet[int]]
+        A mapping from node indices to sets of node indices representing the
+        correction function. See :class:`graphix.flow.core.PauliFlow` for additional information.
+    cf_name : str
+        The name of the correction function (e.g., ``c`` for causal flow, ``g`` for gflow, etc.)
+    output : OutputFormat
+        The desired output format (ASCII, LaTeX or Unicode).
+    multiline : bool, optional
+        If ``True``, format each correction set on a separate line (or LaTeX line break).
+        If ``False``, format each correction set on a single line separated by commas.
+        Default is ``False``.
+
+    Returns
+    -------
+    str
+    """
+    separator = (
+        (r",\\" if output == OutputFormat.LaTeX else "\n")
+        if multiline
+        else (r", \;" if output == OutputFormat.LaTeX else ", ")
+    )
+
+    if output == OutputFormat.LaTeX:
+        return separator.join(
+            f"{cf_name}({node}) = " + r"\{{{}\}}".format(", ".join(map(str, cset)))
+            for node, cset in correction_function.items()
+        )
+
+    return separator.join(f"{cf_name}({node}) = { {*cset} }" for node, cset in correction_function.items())
+
+
+def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], output: OutputFormat) -> str:
+    """Convert a partial order layering to a formatted string representation.
+
+    Parameters
+    ----------
+    partial_order_layers : Sequence[AbstractSet[int]]
+        Partial order between nodes in a layer form. See :class:`graphix.flow.core.PauliFlow` for additional information.
+    output : OutputFormat
+        The desired output format (ASCII, LaTeX or Unicode).
+
+    Returns
+    -------
+    str
+    """
+    match output:
+        case OutputFormat.ASCII:
+            sep = " < "
+        case OutputFormat.Unicode:
+            sep = " ≺ "
+        case OutputFormat.LaTeX:
+            sep = r" \prec "
+        case _:
+            assert_never(output)
+
+    if output == OutputFormat.LaTeX:
+        return sep.join(r"\{{{}\}}".format(", ".join(map(str, layer))) for layer in partial_order_layers[::-1])
+    return sep.join(f"{ {*layer} }" for layer in partial_order_layers[::-1])
+
+
+def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, multiline: bool = False) -> str:
+    """Convert a flow object to a formatted string representation.
+
+    Parameters
+    ----------
+    flow : PauliFlow[AbstractMeasurement]
+        The flow object to be formatted.
+    output : OutputFormat
+        The desired output format (ASCII, LaTeX or Unicode).
+    multiline : bool, optional
+        If ``True``, format each correction set on a separate line (or LaTeX line break).
+        If ``False``, format each correction set on a single line separated by commas.
+        Default is ``False``.
+
+    Returns
+    -------
+    str
+        A string representation of the flow object formatted according to the specified output format and layout.
+    """
+    separator = r",\\" if output == OutputFormat.LaTeX else "\n"
+
+    return separator.join(
+        (
+            correction_function_to_str(flow.correction_function, flow._CF_PREFIX, output, multiline),
+            partial_order_to_str(flow.partial_order_layers, output),
+        )
+    )
+
+
+def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputFormat, multiline: bool = False) -> str:
+    """Convert an XZCorrections object to a formatted string representation.
+
+    Parameters
+    ----------
+    flow : XZCorrections[AbstractMeasurement]
+        The XZCorrections object to be formatted.
+    output : OutputFormat
+        The desired output format (ASCII, LaTeX or Unicode).
+    multiline : bool, optional
+        If ``True``, format each correction set on a separate line (or LaTeX line break).
+        If ``False``, format each correction set on a single line separated by commas.
+        Default is ``False``.
+
+    Returns
+    -------
+    str
+        A string representation of the XZCorrections object formatted according to the specified output format and layout.
+    """
+    separator = r",\\" if output == OutputFormat.LaTeX else "\n"
+
+    return separator.join(
+        (
+            correction_function_to_str(xzcorr.x_corrections, "x", output, multiline),
+            correction_function_to_str(xzcorr.z_corrections, "z", output, multiline),
+            partial_order_to_str(xzcorr.partial_order_layers, output),
+        )
+    )
