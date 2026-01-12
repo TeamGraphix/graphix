@@ -162,6 +162,6 @@ def test_xzcorr_str() -> None:
     flow = example_og().extract_causal_flow().to_corrections()
 
     assert (
-        str(flow) == 'x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}\nz(1) = {4, 5}, z(2) = {3, 6}\n{1, 2} < {3, 4} < {5, 6}'
-
+        str(flow)
+        == "x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}\nz(1) = {4, 5}, z(2) = {3, 6}\n{1, 2} < {3, 4} < {5, 6}"
     )
