@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #402: Support for Python 3.14.
 
+- #407: Introduced new method `graphix.optimization.StandardizedPattern.extract_xzcorrections` and its wrapper `graphix.pattern.Pattern.extract_xzcorrections` which extract an `XZCorrections` instance from a pattern. 
+
+
 ### Fixed
 
 - #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
@@ -57,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #409: Axis labels are shown when visualizing a pattern. Legend is placed outside the plot so that the graph remains visible.
 
+- #407: Fixed an unreported bug in `OpenGraph.is_equal_structurally` which failed to compare open graphs differing on the output nodes only.
+
 ### Changed
 
 - #374: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
@@ -69,6 +74,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   library: angles are represented as floats and expressed in units of
   π. In particular, angles that appear in parameters of circuit
   instructions are now expressed in units of π.
+
+- #407:
+  - Modified the constructor `XZCorrections.from_measured_nodes_mapping` so that it doesn't need to create an `nx.DiGraph` instance. This fixes an unreported bug in the method.
+  - Removed modules `graphix.gflow` and `graphix.find_pflow`.
 
 ## [0.3.3] - 2025-10-23
 

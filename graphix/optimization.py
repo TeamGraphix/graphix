@@ -19,7 +19,7 @@ from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
-from graphix.flow.core import CausalFlow, GFlow
+from graphix.flow.core import CausalFlow, GFlow, XZCorrections
 from graphix.flow.exceptions import (
     FlowGenericError,
     FlowGenericErrorReason,
@@ -546,6 +546,44 @@ class StandardizedPattern(_StandardizedPattern):
         gf = GFlow(og, correction_function, partial_order_layers)
         gf.check_well_formed()
         return gf
+
+    def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+        """Extract the XZ-corrections from the current measurement pattern.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            The XZ-corrections associated with the current pattern.
+
+        Raises
+        ------
+        XZCorrectionsError
+            If the extracted correction dictionaries are not well formed.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+        """
+        x_corr: dict[int, set[int]] = {}
+        z_corr: dict[int, set[int]] = {}
+
+        pre_measured_nodes = self.results.keys()  # Not included in the xz-corrections.
+
+        for m in self.m_list:
+            _update_corrections(m.node, m.s_domain - pre_measured_nodes, x_corr)
+            _update_corrections(m.node, m.t_domain - pre_measured_nodes, z_corr)
+
+        for node, domain in self.x_dict.items():
+            _update_corrections(node, domain - pre_measured_nodes, x_corr)
+
+        for node, domain in self.z_dict.items():
+            _update_corrections(node, domain - pre_measured_nodes, z_corr)
+
+        og = (
+            self.extract_opengraph()
+        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
+
+        return XZCorrections.from_measured_nodes_mapping(
+            og, x_corr, z_corr
+        )  # Raises a `XZCorrectionsError` if the input dictionaries are not well formed.
 
 
 def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:

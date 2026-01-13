@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import math
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from graphix import gflow
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
@@ -235,8 +233,9 @@ class GraphVisualizer:
                 print("The pattern is not consistent with flow or gflow structure.")
                 po_layers = pattern.extract_partial_order_layers()
                 unfolded_layers = {node: layer_idx for layer_idx, layer in enumerate(po_layers[::-1]) for node in layer}
-                xflow, zflow = gflow.get_corrections_from_pattern(pattern)
-                xzflow: dict[int, set[int]] = deepcopy(xflow)
+                xzc = pattern.extract_xzcorrections()
+                xflow, zflow = xzc.x_corrections, xzc.z_corrections
+                xzflow = dict(xflow)
                 for key, value in zflow.items():
                     if key in xzflow:
                         xzflow[key] |= value

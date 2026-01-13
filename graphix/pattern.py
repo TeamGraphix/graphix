@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.flow.core import CausalFlow, GFlow
+    from graphix.flow.core import CausalFlow, GFlow, XZCorrections
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, BackendState, Data
     from graphix.states import State
@@ -967,40 +967,28 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
-    def get_layers(self) -> tuple[int, dict[int, set[int]]]:
-        """Construct layers(l_k) from dependency information.
-
-        kth layer must be measured before measuring k+1th layer
-        and nodes in the same layer can be measured simultaneously.
+    def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+        """Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
-        depth : int
-            depth of graph
-        layers : dict of set
-            nodes grouped by layer index(k)
+        XZCorrections[Measurement]
+            The XZ-corrections associated with the current pattern.
+
+        Raises
+        ------
+        XZCorrectionsError
+            If the extracted correction dictionaries are not well formed.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        To ensure that applying the chain ``Pattern.extract_xzcorrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation, XZ-corrections must be extracted from a standardized pattern. This requirement arises for the same reason that flow extraction also operates correctly on standardized patterns only.
+        This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        See docstring in :func:`optimization.StandardizedPattern.extract_gflow` for additional information.
         """
-        self.check_runnability()  # prevent infinite loop: e.g., [N(0), M(0, s_domain={0})]
-        dependency = self._get_dependency()
-        measured = self.results.keys()
-        self.update_dependency(measured, dependency)
-        not_measured = set(self.__input_nodes)
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
-                not_measured |= {cmd.node}
-        depth = 0
-        l_k: dict[int, set[int]] = {}
-        k = 0
-        while not_measured:
-            l_k[k] = set()
-            for i in not_measured:
-                if not dependency[i]:
-                    l_k[k] |= {i}
-            self.update_dependency(l_k[k], dependency)
-            not_measured -= l_k[k]
-            k += 1
-            depth = k
-        return depth, l_k
+        return optimization.StandardizedPattern.from_pattern(self).extract_xzcorrections()
 
     def _measurement_order_depth(self) -> list[int]:
         """Obtain a measurement order which reduces the depth of a pattern.
@@ -1218,7 +1206,8 @@ class Pattern:
         graph = nx.Graph(edges)
         graph.add_nodes_from(nodes)
 
-        return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
+        # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
+        return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.
