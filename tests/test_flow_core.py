@@ -35,6 +35,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
+from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
 from graphix.states import PlanarState
 
@@ -415,6 +416,60 @@ class TestFlowPatternConversion:
                     assert result == pytest.approx(1)
 
 
+class TestFlow:
+    """Bundle for unit tests of :class:`PauliFlow` and children."""
+
+    # Test parametric angle replacement
+    def test_subs(self) -> None:
+        alpha = Placeholder("alpha")
+        value = 0.3
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(alpha, Plane.XY)}
+        )
+        flow = og.extract_pauli_flow()
+
+        og_ref = OpenGraph(
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(value, Plane.XY)}
+        )
+        flow_ref = og_ref.extract_pauli_flow()
+
+        flow_test = flow.subs(alpha, value)
+
+        assert not flow.og.isclose(flow_test.og)
+        assert flow_ref.og.isclose(flow_test.og)
+
+        assert flow_ref.correction_function == flow_test.correction_function
+        assert flow_ref.partial_order_layers == flow_test.partial_order_layers
+
+    # Test parametric angle replacement
+    def test_xreplace(self) -> None:
+        parametric_angles = [Placeholder("alpha") for _ in range(2)]
+        value = 0.3
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2)]),
+            input_nodes=[0],
+            output_nodes=[2],
+            measurements={node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)},
+        )
+        flow = og.extract_pauli_flow()
+
+        og_ref = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2)]),
+            input_nodes=[0],
+            output_nodes=[2],
+            measurements={node: Measurement(value, Plane.XY) for node in range(2)},
+        )
+        flow_ref = og_ref.extract_pauli_flow()
+
+        flow_test = flow.xreplace(dict.fromkeys(parametric_angles, value))
+
+        assert not flow.og.isclose(flow_test.og)
+        assert flow_ref.og.isclose(flow_test.og)
+
+        assert flow_ref.correction_function == flow_test.correction_function
+        assert flow_ref.partial_order_layers == flow_test.partial_order_layers
+
+
 class TestXZCorrections:
     """Bundle for unit tests of :class:`XZCorrections`."""
 
@@ -617,6 +672,58 @@ class TestXZCorrections:
         with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={0: {4}})
         assert exc_info.value.reason == XZCorrectionsGenericErrorReason.IncorrectValues
+
+    # Test parametric angle replacement
+    def test_subs(self) -> None:
+        alpha = Placeholder("alpha")
+        value = 0.3
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(alpha, Plane.XY)}
+        )
+        xzcorr = og.extract_causal_flow().to_corrections()
+
+        og_ref = OpenGraph(
+            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(value, Plane.XY)}
+        )
+        xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
+
+        xzcorr_test = xzcorr.subs(alpha, value)
+
+        assert not xzcorr.og.isclose(xzcorr_test.og)
+        assert xzcorr_ref.og.isclose(xzcorr_test.og)
+
+        assert xzcorr_ref.x_corrections == xzcorr_test.x_corrections
+        assert xzcorr_ref.z_corrections == xzcorr_test.z_corrections
+        assert xzcorr_ref.partial_order_layers == xzcorr_test.partial_order_layers
+
+    # Test parametric angle replacement
+    def test_xreplace(self) -> None:
+        parametric_angles = [Placeholder("alpha") for _ in range(2)]
+        value = 0.3
+        og = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2)]),
+            input_nodes=[0],
+            output_nodes=[2],
+            measurements={node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)},
+        )
+        xzcorr = og.extract_causal_flow().to_corrections()
+
+        og_ref = OpenGraph(
+            graph=nx.Graph([(0, 1), (1, 2)]),
+            input_nodes=[0],
+            output_nodes=[2],
+            measurements={node: Measurement(value, Plane.XY) for node in range(2)},
+        )
+        xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
+
+        xzcorr_test = xzcorr.xreplace(dict.fromkeys(parametric_angles, value))
+
+        assert not xzcorr.og.isclose(xzcorr_test.og)
+        assert xzcorr_ref.og.isclose(xzcorr_test.og)
+
+        assert xzcorr_ref.x_corrections == xzcorr_test.x_corrections
+        assert xzcorr_ref.z_corrections == xzcorr_test.z_corrections
+        assert xzcorr_ref.partial_order_layers == xzcorr_test.partial_order_layers
 
 
 class IncorrectFlowTestCase(NamedTuple):
