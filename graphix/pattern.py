@@ -102,7 +102,6 @@ class Pattern:
         else:
             self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
         self.__n_node = len(self.__input_nodes)  # total number of nodes in the graph state
-        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq = []
         # output nodes are initially a copy input nodes, since none are measured yet
@@ -124,7 +123,6 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
-        self._pauli_preprocessed = False
         if cmd.kind == CommandKind.N:
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
@@ -138,7 +136,6 @@ class Pattern:
 
         :param cmds: sequences of commands
         """
-        self._pauli_preprocessed = False
         for item in cmds:
             if isinstance(item, Iterable):
                 for cmd in item:
@@ -148,7 +145,6 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
-        self._pauli_preprocessed = False
         self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
@@ -160,7 +156,6 @@ class Pattern:
 
         :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
-        self._pauli_preprocessed = False
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
         self.clear()
@@ -206,7 +201,6 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
-        self._pauli_preprocessed = False
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
@@ -1132,7 +1126,7 @@ class Pattern:
             max degree of a pattern
         """
         graph = self.extract_graph()
-        degree = graph.degree()
+        degree = graph.degree()  # type: ignore
         assert isinstance(degree, nx.classes.reportviews.DiDegreeView)
         degrees = dict(degree).values()
         if len(degrees) == 0:
@@ -1176,7 +1170,7 @@ class Pattern:
             set of the isolated nodes
         """
         graph = self.extract_graph()
-        return {node for node, d in graph.degree if d == 0}
+        return {node for node, d in graph.degree if d == 0}  # type: ignore
 
     def extract_opengraph(self) -> OpenGraph[Measurement]:
         """Extract the underlying resource-state open graph from the pattern.
@@ -1315,9 +1309,8 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_order = None
-        if not self._pauli_preprocessed:
-            cf = self.extract_opengraph().find_causal_flow()
-            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
+        cf = self.extract_opengraph().find_causal_flow()
+        meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1432,7 +1425,9 @@ class Pattern:
         """
         if self.input_nodes:
             raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
-        measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        measured = self.measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        self.__init__(measured.input_nodes, measured.__seq, measured.output_nodes)
+        self.results = measured.results
 
     def draw_graph(
         self,
@@ -1555,7 +1550,6 @@ class Pattern:
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node
-        result._pauli_preprocessed = self._pauli_preprocessed
         result.results = self.results.copy()
         return result
 
@@ -1664,7 +1658,7 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
+def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1693,17 +1687,17 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    pat = Pattern() if copy else pattern
-    standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
+    pat = pattern.copy()
+    standardized_pattern = optimization.StandardizedPattern.from_pattern(pat)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
-    output_nodes = set(pattern.output_nodes)
+    output_nodes = set(pat.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = pat.results
+    results = pat.results
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
     if not to_measure:
-        return pattern
+        return pat
     for cmd in to_measure:
         pattern_cmd = cmd[0]
         measurement_basis = cmd[1]
@@ -1759,7 +1753,7 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     )
     new_seq.extend(
         command.C(node=index, clifford=Clifford(vops[index]))
-        for index in pattern.output_nodes
+        for index in pat.output_nodes
         if vops[index] != Clifford.I
     )
     new_seq.extend(command.Z(node=node, domain=set(domain)) for node, domain in standardized_pattern.z_dict.items())
@@ -1768,7 +1762,6 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
-    pat._pauli_preprocessed = True
     return pat
 
 
