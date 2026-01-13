@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections import defaultdict
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
@@ -49,9 +50,12 @@ if TYPE_CHECKING:
 
     from graphix.measurements import Measurement
     from graphix.opengraph import OpenGraph
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
 
 TotalOrder = Sequence[int]
+
+_T_PauliFlowMeasurement = TypeVar("_T_PauliFlowMeasurement", bound="PauliFlow[Measurement]")
 
 
 @dataclass(frozen=True)
@@ -320,6 +324,52 @@ class XZCorrections(Generic[_M_co]):
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
+    def subs(
+        self: XZCorrections[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> XZCorrections[Measurement]:
+        """Substitute a parameter with a value or expression in all measurement angles of the open graph.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            A new instance of the XZCorrections object with the updated measurement parameters.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.subs`.
+        """
+        new_og = self.og.subs(variable, substitute)
+        return dataclasses.replace(self, og=new_og)
+
+    def xreplace(
+        self: XZCorrections[Measurement], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> XZCorrections[Measurement]:
+        """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            A new instance of the XZCorrections object with the updated measurement angles.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.xreplace`.
+        """
+        new_og = self.og.xreplace(assignment)
+        return dataclasses.replace(self, og=new_og)
+
 
 @dataclass(frozen=True)
 class PauliFlow(Generic[_M_co]):
@@ -568,6 +618,52 @@ class PauliFlow(Generic[_M_co]):
         Plane | Axis
         """
         return self.og.measurements[node].to_plane_or_axis()
+
+    def subs(  # noqa: PYI019 Annotating with `Self` is not possible since `self` must be of parametric type `Measurement`.
+        self: _T_PauliFlowMeasurement, variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> _T_PauliFlowMeasurement:
+        """Substitute a parameter with a value or expression in all measurement angles of the open graph.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        Returns
+        -------
+        _T_PauliFlowMeasurement
+            A new instance of the flow object with the updated measurement parameters.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.subs`.
+        """
+        new_og = self.og.subs(variable, substitute)
+        return dataclasses.replace(self, og=new_og)
+
+    def xreplace(  # noqa: PYI019
+        self: _T_PauliFlowMeasurement, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> _T_PauliFlowMeasurement:
+        """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        _T_PauliFlowMeasurement
+            A new instance of the flow object with the updated measurement angles.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.xreplace`.
+        """
+        new_og = self.og.xreplace(assignment)
+        return dataclasses.replace(self, og=new_og)
 
 
 @dataclass(frozen=True)

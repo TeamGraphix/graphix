@@ -109,6 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #193, #364: `Pattern.check_runnability` ensures that a pattern is runnable.
 
+- #410: Added `.subs` and `.xreplace` methods to replace parametric angles by numerical values in `OpenGraph`, `PauliFlow` and `XZCorrections` instances.
+
 ### Fixed
 
 - #339, #332: Standardization now considers that CZ ∘ CZ = I,
