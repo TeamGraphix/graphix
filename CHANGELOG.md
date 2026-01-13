@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #402: Support for Python 3.14.
 
+- #412: Added pretty-print methods (`to_ascii`, `to_latex` and `to_unicode`) for `PauliFlow` and `XZCorrections` classes. Implemented their `__str__` method as a call to `self.to_ascii`.
+
 ### Fixed
 
 - #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
