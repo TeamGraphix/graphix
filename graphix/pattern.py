@@ -1425,8 +1425,11 @@ class Pattern:
         """
         if self.input_nodes:
             raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
-        measured = self.measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps)
-        self.__init__(measured.input_nodes, measured.__seq, measured.output_nodes)
+        measured = measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        self.__input_nodes = measured._Pattern__input_nodes
+        self.__seq = measured._Pattern__seq
+        self.__output_nodes = measured._Pattern__output_nodes
+        self.__n_node = measured._Pattern__n_node
         self.results = measured.results
 
     def draw_graph(
@@ -1658,7 +1661,7 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> Pattern:
+def measure_pauli(pattern: Pattern, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
