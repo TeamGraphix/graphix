@@ -1309,8 +1309,16 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_order = None
-        cf = self.extract_opengraph().find_causal_flow()
-        meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
+        # Check if any measurement has dependencies on other measurements.
+        measured_nodes = {cmd.node for cmd in self if cmd.kind == CommandKind.M}
+        has_internal_deps = any(
+            (cmd.s_domain | cmd.t_domain) & measured_nodes
+            for cmd in self
+            if cmd.kind == CommandKind.M
+        )
+        if not has_internal_deps:
+            cf = self.extract_opengraph().find_causal_flow()
+            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1426,10 +1434,8 @@ class Pattern:
         if self.input_nodes:
             raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
         measured = measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps)
-        self.__input_nodes = measured._Pattern__input_nodes
-        self.__seq = measured._Pattern__seq
-        self.__output_nodes = measured._Pattern__output_nodes
-        self.__n_node = measured._Pattern__n_node
+        self.replace(list(measured), input_nodes=measured.input_nodes)
+        self.reorder_output_nodes(measured.output_nodes)
         self.results = measured.results
 
     def draw_graph(
@@ -1672,9 +1678,6 @@ def measure_pauli(pattern: Pattern, ignore_pauli_with_deps: bool = False) -> Pat
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    copy : bool
-        True: changes will be applied to new copied object and will be returned
-        False: changes will be applied to the supplied Pattern object
     ignore_pauli_with_deps : bool
         Optional (*False* by default).
         If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1684,20 +1687,18 @@ def measure_pauli(pattern: Pattern, ignore_pauli_with_deps: bool = False) -> Pat
     -------
     new_pattern : graphix.Pattern object
         pattern with Pauli measurement removed.
-        only returned if copy argument is True.
-
 
     .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    pat = pattern.copy()
-    standardized_pattern = optimization.StandardizedPattern.from_pattern(pat)
+    pat = Pattern()
+    standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
     output_nodes = set(pat.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results = pat.results
+    results: dict[int, Outcome] = pattern.results.copy()
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
     if not to_measure:
         return pat
