@@ -64,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- #396: Removed generic `BackendState` from `graphix.sim` modules and methods in `graphix.pattern` and `graphix.simulator` modules.
+
 - #374: Adapted existing method `graphix.opengraph.OpenGraph.isclose` to the new API introduced in #358.
 
 - #375: Adapted existing method `graphix.opengraph.OpenGraph.compose` to the new API introduced in #358.

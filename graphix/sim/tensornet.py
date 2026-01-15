@@ -21,7 +21,7 @@ from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.ops import Ops
 from graphix.parameter import Expression
-from graphix.sim.base_backend import Backend, BackendState
+from graphix.sim.base_backend import Backend
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
 
 
-class MBQCTensorNet(BackendState, TensorNetwork):
+class MBQCTensorNet(TensorNetwork):
     """Tensor Network Simulator interface for MBQC patterns, using quimb.tensor.core.TensorNetwork."""
 
     _dangling: dict[str, str]
