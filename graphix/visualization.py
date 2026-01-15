@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import math
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from graphix import gflow
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Plane
 from graphix.measurements import PauliMeasurement
@@ -235,8 +233,9 @@ class GraphVisualizer:
                 print("The pattern is not consistent with flow or gflow structure.")
                 po_layers = pattern.extract_partial_order_layers()
                 unfolded_layers = {node: layer_idx for layer_idx, layer in enumerate(po_layers[::-1]) for node in layer}
-                xflow, zflow = gflow.get_corrections_from_pattern(pattern)
-                xzflow: dict[int, set[int]] = deepcopy(xflow)
+                xzc = pattern.extract_xzcorrections()
+                xflow, zflow = xzc.x_corrections, xzc.z_corrections
+                xzflow = dict(xflow)
                 for key, value in zflow.items():
                     if key in xzflow:
                         xzflow[key] |= value
@@ -454,7 +453,7 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
-            plt.legend(loc="upper right", fontsize=10)
+            plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
 
         x_min = min((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the minimum x coordinate
         x_max = max((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the maximum x coordinate
@@ -489,9 +488,15 @@ class GraphVisualizer:
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
     def __draw_measurement_planes(self, pos: Mapping[int, _Point]) -> None:
+        angles = self.meas_angles or {}
         for node in self.meas_planes:
             x, y = pos[node] + np.array([0.22, -0.2])
-            plt.text(x, y, f"{self.meas_planes[node].name}", fontsize=9, zorder=3)
+            plane = self.meas_planes[node]
+            label = plane.name
+            if (angle := angles.get(node, None)) is not None and (pm := PauliMeasurement.try_from(plane, angle)):
+                label = pm.axis.name
+
+            plt.text(x, y, label, fontsize=9, zorder=3)
 
     def get_figsize(
         self,

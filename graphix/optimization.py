@@ -19,7 +19,7 @@ from graphix import command
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
-from graphix.flow.core import CausalFlow, GFlow
+from graphix.flow.core import CausalFlow, GFlow, XZCorrections
 from graphix.flow.exceptions import (
     FlowGenericError,
     FlowGenericErrorReason,
@@ -30,7 +30,7 @@ from graphix.opengraph import OpenGraph
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from collections.abc import Set as AbstractSet
     from typing import Self
 
@@ -41,14 +41,15 @@ def standardize(pattern: Pattern) -> Pattern:
     """Return a standardized form to the given pattern.
 
     A standardized form is an equivalent pattern where the commands
-    appear in the following order: `N`, `E`, `M`, `Z`, `X`, `C`.
+    appear in the following order: ``N``, ``E``, ``M``, ``Z``, ``X``,
+    ``C``.
 
     Note that a standardized form does not always exist in presence of
-    `C` commands. For instance, there is no standardized form for the
+    ``C`` commands. For instance, there is no standardized form for the
     following pattern (written in the right-to-left convention):
-    `E(0, 1) C(0, H) N(1) N(0)`.
+    ``E(0, 1) C(0, H) N(1) N(0)``.
 
-    The function raises `NotImplementedError` if there is no
+    The function raises ``NotImplementedError`` if there is no
     standardized form. This behavior can change in the future.
 
 
@@ -61,6 +62,7 @@ def standardize(pattern: Pattern) -> Pattern:
     -------
     standardized : Pattern
         The standardized pattern, if it exists.
+
     """
     return StandardizedPattern.from_pattern(pattern).to_pattern()
 
@@ -97,7 +99,7 @@ class StandardizedPattern(_StandardizedPattern):
 
     Instances can be generated with the constructor from any
     compatible data structures, and an instance can be generated
-    directly from a pattern with the class method `from_pattern`.
+    directly from a pattern with the class method :meth:`from_pattern`.
 
     The constructor instantiates the ``Mapping`` fields as
     ``MappingProxyType`` objects over fresh dictionaries, ensuring
@@ -545,6 +547,44 @@ class StandardizedPattern(_StandardizedPattern):
         gf.check_well_formed()
         return gf
 
+    def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+        """Extract the XZ-corrections from the current measurement pattern.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            The XZ-corrections associated with the current pattern.
+
+        Raises
+        ------
+        XZCorrectionsError
+            If the extracted correction dictionaries are not well formed.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+        """
+        x_corr: dict[int, set[int]] = {}
+        z_corr: dict[int, set[int]] = {}
+
+        pre_measured_nodes = self.results.keys()  # Not included in the xz-corrections.
+
+        for m in self.m_list:
+            _update_corrections(m.node, m.s_domain - pre_measured_nodes, x_corr)
+            _update_corrections(m.node, m.t_domain - pre_measured_nodes, z_corr)
+
+        for node, domain in self.x_dict.items():
+            _update_corrections(node, domain - pre_measured_nodes, x_corr)
+
+        for node, domain in self.z_dict.items():
+            _update_corrections(node, domain - pre_measured_nodes, z_corr)
+
+        og = (
+            self.extract_opengraph()
+        )  # Raises a `ValueError` if `N` commands in the pattern do not represent a |+⟩ state.
+
+        return XZCorrections.from_measured_nodes_mapping(
+            og, x_corr, z_corr
+        )  # Raises a `XZCorrectionsError` if the input dictionaries are not well formed.
+
 
 def _add_correction_domain(domain_dict: dict[Node, set[Node]], node: Node, domain: set[Node]) -> None:
     """Merge a correction domain into ``domain_dict`` for ``node``.
@@ -683,5 +723,39 @@ def remove_useless_domains(pattern: Pattern) -> Pattern:
             new_pattern.add(new_cmd)
         else:
             new_pattern.add(cmd)
+    new_pattern.reorder_output_nodes(pattern.output_nodes)
+    return new_pattern
+
+
+def single_qubit_domains(pattern: Pattern) -> Pattern:
+    """Return an equivalent pattern where domains contains at most one qubit."""
+    new_pattern = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
+    new_pattern.results = pattern.results
+
+    def decompose_domain(cmd: Callable[[int, set[int]], command.Command], node: int, domain: AbstractSet[int]) -> bool:
+        if len(domain) <= 1:
+            return False
+        for src in domain:
+            new_pattern.add(cmd(node, {src}))
+        return True
+
+    for cmd in pattern:
+        if cmd.kind == CommandKind.M:
+            replaced_s_domain = decompose_domain(command.X, cmd.node, cmd.s_domain)
+            replaced_t_domain = decompose_domain(command.Z, cmd.node, cmd.t_domain)
+            if replaced_s_domain or replaced_t_domain:
+                new_s_domain = set() if replaced_s_domain else cmd.s_domain
+                new_t_domain = set() if replaced_t_domain else cmd.t_domain
+                new_cmd = dataclasses.replace(cmd, s_domain=new_s_domain, t_domain=new_t_domain)
+                new_pattern.add(new_cmd)
+                continue
+        elif cmd.kind == CommandKind.X:
+            if decompose_domain(command.X, cmd.node, cmd.domain):
+                continue
+        elif cmd.kind == CommandKind.Z:
+            if decompose_domain(command.Z, cmd.node, cmd.domain):
+                continue
+        new_pattern.add(cmd)
+
     new_pattern.reorder_output_nodes(pattern.output_nodes)
     return new_pattern

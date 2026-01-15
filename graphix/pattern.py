@@ -27,6 +27,7 @@ from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
+from graphix.qasm3_exporter import pattern_to_qasm3_lines
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
@@ -38,7 +39,6 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
-    from graphix.flow.core import CausalFlow, GFlow
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import (
         Backend,
@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     )
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
+    from graphix.flow.core import CausalFlow, GFlow, XZCorrections
     from graphix.states import State
 
 
@@ -974,40 +975,28 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_gflow()
 
-    def get_layers(self) -> tuple[int, dict[int, set[int]]]:
-        """Construct layers(l_k) from dependency information.
-
-        kth layer must be measured before measuring k+1th layer
-        and nodes in the same layer can be measured simultaneously.
+    def extract_xzcorrections(self) -> XZCorrections[Measurement]:
+        """Extract the XZ-corrections from the current measurement pattern.
 
         Returns
         -------
-        depth : int
-            depth of graph
-        layers : dict of set
-            nodes grouped by layer index(k)
+        XZCorrections[Measurement]
+            The XZ-corrections associated with the current pattern.
+
+        Raises
+        ------
+        XZCorrectionsError
+            If the extracted correction dictionaries are not well formed.
+        ValueError
+            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+
+        Notes
+        -----
+        To ensure that applying the chain ``Pattern.extract_xzcorrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation, XZ-corrections must be extracted from a standardized pattern. This requirement arises for the same reason that flow extraction also operates correctly on standardized patterns only.
+        This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        See docstring in :func:`optimization.StandardizedPattern.extract_gflow` for additional information.
         """
-        self.check_runnability()  # prevent infinite loop: e.g., [N(0), M(0, s_domain={0})]
-        dependency = self._get_dependency()
-        measured = self.results.keys()
-        self.update_dependency(measured, dependency)
-        not_measured = set(self.__input_nodes)
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.N and cmd.node not in self.output_nodes:
-                not_measured |= {cmd.node}
-        depth = 0
-        l_k: dict[int, set[int]] = {}
-        k = 0
-        while not_measured:
-            l_k[k] = set()
-            for i in not_measured:
-                if not dependency[i]:
-                    l_k[k] |= {i}
-            self.update_dependency(l_k[k], dependency)
-            not_measured -= l_k[k]
-            k += 1
-            depth = k
-        return depth, l_k
+        return optimization.StandardizedPattern.from_pattern(self).extract_xzcorrections()
 
     def _measurement_order_depth(self) -> list[int]:
         """Obtain a measurement order which reduces the depth of a pattern.
@@ -1225,7 +1214,8 @@ class Pattern:
         graph = nx.Graph(edges)
         graph.add_nodes_from(nodes)
 
-        return OpenGraph(graph, self.input_nodes, self.output_nodes, measurements)
+        # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
+        return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
 
     def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
         """Get local-Clifford decorations from measurement or Clifford commands.
@@ -1554,27 +1544,21 @@ class Pattern:
                 filename=filename,
             )
 
-    def to_qasm3(self, filename: Path | str) -> None:
+    def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:
         """Export measurement pattern to OpenQASM 3.0 file.
+
+        See :func:`graphix.qasm3_exporter.pattern_to_qasm3`.
 
         Parameters
         ----------
         filename : Path | str
-            file name to export to. example: "filename.qasm"
+            File name to export to. Example: ``"filename.qasm"``.
+
+        input_state : dict[int, State] | State, default BasicStates.PLUS
+            The initial state for each input node. Only ``|0⟩`` or ``|+⟩`` states are supported.
         """
         with Path(filename).with_suffix(".qasm").open("w", encoding="utf-8") as file:
-            file.write("// generated by graphix\n")
-            file.write("OPENQASM 3;\n")
-            file.write('include "stdgates.inc";\n')
-            file.write("\n")
-            if self.results != {}:
-                for i in self.results:
-                    res = self.results[i]
-                    file.write("// measurement result of qubit q" + str(i) + "\n")
-                    file.write("bit c" + str(i) + " = " + str(res) + ";\n")
-                    file.write("\n")
-            for cmd in self.__seq:
-                file.writelines(cmd_to_qasm3(cmd))
+            file.writelines(pattern_to_qasm3_lines(self, input_state=input_state))
 
     def is_parameterized(self) -> bool:
         """
@@ -1868,86 +1852,6 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
         else:
             non_pauli_node.add(cmd.node)
     return pauli_node, non_pauli_node
-
-
-def cmd_to_qasm3(cmd: Command) -> Iterator[str]:
-    """Convert a command in the pattern into OpenQASM 3.0 statement.
-
-    Parameter
-    ---------
-    cmd : list
-        command [type:str, node:int, attr]
-
-    Yields
-    ------
-    string
-        translated pattern commands in OpenQASM 3.0 language
-
-    """
-    if cmd.kind == CommandKind.N:
-        qubit = cmd.node
-        yield "// prepare qubit q" + str(qubit) + "\n"
-        yield "qubit q" + str(qubit) + ";\n"
-        yield "h q" + str(qubit) + ";\n"
-        yield "\n"
-
-    elif cmd.kind == CommandKind.E:
-        qubits = cmd.nodes
-        yield "// entangle qubit q" + str(qubits[0]) + " and q" + str(qubits[1]) + "\n"
-        yield "cz q" + str(qubits[0]) + ", q" + str(qubits[1]) + ";\n"
-        yield "\n"
-
-    elif cmd.kind == CommandKind.M:
-        qubit = cmd.node
-        plane = cmd.plane
-        alpha = cmd.angle
-        sdomain = cmd.s_domain
-        tdomain = cmd.t_domain
-        yield "// measure qubit q" + str(qubit) + "\n"
-        yield "bit c" + str(qubit) + ";\n"
-        yield "float theta" + str(qubit) + " = 0;\n"
-        if plane == Plane.XY:
-            if sdomain:
-                yield "int s" + str(qubit) + " = 0;\n"
-                for sid in sdomain:
-                    yield "s" + str(qubit) + " += c" + str(sid) + ";\n"
-                yield "theta" + str(qubit) + " += (-1)**(s" + str(qubit) + " % 2) * (" + str(alpha) + " * pi);\n"
-            if tdomain:
-                yield "int t" + str(qubit) + " = 0;\n"
-                for tid in tdomain:
-                    yield "t" + str(qubit) + " += c" + str(tid) + ";\n"
-                yield "theta" + str(qubit) + " += t" + str(qubit) + " * pi;\n"
-            yield "p(-theta" + str(qubit) + ") q" + str(qubit) + ";\n"
-            yield "h q" + str(qubit) + ";\n"
-            yield "c" + str(qubit) + " = measure q" + str(qubit) + ";\n"
-            yield "h q" + str(qubit) + ";\n"
-            yield "p(theta" + str(qubit) + ") q" + str(qubit) + ";\n"
-            yield "\n"
-
-    # Use of == for mypy
-    elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-        qubit = cmd.node
-        sdomain = cmd.domain
-        yield "// byproduct correction on qubit q" + str(qubit) + "\n"
-        yield "int s" + str(qubit) + " = 0;\n"
-        for sid in sdomain:
-            yield "s" + str(qubit) + " += c" + str(sid) + ";\n"
-        yield "if(s" + str(qubit) + " % 2 == 1){\n"
-        if cmd.kind == CommandKind.X:
-            yield "\t x q" + str(qubit) + ";\n}\n"
-        else:
-            yield "\t z q" + str(qubit) + ";\n}\n"
-        yield "\n"
-
-    elif cmd.kind == CommandKind.C:
-        qubit = cmd.node
-        yield "// Clifford operations on qubit q" + str(qubit) + "\n"
-        for op in cmd.clifford.qasm3:
-            yield str(op) + " q" + str(qubit) + ";\n"
-        yield "\n"
-
-    else:
-        raise ValueError(f"invalid command {cmd}")
 
 
 def assert_permutation(original: list[int], user: list[int]) -> None:

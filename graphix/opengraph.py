@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
+from graphix import parameter
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
+from graphix.measurements import Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Mapping, Sequence
 
     from graphix.flow.core import CausalFlow
-    from graphix.measurements import Measurement
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
@@ -160,7 +163,7 @@ class OpenGraph(Generic[_M_co]):
         -----
         This method verifies the open graphs have:
             - Truly equal underlying graphs (not up to an isomorphism).
-            - Equal input and output nodes.
+            - Equal input and output nodes. This assumes equal types as well, i.e., if ``self.input_nodes`` is a ``list`` and ``other.input_nodes`` is a ``tuple``, this method will return ``False``.
         It assumes the open graphs are well formed.
 
         The static typer allows comparing the structure of two open graphs with different parametric type.
@@ -168,7 +171,7 @@ class OpenGraph(Generic[_M_co]):
         return (
             nx.utils.graphs_equal(self.graph, other.graph)
             and self.input_nodes == other.input_nodes
-            and other.output_nodes == other.output_nodes
+            and self.output_nodes == other.output_nodes
         )
 
     def neighbors(self, nodes: Collection[int]) -> set[int]:
@@ -432,6 +435,98 @@ class OpenGraph(Generic[_M_co]):
         measurements = {**self.measurements, **measurements_shifted}
 
         return OpenGraph(g, inputs, outputs, measurements), mapping_complete
+
+    def subs(
+        self: OpenGraph[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> OpenGraph[Measurement]:
+        """Substitute a parameter with a value or expression in all measurement angles.
+
+        Creates a new open graph where every measurement angle containing the specified variable is updated using the provided substitution. The original open graph instance remains unmodified.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        Returns
+        -------
+        OpenGraph[Measurement]
+            A new instance of OpenGraph with the updated measurement parameters.
+
+        Notes
+        -----
+        Substitution relies on object identity. You must provide the exact parameter object instance currently stored in the measurements. Passing a new object with the same name will not trigger a substitution if it is not the same instance in memory.
+
+        Examples
+        --------
+        >>> import networkx as nx
+        >>> from graphix.fundamentals import Plane
+        >>> from graphix.measurements import Measurement
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.parameter import Placeholder
+        >>> # Initialize placeholders and open graph
+        >>> parametric_angles = [Placeholder(f"alpha{i}") for i in range(2)]
+        >>> measurements = {node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)}
+        >>> og = OpenGraph(
+        ...     graph=nx.Graph([(0, 1), (1, 2)]),
+        ...     input_nodes=[0],
+        ...     output_nodes=[2],
+        ...     measurements=measurements,
+        ... )
+        >>> # To perform substitution, use the actual object in memory
+        >>> new_og = og.subs(parametric_angles[0], 0.3)
+        >>> # Note: og.subs(Placeholder("alpha0"), 0.3) would not trigger any substitution.
+        """
+        measurements = {
+            node: Measurement(parameter.subs(meas.angle, variable, substitute), meas.plane)
+            for node, meas in self.measurements.items()
+        }
+        return dataclasses.replace(self, measurements=measurements)
+
+    def xreplace(
+        self: OpenGraph[Measurement], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> OpenGraph[Measurement]:
+        """Perform parallel substitution of multiple parameters in measurement angles.
+
+        Creates a new open graph where occurrences of parameters defined in the assignment mapping are replaced by their corresponding values. The original open graph instance remains unmodified.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        OpenGraph[Measurement]
+            A new instance of OpenGraph with the updated measurement angles.
+
+        Notes
+        -----
+        The notes provided in :func:`self.subs` apply here as well.
+
+        Examples
+        --------
+        >>> import networkx as nx
+        >>> from graphix.fundamentals import Plane
+        >>> from graphix.measurements import Measurement
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.parameter import Placeholder
+        >>> # Initialize placeholders
+        >>> alpha = Placeholder("alpha")
+        >>> beta = Placeholder("beta")
+        >>> measurements = {0: Measurement(alpha, Plane.XY), 1: Measurement(beta, Plane.XY)}
+        >>> og = OpenGraph(nx.Graph([(0, 1)]), [0], [], measurements)
+        >>> # Substitute multiple parameters at once
+        >>> subs_map = {alpha: 0.5, beta: 1.2}
+        >>> new_og = og.xreplace(subs_map)
+        """
+        measurements = {
+            node: Measurement(parameter.xreplace(meas.angle, assignment), meas.plane)
+            for node, meas in self.measurements.items()
+        }
+        return dataclasses.replace(self, measurements=measurements)
 
 
 class OpenGraphError(Exception):

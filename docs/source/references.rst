@@ -10,9 +10,9 @@ Module reference
     simulator
     graphsim
     extraction
-    flow
     clifford
     visualization
     channels
     random_objects
     open_graph
+    optimization

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import dataclasses
+from collections import defaultdict
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
 
@@ -21,6 +23,7 @@ from graphix.flow._find_gpflow import (
     _PM_co,
     compute_partial_order_layers,
 )
+from graphix.flow._partial_order import compute_topological_generations
 from graphix.flow.exceptions import (
     FlowError,
     FlowGenericError,
@@ -47,9 +50,12 @@ if TYPE_CHECKING:
 
     from graphix.measurements import Measurement
     from graphix.opengraph import OpenGraph
+    from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
 
 TotalOrder = Sequence[int]
+
+_T_PauliFlowMeasurement = TypeVar("_T_PauliFlowMeasurement", bound="PauliFlow[Measurement]")
 
 
 @dataclass(frozen=True)
@@ -114,52 +120,16 @@ class XZCorrections(Generic[_M_co]):
         x_corrections = x_corrections or {}
         z_corrections = z_corrections or {}
 
-        nodes_set = set(og.graph.nodes)
-        outputs_set = frozenset(og.output_nodes)
         non_outputs_set = set(og.measurements)
 
         if not non_outputs_set.issuperset(x_corrections.keys() | z_corrections.keys()):
             raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectKeys)
 
-        dag = _corrections_to_dag(x_corrections, z_corrections)
-        partial_order_layers = _dag_to_partial_order_layers(dag)
+        partial_order_layers = _corrections_to_partial_order_layers(
+            og, x_corrections, z_corrections
+        )  # Raises an `XZCorrectionsError` if mappings are not well formed.
 
-        if partial_order_layers is None:
-            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
-
-        # If there're no corrections, the partial order has 2 layers only: outputs and measured nodes.
-        if len(partial_order_layers) == 0:
-            partial_order_layers = [outputs_set] if outputs_set else []
-            if non_outputs_set:
-                partial_order_layers.append(frozenset(non_outputs_set))
-            return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
-
-        # If the open graph has outputs, the first element in the output of `_dag_to_partial_order_layers(dag)` may or may not contain all or some output nodes.
-        if outputs_set:
-            if measured_layer_0 := partial_order_layers[0] - outputs_set:
-                # `partial_order_layers[0]` contains (some or all) outputs and measured nodes
-                partial_order_layers = [
-                    outputs_set,
-                    frozenset(measured_layer_0),
-                    *partial_order_layers[1:],
-                ]
-            else:
-                # `partial_order_layers[0]` contains only (some or all) outputs
-                partial_order_layers = [
-                    outputs_set,
-                    *partial_order_layers[1:],
-                ]
-
-        ordered_nodes = frozenset.union(*partial_order_layers)
-
-        if not ordered_nodes.issubset(nodes_set):
-            raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
-
-        # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
-        if unordered_nodes := frozenset(nodes_set - ordered_nodes):
-            partial_order_layers[-1] |= unordered_nodes
-
-        return XZCorrections(og, x_corrections, z_corrections, tuple(partial_order_layers))
+        return XZCorrections(og, x_corrections, z_corrections, partial_order_layers)
 
     def to_pattern(
         self: XZCorrections[Measurement],
@@ -353,6 +323,52 @@ class XZCorrections(Generic[_M_co]):
 
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
+
+    def subs(
+        self: XZCorrections[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> XZCorrections[Measurement]:
+        """Substitute a parameter with a value or expression in all measurement angles of the open graph.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            A new instance of the XZCorrections object with the updated measurement parameters.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.subs`.
+        """
+        new_og = self.og.subs(variable, substitute)
+        return dataclasses.replace(self, og=new_og)
+
+    def xreplace(
+        self: XZCorrections[Measurement], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> XZCorrections[Measurement]:
+        """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        XZCorrections[Measurement]
+            A new instance of the XZCorrections object with the updated measurement angles.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.xreplace`.
+        """
+        new_og = self.og.xreplace(assignment)
+        return dataclasses.replace(self, og=new_og)
 
 
 @dataclass(frozen=True)
@@ -602,6 +618,52 @@ class PauliFlow(Generic[_M_co]):
         Plane | Axis
         """
         return self.og.measurements[node].to_plane_or_axis()
+
+    def subs(  # noqa: PYI019 Annotating with `Self` is not possible since `self` must be of parametric type `Measurement`.
+        self: _T_PauliFlowMeasurement, variable: Parameter, substitute: ExpressionOrSupportsFloat
+    ) -> _T_PauliFlowMeasurement:
+        """Substitute a parameter with a value or expression in all measurement angles of the open graph.
+
+        Parameters
+        ----------
+        variable : Parameter
+            The symbolic expression to be replaced within the measurement angles.
+        substitute : ExpressionOrSupportsFloat
+            The value or symbolic expression to substitute in place of `variable`.
+
+        Returns
+        -------
+        _T_PauliFlowMeasurement
+            A new instance of the flow object with the updated measurement parameters.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.subs`.
+        """
+        new_og = self.og.subs(variable, substitute)
+        return dataclasses.replace(self, og=new_og)
+
+    def xreplace(  # noqa: PYI019
+        self: _T_PauliFlowMeasurement, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> _T_PauliFlowMeasurement:
+        """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
+
+        Parameters
+        ----------
+        assignment : Mapping[Parameter, ExpressionOrSupportsFloat]
+            A dictionary-like mapping where keys are the `Parameter` objects to be replaced and values are the new expressions or numerical values.
+
+        Returns
+        -------
+        _T_PauliFlowMeasurement
+            A new instance of the flow object with the updated measurement angles.
+
+        Notes
+        -----
+        See notes and examples in :func:`OpenGraph.xreplace`.
+        """
+        new_og = self.og.xreplace(assignment)
+        return dataclasses.replace(self, og=new_og)
 
 
 @dataclass(frozen=True)
@@ -940,26 +1002,70 @@ def _corrections_to_dag(
     return nx.DiGraph(relations)
 
 
-def _dag_to_partial_order_layers(dag: nx.DiGraph[int]) -> list[frozenset[int]] | None:
-    """Return the partial order encoded in a directed graph in a layer form if it exists.
+def _corrections_to_partial_order_layers(
+    og: OpenGraph[_M_co], x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
+) -> tuple[frozenset[int], ...]:
+    """Return the partial order encoded in the correction mappings in a layer form if it exists.
 
     Parameters
     ----------
-    dag : nx.DiGraph[int]
-        A directed graph.
+    og : OpenGraph[_M_co]
+        The open graph with respect to which the XZ-corrections are defined.
+    x_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
+    z_corrections : Mapping[int, AbstractSet[int]]
+        Mapping of Z-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an Z-correction must be applied depending on the measurement result of `key`.
 
     Returns
     -------
-    list[set[int]] | None
-        Partial order between corrected qubits in a layer form or `None` if the input directed graph is not acyclical.
+    tuple[frozenset[int], ...]
+        Partial order between the open graph's in a layer form.
         The set `layers[i]` comprises the nodes in layer `i`. Nodes in layer `i` are "larger" in the partial order than nodes in layer `i+1`.
-    """
-    try:
-        topo_gen = reversed(list(nx.topological_generations(dag)))
-    except nx.NetworkXUnfeasible:
-        return None
 
-    return [frozenset(layer) for layer in topo_gen]
+    Raises
+    ------
+    XZCorrectionsError
+        If the input dictionaries are not well formed. In well-formed correction dictionaries:
+            - Keys are a subset of the measured nodes.
+            - Values correspond to nodes of the open graph.
+            - Corrections do not form closed loops.
+    """
+    oset = frozenset(og.output_nodes)  # First layer by convention if not empty
+    dag: defaultdict[int, set[int]] = defaultdict(
+        set
+    )  # `i: {j}` represents `i -> j`, i.e., a correction applied to qubit `j`, conditioned on the measurement outcome of qubit `i`.
+    indegree_map: dict[int, int] = {}
+
+    for corrections in [x_corrections, z_corrections]:
+        for measured_node, corrected_nodes in corrections.items():
+            if measured_node not in oset:
+                for corrected_node in corrected_nodes - oset:
+                    if corrected_node not in dag[measured_node]:  # Don't include multiple edges in the dag.
+                        dag[measured_node].add(corrected_node)
+                        indegree_map[corrected_node] = indegree_map.get(corrected_node, 0) + 1
+
+    zero_indegree = og.graph.nodes - oset - indegree_map.keys()
+    generations = compute_topological_generations(dag, indegree_map, zero_indegree)
+    if generations is None:
+        raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.ClosedLoop)
+
+    if len(generations) == 0:
+        if oset:
+            return (oset,)
+        return ()
+
+    ordered_nodes = frozenset.union(*generations)
+
+    if not ordered_nodes.issubset(og.graph.nodes):
+        raise XZCorrectionsGenericError(XZCorrectionsGenericErrorReason.IncorrectValues)
+
+    # We include all the non-output nodes not involved in the corrections in the last layer (first measured nodes).
+    if unordered_nodes := frozenset(og.graph.nodes - ordered_nodes - oset):
+        generations = *generations[:-1], frozenset(generations[-1] | unordered_nodes)
+
+    if oset:
+        return oset, *generations[::-1]
+    return generations[::-1]
 
 
 def _check_correction_function_domain(
