@@ -16,7 +16,7 @@ from graphix import command
 from graphix.fundamentals import AbstractMeasurement, Plane, angle_to_rad
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Mapping, Sequence
+    from collections.abc import Container, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
 
     from graphix.command import Node
@@ -240,6 +240,22 @@ def pattern_to_str(
     return result
 
 
+def set_to_str(objects: Iterable[object], output: OutputFormat) -> str:
+    """Convert a set to a formatted string representation.
+
+    Parameters
+    ----------
+    objects : Iterable[object]
+        The set to format.
+    output : OutputFormat
+        The desired output format (ASCII, LaTeX or Unicode).
+    """
+    contents = ", ".join(str(item) for item in objects)
+    if output == OutputFormat.LaTeX:
+        return f"\\{{{contents}\\}}"
+    return f"{{{contents}}}"
+
+
 def correction_function_to_str(
     correction_function: Mapping[int, AbstractSet[int]], cf_name: str, output: OutputFormat, multiline: bool = False
 ) -> str:
@@ -269,13 +285,9 @@ def correction_function_to_str(
         else (r", \;" if output == OutputFormat.LaTeX else ", ")
     )
 
-    if output == OutputFormat.LaTeX:
-        return separator.join(
-            f"{cf_name}({node}) = " + r"\{{{}\}}".format(", ".join(map(str, cset)))
-            for node, cset in correction_function.items()
-        )
-
-    return separator.join(f"{cf_name}({node}) = { {*cset} }" for node, cset in correction_function.items())
+    return separator.join(
+        f"{cf_name}({node}) = {set_to_str(cset, output)}" for node, cset in correction_function.items()
+    )
 
 
 def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], output: OutputFormat) -> str:
@@ -294,17 +306,38 @@ def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], outpu
     """
     match output:
         case OutputFormat.ASCII:
-            sep = " < "
+            separator = " < "
         case OutputFormat.Unicode:
-            sep = " ≺ "
+            separator = " ≺ "
         case OutputFormat.LaTeX:
-            sep = r" \prec "
+            separator = r" \prec "
         case _:
             assert_never(output)
 
-    if output == OutputFormat.LaTeX:
-        return sep.join(r"\{{{}\}}".format(", ".join(map(str, layer))) for layer in partial_order_layers[::-1])
-    return sep.join(f"{ {*layer} }" for layer in partial_order_layers[::-1])
+    return separator.join(f"{set_to_str(layer, output)}" for layer in partial_order_layers[::-1])
+
+
+def get_component_separator(output: OutputFormat, multiline: bool = False) -> str:
+    """Return a component separator to string-format a `PauliFlow` or a `XZCorrections` object.
+
+    Parameters
+    ----------
+    output : OutputFormat
+        The desired output format (ASCII, LaTeX or Unicode).
+    multiline : bool, optional
+        If ``True``, format each component on a separate line (or LaTeX line break).
+        If ``False``, format each component set on a single line separated by semicolons.
+        Default is ``False``.
+
+    Returns
+    -------
+    str
+    """
+    return (
+        (r";\\" if output == OutputFormat.LaTeX else "\n")
+        if multiline
+        else (r"; \;" if output == OutputFormat.LaTeX else "; ")
+    )
 
 
 def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, multiline: bool = False) -> str:
@@ -326,7 +359,7 @@ def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, mult
     str
         A string representation of the flow object formatted according to the specified output format and layout.
     """
-    separator = r",\\" if output == OutputFormat.LaTeX else "\n"
+    separator = get_component_separator(output, multiline)
 
     return separator.join(
         (
@@ -355,7 +388,7 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
     str
         A string representation of the XZCorrections object formatted according to the specified output format and layout.
     """
-    separator = r",\\" if output == OutputFormat.LaTeX else "\n"
+    separator = get_component_separator(output, multiline)
 
     return separator.join(
         (

@@ -143,19 +143,35 @@ def example_og() -> OpenGraph[Measurement]:
 def test_cflow_str() -> None:
     flow = example_og().extract_causal_flow()
 
-    assert str(flow) == "c(3) = {5}, c(4) = {6}, c(1) = {3}, c(2) = {4}\n{1, 2} < {3, 4} < {5, 6}"
+    assert str(flow) == "c(3) = {5}, c(4) = {6}, c(1) = {3}, c(2) = {4}; {1, 2} < {3, 4} < {5, 6}"
+
+    assert (
+        flow.to_latex()
+        == r"c(3) = \{5\}, \;c(4) = \{6\}, \;c(1) = \{3\}, \;c(2) = \{4\}; \;\{1, 2\} \prec \{3, 4\} \prec \{5, 6\}"
+    )
+
+    assert flow.to_unicode() == "c(3) = {5}, c(4) = {6}, c(1) = {3}, c(2) = {4}; {1, 2} ≺ {3, 4} ≺ {5, 6}"
+
+    assert flow.to_ascii(multiline=True) == "c(3) = {5}\nc(4) = {6}\nc(1) = {3}\nc(2) = {4}\n{1, 2} < {3, 4} < {5, 6}"
+
+    assert (
+        flow.to_latex(multiline=True)
+        == r"c(3) = \{5\},\\c(4) = \{6\},\\c(1) = \{3\},\\c(2) = \{4\};\\\{1, 2\} \prec \{3, 4\} \prec \{5, 6\}"
+    )
+
+    assert flow.to_unicode(multiline=True) == "c(3) = {5}\nc(4) = {6}\nc(1) = {3}\nc(2) = {4}\n{1, 2} ≺ {3, 4} ≺ {5, 6}"
 
 
 def test_gflow_str() -> None:
     flow = example_og().extract_gflow()
 
-    assert str(flow) == "g(1) = {3, 6}, g(2) = {4, 5}, g(3) = {5}, g(4) = {6}\n{1, 2} < {3, 4} < {5, 6}"
+    assert str(flow) == "g(1) = {3, 6}, g(2) = {4, 5}, g(3) = {5}, g(4) = {6}; {1, 2} < {3, 4} < {5, 6}"
 
 
 def test_pflow_str() -> None:
     flow = example_og().extract_pauli_flow()
 
-    assert str(flow) == "p(1) = {3, 6}, p(2) = {4, 5}, p(3) = {5}, p(4) = {6}\n{1, 2} < {3, 4} < {5, 6}"
+    assert str(flow) == "p(1) = {3, 6}, p(2) = {4, 5}, p(3) = {5}, p(4) = {6}; {1, 2} < {3, 4} < {5, 6}"
 
 
 def test_xzcorr_str() -> None:
@@ -163,5 +179,5 @@ def test_xzcorr_str() -> None:
 
     assert (
         str(flow)
-        == "x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}\nz(1) = {4, 5}, z(2) = {3, 6}\n{1, 2} < {3, 4} < {5, 6}"
+        == "x(3) = {5}, x(4) = {6}, x(1) = {3}, x(2) = {4}; z(1) = {4, 5}, z(2) = {3, 6}; {1, 2} < {3, 4} < {5, 6}"
     )
