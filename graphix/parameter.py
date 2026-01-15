@@ -315,9 +315,9 @@ ExpressionOrFloat = Expression | float
 
 ExpressionOrComplex = Expression | complex
 
-ExpressionOrSupportsFloat = Expression | SupportsFloat
+ExpressionOrSupportsFloat = ExpressionOrFloat | SupportsFloat
 
-ExpressionOrSupportsComplex = Expression | SupportsComplex
+ExpressionOrSupportsComplex = ExpressionOrComplex | SupportsComplex
 
 
 T = TypeVar("T")

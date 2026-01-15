@@ -4,6 +4,7 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 from cotengra.oe import PathOptimizer
+from quimb import oset
 from typing_extensions import Self
 
 class Tensor:
@@ -30,6 +31,7 @@ class Tensor:
 
 class TensorNetwork:
     tensor_map: dict[str, Tensor]
+    tag_map: dict[str, str]
 
     def __init__(
         self,
@@ -40,10 +42,10 @@ class TensorNetwork:
     ) -> None: ...
     def _get_tids_from_tags(
         self, tags: Sequence[str] | str | int | None, which: Literal["all", "any", "!all", "!any"] = "all"
-    ) -> set[str]: ...
+    ) -> oset[str]: ...
     def _get_tids_from_inds(
         self, inds: Sequence[str] | str | int | None, which: Literal["all", "any", "!all", "!any"] = "all"
-    ) -> set[str]: ...
+    ) -> oset[str]: ...
     def __iter__(self) -> Iterator[Tensor]: ...
     def add(
         self,
