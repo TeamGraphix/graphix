@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.measurements import Outcome
+    from graphix.simulator import _BackendLiteral
 
 NB_ROUNDS = 100
 
@@ -54,7 +55,7 @@ class CheckedBranchSelector(RandomBranchSelector):
         ),
     ],
 )
-def test_expectation_value(fx_rng: Generator, backend: str) -> None:
+def test_expectation_value(fx_rng: Generator, backend: _BackendLiteral) -> None:
     # Pattern that measures 0 on qubit 0 with probability 1.
     pattern = Pattern(cmds=[N(0), M(0)])
     branch_selector = CheckedBranchSelector(expected={0: 1.0})
@@ -75,7 +76,7 @@ def test_expectation_value(fx_rng: Generator, backend: str) -> None:
         ),
     ],
 )
-def test_random_branch_selector(fx_rng: Generator, backend: str) -> None:
+def test_random_branch_selector(fx_rng: Generator, backend: _BackendLiteral) -> None:
     branch_selector = RandomBranchSelector()
     pattern = Pattern(cmds=[N(0), M(0)])
     for _ in range(NB_ROUNDS):
@@ -93,7 +94,7 @@ def test_random_branch_selector(fx_rng: Generator, backend: str) -> None:
         "tensornetwork",
     ],
 )
-def test_random_branch_selector_without_pr_calc(backend: str) -> None:
+def test_random_branch_selector_without_pr_calc(backend: _BackendLiteral) -> None:
     branch_selector = RandomBranchSelector(pr_calc=False)
     # Pattern that measures 0 on qubit 0 with probability > 0.999999999, to avoid numerical errors when exploring impossible branches.
     pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
@@ -116,7 +117,7 @@ def test_random_branch_selector_without_pr_calc(backend: str) -> None:
     ],
 )
 @pytest.mark.parametrize("outcome", itertools.product([0, 1], repeat=3))
-def test_fixed_branch_selector(backend: str, outcome: list[Outcome]) -> None:
+def test_fixed_branch_selector(backend: _BackendLiteral, outcome: list[Outcome]) -> None:
     results1: dict[int, Outcome] = dict(enumerate(outcome[:-1]))
     results2: dict[int, Outcome] = {2: outcome[2]}
     branch_selector = FixedBranchSelector(results1, default=FixedBranchSelector(results2))
@@ -136,7 +137,7 @@ def test_fixed_branch_selector(backend: str, outcome: list[Outcome]) -> None:
         "tensornetwork",
     ],
 )
-def test_fixed_branch_selector_no_default(backend: str) -> None:
+def test_fixed_branch_selector_no_default(backend: _BackendLiteral) -> None:
     results: dict[int, Outcome] = {}
     branch_selector = FixedBranchSelector(results)
     pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
@@ -155,7 +156,7 @@ def test_fixed_branch_selector_no_default(backend: str) -> None:
     ],
 )
 @pytest.mark.parametrize("outcome", [0, 1])
-def test_const_branch_selector(backend: str, outcome: Outcome) -> None:
+def test_const_branch_selector(backend: _BackendLiteral, outcome: Outcome) -> None:
     branch_selector = ConstBranchSelector(outcome)
     pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
     for _ in range(NB_ROUNDS):
