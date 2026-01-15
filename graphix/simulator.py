@@ -19,9 +19,13 @@ from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import BaseM, CommandKind, MeasureUpdate, N
 from graphix.measurements import Measurement, Outcome
-from graphix.sim import Backend, DensityMatrixBackend, StatevectorBackend
+from graphix.sim import (
+    Backend,
+    DensityMatrixBackend,
+    StatevectorBackend,
+    TensorNetworkBackend,
+)
 from graphix.sim.base_backend import _StateT_co
-from graphix.sim.tensornet import TensorNetworkBackend
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
@@ -32,7 +36,11 @@ if TYPE_CHECKING:
     from graphix.command import BaseN
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
-    from graphix.sim import Data, _BackendLiteral, _BuiltinBackend
+    from graphix.sim import Data
+
+
+_BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBackend
+_BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
 
 
 class PrepareMethod(abc.ABC):

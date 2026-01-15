@@ -28,6 +28,7 @@ from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_
 from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
+from graphix.sim import DensityMatrix, MBQCTensorNet, Statevec
 from graphix.simulator import PatternSimulator
 from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
@@ -39,21 +40,20 @@ if TYPE_CHECKING:
 
     from numpy.random import Generator
 
+    from graphix.flow.core import CausalFlow, GFlow, XZCorrections
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import (
         Backend,
         Data,
-        DensityMatrix,
         DensityMatrixBackend,
-        Statevec,
         StatevectorBackend,
-        _BackendLiteral,
-        _BuiltinBackendState,
     )
     from graphix.sim.base_backend import _StateT_co
-    from graphix.sim.tensornet import MBQCTensorNet, TensorNetworkBackend
-    from graphix.flow.core import CausalFlow, GFlow, XZCorrections
+    from graphix.sim.tensornet import TensorNetworkBackend
+    from graphix.simulator import _BackendLiteral
     from graphix.states import State
+
+_BuiltinBackendState = DensityMatrix | Statevec | MBQCTensorNet
 
 
 class Pattern:

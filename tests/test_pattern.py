@@ -31,7 +31,7 @@ from graphix.transpiler import Circuit
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from graphix.sim import _BackendLiteral
+    from graphix.simulator import _BackendLiteral
 
 
 def compare_backend_result_with_statevec(backend_state: Statevec | DensityMatrix, statevec: Statevec) -> float:
