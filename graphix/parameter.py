@@ -315,9 +315,13 @@ ExpressionOrFloat = Expression | float
 
 ExpressionOrComplex = Expression | complex
 
-ExpressionOrSupportsFloat = ExpressionOrFloat | SupportsFloat
+ExpressionOrSupportsFloat = Expression | SupportsFloat
 
-ExpressionOrSupportsComplex = ExpressionOrComplex | SupportsComplex
+# `ExpressionOrSupportsComplex` is based on
+# `ExpressionOrSupportsFloat` rather than `Expression`, because `int`
+# and `float` implement `SupportsFloat` but not `SupportsComplex`,
+# even though `complex(int)` and `complex(float)` are valid.
+ExpressionOrSupportsComplex = ExpressionOrSupportsFloat | SupportsComplex
 
 
 T = TypeVar("T")
