@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.measurements import Outcome
-    from graphix.sim import _BackendLiteral
+    from graphix.simulator import _BackendLiteral
 
 NB_ROUNDS = 100
 
