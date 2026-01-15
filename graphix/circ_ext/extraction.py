@@ -1,16 +1,14 @@
-"""Module with tools for circuit extraction."""
+"""Tools for circuit extraction."""
 
 from __future__ import annotations
 
 import dataclasses
-from copy import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import combinations
 from typing import TYPE_CHECKING
 
 from graphix.fundamentals import Angle, Plane, Sign
 from graphix.measurements import Measurement, PauliMeasurement
-from graphix.opengraph import OpenGraph
 from graphix.pretty_print import SUBSCRIPTS
 
 if TYPE_CHECKING:
@@ -20,6 +18,7 @@ if TYPE_CHECKING:
     from graphix.circ_ext.compilation import CompilationPass
     from graphix.command import Node
     from graphix.flow.core import PauliFlow
+    from graphix.opengraph import OpenGraph
     from graphix.parameter import Expression
     from graphix.transpiler import Circuit
 
@@ -427,8 +426,7 @@ def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], di
         new_input_nodes.append(fresh_node)
         fresh_node += 1
 
-    output_nodes = copy(og.output_nodes)
     measurements = {**og.measurements, **dict.fromkeys(new_input_nodes, Measurement(0, Plane.XY))}
 
     # We reverse the inputs order to match the order of initial inputs.
-    return OpenGraph(graph, new_input_nodes[::-1], output_nodes, measurements), ancillary_inputs_map
+    return replace(og, graph=graph, input_nodes=new_input_nodes[::-1], measurements=measurements), ancillary_inputs_map

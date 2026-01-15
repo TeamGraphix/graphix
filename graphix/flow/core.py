@@ -667,29 +667,77 @@ class PauliFlow(Generic[_M_co]):
         new_og = self.og.xreplace(assignment)
         return dataclasses.replace(self, og=new_og)
 
+    def is_focused(self) -> bool:
+        """Verify if the input Pauli flow is focused.
+
+        Returns
+        -------
+        bool
+            ``True`` if the input Pauli flow is focused, ``False`` otherwise.
+
+        Notes
+        -----
+        This function verifies Definition 4.3 in Ref. [1].
+
+        References
+        ----------
+        [1] Simmons, 2021 (arXiv:2109.05654).
+        """
+        oc_set = self.og.measurements.keys()
+
+        for corrected_node, correction_set in self.correction_function.items():
+            odd_correction_set = self.og.odd_neighbors(correction_set)
+            symdiff_set = odd_correction_set.symmetric_difference(correction_set)
+            for node in oc_set - {corrected_node}:
+                meas_label = self.get_measurement_label(node)
+                if node in correction_set and meas_label not in {Plane.XY, Axis.X, Axis.Y}:
+                    return False
+                if node in odd_correction_set and meas_label not in {Plane.XZ, Plane.YZ, Axis.Y, Axis.Z}:
+                    return False
+                if meas_label == Axis.Y and node in symdiff_set:
+                    return False
+        return True
+
     @cached_property
     def pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
-        # check if `self` is focused
+        """Compute the Pauli strings associated with each node in the correction function.
+
+        This property requires the flow to be focused.
+
+        Returns
+        -------
+        dict[int, PauliString]
+            A dictionary where the keys are node indices (from the correction function) and the values are the computed `PauliString` objects.
+
+        Raises
+        ------
+        ValueError
+            If the flow is not focused (i.e., ``self.is_focused()`` is False).
+
+        Notes
+        -----
+        This property is cached; the dictionary is computed only once upon the first access and stored for subsequent calls.
+        See notes in `PauliString.from_measured_node` for additional information.
+        """
+        if not self.is_focused():
+            raise ValueError("Flow is not focused.")
         return {node: PauliString.from_measured_node(self, node) for node in self.correction_function}
 
-    # TODO: Up docstring
-    # TODO: add assume is focused.
     def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
-        """Extract a circuit from an MBQC pattern.
+        """Extract a circuit from a flow.
 
-        Parameters
-        ----------
-        pattern : Pattern
-            An MBQC pattern with Pauli flow.
+        This routine assumes that the flow ``self`` is focused (see Notes).
 
         Returns
         -------
         ExtractionResult
-            Wrapper over a Pauli-exponential DAG and a Clifford map encoding the linear transformation implemented by the input pattern.
+            Wrapper over a Pauli-exponential DAG and a Clifford map encoding the linear transformation implemented by the input flow.
 
         Notes
         -----
-        This method implements the algorithm in [1]. The extraction of the focused Pauli flow of the underlying open graph of the input pattern is done with the algorithm in [2].
+        - This method implements the algorithm in [1].
+
+        - Flows are guaranteed to be focused if obtained from :func:`OpenGraph.extract_pauli_flow` or :func:`OpenGraph.extract_gflow` (see [2]).
 
         References
         ----------
