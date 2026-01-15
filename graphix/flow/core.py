@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
+from functools import cached_property
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import networkx as nx
@@ -16,6 +17,7 @@ from typing_extensions import assert_never, override
 
 # `override` introduced in Python 3.12, `assert_never` introduced in Python 3.11
 import graphix.pattern
+from graphix.circ_ext.extraction import CliffordMap, ExtractionResult, PauliExponentialDAG, PauliString
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
@@ -664,6 +666,40 @@ class PauliFlow(Generic[_M_co]):
         """
         new_og = self.og.xreplace(assignment)
         return dataclasses.replace(self, og=new_og)
+
+    @cached_property
+    def pauli_strings(self: PauliFlow[Measurement]) -> dict[int, PauliString]:
+        # check if `self` is focused
+        return {node: PauliString.from_measured_node(self, node) for node in self.correction_function}
+
+    # TODO: Up docstring
+    # TODO: add assume is focused.
+    def extract_circuit(self: PauliFlow[Measurement]) -> ExtractionResult:
+        """Extract a circuit from an MBQC pattern.
+
+        Parameters
+        ----------
+        pattern : Pattern
+            An MBQC pattern with Pauli flow.
+
+        Returns
+        -------
+        ExtractionResult
+            Wrapper over a Pauli-exponential DAG and a Clifford map encoding the linear transformation implemented by the input pattern.
+
+        Notes
+        -----
+        This method implements the algorithm in [1]. The extraction of the focused Pauli flow of the underlying open graph of the input pattern is done with the algorithm in [2].
+
+        References
+        ----------
+        [1] Simmons, 2021 (arXiv:2109.05654).
+        [2] Mitosek and Backens, 2024 (arXiv:2410.23439).
+        """
+        pexp_dag = PauliExponentialDAG.from_focused_flow(self)
+        clifford_map = CliffordMap.from_focused_flow(self)
+
+        return ExtractionResult(pexp_dag=pexp_dag, clifford_map=clifford_map)
 
 
 @dataclass(frozen=True)
