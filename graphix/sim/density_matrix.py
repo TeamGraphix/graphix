@@ -10,7 +10,7 @@ import dataclasses
 import math
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex
+from typing import TYPE_CHECKING
 
 import numpy as np
 from typing_extensions import override
@@ -25,6 +25,7 @@ from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from typing import SupportsComplex, SupportsFloat
 
     from graphix.noise_models.noise_model import Noise
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
@@ -82,7 +83,7 @@ class DensityMatrix(DenseState):
             if len(input_list) != 0 and isinstance(input_list[0], Iterable):
 
                 def get_row(
-                    item: Iterable[ExpressionOrSupportsComplex] | State | Expression | SupportsComplex,
+                    item: Iterable[ExpressionOrSupportsComplex] | State | Expression | SupportsFloat | SupportsComplex,
                 ) -> list[ExpressionOrSupportsComplex]:
                     if isinstance(item, Iterable):
                         return list(item)
