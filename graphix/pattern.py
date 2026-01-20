@@ -22,6 +22,7 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
+from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
@@ -1315,8 +1316,12 @@ class Pattern:
             self.standardize()
         meas_order = None
         if not self._pauli_preprocessed:
-            cf = self.extract_opengraph().find_causal_flow()
-            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
+            try:
+                cf = self.extract_causal_flow()
+            except FlowError:
+                meas_order = None
+            else:
+                meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:])))
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
