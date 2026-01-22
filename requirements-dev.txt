@@ -12,8 +12,7 @@ scipy-stubs
 
 # Tests
 # Keep in sync with CI
-# Nox with [pbs] allows it to automatically download missing Python versions
-nox[pbs]==2025.11.12
+nox==2025.11.12
 psutil
 pytest
 pytest-benchmark
@@ -27,4 +26,4 @@ qiskit_qasm3_import
 qiskit-aer; python_version < "3.14"
 
 openqasm-parser>=3.1.0
-graphix-qasm-parser  @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git
+graphix-qasm-parser @ git+https://github.com/TeamGraphix/graphix-qasm-parser.git
