@@ -48,6 +48,7 @@ def check_qasm3(pattern: Pattern) -> None:
     aer_backend = AerSimulator(method="statevector")
     transpiled = qiskit.transpile(qc, aer_backend)
     result = aer_backend.run(transpiled, shots=1, memory=True).result()
+    measurements = [cmd for cmd in pattern if cmd.kind == CommandKind.M]
     if qc.clbits:
         # One bitstring per shot; we ran exactly one shot.
         memory = result.get_memory()[0]
@@ -55,7 +56,7 @@ def check_qasm3(pattern: Pattern) -> None:
         # the first measured qubit appears at the end of the string.
         results: dict[int, Outcome] = {
             cmd.node: outcome(measurement == "1")
-            for cmd, measurement in zip(pattern.extract_measurement_commands(), reversed(memory), strict=True)
+            for cmd, measurement in zip(measurements, reversed(memory), strict=True)
         }
     else:
         results = {}
@@ -70,7 +71,7 @@ def check_qasm3(pattern: Pattern) -> None:
     nodes.reverse()
     backend.add_nodes(nodes=nodes, data=np.asarray(result.get_statevector()))
     # Trace out measured qubits.
-    for cmd in pattern.extract_measurement_commands():
+    for cmd in measurements:
         backend.measure(cmd.node, Measurement(angle=0, plane=Plane.XZ))
     # Reorder qubits to match the pattern's expected output ordering.
     backend.finalize(pattern.output_nodes)

@@ -317,7 +317,7 @@ def partial_order_to_str(partial_order_layers: Sequence[AbstractSet[int]], outpu
     return separator.join(f"{set_to_str(layer, output)}" for layer in partial_order_layers[::-1])
 
 
-def get_component_separator(output: OutputFormat, multiline: bool = False) -> str:
+def component_separator_for(output: OutputFormat, multiline: bool = False) -> str:
     """Return a component separator to string-format a `PauliFlow` or a `XZCorrections` object.
 
     Parameters
@@ -359,7 +359,7 @@ def flow_to_str(flow: PauliFlow[AbstractMeasurement], output: OutputFormat, mult
     str
         A string representation of the flow object formatted according to the specified output format and layout.
     """
-    separator = get_component_separator(output, multiline)
+    separator = component_separator_for(output, multiline)
 
     return separator.join(
         (
@@ -388,7 +388,7 @@ def xzcorr_to_str(xzcorr: XZCorrections[AbstractMeasurement], output: OutputForm
     str
         A string representation of the XZCorrections object formatted according to the specified output format and layout.
     """
-    separator = get_component_separator(output, multiline)
+    separator = component_separator_for(output, multiline)
 
     return separator.join(
         (

@@ -109,14 +109,14 @@ class Statevec(DenseState):
             elif nqubit != len(input_list):
                 raise ValueError("Mismatch between nqubit and length of input state.")
 
-            def get_statevector(
+            def state_to_statevector(
                 s: states.State | ExpressionOrSupportsComplex | Iterable[ExpressionOrSupportsComplex],
             ) -> npt.NDArray[np.complex128]:
                 if not isinstance(s, states.State):
                     raise TypeError("Data should be an homogeneous sequence of states.")
-                return s.get_statevector()
+                return s.to_statevector()
 
-            list_of_sv = [get_statevector(s) for s in input_list]
+            list_of_sv = [state_to_statevector(s) for s in input_list]
 
             tmp_psi = functools.reduce(lambda m0, m1: np.kron(m0, m1).astype(np.complex128), list_of_sv)
             # reshape
@@ -256,13 +256,13 @@ class Statevec(DenseState):
         qarg : int
             qubit index
         """
-        norm = _get_statevec_norm(self.psi)
+        norm = _norm(self.psi)
         if isinstance(norm, SupportsFloat):
             assert not np.isclose(norm, 0)
         index: list[slice[int] | int] = [slice(None)] * self.psi.ndim
         index[qarg] = 0
         psi = self.psi[tuple(index)]
-        norm = _get_statevec_norm(psi)
+        norm = _norm(psi)
         if isinstance(norm, SupportsFloat) and math.isclose(norm, 0):
             index[qarg] = 1
             psi = self.psi[tuple(index)]
@@ -334,12 +334,12 @@ class Statevec(DenseState):
         # then modified in place.
         if self.psi.dtype == np.object_:
             psi_o = self.psi.astype(np.object_, copy=False)
-            norm_o = _get_statevec_norm_symbolic(psi_o)
+            norm_o = _norm_symbolic(psi_o)
             psi_o /= norm_o
             self.psi = psi_o
         else:
             psi_c = self.psi.astype(np.complex128, copy=False)
-            norm_c = _get_statevec_norm_numeric(psi_c)
+            norm_c = _norm_numeric(psi_c)
             psi_c /= norm_c
             self.psi = psi_c
 
@@ -408,22 +408,22 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
     state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))
 
 
-def _get_statevec_norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
+def _norm_symbolic(psi: npt.NDArray[np.object_]) -> ExpressionOrFloat:
     """Return norm of the state."""
     flat = psi.flatten()
     return check_expression_or_float(np.sqrt(np.sum(flat.conj() * flat)))
 
 
-def _get_statevec_norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
+def _norm_numeric(psi: npt.NDArray[np.complex128]) -> float:
     flat = psi.flatten()
     norm_sq = np.sum(flat.conj() * flat)
     assert math.isclose(norm_sq.imag, 0, abs_tol=1e-15)
     return math.sqrt(norm_sq.real)
 
 
-def _get_statevec_norm(psi: Matrix) -> ExpressionOrFloat:
+def _norm(psi: Matrix) -> ExpressionOrFloat:
     """Return norm of the state."""
     # Narrow psi to concrete dtype
     if psi.dtype == np.object_:
-        return _get_statevec_norm_symbolic(psi.astype(np.object_, copy=False))
-    return _get_statevec_norm_numeric(psi.astype(np.complex128, copy=False))
+        return _norm_symbolic(psi.astype(np.object_, copy=False))
+    return _norm_numeric(psi.astype(np.complex128, copy=False))

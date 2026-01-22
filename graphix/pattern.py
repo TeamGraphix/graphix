@@ -22,7 +22,7 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
+from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -862,7 +862,7 @@ class Pattern:
             pos += 1
         return signal_dict
 
-    def _get_dependency(self) -> dict[int, set[int]]:
+    def _extract_dependency(self) -> dict[int, set[int]]:
         """Get dependency (byproduct correction & dependent measurement) structure of nodes in the graph (resource) state, according to the pattern.
 
         This is used to determine the optimum measurement order.
@@ -891,7 +891,7 @@ class Pattern:
         measured: set of int
             measured nodes.
         dependency: dict of set
-            which is produced by `_get_dependency`
+            which is produced by `_extract_dependency`
 
         Returns
         -------
@@ -1036,7 +1036,7 @@ class Pattern:
         nodes = set(graph.nodes)
         edges = set(graph.edges)
         not_measured = nodes - set(self.output_nodes)
-        dependency = self._get_dependency()
+        dependency = self._extract_dependency()
         self.update_dependency(self.results.keys(), dependency)
         meas_order = []
         removable_edges = set()
@@ -1072,54 +1072,18 @@ class Pattern:
         meas_cmds: list of command
             sorted measurement commands
         """
-        meas_cmds = []
-        for i in meas_order:
-            target = 0
-            while True:
-                cmd = self.__seq[target]
-                if cmd.kind == CommandKind.M and (cmd.node == i):
-                    meas_cmds.append(cmd)
-                    break
-                target += 1
-        return meas_cmds
+        meas_dict = self.extract_measurement_commands()
+        return [meas_dict[i] for i in meas_order]
 
-    def extract_measurement_commands(self) -> Iterator[command.M]:
-        """Return measurement commands.
+    def extract_measurement_commands(self) -> dict[int, command.M]:
+        """Return a dictionary mapping nodes to measurement commands.
 
         Returns
         -------
-        meas_cmds : Iterator[command.M]
-            measurement commands in the order of measurements
+        meas_dict : dict[int, command.M]
+            measurement commands indexed by nodes
         """
-        yield from (cmd for cmd in self if cmd.kind == CommandKind.M)
-
-    def get_meas_plane(self) -> dict[int, Plane]:
-        """Get measurement plane from the pattern.
-
-        Returns
-        -------
-        meas_plane: dict of graphix.pauli.Plane
-            list of planes representing measurement plane for each node.
-        """
-        meas_plane = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                meas_plane[cmd.node] = cmd.plane
-        return meas_plane
-
-    def get_angles(self) -> dict[int, ParameterizedAngle]:
-        """Get measurement angles of the pattern.
-
-        Returns
-        -------
-        angles : dict
-            measurement angles of the each node.
-        """
-        angles = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                angles[cmd.node] = cmd.angle
-        return angles
+        return {cmd.node: cmd for cmd in self if cmd.kind == CommandKind.M}
 
     def compute_max_degree(self) -> int:
         """Get max degree of a pattern.
@@ -1217,37 +1181,14 @@ class Pattern:
         # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
         return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
 
-    def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
-        """Get local-Clifford decorations from measurement or Clifford commands.
-
-        Parameters
-        ----------
-            conj (False) : bool, optional
-                Apply conjugations to all local Clifford operators.
-            include_identity (False) : bool, optional
-                Whether or not to include identity gates in the output
+    def extract_clifford(self) -> dict[int, Clifford]:
+        """Extract Clifford commands.
 
         Returns
         -------
             vops : dict
         """
-        vops = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                if include_identity:
-                    vops[cmd.node] = Clifford.I
-            elif cmd.kind == CommandKind.C:
-                if cmd.clifford == Clifford.I:
-                    if include_identity:
-                        vops[cmd.node] = cmd.clifford
-                elif conj:
-                    vops[cmd.node] = cmd.clifford.conj
-                else:
-                    vops[cmd.node] = cmd.clifford
-        for out in self.output_nodes:
-            if out not in vops and include_identity:
-                vops[out] = Clifford.I
-        return vops
+        return {cmd.node: cmd.clifford for cmd in self.__seq if cmd.kind == CommandKind.C}
 
     def connected_nodes(self, node: int, prepared: set[int] | None = None) -> list[int]:
         """Find nodes that are connected to a specified node.
@@ -1516,11 +1457,12 @@ class Pattern:
         graph = self.extract_graph()
         vin = self.input_nodes
         vout = self.output_nodes
-        meas_planes = self.get_meas_plane()
-        meas_angles = self.get_angles()
-        local_clifford = self.get_vops()
+        meas_dict = self.extract_measurement_commands()
+        meas_planes = {node: meas.plane for node, meas in meas_dict.items()}
+        meas_angles = {node: meas.angle for node, meas in meas_dict.items()}
+        clifford = self.extract_clifford()
 
-        vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
+        vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, clifford)
 
         if flow_from_pattern:
             vis.visualize_from_pattern(
@@ -1783,14 +1725,14 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
-    isolates = graph_state.get_isolates()
+    isolates = graph_state.isolates()
     for node in non_pauli_meas:
         if (node in isolates) and (node not in output_nodes):
             graph_state.remove_node(node)
             results[node] = 0
 
     # update command sequence
-    vops = graph_state.get_vops()
+    vops = graph_state.extract_vops()
     new_seq: list[Command] = []
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)

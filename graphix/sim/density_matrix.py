@@ -82,14 +82,14 @@ class DensityMatrix(DenseState):
             input_list = list(data)
             if len(input_list) != 0 and isinstance(input_list[0], Iterable):
 
-                def get_row(
+                def cast_row(
                     item: Iterable[ExpressionOrSupportsComplex] | State | Expression | SupportsFloat | SupportsComplex,
                 ) -> list[ExpressionOrSupportsComplex]:
                     if isinstance(item, Iterable):
                         return list(item)
                     raise TypeError("Every row of a matrix should be iterable.")
 
-                input_matrix: list[list[ExpressionOrSupportsComplex]] = [get_row(item) for item in input_list]
+                input_matrix: list[list[ExpressionOrSupportsComplex]] = [cast_row(item) for item in input_list]
                 self.rho = np.array(input_matrix)
                 if not lv.is_qubitop(self.rho):
                     raise ValueError("Cannot interpret the provided density matrix as a qubit operator.")
