@@ -12,7 +12,8 @@ scipy-stubs
 
 # Tests
 # Keep in sync with CI
-nox==2025.11.12
+# Nox with [pbs] allows it to automatically download missing Python versions
+nox[pbs]==2025.11.12
 psutil
 pytest
 pytest-benchmark
