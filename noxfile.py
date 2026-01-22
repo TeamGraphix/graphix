@@ -105,12 +105,18 @@ class ReverseDependency:
 @nox.parametrize(
     "package",
     [
-        ReverseDependency("https://github.com/thierry-martinez/graphix-stim-backend"),
-        ReverseDependency("https://github.com/TeamGraphix/graphix-symbolic"),
+        ReverseDependency(
+            "https://github.com/thierry-martinez/graphix-stim-backend",
+            version_constraint=VersionRange(upper=Version("3.14")),
+        ),
+        ReverseDependency(
+            "https://github.com/TeamGraphix/graphix-symbolic", version_constraint=VersionRange(upper=Version("3.14"))
+        ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
             branch="graphix_update",
+            version_constraint=VersionRange(lower=Version("3.12"), upper=Version("3.14")),
             doctest_modules=False,
             initialization=lambda session: session.run("python", "-m", "veriphix.sampling_circuits.experiments"),
         ),
