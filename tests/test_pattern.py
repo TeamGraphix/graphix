@@ -132,7 +132,7 @@ class TestPattern:
                 assert state.dims() == (1, 1)
             elif isinstance(state, MBQCTensorNet):
                 assert state.to_statevector().shape == (1,)
-            return sim.measure_method.get_measure_result(0)
+            return sim.measure_method.measurement_outcome(0)
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
@@ -332,7 +332,7 @@ class TestPattern:
         composed_pattern.perform_pauli_measurements()
         assert abs(len(composed_pattern.results) - len(pattern.results) - len(pattern1.results)) <= 2
 
-    def test_get_meas_plane(self) -> None:
+    def test_extract_measurement_commands(self) -> None:
         preset_meas_plane = [
             Plane.XY,
             Plane.XY,
@@ -349,17 +349,17 @@ class TestPattern:
         for i in range(len(preset_meas_plane)):
             pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(Clifford(vop_list[i % 3])))
         ref_meas_plane = {
-            0: Plane.XY,
-            1: Plane.XY,
-            2: Plane.YZ,
-            3: Plane.YZ,
-            4: Plane.XZ,
-            5: Plane.XY,
-            6: Plane.XZ,
-            7: Plane.YZ,
-            8: Plane.XZ,
+            0: M(0, Plane.XY),
+            1: M(1, Plane.XY, 0.5),
+            2: M(2, Plane.YZ),
+            3: M(3, Plane.YZ),
+            4: M(4, Plane.XZ),
+            5: M(5, Plane.XY),
+            6: M(6, Plane.XZ),
+            7: M(7, Plane.YZ),
+            8: M(8, Plane.XZ, 0.5),
         }
-        meas_plane = pattern.get_meas_plane()
+        meas_plane = pattern.extract_measurement_commands()
         assert meas_plane == ref_meas_plane
 
     @pytest.mark.parametrize("plane", Plane)

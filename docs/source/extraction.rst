@@ -16,8 +16,8 @@ This module provides functions to extract clusters from a given graph state.
 .. autoclass:: ResourceType
     :members:
 
-.. autofunction:: get_fusion_network_from_graph
+.. autofunction:: graph_to_fusion_network
 
 .. autofunction:: create_resource_graph
 
-.. autofunction:: get_fusion_nodes
+.. autofunction:: fusion_nodes

@@ -98,7 +98,7 @@ class TestPauli:
     @pytest.mark.parametrize(("p", "b"), itertools.product(Pauli.iterate(symbol_only=True), [0, 1]))
     def test_eigenstate(self, p: Pauli, b: int) -> None:
         ev = float(Sign.plus_if(b == 0)) if p != Pauli.I else 1
-        evec = p.eigenstate(b).get_statevector()
+        evec = p.eigenstate(b).to_statevector()
         assert np.allclose(p.matrix @ evec, ev * evec)
 
     def test_eigenstate_invalid(self) -> None:

@@ -20,7 +20,7 @@ import itertools
 
 import graphix
 from graphix import extraction
-from graphix.extraction import get_fusion_network_from_graph
+from graphix.extraction import graph_to_fusion_network
 
 # %%
 # Here we say we want a graph state with 9 nodes and 12 edges.
@@ -34,7 +34,7 @@ gs.draw()
 
 # %%
 # Decomposition with GHZ and linear cluster resource states with no limitation in their sizes.
-get_fusion_network_from_graph(gs)
+graph_to_fusion_network(gs)
 
 # %%
 # If you want to know what nodes are fused in each resource states,
@@ -43,14 +43,14 @@ get_fusion_network_from_graph(gs)
 #
 # [2] Daniel E. Browne and Terry Rudolph. Resource-efficient linear optical quantum computation.
 # Physical Review Letters, 95(1):010501, 2005.
-fused_graphs = get_fusion_network_from_graph(gs)
+fused_graphs = graph_to_fusion_network(gs)
 for idx1, idx2 in itertools.combinations(range(len(fused_graphs)), 2):
     print(
         f"fusion nodes between resource state {idx1} and "
-        f"resource state {idx2}: {extraction.get_fusion_nodes(fused_graphs[idx1], fused_graphs[idx2])}"
+        f"resource state {idx2}: {extraction.fusion_nodes(fused_graphs[idx1], fused_graphs[idx2])}"
     )
 
 # %%
 # You can also specify the maximum size of GHZ clusters and linear clusters available,
 # for more realistic fusion scheduling.
-get_fusion_network_from_graph(gs, max_ghz=4, max_lin=4)
+graph_to_fusion_network(gs, max_ghz=4, max_lin=4)

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from graphix.fundamentals import Angle
 
 
-def get_state(g: GraphState) -> Statevec:
+def graph_state_to_statevec(g: GraphState) -> Statevec:
     node_list = list(g.nodes)
     nqubit = len(g.nodes)
     gstate = Statevec(nqubit=nqubit)
@@ -81,26 +81,26 @@ class TestGraphSim:
         nqubit = 6
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
-        gstate = get_state(g)
+        gstate = graph_state_to_statevec(g)
         g.measure_x(0)
         gstate.evolve_single(meas_op(0), 0)  # x meas
         gstate.normalize()
         gstate.remove_qubit(0)
-        gstate2 = get_state(g)
+        gstate2 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_y(1, choice=0)
         gstate.evolve_single(meas_op(0.5 * ANGLE_PI), 0)  # y meas
         gstate.normalize()
         gstate.remove_qubit(0)
-        gstate2 = get_state(g)
+        gstate2 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.measure_z(3)
         gstate.evolve_single(meas_op(0.5 * ANGLE_PI, plane=Plane.YZ), 1)  # z meas
         gstate.normalize()
         gstate.remove_qubit(1)
-        gstate2 = get_state(g)
+        gstate2 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
     def test_e2(self) -> None:
@@ -108,26 +108,26 @@ class TestGraphSim:
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
         g.h(3)
-        gstate = get_state(g)
+        gstate = graph_state_to_statevec(g)
 
         g.equivalent_graph_e2(3, 4)
-        gstate2 = get_state(g)
+        gstate2 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
 
         g.equivalent_graph_e2(4, 0)
-        gstate3 = get_state(g)
+        gstate3 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
 
         g.equivalent_graph_e2(4, 5)
-        gstate4 = get_state(g)
+        gstate4 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate4.flatten())) == pytest.approx(1)
 
         g.equivalent_graph_e2(0, 3)
-        gstate5 = get_state(g)
+        gstate5 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate5.flatten())) == pytest.approx(1)
 
         g.equivalent_graph_e2(0, 3)
-        gstate6 = get_state(g)
+        gstate6 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate6.flatten())) == pytest.approx(1)
 
     def test_e1(self) -> None:
@@ -135,18 +135,18 @@ class TestGraphSim:
         edges = [(0, 1), (1, 2), (3, 4), (4, 5), (0, 3), (1, 4), (2, 5)]
         g = GraphState(nodes=np.arange(nqubit), edges=edges)
         g.nodes[3]["loop"] = True
-        gstate = get_state(g)
+        gstate = graph_state_to_statevec(g)
         g.equivalent_graph_e1(3)
 
-        gstate2 = get_state(g)
+        gstate2 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
         g.z(4)
-        gstate = get_state(g)
+        gstate = graph_state_to_statevec(g)
         g.equivalent_graph_e1(4)
-        gstate2 = get_state(g)
+        gstate2 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate2.flatten())) == pytest.approx(1)
         g.equivalent_graph_e1(4)
-        gstate3 = get_state(g)
+        gstate3 = graph_state_to_statevec(g)
         assert np.abs(np.dot(gstate.flatten().conjugate(), gstate3.flatten())) == pytest.approx(1)
 
     def test_local_complement(self) -> None:

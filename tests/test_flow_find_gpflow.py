@@ -49,7 +49,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     test_cases: list[AlgebraicOpenGraphTestCase] = []
 
     # Trivial open graph with pflow and nI = nO
-    def get_og_0() -> OpenGraph[Plane | Axis]:
+    def og_0() -> OpenGraph[Plane | Axis]:
         """Return an open graph with Pauli flow and equal number of outputs and inputs.
 
         The returned graph has the following structure:
@@ -62,7 +62,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
 
     test_cases.append(
         AlgebraicOpenGraphTestCase(
-            aog=AlgebraicOpenGraph(get_og_0()),
+            aog=AlgebraicOpenGraph(og_0()),
             radj=MatGF2([[1, 0], [0, 1]]),
             flow_demand_mat=MatGF2([[1, 0], [1, 1]]),
             order_demand_mat=MatGF2([[0, 0], [0, 0]]),
@@ -71,7 +71,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     )
 
     # Non-trivial open graph with pflow and nI = nO
-    def get_og_1() -> OpenGraph[Measurement]:
+    def og_1() -> OpenGraph[Measurement]:
         """Return an open graph with Pauli flow and equal number of outputs and inputs.
 
         The returned graph has the following structure:
@@ -96,7 +96,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     test_cases.extend(
         (
             AlgebraicOpenGraphTestCase(
-                aog=AlgebraicOpenGraph(get_og_1()),
+                aog=AlgebraicOpenGraph(og_1()),
                 radj=MatGF2(
                     [
                         [1, 0, 0, 0, 0, 0],
@@ -131,7 +131,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
             ),
             # Same open graph but we interpret the measurements on Pauli axes as planar measurements, therefore, there flow-demand and order demand matrices are different.
             AlgebraicOpenGraphTestCase(
-                aog=PlanarAlgebraicOpenGraph(get_og_1()),
+                aog=PlanarAlgebraicOpenGraph(og_1()),
                 radj=MatGF2(
                     [
                         [1, 0, 0, 0, 0, 0],
@@ -168,7 +168,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     )
 
     # Non-trivial open graph with pflow and nI != nO
-    def get_og_2() -> OpenGraph[Measurement]:
+    def og_2() -> OpenGraph[Measurement]:
         """Return an open graph with Pauli flow and unequal number of outputs and inputs.
 
         Example from Fig. 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
@@ -191,7 +191,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     test_cases.extend(
         (
             AlgebraicOpenGraphTestCase(
-                aog=AlgebraicOpenGraph(get_og_2()),
+                aog=AlgebraicOpenGraph(og_2()),
                 radj=MatGF2(
                     [[0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1], [0, 0, 1, 1, 0, 1], [0, 1, 0, 1, 1, 1], [1, 1, 1, 0, 0, 1]]
                 ),
@@ -206,7 +206,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
             # Same open graph but we interpret the measurements on Pauli axes as planar measurements, therefore, there flow-demand and order demand matrices are different.
             # The new flow-demand matrix is not invertible, therefore the open graph does not have gflow.
             AlgebraicOpenGraphTestCase(
-                aog=PlanarAlgebraicOpenGraph(get_og_2()),
+                aog=PlanarAlgebraicOpenGraph(og_2()),
                 radj=MatGF2(
                     [[0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1], [0, 0, 1, 1, 0, 1], [0, 1, 0, 1, 1, 1], [1, 1, 1, 0, 0, 1]]
                 ),

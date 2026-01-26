@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from graphix.fundamentals import ANGLE_PI, Plane
-from graphix.sim.statevec import Statevec, _get_statevec_norm_numeric
+from graphix.sim.statevec import Statevec, _norm_numeric
 from graphix.states import BasicStates, PlanarState
 
 if TYPE_CHECKING:
@@ -58,7 +58,7 @@ class TestStatevec:
         assert len(vec.dims()) == nqb
 
         vec = Statevec(nqubit=nqb, data=BasicStates.MINUS_I)
-        sv_list = [BasicStates.MINUS_I.get_statevector() for _ in range(nqb)]
+        sv_list = [BasicStates.MINUS_I.to_statevector() for _ in range(nqb)]
         sv = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128, copy=False), sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -68,7 +68,7 @@ class TestStatevec:
         rand_plane = fx_rng.choice(np.array(Plane))
         state = PlanarState(rand_plane, rand_angle)
         vec = Statevec(nqubit=nqb, data=state)
-        sv_list = [state.get_statevector() for _ in range(nqb)]
+        sv_list = [state.to_statevector() for _ in range(nqb)]
         sv = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128, copy=False), sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -78,7 +78,7 @@ class TestStatevec:
         rand_planes = fx_rng.choice(np.array(Plane), nqb)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(nqubit=nqb, data=states)
-        sv_list = [state.get_statevector() for state in states]
+        sv_list = [state.to_statevector() for state in states]
         sv = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128, copy=False), sv_list)
         assert np.allclose(vec.psi, sv.reshape((2,) * nqb))
         assert len(vec.dims()) == nqb
@@ -148,4 +148,4 @@ class TestStatevec:
 def test_normalize() -> None:
     statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
     statevec.remove_qubit(0)
-    assert _get_statevec_norm_numeric(statevec.psi.astype(np.complex128, copy=False)) == 1
+    assert _norm_numeric(statevec.psi.astype(np.complex128, copy=False)) == 1

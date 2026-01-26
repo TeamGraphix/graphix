@@ -74,10 +74,10 @@ class MBQCTensorNet(TensorNetwork):
         self.default_output_nodes = None if default_output_nodes is None else list(default_output_nodes)
         # prepare the graph state if graph_nodes and graph_edges are given
         if graph_nodes is not None and graph_edges is not None:
-            self.set_graph_state(graph_nodes, graph_edges)
+            self.prepare_graph_state(graph_nodes, graph_edges)
         self.__branch_selector = branch_selector
 
-    def get_open_tensor_from_index(self, index: int | str) -> npt.NDArray[np.complex128]:
+    def open_tensor(self, index: int | str) -> npt.NDArray[np.complex128]:
         """Get tensor specified by node index. The tensor has a dangling edge.
 
         Parameters
@@ -112,17 +112,17 @@ class MBQCTensorNet(TensorNetwork):
         ind = gen_str()
         tag = str(index)
         if state == "plus":
-            vec = BasicStates.PLUS.get_statevector()
+            vec = BasicStates.PLUS.to_statevector()
         elif state == "minus":
-            vec = BasicStates.MINUS.get_statevector()
+            vec = BasicStates.MINUS.to_statevector()
         elif state == "zero":
-            vec = BasicStates.ZERO.get_statevector()
+            vec = BasicStates.ZERO.to_statevector()
         elif state == "one":
-            vec = BasicStates.ONE.get_statevector()
+            vec = BasicStates.ONE.to_statevector()
         elif state == "iplus":
-            vec = BasicStates.PLUS_I.get_statevector()
+            vec = BasicStates.PLUS_I.to_statevector()
         elif state == "iminus":
-            vec = BasicStates.MINUS_I.get_statevector()
+            vec = BasicStates.MINUS_I.to_statevector()
         else:
             if isinstance(state, str):
                 raise TypeError(f"Unknown state: {state}")
@@ -232,17 +232,17 @@ class MBQCTensorNet(TensorNetwork):
                     raise Warning("Measurement outcome is chosen but the basis state was given.")
                 proj_vec = basis
             elif basis == "Z" and result == 0:
-                proj_vec = BasicStates.ZERO.get_statevector()
+                proj_vec = BasicStates.ZERO.to_statevector()
             elif basis == "Z" and result == 1:
-                proj_vec = BasicStates.ONE.get_statevector()
+                proj_vec = BasicStates.ONE.to_statevector()
             elif basis == "X" and result == 0:
-                proj_vec = BasicStates.PLUS.get_statevector()
+                proj_vec = BasicStates.PLUS.to_statevector()
             elif basis == "X" and result == 1:
-                proj_vec = BasicStates.MINUS.get_statevector()
+                proj_vec = BasicStates.MINUS.to_statevector()
             elif basis == "Y" and result == 0:
-                proj_vec = BasicStates.PLUS_I.get_statevector()
+                proj_vec = BasicStates.PLUS_I.to_statevector()
             elif basis == "Y" and result == 1:
-                proj_vec = BasicStates.MINUS_I.get_statevector()
+                proj_vec = BasicStates.MINUS_I.to_statevector()
             else:
                 raise ValueError("Invalid measurement basis.")
         else:
@@ -256,7 +256,7 @@ class MBQCTensorNet(TensorNetwork):
         self.add_tensor(proj_ts)
         return result
 
-    def set_graph_state(self, nodes: Iterable[int], edges: Iterable[tuple[int, int]]) -> None:
+    def prepare_graph_state(self, nodes: Iterable[int], edges: Iterable[tuple[int, int]]) -> None:
         """Prepare the graph state without directly applying CZ gates.
 
         Parameters
@@ -289,16 +289,16 @@ class MBQCTensorNet(TensorNetwork):
             if node not in ind_dict:
                 ind = gen_str()
                 self._dangling[str(node)] = ind
-                self.add_tensor(Tensor(BasicStates.PLUS.get_statevector(), [ind], [str(node), "Open"]))
+                self.add_tensor(Tensor(BasicStates.PLUS.to_statevector(), [ind], [str(node), "Open"]))
                 continue
             dim_tensor = len(vec_dict[node])
             tensor = np.array(
                 [
                     outer_product(
-                        [BasicStates.VEC[0 + 2 * vec_dict[node][i]].get_statevector() for i in range(dim_tensor)]
+                        [BasicStates.VEC[0 + 2 * vec_dict[node][i]].to_statevector() for i in range(dim_tensor)]
                     ),
                     outer_product(
-                        [BasicStates.VEC[1 + 2 * vec_dict[node][i]].get_statevector() for i in range(dim_tensor)]
+                        [BasicStates.VEC[1 + 2 * vec_dict[node][i]].to_statevector() for i in range(dim_tensor)]
                     ),
                 ]
             ) * 2 ** (dim_tensor / 4 - 1.0 / 2)
@@ -309,7 +309,7 @@ class MBQCTensorNet(TensorNetwork):
             raise ValueError("output_nodes is not set.")
         return self.default_output_nodes
 
-    def get_basis_coefficient(
+    def basis_coefficient(
         self, basis: int | str, normalize: bool = True, indices: Sequence[int] | None = None
     ) -> complex:
         """Calculate the coefficient of a given computational basis.
@@ -338,10 +338,10 @@ class MBQCTensorNet(TensorNetwork):
             node = str(indices[i])
             exp = len(indices) - i - 1
             if (basis // 2**exp) == 1:
-                state_out = BasicStates.ONE.get_statevector()  # project onto |1>
+                state_out = BasicStates.ONE.to_statevector()  # project onto |1>
                 basis -= 2**exp
             else:
-                state_out = BasicStates.ZERO.get_statevector()  # project onto |0>
+                state_out = BasicStates.ZERO.to_statevector()  # project onto |0>
             tensor = Tensor(state_out, [tn._dangling[node]], [node, f"qubit {i}", "Close"])
             # retag
             old_ind = tn._dangling[node]
@@ -353,11 +353,11 @@ class MBQCTensorNet(TensorNetwork):
         tn_simplified = tn.full_simplify("ADCR")
         coef = tn_simplified.contract(output_inds=[])
         if normalize:
-            norm = self.get_norm()
+            norm = self.norm()
             return coef / norm
         return coef
 
-    def get_basis_amplitude(self, basis: str | int) -> float:
+    def basis_amplitude(self, basis: str | int) -> float:
         """Calculate the probability amplitude of the specified computational basis state.
 
         Parameters
@@ -372,7 +372,7 @@ class MBQCTensorNet(TensorNetwork):
         """
         if isinstance(basis, str):
             basis = int(basis, 2)
-        coef = self.get_basis_coefficient(basis)
+        coef = self.basis_coefficient(basis)
         return abs(coef) ** 2
 
     def to_statevector(self, indices: Sequence[int] | None = None) -> npt.NDArray[np.complex128]:
@@ -393,14 +393,14 @@ class MBQCTensorNet(TensorNetwork):
         n_qubit = len(self._require_default_output_nodes()) if indices is None else len(indices)
         statevec: npt.NDArray[np.complex128] = np.zeros(2**n_qubit, np.complex128)
         for i in range(len(statevec)):
-            statevec[i] = self.get_basis_coefficient(i, normalize=False, indices=indices)
+            statevec[i] = self.basis_coefficient(i, normalize=False, indices=indices)
         return statevec / np.linalg.norm(statevec)
 
     def flatten(self) -> npt.NDArray[np.complex128]:
         """Return flattened statevector."""
         return self.to_statevector().flatten()
 
-    def get_norm(self, optimize: str | PathOptimizer | None = None) -> float:
+    def norm(self, optimize: str | PathOptimizer | None = None) -> float:
         """Calculate the norm of the state.
 
         Returns
@@ -466,7 +466,7 @@ class MBQCTensorNet(TensorNetwork):
         # contraction
         tn_cp_left = tn_cp_left.full_simplify("ADCR")
         exp_val = tn_cp_left.contract(output_inds=[], optimize=optimize)
-        norm = self.get_norm(optimize=optimize)
+        norm = self.norm(optimize=optimize)
         return exp_val / norm**2
 
     def evolve(self, operator: npt.NDArray[np.complex128], qubit_indices: list[int], decompose: bool = True) -> None:
@@ -534,7 +534,7 @@ class MBQCTensorNet(TensorNetwork):
         return self.__class__(branch_selector=self.__branch_selector, ts=self)
 
 
-def _get_decomposed_cz() -> list[npt.NDArray[np.complex128]]:
+def _decompose_cz() -> list[npt.NDArray[np.complex128]]:
     """Return the decomposed cz tensors.
 
     This is an internal method.
@@ -650,7 +650,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             decomposed_cz = []
         else:  # graph_prep == "sequential":
             state = MBQCTensorNet(default_output_nodes=pattern.output_nodes, branch_selector=branch_selector)
-            decomposed_cz = _get_decomposed_cz()
+            decomposed_cz = _decompose_cz()
         isolated_nodes = pattern.extract_isolated_nodes()
         super().__init__(
             state,
@@ -748,7 +748,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             measure plane and angle
         """
         if node in self._isolated_nodes:
-            vector: npt.NDArray[np.complex128] = self.state.get_open_tensor_from_index(node)
+            vector: npt.NDArray[np.complex128] = self.state.open_tensor(node)
             probs = (np.abs(vector) ** 2).astype(np.float64)
             probs /= np.sum(probs)
             result: Outcome = self.branch_selector.measure(node, lambda: probs[0], rng=rng)
@@ -760,7 +760,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             buffer = 2**0.5
         if isinstance(measurement.angle, Expression):
             raise TypeError("Parameterized pattern unsupported.")
-        vec = PlanarState(measurement.plane, measurement.angle).get_statevector()
+        vec = PlanarState(measurement.plane, measurement.angle).to_statevector()
         if result:
             vec = Ops.from_axis(measurement.plane.orth) @ vec
         proj_vec = vec * buffer
@@ -779,7 +779,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         measure_method : MeasureMethod
             The measure method to use
         """
-        if sum(measure_method.get_measure_result(j) for j in cmd.domain) % 2 == 1:
+        if sum(measure_method.measurement_outcome(j) for j in cmd.domain) % 2 == 1:
             op = Ops.X if isinstance(cmd, command.X) else Ops.Z
             self.state.evolve_single(cmd.node, op, str(cmd.kind))
 

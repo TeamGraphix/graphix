@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #389, #391: `Pattern.extract_opengraph` raises an exception if pattern has `N` commands which do not represent a |+> state.
 
-- #404: Fixed pattern export to OpenQASM 3. Compatibility with Qiskit
+- #177, #404: Fixed pattern export to OpenQASM 3. Compatibility with Qiskit
   is ensured with normalization passed `incorporate_pauli_results` and
   `single_qubit_domains`.
 
@@ -81,6 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #407:
   - Modified the constructor `XZCorrections.from_measured_nodes_mapping` so that it doesn't need to create an `nx.DiGraph` instance. This fixes an unreported bug in the method.
   - Removed modules `graphix.gflow` and `graphix.find_pflow`.
+
+- #414: Tests are now type-checked.
+
+- #418: `Pattern.extract_measurement_commands` now returns a dictionary. Removed `Pattern.get_meas_plane` and `Pattern.get_angles`.
+
+- #220, #418: `get_`/`set_`-prefixed functions are renamed with more meaningful names.
 
 ## [0.3.3] - 2025-10-23
 

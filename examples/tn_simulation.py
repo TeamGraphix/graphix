@@ -142,7 +142,7 @@ plt.show()
 # %%
 # Let's calculate the measuring probability corresponding to the first basis state.
 
-value = mbqc_tn.get_basis_amplitude(0)
+value = mbqc_tn.basis_amplitude(0)
 print(f"Probability for {0} is {value}")
 
 # %%
@@ -232,7 +232,7 @@ max_prob = 0
 most_prob_state = 0
 bars = []
 for i in range(2**n):
-    value = mbqc_tn.get_basis_amplitude(i)
+    value = mbqc_tn.basis_amplitude(i)
     bars.append(value)
 
 # %%

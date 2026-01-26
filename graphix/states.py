@@ -20,18 +20,18 @@ class State(ABC):
     """Abstract base class for single qubit states objects.
 
     Only requirement for concrete classes is to have
-    a get_statevector() method that returns the statevector
+    a to_statevector() method that returns the statevector
     representation of the state
     """
 
     @abc.abstractmethod
-    def get_statevector(self) -> npt.NDArray[np.complex128]:
+    def to_statevector(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
 
-    def get_densitymatrix(self) -> npt.NDArray[np.complex128]:
+    def to_densitymatrix(self) -> npt.NDArray[np.complex128]:
         """Return the density matrix."""
         # return DM in 2**n x 2**n dim (2x2 here)
-        return np.outer(self.get_statevector(), self.get_statevector().conj()).astype(np.complex128, copy=False)
+        return np.outer(self.to_statevector(), self.to_statevector().conj()).astype(np.complex128, copy=False)
 
 
 @dataclasses.dataclass
@@ -62,7 +62,7 @@ class PlanarState(State):
         """Return a string description of the planar state."""
         return f"PlanarState object defined in plane {self.plane} with angle {self.angle}."
 
-    def get_statevector(self) -> npt.NDArray[np.complex128]:
+    def to_statevector(self) -> npt.NDArray[np.complex128]:
         """Return the state vector."""
         angle_rad = angle_to_rad(self.angle)
         if self.plane == Plane.XY:
