@@ -87,6 +87,50 @@ class TestPattern:
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
 
+    # https://github.com/TeamGraphix/graphix/issues/157
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            Pattern(
+                input_nodes=[0],
+                cmds=[
+                    N(1),
+                    N(2),
+                    E((0, 1)),
+                    E((1, 2)),
+                    M(1, Plane.XY, 0),
+                    M(0, Plane.XY, 0, {1}),
+                    Z(2, {0}),
+                ],
+            ),
+            Pattern(
+                input_nodes=[3],
+                cmds=[
+                    N(1),
+                    E((1, 3)),
+                    N(4),
+                    E((1, 4)),
+                    N(0),
+                    E((3, 0)),
+                    M(3),
+                    M(1, s_domain={3}),
+                    N(2),
+                    E((0, 2)),
+                    M(0),
+                    N(5),
+                    E((4, 5)),
+                    M(4, s_domain={1}, t_domain={3}),
+                    Z(5, {1}),
+                    X(2, {0}),
+                    X(5, {4}),
+                ],
+            ),
+        ],
+    )
+    def test_minimize_space_runnability(self, pattern: Pattern) -> None:
+        pattern.minimize_space()
+        pattern.check_runnability()
+
     def test_pauli_non_contiguous(self) -> None:
         pattern = Pattern(input_nodes=[0])
         pattern.extend(
