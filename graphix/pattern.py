@@ -42,7 +42,11 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.flow.core import CausalFlow, GFlow, XZCorrections
-    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
+    from graphix.parameter import (
+        ExpressionOrSupportsComplex,
+        ExpressionOrSupportsFloat,
+        Parameter,
+    )
     from graphix.sim import (
         Backend,
         Data,
@@ -113,7 +117,6 @@ class Pattern:
         else:
             self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
         self.__n_node = len(self.__input_nodes)  # total number of nodes in the graph state
-        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq = []
         # output nodes are initially a copy input nodes, since none are measured yet
@@ -135,7 +138,6 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
-        self._pauli_preprocessed = False
         if cmd.kind == CommandKind.N:
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
@@ -149,7 +151,6 @@ class Pattern:
 
         :param cmds: sequences of commands
         """
-        self._pauli_preprocessed = False
         for item in cmds:
             if isinstance(item, Iterable):
                 for cmd in item:
@@ -159,7 +160,6 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
-        self._pauli_preprocessed = False
         self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
@@ -171,7 +171,6 @@ class Pattern:
 
         :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
-        self._pauli_preprocessed = False
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
         self.clear()
@@ -217,7 +216,6 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
-        self._pauli_preprocessed = False
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
@@ -382,19 +380,28 @@ class Pattern:
         )
 
     def to_ascii(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+        self,
+        left_to_right: bool = False,
+        limit: int = 40,
+        target: Container[command.CommandKind] | None = None,
     ) -> str:
         """Return the ASCII string representation of the pattern."""
         return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
 
     def to_latex(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+        self,
+        left_to_right: bool = False,
+        limit: int = 40,
+        target: Container[command.CommandKind] | None = None,
     ) -> str:
         """Return a string containing the LaTeX representation of the pattern."""
         return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
 
     def to_unicode(
-        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
+        self,
+        left_to_right: bool = False,
+        limit: int = 40,
+        target: Container[command.CommandKind] | None = None,
     ) -> str:
         """Return the Unicode string representation of the pattern."""
         return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
@@ -855,7 +862,10 @@ class Pattern:
             if cmd.kind == CommandKind.M:
                 extracted_signal = extract_signal(cmd.plane, cmd.s_domain, cmd.t_domain)
                 if extracted_signal.signal:
-                    self.__seq.insert(pos + 1, command.S(node=cmd.node, domain=extracted_signal.signal))
+                    self.__seq.insert(
+                        pos + 1,
+                        command.S(node=cmd.node, domain=extracted_signal.signal),
+                    )
                     cmd.s_domain = extracted_signal.s_domain
                     cmd.t_domain = extracted_signal.t_domain
                     pos += 1
@@ -1315,13 +1325,12 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_order = None
-        if not self._pauli_preprocessed:
-            try:
-                cf = self.extract_causal_flow()
-            except FlowError:
-                meas_order = None
-            else:
-                meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:])))
+        try:
+            cf = self.extract_causal_flow()
+        except FlowError:
+            meas_order = None
+        else:
+            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:])))
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1335,7 +1344,8 @@ class Pattern:
             list of measurement ('M') commands
         """
         new = dataclasses.replace(
-            optimization.StandardizedPattern.from_pattern(self), m_list=tuple(meas_commands)
+            optimization.StandardizedPattern.from_pattern(self),
+            m_list=tuple(meas_commands),
         ).to_space_optimal_pattern()
         self.__seq = new.__seq
 
@@ -1549,7 +1559,11 @@ class Pattern:
                 filename=filename,
             )
 
-    def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:
+    def to_qasm3(
+        self,
+        filename: Path | str,
+        input_state: dict[int, State] | State = BasicStates.PLUS,
+    ) -> None:
         """Export measurement pattern to OpenQASM 3.0 file.
 
         See :func:`graphix.qasm3_exporter.pattern_to_qasm3`.
@@ -1600,7 +1614,6 @@ class Pattern:
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node
-        result._pauli_preprocessed = self._pauli_preprocessed
         result.results = self.results.copy()
         return result
 
@@ -1813,11 +1826,12 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
-    pat._pauli_preprocessed = True
     return pat
 
 
-def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(
+    pattern: optimization.StandardizedPattern,
+) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
