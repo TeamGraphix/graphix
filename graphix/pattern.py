@@ -1493,7 +1493,7 @@ class Pattern:
         """
         if self.input_nodes:
             raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
-        measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
+        self.__dict__.update(measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps).__dict__)
 
     def draw_graph(
         self,
@@ -1722,7 +1722,7 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
+def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1733,9 +1733,6 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    copy : bool
-        True: changes will be applied to new copied object and will be returned
-        False: changes will be applied to the supplied Pattern object
     ignore_pauli_with_deps : bool
         Optional (*False* by default).
         If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1751,14 +1748,14 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    pat = Pattern() if copy else pattern
+    pat = Pattern()
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = pat.results
+    results: dict[int, Outcome] = pattern.results
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
     if not to_measure:
         return pattern
