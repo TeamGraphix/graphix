@@ -7,6 +7,7 @@ Simulates MBQC by executing the pattern.
 from __future__ import annotations
 
 import abc
+import logging
 import warnings
 from typing import TYPE_CHECKING, Generic, Literal, overload
 
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from graphix.pattern import Pattern
     from graphix.sim import Data
 
+logger = logging.getLogger(__name__)
 
 _BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBackend
 _BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
@@ -87,6 +89,7 @@ class MeasureMethod(abc.ABC):
         """Perform a measure."""
         description = self.describe_measurement(cmd)
         result = backend.measure(cmd.node, description, rng=rng)
+        logger.debug("Measure: %s", result)
         if noise_model is not None:
             result = noise_model.confuse_result(cmd, result, rng=rng)
         self.store_measurement_outcome(cmd.node, result)
@@ -302,7 +305,10 @@ class PatternSimulator(Generic[_StateT_co]):
         # to catch these errors before starting the simulation.
         self.pattern.check_runnability()
 
+        logger.debug("Initial state: %s", self.backend.state)
+
         for cmd in pattern:
+            logger.debug("Command: %s", cmd)
             if cmd.kind == CommandKind.N:
                 self.__prepare_method.prepare(self.backend, cmd, rng=rng)
             elif cmd.kind == CommandKind.E:
@@ -326,6 +332,7 @@ class PatternSimulator(Generic[_StateT_co]):
                 raise ValueError("S commands unexpected in simulated patterns.")
             else:
                 assert_never(cmd.kind)
+            logger.debug("State: %s", self.backend.state)
         self.backend.finalize(output_nodes=self.pattern.output_nodes)
 
 
