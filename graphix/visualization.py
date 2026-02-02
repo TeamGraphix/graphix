@@ -160,13 +160,13 @@ class GraphVisualizer:
 
             else:
                 print("No flow or gflow detected in the graph.")
-                pos = self.place_wo_structure()
+                pos = self.place_without_structure()
                 l_k = None
 
                 def place_paths(
                     pos: Mapping[int, _Point],
                 ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                    return (self.place_edge_paths_wo_structure(pos), None)
+                    return (self.place_edge_paths_without_structure(pos), None)
 
         self.visualize_graph(
             pos,
@@ -550,7 +550,7 @@ class GraphVisualizer:
         arrow_path : dict
             dictionary of arrow paths.
         """
-        edge_path = self.place_edge_paths_wo_structure(pos)
+        edge_path = self.place_edge_paths_without_structure(pos)
         edge_set = set(self.graph.edges())
         arrow_path: dict[_Edge, list[_Point]] = {}
         flow_arrows = {(k, v) for k, values in flow.items() for v in values}
@@ -636,7 +636,7 @@ class GraphVisualizer:
                 bezier_path.insert(index + i + 1, ctrl_point)
         return self._check_path(bezier_path, pos[arrow[1]])
 
-    def place_edge_paths_wo_structure(self, pos: Mapping[int, _Point]) -> dict[_Edge, list[_Point]]:
+    def place_edge_paths_without_structure(self, pos: Mapping[int, _Point]) -> dict[_Edge, list[_Point]]:
         """
         Return the path of edges.
 
@@ -728,7 +728,7 @@ class GraphVisualizer:
             node: (l_max - layer_idx, index[pos[node][1]]) for layer_idx, layer in enumerate(layers) for node in layer
         }
 
-    def place_wo_structure(self) -> dict[int, _Point]:
+    def place_without_structure(self) -> dict[int, _Point]:
         """
         Return the position of nodes based on the graph.
 

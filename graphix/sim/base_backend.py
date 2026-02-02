@@ -464,7 +464,7 @@ class DenseState(ABC):
         raise NoiseNotSupportedError
 
 
-def _outcome_to_op_mat(
+def _outcome_to_operator_matrix(
     vec: tuple[ExpressionOrFloat, ExpressionOrFloat, ExpressionOrFloat], outcome: Outcome, symbolic: bool = False
 ) -> Matrix:
     r"""Return the operator :math:`\tfrac{1}{2}(I + (-1)^r \vec{v}\cdot\vec{\sigma})`.
@@ -766,7 +766,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         def compute_op_mat0() -> Matrix:
             nonlocal op_mat0
             if op_mat0 is None:
-                op_mat0 = _outcome_to_op_mat(vec, 0, symbolic=self.symbolic)
+                op_mat0 = _outcome_to_operator_matrix(vec, 0, symbolic=self.symbolic)
             return op_mat0
 
         def f_expectation0() -> float:
@@ -775,7 +775,7 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
             return exp_val.real
 
         outcome = self.branch_selector.measure(node, f_expectation0, rng)
-        op_mat = _outcome_to_op_mat(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
+        op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
         self.state.evolve_single(op_mat, loc)
         self.node_index.remove(node)
         self.state.remove_qubit(loc)

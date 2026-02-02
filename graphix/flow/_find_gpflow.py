@@ -163,7 +163,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
         for v in row_tags:  # v is a node tag
             i = row_tags.index(v)
-            plane_axis_v = self._measurement_label(v)
+            plane_axis_v = self._node_measurement_label(v)
 
             if plane_axis_v in {Plane.YZ, Plane.XZ, Axis.Z}:
                 flow_demand_matrix[i, :] = 0  # Set row corresponding to node v to 0
@@ -178,7 +178,7 @@ class AlgebraicOpenGraph(Generic[_M_co]):
 
         return flow_demand_matrix, order_demand_matrix
 
-    def _measurement_label(self, node: int) -> Plane | Axis:
+    def _node_measurement_label(self, node: int) -> Plane | Axis:
         """Return the measurement label (plane or axis) of a node in the open graph.
 
         Parameters
@@ -206,7 +206,7 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
     """
 
     @override
-    def _measurement_label(self, node: int) -> Plane:
+    def _node_measurement_label(self, node: int) -> Plane:
         """Return the measurement label (plane) of a node in the open graph.
 
         Parameters

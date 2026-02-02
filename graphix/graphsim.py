@@ -510,6 +510,6 @@ class GraphState(Graph):
                 gstate.evolve_single(Ops.H, i)
         return gstate
 
-    def isolates(self) -> list[int]:
+    def isolated_nodes(self) -> list[int]:
         """Return a list of isolated nodes (nodes with no edges)."""
         return list(nx.isolates(self))

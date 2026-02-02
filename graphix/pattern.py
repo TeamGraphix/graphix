@@ -1730,7 +1730,7 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
-    isolates = graph_state.isolates()
+    isolates = graph_state.isolated_nodes()
     for node in non_pauli_meas:
         if (node in isolates) and (node not in output_nodes):
             graph_state.remove_node(node)
