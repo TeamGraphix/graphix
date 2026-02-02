@@ -107,12 +107,13 @@ class ReverseDependency:
     [
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-stim-backend",
-            branch="graphix_220",
+            branch="fix/graphix_220",
             version_constraint=VersionRange(upper=Version("3.14")),
         ),
         ReverseDependency(
-            "https://github.com/TeamGraphix/graphix-symbolic",
-            branch="graphix_220",
+            # "https://github.com/TeamGraphix/graphix-symbolic",
+            "https://github.com/thierry-martinez/graphix-symbolic",
+            branch="fix/graphix_220",
             version_constraint=VersionRange(upper=Version("3.14")),
         ),
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
