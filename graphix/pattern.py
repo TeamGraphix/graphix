@@ -42,11 +42,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.flow.core import CausalFlow, GFlow, XZCorrections
-    from graphix.parameter import (
-        ExpressionOrSupportsComplex,
-        ExpressionOrSupportsFloat,
-        Parameter,
-    )
+    from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
     from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import TensorNetworkBackend
