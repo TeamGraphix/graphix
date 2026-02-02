@@ -47,12 +47,7 @@ if TYPE_CHECKING:
         ExpressionOrSupportsFloat,
         Parameter,
     )
-    from graphix.sim import (
-        Backend,
-        Data,
-        DensityMatrixBackend,
-        StatevectorBackend,
-    )
+    from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import TensorNetworkBackend
     from graphix.simulator import _BackendLiteral
@@ -380,28 +375,19 @@ class Pattern:
         )
 
     def to_ascii(
-        self,
-        left_to_right: bool = False,
-        limit: int = 40,
-        target: Container[command.CommandKind] | None = None,
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
     ) -> str:
         """Return the ASCII string representation of the pattern."""
         return pattern_to_str(self, OutputFormat.ASCII, left_to_right, limit, target)
 
     def to_latex(
-        self,
-        left_to_right: bool = False,
-        limit: int = 40,
-        target: Container[command.CommandKind] | None = None,
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
     ) -> str:
         """Return a string containing the LaTeX representation of the pattern."""
         return pattern_to_str(self, OutputFormat.LaTeX, left_to_right, limit, target)
 
     def to_unicode(
-        self,
-        left_to_right: bool = False,
-        limit: int = 40,
-        target: Container[command.CommandKind] | None = None,
+        self, left_to_right: bool = False, limit: int = 40, target: Container[command.CommandKind] | None = None
     ) -> str:
         """Return the Unicode string representation of the pattern."""
         return pattern_to_str(self, OutputFormat.Unicode, left_to_right, limit, target)
@@ -862,10 +848,7 @@ class Pattern:
             if cmd.kind == CommandKind.M:
                 extracted_signal = extract_signal(cmd.plane, cmd.s_domain, cmd.t_domain)
                 if extracted_signal.signal:
-                    self.__seq.insert(
-                        pos + 1,
-                        command.S(node=cmd.node, domain=extracted_signal.signal),
-                    )
+                    self.__seq.insert(pos + 1, command.S(node=cmd.node, domain=extracted_signal.signal))
                     cmd.s_domain = extracted_signal.s_domain
                     cmd.t_domain = extracted_signal.t_domain
                     pos += 1
@@ -1344,8 +1327,7 @@ class Pattern:
             list of measurement ('M') commands
         """
         new = dataclasses.replace(
-            optimization.StandardizedPattern.from_pattern(self),
-            m_list=tuple(meas_commands),
+            optimization.StandardizedPattern.from_pattern(self), m_list=tuple(meas_commands)
         ).to_space_optimal_pattern()
         self.__seq = new.__seq
 
@@ -1559,11 +1541,7 @@ class Pattern:
                 filename=filename,
             )
 
-    def to_qasm3(
-        self,
-        filename: Path | str,
-        input_state: dict[int, State] | State = BasicStates.PLUS,
-    ) -> None:
+    def to_qasm3(self, filename: Path | str, input_state: dict[int, State] | State = BasicStates.PLUS) -> None:
         """Export measurement pattern to OpenQASM 3.0 file.
 
         See :func:`graphix.qasm3_exporter.pattern_to_qasm3`.
@@ -1826,9 +1804,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> 
     return pat
 
 
-def pauli_nodes(
-    pattern: optimization.StandardizedPattern,
-) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
+def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[command.M, PauliMeasurement]], set[int]]:
     """Return the list of measurement commands that are in Pauli bases and that are not dependent on any non-Pauli measurements.
 
     Parameters
