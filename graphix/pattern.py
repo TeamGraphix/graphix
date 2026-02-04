@@ -170,14 +170,14 @@ class Pattern:
     def compose(
         self, other: Pattern, mapping: Mapping[int, int], preserve_mapping: bool = False
     ) -> tuple[Pattern, dict[int, int]]:
-        r"""Compose two patterns by merging subsets of outputs from `self` and a subset of inputs of `other`, and relabeling the nodes of `other` that were not merged.
+        r"""Compose two patterns by merging subsets of outputs from ``self`` and a subset of inputs of ``other``, and relabeling the nodes of ``other`` that were not merged.
 
         Parameters
         ----------
         other : Pattern
-            Pattern to be composed with `self`.
+            Pattern to be composed with ``self``.
         mapping: Mapping[int, int]
-            Partial relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node labels, respectively.
+            Partial relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node labels, respectively.
         preserve_mapping: bool
             Boolean flag controlling the ordering of the output nodes in the returned pattern.
 
@@ -186,26 +186,28 @@ class Pattern:
         p: Pattern
             composed pattern
         mapping_complete: dict[int, int]
-            Complete relabelling of the nodes in `other`, with `keys` and `values` denoting the old and new node label, respectively.
+            Complete relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node label, respectively.
 
         Notes
         -----
-        Let's denote :math:`(I_j, O_j, V_j, S_j)` the ordered set of inputs and outputs, the computational space and the sequence of commands of pattern :math:`P_j`, respectively, with :math:`j = 1` for pattern `self` and :math:`j = 2` for pattern `other`. Let's denote :math:`P` the resulting pattern with :math:`(I, O, V, S)`.
-        Let's denote :math:`K, U` the sets of `keys` and `values` of `mapping`, :math:`M_1 = O_1 \cap U` the set of merged outputs, and :math:`M_2 = \{k \in I_2 \cap K | k \rightarrow v, v \in M_1 \}` the set of merged inputs.
+        Let's denote :math:`(I_j, O_j, V_j, S_j)` the ordered set of inputs and outputs, the computational space and the sequence of commands of pattern :math:`P_j`, respectively, with :math:`j = 1` for pattern ``self`` and :math:`j = 2` for pattern ``other``. Let's denote :math:`P` the resulting pattern with :math:`(I, O, V, S)`.
+        Let's denote :math:`K, U` the sets of ``keys`` and ``values`` of ``mapping``, :math:`M_1 = O_1 \cap U` the set of merged outputs, and :math:`M_2 = \{k \in I_2 \cap K | k \rightarrow v, v \in M_1 \}` the set of merged inputs.
 
         The pattern composition requires that
+
         - :math:`K \subseteq V_2`.
         - For a pair :math:`(k, v) \in (K, U)`
             - :math:`U \cap V_1 \setminus O_1 = \emptyset`. If :math:`v \in O_1`, then :math:`k \in I_2`, otherwise an error is raised.
             - :math:`v` can always satisfy :math:`v \notin V_1`, thereby allowing a custom relabelling.
 
         The returned pattern follows this convention:
-        - Nodes of pattern `other` not specified in `mapping` (i.e., :math:`V_2 \cap K^c`) are relabelled in ascending order.
-        - The sequence of the resulting pattern is :math:`S = S_2 S_1`, where nodes in :math:`S_2` are relabelled according to `mapping`.
+
+        - Nodes of pattern ``other`` not specified in ``mapping`` (i.e., :math:`V_2 \cap K^c`) are relabelled in ascending order.
+        - The sequence of the resulting pattern is :math:`S = S_2 S_1`, where nodes in :math:`S_2` are relabelled according to ``mapping``.
         - :math:`I = I_1 \cup (I_2 \setminus M_2)`.
         - :math:`O = (O_1 \setminus M_1) \cup O_2`.
-        - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
-        - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
+        - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern ``self`` followed by those of the pattern ``other``. Merged nodes are removed.
+        - If ``preserve_mapping = True`` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern ``self``, where the nth merged output is replaced by the output of pattern ``other`` corresponding to its nth input instead.
         """
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
@@ -915,7 +917,7 @@ class Pattern:
         return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 
     def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
-        """Extract the causal flow structure from the current measurement pattern.
+        r"""Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
 
@@ -932,7 +934,7 @@ class Pattern:
             - Is empty, or
             - Induces a correction function and a partial order which fail the well-formedness checks for a valid causal flow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -943,7 +945,7 @@ class Pattern:
         return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
     def extract_gflow(self) -> GFlow[BlochMeasurement]:
-        """Extract the generalized flow (gflow) structure from the current measurement pattern.
+        r"""Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
 
@@ -958,7 +960,7 @@ class Pattern:
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
+            If `N` commands in the pattern do not represent a :math:`|+\rangle` state or if the pattern corrections form closed loops.
 
         Notes
         -----
@@ -1101,7 +1103,7 @@ class Pattern:
         return int(max(degrees))
 
     def extract_graph(self) -> nx.Graph[int]:
-        """Return the graph state from the command sequence, extracted from 'N' and 'E' commands.
+        """Return the graph state from the command sequence, extracted from ``N`` and ``E`` commands.
 
         Returns
         -------
@@ -1140,7 +1142,7 @@ class Pattern:
         return {node for node, d in graph.degree if d == 0}
 
     def extract_opengraph(self) -> OpenGraph[Measurement]:
-        """Extract the underlying resource-state open graph from the pattern.
+        r"""Extract the underlying resource-state open graph from the pattern.
 
         Returns
         -------
@@ -1149,7 +1151,7 @@ class Pattern:
         Raises
         ------
         ValueError
-            If `N` commands in the pattern do not represent a |+⟩ state.
+            If `N` commands in the pattern do not represent a :math:`|+\rangle` state.
 
         Notes
         -----
@@ -1524,12 +1526,12 @@ class Pattern:
 
     def is_parameterized(self) -> bool:
         """
-        Return `True` if there is at least one measurement angle that is not just an instance of `SupportsFloat`.
+        Return ``True`` if there is at least one measurement angle that is not just an instance of :class:`SupportsFloat`.
 
         A parameterized pattern is a pattern where at least one
         measurement angle is an expression that is not a number,
-        typically an instance of `sympy.Expr` (but we don't force to
-        choose `sympy` here).
+        typically an instance of ``sympy.Expr`` (but we don't force to
+        choose ``sympy`` here).
 
         """
         return any(
@@ -1567,13 +1569,13 @@ class Pattern:
     def check_runnability(self) -> None:
         """Check whether the pattern is runnable.
 
-        Raises `RunnabilityError` exception if it is not.
+        Raises :class:`RunnabilityError` exception if it is not.
 
         Notes
         -----
         The runnability check can only guarantee the runnability of
-        MBQC+LC patterns.  Patterns that make use of custom `BaseN`
-        and `BaseM` commands can have additional runnability
+        MBQC+LC patterns.  Patterns that make use of custom :class:``BaseN``
+        and :class:``BaseM`` commands can have additional runnability
         constraints that are not checked by this method.  For instance,
         in the Veriphix implementation of VBQC, blind measurements
         have hidden domains that cannot be checked.
@@ -1627,7 +1629,7 @@ class Pattern:
                 check_active(cmd, cmd.node)
 
     def map(self, f: Callable[[Measurement], Measurement]) -> Pattern:
-        """Return a pattern where the function `f` has been applied to each measurement."""
+        """Return a pattern where the function ``f`` has been applied to each measurement."""
         new_pattern = Pattern(input_nodes=self.input_nodes)
         new_pattern.results = self.results
 

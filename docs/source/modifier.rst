@@ -26,18 +26,6 @@ Pattern Manipulation
 
     .. automethod:: compute_max_degree
 
-    .. automethod:: extract_causal_flow
-
-    .. automethod:: extract_gflow
-
-    .. automethod:: extract_graph
-
-    .. automethod:: extract_nodes
-
-    .. automethod:: extract_opengraph
-
-    .. automethod:: extract_measurement_commands
-
     .. automethod:: compose
 
     .. automethod:: get_vops
@@ -65,6 +53,14 @@ Pattern Manipulation
     .. automethod:: extract_graph
 
     .. automethod:: extract_nodes
+
+    .. automethod:: extract_causal_flow
+
+    .. automethod:: extract_gflow
+
+    .. automethod:: extract_opengraph
+
+    .. automethod:: extract_measurement_commands
 
     .. automethod:: parallelize_pattern
 
