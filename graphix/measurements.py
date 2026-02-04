@@ -11,7 +11,6 @@ from typing import (
     Literal,
 )
 
-# assert_never introduced in Python 3.11
 # override introduced in Python 3.12
 from typing_extensions import override
 
