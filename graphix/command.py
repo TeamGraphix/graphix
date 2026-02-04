@@ -10,11 +10,7 @@ from typing import ClassVar, Literal
 
 from graphix import utils
 from graphix.clifford import Clifford, Domains
-from graphix.fundamentals import (
-    Axis,
-    Sign,
-)
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.measurements import Measurement
 from graphix.repr_mixins import DataclassReprMixin
 from graphix.states import BasicStates, State
 
@@ -119,7 +115,7 @@ class M(BaseM, _KindChecker):
         Domain for the Z byproduct operator.
     """
 
-    measurement: Measurement = dataclasses.field(default_factory=lambda: PauliMeasurement(axis=Axis.X, sign=Sign.PLUS))
+    measurement: Measurement = Measurement.X
     s_domain: set[Node] = dataclasses.field(default_factory=set)
     t_domain: set[Node] = dataclasses.field(default_factory=set)
     kind: ClassVar[Literal[CommandKind.M]] = dataclasses.field(default=CommandKind.M, init=False)
