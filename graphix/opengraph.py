@@ -56,7 +56,7 @@ class OpenGraph(Generic[_AM_co]):
     >>> from graphix.measurements import Measurement
     >>>
     >>> graph = nx.Graph([(0, 1), (1, 2)])
-    >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
+    >>> measurements = {i: Measurement.XY(0.5 * i) for i in range(2)}
     >>> input_nodes = [0]
     >>> output_nodes = [2]
     >>> og = OpenGraph(graph, input_nodes, output_nodes, measurements)
@@ -520,7 +520,7 @@ class OpenGraph(Generic[_AM_co]):
         >>> from graphix.parameter import Placeholder
         >>> # Initialize placeholders and open graph
         >>> parametric_angles = [Placeholder(f"alpha{i}") for i in range(2)]
-        >>> measurements = {node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)}
+        >>> measurements = {node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)}
         >>> og = OpenGraph(
         ...     graph=nx.Graph([(0, 1), (1, 2)]),
         ...     input_nodes=[0],
@@ -562,7 +562,7 @@ class OpenGraph(Generic[_AM_co]):
         >>> # Initialize placeholders
         >>> alpha = Placeholder("alpha")
         >>> beta = Placeholder("beta")
-        >>> measurements = {0: Measurement(alpha, Plane.XY), 1: Measurement(beta, Plane.XY)}
+        >>> measurements = {0: Measurement.XY(alpha), 1: Measurement.XY(beta)}
         >>> og = OpenGraph(nx.Graph([(0, 1)]), [0], [], measurements)
         >>> # Substitute multiple parameters at once
         >>> subs_map = {alpha: 0.5, beta: 1.2}

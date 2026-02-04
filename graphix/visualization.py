@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
     from graphix.clifford import Clifford
-    from graphix.flow.core import CausalFlow, GFlow
-    from graphix.fundamentals import AbstractPlanarMeasurement
+    from graphix.flow.core import CausalFlow, PauliFlow
+    from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
     from graphix.pattern import Pattern
 
     _Edge: TypeAlias = tuple[int, int]
@@ -112,7 +112,9 @@ class GraphVisualizer:
                 print("Pauli flow detected in the graph (causal flow not detected)")
                 pos = self.get_pos_from_pauli_flow(pauli_flow)
                 cf = pauli_flow.correction_function
-                l_k = {node: layer_idx for layer_idx, layer in enumerate(pauli_flow.partial_order_layers) for node in layer}
+                l_k = {
+                    node: layer_idx for layer_idx, layer in enumerate(pauli_flow.partial_order_layers) for node in layer
+                }
 
                 def get_paths(
                     pos: Mapping[int, _Point],

@@ -114,7 +114,8 @@ class Measurement(AbstractMeasurement):
         >>> from graphix.measurements import Measurement
         >>> Measurement.XY(0.5).try_to_pauli() == Measurement.YZ(0.5).try_to_pauli() == Measurement.Y
         True
-        ```.
+
+        ```
 
         This method follows the convention illustrated below:
         ```
@@ -127,6 +128,7 @@ class Measurement(AbstractMeasurement):
         -Y.to_bloch() == Measurement.XY(1.5)
         +Z.to_bloch() == Measurement.YZ(0)
         -Z.to_bloch() == Measurement.YZ(1)
+
         ```
         """
 
@@ -271,11 +273,11 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         --------
         >>> from graphix.measurements import Measurement
         >>> from graphix.fundamentals import Plane
-        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.XY))
+        >>> Measurement.XY(0).isclose(Measurement.XY(0))
         True
-        >>> Measurement(0.0, Plane.XY).isclose(Measurement(0.0, Plane.YZ))
+        >>> Measurement.XY(0).isclose(Measurement.YZ(0))
         False
-        >>> Measurement(0.1, Plane.XY).isclose(Measurement(0.0, Plane.XY))
+        >>> Measurement.XY(0.1).isclose(Measurement.XY(0))
         False
         """
         if not isinstance(other, Measurement):

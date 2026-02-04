@@ -43,7 +43,7 @@ def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, 
     >>> g = nx.Graph([(0, 1), (1, 2)])
     >>> inputs = [0]
     >>> outputs = [2]
-    >>> measurements = {0: Measurement(0, Plane.XY), 1: Measurement(1, Plane.YZ)}
+    >>> measurements = {0: Measurement.XY(0), 1: Measurement.YZ(1)}
     >>> og = OpenGraph(g, inputs, outputs, measurements)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """

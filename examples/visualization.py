@@ -69,7 +69,7 @@ from graphix.opengraph import OpenGraph
 from graphix.visualization import GraphVisualizer
 
 # graph with gflow but no flow
-graph = nx.Graph([(1, 4), (1, 6), (2, 4), (2, 5), (2, 6), (3, 5), (3, 6)])
+graph: nx.Graph[int] = nx.Graph([(1, 4), (1, 6), (2, 4), (2, 5), (2, 6), (3, 5), (3, 6)])
 inputs = [1, 2, 3]
 outputs = [4, 5, 6]
 measurements = {node: Measurement.XY(0) for node in graph.nodes() if node not in outputs}
