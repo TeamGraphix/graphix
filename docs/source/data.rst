@@ -24,8 +24,6 @@ This module defines standard data structure for pattern commands.
 
 .. autoclass:: Z
 
-.. autoclass:: MeasureUpdate
-
 
 :mod:`graphix.fundamentals` module
 ++++++++++++++++++++++++++++++++++
@@ -72,6 +70,12 @@ This module defines data structures for single-qubit measurements in MBQC.
 .. currentmodule:: graphix.measurements
 
 .. autoclass:: Measurement
+    :members:
+
+.. autoclass:: BlochMeasurement
+    :members:
+
+.. autoclass:: PauliMeasurement
     :members:
 
 :mod:`graphix.instruction` module

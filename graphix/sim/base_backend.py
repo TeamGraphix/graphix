@@ -758,7 +758,8 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         rng: Generator, optional
         """
         loc = self.node_index.index(node)
-        vec = measurement.plane.polar(measurement.angle)
+        bloch = measurement.to_bloch()
+        vec = bloch.plane.polar(bloch.angle)
         # op_mat0 may contain the matrix operator associated with the outcome 0,
         # but the value is computed lazily, i.e., only if needed.
         op_mat0 = None

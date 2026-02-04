@@ -22,6 +22,7 @@ from graphix.opengraph import OpenGraph
 if TYPE_CHECKING:
     from pyzx.graph.base import BaseGraph
 
+    from graphix.measurements import BlochMeasurement
     from graphix.parameter import ExpressionOrFloat
 
 
@@ -32,7 +33,7 @@ def _fraction_of_angle(angle: ExpressionOrFloat) -> Fraction:
 
 
 # TODO: Adapt to new OpenGraph API
-def to_pyzx_graph(og: OpenGraph[Measurement]) -> BaseGraph[int, tuple[int, int]]:
+def to_pyzx_graph(og: OpenGraph[BlochMeasurement]) -> BaseGraph[int, tuple[int, int]]:
     """Return a :mod:`pyzx` graph corresponding to the open graph.
 
     Example
@@ -42,7 +43,7 @@ def to_pyzx_graph(og: OpenGraph[Measurement]) -> BaseGraph[int, tuple[int, int]]
     >>> g = nx.Graph([(0, 1), (1, 2)])
     >>> inputs = [0]
     >>> outputs = [2]
-    >>> measurements = {0: Measurement(0, Plane.XY), 1: Measurement(1, Plane.YZ)}
+    >>> measurements = {0: Measurement.XY(0), 1: Measurement.YZ(1)}
     >>> og = OpenGraph(g, inputs, outputs, measurements)
     >>> reconstructed_pyzx_graph = to_pyzx_graph(og)
     """
@@ -134,7 +135,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     """
     zx.simplify.to_graph_like(g)
 
-    measurements = {}
+    measurements: dict[int, Measurement] = {}
     inputs = list(g.inputs())
     outputs = list(g.outputs())
 
@@ -168,7 +169,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement(-_checked_float(g.phase(v)), Plane.YZ)
+            measurements[nbrs[0]] = Measurement.YZ(-_checked_float(g.phase(v)))
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1
@@ -180,7 +181,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
             continue
 
         g_nx.add_edges_from([(out, next_id), (next_id, next_id + 1)])
-        measurements[next_id] = Measurement(0, Plane.XY)
+        measurements[next_id] = Measurement.X
 
         outputs = [o if o != out else next_id + 1 for o in outputs]
         next_id += 2
@@ -192,6 +193,6 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
 
         # g.phase() may be a fractions.Fraction object, but Measurement
         # expects a float
-        measurements[v] = Measurement(-_checked_float(g.phase(v)), Plane.XY)
+        measurements[v] = Measurement.XY(-_checked_float(g.phase(v)))
 
     return OpenGraph(g_nx, inputs, outputs, measurements)
