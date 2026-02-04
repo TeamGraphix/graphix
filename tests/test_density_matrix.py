@@ -14,6 +14,7 @@ from graphix import command
 from graphix.branch_selector import RandomBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.measurements import Measurement
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
 from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
@@ -936,7 +937,7 @@ class TestDensityMatrixBackend:
         dm_backend.entangle_nodes((0, 1))
         dm_backend.entangle_nodes((1, 2))
         measure_method.measure(dm_backend, command.M(0))
-        measure_method.measure(dm_backend, command.M(1, angle=-ANGLE_PI / 2, s_domain={0}))
+        measure_method.measure(dm_backend, command.M(1, -Measurement.Y, s_domain={0}))
         dm_backend.correct_byproduct(command.X(2, {1}), measure_method)
         dm_backend.correct_byproduct(command.Z(2, {0}), measure_method)
         rho = dm_backend.state.rho
@@ -948,7 +949,7 @@ class TestDensityMatrixBackend:
         sv_backend.entangle_nodes((0, 1))
         sv_backend.entangle_nodes((1, 2))
         measure_method.measure(sv_backend, command.M(0))
-        measure_method.measure(sv_backend, command.M(1, angle=-ANGLE_PI / 2, s_domain={0}))
+        measure_method.measure(sv_backend, command.M(1, -Measurement.Y, s_domain={0}))
         sv_backend.correct_byproduct(command.X(2, {1}), measure_method)
         sv_backend.correct_byproduct(command.Z(2, {0}), measure_method)
         psi = sv_backend.state.psi

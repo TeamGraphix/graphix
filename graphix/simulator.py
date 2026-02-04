@@ -18,8 +18,7 @@ from typing_extensions import assert_never, override
 from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import BaseM, CommandKind, MeasureUpdate, N
-from graphix.measurements import Measurement, Outcome
+from graphix.command import BaseM, CommandKind, N
 from graphix.sim import (
     Backend,
     DensityMatrixBackend,
@@ -35,6 +34,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.command import BaseN
+    from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
     from graphix.sim import Data
@@ -178,11 +178,14 @@ class DefaultMeasureMethod(MeasureMethod):
         """
         assert isinstance(cmd, command.M)
         # extract signals for adaptive angle
-        s_signal = sum(self.results[j] for j in cmd.s_domain)
-        t_signal = sum(self.results[j] for j in cmd.t_domain)
-        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, Clifford.I)
-        angle = cmd.angle * measure_update.coeff + measure_update.add_term
-        return Measurement(angle, measure_update.new_plane)
+        s_signal = sum(self.results[j] for j in cmd.s_domain) % 2
+        t_signal = sum(self.results[j] for j in cmd.t_domain) % 2
+        measurement = cmd.measurement
+        if s_signal:
+            measurement = measurement.clifford(Clifford.X)
+        if t_signal:
+            measurement = measurement.clifford(Clifford.Z)
+        return measurement
 
     def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.

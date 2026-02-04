@@ -8,7 +8,7 @@ from numpy.random import PCG64, Generator
 
 from graphix import command, instruction
 from graphix.clifford import Clifford
-from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern
@@ -53,10 +53,10 @@ def example_pattern() -> Pattern:
             command.N(4),
             command.E((1, 2)),
             command.C(1, Clifford.H),
-            command.M(1, Plane.YZ, 0.5),
-            command.M(2, Plane.XZ, -0.25),
-            command.M(10, Plane.XZ, -0.25),
-            command.M(3, Plane.XY, 0.1, s_domain={1, 10}, t_domain={2}),
+            command.M(1, Measurement.Y),
+            command.M(2, Measurement.XZ(-0.25)),
+            command.M(10, Measurement.XZ(-0.25)),
+            command.M(3, Measurement.XY(0.1), s_domain={1, 10}, t_domain={2}),
             command.M(4, s_domain={1}, t_domain={2, 3}),
         ]
     )
@@ -66,7 +66,7 @@ def test_pattern_repr_example() -> None:
     p = example_pattern()
     assert (
         repr(p)
-        == "Pattern(cmds=[N(1), N(2), N(3), N(10), N(4), E((1, 2)), C(1, Clifford.H), M(1, Plane.YZ, 0.5), M(2, Plane.XZ, -0.25), M(10, Plane.XZ, -0.25), M(3, angle=0.1, s_domain={1, 10}, t_domain={2}), M(4, s_domain={1}, t_domain={2, 3})])"
+        == "Pattern(cmds=[N(1), N(2), N(3), N(10), N(4), E((1, 2)), C(1, Clifford.H), M(1, Measurement.Y), M(2, Measurement.XZ(-0.25)), M(10, Measurement.XZ(-0.25)), M(3, Measurement.XY(0.1), {1, 10}, {2}), M(4, s_domain={1}, t_domain={2, 3})])"
     )
 
 
@@ -74,16 +74,16 @@ def test_pattern_pretty_print_example() -> None:
     p = example_pattern()
     assert (
         str(p)
-        == "{2,3}[M(4)]{1} {2}[M(3,pi/10)]{1,10} M(10,XZ,-pi/4) M(2,XZ,-pi/4) M(1,YZ,pi/2) C(1,H) E(1,2) N(4) N(10) N(3) N(2) N(1)"
+        == "{2,3}[M(4)]{1} {2}[M(3,pi/10)]{1,10} M(10,XZ,-pi/4) M(2,XZ,-pi/4) M(1,+Y) C(1,H) E(1,2) N(4) N(10) N(3) N(2) N(1)"
     )
-    assert p.to_unicode() == "₂₊₃[M₄]¹ ₂[M₃(π/10)]¹⁺¹⁰ M₁₀(XZ,-π/4) M₂(XZ,-π/4) M₁(YZ,π/2) C₁(H) E₁₋₂ N₄ N₁₀ N₃ N₂ N₁"
+    assert p.to_unicode() == "₂₊₃[M₄]¹ ₂[M₃(π/10)]¹⁺¹⁰ M₁₀(XZ,-π/4) M₂(XZ,-π/4) M₁(+Y) C₁(H) E₁₋₂ N₄ N₁₀ N₃ N₂ N₁"
     assert (
         p.to_latex()
-        == r"\({}_{2,3}[M_{4}]^{1}\,{}_{2}[M_{3}^{\frac{\pi}{10}}]^{1,10}\,M_{10}^{XZ,-\frac{\pi}{4}}\,M_{2}^{XZ,-\frac{\pi}{4}}\,M_{1}^{YZ,\frac{\pi}{2}}\,C_{1}^{H}\,E_{1,2}\,N_{4}\,N_{10}\,N_{3}\,N_{2}\,N_{1}\)"
+        == r"\({}_{2,3}[M_{4}]^{1}\,{}_{2}[M_{3}^{\frac{\pi}{10}}]^{1,10}\,M_{10}^{XZ,-\frac{\pi}{4}}\,M_{2}^{XZ,-\frac{\pi}{4}}\,M_{1}^{+Y}\,C_{1}^{H}\,E_{1,2}\,N_{4}\,N_{10}\,N_{3}\,N_{2}\,N_{1}\)"
     )
     assert (
         pattern_to_str(p, output=OutputFormat.ASCII, limit=9, left_to_right=True)
-        == "N(1) N(2) N(3) N(10) N(4) E(1,2) C(1,H) M(1,YZ,pi/2)...(4 more commands)"
+        == "N(1) N(2) N(3) N(10) N(4) E(1,2) C(1,H) M(1,+Y)...(4 more commands)"
     )
 
 
@@ -106,7 +106,7 @@ def test_flow_pretty_print_random(
 ) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     rand_og = rand_circuit(5, 5, rng=rng).transpile().pattern.extract_opengraph()
-    flow = flow_extractor(rand_og)
+    flow = flow_extractor(rand_og.to_bloch())
 
     flow.to_ascii()
     flow.to_latex()
@@ -119,7 +119,14 @@ def test_xzcorr_pretty_print_random(
     jumps: int,
 ) -> None:
     rng = Generator(fx_bg.jumped(jumps))
-    xzcorr = rand_circuit(5, 5, rng=rng).transpile().pattern.extract_opengraph().extract_causal_flow().to_corrections()
+    xzcorr = (
+        rand_circuit(5, 5, rng=rng)
+        .transpile()
+        .pattern.extract_opengraph()
+        .to_bloch()
+        .extract_causal_flow()
+        .to_corrections()
+    )
 
     xzcorr.to_ascii()
     xzcorr.to_latex()
@@ -132,16 +139,16 @@ def example_og() -> OpenGraph[Measurement]:
         input_nodes=[1, 2],
         output_nodes=[5, 6],
         measurements={
-            1: Measurement(0.1, Plane.XY),
-            2: Measurement(0.2, Plane.XY),
-            3: Measurement(0.3, Plane.XY),
-            4: Measurement(0.4, Plane.XY),
+            1: Measurement.XY(0.1),
+            2: Measurement.XY(0.2),
+            3: Measurement.XY(0.3),
+            4: Measurement.XY(0.4),
         },
     )
 
 
 def test_cflow_str() -> None:
-    flow = example_og().extract_causal_flow()
+    flow = example_og().to_bloch().extract_causal_flow()
 
     assert str(flow) == "c(3) = {5}, c(4) = {6}, c(1) = {3}, c(2) = {4}; {1, 2} < {3, 4} < {5, 6}"
 
@@ -163,7 +170,7 @@ def test_cflow_str() -> None:
 
 
 def test_gflow_str() -> None:
-    flow = example_og().extract_gflow()
+    flow = example_og().to_bloch().extract_gflow()
 
     assert str(flow) == "g(1) = {3, 6}, g(2) = {4, 5}, g(3) = {5}, g(4) = {6}; {1, 2} < {3, 4} < {5, 6}"
 
@@ -175,7 +182,7 @@ def test_pflow_str() -> None:
 
 
 def test_xzcorr_str() -> None:
-    flow = example_og().extract_causal_flow().to_corrections()
+    flow = example_og().to_bloch().extract_causal_flow().to_corrections()
 
     assert (
         str(flow)

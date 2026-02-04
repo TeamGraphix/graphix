@@ -42,6 +42,7 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderErrorReason,
 )
 from graphix.fundamentals import Axis, Plane
+from graphix.measurements import Measurement
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 
 if TYPE_CHECKING:
@@ -49,7 +50,6 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
-    from graphix.measurements import Measurement
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
@@ -57,6 +57,7 @@ if TYPE_CHECKING:
 TotalOrder = Sequence[int]
 
 _T_PauliFlowMeasurement = TypeVar("_T_PauliFlowMeasurement", bound="PauliFlow[Measurement]")
+_M = TypeVar("_M", bound=Measurement)
 
 
 @dataclass(frozen=True)
@@ -178,7 +179,7 @@ class XZCorrections(Generic[_M_co]):
 
         for measured_node in total_measurement_order:
             measurement = self.og.measurements[measured_node]
-            pattern.add(M(node=measured_node, plane=measurement.plane, angle=measurement.angle))
+            pattern.add(M(node=measured_node, measurement=measurement))
 
             for corrected_node in self.z_corrections.get(measured_node, []):
                 pattern.add(Z(node=corrected_node, domain={measured_node}))
@@ -357,9 +358,7 @@ class XZCorrections(Generic[_M_co]):
         """
         return xzcorr_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
 
-    def subs(
-        self: XZCorrections[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
-    ) -> XZCorrections[Measurement]:
+    def subs(self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> XZCorrections[_M]:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
 
         Parameters
@@ -382,8 +381,8 @@ class XZCorrections(Generic[_M_co]):
         return dataclasses.replace(self, og=new_og)
 
     def xreplace(
-        self: XZCorrections[Measurement], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
-    ) -> XZCorrections[Measurement]:
+        self: XZCorrections[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> XZCorrections[_M]:
         """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
 
         Parameters

@@ -758,11 +758,12 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
             result = self.branch_selector.measure(node, lambda: 0.5, rng=rng)
             self.results[node] = result
             buffer = 2**0.5
-        if isinstance(measurement.angle, Expression):
+        bloch = measurement.to_bloch()
+        if isinstance(bloch.angle, Expression):
             raise TypeError("Parameterized pattern unsupported.")
-        vec = PlanarState(measurement.plane, measurement.angle).to_statevector()
+        vec = PlanarState(bloch.plane, bloch.angle).to_statevector()
         if result:
-            vec = Ops.from_axis(measurement.plane.orth) @ vec
+            vec = Ops.from_axis(bloch.plane.orth) @ vec
         proj_vec = vec * buffer
         self.state.measure_single(node, basis=proj_vec, rng=rng)
         return result

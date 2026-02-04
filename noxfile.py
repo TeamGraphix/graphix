@@ -119,7 +119,7 @@ class ReverseDependency:
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
-            branch="graphix_220",
+            branch="graphix_181",
             version_constraint=VersionRange(upper=Version("3.14")),
             doctest_modules=False,
             initialization=lambda session: session.run("python", "-m", "veriphix.sampling_circuits.experiments"),

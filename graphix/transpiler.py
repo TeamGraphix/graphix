@@ -16,7 +16,7 @@ from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Axis, Plane
 from graphix.instruction import Instruction, InstructionKind
-from graphix.measurements import Measurement
+from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
 from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec, StatevectorBackend
@@ -538,9 +538,8 @@ class Circuit:
         commands : list
             list of MBQC commands
         """
-        measurement = _measurement_of_axis(axis)
         # `measurement.angle` and `M.angle` are both expressed in units of π.
-        return [M(node=input_node, plane=measurement.plane, angle=measurement.angle)]
+        return [M(input_node, PauliMeasurement(axis))]
 
     @classmethod
     def _h_command(cls, input_node: int, ancilla: int) -> tuple[int, list[Command]]:
@@ -588,7 +587,7 @@ class Circuit:
             (
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node, angle=-ANGLE_PI / 2),
+                M(input_node, -Measurement.Y),
                 M(node=ancilla[0], s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
@@ -621,7 +620,7 @@ class Circuit:
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
                 M(node=input_node),
-                M(node=ancilla[0], angle=-ANGLE_PI, s_domain={input_node}),
+                M(ancilla[0], -Measurement.X, s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
             )
@@ -655,9 +654,9 @@ class Circuit:
                 E(nodes=(ancilla[0], ancilla[1])),
                 E(nodes=(ancilla[1], ancilla[2])),
                 E(nodes=(ancilla[2], ancilla[3])),
-                M(node=input_node, angle=ANGLE_PI / 2),
-                M(node=ancilla[0], angle=ANGLE_PI, s_domain={input_node}),
-                M(node=ancilla[1], angle=-ANGLE_PI / 2, s_domain={ancilla[0]}, t_domain={input_node}),
+                M(input_node, Measurement.Y),
+                M(ancilla[0], -Measurement.X, s_domain={input_node}),
+                M(ancilla[1], -Measurement.Y, s_domain={ancilla[0]}, t_domain={input_node}),
                 M(node=ancilla[2], s_domain={ancilla[1]}, t_domain={ancilla[0]}),
                 X(node=ancilla[3], domain={ancilla[2]}),
                 Z(node=ancilla[3], domain={ancilla[1]}),
@@ -689,7 +688,7 @@ class Circuit:
             (
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node, angle=-1),
+                M(input_node, -Measurement.X),
                 M(node=ancilla[0], s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
@@ -726,7 +725,7 @@ class Circuit:
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
                 M(node=input_node),
-                M(node=ancilla[0], angle=-angle, s_domain={input_node}),
+                M(ancilla[0], Measurement.XY(-angle), s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
             )
@@ -764,9 +763,9 @@ class Circuit:
                 E(nodes=(ancilla[0], ancilla[1])),
                 E(nodes=(ancilla[1], ancilla[2])),
                 E(nodes=(ancilla[2], ancilla[3])),
-                M(node=input_node, angle=ANGLE_PI / 2),
-                M(node=ancilla[0], angle=-angle, s_domain={input_node}),
-                M(node=ancilla[1], angle=-ANGLE_PI / 2, s_domain={ancilla[0]}, t_domain={input_node}),
+                M(input_node, Measurement.Y),
+                M(ancilla[0], Measurement.XY(-angle), s_domain={input_node}),
+                M(ancilla[1], -Measurement.Y, s_domain={ancilla[0]}, t_domain={input_node}),
                 M(node=ancilla[2], s_domain={ancilla[1]}, t_domain={ancilla[0]}),
                 X(node=ancilla[3], domain={ancilla[2]}),
                 Z(node=ancilla[3], domain={ancilla[1]}),
@@ -802,7 +801,7 @@ class Circuit:
             (
                 E(nodes=(input_node, ancilla[0])),
                 E(nodes=(ancilla[0], ancilla[1])),
-                M(node=input_node, angle=-angle),
+                M(input_node, Measurement.XY(-angle)),
                 M(node=ancilla[0], s_domain={input_node}),
                 X(node=ancilla[1], domain={ancilla[0]}),
                 Z(node=ancilla[1], domain={input_node}),
@@ -874,24 +873,24 @@ class Circuit:
                 M(node=ancilla[0], s_domain={target_node}),
                 M(node=ancilla[1], s_domain={ancilla[0]}, t_domain={target_node}),
                 M(node=control_node1),
-                M(node=ancilla[2], angle=-7 * ANGLE_PI / 4, s_domain={ancilla[1]}, t_domain={ancilla[0]}),
+                M(ancilla[2], Measurement.XY(-7 * ANGLE_PI / 4), s_domain={ancilla[1]}, t_domain={ancilla[0]}),
                 M(node=ancilla[14], s_domain={control_node1}),
                 M(node=ancilla[3], s_domain={ancilla[2]}, t_domain={ancilla[1], ancilla[14]}),
-                M(node=ancilla[5], angle=-ANGLE_PI / 4, s_domain={ancilla[3]}, t_domain={ancilla[2]}),
-                M(node=control_node2, angle=-ANGLE_PI / 4, t_domain={ancilla[5], ancilla[0]}),
+                M(ancilla[5], Measurement.XY(-ANGLE_PI / 4), s_domain={ancilla[3]}, t_domain={ancilla[2]}),
+                M(control_node2, Measurement.XY(-ANGLE_PI / 4), t_domain={ancilla[5], ancilla[0]}),
                 M(node=ancilla[6], s_domain={ancilla[5]}, t_domain={ancilla[3]}),
                 M(node=ancilla[9], s_domain={control_node2}, t_domain={ancilla[14]}),
-                M(node=ancilla[7], angle=-7 * ANGLE_PI / 4, s_domain={ancilla[6]}, t_domain={ancilla[5]}),
-                M(node=ancilla[10], angle=-7 * ANGLE_PI / 4, s_domain={ancilla[9]}, t_domain={control_node2}),
+                M(ancilla[7], Measurement.XY(-7 * ANGLE_PI / 4), s_domain={ancilla[6]}, t_domain={ancilla[5]}),
+                M(ancilla[10], Measurement.XY(-7 * ANGLE_PI / 4), s_domain={ancilla[9]}, t_domain={control_node2}),
                 M(
-                    node=ancilla[4],
-                    angle=-ANGLE_PI / 4,
+                    ancilla[4],
+                    Measurement.XY(-ANGLE_PI / 4),
                     s_domain={ancilla[14]},
                     t_domain={control_node1, control_node2, ancilla[2], ancilla[7], ancilla[10]},
                 ),
                 M(node=ancilla[8], s_domain={ancilla[7]}, t_domain={ancilla[14], ancilla[6]}),
                 M(node=ancilla[11], s_domain={ancilla[10]}, t_domain={ancilla[9], ancilla[14]}),
-                M(node=ancilla[12], angle=-ANGLE_PI / 4, s_domain={ancilla[8]}, t_domain={ancilla[7]}),
+                M(ancilla[12], Measurement.XY(-ANGLE_PI / 4), s_domain={ancilla[8]}, t_domain={ancilla[7]}),
                 M(
                     node=ancilla[16],
                     s_domain={ancilla[4]},
@@ -983,7 +982,7 @@ class Circuit:
             elif instr.kind == instruction.InstructionKind.M:
                 result = backend.measure(
                     instr.target,
-                    _measurement_of_axis(instr.axis),
+                    PauliMeasurement(instr.axis),
                     rng=rng,
                 )
                 classical_measures.append(result)
@@ -1064,7 +1063,7 @@ def _extend_domain(measure: M, domain: set[int]) -> None:
     domain : set[int]
         Set of nodes to XOR into the appropriate domain of ``measure``.
     """
-    if measure.plane == Plane.XY:
+    if measure.measurement.to_bloch().plane == Plane.XY:
         measure.s_domain ^= domain
     else:
         measure.t_domain ^= domain
@@ -1078,19 +1077,3 @@ def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]
             yield instruction.CNOT(control=instr.control, target=instr.target)
         else:
             yield instr
-
-
-def _measurement_of_axis(axis: Axis) -> Measurement:
-    """Return the MBQC measurement (plane + angle) corresponding to a measurement on the given axis.
-
-    The returned measurement `m` satisfies `m.plane.polar(m.angle) = (x, y, z)`,
-    where `x` (resp. `y` or `z`) is 1 if `axis` is `Axis.X` (resp. `Axis.Y` or
-    `Axis.Z`), and 0 otherwise.
-    """
-    # The definition of `polar` for each plane is given in the comments below.
-    if axis == Axis.X:
-        return Measurement(plane=Plane.XY, angle=0)  # (cos, sin, 0)
-    if axis == Axis.Y:
-        # `Measurement.angle` is expressed in units of π.
-        return Measurement(plane=Plane.YZ, angle=ANGLE_PI / 2)  # (0, sin, cos)
-    return Measurement(plane=Plane.XZ, angle=0)  # (sin, 0, cos)

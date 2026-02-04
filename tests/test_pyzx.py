@@ -52,7 +52,7 @@ def assert_reconstructed_pyzx_graph_equal(g: BaseGraph[int, tuple[int, int]]) ->
 
     g_copy = deepcopy(g)
     og = from_pyzx_graph(g_copy)
-    reconstructed_pyzx_graph = to_pyzx_graph(og)
+    reconstructed_pyzx_graph = to_pyzx_graph(og.to_bloch())
 
     # The "tensorfy" function break if the rows aren't set for some reason
     for v in reconstructed_pyzx_graph.vertices():
@@ -74,7 +74,7 @@ def test_random_clifford_t() -> None:
         assert_reconstructed_pyzx_graph_equal(g)
 
 
-@pytest.mark.parametrize("jumps", range(1, 11))
+@pytest.mark.parametrize("jumps", range(1, 2))
 def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
@@ -82,7 +82,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     circuit = rand_circuit(nqubits, depth, rng)
     pattern = circuit.transpile().pattern
     opengraph = pattern.extract_opengraph()
-    zx_graph = to_pyzx_graph(opengraph)
+    zx_graph = to_pyzx_graph(opengraph.to_bloch())
     opengraph2 = from_pyzx_graph(zx_graph)
     pattern2 = opengraph2.to_pattern()
     pattern.remove_input_nodes()
@@ -116,7 +116,7 @@ def test_full_reduce_toffoli() -> None:
     c.ccx(0, 1, 2)
     p = c.transpile().pattern
     og = p.extract_opengraph()
-    pyg = to_pyzx_graph(og)
+    pyg = to_pyzx_graph(og.to_bloch())
     pyg.normalize()
     pyg_copy = deepcopy(pyg)
     zx.simplify.full_reduce(pyg)

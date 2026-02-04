@@ -111,7 +111,7 @@ class TestStatevecNew:
             backend.add_nodes(nodes=nodes, data=states)
 
             backend.entangle_nodes(edge=(nodes[0], nodes[1]))
-            measurement = Measurement(0, Plane.XY)
+            measurement = Measurement.X
             node_to_measure = backend.node_index[0]
             result = backend.measure(node=node_to_measure, measurement=measurement)
             assert result == expected_result
@@ -128,7 +128,7 @@ class TestStatevecNew:
 
             for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
-            measurement = Measurement(0, Plane.XY)
+            measurement = Measurement.X
             node_to_measure = backend.node_index[0]
             result = backend.measure(node=node_to_measure, measurement=measurement)
             assert result == 0
@@ -156,7 +156,7 @@ class TestStatevecNew:
                     backend.entangle_nodes(edge=(other, dummy))
 
             # Same measurement for all traps
-            measurement = Measurement(0, Plane.XY)
+            measurement = Measurement.X
 
             for trap in nodes[:n_traps]:
                 node_to_measure = trap
@@ -182,7 +182,7 @@ class TestStatevecNew:
 
             for i in range(1, n_neighbors + 1):
                 backend.entangle_nodes(edge=(nodes[0], i))
-            measurement = Measurement(0, Plane.XY)
+            measurement = Measurement.X
             node_to_measure = backend.node_index[0]
             result = backend.measure(node=node_to_measure, measurement=measurement)
             assert result == expected_result
