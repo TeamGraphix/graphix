@@ -109,31 +109,28 @@ class Measurement(AbstractMeasurement):
 
         There is no unique Bloch representation for each Pauli measurement.
         For instance,
-        ```
-        >>> from graphix.measurements import Measurement
-        >>> Measurement.XY(0.5).try_to_pauli() == Measurement.YZ(0.5).try_to_pauli() == Measurement.Y
-        True
 
-        ```
+            >>> from graphix.measurements import Measurement
+            >>> Measurement.XY(0.5).try_to_pauli() == Measurement.YZ(0.5).try_to_pauli() == Measurement.Y
+            True
+
 
         This method follows the convention illustrated below:
-        ```
-        >>> from graphix.measurements import PauliMeasurement
-        >>> for pm in list(PauliMeasurement):
-        ...     print(f"{pm}.to_bloch() == {pm.to_bloch()}")
-        +X.to_bloch() == Measurement.XY(0)
-        -X.to_bloch() == Measurement.XY(1)
-        +Y.to_bloch() == Measurement.XY(0.5)
-        -Y.to_bloch() == Measurement.XY(1.5)
-        +Z.to_bloch() == Measurement.YZ(0)
-        -Z.to_bloch() == Measurement.YZ(1)
 
-        ```
+            >>> from graphix.measurements import PauliMeasurement
+            >>> for pm in list(PauliMeasurement):
+            ...     print(f"{pm}.to_bloch() == {pm.to_bloch()}")
+            +X.to_bloch() == Measurement.XY(0)
+            -X.to_bloch() == Measurement.XY(1)
+            +Y.to_bloch() == Measurement.XY(0.5)
+            -Y.to_bloch() == Measurement.XY(1.5)
+            +Z.to_bloch() == Measurement.YZ(0)
+            -Z.to_bloch() == Measurement.YZ(1)
         """
 
     @abstractmethod
     def downcast_bloch(self) -> BlochMeasurement:
-        """Return the measurement description if it is already given as an angle and a plane on the Bloch sphere; raise `TypeError` otherwise."""
+        """Return the measurement description if it is already given as an angle and a plane on the Bloch sphere; raise :class:`TypeError` otherwise."""
 
     @abstractmethod
     def try_to_pauli(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | None:
@@ -389,7 +386,7 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
 
     @override
     def downcast_bloch(self) -> BlochMeasurement:
-        """Raise `TypeError` (overridden from :class:`Measurement`)."""
+        """Raise :class:`TypeError` (overridden from :class:`Measurement`)."""
         raise TypeError("Bloch measurement expected, but Pauli measurement was found.")
 
     @override

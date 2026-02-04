@@ -72,6 +72,12 @@ This module defines data structures for single-qubit measurements in MBQC.
 .. autoclass:: Measurement
     :members:
 
+.. autoclass:: BlochMeasurement
+    :members:
+
+.. autoclass:: PauliMeasurement
+    :members:
+
 :mod:`graphix.instruction` module
 +++++++++++++++++++++++++++++++++
 
