@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-import logging
 from enum import Enum
 from typing import ClassVar, Literal
 
@@ -15,8 +14,6 @@ from graphix.repr_mixins import DataclassReprMixin
 from graphix.states import BasicStates, State
 
 Node = int
-
-logger = logging.getLogger(__name__)
 
 
 class CommandKind(Enum):
