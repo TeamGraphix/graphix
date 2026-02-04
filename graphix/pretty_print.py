@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING, SupportsFloat
 from typing_extensions import assert_never
 
 from graphix import command
-from graphix.fundamentals import AbstractMeasurement, Plane, angle_to_rad
+from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad
+from graphix.measurements import BlochMeasurement, PauliMeasurement
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
@@ -143,18 +144,22 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
         # with some other arguments and/or domains.
         arguments = []
         if cmd.kind == command.CommandKind.M:
-            if cmd.plane != Plane.XY:
-                arguments.append(cmd.plane.name)
-            # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
-            # is `False` if `cmd.angle` is an integer.
-            if isinstance(cmd.angle, SupportsFloat):
-                angle = float(cmd.angle)
-                if not math.isclose(angle, 0.0):
-                    arguments.append(angle_to_str(angle, output))
-            else:
-                # If the angle is a symbolic expression, we can only delegate the printing
-                # TODO: We should have a mean to specify the format
-                arguments.append(str(cmd.angle * math.pi))
+            match cmd.measurement:
+                case BlochMeasurement(angle, plane):
+                    if plane != Plane.XY:
+                        arguments.append(plane.name)
+                    # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
+                    # is `False` if `cmd.angle` is an integer.
+                    if isinstance(angle, SupportsFloat):
+                        arguments.append(angle_to_str(float(angle), output))
+                    else:
+                        # If the angle is a symbolic expression, we can only delegate the printing
+                        # TODO: We should have a mean to specify the format
+                        arguments.append(str(angle_to_rad(angle)))
+                case PauliMeasurement(Axis.X, Sign.PLUS):
+                    pass
+                case _:
+                    arguments.append(str(cmd.measurement))
         elif cmd.kind == command.CommandKind.C:
             arguments.append(str(cmd.clifford))
         # Use of `==` here for mypy

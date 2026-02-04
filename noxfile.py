@@ -115,7 +115,7 @@ class ReverseDependency:
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
-            branch="graphix_update",
+            branch="graphix_181",
             version_constraint=VersionRange(lower=Version("3.12"), upper=Version("3.14")),
             doctest_modules=False,
             initialization=lambda session: session.run("python", "-m", "veriphix.sampling_circuits.experiments"),

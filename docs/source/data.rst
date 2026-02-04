@@ -24,8 +24,6 @@ This module defines standard data structure for pattern commands.
 
 .. autoclass:: Z
 
-.. autoclass:: MeasureUpdate
-
 
 :mod:`graphix.fundamentals` module
 ++++++++++++++++++++++++++++++++++

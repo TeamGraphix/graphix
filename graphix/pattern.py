@@ -19,13 +19,13 @@ from typing import TYPE_CHECKING, Literal, SupportsFloat, overload
 import networkx as nx
 from typing_extensions import assert_never
 
-from graphix import command, optimization, parameter
+from graphix import command, optimization
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
+from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
-from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.qasm3_exporter import pattern_to_qasm3_lines
@@ -35,7 +35,7 @@ from graphix.states import BasicStates
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Iterator, Mapping
+    from collections.abc import Callable, Container, Iterator, Mapping
     from collections.abc import Set as AbstractSet
     from typing import Any
 
@@ -530,7 +530,7 @@ class Pattern:
                 t_domain = set(cmd.t_domain)
                 expand_domain(s_domain)
                 expand_domain(t_domain)
-                plane = cmd.plane
+                plane = cmd.measurement.to_bloch().plane
                 if plane == Plane.XY:
                     # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
                     #                  = S^t M^{XY,(-1)^s·α}
@@ -842,7 +842,7 @@ class Pattern:
         while pos < len(self.__seq):
             cmd = self.__seq[pos]
             if cmd.kind == CommandKind.M:
-                extracted_signal = extract_signal(cmd.plane, cmd.s_domain, cmd.t_domain)
+                extracted_signal = extract_signal(cmd.measurement.to_bloch().plane, cmd.s_domain, cmd.t_domain)
                 if extracted_signal.signal:
                     self.__seq.insert(pos + 1, command.S(node=cmd.node, domain=extracted_signal.signal))
                     cmd.s_domain = extracted_signal.s_domain
@@ -914,7 +914,7 @@ class Pattern:
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_partial_order_layers()
 
-    def extract_causal_flow(self) -> CausalFlow[Measurement]:
+    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
         """Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
@@ -938,10 +938,11 @@ class Pattern:
         -----
         - See :func:`optimization.StandardizedPattern.extract_causal_flow` for additional information on why it is required to standardized the pattern to extract a causal flow.
         - Applying the chain ``Pattern.extract_causal_flow().to_corrections().to_pattern()`` to a strongly deterministic pattern returns a new pattern implementing the same unitary transformation. This equivalence holds as long as the original pattern contains no Clifford commands, since those are discarded during open-graph extraction.
+        - This method requires that all the measurements in the pattern are represented as Bloch measurements (i.e., there are no :class:`PauliMeasurement`s). Use :meth:`to_bloch()` to convert all Pauli measurements.
         """
         return optimization.StandardizedPattern.from_pattern(self).extract_causal_flow()
 
-    def extract_gflow(self) -> GFlow[Measurement]:
+    def extract_gflow(self) -> GFlow[BlochMeasurement]:
         """Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
@@ -1073,43 +1074,15 @@ class Pattern:
                 target += 1
         return meas_cmds
 
-    def extract_measurement_commands(self) -> Iterator[command.M]:
-        """Return measurement commands.
+    def extract_measurement_commands(self) -> dict[int, command.M]:
+        """Return a dictionary mapping nodes to measurement commands.
 
         Returns
         -------
-        meas_cmds : Iterator[command.M]
-            measurement commands in the order of measurements
+        meas_dict : dict[int, command.M]
+            measurement commands indexed by nodes
         """
-        yield from (cmd for cmd in self if cmd.kind == CommandKind.M)
-
-    def get_meas_plane(self) -> dict[int, Plane]:
-        """Get measurement plane from the pattern.
-
-        Returns
-        -------
-        meas_plane: dict of graphix.pauli.Plane
-            list of planes representing measurement plane for each node.
-        """
-        meas_plane = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                meas_plane[cmd.node] = cmd.plane
-        return meas_plane
-
-    def get_angles(self) -> dict[int, ParameterizedAngle]:
-        """Get measurement angles of the pattern.
-
-        Returns
-        -------
-        angles : dict
-            measurement angles of the each node.
-        """
-        angles = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                angles[cmd.node] = cmd.angle
-        return angles
+        return {cmd.node: cmd for cmd in self if cmd.kind == CommandKind.M}
 
     def compute_max_degree(self) -> int:
         """Get max degree of a pattern.
@@ -1199,7 +1172,7 @@ class Pattern:
                     u, v = v, u
                 edges.symmetric_difference_update({(u, v)})
             elif cmd.kind == CommandKind.M:
-                measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
+                measurements[cmd.node] = cmd.measurement
 
         graph = nx.Graph(edges)
         graph.add_nodes_from(nodes)
@@ -1506,14 +1479,10 @@ class Pattern:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        graph = self.extract_graph()
-        vin = self.input_nodes
-        vout = self.output_nodes
-        meas_planes = self.get_meas_plane()
-        meas_angles = self.get_angles()
+        og = self.extract_opengraph()
         local_clifford = self.get_vops()
 
-        vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
+        vis = GraphVisualizer(og, local_clifford)
 
         if flow_from_pattern:
             vis.visualize_from_pattern(
@@ -1563,14 +1532,18 @@ class Pattern:
         choose `sympy` here).
 
         """
-        return any(not isinstance(cmd.angle, SupportsFloat) for cmd in self if cmd.kind == command.CommandKind.M)
+        return any(
+            not isinstance(cmd.measurement.angle, SupportsFloat)
+            for cmd in self
+            if cmd.kind == command.CommandKind.M and isinstance(cmd.measurement, BlochMeasurement)
+        )
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
         """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value."""
         result = self.copy()
         for cmd in result:
             if cmd.kind == command.CommandKind.M:
-                cmd.angle = parameter.subs(cmd.angle, variable, substitute)
+                cmd.measurement = cmd.measurement.subs(variable, substitute)
         return result
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
@@ -1578,7 +1551,7 @@ class Pattern:
         result = self.copy()
         for cmd in result:
             if cmd.kind == command.CommandKind.M:
-                cmd.angle = parameter.xreplace(cmd.angle, assignment)
+                cmd.measurement = cmd.measurement.xreplace(assignment)
         return result
 
     def copy(self) -> Pattern:
@@ -1652,6 +1625,45 @@ class Pattern:
                     check_measured(cmd, node)
             elif cmd.kind == CommandKind.C:
                 check_active(cmd, cmd.node)
+
+    def map(self, f: Callable[[Measurement], Measurement]) -> Pattern:
+        """Return a pattern where the function `f` has been applied to each measurement."""
+        new_pattern = Pattern(input_nodes=self.input_nodes)
+        new_pattern.results = self.results
+
+        for cmd in self:
+            if cmd.kind == CommandKind.M:
+                new_pattern.add(command.M(cmd.node, f(cmd.measurement), cmd.s_domain, cmd.t_domain))
+            else:
+                new_pattern.add(cmd)
+
+        new_pattern.reorder_output_nodes(self.output_nodes)
+        return new_pattern
+
+    def infer_pauli_measurements(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> Pattern:
+        """Return an equivalent pattern in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Parameters
+        ----------
+        pattern : pattern
+            Source pattern.
+        rel_tol : float, optional
+            Relative tolerance for comparing angles, passed to :func:`math.isclose`.
+            Default is ``1e-9``.
+        abs_tol : float, optional
+            Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
+            Default is ``0.0``.
+
+        Returns
+        -------
+        Pattern
+            An equivalent pattern in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+        """
+        return self.map(lambda m: m.to_pauli_or_bloch(rel_tol, abs_tol))
+
+    def to_bloch(self) -> Pattern:
+        """Return an equivalent pattern in which all measurements are represented as Bloch measurements."""
+        return self.map(lambda m: m.to_bloch())
 
 
 class RunnabilityErrorReason(Enum):
@@ -1817,24 +1829,23 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
     # Nodes that are non-Pauli measured, or pauli measured but depends on pauli measurement
     non_pauli_node: set[int] = set()
     for cmd in pattern.m_list:
-        pm = PauliMeasurement.try_from(cmd.plane, cmd.angle)  # None returned if the measurement is not in Pauli basis
-        if pm is not None:
+        if isinstance(cmd.measurement, PauliMeasurement):
             # Pauli measurement to be removed
-            if pm.axis == Axis.X:
+            if cmd.measurement.axis == Axis.X:
                 if cmd.t_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
                     non_pauli_node.add(cmd.node)
                 else:
-                    pauli_node.append((cmd, pm))
-            elif pm.axis == Axis.Y:
+                    pauli_node.append((cmd, cmd.measurement))
+            elif cmd.measurement.axis == Axis.Y:
                 if (cmd.s_domain | cmd.t_domain) & non_pauli_node:  # cmd depend on non-Pauli measurement
                     non_pauli_node.add(cmd.node)
                 else:
-                    pauli_node.append((cmd, pm))
-            elif pm.axis == Axis.Z:
+                    pauli_node.append((cmd, cmd.measurement))
+            elif cmd.measurement.axis == Axis.Z:
                 if cmd.s_domain & non_pauli_node:  # cmd depend on non-Pauli measurement
                     non_pauli_node.add(cmd.node)
                 else:
-                    pauli_node.append((cmd, pm))
+                    pauli_node.append((cmd, cmd.measurement))
             else:
                 raise ValueError("Unknown Pauli measurement basis")
         else:

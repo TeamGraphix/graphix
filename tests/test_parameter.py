@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 import graphix.command
+from graphix.measurements import Measurement
 from graphix.parameter import Placeholder, PlaceholderOperationError
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
@@ -48,28 +49,33 @@ def test_pattern_without_parameter_subs_is_identity() -> None:
 
 def test_pattern_substitution() -> None:
     pattern = Pattern(input_nodes=[0, 1])
-    pattern.add(graphix.command.M(node=0))
+    pattern.add(graphix.command.M(0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     assert pattern.is_parameterized()
     # Parameterized patterns can be substituted, even if some angles are not parameterized.
     pattern0 = pattern.subs(alpha, 0)
     # If all parameterized angles have been instantiated, the pattern is no longer parameterized.
     assert not pattern0.is_parameterized()
-    assert list(pattern0) == [graphix.command.M(node=0), graphix.command.M(node=1)]
+    assert list(pattern0) == [graphix.command.M(0), graphix.command.M(1, Measurement.XY(0))]
+    assert list(pattern0.infer_pauli_measurements()) == [graphix.command.M(0), graphix.command.M(1)]
 
 
 def test_instantiated_pattern_simulation() -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     pattern0 = pattern.subs(alpha, 0)
     # Instantied patterns can be simulated.
     pattern0.simulate_pattern()
     pattern1 = pattern.subs(alpha, 1)
     assert not pattern1.is_parameterized()
-    assert list(pattern1) == [graphix.command.M(node=0), graphix.command.M(node=1, angle=1)]
+    assert list(pattern1) == [graphix.command.M(node=0), graphix.command.M(1, Measurement.XY(1))]
+    assert list(pattern1.infer_pauli_measurements()) == [
+        graphix.command.M(node=0),
+        graphix.command.M(1, -Measurement.X),
+    ]
     pattern1.simulate_pattern()
 
 
@@ -77,10 +83,10 @@ def test_multiple_parameters() -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     beta = Placeholder("beta")
     pattern.add(graphix.command.N(node=2))
-    pattern.add(graphix.command.M(node=2, angle=beta))
+    pattern.add(graphix.command.M(2, Measurement.XY(beta)))
     # A partially instantiated pattern is still parameterized.
     assert pattern.subs(alpha, 2).is_parameterized()
     pattern23 = pattern.subs(alpha, 2).subs(beta, 3)
@@ -88,9 +94,15 @@ def test_multiple_parameters() -> None:
     assert not pattern23.is_parameterized()
     assert list(pattern23) == [
         graphix.command.M(node=0),
-        graphix.command.M(node=1, angle=2),
+        graphix.command.M(1, Measurement.XY(2)),
         graphix.command.N(node=2),
-        graphix.command.M(node=2, angle=3),
+        graphix.command.M(2, Measurement.XY(3)),
+    ]
+    assert list(pattern23.infer_pauli_measurements()) == [
+        graphix.command.M(node=0),
+        graphix.command.M(1, Measurement.X),
+        graphix.command.N(node=2),
+        graphix.command.M(2, -Measurement.X),
     ]
     pattern23.simulate_pattern()
 
@@ -99,10 +111,10 @@ def test_parallel_substitution() -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     beta = Placeholder("beta")
     pattern.add(graphix.command.N(node=2))
-    pattern.add(graphix.command.M(node=2, angle=beta))
+    pattern.add(graphix.command.M(2, Measurement.XY(beta)))
     pattern23 = pattern.xreplace({alpha: 2, beta: 3})
     assert not pattern23.is_parameterized()
 
@@ -112,10 +124,10 @@ def test_parallel_substitution_with_zero() -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     beta = Placeholder("beta")
     pattern.add(graphix.command.N(node=2))
-    pattern.add(graphix.command.M(node=2, angle=beta))
+    pattern.add(graphix.command.M(2, Measurement.XY(beta)))
     pattern23 = pattern.xreplace({alpha: 0, beta: 0})
     assert not pattern23.is_parameterized()
 
@@ -176,7 +188,7 @@ def test_visualization() -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     pattern.draw_graph()
 
 
@@ -184,6 +196,6 @@ def test_simulation_exception() -> None:
     pattern = Pattern(input_nodes=[0, 1])
     pattern.add(graphix.command.M(node=0))
     alpha = Placeholder("alpha")
-    pattern.add(graphix.command.M(node=1, angle=alpha))
+    pattern.add(graphix.command.M(1, Measurement.XY(alpha)))
     with pytest.raises(PlaceholderOperationError):
         pattern.simulate_pattern()
