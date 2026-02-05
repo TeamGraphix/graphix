@@ -25,7 +25,7 @@ def random_op(sites: int, rng: Generator) -> npt.NDArray[np.complex128]:
 
 
 CZ = Ops.CZ
-plus = BasicStates.PLUS.get_statevector()
+plus = BasicStates.PLUS.to_statevector()
 
 
 class TestTN:
@@ -372,7 +372,7 @@ class TestTN:
 
         tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)
         for number in range(len(statevec_ref.flatten())):
-            coef_tn = tn.get_basis_coefficient(number)
+            coef_tn = tn.basis_coefficient(number)
             coef_sv = statevec_ref.flatten()[number]
 
             assert abs(coef_tn) == pytest.approx(abs(coef_sv))

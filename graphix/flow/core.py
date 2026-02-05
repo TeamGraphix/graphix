@@ -569,7 +569,7 @@ class PauliFlow(Generic[_M_co]):
             for node in layer:
                 correction_set = set(self.correction_function[node])
 
-                meas = self.get_measurement_label(node)
+                meas = self.node_measurement_label(node)
 
                 for i in (correction_set - {node}) & past_and_present_nodes:
                     if self.og.measurements[i].to_plane_or_axis() not in {Axis.X, Axis.Y}:
@@ -639,7 +639,7 @@ class PauliFlow(Generic[_M_co]):
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
-    def get_measurement_label(self, node: int) -> Plane | Axis:
+    def node_measurement_label(self, node: int) -> Plane | Axis:
         """Get the measurement label of a given node in the open graph.
 
         This method interprets measurements with a Pauli angle as `Axis` instances, in consistence with the Pauli flow extraction routine.
@@ -869,7 +869,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
                         past_and_present_nodes=past_and_present_nodes,
                     )
 
-                plane = self.get_measurement_label(node)
+                plane = self.node_measurement_label(node)
 
                 if plane == Plane.XY:
                     if not (node not in correction_set and node in odd_neighbors):
@@ -895,7 +895,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
     @override
-    def get_measurement_label(self, node: int) -> Plane:
+    def node_measurement_label(self, node: int) -> Plane:
         """Get the measurement label of a given node in the open graph.
 
         This method interprets measurements with a Pauli angle as `Plane` instances, in consistence with the gflow extraction routine.
@@ -1010,7 +1010,7 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
                 if len(correction_set) != 1:
                     raise FlowPropositionError(FlowPropositionErrorReason.C0, node=node, correction_set=correction_set)
 
-                meas = self.get_measurement_label(node)
+                meas = self.node_measurement_label(node)
                 if meas != Plane.XY:
                     raise FlowGenericError(FlowGenericErrorReason.XYPlane)
 

@@ -145,7 +145,7 @@ class TestDensityMatrix:
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
 
-        sv_list = [state.get_statevector() for state in states]
+        sv_list = [state.to_statevector() for state in states]
         sv = functools.reduce(np.kron, sv_list)  # type: ignore[arg-type]
 
         # input with a statevector DATA (not Statevec object)
@@ -170,7 +170,7 @@ class TestDensityMatrix:
         )
 
         # input with a huge density matrix
-        dm_list = [state.get_densitymatrix() for state in states]
+        dm_list = [state.to_densitymatrix() for state in states]
         num_dm = functools.reduce(np.kron, dm_list)  # type: ignore[arg-type]
 
         dm = DensityMatrix(data=num_dm)

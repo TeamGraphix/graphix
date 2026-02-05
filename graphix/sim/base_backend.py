@@ -464,8 +464,8 @@ class DenseState(ABC):
         raise NoiseNotSupportedError
 
 
-def _op_mat_from_result(
-    vec: tuple[ExpressionOrFloat, ExpressionOrFloat, ExpressionOrFloat], result: Outcome, symbolic: bool = False
+def _outcome_to_operator_matrix(
+    vec: tuple[ExpressionOrFloat, ExpressionOrFloat, ExpressionOrFloat], outcome: Outcome, symbolic: bool = False
 ) -> Matrix:
     r"""Return the operator :math:`\tfrac{1}{2}(I + (-1)^r \vec{v}\cdot\vec{\sigma})`.
 
@@ -473,8 +473,8 @@ def _op_mat_from_result(
     ----------
     vec : tuple[float, float, float]
         Cartesian components of a unit vector.
-    result : bool
-        Measurement result ``r``.
+    outcome : bool
+        Measurement outcome ``r``.
     symbolic : bool, optional
         If ``True`` return an array of ``object`` dtype.
 
@@ -483,7 +483,7 @@ def _op_mat_from_result(
     numpy.ndarray
         2x2 operator acting on the measured qubit.
     """
-    sign = (-1) ** result
+    sign = (-1) ** outcome
     if symbolic:
         op_mat_symbolic: npt.NDArray[np.object_] = np.eye(2, dtype=np.object_) / 2
         for i, t in enumerate(vec):
@@ -763,28 +763,28 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         # but the value is computed lazily, i.e., only if needed.
         op_mat0 = None
 
-        def get_op_mat0() -> Matrix:
+        def compute_op_mat0() -> Matrix:
             nonlocal op_mat0
             if op_mat0 is None:
-                op_mat0 = _op_mat_from_result(vec, 0, symbolic=self.symbolic)
+                op_mat0 = _outcome_to_operator_matrix(vec, 0, symbolic=self.symbolic)
             return op_mat0
 
         def f_expectation0() -> float:
-            exp_val = self.state.expectation_single(get_op_mat0(), loc)
+            exp_val = self.state.expectation_single(compute_op_mat0(), loc)
             assert math.isclose(exp_val.imag, 0, abs_tol=1e-10)
             return exp_val.real
 
-        result = self.branch_selector.measure(node, f_expectation0, rng)
-        op_mat = _op_mat_from_result(vec, 1, symbolic=self.symbolic) if result else get_op_mat0()
+        outcome = self.branch_selector.measure(node, f_expectation0, rng)
+        op_mat = _outcome_to_operator_matrix(vec, 1, symbolic=self.symbolic) if outcome else compute_op_mat0()
         self.state.evolve_single(op_mat, loc)
         self.node_index.remove(node)
         self.state.remove_qubit(loc)
-        return result
+        return outcome
 
     @override
     def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
-        if np.mod(sum(measure_method.get_measure_result(j) for j in cmd.domain), 2) == 1:
+        if np.mod(sum(measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1:
             op = Ops.X if cmd.kind == CommandKind.X else Ops.Z
             self.apply_single(node=cmd.node, op=op)
 

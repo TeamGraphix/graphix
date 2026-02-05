@@ -139,7 +139,7 @@ class GraphState(Graph):
                 else:
                     raise RuntimeError
 
-    def get_vops(self) -> dict[int, Clifford]:
+    def extract_vops(self) -> dict[int, Clifford]:
         """Apply local Clifford operators to the graph state from a dictionary.
 
         Returns
@@ -510,6 +510,6 @@ class GraphState(Graph):
                 gstate.evolve_single(Ops.H, i)
         return gstate
 
-    def get_isolates(self) -> list[int]:
+    def isolated_nodes(self) -> list[int]:
         """Return a list of isolated nodes (nodes with no edges)."""
         return list(nx.isolates(self))

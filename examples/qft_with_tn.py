@@ -74,7 +74,7 @@ import time
 
 t1 = time.time()
 tn = pattern.simulate_pattern(backend="tensornetwork")
-value = tn.get_basis_amplitude(0)
+value = tn.basis_amplitude(0)
 t2 = time.time()
 print("amplitude of |00...0> is ", value)
 print("1/2^n (true answer) is", 1 / 2**n)

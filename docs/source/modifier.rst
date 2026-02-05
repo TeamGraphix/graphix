@@ -26,9 +26,7 @@ Pattern Manipulation
 
     .. automethod:: compute_max_degree
 
-    .. automethod:: get_angles
-
-    .. automethod:: get_vops
+    .. automethod:: extract_clifford
 
     .. automethod:: connected_nodes
 

@@ -85,14 +85,14 @@ class MeasureMethod(abc.ABC):
         rng: Generator | None = None,
     ) -> None:
         """Perform a measure."""
-        description = self.get_measurement_description(cmd)
+        description = self.describe_measurement(cmd)
         result = backend.measure(cmd.node, description, rng=rng)
         if noise_model is not None:
             result = noise_model.confuse_result(cmd, result, rng=rng)
-        self.set_measure_result(cmd.node, result)
+        self.store_measurement_outcome(cmd.node, result)
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd: BaseM) -> Measurement:
+    def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a command.
 
         Parameters
@@ -108,7 +108,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_measure_result(self, node: int) -> Outcome:
+    def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -124,7 +124,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def set_measure_result(self, node: int, result: Outcome) -> None:
+    def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -157,10 +157,10 @@ class DefaultMeasureMethod(MeasureMethod):
         performed during simulation are stored in `self.results`, which is a copy
         of the given mapping. The original `results` mapping is not modified.
         """
-        # results is coerced into dict, since `set_measure_result` mutates it.
+        # results is coerced into dict, since `store_measurement_outcome` mutates it.
         self.results = {} if results is None else dict(results)
 
-    def get_measurement_description(self, cmd: BaseM) -> Measurement:
+    def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
 
         Parameters
@@ -181,7 +181,7 @@ class DefaultMeasureMethod(MeasureMethod):
         angle = cmd.angle * measure_update.coeff + measure_update.add_term
         return Measurement(angle, measure_update.new_plane)
 
-    def get_measure_result(self, node: int) -> Outcome:
+    def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -196,7 +196,7 @@ class DefaultMeasureMethod(MeasureMethod):
         """
         return self.results[node]
 
-    def set_measure_result(self, node: int, result: Outcome) -> None:
+    def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -275,10 +275,6 @@ class PatternSimulator(Generic[_StateT_co]):
     def measure_method(self) -> MeasureMethod:
         """Return the measure method."""
         return self.__measure_method
-
-    def set_noise_model(self, model: NoiseModel | None) -> None:
-        """Set a noise model."""
-        self.noise_model = model
 
     def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None) -> None:
         """Perform the simulation.
