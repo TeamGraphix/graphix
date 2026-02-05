@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #253, #406: Added classes `BaseCommand` and `BaseInstruction`.
 
-- #407: Introduced new method `graphix.optimization.StandardizedPattern.extract_xzcorrections` and its wrapper `graphix.pattern.Pattern.extract_xzcorrections` which extract an `XZCorrections` instance from a pattern. 
+- #407: Introduced new method `graphix.optimization.StandardizedPattern.extract_xzcorrections` and its wrapper `graphix.pattern.Pattern.extract_xzcorrections` which extract an `XZCorrections` instance from a pattern.
 
 - #412: Added pretty-print methods (`to_ascii`, `to_latex` and `to_unicode`) for `PauliFlow` and `XZCorrections` classes. Implemented their `__str__` method as a call to `self.to_ascii`.
 
@@ -112,7 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a pattern.
 
 - #358: Refactor of flow tools - Part I
-  - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future. 
+  - New module `graphix.flow.core` which introduces classes `PauliFlow`, `GFlow`, `CausalFlow` and `XZCorrections` allowing a finer analysis of MBQC flows. This module subsumes `graphix.generator` which has been removed and part of `graphix.gflow` which will be removed in the future.
   - New module `graphix.flow._find_cflow` with the existing causal-flow finding algorithm.
   - New module `graphix.flow._find_gpflow` with the existing g- and Pauli-flow finding algorithm introduced in #337.
   - New abstract types `graphix.fundamentals.AbstractMeasurement` and `graphix.fundamentals.AbstractPlanarMeasurement` which serve as an umbrella of the existing types `graphix.measurements.Measurement`, `graphix.fundamentals.Plane` and `graphix.fundamentals.Axis`.
@@ -221,7 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   * a function `incorporate_pauli_results` that returns an equivalent
     pattern in which the `results` are incorporated into measurement
-    and correction domains.  
+    and correction domains.
     The resulting pattern is suitable for flow analysis. In
     particular, if a pattern has a flow, it is preserved by
     `perform_pauli_measurements` after applying `standardize` and
@@ -272,11 +272,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #314, #322: The method `Pattern.standardize()` now places C commands
   after X and Z commands, making the resulting patterns suitable for
-  flow analysis.  
+  flow analysis.
   The `flow_from_pattern` functions now fail if the input pattern is
   not strictly standardized (as checked by
   `Pattern.is_standard(strict=True)`, which requires C commands to be
-  last).  
+  last).
   Note: the method `perform_pauli_measurements` still places C
   commands before X and Z commands.
 
