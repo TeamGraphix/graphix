@@ -71,7 +71,7 @@ class TestNoisyDensityMatrixBackend:
         assert np.allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_noisy_measure_confuse_hadamard_arbitrary(self, fx_rng: Generator, outcome: int) -> None:
+    def test_noisy_measure_confuse_hadamard_arbitrary(self, fx_rng: Generator, outcome: Outcome) -> None:
         # arbitrary probability with fixed branch
         hadamardpattern = hpat()
         measure_error_pr = fx_rng.random()
