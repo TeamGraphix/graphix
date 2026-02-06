@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
 import pytest
 
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
+from graphix.command import CommandKind, M
 from graphix.fundamentals import angle_to_rad
 from graphix.noise_models import DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.fundamentals import Angle
+    from graphix.measurements import Outcome
     from graphix.pattern import Pattern
 
 
@@ -110,7 +112,7 @@ class TestNoisyDensityMatrixBackend:
 
     # test Pauli X error
     @pytest.mark.parametrize("outcome", [0, 1])
-    def test_noisy_x_hadamard(self, fx_rng: Generator, outcome: int) -> None:
+    def test_noisy_x_hadamard(self, fx_rng: Generator, outcome: Outcome) -> None:
         hadamardpattern = hpat()
         # x error only
         x_error_pr = fx_rng.random()
@@ -321,16 +323,16 @@ class TestNoisyDensityMatrixBackend:
 
     @pytest.mark.parametrize("z_outcome", [0, 1])
     @pytest.mark.parametrize("x_outcome", [0, 1])
-    def test_noisy_x_rz(self, fx_rng: Generator, outcome_z: int, outcome_x: int) -> None:
+    def test_noisy_x_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
         # x error only
         x_error_pr = fx_rng.random()
-        print(f"x_error_pr = {x_error_pr}, outcome_z = {outcome_z}, outcome_x = {outcome_x}")
+        print(f"x_error_pr = {x_error_pr}, outcome_z = {z_outcome}, outcome_x = {x_outcome}")
 
         # M(0) determines Z, M(1) determines X
         m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
-        results = {next(m_nodes): outcome_z, next(m_nodes): outcome_x}
+        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
 
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
@@ -353,8 +355,8 @@ class TestNoisyDensityMatrixBackend:
             ),
         )
 
-    @pytest.mark.parametrize("outcome_z,outcome_x", [(0, 0), (0, 1), (1, 0), (1, 1)])
-    def test_noisy_z_rz(self, fx_rng: Generator, outcome_z: int, outcome_x: int) -> None:
+    @pytest.mark.parametrize(("outcome_z", "outcome_x"), [(0, 0), (0, 1), (1, 0), (1, 1)])
+    def test_noisy_z_rz(self, fx_rng: Generator, outcome_z: Outcome, outcome_x: Outcome) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
         # z error only
@@ -362,14 +364,14 @@ class TestNoisyDensityMatrixBackend:
         print(f"z_error_pr = {z_error_pr}, outcome_z = {outcome_z}, outcome_x = {outcome_x}")
 
         # M(0) determines Z, M(1) determines X
-        results = {}
+        results: dict[int, Outcome] = {}
         cmd_count = 0
         for cmd in rzpattern:
             if cmd.kind.name == "M":
                 if cmd_count == 0:
-                    results[cmd.node] = outcome_z
+                    results[cast("M", cmd).node] = outcome_z
                 elif cmd_count == 1:
-                    results[cmd.node] = outcome_x
+                    results[cast("M", cmd).node] = outcome_x
                 cmd_count += 1
 
         res = rzpattern.simulate_pattern(
@@ -393,8 +395,8 @@ class TestNoisyDensityMatrixBackend:
             ),
         )
 
-    @pytest.mark.parametrize("z_outcome,x_outcome", [(0, 0), (0, 1), (1, 0), (1, 1)])
-    def test_noisy_xz_rz(self, fx_rng: Generator, z_outcome: int, x_outcome: int) -> None:
+    @pytest.mark.parametrize(("z_outcome", "x_outcome"), [(0, 0), (0, 1), (1, 0), (1, 1)])
+    def test_noisy_xz_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
         # x and z errors
@@ -405,14 +407,14 @@ class TestNoisyDensityMatrixBackend:
         print(f"z_outcome = {z_outcome}, x_outcome = {x_outcome}")
 
         # M(0) determines Z correction, M(1) determines X correction
-        results = {}
+        results: dict[int, Outcome] = {}
         cmd_count = 0
         for cmd in rzpattern:
             if cmd.kind.name == "M":
                 if cmd_count == 0:
-                    results[cmd.node] = z_outcome
+                    results[cast("M", cmd).node] = z_outcome
                 elif cmd_count == 1:
-                    results[cmd.node] = x_outcome
+                    results[cast("M", cmd).node] = x_outcome
                 cmd_count += 1
 
         res = rzpattern.simulate_pattern(
@@ -437,20 +439,20 @@ class TestNoisyDensityMatrixBackend:
         )
 
     # test measurement confuse outcome
-    @pytest.mark.parametrize("z_outcome,x_outcome", [(0, 0), (0, 1), (1, 0), (1, 1)])
-    def test_noisy_measure_confuse_rz(self, fx_rng: Generator, z_outcome: int, x_outcome: int) -> None:
+    @pytest.mark.parametrize(("z_outcome", "x_outcome"), [(0, 0), (0, 1), (1, 0), (1, 1)])
+    def test_noisy_measure_confuse_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
 
         # M(0) determines Z, M(1) determines X
-        results = {}
+        results: dict[int, Outcome] = {}
         cmd_count = 0
         for cmd in rzpattern:
             if cmd.kind.name == "M":
                 if cmd_count == 0:
-                    results[cmd.node] = z_outcome
+                    results[cast("M", cmd).node] = z_outcome
                 elif cmd_count == 1:
-                    results[cmd.node] = x_outcome
+                    results[cast("M", cmd).node] = x_outcome
                 cmd_count += 1
 
         # Test with probability 1 to flip both outcomes
@@ -466,20 +468,22 @@ class TestNoisyDensityMatrixBackend:
         # All outcomes lead to same result: both corrections applied due to flipping
         assert np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
 
-    @pytest.mark.parametrize("z_outcome,x_outcome", [(0, 0), (0, 1), (1, 0), (1, 1)])
-    def test_noisy_measure_confuse_rz_arbitrary(self, fx_rng: Generator, z_outcome: int, x_outcome: int) -> None:
+    @pytest.mark.parametrize(("z_outcome", "x_outcome"), [(0, 0), (0, 1), (1, 0), (1, 1)])
+    def test_noisy_measure_confuse_rz_arbitrary(
+        self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome
+    ) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
 
         # M(0) determines Z, M(1) determines X
-        results = {}
+        results: dict[int, Outcome] = {}
         cmd_count = 0
         for cmd in rzpattern:
             if cmd.kind.name == "M":
                 if cmd_count == 0:
-                    results[cmd.node] = z_outcome
+                    results[cast("M", cmd).node] = z_outcome
                 elif cmd_count == 1:
-                    results[cmd.node] = x_outcome
+                    results[cast("M", cmd).node] = x_outcome
                 cmd_count += 1
 
         # Test with arbitrary probability
