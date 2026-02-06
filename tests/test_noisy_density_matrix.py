@@ -329,15 +329,8 @@ class TestNoisyDensityMatrixBackend:
         print(f"x_error_pr = {x_error_pr}, outcome_z = {outcome_z}, outcome_x = {outcome_x}")
 
         # M(0) determines Z, M(1) determines X
-        results = {}
-        cmd_count = 0
-        for cmd in rzpattern:
-            if cmd.kind == CommandKind.M:
-                if cmd_count == 0:
-                    results[cmd.node] = outcome_z
-                elif cmd_count == 1:
-                    results[cmd.node] = outcome_x
-                cmd_count += 1
+        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
+        results = {next(m_nodes): outcome_z, next(m_nodes): outcome_x}
 
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
