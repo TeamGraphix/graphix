@@ -319,7 +319,8 @@ class TestNoisyDensityMatrixBackend:
             ),
         )
 
-    @pytest.mark.parametrize("outcome_z,outcome_x", [(0, 0), (0, 1), (1, 0), (1, 1)])
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
     def test_noisy_x_rz(self, fx_rng: Generator, outcome_z: int, outcome_x: int) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
