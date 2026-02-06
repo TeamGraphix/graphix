@@ -332,7 +332,7 @@ class TestNoisyDensityMatrixBackend:
         results = {}
         cmd_count = 0
         for cmd in rzpattern:
-            if cmd.kind.name == "M":
+            if cmd.kind == CommandKind.M:
                 if cmd_count == 0:
                     results[cmd.node] = outcome_z
                 elif cmd_count == 1:
