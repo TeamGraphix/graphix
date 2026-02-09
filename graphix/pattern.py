@@ -213,7 +213,7 @@ class Pattern:
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
         if not mapping.keys() <= nodes_p2:
-            raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
+            raise PatternError("Keys of `mapping` must correspond to the nodes of `other`.")
 
         # Cast to set for improved performance in membership test
         mapping_values_set = set(mapping.values())
@@ -221,14 +221,14 @@ class Pattern:
         i2_set = set(other.input_nodes)
 
         if len(mapping) != len(mapping_values_set):
-            raise ValueError("Values of `mapping` contain duplicates.")
+            raise PatternError("Values of `mapping` contain duplicates.")
 
         if mapping_values_set & nodes_p1 - o1_set:
-            raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`.")
+            raise PatternError("Values of `mapping` must not contain measured nodes of pattern `self`.")
 
         for k, v in mapping.items():
             if v in o1_set and k not in i2_set:
-                raise ValueError(
+                raise PatternError(
                     f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`."
                 )
 
@@ -508,7 +508,7 @@ class Pattern:
                     self._commute_with_following(target)
                 target += 1
             return signal_dict
-        raise ValueError("Invalid method")
+        raise PatternError("Invalid method")
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure."""
@@ -1156,7 +1156,7 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N:
                 if cmd.state != BasicStates.PLUS:
-                    raise ValueError(
+                    raise PatternError(
                         f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
                     )
                 nodes.add(cmd.node)
@@ -1414,7 +1414,7 @@ class Pattern:
 
         """
         if self.input_nodes:
-            raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
+            raise PatternError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
         self.__dict__.update(measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps).__dict__)
 
     def draw_graph(
@@ -1637,6 +1637,10 @@ class Pattern:
         return self.map(lambda m: m.to_bloch())
 
 
+class PatternError(Exception):
+    """Exception subclass to handle pattern errors."""
+
+
 class RunnabilityErrorReason(Enum):
     """Describe the reason for a pattern not being runnable."""
 
@@ -1657,7 +1661,7 @@ class RunnabilityErrorReason(Enum):
 
 
 @dataclass
-class RunnabilityError(Exception):
+class RunnabilityError(PatternError):
     """Error raised by :method:`Pattern.check_runnability`."""
 
     cmd: Command
@@ -1818,7 +1822,7 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
                 else:
                     pauli_node.append((cmd, cmd.measurement))
             else:
-                raise ValueError("Unknown Pauli measurement basis")
+                raise PatternError("Unknown Pauli measurement basis")
         else:
             non_pauli_node.add(cmd.node)
     return pauli_node, non_pauli_node
@@ -1828,12 +1832,12 @@ def assert_permutation(original: list[int], user: list[int]) -> None:
     """Check that the provided `user` node list is a permutation from `original`."""
     node_set = set(user)
     if node_set != set(original):
-        raise ValueError(f"{node_set} != {set(original)}")
+        raise PatternError(f"{node_set} != {set(original)}")
     for node in user:
         if node in node_set:
             node_set.remove(node)
         else:
-            raise ValueError(f"{node} appears twice")
+            raise PatternError(f"{node} appears twice")
 
 
 @dataclass

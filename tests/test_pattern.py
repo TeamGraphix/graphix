@@ -19,7 +19,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
-from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes
+from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -53,7 +53,7 @@ class TestPattern:
         pattern = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[2, 0])
         assert pattern.input_nodes == [1, 0]
         assert pattern.output_nodes == [2, 0]
-        with pytest.raises(ValueError):
+        with pytest.raises(PatternError):
             Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[0, 1, 2])
 
     def test_eq(self) -> None:
@@ -299,7 +299,7 @@ class TestPattern:
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize()
-        with pytest.raises(ValueError):
+        with pytest.raises(PatternError):
             pattern.perform_pauli_measurements()
 
     def test_pauli_measurement_leave_input(self) -> None:
@@ -320,7 +320,7 @@ class TestPattern:
         swap(circuit, 0, 2)
         pattern = circuit.transpile().pattern
         pattern.standardize()
-        with pytest.raises(ValueError):
+        with pytest.raises(PatternError):
             pattern.perform_pauli_measurements()
 
     @pytest.mark.parametrize("jumps", range(1, 6))
@@ -536,17 +536,19 @@ class TestPattern:
         assert pc == p
         assert mapping_c == {0: 1, 2: 5}
 
-        with pytest.raises(ValueError, match=r"Keys of `mapping` must correspond to the nodes of `other`."):
+        with pytest.raises(PatternError, match=r"Keys of `mapping` must correspond to the nodes of `other`."):
             p1.compose(p2, mapping={0: 1, 2: 5, 1: 2})
 
-        with pytest.raises(ValueError, match=r"Values of `mapping` contain duplicates."):
+        with pytest.raises(PatternError, match=r"Values of `mapping` contain duplicates."):
             p1.compose(p2, mapping={0: 1, 2: 1})
 
-        with pytest.raises(ValueError, match=r"Values of `mapping` must not contain measured nodes of pattern `self`."):
+        with pytest.raises(
+            PatternError, match=r"Values of `mapping` must not contain measured nodes of pattern `self`."
+        ):
             p1.compose(p2, mapping={0: 1, 2: 0})
 
         with pytest.raises(
-            ValueError,
+            PatternError,
             match=r"Mapping 2 -> 1 is not valid. 1 is an output of pattern `self` but 2 is not an input of pattern `other`.",
         ):
             p1.compose(p2, mapping={2: 1})
