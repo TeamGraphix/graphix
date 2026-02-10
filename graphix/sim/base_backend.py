@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
     from graphix import command
     from graphix.measurements import Measurement, Outcome
-    from graphix.noise_models.noise_model import Noise
+    from graphix.noise_models.noise_model import Noise, ApplyNoise
     from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
     from graphix.sim.data import Data
     from graphix.simulator import MeasureMethod
@@ -619,7 +619,7 @@ class Backend(Generic[_StateT_co]):
         Previously existing nodes remain unchanged.
         """
 
-    def apply_noise(self, nodes: Sequence[int], noise: Noise) -> None:  # noqa: ARG002,PLR6301
+    def apply_noise(self, cmd: ApplyNoise, measure_method: MeasureMethod) -> None:  # noqa: ARG002,PLR6301
         """Apply noise.
 
         The default implementation of this method raises
@@ -784,23 +784,23 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     @override
     def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
-        if np.mod(sum(measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1:
-            op = Ops.X if cmd.kind == CommandKind.X else Ops.Z
-            self.apply_single(node=cmd.node, op=op)
+        # conditional ligic taken into accoutn in simulator.py
+        op = Ops.X if cmd.kind == CommandKind.X else Ops.Z
+        self.apply_single(node=cmd.node, op=op)
 
     @override
-    def apply_noise(self, nodes: Sequence[int], noise: Noise) -> None:
-        """Apply noise.
+    def apply_noise(self, cmd: ApplyNoise, measure_method: MeasureMethod) -> None:
+        """Apply noise based on the attributes of `:class: graphix.noise_model.ApplyNoise`.
 
         Parameters
         ----------
-        nodes : sequence of ints.
-            Target qubits
-        noise : Noise
-            Noise to apply
+        cmd : ApplyNoise
+            command ApplyNoise
+        measure_method : MeasureMethod
         """
-        indices = [self.node_index.index(i) for i in nodes]
-        self.state.apply_noise(indices, noise)
+        # conditional logic done at the level above
+        indices = [self.node_index.index(i) for i in cmd.nodes]
+        self.state.apply_noise(indices, cmd.noise)
 
     def apply_single(self, node: int, op: Matrix) -> None:
         """Apply a single gate to the state."""

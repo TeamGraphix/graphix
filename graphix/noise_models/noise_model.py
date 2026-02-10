@@ -47,6 +47,7 @@ class ApplyNoise(_KindChecker):
     kind: ClassVar[Literal[CommandKind.ApplyNoise]] = dataclasses.field(default=CommandKind.ApplyNoise, init=False)
     noise: Noise
     nodes: list[Node]
+    domain: set[Node] | None = None
 
 
 CommandOrNoise = Command | ApplyNoise

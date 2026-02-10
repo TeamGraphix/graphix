@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Generic, Literal, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
+import numpy as np
 from typing_extensions import assert_never, override
 
 from graphix import command
@@ -311,7 +312,8 @@ class PatternSimulator(Generic[_StateT_co]):
                 self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                self.backend.correct_byproduct(cmd, self.__measure_method)
+                if np.mod(sum(self.__measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1:
+                    self.backend.correct_byproduct(cmd, self.__measure_method)
             elif cmd.kind == CommandKind.C:
                 self.backend.apply_clifford(cmd.node, cmd.clifford)
             elif cmd.kind == CommandKind.T:
@@ -321,7 +323,11 @@ class PatternSimulator(Generic[_StateT_co]):
                 # handling of ticks during noise transpilation.
                 pass
             elif cmd.kind == CommandKind.ApplyNoise:
-                self.backend.apply_noise(cmd.nodes, cmd.noise)
+                if (
+                    cmd.domain is None
+                    or np.mod(sum(self.__measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1
+                ):
+                    self.backend.apply_noise(cmd, self.__measure_method)
             elif cmd.kind == CommandKind.S:
                 raise ValueError("S commands unexpected in simulated patterns.")
             else:
