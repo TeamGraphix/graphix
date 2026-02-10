@@ -313,7 +313,7 @@ class PatternSimulator(Generic[_StateT_co]):
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
                 if np.mod(sum(self.__measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1:
-                    self.backend.correct_byproduct(cmd, self.__measure_method)
+                    self.backend.correct_byproduct(cmd)
             elif cmd.kind == CommandKind.C:
                 self.backend.apply_clifford(cmd.node, cmd.clifford)
             elif cmd.kind == CommandKind.T:
@@ -327,7 +327,7 @@ class PatternSimulator(Generic[_StateT_co]):
                     cmd.domain is None
                     or np.mod(sum(self.__measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1
                 ):
-                    self.backend.apply_noise(cmd, self.__measure_method)
+                    self.backend.apply_noise(cmd)
             elif cmd.kind == CommandKind.S:
                 raise ValueError("S commands unexpected in simulated patterns.")
             else:

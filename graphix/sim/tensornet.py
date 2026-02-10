@@ -768,7 +768,7 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         return result
 
     @override
-    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
+    def correct_byproduct(self, cmd: command.X | command.Z) -> None:
         """Perform byproduct correction.
 
         Parameters
@@ -779,9 +779,8 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         measure_method : MeasureMethod
             The measure method to use
         """
-        if sum(measure_method.measurement_outcome(j) for j in cmd.domain) % 2 == 1:
-            op = Ops.X if isinstance(cmd, command.X) else Ops.Z
-            self.state.evolve_single(cmd.node, op, str(cmd.kind))
+        op = Ops.X if isinstance(cmd, command.X) else Ops.Z
+        self.state.evolve_single(cmd.node, op, str(cmd.kind))
 
     @override
     def apply_clifford(self, node: int, clifford: Clifford) -> None:

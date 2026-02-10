@@ -619,7 +619,7 @@ class Backend(Generic[_StateT_co]):
         Previously existing nodes remain unchanged.
         """
 
-    def apply_noise(self, cmd: ApplyNoise, measure_method: MeasureMethod) -> None:  # noqa: ARG002,PLR6301
+    def apply_noise(self, cmd: ApplyNoise) -> None:  # noqa: ARG002,PLR6301
         """Apply noise.
 
         The default implementation of this method raises
@@ -642,7 +642,7 @@ class Backend(Generic[_StateT_co]):
         """Apply single-qubit Clifford gate, specified by vop index specified in graphix.clifford.CLIFFORD."""
 
     @abstractmethod
-    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
+    def correct_byproduct(self, cmd: command.X | command.Z) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
 
     @abstractmethod
@@ -782,14 +782,14 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
         return outcome
 
     @override
-    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
+    def correct_byproduct(self, cmd: command.X | command.Z) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
         # conditional ligic taken into accoutn in simulator.py
         op = Ops.X if cmd.kind == CommandKind.X else Ops.Z
         self.apply_single(node=cmd.node, op=op)
 
     @override
-    def apply_noise(self, cmd: ApplyNoise, measure_method: MeasureMethod) -> None:
+    def apply_noise(self, cmd: ApplyNoise) -> None:
         """Apply noise based on the attributes of `:class: graphix.noise_model.ApplyNoise`.
 
         Parameters
