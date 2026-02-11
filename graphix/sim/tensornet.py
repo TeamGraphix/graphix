@@ -34,7 +34,6 @@ if TYPE_CHECKING:
     from graphix.clifford import Clifford
     from graphix.measurements import Measurement, Outcome
     from graphix.sim import Data
-    from graphix.simulator import MeasureMethod
 
 PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
 

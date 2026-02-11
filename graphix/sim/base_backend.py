@@ -29,10 +29,9 @@ if TYPE_CHECKING:
 
     from graphix import command
     from graphix.measurements import Measurement, Outcome
-    from graphix.noise_models.noise_model import Noise, ApplyNoise
+    from graphix.noise_models.noise_model import ApplyNoise, Noise
     from graphix.parameter import ExpressionOrComplex, ExpressionOrFloat
     from graphix.sim.data import Data
-    from graphix.simulator import MeasureMethod
 
 
 Matrix: TypeAlias = npt.NDArray[np.object_ | np.complex128]
