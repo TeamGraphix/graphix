@@ -142,21 +142,30 @@ def tests_reverse_dependencies(session: Session, package: ReverseDependency) -> 
             f"{dirname} only supports Python versions {package.version_constraint}; current Python version: {session.python}"
         )
 
-    session.install(".")
     install_pytest(session)
     if package.doctest_modules:
         session.install("nox")
-    # Use `session.cd` as a context manager to ensure that the
-    # working directory is restored afterward. This is important
-    # because Windows cannot delete a temporary directory while it
-    # is the working directory.
-    with TemporaryDirectory() as tmpdir, session.cd(tmpdir):
-        if package.branch is None:
-            session.run("git", "clone", package.repository)
-        else:
-            session.run("git", "clone", "-b", package.branch, package.repository)
-        with session.cd(dirname):
-            session.install(".")
+    with TemporaryDirectory() as tmpdir:
+        with session.cd(tmpdir):
+            if package.branch is None:
+                session.run("git", "clone", package.repository)
+            else:
+                session.run("git", "clone", "-b", package.branch, package.repository)
+            with session.cd(dirname):
+                session.install(".")
+        # Note that `session.cd` is used as a context manager above,
+        # so that the working directory is restored at this point.  We
+        # install now the graphix package from the working directory.
+        # This is done after having installed the reverse dependency,
+        # so that we run the test with the current graphix codebase,
+        # even if another graphix version has been pinned in the
+        # reverse dependendy.
+        session.install(".")
+        # Use `session.cd` as a context manager again to ensure that the
+        # working directory is restored afterward. This is important
+        # because Windows cannot delete a temporary directory while it
+        # is the working directory.
+        with session.cd(tmpdir), session.cd(dirname):
             if package.initialization is not None:
                 package.initialization(session)
             run_pytest(session, doctest_modules=package.doctest_modules)
