@@ -54,9 +54,10 @@ class ApplyNoise(_KindChecker):
 
     domain: set[Node] | None = None
         Optional domain for conditional noise.
-        If None, the noise is applied unconditionally.
-        Otherwise, the noise is applied if there is an odd number of nodes among domain that have been measured with outcome 1 (as for X and Z commands).
-        Note that the noise is never applied if domain is the empty set.
+        If ``None``, the noise is applied unconditionally.
+        Otherwise, the noise is applied if there is an odd number of nodes among ``domain`` that have been measured with outcome 1 (as for ``X`` and ``Z`` commands).
+        Note that the noise is never applied if ``domain`` is the empty set.
+
     """
 
     kind: ClassVar[Literal[CommandKind.ApplyNoise]] = dataclasses.field(default=CommandKind.ApplyNoise, init=False)
