@@ -136,7 +136,6 @@ class MeasureMethod(abc.ABC):
         """
         ...
 
-    @abc.abstractmethod
     def check_domain(self, domain: Iterable[int]) -> bool:
         """Check that the measurement outcomes match the domain condition.
 
@@ -145,7 +144,7 @@ class MeasureMethod(abc.ABC):
         domain : Iterable[int]
             domain on which to compute the condition for applying conditional commands.
         """
-        ...
+        return sum(self.measurement_outcome(j) for j in domain) % 2 == 1
 
 
 class DefaultMeasureMethod(MeasureMethod):
@@ -221,11 +220,6 @@ class DefaultMeasureMethod(MeasureMethod):
             Measurement outcome to store.
         """
         self.results[node] = result
-
-    @override
-    def check_domain(self, domain: Iterable[int]) -> bool:
-        """Check that the measurement outcomes match the domain condition."""
-        return sum(self.measurement_outcome(j) for j in domain) % 2 == 1
 
 
 class PatternSimulator(Generic[_StateT_co]):
