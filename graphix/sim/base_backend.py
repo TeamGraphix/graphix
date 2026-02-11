@@ -627,6 +627,8 @@ class Backend(Generic[_StateT_co]):
         `DensityMatrixBackend`) override this method to implement
         the effect of noise.
 
+        Note: the simulator is responsible for checking that the measurement outcomes match the domain condition before calling this method.
+
         Parameters
         ----------
         nodes : sequence of ints.
@@ -642,7 +644,10 @@ class Backend(Generic[_StateT_co]):
 
     @abstractmethod
     def correct_byproduct(self, cmd: command.X | command.Z) -> None:
-        """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
+        """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate.
+
+        Note: the simulator is responsible for checking that the measurement outcomes match the domain condition before calling this method.
+        """
 
     @abstractmethod
     def entangle_nodes(self, edge: tuple[int, int]) -> None:
@@ -783,21 +788,18 @@ class DenseStateBackend(Backend[_DenseStateT_co], Generic[_DenseStateT_co]):
     @override
     def correct_byproduct(self, cmd: command.X | command.Z) -> None:
         """Byproduct correction correct for the X or Z byproduct operators, by applying the X or Z gate."""
-        # conditional ligic taken into accoutn in simulator.py
         op = Ops.X if cmd.kind == CommandKind.X else Ops.Z
         self.apply_single(node=cmd.node, op=op)
 
     @override
     def apply_noise(self, cmd: ApplyNoise) -> None:
-        """Apply noise based on the attributes of `:class: graphix.noise_model.ApplyNoise`.
+        """Apply noise for the command `:class: graphix.noise_model.ApplyNoise`.
 
         Parameters
         ----------
         cmd : ApplyNoise
             command ApplyNoise
-        measure_method : MeasureMethod
         """
-        # conditional logic done at the level above
         indices = [self.node_index.index(i) for i in cmd.nodes]
         self.state.apply_noise(indices, cmd.noise)
 

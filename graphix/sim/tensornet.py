@@ -768,16 +768,6 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
 
     @override
     def correct_byproduct(self, cmd: command.X | command.Z) -> None:
-        """Perform byproduct correction.
-
-        Parameters
-        ----------
-        cmd : list
-            Byproduct command
-            i.e. ['X' or 'Z', node, signal_domain]
-        measure_method : MeasureMethod
-            The measure method to use
-        """
         op = Ops.X if isinstance(cmd, command.X) else Ops.Z
         self.state.evolve_single(cmd.node, op, str(cmd.kind))
 

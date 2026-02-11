@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Generic, Literal, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
-import numpy as np
 from typing_extensions import assert_never, override
 
 from graphix import command
@@ -137,6 +136,17 @@ class MeasureMethod(abc.ABC):
         """
         ...
 
+    @abc.abstractmethod
+    def check_domain(self, domain: Iterable[int]) -> bool:
+        """Check that the measurement outcomes match the domain condition.
+
+        Parameters
+        ----------
+        domain : Iterable[int]
+            domain on which to compute the condition for applying conditional commands.
+        """
+        ...
+
 
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
@@ -161,6 +171,7 @@ class DefaultMeasureMethod(MeasureMethod):
         # results is coerced into dict, since `store_measurement_outcome` mutates it.
         self.results = {} if results is None else dict(results)
 
+    @override
     def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
 
@@ -182,6 +193,7 @@ class DefaultMeasureMethod(MeasureMethod):
         angle = cmd.angle * measure_update.coeff + measure_update.add_term
         return Measurement(angle, measure_update.new_plane)
 
+    @override
     def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
@@ -197,6 +209,7 @@ class DefaultMeasureMethod(MeasureMethod):
         """
         return self.results[node]
 
+    @override
     def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
@@ -208,6 +221,11 @@ class DefaultMeasureMethod(MeasureMethod):
             Measurement outcome to store.
         """
         self.results[node] = result
+
+    @override
+    def check_domain(self, domain: Iterable[int]) -> bool:
+        """Check that the measurement outcomes match the domain condition."""
+        return sum(self.measurement_outcome(j) for j in domain) % 2 == 1
 
 
 class PatternSimulator(Generic[_StateT_co]):
@@ -312,7 +330,7 @@ class PatternSimulator(Generic[_StateT_co]):
                 self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                if np.mod(sum(self.__measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1:
+                if self.__measure_method.check_domain(cmd.domain):
                     self.backend.correct_byproduct(cmd)
             elif cmd.kind == CommandKind.C:
                 self.backend.apply_clifford(cmd.node, cmd.clifford)
@@ -323,10 +341,7 @@ class PatternSimulator(Generic[_StateT_co]):
                 # handling of ticks during noise transpilation.
                 pass
             elif cmd.kind == CommandKind.ApplyNoise:
-                if (
-                    cmd.domain is None
-                    or np.mod(sum(self.__measure_method.measurement_outcome(j) for j in cmd.domain), 2) == 1
-                ):
+                if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
                     self.backend.apply_noise(cmd)
             elif cmd.kind == CommandKind.S:
                 raise ValueError("S commands unexpected in simulated patterns.")
