@@ -147,6 +147,8 @@ reportUnknownLambdaType = "information"
 reportUnknownMemberType = "information"
 reportUnknownParameterType = "information"
 reportUnknownVariableType = "information"
+# reportInvalidTypeVarUse is a warning by default
+reportInvalidTypeVarUse = "error"
 extraPaths = ["./stubs"]
 
 [tool.coverage.report]

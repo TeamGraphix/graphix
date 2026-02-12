@@ -25,11 +25,11 @@ from graphix.sim import (
     StatevectorBackend,
     TensorNetworkBackend,
 )
-from graphix.sim.base_backend import _StateT_co
 from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from typing import TypeVar
 
     from numpy.random import Generator
 
@@ -44,6 +44,9 @@ _BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"
 
 if TYPE_CHECKING:
     _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevec
+
+    _StateT = TypeVar("_StateT")
+    _StateT_co = TypeVar("_StateT_co", covariant=True)
 
 
 class PrepareMethod(abc.ABC):
@@ -262,9 +265,9 @@ class PatternSimulator(Generic[_StateT_co]):
 
     @overload
     def __init__(
-        self,
+        self: PatternSimulator[_StateT],
         pattern: Pattern,
-        backend: Backend[_StateT_co] = ...,
+        backend: Backend[_StateT] = ...,
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
@@ -274,9 +277,9 @@ class PatternSimulator(Generic[_StateT_co]):
     ) -> None: ...
 
     def __init__(
-        self: PatternSimulator[_StateT_co | _BuiltinBackendState],
+        self: PatternSimulator[_StateT | _BuiltinBackendState],
         pattern: Pattern,
-        backend: Backend[_StateT_co] | _BackendLiteral = "statevector",
+        backend: Backend[_StateT] | _BackendLiteral = "statevector",
         prepare_method: PrepareMethod | None = None,
         measure_method: MeasureMethod | None = None,
         noise_model: NoiseModel | None = None,
