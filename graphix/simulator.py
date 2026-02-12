@@ -139,6 +139,16 @@ class MeasureMethod(abc.ABC):
         """
         ...
 
+    def check_domain(self, domain: Iterable[int]) -> bool:
+        """Check that the measurement outcomes match the domain condition.
+
+        Parameters
+        ----------
+        domain : Iterable[int]
+            domain on which to compute the condition for applying conditional commands.
+        """
+        return sum(self.measurement_outcome(j) for j in domain) % 2 == 1
+
 
 class DefaultMeasureMethod(MeasureMethod):
     """Default measurement method implementing standard measurement plane/angle update for MBQC."""
@@ -163,6 +173,7 @@ class DefaultMeasureMethod(MeasureMethod):
         # results is coerced into dict, since `store_measurement_outcome` mutates it.
         self.results = {} if results is None else dict(results)
 
+    @override
     def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
 
@@ -187,6 +198,7 @@ class DefaultMeasureMethod(MeasureMethod):
             measurement = measurement.clifford(Clifford.Z)
         return measurement
 
+    @override
     def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
@@ -202,6 +214,7 @@ class DefaultMeasureMethod(MeasureMethod):
         """
         return self.results[node]
 
+    @override
     def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
@@ -320,7 +333,8 @@ class PatternSimulator(Generic[_StateT_co]):
                 self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                self.backend.correct_byproduct(cmd, self.__measure_method)
+                if self.__measure_method.check_domain(cmd.domain):
+                    self.backend.correct_byproduct(cmd)
             elif cmd.kind == CommandKind.C:
                 self.backend.apply_clifford(cmd.node, cmd.clifford)
             elif cmd.kind == CommandKind.T:
@@ -330,7 +344,8 @@ class PatternSimulator(Generic[_StateT_co]):
                 # handling of ticks during noise transpilation.
                 pass
             elif cmd.kind == CommandKind.ApplyNoise:
-                self.backend.apply_noise(cmd.nodes, cmd.noise)
+                if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
+                    self.backend.apply_noise(cmd)
             elif cmd.kind == CommandKind.S:
                 raise ValueError("S commands unexpected in simulated patterns.")
             else:

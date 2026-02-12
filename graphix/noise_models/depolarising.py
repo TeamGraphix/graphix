@@ -118,9 +118,9 @@ class DepolarisingNoiseModel(NoiseModel):
         if cmd.kind == CommandKind.M:
             return [ApplyNoise(noise=DepolarisingNoise(self.measure_channel_prob), nodes=[cmd.node]), cmd]
         if cmd.kind == CommandKind.X:
-            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node])]
+            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.x_error_prob), nodes=[cmd.node], domain=cmd.domain)]
         if cmd.kind == CommandKind.Z:
-            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node])]
+            return [cmd, ApplyNoise(noise=DepolarisingNoise(self.z_error_prob), nodes=[cmd.node], domain=cmd.domain)]
         # Use of `==` here for mypy
         if cmd.kind == CommandKind.C or cmd.kind == CommandKind.T or cmd.kind == CommandKind.ApplyNoise:  # noqa: PLR1714
             return [cmd]

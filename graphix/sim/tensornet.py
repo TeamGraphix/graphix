@@ -34,7 +34,6 @@ if TYPE_CHECKING:
     from graphix.clifford import Clifford
     from graphix.measurements import Measurement, Outcome
     from graphix.sim import Data
-    from graphix.simulator import MeasureMethod
 
 PrepareState: TypeAlias = str | npt.NDArray[np.complex128]
 
@@ -769,20 +768,9 @@ class TensorNetworkBackend(_AbstractTensorNetworkBackend):
         return result
 
     @override
-    def correct_byproduct(self, cmd: command.X | command.Z, measure_method: MeasureMethod) -> None:
-        """Perform byproduct correction.
-
-        Parameters
-        ----------
-        cmd : list
-            Byproduct command
-            i.e. ['X' or 'Z', node, signal_domain]
-        measure_method : MeasureMethod
-            The measure method to use
-        """
-        if sum(measure_method.measurement_outcome(j) for j in cmd.domain) % 2 == 1:
-            op = Ops.X if isinstance(cmd, command.X) else Ops.Z
-            self.state.evolve_single(cmd.node, op, str(cmd.kind))
+    def correct_byproduct(self, cmd: command.X | command.Z) -> None:
+        op = Ops.X if isinstance(cmd, command.X) else Ops.Z
+        self.state.evolve_single(cmd.node, op, str(cmd.kind))
 
     @override
     def apply_clifford(self, node: int, clifford: Clifford) -> None:
