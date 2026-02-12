@@ -42,11 +42,28 @@ class Noise(ABC):
 
 @dataclass
 class ApplyNoise(_KindChecker):
-    """Apply noise command."""
+    """Apply noise command.
+
+    Parameters
+    ----------
+    noise : Noise
+        noise to be applied
+
+    nodes : list[Node]
+        list of node indices on which to apply noise
+
+    domain: set[Node] | None = None
+        Optional domain for conditional noise.
+        If ``None``, the noise is applied unconditionally.
+        Otherwise, the noise is applied if there is an odd number of nodes among ``domain`` that have been measured with outcome 1 (as for ``X`` and ``Z`` commands).
+        Note that the noise is never applied if ``domain`` is the empty set.
+
+    """
 
     kind: ClassVar[Literal[CommandKind.ApplyNoise]] = dataclasses.field(default=CommandKind.ApplyNoise, init=False)
     noise: Noise
     nodes: list[Node]
+    domain: set[Node] | None = None
 
 
 CommandOrNoise = Command | ApplyNoise
