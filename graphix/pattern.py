@@ -1383,7 +1383,7 @@ class Pattern:
 
         .. seealso:: :class:`graphix.simulator.PatternSimulator`
         """
-        sim: PatternSimulator[_StateT_co] = PatternSimulator(self, backend=backend, **kwargs)
+        sim = PatternSimulator(self, backend=backend, **kwargs)
         sim.run(input_state, rng=rng)
         return sim.backend.state
 

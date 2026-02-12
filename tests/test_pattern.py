@@ -167,7 +167,7 @@ class TestPattern:
         pattern.add(M(node=0, angle=0.5))
 
         def simulate_and_measure() -> int:
-            sim: PatternSimulator[Statevec | DensityMatrix | MBQCTensorNet] = PatternSimulator(pattern, backend_type)
+            sim = PatternSimulator(pattern, backend_type)
             sim.run()
             state = sim.backend.state
             if isinstance(state, Statevec):

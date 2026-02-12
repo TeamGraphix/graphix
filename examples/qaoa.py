@@ -17,9 +17,9 @@ from graphix import Circuit
 rng = np.random.default_rng()
 
 n = 4
-xi = rng.random(6)
-theta = rng.random(4)
-g = nx.complete_graph(n)
+xi: np.ndarray[tuple[int], np.dtype[np.float64]] = rng.random(6)
+theta: np.ndarray[tuple[int], np.dtype[np.float64]] = rng.random(4)
+g: nx.Graph[int] = nx.complete_graph(n)
 circuit = Circuit(n)
 for i, (u, v) in enumerate(g.edges):
     circuit.cnot(u, v)

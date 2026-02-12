@@ -11,17 +11,25 @@ Firstly, let's import the relevant modules:
 from __future__ import annotations
 
 from functools import reduce
+from typing import TYPE_CHECKING
 
 import cotengra as ctg
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import opt_einsum as oe
 import quimb.tensor as qtn
+from cotengra.oe import PathOptimizer
 from scipy.optimize import minimize
 
 from graphix import Circuit
 from graphix.fundamentals import ANGLE_PI
+
+if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
+
+    import numpy.typing as npt
+
+    from graphix.fundamentals import Angle
 
 rng = np.random.default_rng()
 
@@ -34,7 +42,13 @@ rng = np.random.default_rng()
 # Let's start with defining a helper function for buidling the circuit.
 
 
-def ansatz(circuit, n, gamma, beta, iterations):
+def ansatz(
+    circuit: Circuit,
+    n: int,
+    gamma: npt.NDArray[np.float64] | Sequence[Angle],
+    beta: npt.NDArray[np.float64] | Sequence[Angle],
+    iterations: int,
+) -> None:
     for j in range(iterations):
         for i in range(1, n):
             circuit.cnot(i, 0)
@@ -109,8 +123,8 @@ t1 = qtn.rand_tensor([2, 2], ["a", "b"])
 t2 = qtn.rand_tensor([1, 2], ["b", "c"])
 t1.add_tag("T1")
 t2.add_tag("T2")
-t = qtn.TensorNetwork([t1, t2])
-t.draw(ax=ax[1], title="MPS", legend=False, color=["T1", "T2"])
+tn = qtn.TensorNetwork([t1, t2])
+tn.draw(ax=ax[1], title="MPS", legend=False, color=["T1", "T2"])
 plt.show()
 
 # %%
@@ -149,7 +163,7 @@ print(f"Probability for {0} is {value}")
 # It is also possible to change the path contraction algorithm.
 # Let's explore that too and define a custom optimizer for contraction, that we can use later.
 
-opt = ctg.HyperOptimizer(
+opt: PathOptimizer = ctg.HyperOptimizer(
     minimize="combo",
     reconf_opts={},
     progbar=True,
@@ -172,7 +186,14 @@ print("Expectation value for Z^n: ", exp_val)
 # Create a cost function using the elements of graphix, which were already discussed above.
 
 
-def cost(params, n, ham, quantum_iter, slice_index, opt=None):
+def cost(
+    params: npt.NDArray[np.float64],
+    n: int,
+    ham: npt.NDArray[np.float64],
+    quantum_iter: int,
+    slice_index: int,
+    opt: str | PathOptimizer | None = None,
+) -> float:
     circuit = Circuit(n)
     gamma = params[:slice_index]
     beta = params[slice_index:]
@@ -184,7 +205,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
     pattern.remove_input_nodes()
     pattern.perform_pauli_measurements()
     mbqc_tn = pattern.simulate_pattern(backend="tensornetwork", graph_prep="parallel")
-    exp_val = 0
+    exp_val: float = 0
     for op in ham:
         exp_val += np.real(mbqc_tn.expectation_value(op, range(n), optimize=opt))
     return exp_val
@@ -195,7 +216,7 @@ def cost(params, n, ham, quantum_iter, slice_index, opt=None):
 
 ham = [reduce(np.kron, [pauli_z] * n)]
 for i in range(1, n):
-    op = [identity] * n
+    op = np.array([identity] * n)
     op[0] = pauli_z
     op[i] = pauli_z
     op = reduce(np.kron, op)
@@ -203,8 +224,10 @@ for i in range(1, n):
 
 
 # Use yet again another optimizer for path contraction.
-class MyOptimizer(oe.paths.PathOptimizer):
-    def __call__(self, inputs, output, size_dict, memory_limit=None):
+class MyOptimizer(PathOptimizer):
+    def __call__(
+        self, inputs: Collection[object], output: object, size_dict: object, memory_limit: object = None
+    ) -> list[tuple[int, int]]:
         return [(0, 1)] * (len(inputs) - 1)
 
 
@@ -258,7 +281,7 @@ plt.show()
 
 fig, ax = plt.subplots(ncols=2, figsize=(8, 6))
 ax = ax.flatten()
-g = nx.Graph()
+g: nx.Graph[int] = nx.Graph()
 for i in range(1, n):
     g.add_edge(0, i)
 color = ["blue"] * n
