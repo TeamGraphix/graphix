@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import abc
 import warnings
-from typing import TYPE_CHECKING, Generic, Literal, overload
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, overload
 
 # assert_never introduced in Python 3.11
 # override introduced in Python 3.12
@@ -29,7 +29,6 @@ from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from typing import TypeVar
 
     from numpy.random import Generator
 
@@ -46,7 +45,10 @@ if TYPE_CHECKING:
     _BuiltinBackendState = DensityMatrix | MBQCTensorNet | Statevec
 
     _StateT = TypeVar("_StateT")
-    _StateT_co = TypeVar("_StateT_co", covariant=True)
+
+# This type variable should be defined outside TYPE_CHECKING block
+# because it appears in the parameters of `PatternSimulator`.
+_StateT_co = TypeVar("_StateT_co", covariant=True)
 
 
 class PrepareMethod(abc.ABC):
