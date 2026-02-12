@@ -14,7 +14,7 @@ from typing_extensions import assert_never
 from graphix import command, instruction, parameter
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.command import E, M, N, X, Z
-from graphix.fundamentals import ANGLE_PI, Axis, Plane
+from graphix.fundamentals import ANGLE_PI, Axis
 from graphix.instruction import Instruction, InstructionKind
 from graphix.measurements import Measurement, PauliMeasurement
 from graphix.ops import Ops
@@ -1051,22 +1051,6 @@ class Circuit:
             else:
                 circuit.add(instr)
         return circuit
-
-
-def _extend_domain(measure: M, domain: set[int]) -> None:
-    """Extend the correction domain of ``measure`` by ``domain``.
-
-    Parameters
-    ----------
-    measure : M
-        Measurement command to modify.
-    domain : set[int]
-        Set of nodes to XOR into the appropriate domain of ``measure``.
-    """
-    if measure.measurement.to_bloch().plane == Plane.XY:
-        measure.s_domain ^= domain
-    else:
-        measure.t_domain ^= domain
 
 
 def _transpile_rzz(instructions: Iterable[Instruction]) -> Iterator[Instruction]:

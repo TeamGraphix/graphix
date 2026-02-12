@@ -24,14 +24,5 @@ def test_pauli_to_bloch(pauli: PauliMeasurement) -> None:
     assert pauli == pauli_back
 
 
-@pytest.mark.parametrize("pauli", PauliMeasurement)
-@pytest.mark.parametrize("clifford", Clifford)
-def test_clifford_pauli(pauli: PauliMeasurement, clifford: Clifford) -> None:
-    pauli_clifford = pauli.clifford(clifford)
-    bloch = pauli.to_bloch()
-    bloch_clifford = bloch.clifford(clifford)
-    assert pauli_clifford == bloch_clifford.try_to_pauli()
-
-
 def test_clifford() -> None:
     assert Measurement.XY(0.25).clifford(Clifford.H @ Clifford.S @ Clifford.Z) == Measurement.XZ(0.25)

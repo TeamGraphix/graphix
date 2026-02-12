@@ -1511,19 +1511,11 @@ class Pattern:
 
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Pattern:
         """Return a copy of the pattern where all occurrences of the given variable in measurement angles are substituted by the given value."""
-        result = self.copy()
-        for cmd in result:
-            if cmd.kind == command.CommandKind.M:
-                cmd.measurement = cmd.measurement.subs(variable, substitute)
-        return result
+        return self.map(lambda m: m.subs(variable, substitute))
 
     def xreplace(self, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> Pattern:
         """Return a copy of the pattern where all occurrences of the given keys in measurement angles are substituted by the given values in parallel."""
-        result = self.copy()
-        for cmd in result:
-            if cmd.kind == command.CommandKind.M:
-                cmd.measurement = cmd.measurement.xreplace(assignment)
-        return result
+        return self.map(lambda m: m.xreplace(assignment))
 
     def copy(self) -> Pattern:
         """Return a copy of the pattern."""
@@ -1598,7 +1590,26 @@ class Pattern:
                 check_active(cmd, cmd.node)
 
     def map(self, f: Callable[[Measurement], Measurement]) -> Pattern:
-        """Return a pattern where the function ``f`` has been applied to each measurement."""
+        """Return a pattern where the function ``f`` has been applied to each measurement.
+
+        Parameters
+        ----------
+        f: Callable[[Measurement], Measurement]
+            Function applied to each measurement.
+
+        Returns
+        -------
+        Pattern
+            The resulting pattern.
+
+        Example
+        -------
+        >>> from graphix import Pattern, command
+        >>> from graphix.measurements import BlochMeasurement, Measurement
+        >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.XZ(0.25))])
+        >>> pattern.map(lambda m: BlochMeasurement(m.angle + 1, m.plane))
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XZ(1.25))])
+        """
         new_pattern = Pattern(input_nodes=self.input_nodes)
         new_pattern.results = self.results
 
@@ -1616,8 +1627,6 @@ class Pattern:
 
         Parameters
         ----------
-        pattern : pattern
-            Source pattern.
         rel_tol : float, optional
             Relative tolerance for comparing angles, passed to :func:`math.isclose`.
             Default is ``1e-9``.
@@ -1629,11 +1638,28 @@ class Pattern:
         -------
         Pattern
             An equivalent pattern in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Example
+        -------
+        >>> from graphix import Pattern, command
+        >>> from graphix.measurements import BlochMeasurement, Measurement
+        >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.XY(0.5))])
+        >>> pattern.infer_pauli_measurements()
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.Y)])
         """
         return self.map(lambda m: m.to_pauli_or_bloch(rel_tol, abs_tol))
 
     def to_bloch(self) -> Pattern:
-        """Return an equivalent pattern in which all measurements are represented as Bloch measurements."""
+        """Return an equivalent pattern in which all measurements are represented as Bloch measurements.
+
+        Example
+        -------
+        >>> from graphix import Pattern, command
+        >>> from graphix.measurements import BlochMeasurement, Measurement
+        >>> pattern = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.Y)])
+        >>> pattern.to_bloch()
+        Pattern(input_nodes=[0], cmds=[M(0, Measurement.XY(0.5))])
+        """
         return self.map(lambda m: m.to_bloch())
 
 

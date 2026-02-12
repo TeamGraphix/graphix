@@ -184,9 +184,10 @@ def test_graph_visualizer_without_plane() -> None:
 
 
 @pytest.mark.usefixtures("mock_plot")
-def test_draw_graph_without_flow() -> None:
-    pattern = Pattern(input_nodes=[0], cmds=[command.N(1), command.E((0, 1)), command.M(0)])
-    pattern.draw_graph()
+@pytest.mark.parametrize("flow_from_pattern", [False, True])
+def test_draw_graph_without_flow(flow_from_pattern: bool) -> None:
+    pattern = Pattern(input_nodes=[0], cmds=[command.N(1), command.E((0, 1)), command.M(0), command.M(1)])
+    pattern.draw_graph(flow_from_pattern=flow_from_pattern)
 
 
 @pytest.mark.usefixtures("mock_plot")

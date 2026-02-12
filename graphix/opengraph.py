@@ -51,7 +51,6 @@ class OpenGraph(Generic[_AM_co]):
     Example
     -------
     >>> import networkx as nx
-    >>> from graphix.fundamentals import Plane
     >>> from graphix.opengraph import OpenGraph
     >>> from graphix.measurements import Measurement
     >>>
@@ -136,22 +135,81 @@ class OpenGraph(Generic[_AM_co]):
         -------
         OpenGraph[_B]
             The resulting open graph.
+
+        Notes
+        -----
+        The types of measurements can be changed by ``f``.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.map(lambda m: m.plane).measurements
+        {0: Plane.XY, 1: Plane.YZ}
         """
         measurements = {node: f(meas) for node, meas in self.measurements.items()}
         return OpenGraph(self.graph, self.input_nodes, self.output_nodes, measurements)
 
     def to_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
-        """Return the open graph where all measurements are converted to Bloch."""
+        """Return the open graph where all measurements are converted to Bloch.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.X, 1: Measurement.Y}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.to_bloch().measurements
+        {0: Measurement.XY(0), 1: Measurement.XY(0.5)}
+        """
         return self.map(lambda meas: meas.to_bloch())
 
     def downcast_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
-        """Return the open graph if all measurements are described as Bloch measurement; raise `TypeError` otherwise."""
+        """Return the open graph if all measurements are described as Bloch measurements; raise `TypeError` otherwise.
+
+        If this method succeeds, the returned graph is identical to
+        the original one, but this function narrows the static type of
+        the measurements.  The returned graph can be used with
+        functions that require all measurements are described as Bloch
+        measurements, such as :func:`OpenGraph.extract_causal_flow`.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.downcast_bloch().measurements
+        {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> measurements = {0: Measurement.X, 1: Measurement.Y}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.downcast_bloch()
+        Traceback (most recent call last):
+            ...
+        TypeError: Bloch measurement expected, but Pauli measurement was found.
+
+        """
         return self.map(lambda meas: meas.downcast_bloch())
 
     def infer_pauli_measurements(
         self: OpenGraph[Measurement], rel_tol: float = 1e-09, abs_tol: float = 0.0
     ) -> OpenGraph[Measurement]:
-        """Return an equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+        r"""Return an equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Pauli measurements are measurements with a Pauli angle,
+        i.e. an integer multiple of :math:`\pi/2`.
+
+        This method can be used before calling methods such as
+        `OpenGraph.find_pauli_flow`, that deal with Pauli measurements
+        in a special way.
 
         Parameters
         ----------
@@ -168,6 +226,18 @@ class OpenGraph(Generic[_AM_co]):
         -------
         Pattern
             An equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.infer_pauli_measurements().measurements
+        {0: Measurement.Y, 1: -Measurement.Z}
+
         """
         return self.map(lambda meas: meas.to_pauli_or_bloch(rel_tol, abs_tol))
 
@@ -269,6 +339,10 @@ class OpenGraph(Generic[_AM_co]):
 
         This method is a wrapper over :func:`OpenGraph.find_causal_flow` with a single return type.
 
+        This method requires all measurements to be planar: to extract
+        the causal flow from a graph that contains Pauli measurements,
+        you can apply :func:`OpenGraph.to_bloch()` first.
+
         Returns
         -------
         CausalFlow[_PM_co]
@@ -282,6 +356,7 @@ class OpenGraph(Generic[_AM_co]):
         See Also
         --------
         :func:`OpenGraph.find_causal_flow`
+
         """
         cf = self.find_causal_flow()
         if cf is None:
@@ -292,6 +367,10 @@ class OpenGraph(Generic[_AM_co]):
         r"""Try to extract a maximally delayed generalised flow (gflow) on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.find_gflow` with a single return type.
+
+        This method requires all measurements to be planar: to extract
+        a gflow from a graph that contains Pauli measurements, you
+        can apply :func:`OpenGraph.to_bloch()` first.
 
         Returns
         -------
@@ -306,6 +385,7 @@ class OpenGraph(Generic[_AM_co]):
         See Also
         --------
         :func:`OpenGraph.find_gflow`
+
         """
         gf = self.find_gflow()
         if gf is None:
@@ -329,7 +409,7 @@ class OpenGraph(Generic[_AM_co]):
 
         See Also
         --------
-        :func:`OpenGraph.find_pauli_flow`
+        :func:`OpenGraph.find_pauli_flow`, :func:`OpenGraph.infer_pauli_measurements`
         """
         pf = self.find_pauli_flow()
         if pf is None:
@@ -338,6 +418,10 @@ class OpenGraph(Generic[_AM_co]):
 
     def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
         """Return a causal flow on the open graph if it exists.
+
+        This method requires all measurements to be planar: to find
+        the causal flow from a graph that contains Pauli measurements,
+        you can apply :func:`OpenGraph.to_bloch()` first.
 
         Returns
         -------
@@ -361,6 +445,10 @@ class OpenGraph(Generic[_AM_co]):
 
     def find_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
+
+        This method requires all measurements to be planar: to find
+        a gflow in a graph that contains Pauli measurements, you
+        can apply :func:`OpenGraph.to_bloch()` first.
 
         Returns
         -------
@@ -398,16 +486,33 @@ class OpenGraph(Generic[_AM_co]):
 
         See Also
         --------
-        :func:`OpenGraph.extract_pauli_flow`
+        :func:`OpenGraph.extract_pauli_flow`, :func:`OpenGraph.infer_pauli_measurements`
 
         Notes
         -----
-        - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`OpenGraph.find_gflow`.
+        - Measurements are considered to be Pauli only if they are represented as :class:`graphix.measurements.PauliMeasurement`. The method :func:`OpenGraph.infer_pauli_measurements` can be called first to convert all measurements with a Pauli angle (integer multiple of :math:`\pi/2`) into Pauli measurements.
         - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
 
         References
         ----------
         [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XZ(0.5), 1: Measurement.XZ(0.5)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.extract_pauli_flow()
+        Traceback (most recent call last):
+            ...
+        graphix.opengraph.OpenGraphError: The open graph does not have a Pauli flow.
+        >>> og.infer_pauli_measurements().measurements
+        {0: Measurement.X, 1: Measurement.X}
+        >>> str(og.infer_pauli_measurements().extract_pauli_flow())
+        'p(0) = {1}, p(1) = {2}; {0, 1} < {2}'
         """
         aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)

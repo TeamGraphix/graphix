@@ -101,6 +101,34 @@ class Measurement(AbstractMeasurement):
         -------
         Self
             Equivalent measurement representing the pattern ``MC``.
+
+        Notes
+        -----
+        - The return type is ``Self``, meaning that a Clifford applied
+          to a Bloch measurement returns a Bloch measurement, and a
+          Clifford applied to a Pauli measurement returns a Pauli
+          measurement.
+        - The method :func:`Measurement.clifford` does not always
+          commute with the method :func:`Measurement.to_bloch`: the
+          underlying Pauli measurement will be the same but the Bloch
+          representation can be on different planes.
+
+        Examples
+        --------
+        >>> from graphix.clifford import Clifford
+        >>> from graphix.measurements import Measurement, PauliMeasurement
+        >>> Measurement.XY(0.25).clifford(Clifford.H)
+        Measurement.YZ(1.75)
+        >>> Measurement.X.clifford(Clifford.S)
+        -Measurement.Y
+        >>> for pauli in PauliMeasurement:
+        ...     for clifford in Clifford:
+        ...         assert pauli.to_bloch().clifford(clifford).try_to_pauli() == pauli.clifford(clifford)
+        >>> Measurement.Y.clifford(Clifford.H).to_bloch()
+        Measurement.XY(1.5)
+        >>> Measurement.Y.to_bloch().clifford(Clifford.H)
+        Measurement.YZ(1.5)
+
         """
 
     @abstractmethod
@@ -118,7 +146,7 @@ class Measurement(AbstractMeasurement):
         This method follows the convention illustrated below:
 
             >>> from graphix.measurements import PauliMeasurement
-            >>> for pm in list(PauliMeasurement):
+            >>> for pm in iter(PauliMeasurement):
             ...     print(f"{pm}.to_bloch() == {pm.to_bloch()}")
             +X.to_bloch() == Measurement.XY(0)
             -X.to_bloch() == Measurement.XY(1)
@@ -130,7 +158,18 @@ class Measurement(AbstractMeasurement):
 
     @abstractmethod
     def downcast_bloch(self) -> BlochMeasurement:
-        """Return the measurement description if it is already given as an angle and a plane on the Bloch sphere; raise :class:`TypeError` otherwise."""
+        """Return the measurement description if it is already given as an angle and a plane on the Bloch sphere; raise :class:`TypeError` otherwise.
+
+        Examples
+        --------
+        >>> from graphix.measurements import Measurement
+        >>> Measurement.XY(0).downcast_bloch()
+        Measurement.XY(0)
+        >>> Measurement.X.downcast_bloch()
+        Traceback (most recent call last):
+            ...
+        TypeError: Bloch measurement expected, but Pauli measurement was found.
+        """
 
     @abstractmethod
     def try_to_pauli(self, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> PauliMeasurement | None:
@@ -145,6 +184,11 @@ class Measurement(AbstractMeasurement):
             Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
             Default is ``0.0``.
 
+        Notes
+        -----
+            A measurement with a parameterized angle is not considered as Pauli, but can become a Pauli
+            measurement after substitution.
+
         Returns
         -------
         PauliMeasurement | None
@@ -153,6 +197,22 @@ class Measurement(AbstractMeasurement):
             either the measurement is close to a Pauli measurement (i.e., the angle is close to an
             integer multiple of π/2) and the corresponding Pauli measurement is returned,
             or it is not and ``None`` is returned.
+
+        Examples
+        --------
+        >>> from graphix.measurements import Measurement
+        >>> Measurement.XY(0.5).try_to_pauli()
+        Measurement.Y
+        >>> Measurement.Y.try_to_pauli()
+        Measurement.Y
+        >>> Measurement.XY(0.25).try_to_pauli() is None
+        True
+        >>> from graphix.parameter import Placeholder
+        >>> alpha = Placeholder("alpha")
+        >>> Measurement.XY(alpha).try_to_pauli() is None
+        True
+        >>> Measurement.XY(alpha).subs(alpha, 0.5).try_to_pauli()
+        Measurement.Y
         """
 
     @abstractmethod
@@ -176,6 +236,14 @@ class Measurement(AbstractMeasurement):
             either the measurement is close to a Pauli measurement (i.e., the angle is close to an
             integer multiple of π/2) and the corresponding Pauli measurement is returned,
             or it is not and ``self`` is returned.
+
+        Examples
+        --------
+        >>> from graphix.measurements import Measurement
+        >>> Measurement.XY(0.5).to_pauli_or_bloch()
+        Measurement.Y
+        >>> Measurement.XY(0.25).to_pauli_or_bloch()
+        Measurement.XY(0.25)
         """
 
     @abstractmethod
@@ -249,6 +317,8 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         This method compares the angle of the current measurement with that of
         another measurement, using :func:`math.isclose` when both angles are floats.
         The planes must match exactly for the measurements to be considered close.
+        A measurement represented as ``BlochMeasurement`` is never considered to
+        be close to a measurement represented as ``PauliMeasurement``.
 
         Parameters
         ----------
@@ -275,15 +345,16 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         False
         >>> Measurement.XY(0.1).isclose(Measurement.XY(0))
         False
+        >>> Measurement.XY(0).isclose(Measurement.X)
+        False
         """
-        if not isinstance(other, Measurement):
+        if not isinstance(other, BlochMeasurement):
             return False
-        other_bloch = other.to_bloch()
         return (
-            math.isclose(self.angle, other_bloch.angle, rel_tol=rel_tol, abs_tol=abs_tol)
-            if isinstance(self.angle, float) and isinstance(other_bloch.angle, float)
-            else self.angle == other_bloch.angle
-        ) and self.plane == other_bloch.plane
+            math.isclose(self.angle, other.angle, rel_tol=rel_tol, abs_tol=abs_tol)
+            if isinstance(self.angle, float) and isinstance(other.angle, float)
+            else self.angle == other.angle
+        ) and self.plane == other.plane
 
     @override
     def to_plane(self) -> Plane:
@@ -295,13 +366,17 @@ class BlochMeasurement(AbstractPlanarMeasurement, Measurement):
         cos_pauli = PauliMeasurement(self.plane.cos).clifford(clifford_gate)
         sin_pauli = PauliMeasurement(self.plane.sin).clifford(clifford_gate)
         exchange = cos_pauli.axis != new_plane.cos
-        angle = -self.angle if exchange == (cos_pauli.sign == sin_pauli.sign) else self.angle
+        # We make sure that if 0 <= self.angle < 2 * ANGLE_PI, then
+        # the new angle will be such that 0 <= angle < 2 * ANGLE_PI.
+        angle = 2 * ANGLE_PI - self.angle if exchange == (cos_pauli.sign == sin_pauli.sign) else self.angle
         add_term: Angle = 0
         if cos_pauli.sign == Sign.MINUS:
             add_term += ANGLE_PI
         if exchange:
-            add_term = ANGLE_PI / 2 - add_term
+            add_term = ANGLE_PI / 2 + add_term
         angle += add_term
+        if isinstance(angle, (int, float)) and angle >= 2 * ANGLE_PI:
+            angle -= 2 * ANGLE_PI
         return BlochMeasurement(angle, new_plane)
 
     @override
@@ -336,7 +411,6 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
         the scope.  The class variables ``Measurement.X``,
         ``Measurement.Y``, and ``Measurement.Z`` are used to refer to
         the axes, and unary minus is used for negative sign.
-
         """
         result = f"Measurement.{self.axis.name}"
         if self.sign == Sign.MINUS:
@@ -345,17 +419,42 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
 
     @override
     def __str__(self) -> str:
+        """Return a human-readable representation of the Pauli measurement.
+
+        Pauli measurements are represented with two characters: their sign
+        (``+`` or ``-``) and their axis (``X``, ``Y``, or ``Z``).
+
+        Examples
+        --------
+        >>> from graphix.measurements import Measurement
+        >>> str(Measurement.X)
+        '+X'
+        >>> str(-Measurement.X)
+        '-X'
+        """
         return f"{self.sign}{self.axis.name}"
 
     def __pos__(self) -> PauliMeasurement:
         """Return the Pauli measurement itself.
 
-        `+Measurement.X` is equivalent to `Measurement.X`.
+        Example
+        -------
+        >>> from graphix.measurements import Measurement
+        >>> +Measurement.X
+        Measurement.X
         """
         return self
 
     def __neg__(self) -> PauliMeasurement:
-        """Return the Pauli measurement with the opposite sign."""
+        """Return the Pauli measurement with the opposite sign.
+
+        Examples
+        --------
+        >>> -Measurement.X
+        -Measurement.X
+        >>> -(-Measurement.X)
+        Measurement.X
+        """
         return PauliMeasurement(self.axis, -self.sign)
 
     def to_pauli(self) -> Pauli:
@@ -365,6 +464,13 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
         not be confused with :meth:`try_to_pauli`, which overrides the
         method from :class:`Measurement`, and returns ``self``.
 
+        Examples
+        --------
+        >>> from graphix.measurements import Measurement
+        >>> Measurement.X.to_pauli()
+        Pauli.X
+        >>> (-Measurement.Y).to_pauli()
+        -Pauli.Y
         """
         return self.sign * Pauli.from_axis(self.axis)
 
@@ -406,9 +512,7 @@ class PauliMeasurement(Measurement, metaclass=PauliMeasurementMeta):
 
     @override
     def isclose(self, other: AbstractMeasurement, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
-        if isinstance(other, PauliMeasurement):
-            return self == other
-        return self.to_bloch().isclose(other, rel_tol, abs_tol)
+        return self == other
 
     @override
     def clifford(self, clifford_gate: Clifford) -> PauliMeasurement:
