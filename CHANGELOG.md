@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+### Fixed
+
+- #429
+  - Modify `graphix.noise_models.noise_model.ApplyNoise` to handle conditionality based on a `domain` attribute (like `command.X` and `command.Z`).
+  - Moved the conditional logic to `graphix.simulator` to remove code duplication in the backends.
+  - Solves [#428](https://github.com/TeamGraphix/graphix/issues/428).
+
+### Changed
+
 ## [0.3.4] - 2026-02-05
 
 ### Added
@@ -44,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #412: Added pretty-print methods (`to_ascii`, `to_latex` and `to_unicode`) for `PauliFlow` and `XZCorrections` classes. Implemented their `__str__` method as a call to `self.to_ascii`.
 
 ### Fixed
+
+-
 
 - #363, #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
 
@@ -216,10 +231,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #322: Added a new `optimization` module containing:
 
-  * a functional version of `standardize` that returns a standardized
+  - a functional version of `standardize` that returns a standardized
     pattern as a new object;
 
-  * a function `incorporate_pauli_results` that returns an equivalent
+  - a function `incorporate_pauli_results` that returns an equivalent
     pattern in which the `results` are incorporated into measurement
     and correction domains.
     The resulting pattern is suitable for flow analysis. In

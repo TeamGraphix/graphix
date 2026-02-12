@@ -16,7 +16,7 @@ from graphix.channels import KrausChannel, dephasing_channel, depolarising_chann
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
@@ -926,33 +926,3 @@ class TestDensityMatrixBackend:
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
-
-    def test_correct_byproduct(self) -> None:
-        measure_method = DefaultMeasureMethod()
-        dm_backend = DensityMatrixBackend()
-        dm_backend.add_nodes([0])
-        # node 0 initialized in Backend
-        dm_backend.add_nodes([1, 2])
-        dm_backend.entangle_nodes((0, 1))
-        dm_backend.entangle_nodes((1, 2))
-        measure_method.measure(dm_backend, command.M(0))
-        measure_method.measure(dm_backend, command.M(1, angle=-ANGLE_PI / 2, s_domain={0}))
-        dm_backend.correct_byproduct(command.X(2, {1}), measure_method)
-        dm_backend.correct_byproduct(command.Z(2, {0}), measure_method)
-        rho = dm_backend.state.rho
-
-        sv_backend = StatevectorBackend()
-        sv_backend.add_nodes([0])
-        # node 0 initialized in Backend
-        sv_backend.add_nodes([1, 2])
-        sv_backend.entangle_nodes((0, 1))
-        sv_backend.entangle_nodes((1, 2))
-        measure_method.measure(sv_backend, command.M(0))
-        measure_method.measure(sv_backend, command.M(1, angle=-ANGLE_PI / 2, s_domain={0}))
-        sv_backend.correct_byproduct(command.X(2, {1}), measure_method)
-        sv_backend.correct_byproduct(command.Z(2, {0}), measure_method)
-        psi = sv_backend.state.psi
-
-        assert np.allclose(
-            rho, np.outer(psi.astype(np.complex128, copy=False), psi.conj().astype(np.complex128, copy=False))
-        )
