@@ -294,6 +294,10 @@ class AbstractPlanarMeasurement(AbstractMeasurement):
         Plane
         """
 
+    @override
+    def to_plane_or_axis(self) -> Plane | Axis:
+        return self.to_plane()
+
 
 class Axis(AbstractMeasurement, EnumReprMixin, Enum, metaclass=CustomMeta):
     """Axis: *X*, *Y* or *Z*."""

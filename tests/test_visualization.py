@@ -9,7 +9,7 @@ import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command, visualization
-from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
@@ -28,7 +28,7 @@ def example_flow(rng: Generator) -> Pattern:
     inputs = [1, 0, 2]  # non-trivial order to check order is conserved.
     outputs = [7, 6, 8]
     angles = (2 * rng.random(6)).tolist()
-    measurements = {node: Measurement(angle, Plane.XY) for node, angle in enumerate(angles)}
+    measurements = {node: Measurement.XY(angle) for node, angle in enumerate(angles)}
 
     pattern = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements).to_pattern()
     pattern.standardize()
@@ -43,7 +43,7 @@ def example_gflow(rng: Generator) -> Pattern:
     inputs = [3, 1, 5]
     outputs = [4, 2, 6]
     angles = dict(zip([1, 3, 5], (2 * rng.random(3)).tolist(), strict=True))
-    measurements = {node: Measurement(angle, Plane.XY) for node, angle in angles.items()}
+    measurements = {node: Measurement.XY(angle) for node, angle in angles.items()}
 
     pattern = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements).to_pattern()
     pattern.standardize()
@@ -76,12 +76,12 @@ def example_pflow(rng: Generator) -> Pattern:
         **dict.fromkeys(range(4), 0),
         **dict(zip(range(4, 8), (2 * rng.random(4)).tolist(), strict=True)),
     }
-    measurements = {i: Measurement(angle, Plane.XY) for i, angle in meas_angles.items()}
+    measurements = {i: Measurement.XY(angle).to_pauli_or_bloch() for i, angle in meas_angles.items()}
 
     og = OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=measurements)
-
     try:
-        og.extract_gflow()  # example graph doesn't have gflow
+        og.to_bloch().extract_gflow()
+        pytest.fail("example graph shouldn't have gflow")
     except OpenGraphError:
         og.extract_pauli_flow()  # example graph has Pauli flow
 
@@ -92,21 +92,15 @@ def example_pflow(rng: Generator) -> Pattern:
     return pattern
 
 
-def test_flow_to_position() -> None:
+def test_place_causal_flow() -> None:
     circuit = Circuit(1)
     circuit.h(0)
     pattern = circuit.transpile().pattern
-    graph = pattern.extract_graph()
-    vin = pattern.input_nodes if pattern.input_nodes is not None else []
-    vout = pattern.output_nodes
-    meas_dict = pattern.extract_measurement_commands()
-    meas_planes = {node: meas.plane for node, meas in meas_dict.items()}
-    meas_angles = {node: meas.angle for node, meas in meas_dict.items()}
-    clifford = pattern.extract_clifford()
-    vis = visualization.GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, clifford)
-    og = OpenGraph(graph, vin, vout, meas_planes)
+    og = pattern.extract_opengraph().to_bloch()
+    local_clifford = pattern.extract_clifford()
+    vis = visualization.GraphVisualizer(og, local_clifford)
     causal_flow = og.extract_causal_flow()
-    pos = vis.place_flow(causal_flow)
+    pos = vis.place_causal_flow(causal_flow)
     assert pos is not None
 
 
@@ -177,8 +171,8 @@ def test_draw_graph_save() -> None:
 
 def example_visualizer() -> tuple[GraphVisualizer, Pattern]:
     pattern = example_hadamard()
-    graph = pattern.extract_graph()
-    vis = GraphVisualizer(graph, pattern.input_nodes, pattern.output_nodes)
+    og = pattern.extract_opengraph()
+    vis = GraphVisualizer(og)
     return vis, pattern
 
 
@@ -190,9 +184,10 @@ def test_graph_visualizer_without_plane() -> None:
 
 
 @pytest.mark.usefixtures("mock_plot")
-def test_draw_graph_without_flow() -> None:
-    pattern = Pattern(input_nodes=[0], cmds=[command.N(1), command.E((0, 1)), command.M(0)])
-    pattern.draw_graph()
+@pytest.mark.parametrize("flow_from_pattern", [False, True])
+def test_draw_graph_without_flow(flow_from_pattern: bool) -> None:
+    pattern = Pattern(input_nodes=[0], cmds=[command.N(1), command.E((0, 1)), command.M(0), command.M(1)])
+    pattern.draw_graph(flow_from_pattern=flow_from_pattern)
 
 
 @pytest.mark.usefixtures("mock_plot")
@@ -218,8 +213,8 @@ def test_custom_corrections() -> None:
         input_nodes=[0, 1, 2, 3],
         cmds=[command.M(0), command.M(1), command.X(2, {0}), command.Z(2, {0}), command.Z(3, {1})],
     )
-    graph = pattern.extract_graph()
-    vis = GraphVisualizer(graph, pattern.input_nodes, pattern.output_nodes)
+    og = pattern.extract_opengraph()
+    vis = GraphVisualizer(og)
     vis.visualize_from_pattern(pattern)
 
 
@@ -242,7 +237,12 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
     circuit.x(2)
     circuit.cnot(2, 1)
     pattern = circuit.transpile().pattern
-    if not flow_and_not_pauli_presimulate:
+    if flow_and_not_pauli_presimulate:
+        # Pauli flow extraction from pattern is not implemented yet;
+        # therefore, the pattern should not contain Pauli measurements
+        # to have causal flow.
+        pattern = pattern.to_bloch()
+    else:
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
     pattern.standardize()

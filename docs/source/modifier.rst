@@ -26,9 +26,11 @@ Pattern Manipulation
 
     .. automethod:: compute_max_degree
 
-    .. automethod:: extract_clifford
+    .. automethod:: compose
 
     .. automethod:: connected_nodes
+
+    .. automethod:: remove_input_nodes
 
     .. automethod:: perform_pauli_measurements
 
@@ -37,6 +39,8 @@ Pattern Manipulation
     .. automethod:: to_unicode
 
     .. automethod:: to_latex
+
+    .. automethod:: print_pattern
 
     .. automethod:: standardize
 
@@ -48,6 +52,14 @@ Pattern Manipulation
 
     .. automethod:: extract_nodes
 
+    .. automethod:: extract_causal_flow
+
+    .. automethod:: extract_gflow
+
+    .. automethod:: extract_opengraph
+
+    .. automethod:: extract_measurement_commands
+
     .. automethod:: parallelize_pattern
 
     .. automethod:: minimize_space
@@ -57,6 +69,20 @@ Pattern Manipulation
     .. automethod:: max_space
 
     .. automethod:: to_qasm3
+
+    .. automethod:: is_parameterized
+
+    .. automethod:: subs
+
+    .. automethod:: xreplace
+
+    .. automethod:: check_runnability
+
+    .. automethod:: map
+
+    .. automethod:: infer_pauli_measurements
+
+    .. automethod:: to_bloch
 
 
 .. autofunction:: measure_pauli

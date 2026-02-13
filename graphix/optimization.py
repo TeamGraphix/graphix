@@ -16,7 +16,7 @@ from typing_extensions import assert_never
 
 import graphix.pattern
 from graphix import command
-from graphix.clifford import Clifford
+from graphix.clifford import Clifford, Domains
 from graphix.command import CommandKind, Node
 from graphix.flow._partial_order import compute_topological_generations
 from graphix.flow.core import CausalFlow, GFlow, XZCorrections
@@ -24,8 +24,8 @@ from graphix.flow.exceptions import (
     FlowGenericError,
     FlowGenericErrorReason,
 )
-from graphix.fundamentals import Axis, Plane
-from graphix.measurements import Domains, Measurement, Outcome, PauliMeasurement
+from graphix.fundamentals import Axis, Plane, Sign
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.states import BasicStates
 
@@ -268,15 +268,12 @@ class StandardizedPattern(_StandardizedPattern):
         for cmd in self.m_list:
             s_domain = expand_domain(cmd.s_domain)
             t_domain = expand_domain(cmd.t_domain)
-            pm = PauliMeasurement.try_from(
-                cmd.plane, cmd.angle
-            )  # None returned if the measurement is not in Pauli basis
-            if pm is None or cmd.node in leave_nodes:
+            if not isinstance(cmd.measurement, PauliMeasurement) or cmd.node in leave_nodes:
                 non_pauli_list.append(
-                    command.M(node=cmd.node, angle=cmd.angle, plane=cmd.plane, s_domain=s_domain, t_domain=t_domain)
+                    command.M(node=cmd.node, measurement=cmd.measurement, s_domain=s_domain, t_domain=t_domain)
                 )
             else:
-                if pm.axis == Axis.X:
+                if cmd.measurement.axis == Axis.X:
                     # M^X X^s Z^t = M^{XY,0} X^s Z^t
                     #             = M^{XY,(-1)^s·0+tπ}
                     #             = S^t M^X
@@ -284,7 +281,7 @@ class StandardizedPattern(_StandardizedPattern):
                     #                = M^{XY,(-1)^s·π+tπ}
                     #                = S^t M^{-X}
                     shift_domains[cmd.node] = t_domain
-                elif pm.axis == Axis.Y:
+                elif cmd.measurement.axis == Axis.Y:
                     # M^Y X^s Z^t = M^{XY,π/2} X^s Z^t
                     #             = M^{XY,(-1)^s·π/2+tπ}
                     #             = M^{XY,π/2+(s+t)π}      (since -π/2 = π/2 - π ≡ π/2 + π (mod 2π))
@@ -294,7 +291,7 @@ class StandardizedPattern(_StandardizedPattern):
                     #                = M^{XY,-π/2+(s+t)π}  (since π/2 = -π/2 + π)
                     #                = S^{s+t} M^{-Y}
                     shift_domains[cmd.node] = s_domain ^ t_domain
-                elif pm.axis == Axis.Z:
+                elif cmd.measurement.axis == Axis.Z:
                     # M^Z X^s Z^t = M^{XZ,0} X^s Z^t
                     #             = M^{XZ,(-1)^t((-1)^s·0+sπ)}
                     #             = M^{XZ,(-1)^t·sπ}
@@ -306,8 +303,8 @@ class StandardizedPattern(_StandardizedPattern):
                     #                = S^s M^{-Z}
                     shift_domains[cmd.node] = s_domain
                 else:
-                    assert_never(pm.axis)
-                pauli_list.append(command.M(node=cmd.node, angle=cmd.angle, plane=cmd.plane))
+                    assert_never(cmd.measurement.axis)
+                pauli_list.append(command.M(node=cmd.node, measurement=cmd.measurement))
         return self.__class__(
             self.input_nodes,
             self.output_nodes,
@@ -394,7 +391,7 @@ class StandardizedPattern(_StandardizedPattern):
                 raise ValueError(
                     f"Open graph construction in flow extraction requires N commands to represent a |+⟩ state. Error found in {n}."
                 )
-        measurements = {m.node: Measurement(m.angle, m.plane) for m in self.m_list}
+        measurements = {m.node: m.measurement for m in self.m_list}
         return OpenGraph(self.extract_graph(), self.input_nodes, self.output_nodes, measurements)
 
     def extract_partial_order_layers(self) -> tuple[frozenset[int], ...]:
@@ -458,7 +455,7 @@ class StandardizedPattern(_StandardizedPattern):
             return oset, *generations[::-1]
         return generations[::-1]
 
-    def extract_causal_flow(self) -> CausalFlow[Measurement]:
+    def extract_causal_flow(self) -> CausalFlow[BlochMeasurement]:
         """Extract the causal flow structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the flow from the pattern corrections instead.
@@ -487,7 +484,13 @@ class StandardizedPattern(_StandardizedPattern):
         pre_measured_nodes = self.results.keys()  # Not included in the flow.
 
         for m in self.m_list:
-            if m.plane in {Plane.XZ, Plane.YZ}:
+            try:
+                bloch = m.measurement.downcast_bloch()
+            except TypeError:
+                valid = False
+            else:
+                valid = bloch.plane == Plane.XY
+            if not valid:
                 raise FlowGenericError(FlowGenericErrorReason.XYPlane)
             _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
@@ -500,11 +503,11 @@ class StandardizedPattern(_StandardizedPattern):
         partial_order_layers = (
             self.extract_partial_order_layers()
         )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        cf = CausalFlow(og, dict(correction_function), partial_order_layers)
+        cf = CausalFlow(og.downcast_bloch(), dict(correction_function), partial_order_layers)
         cf.check_well_formed()  # Raises a `FlowError` if the partial order and the correction function are not compatible, or if a measured node is corrected by more than one node.
         return cf
 
-    def extract_gflow(self) -> GFlow[Measurement]:
+    def extract_gflow(self) -> GFlow[BlochMeasurement]:
         """Extract the generalized flow (gflow) structure from the current measurement pattern.
 
         This method does not call the flow-extraction routine on the underlying open graph, but constructs the gflow from the pattern corrections instead.
@@ -519,6 +522,8 @@ class StandardizedPattern(_StandardizedPattern):
         FlowError
             If the pattern is empty or if the extracted structure does not satisfy
             the well-formedness conditions required for a valid gflow.
+        TypeError
+            If the pattern contains a Pauli measurement
         ValueError
             If `N` commands in the pattern do not represent a |+⟩ state or if the pattern corrections form closed loops.
 
@@ -530,7 +535,8 @@ class StandardizedPattern(_StandardizedPattern):
         pre_measured_nodes = self.results.keys()  # Not included in the flow.
 
         for m in self.m_list:
-            if m.plane in {Plane.XZ, Plane.YZ}:
+            # Raises a `TypeError` if the measurement is not represented as a Bloch measurement
+            if m.measurement.downcast_bloch().plane in {Plane.XZ, Plane.YZ}:
                 correction_function.setdefault(m.node, set()).add(m.node)
             _update_corrections(m.node, m.s_domain - pre_measured_nodes, correction_function)
 
@@ -543,7 +549,7 @@ class StandardizedPattern(_StandardizedPattern):
         partial_order_layers = (
             self.extract_partial_order_layers()
         )  # Raises a `ValueError` if the pattern corrections form closed loops.
-        gf = GFlow(og, correction_function, partial_order_layers)
+        gf = GFlow(og.downcast_bloch(), correction_function, partial_order_layers)
         gf.check_well_formed()
         return gf
 
@@ -680,7 +686,7 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
                 else:
                     apply_z = False
                     new_t_domain = cmd.t_domain
-                new_cmd = command.M(cmd.node, cmd.plane, cmd.angle, new_s_domain, new_t_domain)
+                new_cmd = command.M(cmd.node, cmd.measurement, new_s_domain, new_t_domain)
                 if apply_x:
                     new_cmd = new_cmd.clifford(Clifford.X)
                 if apply_z:
@@ -713,13 +719,13 @@ def remove_useless_domains(pattern: Pattern) -> Pattern:
     new_pattern.results = pattern.results
     for cmd in pattern:
         if cmd.kind == CommandKind.M:
-            if cmd.angle == 0:
-                if cmd.plane == Plane.XY:
+            match cmd.measurement:
+                case PauliMeasurement(Axis.X, Sign.PLUS):
                     new_cmd = dataclasses.replace(cmd, s_domain=set())
-                else:
+                case PauliMeasurement(Axis.Z, Sign.PLUS):
                     new_cmd = dataclasses.replace(cmd, t_domain=set())
-            else:
-                new_cmd = cmd
+                case _:
+                    new_cmd = cmd
             new_pattern.add(new_cmd)
         else:
             new_pattern.add(cmd)

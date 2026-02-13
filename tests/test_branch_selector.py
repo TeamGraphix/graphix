@@ -12,6 +12,7 @@ from typing_extensions import override
 from graphix import Pattern
 from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector, RandomBranchSelector
 from graphix.command import M, N
+from graphix.measurements import Measurement
 from graphix.simulator import DefaultMeasureMethod
 
 if TYPE_CHECKING:
@@ -97,7 +98,7 @@ def test_random_branch_selector(fx_rng: Generator, backend: _BackendLiteral) -> 
 def test_random_branch_selector_without_pr_calc(backend: _BackendLiteral) -> None:
     branch_selector = RandomBranchSelector(pr_calc=False)
     # Pattern that measures 0 on qubit 0 with probability > 0.999999999, to avoid numerical errors when exploring impossible branches.
-    pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
+    pattern = Pattern(cmds=[N(0), M(0, Measurement.XY(1e-5))])
     nb_outcome_1 = 0
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
@@ -121,7 +122,7 @@ def test_fixed_branch_selector(backend: _BackendLiteral, outcome: list[Outcome])
     results1: dict[int, Outcome] = dict(enumerate(outcome[:-1]))
     results2: dict[int, Outcome] = {2: outcome[2]}
     branch_selector = FixedBranchSelector(results1, default=FixedBranchSelector(results2))
-    pattern = Pattern(cmds=[cmd for qubit in range(3) for cmd in (N(qubit), M(qubit, angle=0.1))])
+    pattern = Pattern(cmds=[cmd for qubit in range(3) for cmd in (N(qubit), M(qubit, Measurement.XY(0.1)))])
     measure_method = DefaultMeasureMethod()
     pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
     for qubit, value in enumerate(outcome):
@@ -140,7 +141,7 @@ def test_fixed_branch_selector(backend: _BackendLiteral, outcome: list[Outcome])
 def test_fixed_branch_selector_no_default(backend: _BackendLiteral) -> None:
     results: dict[int, Outcome] = {}
     branch_selector = FixedBranchSelector(results)
-    pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
+    pattern = Pattern(cmds=[N(0), M(0, Measurement.XY(1e-5))])
     measure_method = DefaultMeasureMethod()
     with pytest.raises(ValueError):
         pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)
@@ -158,7 +159,7 @@ def test_fixed_branch_selector_no_default(backend: _BackendLiteral) -> None:
 @pytest.mark.parametrize("outcome", [0, 1])
 def test_const_branch_selector(backend: _BackendLiteral, outcome: Outcome) -> None:
     branch_selector = ConstBranchSelector(outcome)
-    pattern = Pattern(cmds=[N(0), M(0, angle=1e-5)])
+    pattern = Pattern(cmds=[N(0), M(0, Measurement.XY(1e-5))])
     for _ in range(NB_ROUNDS):
         measure_method = DefaultMeasureMethod()
         pattern.simulate_pattern(backend, branch_selector=branch_selector, measure_method=measure_method)

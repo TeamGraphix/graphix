@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- #181, #423: Structural separation of Pauli measurements
+  - The class `Measurement` is now abstract and has two concrete subclasses: `PauliMeasurement` and `BlochMeasurement`.
+  - `M` commands are now parameterized by an instance `Measurement` (instead of carrying a plane and an angle).
+  - Conversions are explicit with `Measurement.to_bloch()` and `Measurement.infer_pauli_measurements()`.
+
 ## [0.3.4] - 2026-02-05
 
 ### Added
@@ -57,8 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #412: Added pretty-print methods (`to_ascii`, `to_latex` and `to_unicode`) for `PauliFlow` and `XZCorrections` classes. Implemented their `__str__` method as a call to `self.to_ascii`.
 
 ### Fixed
-
--
 
 - #363, #392: `Pattern.remove_input_nodes` is required before the `Pattern.perform_pauli_measurements` method to ensure input nodes are removed and fixed in the |+> state.
 

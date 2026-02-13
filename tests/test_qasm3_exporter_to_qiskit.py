@@ -13,7 +13,7 @@ from graphix.branch_selector import FixedBranchSelector
 from graphix.clifford import Clifford
 from graphix.command import C, CommandKind, E, M, N
 from graphix.fundamentals import Plane
-from graphix.measurements import Measurement, outcome
+from graphix.measurements import BlochMeasurement, Measurement, outcome
 from graphix.optimization import incorporate_pauli_results, single_qubit_domains
 from graphix.qasm3_exporter import pattern_to_qasm3
 from graphix.random_objects import rand_circuit
@@ -72,7 +72,7 @@ def check_qasm3(pattern: Pattern) -> None:
     backend.add_nodes(nodes=nodes, data=np.asarray(result.get_statevector()))
     # Trace out measured qubits.
     for cmd in measurements:
-        backend.measure(cmd.node, Measurement(angle=0, plane=Plane.XZ))
+        backend.measure(cmd.node, Measurement.Z)
     # Reorder qubits to match the pattern's expected output ordering.
     backend.finalize(pattern.output_nodes)
     state_qiskit = backend.state
@@ -102,7 +102,7 @@ def test_to_qasm3_clifford(clifford: Clifford, state: State) -> None:
 @pytest.mark.parametrize("plane", list(Plane))
 @pytest.mark.parametrize("angle", [0, 0.25, 1.75])
 def test_to_qasm3_measurement(state: State, plane: Plane, angle: float) -> None:
-    check_qasm3(Pattern(cmds=[N(0, state), N(1), E((0, 1)), M(0, plane=plane, angle=angle)]))
+    check_qasm3(Pattern(cmds=[N(0, state), N(1), E((0, 1)), M(0, BlochMeasurement(angle, plane))]))
 
 
 def test_to_qasm3_hadamard() -> None:

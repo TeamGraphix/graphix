@@ -195,20 +195,21 @@ def command_to_qasm3_lines(cmd: Command) -> Iterator[str]:
     elif cmd.kind == CommandKind.M:
         yield from domain_to_qasm3_lines(cmd.s_domain, f"x q{cmd.node}")
         yield from domain_to_qasm3_lines(cmd.t_domain, f"z q{cmd.node}")
-        if cmd.plane == Plane.XY:
+        bloch = cmd.measurement.to_bloch()
+        if bloch.plane == Plane.XY:
             yield f"h q{cmd.node};\n"
-        if cmd.angle != 0:
-            if cmd.plane == Plane.XY:
+        if bloch.angle != 0:
+            if bloch.plane == Plane.XY:
                 gate = "rx"
-                angle = -cmd.angle
-            elif cmd.plane == Plane.XZ:
+                angle = -bloch.angle
+            elif bloch.plane == Plane.XZ:
                 gate = "ry"
-                angle = -cmd.angle
-            elif cmd.plane == Plane.YZ:
+                angle = -bloch.angle
+            elif bloch.plane == Plane.YZ:
                 gate = "rx"
-                angle = cmd.angle
+                angle = bloch.angle
             else:
-                assert_never(cmd.plane)
+                assert_never(bloch.plane)
             rad_angle = angle_to_qasm3(angle)
             yield f"{gate}({rad_angle}) q{cmd.node};\n"
         yield f"bit c{cmd.node};\n"

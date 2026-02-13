@@ -7,13 +7,16 @@ import math
 import string
 from enum import Enum
 from fractions import Fraction
+from math import pi
 from typing import TYPE_CHECKING, SupportsFloat
 
 # `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never
 
 from graphix import command
-from graphix.fundamentals import AbstractMeasurement, Plane, angle_to_rad
+from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad, rad_to_angle
+from graphix.measurements import BlochMeasurement, PauliMeasurement
+from graphix.parameter import AffineExpression
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
@@ -114,6 +117,24 @@ SUBSCRIPTS = str.maketrans(string.digits, "₀₁₂₃₄₅₆₇₈₉")
 SUPERSCRIPTS = str.maketrans(string.digits, "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
+def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> str:
+    """Return the string representation of an affine expression."""
+    result = str(expr.x)
+    if expr.a != 1:
+        a = angle_to_str(rad_to_angle(expr.a), output)
+        match output:
+            case OutputFormat.LaTeX:
+                mul = r" \times "
+            case OutputFormat.Unicode:
+                mul = "×"
+            case OutputFormat.ASCII:
+                mul = "*"
+        result = f"{a}{mul}{result}"
+    if expr.b != 0:
+        result = f"{result}+{angle_to_str(rad_to_angle(expr.b), output)}"
+    return result
+
+
 def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
     """Return the string representation of a command according to the given format.
 
@@ -143,18 +164,26 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
         # with some other arguments and/or domains.
         arguments = []
         if cmd.kind == command.CommandKind.M:
-            if cmd.plane != Plane.XY:
-                arguments.append(cmd.plane.name)
-            # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
-            # is `False` if `cmd.angle` is an integer.
-            if isinstance(cmd.angle, SupportsFloat):
-                angle = float(cmd.angle)
-                if not math.isclose(angle, 0.0):
-                    arguments.append(angle_to_str(angle, output))
-            else:
-                # If the angle is a symbolic expression, we can only delegate the printing
-                # TODO: We should have a mean to specify the format
-                arguments.append(str(cmd.angle * math.pi))
+            match cmd.measurement:
+                case BlochMeasurement(angle, plane):
+                    if plane != Plane.XY:
+                        arguments.append(plane.name)
+                    # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
+                    # is `False` if `cmd.angle` is an integer.
+                    match angle:
+                        case SupportsFloat():
+                            s = angle_to_str(float(angle), output)
+                        case AffineExpression():
+                            s = affine_expression_to_str(angle.scale_non_null(pi), output)
+                        case _:
+                            # If the angle is a symbolic expression, we can only delegate the printing
+                            # TODO: We should have a mean to specify the format
+                            s = str(angle_to_rad(angle))
+                    arguments.append(s)
+                case PauliMeasurement(Axis.X, Sign.PLUS):
+                    pass
+                case _:
+                    arguments.append(str(cmd.measurement))
         elif cmd.kind == command.CommandKind.C:
             arguments.append(str(cmd.clifford))
         # Use of `==` here for mypy

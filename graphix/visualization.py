@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import networkx as nx
@@ -10,24 +11,23 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from graphix.flow.exceptions import FlowError
-from graphix.fundamentals import Plane
-from graphix.measurements import PauliMeasurement
-from graphix.opengraph import OpenGraph
+from graphix.measurements import Measurement, PauliMeasurement
+
+# OpenGraph is needed for dataclass
+from graphix.opengraph import OpenGraph  # noqa: TC001
 from graphix.optimization import StandardizedPattern
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Hashable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
     from collections.abc import Set as AbstractSet
     from pathlib import Path
     from typing import TypeAlias, TypeVar
 
     import numpy.typing as npt
 
-    # MEMO: Potential circular import
     from graphix.clifford import Clifford
-    from graphix.flow.core import CausalFlow, GFlow
-    from graphix.fundamentals import AbstractPlanarMeasurement
-    from graphix.parameter import ExpressionOrFloat
+    from graphix.flow.core import CausalFlow, PauliFlow
+    from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
     from graphix.pattern import Pattern
 
     _Edge: TypeAlias = tuple[int, int]
@@ -36,63 +36,21 @@ if TYPE_CHECKING:
     _HashableT = TypeVar("_HashableT", bound=Hashable)  # reusable node type variable
 
 
+@dataclass(frozen=True)
 class GraphVisualizer:
     """A class for visualizing MBQC graphs with flow or gflow structure.
 
     Attributes
     ----------
-    g : :class:`networkx.Graph`
-        The graph to be visualized
-    v_in : list
-        list of input nodes
-    v_out : list
-        list of output nodes
-    meas_planes : dict
-        dict specifying the measurement planes for each node, except output nodes.
-    meas_angles : dict
-        dict specifying the measurement angles for each node, except output nodes.
+    og: OpenGraph
+        The open graph to be visualized
     local_clifford : dict
         dict specifying the local clifford for each node.
 
     """
 
-    def __init__(
-        self,
-        g: nx.Graph[int],
-        v_in: Collection[int],
-        v_out: Collection[int],
-        meas_plane: Mapping[int, Plane] | None = None,
-        meas_angles: Mapping[int, ExpressionOrFloat] | None = None,
-        local_clifford: Mapping[int, Clifford] | None = None,
-    ):
-        """
-        Construct a graph visualizer.
-
-        Parameters
-        ----------
-        g : :class:`networkx.Graph`
-            NetworkX graph instance
-        v_in : list
-            list of input nodes
-        v_out : list
-            list of output nodes
-        meas_plane : dict
-            dict specifying the measurement planes for each node, except output nodes.
-            if None, all measurements are assumed to be in XY-plane.
-        meas_angles : dict
-            dict specifying the measurement angles for each node, except output nodes.
-        local_clifford : dict
-            dict specifying the local clifford for each node.
-        """
-        self.graph = g
-        self.v_in = v_in
-        self.v_out = v_out
-        if meas_plane is None:
-            self.meas_planes = dict.fromkeys(g.nodes - set(v_out), Plane.XY)
-        else:
-            self.meas_planes = dict(meas_plane)
-        self.meas_angles = meas_angles
-        self.local_clifford = local_clifford
+    og: OpenGraph[Measurement]
+    local_clifford: Mapping[int, Clifford] | None = None
 
     def visualize(
         self,
@@ -130,11 +88,14 @@ class GraphVisualizer:
             If not None, filename of the png file to save the plot. If None, the plot is not saved.
             Default in None.
         """
-        og = OpenGraph(self.graph, list(self.v_in), list(self.v_out), self.meas_planes)
-        causal_flow = og.find_causal_flow()
+        try:
+            bloch_graph = self.og.downcast_bloch()
+        except TypeError:
+            bloch_graph = None
+        causal_flow = None if bloch_graph is None else bloch_graph.find_causal_flow()
         if causal_flow is not None:
             print("Flow detected in the graph.")
-            pos = self.place_flow(causal_flow)
+            pos = self.place_causal_flow(causal_flow)
             cf = causal_flow.correction_function
             l_k = {
                 node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
@@ -146,12 +107,14 @@ class GraphVisualizer:
                 return self.place_edge_paths(cf, pos)
 
         else:
-            g_flow = og.find_gflow()
-            if g_flow is not None:
-                print("Gflow detected in the graph. (flow not detected)")
-                pos = self.place_gflow(g_flow)
-                cf = g_flow.correction_function
-                l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
+            pauli_flow = self.og.find_pauli_flow()
+            if pauli_flow is not None:
+                print("Pauli flow detected in the graph (causal flow not detected)")
+                pos = self.place_pauli_flow(pauli_flow)
+                cf = pauli_flow.correction_function
+                l_k = {
+                    node: layer_idx for layer_idx, layer in enumerate(pauli_flow.partial_order_layers) for node in layer
+                }
 
                 def place_paths(
                     pos: Mapping[int, _Point],
@@ -159,7 +122,7 @@ class GraphVisualizer:
                     return self.place_edge_paths(cf, pos)
 
             else:
-                print("No flow or gflow detected in the graph.")
+                print("No causal flow, gflow, or Pauli flow detected in the graph.")
                 pos = self.place_without_structure()
                 l_k = None
 
@@ -229,7 +192,7 @@ class GraphVisualizer:
         except FlowError:
             try:
                 g_flow = pattern_std.extract_gflow()
-            except FlowError:
+            except (FlowError, TypeError):
                 print("The pattern is not consistent with flow or gflow structure.")
                 po_layers = pattern.extract_partial_order_layers()
                 unfolded_layers = {node: layer_idx for layer_idx, layer in enumerate(po_layers[::-1]) for node in layer}
@@ -247,13 +210,13 @@ class GraphVisualizer:
                 corrections = xflow, zflow
             else:
                 print("The pattern is consistent with gflow structure. (not with flow)")
-                pos = self.place_gflow(g_flow)
+                pos = self.place_pauli_flow(g_flow)
                 cf = g_flow.correction_function
                 l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
                 corrections = None
         else:
-            print("The pattern is consistent with flow structure.")
-            pos = self.place_flow(causal_flow)
+            print("The pattern is consistent with causal flow structure.")
+            pos = self.place_causal_flow(causal_flow)
             cf = causal_flow.correction_function
             l_k = {
                 node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
@@ -291,9 +254,9 @@ class GraphVisualizer:
 
     def _draw_labels(self, pos: Mapping[int, _Point]) -> None:
         fontsize = 12
-        if max(self.graph.nodes(), default=0) >= 100:
-            fontsize = int(fontsize * 2 / len(str(max(self.graph.nodes()))))
-        nx.draw_networkx_labels(self.graph, pos, font_size=fontsize)
+        if max(self.og.graph.nodes(), default=0) >= 100:
+            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize)
 
     def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> None:
         """
@@ -306,23 +269,14 @@ class GraphVisualizer:
         show_pauli_measurement : bool
             If True, the nodes with Pauli measurement angles are colored light blue.
         """
-        for node in self.graph.nodes():
+        for node in self.og.graph.nodes():
             color = "black"  # default color for 'other' nodes
             inner_color = "white"
-            if node in self.v_in:
+            if node in self.og.input_nodes:
                 color = "red"
-            if node in self.v_out:
+            if node in self.og.output_nodes:
                 inner_color = "lightgray"
-            elif (
-                show_pauli_measurement
-                and self.meas_angles is not None
-                and PauliMeasurement.try_from(Plane.XY, self.meas_angles[node]) is not None
-            ):
-                # Pauli nodes are checked with Plane.XY by default,
-                # because the actual plane does not change whether the
-                # node is Pauli or not, and the current API allows
-                # self.meas_plane to be None while self.meas_angles is
-                # defined.
+            elif show_pauli_measurement and isinstance(self.og.measurements[node], PauliMeasurement):
                 inner_color = "lightblue"
             plt.scatter(
                 *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
@@ -395,7 +349,7 @@ class GraphVisualizer:
 
         for edge, path in edge_path.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(self.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
             else:
                 curve = self._bezier_curve_linspace(path)
                 plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
@@ -424,7 +378,7 @@ class GraphVisualizer:
                         )
                 elif len(path) == 2:  # straight line
                     nx.draw_networkx_edges(
-                        self.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
+                        self.og.graph, pos, edgelist=[arrow], edge_color=color, arrowstyle="->", arrows=True
                     )
                 else:
                     new_path = GraphVisualizer._shorten_path(path)
@@ -455,10 +409,10 @@ class GraphVisualizer:
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
             plt.legend(loc="center left", fontsize=10, bbox_to_anchor=(1, 0.5))
 
-        x_min = min((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the minimum x coordinate
-        x_max = max((pos[node][0] for node in self.graph.nodes()), default=0)  # Get the maximum x coordinate
-        y_min = min((pos[node][1] for node in self.graph.nodes()), default=0)  # Get the minimum y coordinate
-        y_max = max((pos[node][1] for node in self.graph.nodes()), default=0)  # Get the maximum y coordinate
+        x_min = min((pos[node][0] for node in self.og.graph.nodes()), default=0)  # Get the minimum x coordinate
+        x_max = max((pos[node][0] for node in self.og.graph.nodes()), default=0)  # Get the maximum x coordinate
+        y_min = min((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the minimum y coordinate
+        y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the maximum y coordinate
 
         if l_k is not None and l_k:
             # Draw the vertical lines to separate different layers
@@ -488,13 +442,9 @@ class GraphVisualizer:
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
     def __draw_measurement_planes(self, pos: Mapping[int, _Point]) -> None:
-        angles = self.meas_angles or {}
-        for node in self.meas_planes:
+        for node, meas in self.og.measurements.items():
             x, y = pos[node] + np.array([0.22, -0.2])
-            plane = self.meas_planes[node]
-            label = plane.name
-            if (angle := angles.get(node, None)) is not None and (pm := PauliMeasurement.try_from(plane, angle)):
-                label = pm.axis.name
+            label = meas.to_plane_or_axis().name
 
             plt.text(x, y, label, fontsize=9, zorder=3)
 
@@ -524,10 +474,10 @@ class GraphVisualizer:
         if l_k is None:
             if pos is None:
                 raise ValueError("Figure size can only be computed given a layer mapping (l_k) or node positions (pos)")
-            width = len({pos[node][0] for node in self.graph.nodes()}) * 0.8
+            width = len({pos[node][0] for node in self.og.graph.nodes()}) * 0.8
         else:
             width = (max(l_k.values(), default=0) + 1) * 0.8
-        height = len({pos[node][1] for node in self.graph.nodes()}) if pos is not None else len(self.v_out)
+        height = len({pos[node][1] for node in self.og.graph.nodes()}) if pos is not None else len(self.og.output_nodes)
         return (width * node_distance[0], height * node_distance[1])
 
     def place_edge_paths(
@@ -551,7 +501,7 @@ class GraphVisualizer:
             dictionary of arrow paths.
         """
         edge_path = self.place_edge_paths_without_structure(pos)
-        edge_set = set(self.graph.edges())
+        edge_set = set(self.og.graph.edges())
         arrow_path: dict[_Edge, list[_Point]] = {}
         flow_arrows = {(k, v) for k, values in flow.items() for v in values}
 
@@ -608,7 +558,7 @@ class GraphVisualizer:
         bezier_path = list(bezier_path)
         max_iter = 5
         iteration = 0
-        nodes = set(self.graph.nodes())
+        nodes = set(self.og.graph.nodes())
         while True:
             iteration += 1
             intersect = False
@@ -650,9 +600,9 @@ class GraphVisualizer:
         edge_path : dict
             dictionary of edge paths.
         """
-        return {edge: self._find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in self.graph.edges()}
+        return {edge: self._find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in self.og.graph.edges()}
 
-    def place_flow(self, flow: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
+    def place_causal_flow(self, flow: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
         """
         Return the position of nodes based on the flow.
 
@@ -670,8 +620,8 @@ class GraphVisualizer:
         """
         f = flow.correction_function
         values_union = set().union(*f.values())
-        start_nodes = set(self.graph.nodes()) - values_union
-        pos = {node: [0, 0] for node in self.graph.nodes()}
+        start_nodes = set(self.og.graph.nodes()) - values_union
+        pos = {node: [0, 0] for node in self.og.graph.nodes()}
         for i, k in enumerate(start_nodes):
             pos[k][1] = i
             node = k
@@ -687,9 +637,9 @@ class GraphVisualizer:
                 pos[node][0] = lmax - layer_idx
         return {k: (x, y) for k, (x, y) in pos.items()}
 
-    def place_gflow(self, flow: GFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
+    def place_pauli_flow(self, flow: PauliFlow[AbstractMeasurement]) -> dict[int, _Point]:
         """
-        Return the position of nodes based on the gflow.
+        Return the position of nodes based on the Pauli flow.
 
         Parameters
         ----------
@@ -702,6 +652,10 @@ class GraphVisualizer:
         -------
         pos : dict
             dictionary of node positions.
+
+        Notes
+        -----
+        This method accepts gflows, as gflows are particular cases of Pauli flows.
         """
         g_edges: list[_Edge] = []
 
@@ -710,8 +664,8 @@ class GraphVisualizer:
         for node, node_list in g.items():
             g_edges.extend((node, n) for n in node_list)
 
-        g_prime = self.graph.copy()
-        g_prime.add_nodes_from(self.graph.nodes())
+        g_prime = self.og.graph.copy()
+        g_prime.add_nodes_from(self.og.graph.nodes())
         g_prime.add_edges_from(g_edges)
 
         layers = flow.partial_order_layers
@@ -721,7 +675,7 @@ class GraphVisualizer:
         _set_node_attributes(g_prime, l_reverse, "subset")
         pos = nx.multipartite_layout(g_prime)
 
-        vert = list({pos[node][1] for node in self.graph.nodes()})
+        vert = list({pos[node][1] for node in self.og.graph.nodes()})
         vert.sort()
         index = {y: i for i, y in enumerate(vert)}
         return {
@@ -743,20 +697,26 @@ class GraphVisualizer:
             dictionary of node positions.
         """
         layers: dict[int, int] = {}
-        connected_components = list(nx.connected_components(self.graph))
+        connected_components = list(nx.connected_components(self.og.graph))
 
         for component in connected_components:
-            subgraph = self.graph.subgraph(component)
+            subgraph = self.og.graph.subgraph(component)
             initial_pos: dict[int, tuple[int, int]] = dict.fromkeys(component, (0, 0))
 
-            if len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) == 0:
+            if (
+                len(set(self.og.output_nodes) & set(component)) == 0
+                and len(set(self.og.input_nodes) & set(component)) == 0
+            ):
                 pos = nx.spring_layout(subgraph)
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 layers.update((node, k) for k, node in enumerate(order[::-1]))
 
-            elif len(set(self.v_out) & set(component)) > 0 and len(set(self.v_in) & set(component)) == 0:
-                fixed_nodes = list(set(self.v_out) & set(component))
+            elif (
+                len(set(self.og.output_nodes) & set(component)) > 0
+                and len(set(self.og.input_nodes) & set(component)) == 0
+            ):
+                fixed_nodes = list(set(self.og.output_nodes) & set(component))
                 for i, node in enumerate(fixed_nodes):
                     initial_pos[node] = (10, i)
                     layers[node] = 0
@@ -764,20 +724,23 @@ class GraphVisualizer:
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 order = [node for node in order if node not in fixed_nodes]
-                nv = len(self.v_out)
+                nv = len(self.og.output_nodes)
                 for i, node in enumerate(order[::-1]):
                     k = i // nv + 1
                     layers[node] = k
 
-            elif len(set(self.v_out) & set(component)) == 0 and len(set(self.v_in) & set(component)) > 0:
-                fixed_nodes = list(set(self.v_in) & set(component))
+            elif (
+                len(set(self.og.output_nodes) & set(component)) == 0
+                and len(set(self.og.input_nodes) & set(component)) > 0
+            ):
+                fixed_nodes = list(set(self.og.input_nodes) & set(component))
                 for i, node in enumerate(fixed_nodes):
                     initial_pos[node] = (-10, i)
                 pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 order = [node for node in order if node not in fixed_nodes]
-                nv = len(self.v_in)
+                nv = len(self.og.input_nodes)
                 for i, node in enumerate(order[::-1]):
                     k = i // nv
                     layers[node] = k
@@ -786,35 +749,37 @@ class GraphVisualizer:
                     layers[node] = layer_input
 
             else:
-                for i, node in enumerate(list(set(self.v_out) & set(component))):
+                for i, node in enumerate(list(set(self.og.output_nodes) & set(component))):
                     initial_pos[node] = (10, i)
                     layers[node] = 0
-                for i, node in enumerate(list(set(self.v_in) & set(component))):
+                for i, node in enumerate(list(set(self.og.input_nodes) & set(component))):
                     initial_pos[node] = (-10, i)
-                fixed_nodes = list(set(self.v_out) & set(component)) + list(set(self.v_in) & set(component))
+                fixed_nodes = list(set(self.og.output_nodes) & set(component)) + list(
+                    set(self.og.input_nodes) & set(component)
+                )
                 pos = nx.spring_layout(subgraph, pos=initial_pos, fixed=fixed_nodes)
                 # order the nodes based on the x-coordinate
                 order = sorted(pos, key=lambda x: pos[x][0])
                 order = [node for node in order if node not in fixed_nodes]
-                nv = len(self.v_out)
+                nv = len(self.og.output_nodes)
                 for i, node in enumerate(order[::-1]):
                     k = i // nv + 1
                     layers[node] = k
                 layer_input = max(layers.values()) + 1
-                for node in set(self.v_in) & set(component) - set(self.v_out):
+                for node in set(self.og.input_nodes) & set(component) - set(self.og.output_nodes):
                     layers[node] = layer_input
 
-        g_prime = self.graph.copy()
-        g_prime.add_nodes_from(self.graph.nodes())
-        g_prime.add_edges_from(self.graph.edges())
+        g_prime = self.og.graph.copy()
+        g_prime.add_nodes_from(self.og.graph.nodes())
+        g_prime.add_edges_from(self.og.graph.edges())
         l_max = max(layers.values())
         l_reverse = {v: l_max - l for v, l in layers.items()}
         _set_node_attributes(g_prime, l_reverse, "subset")
         pos = nx.multipartite_layout(g_prime)
-        vert = list({pos[node][1] for node in self.graph.nodes()})
+        vert = list({pos[node][1] for node in self.og.graph.nodes()})
         vert.sort()
         index = {y: i for i, y in enumerate(vert)}
-        return {node: (l_max - layers[node], index[pos[node][1]]) for node in self.graph.nodes()}
+        return {node: (l_max - layers[node], index[pos[node][1]]) for node in self.og.graph.nodes()}
 
     def place_all_corrections(self, layers: Mapping[int, int]) -> dict[int, _Point]:
         """
@@ -830,15 +795,15 @@ class GraphVisualizer:
         pos : dict
             dictionary of node positions.
         """
-        g_prime = self.graph.copy()
-        g_prime.add_nodes_from(self.graph.nodes())
-        g_prime.add_edges_from(self.graph.edges())
+        g_prime = self.og.graph.copy()
+        g_prime.add_nodes_from(self.og.graph.nodes())
+        g_prime.add_edges_from(self.og.graph.edges())
         _set_node_attributes(g_prime, layers, "subset")
         layout = nx.multipartite_layout(g_prime)
-        vert = list({layout[node][1] for node in self.graph.nodes()})
+        vert = list({layout[node][1] for node in self.og.graph.nodes()})
         vert.sort()
         index = {y: i for i, y in enumerate(vert)}
-        return {node: (layers[node], index[layout[node][1]]) for node in self.graph.nodes()}
+        return {node: (layers[node], index[layout[node][1]]) for node in self.og.graph.nodes()}
 
     @staticmethod
     def _edge_intersects_node(

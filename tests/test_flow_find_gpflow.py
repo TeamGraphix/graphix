@@ -30,6 +30,7 @@ from graphix.opengraph import OpenGraph
 
 if TYPE_CHECKING:
     from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
+    from graphix.measurements import BlochMeasurement
 
 
 class AlgebraicOpenGraphTestCase(NamedTuple):
@@ -84,12 +85,12 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
         inputs = [0, 1]
         outputs = [6, 7]
         meas = {
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.1, Plane.XY),  # XY
-            2: Measurement(0.0, Plane.XY),  # X
-            3: Measurement(0.1, Plane.XY),  # XY
-            4: Measurement(0.0, Plane.XY),  # X
-            5: Measurement(0.5, Plane.XY),  # Y
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.XY(0.1),  # XY
+            2: Measurement.X,  # X
+            3: Measurement.XY(0.1),  # XY
+            4: Measurement.X,  # X
+            5: Measurement.Y,  # Y
         }
         return OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=meas)
 
@@ -131,7 +132,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
             ),
             # Same open graph but we interpret the measurements on Pauli axes as planar measurements, therefore, there flow-demand and order demand matrices are different.
             AlgebraicOpenGraphTestCase(
-                aog=PlanarAlgebraicOpenGraph(og_1()),
+                aog=PlanarAlgebraicOpenGraph(og_1().to_bloch()),
                 radj=MatGF2(
                     [
                         [1, 0, 0, 0, 0, 0],
@@ -168,7 +169,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     )
 
     # Non-trivial open graph with pflow and nI != nO
-    def og_2() -> OpenGraph[Measurement]:
+    def og_2() -> OpenGraph[BlochMeasurement]:
         """Return an open graph with Pauli flow and unequal number of outputs and inputs.
 
         Example from Fig. 1 in Mitosek and Backens, 2024 (arXiv:2410.23439).
@@ -179,11 +180,11 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
         inputs = [0]
         outputs = [5, 6]
         meas = {
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.1, Plane.XZ),  # XZ
-            2: Measurement(0.5, Plane.YZ),  # Y
-            3: Measurement(0.1, Plane.XY),  # XY
-            4: Measurement(0, Plane.XZ),  # Z
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.XZ(0.1),  # XZ
+            2: Measurement.YZ(0.5),  # Y
+            3: Measurement.XY(0.1),  # XY
+            4: Measurement.XZ(0),  # Z
         }
 
         return OpenGraph(graph=graph, input_nodes=inputs, output_nodes=outputs, measurements=meas)
@@ -191,7 +192,7 @@ def prepare_test_og() -> list[AlgebraicOpenGraphTestCase]:
     test_cases.extend(
         (
             AlgebraicOpenGraphTestCase(
-                aog=AlgebraicOpenGraph(og_2()),
+                aog=AlgebraicOpenGraph(og_2().infer_pauli_measurements()),
                 radj=MatGF2(
                     [[0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 0, 1], [0, 0, 1, 1, 0, 1], [0, 1, 0, 1, 1, 1], [1, 1, 1, 0, 0, 1]]
                 ),
