@@ -74,7 +74,7 @@ def test_random_clifford_t() -> None:
         assert_reconstructed_pyzx_graph_equal(g)
 
 
-@pytest.mark.parametrize("jumps", range(1, 2))
+@pytest.mark.parametrize("jumps", range(1, 11))
 def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     nqubits = 5
