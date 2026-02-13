@@ -107,7 +107,7 @@ class ReverseDependency:
     [
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-stim-backend",
-            branch="fix/graphix_220",
+            branch="fix_graphix423",
             version_constraint=VersionRange(upper=Version("3.14")),
         ),
         ReverseDependency(
@@ -126,7 +126,7 @@ class ReverseDependency:
         ),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq",
-            branch="support_313",
+            branch="fix/graphix_423",
             version_constraint=VersionRange(upper=Version("3.14")),
             doctest_modules=False,
         ),
