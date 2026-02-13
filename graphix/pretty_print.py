@@ -7,14 +7,16 @@ import math
 import string
 from enum import Enum
 from fractions import Fraction
+from math import pi
 from typing import TYPE_CHECKING, SupportsFloat
 
 # `assert_never` introduced in Python 3.11
 from typing_extensions import assert_never
 
 from graphix import command
-from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad
+from graphix.fundamentals import AbstractMeasurement, Axis, Plane, Sign, angle_to_rad, rad_to_angle
 from graphix.measurements import BlochMeasurement, PauliMeasurement
+from graphix.parameter import AffineExpression
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
@@ -115,6 +117,24 @@ SUBSCRIPTS = str.maketrans(string.digits, "₀₁₂₃₄₅₆₇₈₉")
 SUPERSCRIPTS = str.maketrans(string.digits, "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
+def affine_expression_to_str(expr: AffineExpression, output: OutputFormat) -> str:
+    """Return the string representation of an affine expression."""
+    result = str(expr.x)
+    if expr.a != 1:
+        a = angle_to_str(rad_to_angle(expr.a), output)
+        match output:
+            case OutputFormat.LaTeX:
+                mul = r" \times "
+            case OutputFormat.Unicode:
+                mul = "×"
+            case OutputFormat.ASCII:
+                mul = "*"
+        result = f"{a}{mul}{result}"
+    if expr.b != 0:
+        result = f"{result}+{angle_to_str(rad_to_angle(expr.b), output)}"
+    return result
+
+
 def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
     """Return the string representation of a command according to the given format.
 
@@ -150,12 +170,16 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
                         arguments.append(plane.name)
                     # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
                     # is `False` if `cmd.angle` is an integer.
-                    if isinstance(angle, SupportsFloat):
-                        arguments.append(angle_to_str(float(angle), output))
-                    else:
-                        # If the angle is a symbolic expression, we can only delegate the printing
-                        # TODO: We should have a mean to specify the format
-                        arguments.append(str(angle_to_rad(angle)))
+                    match angle:
+                        case SupportsFloat():
+                            s = angle_to_str(float(angle), output)
+                        case AffineExpression():
+                            s = affine_expression_to_str(angle.scale_non_null(pi), output)
+                        case _:
+                            # If the angle is a symbolic expression, we can only delegate the printing
+                            # TODO: We should have a mean to specify the format
+                            s = str(angle_to_rad(angle))
+                    arguments.append(s)
                 case PauliMeasurement(Axis.X, Sign.PLUS):
                     pass
                 case _:

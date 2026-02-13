@@ -11,6 +11,7 @@ from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph
+from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
 from graphix.pretty_print import OutputFormat, pattern_to_str
 from graphix.random_objects import rand_circuit
@@ -85,6 +86,14 @@ def test_pattern_pretty_print_example() -> None:
         pattern_to_str(p, output=OutputFormat.ASCII, limit=9, left_to_right=True)
         == "N(1) N(2) N(3) N(10) N(4) E(1,2) C(1,H) M(1,+Y)...(4 more commands)"
     )
+
+
+def test_pattern_pretty_print_placeholder() -> None:
+    alpha = Placeholder("alpha")
+    p = Pattern(input_nodes=[0], cmds=[command.M(0, Measurement.XY(alpha + 0.5))])
+    assert str(p) == "M(0,pi*alpha+pi/2)"
+    assert p.to_unicode() == "M₀(π×alpha+π/2)"
+    assert p.to_latex() == r"\(M_{0}^{\pi \times alpha+\frac{\pi}{2}}\)"
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
