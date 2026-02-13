@@ -140,6 +140,8 @@ class LadderPass(PauliExponentialDAGCompilationPass):
 
     with effective angle :math:`\phi = -2\alpha`, where :math:`\alpha` is the angle encoded in `self.angle`. Basis changes map :math:`X` and :math:`Y` operators to the :math:`Z` basis before entangling the qubits in a CNOT ladder.
 
+    Gate set: H, CNOT, RZ, RY
+
     Notes
     -----
     See https://quantumcomputing.stackexchange.com/questions/5567/circuit-construction-for-hamiltonian-simulation/11373#11373 for additional information.
