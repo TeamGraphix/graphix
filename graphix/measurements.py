@@ -146,7 +146,7 @@ class Measurement(AbstractMeasurement):
         This method follows the convention illustrated below:
 
             >>> from graphix.measurements import PauliMeasurement
-            >>> for pm in iter(PauliMeasurement):
+            >>> for pm in PauliMeasurement:
             ...     print(f"{pm}.to_bloch() == {pm.to_bloch()}")
             +X.to_bloch() == Measurement.XY(0)
             -X.to_bloch() == Measurement.XY(1)
