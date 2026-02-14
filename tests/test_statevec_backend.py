@@ -33,7 +33,7 @@ class TestStatevec:
         sv.remove_qubit(k)
 
         sv2 = Statevec(nqubit=n - 1)
-        assert np.abs(sv.psi.flatten().dot(sv2.psi.flatten().conj())) == pytest.approx(1)
+        assert sv.isclose(sv2)
 
     def test_measurement_into_minus_state(self) -> None:
         n = 3
