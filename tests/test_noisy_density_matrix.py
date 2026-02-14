@@ -6,6 +6,8 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
+from graphix.branch_selector import ConstBranchSelector, FixedBranchSelector
+from graphix.command import CommandKind
 from graphix.fundamentals import angle_to_rad
 from graphix.noise_models import DepolarisingNoiseModel
 from graphix.noise_models.noise_model import NoiselessNoiseModel
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.fundamentals import Angle
+    from graphix.measurements import Outcome
     from graphix.pattern import Pattern
 
 
@@ -69,14 +72,22 @@ class TestNoisyDensityMatrixBackend:
         assert isinstance(res, DensityMatrix)
         assert np.allclose(res.rho, np.array([[0.0, 0.0], [0.0, 1.0]]))
 
-        # arbitrary probability
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_noisy_measure_confuse_hadamard_arbitrary(self, fx_rng: Generator, outcome: Outcome) -> None:
+        # arbitrary probability with fixed branch
+        hadamardpattern = hpat()
         measure_error_pr = fx_rng.random()
-        print(f"measure_error_pr = {measure_error_pr}")
+        print(f"measure_error_pr = {measure_error_pr}, outcome = {outcome}")
         res = hadamardpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=DepolarisingNoiseModel(measure_error_prob=measure_error_pr), rng=fx_rng
+            backend="densitymatrix",
+            noise_model=DepolarisingNoiseModel(measure_error_prob=measure_error_pr),
+            branch_selector=ConstBranchSelector(outcome),
+            rng=fx_rng,
         )
-        # result should be |1>
         assert isinstance(res, DensityMatrix)
+        # With measure_error_prob, the outcome might be flipped, resulting in different X corrections
+        # However, we cannot predict the exact result without knowing if the error occurred
+        # So we check both possibilities
         assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
             res.rho,
             np.array([[0.0, 0.0], [0.0, 1.0]]),
@@ -100,24 +111,29 @@ class TestNoisyDensityMatrixBackend:
         )
 
     # test Pauli X error
-    def test_noisy_x_hadamard(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("outcome", [0, 1])
+    def test_noisy_x_hadamard(self, fx_rng: Generator, outcome: Outcome) -> None:
         hadamardpattern = hpat()
         # x error only
         x_error_pr = fx_rng.random()
-        print(f"x_error_pr = {x_error_pr}")
+        print(f"x_error_pr = {x_error_pr}, outcome = {outcome}")
         res = hadamardpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr),
+            branch_selector=ConstBranchSelector(outcome),
             rng=fx_rng,
         )
-        # analytical result since deterministic pattern output is |0>.
-        # if no X applied, no noise. If X applied X noise on |0><0|
-
+        # Pattern has X(1, {0}), so X error noise only applied when outcome=1
         assert isinstance(res, DensityMatrix)
-        assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]])) or np.allclose(
-            res.rho,
-            np.array([[1 - 2 * x_error_pr / 3.0, 0.0], [0.0, 2 * x_error_pr / 3.0]]),
-        )
+        if outcome == 0:
+            # No X correction → no X error noise
+            assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        else:
+            # X correction applied → X error noise applied
+            assert np.allclose(
+                res.rho,
+                np.array([[1 - 2 * x_error_pr / 3.0, 0.0], [0.0, 2 * x_error_pr / 3.0]]),
+            )
 
     # test entanglement error
     def test_noisy_entanglement_hadamard(self, fx_rng: Generator) -> None:
@@ -310,106 +326,35 @@ class TestNoisyDensityMatrixBackend:
             ),
         )
 
-    def test_noisy_x_rz(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_noisy_x_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
         # x error only
         x_error_pr = fx_rng.random()
-        print(f"x_error_pr = {x_error_pr}")
+        print(f"x_error_pr = {x_error_pr}, outcome_z = {z_outcome}, outcome_x = {x_outcome}")
+
+        # M(0) determines Z, M(1) determines X
+        m_nodes = (cmd.node for cmd in rzpattern if cmd.kind == CommandKind.M)
+        results: dict[int, Outcome] = {next(m_nodes): z_outcome, next(m_nodes): x_outcome}
+
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr),
+            branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
         )
 
-        # only two cases: if no X correction, Z or no Z correction but exact result.
-        # If X correction the noise result is the same with or without the PERFECT Z correction.
+        # Pattern has X(2, {1}), so X error noise only applied when x_outcome=1
         assert isinstance(res, DensityMatrix)
         rad = angle_to_rad(alpha)
-        assert np.allclose(
-            res.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]),
-        ) or np.allclose(
-            res.rho,
-            0.5
-            * np.array(
-                [
-                    [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
-                    [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
-                ],
-            ),
-        )
-
-    def test_noisy_z_rz(self, fx_rng: Generator) -> None:
-        alpha = fx_rng.random()
-        rzpattern = rzpat(alpha)
-        # z error only
-        z_error_pr = fx_rng.random()
-        print(f"z_error_pr = {z_error_pr}")
-        res = rzpattern.simulate_pattern(
-            backend="densitymatrix",
-            noise_model=DepolarisingNoiseModel(z_error_prob=z_error_pr),
-            rng=fx_rng,
-        )
-
-        # only two cases: if no Z correction, X or no X correction but exact result.
-        # If Z correction the noise result is the same with or without the PERFECT X correction.
-        assert isinstance(res, DensityMatrix)
-        rad = angle_to_rad(alpha)
-        assert np.allclose(
-            res.rho,
-            0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]),
-        ) or np.allclose(
-            res.rho,
-            0.5
-            * np.array(
-                [
-                    [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
-                    [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
-                ],
-            ),
-        )
-
-    def test_noisy_xz_rz(self, fx_rng: Generator) -> None:
-        alpha = fx_rng.random()
-        rzpattern = rzpat(alpha)
-        # x and z errors
-        x_error_pr = fx_rng.random()
-        print(f"x_error_pr = {x_error_pr}")
-        z_error_pr = fx_rng.random()
-        print(f"z_error_pr = {z_error_pr}")
-        res = rzpattern.simulate_pattern(
-            backend="densitymatrix",
-            noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr, z_error_prob=z_error_pr),
-            rng=fx_rng,
-        )
-
-        # 4 cases : no corr, noisy X, noisy Z, noisy XZ.
-        assert isinstance(res, DensityMatrix)
-        rad = angle_to_rad(alpha)
-        assert (
-            np.allclose(res.rho, 0.5 * np.array([[1.0, np.exp(-1j * rad)], [np.exp(1j * rad), 1.0]]))
-            or np.allclose(
-                res.rho,
-                0.5
-                * np.array(
-                    [
-                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
-                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
-                    ],
-                ),
-            )
-            or np.allclose(
-                res.rho,
-                0.5
-                * np.array(
-                    [
-                        [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
-                        [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
-                    ],
-                ),
-            )
-            or np.allclose(
+        if x_outcome == 0:
+            # No X correction → no X error noise
+            assert np.allclose(res.rho, rz_exact_res(alpha))
+        else:
+            # X correction applied → X error noise applied
+            assert np.allclose(
                 res.rho,
                 0.5
                 * np.array(
@@ -419,37 +364,160 @@ class TestNoisyDensityMatrixBackend:
                     ],
                 ),
             )
-        )
 
-    # test measurement confuse outcome
-    def test_noisy_measure_confuse_rz(self, fx_rng: Generator) -> None:
+    @pytest.mark.parametrize("outcome_z", [0, 1])
+    @pytest.mark.parametrize("outcome_x", [0, 1])
+    def test_noisy_z_rz(self, fx_rng: Generator, outcome_z: Outcome, outcome_x: Outcome) -> None:
         alpha = fx_rng.random()
         rzpattern = rzpat(alpha)
-        # probability 1 to shift both outcome
+        # z error only
+        z_error_pr = fx_rng.random()
+        print(f"z_error_pr = {z_error_pr}, outcome_z = {outcome_z}, outcome_x = {outcome_x}")
+
+        # M(0) determines Z, M(1) determines X
+        results: dict[int, Outcome] = {0: outcome_z, 1: outcome_x}
+
         res = rzpattern.simulate_pattern(
-            backend="densitymatrix", noise_model=DepolarisingNoiseModel(measure_error_prob=1.0), rng=fx_rng
+            backend="densitymatrix",
+            noise_model=DepolarisingNoiseModel(z_error_prob=z_error_pr),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
         )
-        # result X, XZ or Z
+
+        # Pattern has Z(2, {0}), so Z error noise only applied when outcome_z=1
+        assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
+        if outcome_z == 0:
+            # No Z correction → no Z error noise
+            assert np.allclose(res.rho, rz_exact_res(alpha))
+        else:
+            # Z correction applied → Z error noise applied
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
+
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_noisy_xz_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+        # x and z errors
+        x_error_pr = fx_rng.random()
+        print(f"x_error_pr = {x_error_pr}")
+        z_error_pr = fx_rng.random()
+        print(f"z_error_pr = {z_error_pr}")
+        print(f"z_outcome = {z_outcome}, x_outcome = {x_outcome}")
+
+        # M(0) determines Z correction, M(1) determines X correction
+        results: dict[int, Outcome] = {0: z_outcome, 1: x_outcome}
+
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=DepolarisingNoiseModel(x_error_prob=x_error_pr, z_error_prob=z_error_pr),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
+
+        # Pattern has X(2, {1}) and Z(2, {0}), noise applied conditionally
+        assert isinstance(res, DensityMatrix)
+        rad = angle_to_rad(alpha)
+        if z_outcome == 0 and x_outcome == 0:
+            # No corrections → no noise
+            assert np.allclose(res.rho, rz_exact_res(alpha))
+        elif z_outcome == 0 and x_outcome == 1:
+            # Only X correction → only X noise
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
+        elif z_outcome == 1 and x_outcome == 0:
+            # Only Z correction → only Z noise
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
+        else:  # z_outcome == 1 and x_outcome == 1
+            # Both corrections → both noises
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
+                    ],
+                ),
+            )
+
+    # test measurement confuse outcome
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_noisy_measure_confuse_rz(self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome) -> None:
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+
+        # M(0) determines Z, M(1) determines X
+        results: dict[int, Outcome] = {0: z_outcome, 1: x_outcome}
+
+        # Test with probability 1 to flip both outcomes
+        res = rzpattern.simulate_pattern(
+            backend="densitymatrix",
+            noise_model=DepolarisingNoiseModel(measure_error_prob=1.0),
+            branch_selector=FixedBranchSelector(results),
+            rng=fx_rng,
+        )
 
         exact = rz_exact_res(alpha)
-
         assert isinstance(res, DensityMatrix)
-        assert (
-            np.allclose(res.rho, Ops.X @ exact @ Ops.X)
-            or np.allclose(res.rho, Ops.Z @ exact @ Ops.Z)
-            or np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
-        )
+        # All outcomes lead to same result: both corrections applied due to flipping
+        assert np.allclose(res.rho, Ops.Z @ Ops.X @ exact @ Ops.X @ Ops.Z)
 
-        # arbitrary probability
+    @pytest.mark.parametrize("z_outcome", [0, 1])
+    @pytest.mark.parametrize("x_outcome", [0, 1])
+    def test_noisy_measure_confuse_rz_arbitrary(
+        self, fx_rng: Generator, z_outcome: Outcome, x_outcome: Outcome
+    ) -> None:
+        alpha = fx_rng.random()
+        rzpattern = rzpat(alpha)
+
+        # M(0) determines Z, M(1) determines X
+        results: dict[int, Outcome] = {0: z_outcome, 1: x_outcome}
+
+        # Test with arbitrary probability
         measure_error_pr = fx_rng.random()
-        print(f"measure_error_pr = {measure_error_pr}")
+        print(f"measure_error_pr = {measure_error_pr}, z_outcome = {z_outcome}, x_outcome = {x_outcome}")
         res = rzpattern.simulate_pattern(
             backend="densitymatrix",
             noise_model=DepolarisingNoiseModel(measure_error_prob=measure_error_pr),
+            branch_selector=FixedBranchSelector(results),
             rng=fx_rng,
         )
-        # just add the case without readout errors
+
+        exact = rz_exact_res(alpha)
         assert isinstance(res, DensityMatrix)
+
+        # With arbitrary measure_error_pr, outcomes may or may not be flipped
+        # The physical result depends on whether the error occurs
+        # We check all possible cases
         assert (
             np.allclose(res.rho, exact)
             or np.allclose(res.rho, Ops.X @ exact @ Ops.X)
