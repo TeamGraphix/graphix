@@ -123,12 +123,17 @@ class TestNoisyDensityMatrixBackend:
             branch_selector=ConstBranchSelector(outcome),
             rng=fx_rng,
         )
-        # Both outcomes lead to |0> after correction. ApplyNoise is unconditional, so noise is always applied.
+        # Pattern has X(1, {0}), so X error noise only applied when outcome=1
         assert isinstance(res, DensityMatrix)
-        assert np.allclose(
-            res.rho,
-            np.array([[1 - 2 * x_error_pr / 3.0, 0.0], [0.0, 2 * x_error_pr / 3.0]]),
-        )
+        if outcome == 0:
+            # No X correction → no X error noise
+            assert np.allclose(res.rho, np.array([[1.0, 0.0], [0.0, 0.0]]))
+        else:
+            # X correction applied → X error noise applied
+            assert np.allclose(
+                res.rho,
+                np.array([[1 - 2 * x_error_pr / 3.0, 0.0], [0.0, 2 * x_error_pr / 3.0]]),
+            )
 
     # test entanglement error
     def test_noisy_entanglement_hadamard(self, fx_rng: Generator) -> None:
@@ -341,19 +346,24 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
 
-        # All outcomes lead to the same state after corrections. ApplyNoise is unconditional, so noise is always applied.
+        # Pattern has X(2, {1}), so X error noise only applied when x_outcome=1
         assert isinstance(res, DensityMatrix)
         rad = angle_to_rad(alpha)
-        assert np.allclose(
-            res.rho,
-            0.5
-            * np.array(
-                [
-                    [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
-                    [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
-                ],
-            ),
-        )
+        if x_outcome == 0:
+            # No X correction → no X error noise
+            assert np.allclose(res.rho, rz_exact_res(alpha))
+        else:
+            # X correction applied → X error noise applied
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
 
     @pytest.mark.parametrize("outcome_z", [0, 1])
     @pytest.mark.parametrize("outcome_x", [0, 1])
@@ -374,19 +384,24 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
 
-        # All outcomes lead to the same state after corrections. ApplyNoise is unconditional, so noise is always applied.
+        # Pattern has Z(2, {0}), so Z error noise only applied when outcome_z=1
         assert isinstance(res, DensityMatrix)
         rad = angle_to_rad(alpha)
-        assert np.allclose(
-            res.rho,
-            0.5
-            * np.array(
-                [
-                    [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
-                    [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
-                ],
-            ),
-        )
+        if outcome_z == 0:
+            # No Z correction → no Z error noise
+            assert np.allclose(res.rho, rz_exact_res(alpha))
+        else:
+            # Z correction applied → Z error noise applied
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
 
     @pytest.mark.parametrize("z_outcome", [0, 1])
     @pytest.mark.parametrize("x_outcome", [0, 1])
@@ -410,19 +425,48 @@ class TestNoisyDensityMatrixBackend:
             rng=fx_rng,
         )
 
-        # All outcomes lead to same state after corrections. Both X and Z noise applied unconditionally.
+        # Pattern has X(2, {1}) and Z(2, {0}), noise applied conditionally
         assert isinstance(res, DensityMatrix)
         rad = angle_to_rad(alpha)
-        assert np.allclose(
-            res.rho,
-            0.5
-            * np.array(
-                [
-                    [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
-                    [np.exp(1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
-                ],
-            ),
-        )
+        if z_outcome == 0 and x_outcome == 0:
+            # No corrections → no noise
+            assert np.allclose(res.rho, rz_exact_res(alpha))
+        elif z_outcome == 0 and x_outcome == 1:
+            # Only X correction → only X noise
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
+        elif z_outcome == 1 and x_outcome == 0:
+            # Only Z correction → only Z noise
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * z_error_pr) / 3],
+                        [np.exp(1j * rad) * (3 - 4 * z_error_pr) / 3, 1.0],
+                    ],
+                ),
+            )
+        else:  # z_outcome == 1 and x_outcome == 1
+            # Both corrections → both noises
+            assert np.allclose(
+                res.rho,
+                0.5
+                * np.array(
+                    [
+                        [1.0, np.exp(-1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9],
+                        [np.exp(1j * rad) * (3 - 4 * x_error_pr) * (3 - 4 * z_error_pr) / 9, 1.0],
+                    ],
+                ),
+            )
 
     # test measurement confuse outcome
     @pytest.mark.parametrize("z_outcome", [0, 1])
