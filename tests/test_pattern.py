@@ -74,7 +74,7 @@ class TestPattern:
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state.isclose(state_mbqc)
 
     def test_minimize_space(self, fx_rng: Generator) -> None:
         nqubits = 5
@@ -85,7 +85,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state.isclose(state_mbqc)
 
     # https://github.com/TeamGraphix/graphix/issues/157
     @pytest.mark.parametrize(
@@ -158,7 +158,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state.isclose(state_mbqc)
 
     @pytest.mark.filterwarnings("ignore:Simulating using densitymatrix backend with no noise.")
     @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
@@ -202,7 +202,7 @@ class TestPattern:
         pattern.parallelize_pattern()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state.isclose(state_mbqc)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
@@ -216,7 +216,7 @@ class TestPattern:
         assert pattern.is_standard()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("backend", ["statevector", "densitymatrix"])
@@ -267,7 +267,7 @@ class TestPattern:
         pattern.perform_pauli_measurements()
         state = pattern.simulate_pattern()
         state_ref = pattern_ref.simulate_pattern(branch_selector=ConstBranchSelector(0))
-        assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state.isclose(state_ref)
 
     def test_pauli_measurement(self) -> None:
         # test pattern is obtained from 3-qubit QFT with pauli measurement
@@ -338,7 +338,7 @@ class TestPattern:
         pattern1.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         state = pattern.simulate_pattern(rng=rng)
         state1 = pattern1.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state.flatten().conjugate(), state1.flatten())) == pytest.approx(1)
+        assert state.isclose(state1)
 
     @pytest.mark.parametrize("jumps", range(1, 4))
     def test_pauli_repeated_measurement(self, fx_bg: PCG64, jumps: int) -> None:
@@ -429,7 +429,7 @@ class TestPattern:
             outcomes_p = shift_outcomes(outcomes_ref, signal_dict)
             branch_selector = FixedBranchSelector(results=outcomes_p)
             state_p = pattern.simulate_pattern(branch_selector=branch_selector)
-            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+            assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_direct(self, fx_bg: PCG64, jumps: int) -> None:
@@ -443,7 +443,7 @@ class TestPattern:
         pattern.minimize_space()
         state_p = pattern.simulate_pattern()
         state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_shift_signals_direct(self, fx_bg: PCG64, jumps: int) -> None:
@@ -457,7 +457,7 @@ class TestPattern:
         pattern.minimize_space()
         state_p = pattern.simulate_pattern()
         state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_pauli_measurement_then_standardize(self, fx_bg: PCG64, jumps: int) -> None:
@@ -472,7 +472,7 @@ class TestPattern:
         pattern.minimize_space()
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern()
-        assert compare_backend_result_with_statevec(state_mbqc, state) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_two_cliffords(self, fx_bg: PCG64, jumps: int) -> None:
@@ -485,7 +485,7 @@ class TestPattern:
         pattern.standardize()
         state_ref = pattern_ref.simulate_pattern()
         state_p = pattern.simulate_pattern()
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 48))
     def test_standardize_domains_and_clifford(self, fx_bg: PCG64, jumps: int) -> None:
@@ -502,7 +502,7 @@ class TestPattern:
         pattern.standardize()
         state_ref = pattern_ref.simulate_pattern()
         state_p = pattern.simulate_pattern()
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_p.isclose(state_ref)
 
     # Simple pattern composition
     def test_compose_1(self) -> None:
@@ -721,7 +721,7 @@ class TestPattern:
         p_compose.minimize_space()
         s = p.simulate_pattern()
         s_compose = p_compose.simulate_pattern()
-        assert np.abs(np.dot(s.flatten().conjugate(), s_compose.flatten())) == pytest.approx(1)
+        assert s.isclose(s_compose)
 
     # Test warning composition after standardization
     def test_compose_7(self, fx_rng: Generator) -> None:
@@ -991,7 +991,7 @@ class TestPattern:
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        assert s_ref.isclose(s_test)
 
     # Extract gflow from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -1009,7 +1009,7 @@ class TestPattern:
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        assert s_ref.isclose(s_test)
 
     @pytest.mark.parametrize("test_case", PATTERN_FLOW_TEST_CASES)
     def test_extract_causal_flow(self, fx_rng: Generator, test_case: PatternFlowTestCase) -> None:
@@ -1020,7 +1020,7 @@ class TestPattern:
             p_test = test_case.pattern.extract_causal_flow().to_corrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-            assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+            assert s_ref.isclose(s_test)
         else:
             with pytest.raises(FlowError):
                 test_case.pattern.extract_causal_flow()
@@ -1034,7 +1034,7 @@ class TestPattern:
             p_test = test_case.pattern.extract_gflow().to_corrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
-            assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+            assert s_ref.isclose(s_test)
         else:
             with pytest.raises(FlowError):
                 test_case.pattern.extract_gflow()
@@ -1060,7 +1060,7 @@ class TestPattern:
         p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
         s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
 
-        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        assert s_ref.isclose(s_test)
 
     # From open graph
     def test_extract_gflow_og(self, fx_rng: Generator) -> None:
@@ -1084,7 +1084,7 @@ class TestPattern:
         p_test = p_ref.extract_gflow().to_corrections().to_pattern()
         s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
 
-        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        assert s_ref.isclose(s_test)
 
     # Extract xz-corrections from random circuits
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -1104,7 +1104,7 @@ class TestPattern:
 
         s_ref = p_ref.simulate_pattern(rng=rng)
         s_test = p_test.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
+        assert s_ref.isclose(s_test)
 
     def test_extract_xzc_empty_domains(self) -> None:
         p = Pattern(input_nodes=[0], cmds=[N(1), E((0, 1))])
@@ -1233,7 +1233,7 @@ class TestMCOps:
         pattern_mc.minimize_space()
         state_d = pattern.simulate_pattern(rng=rng)
         state_ref = pattern_mc.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_d.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_d.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
@@ -1252,7 +1252,7 @@ class TestMCOps:
         pattern_mc.minimize_space()
         state_d = pattern.simulate_pattern(rng=rng)
         state_ref = pattern_mc.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_d.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_d.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_standardize_and_shift_signals(self, fx_bg: PCG64, jumps: int) -> None:
@@ -1267,7 +1267,7 @@ class TestMCOps:
         pattern.minimize_space()
         state_p = pattern.simulate_pattern(rng=rng)
         state_ref = circuit.simulate_statevector().statevec
-        assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+        assert state_p.isclose(state_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 4))
     def test_mixed_pattern_operations(self, fx_bg: PCG64, jumps: int) -> None:
@@ -1296,7 +1296,7 @@ class TestMCOps:
             assert pattern.is_standard()
             pattern.minimize_space()
             state_p = pattern.simulate_pattern(rng=rng)
-            assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+            assert state_p.isclose(state_ref)
 
     def test_pauli_measurement_end_with_measure(self) -> None:
         # https://github.com/TeamGraphix/graphix/issues/153

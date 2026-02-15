@@ -379,6 +379,8 @@ class TestTN:
 
     @pytest.mark.parametrize(("nqubits", "jumps"), itertools.product(range(2, 6), range(1, 6)))
     def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int, fx_rng: Generator) -> None:
+        from graphix.sim.statevec import Statevec
+
         rng = Generator(fx_bg.jumped(jumps))
         circuit = rand_circuit(nqubits, 3, rng)
         pattern = circuit.transpile().pattern
@@ -389,8 +391,7 @@ class TestTN:
         tn = pattern.simulate_pattern("tensornetwork", rng=fx_rng)
         statevec_tn = tn.to_statevector()
 
-        inner_product = np.inner(statevec_tn, statevec_ref.flatten().conjugate())
-        assert abs(inner_product) == pytest.approx(1)
+        assert Statevec(data=statevec_tn).isclose(statevec_ref)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_evolve(self, fx_bg: PCG64, jumps: int, fx_rng: Generator) -> None:

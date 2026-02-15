@@ -77,7 +77,7 @@ def check_qasm3(pattern: Pattern) -> None:
     backend.finalize(pattern.output_nodes)
     state_qiskit = backend.state
     state_mbqc = pattern.simulate_pattern(branch_selector=branch_selector)
-    assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state_qiskit.flatten())) == pytest.approx(1)
+    assert state_qiskit.isclose(state_mbqc)
 
 
 def test_to_qasm3_qubits_preparation() -> None:

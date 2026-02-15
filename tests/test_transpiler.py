@@ -49,7 +49,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_cnot(self, fx_rng: Generator) -> None:
         circuit = Circuit(2)
@@ -57,7 +57,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_hadamard(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -65,7 +65,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_s(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -73,7 +73,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_x(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -81,7 +81,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_y(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -89,7 +89,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_z(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -97,7 +97,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_rx(self, fx_rng: Generator) -> None:
         theta = fx_rng.uniform() * 2 * ANGLE_PI
@@ -106,7 +106,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_ry(self, fx_rng: Generator) -> None:
         theta = fx_rng.uniform() * 2 * ANGLE_PI
@@ -115,7 +115,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_rz(self, fx_rng: Generator) -> None:
         theta = fx_rng.uniform() * 2 * ANGLE_PI
@@ -124,7 +124,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_i(self, fx_rng: Generator) -> None:
         circuit = Circuit(1)
@@ -132,7 +132,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     def test_ccx(self, fx_bg: PCG64, jumps: int) -> None:
@@ -144,7 +144,7 @@ class TestTranspilerUnitGates:
         pattern.minimize_space()
         state = circuit.simulate_statevector(rng=rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     def test_transpiled(self, fx_rng: Generator) -> None:
         nqubits = 2
@@ -154,7 +154,7 @@ class TestTranspilerUnitGates:
         pattern = circuit.transpile().pattern
         state = circuit.simulate_statevector(rng=fx_rng).statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("jumps", range(1, 11))
     @pytest.mark.parametrize("axis", [Axis.X, Axis.Y, Axis.Z])
@@ -168,7 +168,7 @@ class TestTranspilerUnitGates:
         state = circuit.simulate_statevector(rng=rng, input_state=input_state, branch_selector=branch_selector).statevec
         pattern = circuit.transpile().pattern
         state_mbqc = pattern.simulate_pattern(rng=rng, input_state=input_state, branch_selector=branch_selector)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)
 
     @pytest.mark.parametrize("input_axis", [Axis.X, Axis.Y, Axis.Z])
     @pytest.mark.parametrize("input_sign", [Sign.PLUS, Sign.MINUS])
@@ -208,7 +208,7 @@ class TestTranspilerUnitGates:
         state_z = circuit.simulate_statevector(
             rng=rng, input_state=input_state, branch_selector=branch_selector
         ).statevec
-        assert np.abs(np.dot(state_z.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_z.isclose(state)
 
     def test_add_extend(self) -> None:
         circuit = Circuit(3)
@@ -246,4 +246,4 @@ class TestTranspilerUnitGates:
         input_state = rand_state_vector(3, rng=rng)
         state = circuit.simulate_statevector(input_state=input_state).statevec
         state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
-        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+        assert state_mbqc.isclose(state)

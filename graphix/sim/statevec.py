@@ -400,6 +400,47 @@ class Statevec(DenseState):
         result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
         return result
 
+    def fidelity(self, other: Statevec) -> float:
+        r"""Return the fidelity with another statevector.
+
+        This is calculated as
+
+        .. math::
+            F(\psi_{1}, \psi_{2}) = |\langle \psi_{1} | \psi_{2} \rangle|^2
+
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevec`
+            other statevector
+
+        Returns
+        -------
+        float : fidelity between self and other
+        """
+        st1 = copy.copy(self)
+        st1.normalize()
+        st2 = copy.copy(other)
+        st2.normalize()
+        return float(np.abs(np.vdot(st1.psi.flatten(), st2.psi.flatten()))) ** 2
+
+    def isclose(self, other: Statevec, atol: float = 1e-15, rtol: float = 1e-10) -> bool:
+        r"""Return whether the state is equal to another state up to global phase.
+
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevec`
+            other statevector
+        atol : float, optional
+            absolute tolerance for numerical comparison, defaults to 1e-15
+        rtol : float, optional
+            relative tolerance for numerical comparison, defaults to 1e-10
+
+        Returns
+        -------
+        bool : whether the states are equal up to global phase
+        """
+        return math.isclose(self.fidelity(other), 1, abs_tol=atol, rel_tol=rtol)
+
 
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):

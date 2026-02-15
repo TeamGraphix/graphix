@@ -799,9 +799,8 @@ def check_determinism(pattern: Pattern, fx_rng: Generator, n_shots: int = 3) -> 
 
         for _ in range(n_shots):
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-            result = np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten()))
 
-            if result == pytest.approx(1):
+            if state.isclose(state_ref):
                 continue
             return False
 
@@ -871,7 +870,7 @@ class TestOpenGraph:
         pattern2 = pattern.extract_opengraph().to_pattern()
         state = pattern.simulate_pattern()
         state2 = pattern2.simulate_pattern()
-        assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+        assert state.isclose(state2)
 
     def test_from_to_pattern(self, fx_rng: Generator) -> None:
         n_qubits = 2
@@ -884,7 +883,7 @@ class TestOpenGraph:
             alpha = 2 * ANGLE_PI * fx_rng.random()
             state_ref = pattern_ref.simulate_pattern(input_state=PlanarState(plane, alpha))
             state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-            assert np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+            assert state.isclose(state_ref)
 
     def test_isclose_measurement(self) -> None:
         og_1 = OpenGraph(
