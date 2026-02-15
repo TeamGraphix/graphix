@@ -184,61 +184,57 @@ def command_to_qasm3_lines(cmd: Command) -> Iterator[str]:
 
     """
     yield f"// {cmd}\n"
-    if cmd.kind == CommandKind.N:
-        yield f"qubit q{cmd.node};\n"
-        yield from state_to_qasm3_lines(cmd.node, cmd.state)
-
-    elif cmd.kind == CommandKind.E:
-        n0, n1 = cmd.nodes
-        yield f"cz q{n0}, q{n1};\n"
-
-    elif cmd.kind == CommandKind.M:
-        yield from domain_to_qasm3_lines(cmd.s_domain, f"x q{cmd.node}")
-        yield from domain_to_qasm3_lines(cmd.t_domain, f"z q{cmd.node}")
-        if cmd.plane == Plane.XY:
-            yield f"h q{cmd.node};\n"
-        if cmd.angle != 0:
+    match cmd.kind:
+        case CommandKind.N:
+            yield f"qubit q{cmd.node};\n"
+            yield from state_to_qasm3_lines(cmd.node, cmd.state)
+        case CommandKind.E:
+            n0, n1 = cmd.nodes
+            yield f"cz q{n0}, q{n1};\n"
+        case CommandKind.M:
+            yield from domain_to_qasm3_lines(cmd.s_domain, f"x q{cmd.node}")
+            yield from domain_to_qasm3_lines(cmd.t_domain, f"z q{cmd.node}")
             if cmd.plane == Plane.XY:
-                gate = "rx"
-                angle = -cmd.angle
-            elif cmd.plane == Plane.XZ:
-                gate = "ry"
-                angle = -cmd.angle
-            elif cmd.plane == Plane.YZ:
-                gate = "rx"
-                angle = cmd.angle
-            else:
-                assert_never(cmd.plane)
-            rad_angle = angle_to_qasm3(angle)
-            yield f"{gate}({rad_angle}) q{cmd.node};\n"
-        yield f"bit c{cmd.node};\n"
-        yield f"c{cmd.node} = measure q{cmd.node};\n"
-
-    elif cmd.kind == CommandKind.X:
-        yield from domain_to_qasm3_lines(cmd.domain, f"x q{cmd.node}")
-
-    elif cmd.kind == CommandKind.Z:
-        yield from domain_to_qasm3_lines(cmd.domain, f"z q{cmd.node}")
-
-    elif cmd.kind == CommandKind.C:
-        for op in cmd.clifford.qasm3:
-            yield str(op) + " q" + str(cmd.node) + ";\n"
-
-    else:
-        raise ValueError(f"invalid command {cmd}")
+                yield f"h q{cmd.node};\n"
+            if cmd.angle != 0:
+                if cmd.plane == Plane.XY:
+                    gate = "rx"
+                    angle = -cmd.angle
+                elif cmd.plane == Plane.XZ:
+                    gate = "ry"
+                    angle = -cmd.angle
+                elif cmd.plane == Plane.YZ:
+                    gate = "rx"
+                    angle = cmd.angle
+                else:
+                    assert_never(cmd.plane)
+                rad_angle = angle_to_qasm3(angle)
+                yield f"{gate}({rad_angle}) q{cmd.node};\n"
+            yield f"bit c{cmd.node};\n"
+            yield f"c{cmd.node} = measure q{cmd.node};\n"
+        case CommandKind.X:
+            yield from domain_to_qasm3_lines(cmd.domain, f"x q{cmd.node}")
+        case CommandKind.Z:
+            yield from domain_to_qasm3_lines(cmd.domain, f"z q{cmd.node}")
+        case CommandKind.C:
+            for op in cmd.clifford.qasm3:
+                yield str(op) + " q" + str(cmd.node) + ";\n"
+        case _:
+            raise ValueError(f"invalid command {cmd}")
 
     yield "\n"
 
 
 def state_to_qasm3_lines(node: int, state: State) -> Iterator[str]:
     """Convert initial state into OpenQASM 3.0 statement."""
-    if state == BasicStates.ZERO:
-        yield f"// qubit {node} prepared in |0⟩: do nothing\n"
-    elif state == BasicStates.PLUS:
-        yield f"// qubit {node} prepared in |+⟩\n"
-        yield f"h q{node};\n"
-    else:
-        raise ValueError("QASM3 conversion only supports |0⟩ or |+⟩ initial states.")
+    match state:
+        case BasicStates.ZERO:
+            yield f"// qubit {node} prepared in |0⟩: do nothing\n"
+        case BasicStates.PLUS:
+            yield f"// qubit {node} prepared in |+⟩\n"
+            yield f"h q{node};\n"
+        case _:
+            raise ValueError("QASM3 conversion only supports |0⟩ or |+⟩ initial states.")
 
 
 def domain_to_qasm3_lines(domain: Iterable[int], cmd: str) -> Iterator[str]:

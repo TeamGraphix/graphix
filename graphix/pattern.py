@@ -129,12 +129,13 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
-        if cmd.kind == CommandKind.N:
-            self.__n_node += 1
-            self.__output_nodes.append(cmd.node)
-        elif cmd.kind == CommandKind.M:
-            if cmd.node in self.__output_nodes:
-                self.__output_nodes.remove(cmd.node)
+        match cmd.kind:
+            case CommandKind.N:
+                self.__n_node += 1
+                self.__output_nodes.append(cmd.node)
+            case CommandKind.M:
+                if cmd.node in self.__output_nodes:
+                    self.__output_nodes.remove(cmd.node)
         self.__seq.append(cmd)
 
     def extend(self, *cmds: Command | Iterable[Command]) -> None:
@@ -525,43 +526,44 @@ class Pattern:
                 domain ^= signal_dict[node]
 
         for i, cmd in enumerate(self):
-            if cmd.kind == CommandKind.M:
-                s_domain = set(cmd.s_domain)
-                t_domain = set(cmd.t_domain)
-                expand_domain(s_domain)
-                expand_domain(t_domain)
-                plane = cmd.plane
-                if plane == Plane.XY:
-                    # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
-                    #                  = S^t M^{XY,(-1)^s·α}
-                    #                  = S^t M^{XY,α} X^s
-                    if t_domain:
-                        signal_dict[cmd.node] = t_domain
-                        t_domain = set()
-                elif plane == Plane.XZ:
-                    # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
-                    #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
-                    #                  = M^{XZ,(-1)^{s+t}·α+sπ}         (since (-1)^t·π ≡ π (mod 2π))
-                    #                  = S^s M^{XZ,(-1)^{s+t}·α}
-                    #                  = S^s M^{XZ,α} Z^{s+t}
-                    if s_domain:
-                        signal_dict[cmd.node] = s_domain
-                        t_domain ^= s_domain
-                        s_domain = set()
-                elif plane == Plane.YZ and s_domain:
-                    # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
-                    #                  = S^s M^{YZ,(-1)^t·α}
-                    #                  = S^s M^{YZ,α} Z^t
-                    signal_dict[cmd.node] = s_domain
-                    s_domain = set()
-                if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
-                    self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                domain = set(cmd.domain)
-                expand_domain(domain)
-                if domain != cmd.domain:
-                    self.__seq[i] = dataclasses.replace(cmd, domain=domain)
+            match cmd.kind:
+                case CommandKind.M:
+                    s_domain = set(cmd.s_domain)
+                    t_domain = set(cmd.t_domain)
+                    expand_domain(s_domain)
+                    expand_domain(t_domain)
+                    plane = cmd.plane
+                    match plane:
+                        case Plane.XY:
+                            # M^{XY,α} X^s Z^t = M^{XY,(-1)^s·α+tπ}
+                            #                  = S^t M^{XY,(-1)^s·α}
+                            #                  = S^t M^{XY,α} X^s
+                            if t_domain:
+                                signal_dict[cmd.node] = t_domain
+                                t_domain = set()
+                        case Plane.XZ:
+                            # M^{XZ,α} X^s Z^t = M^{XZ,(-1)^t((-1)^s·α+sπ)}
+                            #                  = M^{XZ,(-1)^{s+t}·α+(-1)^t·sπ}
+                            #                  = M^{XZ,(-1)^{s+t}·α+sπ}         (since (-1)^t·π ≡ π (mod 2π))
+                            #                  = S^s M^{XZ,(-1)^{s+t}·α}
+                            #                  = S^s M^{XZ,α} Z^{s+t}
+                            if s_domain:
+                                signal_dict[cmd.node] = s_domain
+                                t_domain ^= s_domain
+                                s_domain = set()
+                        case Plane.YZ if s_domain:
+                            # M^{YZ,α} X^s Z^t = M^{YZ,(-1)^t·α+sπ)}
+                            #                  = S^s M^{YZ,(-1)^t·α}
+                            #                  = S^s M^{YZ,α} Z^t
+                            signal_dict[cmd.node] = s_domain
+                            s_domain = set()
+                    if s_domain != cmd.s_domain or t_domain != cmd.t_domain:
+                        self.__seq[i] = dataclasses.replace(cmd, s_domain=s_domain, t_domain=t_domain)
+                case CommandKind.X | CommandKind.Z:
+                    domain = set(cmd.domain)
+                    expand_domain(domain)
+                    if domain != cmd.domain:
+                        self.__seq[i] = dataclasses.replace(cmd, domain=domain)
         return signal_dict
 
     def _find_op_to_be_moved(self, op: CommandKind, rev: bool = False, skipnum: int = 0) -> int | None:
@@ -865,11 +867,11 @@ class Pattern:
         nodes = self.extract_nodes()
         dependency: dict[int, set[int]] = {i: set() for i in nodes}
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                dependency[cmd.node] |= cmd.domain
+            match cmd.kind:
+                case CommandKind.M:
+                    dependency[cmd.node] |= cmd.s_domain | cmd.t_domain
+                case CommandKind.X | CommandKind.Z:
+                    dependency[cmd.node] |= cmd.domain
         return dependency
 
     @staticmethod
@@ -1101,14 +1103,15 @@ class Pattern:
         graph: nx.Graph[int] = nx.Graph()
         graph.add_nodes_from(self.input_nodes)
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                graph.add_node(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if graph.has_edge(u, v):
-                    graph.remove_edge(u, v)
-                else:
-                    graph.add_edge(u, v)
+            match cmd.kind:
+                case CommandKind.N:
+                    graph.add_node(cmd.node)
+                case CommandKind.E:
+                    u, v = cmd.nodes
+                    if graph.has_edge(u, v):
+                        graph.remove_edge(u, v)
+                    else:
+                        graph.add_edge(u, v)
         return graph
 
     def extract_nodes(self) -> set[int]:
@@ -1151,19 +1154,20 @@ class Pattern:
         measurements: dict[int, Measurement] = {}
 
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                if cmd.state != BasicStates.PLUS:
-                    raise PatternError(
-                        f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
-                    )
-                nodes.add(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                u, v = cmd.nodes
-                if u > v:
-                    u, v = v, u
-                edges.symmetric_difference_update({(u, v)})
-            elif cmd.kind == CommandKind.M:
-                measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
+            match cmd.kind:
+                case CommandKind.N:
+                    if cmd.state != BasicStates.PLUS:
+                        raise PatternError(
+                            f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
+                        )
+                    nodes.add(cmd.node)
+                case CommandKind.E:
+                    u, v = cmd.nodes
+                    if u > v:
+                        u, v = v, u
+                    edges.symmetric_difference_update({(u, v)})
+                case CommandKind.M:
+                    measurements[cmd.node] = Measurement(cmd.angle, cmd.plane)
 
         graph = nx.Graph(edges)
         graph.add_nodes_from(nodes)
@@ -1282,10 +1286,11 @@ class Pattern:
         nodes = len(self.input_nodes)
         max_nodes = nodes
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes += 1
-            elif cmd.kind == CommandKind.M:
-                nodes -= 1
+            match cmd.kind:
+                case CommandKind.N:
+                    nodes += 1
+                case CommandKind.M:
+                    nodes -= 1
             max_nodes = max(nodes, max_nodes)
         return max_nodes
 
@@ -1300,12 +1305,13 @@ class Pattern:
         nodes = 0
         n_list = []
         for cmd in self.__seq:
-            if cmd.kind == CommandKind.N:
-                nodes += 1
-                n_list.append(nodes)
-            elif cmd.kind == CommandKind.M:
-                nodes -= 1
-                n_list.append(nodes)
+            match cmd.kind:
+                case CommandKind.N:
+                    nodes += 1
+                    n_list.append(nodes)
+                case CommandKind.M:
+                    nodes -= 1
+                    n_list.append(nodes)
         return n_list
 
     @overload
@@ -1561,39 +1567,39 @@ class Pattern:
                 raise RunnabilityError(cmd, node, RunnabilityErrorReason.NotYetMeasured)
 
         for cmd in self:
-            if cmd.kind == CommandKind.N:
-                if cmd.node in active:
-                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
-                if cmd.node in measured:
-                    raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
-                active.add(cmd.node)
-            elif cmd.kind == CommandKind.E:
-                n0, n1 = cmd.nodes
-                check_active(cmd, n0)
-                check_active(cmd, n1)
-            elif cmd.kind == CommandKind.M:
-                check_active(cmd, cmd.node)
-                if isinstance(cmd, command.M):
-                    # `cmd.s_domain` and `cmd.t_domain` are only
-                    # defined if the command is an actual `M` command,
-                    # which may not be the case if the method is
-                    # called with a pattern constructed with another
-                    # implementation of `BaseM` (for instance, a blind
-                    # pattern from Veriphix).
-                    for domain in cmd.s_domain, cmd.t_domain:
-                        if cmd.node in domain:
-                            raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
-                        for node in domain:
-                            check_measured(cmd, node)
-                active.remove(cmd.node)
-                measured.add(cmd.node)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                check_active(cmd, cmd.node)
-                for node in cmd.domain:
-                    check_measured(cmd, node)
-            elif cmd.kind == CommandKind.C:
-                check_active(cmd, cmd.node)
+            match cmd.kind:
+                case CommandKind.N:
+                    if cmd.node in active:
+                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyActive)
+                    if cmd.node in measured:
+                        raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.AlreadyMeasured)
+                    active.add(cmd.node)
+                case CommandKind.E:
+                    n0, n1 = cmd.nodes
+                    check_active(cmd, n0)
+                    check_active(cmd, n1)
+                case CommandKind.M:
+                    check_active(cmd, cmd.node)
+                    if isinstance(cmd, command.M):
+                        # `cmd.s_domain` and `cmd.t_domain` are only
+                        # defined if the command is an actual `M` command,
+                        # which may not be the case if the method is
+                        # called with a pattern constructed with another
+                        # implementation of `BaseM` (for instance, a blind
+                        # pattern from Veriphix).
+                        for domain in cmd.s_domain, cmd.t_domain:
+                            if cmd.node in domain:
+                                raise RunnabilityError(cmd, cmd.node, RunnabilityErrorReason.DomainSelfLoop)
+                            for node in domain:
+                                check_measured(cmd, node)
+                    active.remove(cmd.node)
+                    measured.add(cmd.node)
+                case CommandKind.X | CommandKind.Z:
+                    check_active(cmd, cmd.node)
+                    for node in cmd.domain:
+                        check_measured(cmd, node)
+                case CommandKind.C:
+                    check_active(cmd, cmd.node)
 
 
 class PatternError(Exception):
@@ -1685,15 +1691,16 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> 
         # extract signals for adaptive angle.
         s_signal = 0
         t_signal = 0
-        if measurement_basis.axis == Axis.X:  # X measurement is not affected by s_signal
-            t_signal = sum(results[j] for j in pattern_cmd.t_domain)
-        elif measurement_basis.axis == Axis.Y:
-            s_signal = sum(results[j] for j in pattern_cmd.s_domain)
-            t_signal = sum(results[j] for j in pattern_cmd.t_domain)
-        elif measurement_basis.axis == Axis.Z:  # Z measurement is not affected by t_signal
-            s_signal = sum(results[j] for j in pattern_cmd.s_domain)
-        else:
-            assert_never(measurement_basis.axis)
+        match measurement_basis.axis:
+            case Axis.X:  # X measurement is not affected by s_signal
+                t_signal = sum(results[j] for j in pattern_cmd.t_domain)
+            case Axis.Y:
+                s_signal = sum(results[j] for j in pattern_cmd.s_domain)
+                t_signal = sum(results[j] for j in pattern_cmd.t_domain)
+            case Axis.Z:  # Z measurement is not affected by t_signal
+                s_signal = sum(results[j] for j in pattern_cmd.s_domain)
+            case _:
+                assert_never(measurement_basis.axis)
 
         if int(s_signal % 2) == 1:  # equivalent to X byproduct
             graph_state.h(pattern_cmd.node)
@@ -1702,14 +1709,15 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> 
         if int(t_signal % 2) == 1:  # equivalent to Z byproduct
             graph_state.z(pattern_cmd.node)
         basis = measurement_basis
-        if basis.axis == Axis.X:
-            measure = graph_state.measure_x
-        elif basis.axis == Axis.Y:
-            measure = graph_state.measure_y
-        elif basis.axis == Axis.Z:
-            measure = graph_state.measure_z
-        else:
-            assert_never(basis.axis)
+        match basis.axis:
+            case Axis.X:
+                measure = graph_state.measure_x
+            case Axis.Y:
+                measure = graph_state.measure_y
+            case Axis.Z:
+                measure = graph_state.measure_z
+            case _:
+                assert_never(basis.axis)
         if basis.sign == Sign.PLUS:
             results[pattern_cmd.node] = measure(pattern_cmd.node, choice=0)
         else:

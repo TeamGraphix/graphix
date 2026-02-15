@@ -178,53 +178,53 @@ class StandardizedPattern(_StandardizedPattern):
         pattern.check_runnability()
 
         for cmd in pattern:
-            if cmd.kind == CommandKind.N:
-                n_list.append(cmd)
-            elif cmd.kind == CommandKind.E:
-                for side in (0, 1):
-                    i, j = cmd.nodes[side], cmd.nodes[1 - side]
-                    if clifford_gate := c_dict.get(i):
-                        _commute_clifford(clifford_gate, c_dict, i, j)
-                    if s_domain_opt := x_dict.get(i):
-                        _add_correction_domain(z_dict, j, s_domain_opt)
-                edge = frozenset(cmd.nodes)
-                e_set.symmetric_difference_update((edge,))
-            elif cmd.kind == CommandKind.M:
-                new_cmd = None
-                if clifford_gate := c_dict.pop(cmd.node, None):
-                    new_cmd = cmd.clifford(clifford_gate)
-                if t_domain_opt := z_dict.pop(cmd.node, None):
+            match cmd.kind:
+                case CommandKind.N:
+                    n_list.append(cmd)
+                case CommandKind.E:
+                    for side in (0, 1):
+                        i, j = cmd.nodes[side], cmd.nodes[1 - side]
+                        if clifford_gate := c_dict.get(i):
+                            _commute_clifford(clifford_gate, c_dict, i, j)
+                        if s_domain_opt := x_dict.get(i):
+                            _add_correction_domain(z_dict, j, s_domain_opt)
+                    edge = frozenset(cmd.nodes)
+                    e_set.symmetric_difference_update((edge,))
+                case CommandKind.M:
+                    new_cmd = None
+                    if clifford_gate := c_dict.pop(cmd.node, None):
+                        new_cmd = cmd.clifford(clifford_gate)
+                    if t_domain_opt := z_dict.pop(cmd.node, None):
+                        if new_cmd is None:
+                            new_cmd = copy(cmd)
+                        # The original domain should not be mutated
+                        new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
+                    if s_domain_opt := x_dict.pop(cmd.node, None):
+                        if new_cmd is None:
+                            new_cmd = copy(cmd)
+                        # The original domain should not be mutated
+                        new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
                     if new_cmd is None:
-                        new_cmd = copy(cmd)
-                    # The original domain should not be mutated
-                    new_cmd.t_domain = new_cmd.t_domain ^ t_domain_opt  # noqa: PLR6104
-                if s_domain_opt := x_dict.pop(cmd.node, None):
-                    if new_cmd is None:
-                        new_cmd = copy(cmd)
-                    # The original domain should not be mutated
-                    new_cmd.s_domain = new_cmd.s_domain ^ s_domain_opt  # noqa: PLR6104
-                if new_cmd is None:
-                    m_list.append(cmd)
-                else:
-                    m_list.append(new_cmd)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                if cmd.kind == CommandKind.X:
-                    s_domain = cmd.domain
-                    t_domain = set()
-                else:
-                    s_domain = set()
-                    t_domain = cmd.domain
-                domains = c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
-                if domains.t_domain:
-                    _add_correction_domain(z_dict, cmd.node, domains.t_domain)
-                if domains.s_domain:
-                    _add_correction_domain(x_dict, cmd.node, domains.s_domain)
-            elif cmd.kind == CommandKind.C:
-                # Each pattern command is applied by left multiplication: if a clifford `C`
-                # has been already applied to a node, applying a clifford `C'` to the same
-                # node is equivalent to apply `C'C` to a fresh node.
-                c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
+                        m_list.append(cmd)
+                    else:
+                        m_list.append(new_cmd)
+                case CommandKind.X | CommandKind.Z:
+                    if cmd.kind == CommandKind.X:
+                        s_domain = cmd.domain
+                        t_domain = set()
+                    else:
+                        s_domain = set()
+                        t_domain = cmd.domain
+                    domains = c_dict.get(cmd.node, Clifford.I).commute_domains(Domains(s_domain, t_domain))
+                    if domains.t_domain:
+                        _add_correction_domain(z_dict, cmd.node, domains.t_domain)
+                    if domains.s_domain:
+                        _add_correction_domain(x_dict, cmd.node, domains.s_domain)
+                case CommandKind.C:
+                    # Each pattern command is applied by left multiplication: if a clifford `C`
+                    # has been already applied to a node, applying a clifford `C'` to the same
+                    # node is equivalent to apply `C'C` to a fresh node.
+                    c_dict[cmd.node] = cmd.clifford @ c_dict.get(cmd.node, Clifford.I)
         return cls(
             pattern.input_nodes, pattern.output_nodes, pattern.results, n_list, e_set, m_list, c_dict, z_dict, x_dict
         )
@@ -666,43 +666,43 @@ def incorporate_pauli_results(pattern: Pattern) -> Pattern:
     """Return an equivalent pattern where results from Pauli presimulation are integrated in corrections."""
     result = graphix.pattern.Pattern(input_nodes=pattern.input_nodes)
     for cmd in pattern:
-        if cmd.kind == CommandKind.M:
-            s = _incorporate_pauli_results_in_domain(pattern.results, cmd.s_domain)
-            t = _incorporate_pauli_results_in_domain(pattern.results, cmd.t_domain)
-            if s or t:
-                if s:
-                    apply_x, new_s_domain = s
+        match cmd.kind:
+            case CommandKind.M:
+                s = _incorporate_pauli_results_in_domain(pattern.results, cmd.s_domain)
+                t = _incorporate_pauli_results_in_domain(pattern.results, cmd.t_domain)
+                if s or t:
+                    if s:
+                        apply_x, new_s_domain = s
+                    else:
+                        apply_x = False
+                        new_s_domain = cmd.s_domain
+                    if t:
+                        apply_z, new_t_domain = t
+                    else:
+                        apply_z = False
+                        new_t_domain = cmd.t_domain
+                    new_cmd = command.M(cmd.node, cmd.plane, cmd.angle, new_s_domain, new_t_domain)
+                    if apply_x:
+                        new_cmd = new_cmd.clifford(Clifford.X)
+                    if apply_z:
+                        new_cmd = new_cmd.clifford(Clifford.Z)
+                    result.add(new_cmd)
                 else:
-                    apply_x = False
-                    new_s_domain = cmd.s_domain
-                if t:
-                    apply_z, new_t_domain = t
+                    result.add(cmd)
+            case CommandKind.X | CommandKind.Z:
+                signal = _incorporate_pauli_results_in_domain(pattern.results, cmd.domain)
+                if signal:
+                    apply_c, new_domain = signal
+                    if new_domain:
+                        cmd_cstr = command.X if cmd.kind == CommandKind.X else command.Z
+                        result.add(cmd_cstr(cmd.node, new_domain))
+                    if apply_c:
+                        c = Clifford.X if cmd.kind == CommandKind.X else Clifford.Z
+                        result.add(command.C(cmd.node, c))
                 else:
-                    apply_z = False
-                    new_t_domain = cmd.t_domain
-                new_cmd = command.M(cmd.node, cmd.plane, cmd.angle, new_s_domain, new_t_domain)
-                if apply_x:
-                    new_cmd = new_cmd.clifford(Clifford.X)
-                if apply_z:
-                    new_cmd = new_cmd.clifford(Clifford.Z)
-                result.add(new_cmd)
-            else:
+                    result.add(cmd)
+            case _:
                 result.add(cmd)
-        # Use == for mypy
-        elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-            signal = _incorporate_pauli_results_in_domain(pattern.results, cmd.domain)
-            if signal:
-                apply_c, new_domain = signal
-                if new_domain:
-                    cmd_cstr = command.X if cmd.kind == CommandKind.X else command.Z
-                    result.add(cmd_cstr(cmd.node, new_domain))
-                if apply_c:
-                    c = Clifford.X if cmd.kind == CommandKind.X else Clifford.Z
-                    result.add(command.C(cmd.node, c))
-            else:
-                result.add(cmd)
-        else:
-            result.add(cmd)
     result.reorder_output_nodes(pattern.output_nodes)
     return result
 
@@ -740,21 +740,22 @@ def single_qubit_domains(pattern: Pattern) -> Pattern:
         return True
 
     for cmd in pattern:
-        if cmd.kind == CommandKind.M:
-            replaced_s_domain = decompose_domain(command.X, cmd.node, cmd.s_domain)
-            replaced_t_domain = decompose_domain(command.Z, cmd.node, cmd.t_domain)
-            if replaced_s_domain or replaced_t_domain:
-                new_s_domain = set() if replaced_s_domain else cmd.s_domain
-                new_t_domain = set() if replaced_t_domain else cmd.t_domain
-                new_cmd = dataclasses.replace(cmd, s_domain=new_s_domain, t_domain=new_t_domain)
-                new_pattern.add(new_cmd)
-                continue
-        elif cmd.kind == CommandKind.X:
-            if decompose_domain(command.X, cmd.node, cmd.domain):
-                continue
-        elif cmd.kind == CommandKind.Z:
-            if decompose_domain(command.Z, cmd.node, cmd.domain):
-                continue
+        match cmd.kind:
+            case CommandKind.M:
+                replaced_s_domain = decompose_domain(command.X, cmd.node, cmd.s_domain)
+                replaced_t_domain = decompose_domain(command.Z, cmd.node, cmd.t_domain)
+                if replaced_s_domain or replaced_t_domain:
+                    new_s_domain = set() if replaced_s_domain else cmd.s_domain
+                    new_t_domain = set() if replaced_t_domain else cmd.t_domain
+                    new_cmd = dataclasses.replace(cmd, s_domain=new_s_domain, t_domain=new_t_domain)
+                    new_pattern.add(new_cmd)
+                    continue
+            case CommandKind.X:
+                if decompose_domain(command.X, cmd.node, cmd.domain):
+                    continue
+            case CommandKind.Z:
+                if decompose_domain(command.Z, cmd.node, cmd.domain):
+                    continue
         new_pattern.add(cmd)
 
     new_pattern.reorder_output_nodes(pattern.output_nodes)
