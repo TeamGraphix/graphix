@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Fixed
+- #435
+  - Added `graphix.sim.statevec.Statevec.fidelity` and `graphix.sim.statevec.Statevec.isclose` methods to calculate and check fidelity between two states.
+  - Updated old code with uses of the above methods.
+  - Solves [#386](https://github.com/TeamGraphix/graphix/issues/386).
 
 - #429
   - Modify `graphix.noise_models.noise_model.ApplyNoise` to handle conditionality based on a `domain` attribute (like `command.X` and `command.Z`).

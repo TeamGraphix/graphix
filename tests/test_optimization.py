@@ -49,7 +49,7 @@ def test_standardize_clifford_entanglement(fx_rng: Generator) -> None:
 
                 state_ref = p_ref.simulate_pattern(input_state=PlanarState(Plane.XY, alpha))
                 state_p = p.simulate_pattern(input_state=PlanarState(Plane.XY, alpha))
-                assert np.abs(np.dot(state_p.flatten().conjugate(), state_ref.flatten())) == pytest.approx(1)
+                assert state_ref.isclose(state_p)
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -66,7 +66,7 @@ def test_incorporate_pauli_results(fx_bg: PCG64, jumps: int) -> None:
     pattern2 = incorporate_pauli_results(pattern)
     state = pattern.simulate_pattern(rng=rng)
     state2 = pattern2.simulate_pattern(rng=rng)
-    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+    assert state.isclose(state2)
 
 
 @pytest.mark.parametrize("jumps", range(1, 11))
@@ -100,7 +100,7 @@ def test_remove_useless_domains(fx_bg: PCG64, jumps: int) -> None:
     pattern2 = remove_useless_domains(pattern)
     state = pattern.simulate_pattern(rng=rng)
     state2 = pattern2.simulate_pattern(rng=rng)
-    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+    assert state.isclose(state2)
 
 
 def test_to_space_optimal_pattern() -> None:
@@ -122,4 +122,4 @@ def test_to_space_optimal_pattern() -> None:
     pattern2 = StandardizedPattern.from_pattern(pattern).to_space_optimal_pattern()
     state = pattern.simulate_pattern()
     state2 = pattern2.simulate_pattern()
-    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+    assert state.isclose(state2)

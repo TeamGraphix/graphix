@@ -144,6 +144,40 @@ class TestStatevec:
         with pytest.raises(ValueError):
             _vec = Statevec(nqubit=length - 1, data=test_vec)
 
+    def test_fidelity(self) -> None:
+        n = 3
+        sv1 = Statevec(nqubit=n)
+        sv2 = Statevec(nqubit=n)
+
+        # generate uniform random statevector
+        random_psi = np.random.uniform(-1, 1, 2**n) + 1j * np.random.uniform(-1, 1, 2**n)
+        random_psi /= np.linalg.norm(random_psi)
+
+        sv1.psi = random_psi
+        sv2.psi = np.copy(sv1.psi)
+        # global phase should not affect the result
+        sv2.psi *= np.exp(1j * np.pi / 3)
+
+        # We are unit testing :meth:`Statevec.fidelity`, so we cannot
+        # use :meth:`Statevec.isclose`
+        assert sv1.fidelity(sv2) == pytest.approx(1.0)
+
+    def test_is_close(self) -> None:
+        n = 3
+        sv1 = Statevec(nqubit=n)
+        sv2 = Statevec(nqubit=n)
+
+        # generate uniform random statevector
+        random_psi = np.random.uniform(-1, 1, 2**n) + 1j * np.random.uniform(-1, 1, 2**n)
+        random_psi /= np.linalg.norm(random_psi)
+
+        sv1.psi = random_psi
+        sv2.psi = np.copy(sv1.psi)
+        # global phase should not affect the result
+        sv2.psi *= np.exp(1j * np.pi / 3)
+
+        assert sv1.isclose(sv2)
+
 
 def test_normalize() -> None:
     statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
