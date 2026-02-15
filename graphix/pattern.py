@@ -277,12 +277,12 @@ class Pattern:
                 cmd_new.nodes = (mapping_complete[i], mapping_complete[j])
             elif cmd_new.kind is not CommandKind.T:
                 cmd_new.node = mapping_complete[cmd_new.node]
-                if cmd_new.kind is CommandKind.M:
-                    cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
-                    cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
-                # Use of `==` here for mypy
-                elif cmd_new.kind == CommandKind.X or cmd_new.kind == CommandKind.Z or cmd_new.kind == CommandKind.S:  # noqa: PLR1714
-                    cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
+                match cmd_new.kind:
+                    case CommandKind.M:
+                        cmd_new.s_domain = {mapping_complete[i] for i in cmd_new.s_domain}
+                        cmd_new.t_domain = {mapping_complete[i] for i in cmd_new.t_domain}
+                    case CommandKind.X | CommandKind.Z | CommandKind.S:
+                        cmd_new.domain = {mapping_complete[i] for i in cmd_new.domain}
 
             return cmd_new
 
@@ -1225,8 +1225,12 @@ class Pattern:
     def correction_commands(self) -> list[command.X | command.Z]:
         """Return the list of byproduct correction commands."""
         assert self.is_standard()
-        # Use of `==` here for mypy
-        return [seqi for seqi in self.__seq if seqi.kind == CommandKind.X or seqi.kind == CommandKind.Z]  # noqa: PLR1714
+        cmds = []
+        for cmd in self:
+            match cmd.kind:
+                case CommandKind.X | CommandKind.Z:
+                    cmds.append(cmd)
+        return cmds
 
     def parallelize_pattern(self) -> None:
         """Optimize the pattern to reduce the depth of the computation by gathering measurement commands that can be performed simultaneously.

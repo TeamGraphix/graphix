@@ -72,53 +72,46 @@ def angle_to_qasm3(angle: ParameterizedAngle) -> str:
 
 def instruction_to_qasm3(instruction: Instruction) -> str:
     """Get the OpenQASM3 representation of a single circuit instruction."""
-    if instruction.kind == InstructionKind.M:
-        if instruction.axis != Axis.Z:
-            raise ValueError(
-                "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes."
+    match instruction.kind:
+        case InstructionKind.M:
+            if instruction.axis != Axis.Z:
+                raise ValueError(
+                    "OpenQASM3 only supports measurements on Z axis. Use `Circuit.transpile_measurements_to_z_axis` to rewrite measurements on X and Y axes."
+                )
+            return f"b[{instruction.target}] = measure q[{instruction.target}]"
+        case InstructionKind.RX | InstructionKind.RY | InstructionKind.RZ:
+            angle = angle_to_qasm3(instruction.angle)
+            return qasm3_gate_call(
+                instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)]
             )
-        return f"b[{instruction.target}] = measure q[{instruction.target}]"
-    # Use of `==` here for mypy
-    if (
-        instruction.kind == InstructionKind.RX  # noqa: PLR1714
-        or instruction.kind == InstructionKind.RY
-        or instruction.kind == InstructionKind.RZ
-    ):
-        angle = angle_to_qasm3(instruction.angle)
-        return qasm3_gate_call(instruction.kind.name.lower(), args=[angle], operands=[qasm3_qubit(instruction.target)])
 
-    # Use of `==` here for mypy
-    if (
-        instruction.kind == InstructionKind.H  # noqa: PLR1714
-        or instruction.kind == InstructionKind.S
-        or instruction.kind == InstructionKind.X
-        or instruction.kind == InstructionKind.Y
-        or instruction.kind == InstructionKind.Z
-    ):
-        return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
-    if instruction.kind == InstructionKind.I:
-        return qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
-    if instruction.kind == InstructionKind.CNOT:
-        return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
-    if instruction.kind == InstructionKind.SWAP:
-        return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
-    if instruction.kind == InstructionKind.CZ:
-        return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
-    if instruction.kind == InstructionKind.RZZ:
-        angle = angle_to_qasm3(instruction.angle)
-        return qasm3_gate_call(
-            "crz", args=[angle], operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)]
-        )
-    if instruction.kind == InstructionKind.CCX:
-        return qasm3_gate_call(
-            "ccx",
-            [
-                qasm3_qubit(instruction.controls[0]),
-                qasm3_qubit(instruction.controls[1]),
-                qasm3_qubit(instruction.target),
-            ],
-        )
-    assert_never(instruction.kind)
+        # Use of `==` here for mypy
+        case InstructionKind.H | InstructionKind.S | InstructionKind.X | InstructionKind.Y | InstructionKind.Z:
+            return qasm3_gate_call(instruction.kind.name.lower(), [qasm3_qubit(instruction.target)])
+        case InstructionKind.I:
+            return qasm3_gate_call("id", [qasm3_qubit(instruction.target)])
+        case InstructionKind.CNOT:
+            return qasm3_gate_call("cx", [qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)])
+        case InstructionKind.SWAP:
+            return qasm3_gate_call("swap", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+        case InstructionKind.CZ:
+            return qasm3_gate_call("cz", [qasm3_qubit(instruction.targets[i]) for i in (0, 1)])
+        case InstructionKind.RZZ:
+            angle = angle_to_qasm3(instruction.angle)
+            return qasm3_gate_call(
+                "crz", args=[angle], operands=[qasm3_qubit(instruction.control), qasm3_qubit(instruction.target)]
+            )
+        case InstructionKind.CCX:
+            return qasm3_gate_call(
+                "ccx",
+                [
+                    qasm3_qubit(instruction.controls[0]),
+                    qasm3_qubit(instruction.controls[1]),
+                    qasm3_qubit(instruction.target),
+                ],
+            )
+        case _:
+            assert_never(instruction.kind)
 
 
 def pattern_to_qasm3(pattern: Pattern, input_state: dict[int, State] | State = BasicStates.PLUS) -> str:
