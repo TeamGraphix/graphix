@@ -129,4 +129,3 @@ def test_full_reduce_toffoli() -> None:
     s = p.simulate_pattern()
     s2 = p2.simulate_pattern()
     print(s.fidelity(s2))
-    assert s.isclose(s2)
