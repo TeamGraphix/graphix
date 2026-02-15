@@ -316,31 +316,31 @@ class PatternSimulator(Generic[_StateT_co]):
         self.pattern.check_runnability()
 
         for cmd in pattern:
-            if cmd.kind == CommandKind.N:
-                self.__prepare_method.prepare(self.backend, cmd, rng=rng)
-            elif cmd.kind == CommandKind.E:
-                self.backend.entangle_nodes(edge=cmd.nodes)
-            elif cmd.kind == CommandKind.M:
-                self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
-            # Use of `==` here for mypy
-            elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                if self.__measure_method.check_domain(cmd.domain):
-                    self.backend.correct_byproduct(cmd)
-            elif cmd.kind == CommandKind.C:
-                self.backend.apply_clifford(cmd.node, cmd.clifford)
-            elif cmd.kind == CommandKind.T:
-                # The T command is a flag for one clock cycle in a simulated
-                # experiment, added via a hardware-agnostic
-                # pattern modifier. Noise models can perform special
-                # handling of ticks during noise transpilation.
-                pass
-            elif cmd.kind == CommandKind.ApplyNoise:
-                if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
-                    self.backend.apply_noise(cmd)
-            elif cmd.kind == CommandKind.S:
-                raise ValueError("S commands unexpected in simulated patterns.")
-            else:
-                assert_never(cmd.kind)
+            match cmd.kind:
+                case CommandKind.N:
+                    self.__prepare_method.prepare(self.backend, cmd, rng=rng)
+                case CommandKind.E:
+                    self.backend.entangle_nodes(edge=cmd.nodes)
+                case CommandKind.M:
+                    self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
+                case CommandKind.X | CommandKind.Z:
+                    if self.__measure_method.check_domain(cmd.domain):
+                        self.backend.correct_byproduct(cmd)
+                case CommandKind.C:
+                    self.backend.apply_clifford(cmd.node, cmd.clifford)
+                case CommandKind.T:
+                    # The T command is a flag for one clock cycle in a simulated
+                    # experiment, added via a hardware-agnostic
+                    # pattern modifier. Noise models can perform special
+                    # handling of ticks during noise transpilation.
+                    pass
+                case CommandKind.ApplyNoise:
+                    if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
+                        self.backend.apply_noise(cmd)
+                case CommandKind.S:
+                    raise ValueError("S commands unexpected in simulated patterns.")
+                case _:
+                    assert_never(cmd.kind)
         self.backend.finalize(output_nodes=self.pattern.output_nodes)
 
 

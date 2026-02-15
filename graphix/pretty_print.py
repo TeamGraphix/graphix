@@ -125,82 +125,82 @@ def command_to_str(cmd: command.Command, output: OutputFormat) -> str:
         The expected format.
     """
     out = [cmd.kind.name]
-
-    if cmd.kind == command.CommandKind.E:
-        u, v = cmd.nodes
-        if output == OutputFormat.LaTeX:
-            out.append(f"_{{{u},{v}}}")
-        elif output == OutputFormat.Unicode:
-            u_subscripts = str(u).translate(SUBSCRIPTS)
-            v_subscripts = str(v).translate(SUBSCRIPTS)
-            out.append(f"{u_subscripts}₋{v_subscripts}")
-        else:
-            out.append(f"({u},{v})")
-    elif cmd.kind == command.CommandKind.T:
-        pass
-    else:
-        # All other commands have a field `node` to print, together
-        # with some other arguments and/or domains.
-        arguments = []
-        if cmd.kind == command.CommandKind.M:
-            if cmd.plane != Plane.XY:
-                arguments.append(cmd.plane.name)
-            # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
-            # is `False` if `cmd.angle` is an integer.
-            if isinstance(cmd.angle, SupportsFloat):
-                angle = float(cmd.angle)
-                if not math.isclose(angle, 0.0):
-                    arguments.append(angle_to_str(angle, output))
-            else:
-                # If the angle is a symbolic expression, we can only delegate the printing
-                # TODO: We should have a mean to specify the format
-                arguments.append(str(cmd.angle * math.pi))
-        elif cmd.kind == command.CommandKind.C:
-            arguments.append(str(cmd.clifford))
-        # Use of `==` here for mypy
-        command_domain = (
-            cmd.domain
-            if cmd.kind == command.CommandKind.X  # noqa: PLR1714
-            or cmd.kind == command.CommandKind.Z
-            or cmd.kind == command.CommandKind.S
-            else None
-        )
-        if output == OutputFormat.LaTeX:
-            out.append(f"_{{{cmd.node}}}")
-            if arguments:
-                out.append(f"^{{{','.join(arguments)}}}")
-        elif output == OutputFormat.Unicode:
-            node_subscripts = str(cmd.node).translate(SUBSCRIPTS)
-            out.append(f"{node_subscripts}")
-            if arguments:
-                out.append(f"({','.join(arguments)})")
-        else:
-            arguments = [str(cmd.node), *arguments]
+    match cmd.kind:
+        case command.CommandKind.E:
+            u, v = cmd.nodes
+            match output:
+                case OutputFormat.LaTeX:
+                    out.append(f"_{{{u},{v}}}")
+                case OutputFormat.Unicode:
+                    u_subscripts = str(u).translate(SUBSCRIPTS)
+                    v_subscripts = str(v).translate(SUBSCRIPTS)
+                    out.append(f"{u_subscripts}₋{v_subscripts}")
+                case _:
+                    out.append(f"({u},{v})")
+        case command.CommandKind.T:
+            pass
+        case _:
+            # All other commands have a field `node` to print, together
+            # with some other arguments and/or domains.
+            arguments = []
+            match cmd.kind:
+                case command.CommandKind.M:
+                    if cmd.plane != Plane.XY:
+                        arguments.append(cmd.plane.name)
+                    # We use `SupportsFloat` since `isinstance(cmd.angle, float)`
+                    # is `False` if `cmd.angle` is an integer.
+                    if isinstance(cmd.angle, SupportsFloat):
+                        angle = float(cmd.angle)
+                        if not math.isclose(angle, 0.0):
+                            arguments.append(angle_to_str(angle, output))
+                    else:
+                        # If the angle is a symbolic expression, we can only delegate the printing
+                        # TODO: We should have a mean to specify the format
+                        arguments.append(str(cmd.angle * math.pi))
+                case command.CommandKind.C:
+                    arguments.append(str(cmd.clifford))
+            match cmd.kind:
+                case command.CommandKind.X | command.CommandKind.Z | command.CommandKind.S:
+                    command_domain: set[int] | None = cmd.domain
+                case _:
+                    command_domain = None
+            match output:
+                case OutputFormat.LaTeX:
+                    out.append(f"_{{{cmd.node}}}")
+                    if arguments:
+                        out.append(f"^{{{','.join(arguments)}}}")
+                case OutputFormat.Unicode:
+                    node_subscripts = str(cmd.node).translate(SUBSCRIPTS)
+                    out.append(f"{node_subscripts}")
+                    if arguments:
+                        out.append(f"({','.join(arguments)})")
+                case _:
+                    arguments = [str(cmd.node), *arguments]
+                    if command_domain:
+                        arguments.append(domain_to_str(command_domain))
+                        command_domain = None
+                    out.append(f"({','.join(arguments)})")
+            if cmd.kind == command.CommandKind.M and (cmd.s_domain or cmd.t_domain):
+                out = ["[", *out, "]"]
+                if cmd.t_domain:
+                    if output == OutputFormat.LaTeX:
+                        t_domain_str = f"{{}}_{{{','.join(str(node) for node in cmd.t_domain)}}}"
+                    elif output == OutputFormat.Unicode:
+                        t_domain_subscripts = [str(node).translate(SUBSCRIPTS) for node in cmd.t_domain]
+                        t_domain_str = "₊".join(t_domain_subscripts)
+                    else:
+                        t_domain_str = f"{{{','.join(str(node) for node in cmd.t_domain)}}}"
+                    out = [t_domain_str, *out]
+                command_domain = cmd.s_domain
             if command_domain:
-                arguments.append(domain_to_str(command_domain))
-                command_domain = None
-            out.append(f"({','.join(arguments)})")
-        if cmd.kind == command.CommandKind.M and (cmd.s_domain or cmd.t_domain):
-            out = ["[", *out, "]"]
-            if cmd.t_domain:
                 if output == OutputFormat.LaTeX:
-                    t_domain_str = f"{{}}_{{{','.join(str(node) for node in cmd.t_domain)}}}"
+                    domain_str = f"^{{{','.join(str(node) for node in command_domain)}}}"
                 elif output == OutputFormat.Unicode:
-                    t_domain_subscripts = [str(node).translate(SUBSCRIPTS) for node in cmd.t_domain]
-                    t_domain_str = "₊".join(t_domain_subscripts)
+                    domain_superscripts = [str(node).translate(SUPERSCRIPTS) for node in command_domain]
+                    domain_str = "⁺".join(domain_superscripts)
                 else:
-                    t_domain_str = f"{{{','.join(str(node) for node in cmd.t_domain)}}}"
-                out = [t_domain_str, *out]
-            command_domain = cmd.s_domain
-        if command_domain:
-            if output == OutputFormat.LaTeX:
-                domain_str = f"^{{{','.join(str(node) for node in command_domain)}}}"
-            elif output == OutputFormat.Unicode:
-                domain_superscripts = [str(node).translate(SUPERSCRIPTS) for node in command_domain]
-                domain_str = "⁺".join(domain_superscripts)
-            else:
-                domain_str = f"{{{','.join(str(node) for node in command_domain)}}}"
-            out.append(domain_str)
+                    domain_str = f"{{{','.join(str(node) for node in command_domain)}}}"
+                out.append(domain_str)
     return f"{''.join(out)}"
 
 
