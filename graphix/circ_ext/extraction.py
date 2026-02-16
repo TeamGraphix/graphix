@@ -47,11 +47,15 @@ class ExtractionResult:
     pexp_dag: PauliExponentialDAG
     clifford_map: CliffordMap
 
-    # TODO: Update docstring
     def to_circuit(self, cp: CompilationPass) -> Circuit:
         """Transpile the extraction result to circuit.
 
         Transpilation is only supported when the pair Pauli-exponential DAG and Clifford map represents a unitary transformation.
+
+        Parameters
+        ----------
+        cp : CompilationPass
+            Compilation pass to synthesize the Pauli exponential DAG and the Clifford map in the extraction result.
 
         Returns
         -------
@@ -338,7 +342,6 @@ class CliffordMap:
         z_map: dict[int, PauliString] = {}
         iset = set(flow.og.input_nodes)
 
-        # This is done when extracting a PauliExponentialRotation too.
         for node in iset.intersection(flow.og.measurements.keys()):
             z_map[node] = flow.pauli_strings[node]
 
@@ -379,18 +382,6 @@ class CliffordMap:
         x_map_ancillas = {node: PauliString.from_measured_node(flow_extended, node) for node in og_extended.input_nodes}
 
         return {input_node: x_map_ancillas[ancillary_inputs_map[input_node]] for input_node in og.input_nodes}
-
-    def __str__(self) -> str:
-        """Return a string representation of the Clifford map."""
-        cm_str: list[str] = []
-
-        nodes = self.x_map.keys()
-        for node in nodes:
-            for st, mappings in zip(["Z", "X"], [self.z_map, self.x_map], strict=True):
-                pauli_str = str(mappings[node])
-                cm_str.append(f"{st}{str(node).translate(SUBSCRIPTS)} → {pauli_str}\n")
-
-        return "".join(cm_str)
 
 
 def extend_input(og: OpenGraph[Measurement]) -> tuple[OpenGraph[Measurement], dict[int, int]]:
