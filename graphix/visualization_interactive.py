@@ -38,7 +38,12 @@ class InteractiveGraphVisualizer:
         Scale factors (x, y) for the node positions in the graph layout.
     """
 
-    def __init__(self, pattern: Pattern, node_distance: tuple[float, float] = (1, 1)) -> None:
+    def __init__(
+        self,
+        pattern: Pattern,
+        node_distance: tuple[float, float] = (1, 1),
+        enable_simulation: bool = True,
+    ) -> None:
         """
         Initialize the interactive visualizer.
 
@@ -50,7 +55,9 @@ class InteractiveGraphVisualizer:
             Scale factors for x and y coordinates of the graph nodes. Defaults to (1, 1).
         """
         self.pattern = pattern
+        self.node_positions = {}
         self.node_distance = node_distance
+        self.enable_simulation = enable_simulation
 
         # Prepare graph layout using Graphix's visualizer or fallbacks
         self._prepare_layout()
@@ -262,7 +269,7 @@ class InteractiveGraphVisualizer:
 
     def _update_graph_state(
         self, step: int
-    ) -> tuple[set, set, set, dict[int, set[str]], dict[int, int]]:
+    ) -> tuple[set, set, list[tuple[int, int]], dict[int, set[str]], dict[int, int]]:
         """
         Calculate the state of the graph by simulating the pattern up to `step`.
 
@@ -280,149 +287,172 @@ class InteractiveGraphVisualizer:
             Nodes currently in the graph (active).
         measured_nodes : set
             Nodes that have been measured.
-        active_edges : set
+        active_edges : list[tuple[int, int]]
             Edges currently in the graph.
         corrections : dict
             Accumulated Pauli corrections ('X', 'Z') for each node.
         results : dict
             Measurement outcomes (0 or 1) for measured nodes.
         """
-        # Initialize sets
-        active_nodes = set(self.pattern.input_nodes)
+        # Prepare return containers
+        active_nodes = set()
         measured_nodes = set()
-        active_edges = set()
+        active_edges = []
         corrections: dict[int, set[str]] = {}
-        
-        # Simulation setup
-        backend = StatevectorBackend()
-        
-        # Initialize input nodes in the backend
-        if self.pattern.input_nodes:
-            backend.add_nodes(self.pattern.input_nodes)
-
-        # Fixed seed for deterministic scrubbing
-        rng = np.random.default_rng(42)
         results: dict[int, int] = {}
 
-        # Replay commands
-        for i in range(int(step)):
-            cmd = self.pattern[i]
+        if self.enable_simulation:
+            # --- Simulation Mode ---
+            backend = StatevectorBackend(pattern=self.pattern)
+            
+            # Prerun input nodes (standard MBQC initialization)
+            # Find all input nodes in the pattern
+            input_nodes = self.pattern.input_nodes
+            for node in input_nodes:
+                backend.add_nodes([node])
 
-            if cmd.kind == CommandKind.N:
-                active_nodes.add(cmd.node)
-                backend.add_nodes([cmd.node], data=cmd.state)
+            rng = np.random.default_rng(42)  # Fixed seed for determinism
 
-            elif cmd.kind == CommandKind.M:
-                if cmd.node in active_nodes:
-                    active_nodes.remove(cmd.node)
-                measured_nodes.add(cmd.node)
+            # Re-execute commands up to current step
+            for i in range(step):
+                cmd = self.pattern[i]
+                if cmd.kind == CommandKind.N:
+                    backend.add_nodes([cmd.node], data=cmd.state)
+                elif cmd.kind == CommandKind.E:
+                    backend.entangle_nodes(cmd.nodes)
+                elif cmd.kind == CommandKind.M:
+                    # --- Adaptive Measurement Logic (Feedforward) ---
+                    # Calculate s and t signals from previous measurement results
+                    if cmd.s_domain:
+                        s_signal = sum(results.get(j, 0) for j in cmd.s_domain)
+                    else:
+                        s_signal = 0
+                    if cmd.t_domain:
+                        t_signal = sum(results.get(j, 0) for j in cmd.t_domain)
+                    else:
+                        t_signal = 0
 
-                # --- Adaptive Measurement Logic (Feedforward) ---
-                # Calculate s and t signals from previous measurement results
-                if cmd.s_domain:
-                    s_signal = sum(results.get(j, 0) for j in cmd.s_domain)
-                else:
-                    s_signal = 0
-                if cmd.t_domain:
-                    t_signal = sum(results.get(j, 0) for j in cmd.t_domain)
-                else:
-                    t_signal = 0
+                    s_bool = s_signal % 2 == 1
+                    t_bool = t_signal % 2 == 1
 
-                s_bool = s_signal % 2 == 1
-                t_bool = t_signal % 2 == 1
+                    # Compute the updated angle and plane based on signals
+                    measure_update = MeasureUpdate.compute(cmd.plane, s_bool, t_bool, Clifford.I)
+                    
+                    new_angle = cmd.angle * measure_update.coeff + measure_update.add_term
+                    new_plane = measure_update.new_plane
 
-                # Compute the updated angle and plane based on signals
-                measure_update = MeasureUpdate.compute(cmd.plane, s_bool, t_bool, Clifford.I)
-                
-                new_angle = cmd.angle * measure_update.coeff + measure_update.add_term
-                new_plane = measure_update.new_plane
-
-                # Execute measurement on the backend using the adapted measurement
-                measurement = Measurement(new_angle, new_plane)
-                result = backend.measure(cmd.node, measurement, rng=rng)
-                results[cmd.node] = result
-
-            elif cmd.kind == CommandKind.E:
-                active_edges.add(cmd.nodes)
-                # Apply entanglement in simulation
-                backend.entangle_nodes(cmd.nodes)
-
-            elif cmd.kind in (CommandKind.X, CommandKind.Z):
-                # Apply Pauli corrections conditionally
-                do_op = True
-                if cmd.domain:
-                    do_op = sum(results.get(j, 0) for j in cmd.domain) % 2 == 1
-
-                if do_op:
-                    backend.correct_byproduct(cmd)
-                    # Visual tracking of corrections
+                    # Execute measurement on the backend using the adapted measurement
+                    measurement = Measurement(new_angle, new_plane)
+                    result = backend.measure(cmd.node, measurement, rng=rng)
+                    results[cmd.node] = result
+                elif cmd.kind == CommandKind.X:
+                    # Accumulate X corrections
                     if cmd.node not in corrections:
                         corrections[cmd.node] = set()
-                    corrections[cmd.node].add(cmd.kind.name)
+                    corrections[cmd.node].add("X")
+                    backend.correct_byproduct(cmd)
+                elif cmd.kind == CommandKind.Z:
+                    if cmd.node not in corrections:
+                        corrections[cmd.node] = set()
+                    corrections[cmd.node].add("Z")
+                    backend.correct_byproduct(cmd)
+
+        # --- Common Logic (Topological Tracking) ---
+        # We track nodes/edges based on command history regardless of simulation
+        # This ensures visualization works even if simulation is disabled
+        
+        # Reset tracking
+        current_active_nodes = set(self.pattern.input_nodes) # Start with input nodes
+        current_edges = set()
+        current_measured_nodes = set() # Track measured nodes for topological view
+
+        for i in range(step):
+            cmd = self.pattern[i]
+            if cmd.kind == CommandKind.N:
+                current_active_nodes.add(cmd.node)
+            elif cmd.kind == CommandKind.E:
+                u, v = cmd.nodes
+                # Only add edge if both nodes are currently active (not yet measured)
+                if u in current_active_nodes and v in current_active_nodes:
+                    current_edges.add(tuple(sorted((u, v))))
+            elif cmd.kind == CommandKind.M:
+                if cmd.node in current_active_nodes:
+                    current_active_nodes.remove(cmd.node)
+                    current_measured_nodes.add(cmd.node)
+                    # Remove connected edges involving the measured node
+                    current_edges = {e for e in current_edges if cmd.node not in e}
             
-            # Note: C, S, T, etc. are not explicitly visualized but exist in backend if supported.
-            # StatevectorBackend handles Clifford logic internally if pattern is standardized,
-            # but visualizer focuses on MBQC core set {N, M, E, X, Z}.
+            # Corrections are visualization-only metadata, handled in simulation block or ignored
+
+        active_nodes = current_active_nodes
+        measured_nodes = current_measured_nodes
+        active_edges = list(current_edges)
 
         return active_nodes, measured_nodes, active_edges, corrections, results
 
     def _draw_graph(self) -> None:
         """Render the graph state on the right panel."""
-        self.ax_graph.clear()
-        
-        # Get current state from simulation
-        active_nodes, measured_nodes, active_edges, corrections, results = self._update_graph_state(
-            self.current_step
-        )
+        try:
+            self.ax_graph.clear()
+            
+            # Get current state from simulation
+            active_nodes, measured_nodes, active_edges, corrections, results = self._update_graph_state(
+                self.current_step
+            )
 
-        # Draw edges
-        for u, v in active_edges:
-            x1, y1 = self.node_positions[u]
-            x2, y2 = self.node_positions[v]
-            self.ax_graph.plot([x1, x2], [y1, y2], color="black", zorder=1)
+            # Draw edges
+            for u, v in active_edges:
+                x1, y1 = self.node_positions[u]
+                x2, y2 = self.node_positions[v]
+                self.ax_graph.plot([x1, x2], [y1, y2], color="black", zorder=1)
 
-        # Draw nodes
-        # 1. Measured nodes (grey, with result text)
-        for node in measured_nodes:
-            if node in self.node_positions:
-                x, y = self.node_positions[node]
-                circle = plt.Circle((x, y), 0.1, color="lightgray", zorder=2)
-                self.ax_graph.add_patch(circle)
-                
-                label_text = str(node)
-                # Show measurement outcome if available
-                if node in results:
-                    label_text += f"\n={results[node]}"
-                
-                self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, zorder=3)
+            # Draw nodes
+            # 1. Measured nodes (grey, with result text)
+            for node in measured_nodes:
+                if node in self.node_positions:
+                    x, y = self.node_positions[node]
+                    circle = plt.Circle((x, y), 0.1, color="lightgray", zorder=2)
+                    self.ax_graph.add_patch(circle)
+                    
+                    label_text = str(node)
+                    # Show measurement outcome if available
+                    if node in results:
+                        label_text += f"\n={results[node]}"
+                    
+                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, zorder=3)
 
-        # 2. Active nodes (white with colored edge, with correction text)
-        for node in active_nodes:
-            if node in self.node_positions:
-                x, y = self.node_positions[node]
-                circle = plt.Circle(
-                    (x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2
-                )
-                self.ax_graph.add_patch(circle)
-                
-                label_text = str(node)
-                # Show accumulated internal corrections
-                if node in corrections:
-                    label_text += "\n" + "".join(sorted(corrections[node]))
-                
-                color = "black"
-                if node in corrections:
-                    color = "blue"  # Highlight corrected nodes
+            # 2. Active nodes (white with colored edge, with correction text)
+            for node in active_nodes:
+                if node in self.node_positions:
+                    x, y = self.node_positions[node]
+                    circle = plt.Circle(
+                        (x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2
+                    )
+                    self.ax_graph.add_patch(circle)
+                    
+                    label_text = str(node)
+                    # Show accumulated internal corrections
+                    if node in corrections:
+                        label_text += "\n" + "".join(sorted(corrections[node]))
+                    
+                    color = "black"
+                    if node in corrections:
+                        color = "blue"  # Highlight corrected nodes
 
-                self.ax_graph.text(
-                    x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3
-                )
+                    self.ax_graph.text(
+                        x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3
+                    )
 
-        # Set aspect close to equal and hide axes
-        self.ax_graph.set_aspect("equal")
-        self.ax_graph.set_xlim(self.x_limits)
-        self.ax_graph.set_ylim(self.y_limits)
-        self.ax_graph.axis("off")
+            # Set aspect close to equal and hide axes
+            self.ax_graph.set_aspect("equal")
+            self.ax_graph.set_xlim(self.x_limits)
+            self.ax_graph.set_ylim(self.y_limits)
+            self.ax_graph.axis("off")
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error drawing graph: {e}", file=sys.stderr)
 
     def _update(self, val: float) -> None:
         """Update visualization when slider changes."""
