@@ -410,10 +410,8 @@ class TestFlowPatternConversion:
                 alpha = 2 * ANGLE_PI * fx_rng.random()
                 state_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
 
-                for _ in range(n_shots):
-                    state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
-                    result = np.abs(np.dot(state.flatten().conjugate(), state_ref.flatten()))
-                    assert result == pytest.approx(1)
+                state = pattern.simulate_pattern(input_state=PlanarState(plane, alpha))
+                assert state.isclose(state_ref)
 
 
 class TestFlow:

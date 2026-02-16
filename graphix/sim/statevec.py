@@ -400,6 +400,54 @@ class Statevec(DenseState):
         result.psi = np.vectorize(lambda value: parameter.xreplace(value, assignment))(self.psi)
         return result
 
+    def fidelity(self, other: Statevec) -> float:
+        """Calculate the fidelity between two quantum states.
+
+        The fidelity is defined as :math:`F(\psi_1, \psi_2) = |\langle \psi_1 | \psi_2 \rangle|^2`.
+
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevec`
+            statevector to compare with
+
+        Returns
+        -------
+        float
+            fidelity
+        """
+        if not isinstance(other, Statevec):
+            raise TypeError(f"Expected Statevec, got {type(other)}")
+        if self.dims() != other.dims():
+            raise ValueError(f"Statevectors must have the same dimensions. Got {self.dims()} and {other.dims()}")
+
+        # Ensure states are normalized before calculation if they aren't already guaranteed to be
+        # (Statevec usually maintains normalization, but good to be safe or just use raw calculation)
+        # Fidelity formula for pure states matches |<psi|phi>|^2
+        # flatten() returns 1D array
+        overlap = np.vdot(self.psi.flatten(), other.psi.flatten())
+        return float(np.abs(overlap) ** 2)
+
+    def isclose(self, other: Statevec, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> bool:
+        """Check if two quantum states are equal up to a global phase.
+
+        This checks if the fidelity is close to 1.
+
+        Parameters
+        ----------
+        other : :class:`graphix.sim.statevec.Statevec`
+            statevector to compare with
+        rel_tol : float, optional
+            relative tolerance, defaults to 1e-9
+        abs_tol : float, optional
+            absolute tolerance, defaults to 0.0
+
+        Returns
+        -------
+        bool
+            True if states are equal up to global phase
+        """
+        return math.isclose(self.fidelity(other), 1.0, rel_tol=rel_tol, abs_tol=abs_tol)
+
 
 @dataclass(frozen=True)
 class StatevectorBackend(DenseStateBackend[Statevec]):

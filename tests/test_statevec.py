@@ -149,3 +149,31 @@ def test_normalize() -> None:
     statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
     statevec.remove_qubit(0)
     assert _norm_numeric(statevec.psi.astype(np.complex128, copy=False)) == 1
+
+
+class TestStatevecFidelity:
+    def test_fidelity_same(self, fx_rng: Generator) -> None:
+        nqb = fx_rng.integers(2, 5)
+        length = 2**nqb
+        rand_vec = fx_rng.random(length) + 1j * fx_rng.random(length)
+        rand_vec /= np.sqrt(np.sum(np.abs(rand_vec) ** 2))
+        vec = Statevec(data=rand_vec)
+        assert vec.fidelity(vec) == pytest.approx(1)
+
+    def test_fidelity_orthogonal(self) -> None:
+        vec1 = Statevec(data=BasicStates.ZERO)
+        vec2 = Statevec(data=BasicStates.ONE)
+        assert vec1.fidelity(vec2) == pytest.approx(0)
+
+    def test_isclose_phase(self) -> None:
+        vec1 = Statevec(data=BasicStates.PLUS)
+        vec2 = Statevec(data=BasicStates.PLUS)
+        # Add global phase
+        vec2.psi *= 1j
+        assert vec1.isclose(vec2)
+
+    def test_isclose_fail(self) -> None:
+        vec1 = Statevec(data=BasicStates.ZERO)
+        vec2 = Statevec(data=BasicStates.ONE)
+        assert not vec1.isclose(vec2)
+
