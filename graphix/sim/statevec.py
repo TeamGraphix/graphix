@@ -401,9 +401,9 @@ class Statevec(DenseState):
         return result
 
     def fidelity(self, other: Statevec) -> float:
-        """Calculate the fidelity between two quantum states.
+        r"""Calculate the fidelity between two quantum states.
 
-        The fidelity is defined as :math:`F(\psi_1, \psi_2) = |\langle \psi_1 | \psi_2 \rangle|^2`.
+        The fidelity is defined as :math:`F(\\psi_1, \\psi_2) = |\\langle \\psi_1 | \\psi_2 \rangle|^2`.
 
         Parameters
         ----------
@@ -424,7 +424,7 @@ class Statevec(DenseState):
         # (Statevec usually maintains normalization, but good to be safe or just use raw calculation)
         # Fidelity formula for pure states matches |<psi|phi>|^2
         # flatten() returns 1D array
-        overlap = np.vdot(self.psi.flatten(), other.psi.flatten())
+        overlap = np.vdot(self.psi.flatten(), other.psi.flatten())  # type: ignore[arg-type]
         return float(np.abs(overlap) ** 2)
 
     def isclose(self, other: Statevec, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> bool:

@@ -169,11 +169,10 @@ class TestStatevecFidelity:
         vec1 = Statevec(data=BasicStates.PLUS)
         vec2 = Statevec(data=BasicStates.PLUS)
         # Add global phase
-        vec2.psi *= 1j
+        vec2.psi = vec2.psi * 1j  # type: ignore[operator]
         assert vec1.isclose(vec2)
 
     def test_isclose_fail(self) -> None:
         vec1 = Statevec(data=BasicStates.ZERO)
         vec2 = Statevec(data=BasicStates.ONE)
         assert not vec1.isclose(vec2)
-

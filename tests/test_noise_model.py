@@ -43,7 +43,9 @@ def test_noiseless_noise_model_simulation(fx_rng: Generator) -> None:
     pattern.minimize_space()
     noise_model = NoiselessNoiseModel()
     state_mbqc = pattern.simulate_pattern(backend="densitymatrix", noise_model=noise_model, rng=fx_rng)
-    assert float(np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten()))) == pytest.approx(1)
+    assert float(np.abs(np.dot(state_mbqc.flatten().conjugate(), DensityMatrix(state).rho.flatten()))) == pytest.approx(
+        1
+    )
 
 
 def test_compose_noise_model_transpile(fx_rng: Generator) -> None:

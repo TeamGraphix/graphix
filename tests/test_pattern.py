@@ -38,7 +38,9 @@ def compare_backend_result_with_statevec(backend_state: Statevec | DensityMatrix
     if isinstance(backend_state, Statevec):
         return backend_state.isclose(statevec)
     if isinstance(backend_state, DensityMatrix):
-        return float(np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))) == pytest.approx(1)
+        return float(
+            np.abs(np.dot(backend_state.rho.flatten().conjugate(), DensityMatrix(statevec).rho.flatten()))
+        ) == pytest.approx(1)
     raise NotImplementedError(backend_state)
 
 

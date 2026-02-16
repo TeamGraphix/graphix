@@ -7,6 +7,7 @@ OpenGraph class because we want :mod:`pyzx` to be an optional dependency.
 from __future__ import annotations
 
 import warnings
+from collections import defaultdict
 from fractions import Fraction
 from typing import TYPE_CHECKING, SupportsFloat
 
@@ -138,6 +139,10 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     inputs = list(g.inputs())
     outputs = list(g.outputs())
 
+    # Sort inputs/outputs by qubit index to ensure deterministic ordering
+    inputs.sort(key=g.qubit)
+    outputs.sort(key=g.qubit)
+
     g_nx = nx.Graph(g.edges())
 
     # We need to do this since the full reduce simplification can
@@ -161,6 +166,12 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     # Turn all phase gadgets into measurements
     # Since we did a full reduce, any node that isn't an input or output
     # node and has only one neighbour is definitely a phase gadget.
+
+    # Track accumulated phases from gadgets
+    # Use 0 (int) as start, Fraction/int will sum correctly
+    # phase_additions maps node index (int) to accumulated phase (FractionLike)
+    phase_additions: defaultdict[int, FractionLike] = defaultdict(int)
+
     nodes = list(g_nx.nodes())
     for v in nodes:
         if v in inputs or v in outputs:
@@ -168,7 +179,9 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
 
         nbrs = list(g.neighbors(v))
         if len(nbrs) == 1:
-            measurements[nbrs[0]] = Measurement(-_checked_float(g.phase(v)), Plane.YZ)
+            # v is a phase gadget attached to nbrs[0]
+            # We add potential phase of v to the neighbor
+            phase_additions[nbrs[0]] += g.phase(v)
             g_nx.remove_node(v)
 
     next_id = max(g_nx.nodes) + 1
@@ -176,7 +189,7 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
     # Since outputs can't be measured, we need to add an extra two nodes
     # in to counter it
     for out in outputs:
-        if g.phase(out) == 0:
+        if g.phase(out) == 0 and phase_additions[out] == 0:
             continue
 
         g_nx.add_edges_from([(out, next_id), (next_id, next_id + 1)])
@@ -186,12 +199,16 @@ def from_pyzx_graph(g: BaseGraph[int, tuple[int, int]]) -> OpenGraph[Measurement
         next_id += 2
 
     # Add the phase to all XY measured nodes
+    # This includes nodes that had gadgets attached (accumulated in phase_additions)
     for v in g_nx.nodes:
         if v in outputs or v in measurements:
             continue
 
+        # Total phase = node's own phase + sum of gadget phases
+        total_phase = g.phase(v) + phase_additions[v]
+
         # g.phase() may be a fractions.Fraction object, but Measurement
         # expects a float
-        measurements[v] = Measurement(-_checked_float(g.phase(v)), Plane.XY)
+        measurements[v] = Measurement(-_checked_float(total_phase), Plane.XY)
 
     return OpenGraph(g_nx, inputs, outputs, measurements)

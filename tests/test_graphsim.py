@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-import pytest
 
 from graphix.clifford import Clifford
 from graphix.fundamentals import ANGLE_PI, Plane, angle_to_rad

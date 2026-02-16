@@ -4,7 +4,6 @@ from dataclasses import fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
-import numpy as np
 import pytest
 
 from graphix.command import E, M, N, X, Z
@@ -404,7 +403,6 @@ class TestFlowPatternConversion:
     def test_corrections_to_pattern(self, test_case: XZCorrectionsTestCase, fx_rng: Generator) -> None:
         if test_case.pattern is not None:
             pattern = test_case.flow.to_corrections().to_pattern()  # type: ignore[misc]
-            n_shots = 2
 
             for plane in {Plane.XY, Plane.XZ, Plane.YZ}:
                 alpha = 2 * ANGLE_PI * fx_rng.random()
