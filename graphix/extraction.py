@@ -48,7 +48,7 @@ class ResourceGraph:
         return self.cltype == other.cltype and nx.utils.graphs_equal(self.graph, other.graph)
 
 
-def get_fusion_network_from_graph(
+def graph_to_fusion_network(
     graph: GraphState,
     max_ghz: float = np.inf,
     max_lin: float = np.inf,
@@ -167,7 +167,7 @@ def create_resource_graph(node_ids: list[int], root: int | None = None) -> Resou
     return ResourceGraph(cltype=cluster_type, graph=tmp_graph)
 
 
-def get_fusion_nodes(c1: ResourceGraph, c2: ResourceGraph) -> list[int]:
+def fusion_nodes(c1: ResourceGraph, c2: ResourceGraph) -> list[int]:
     """Get the nodes that are fused between two resource states. Currently, we consider only type-I fusion.
 
     See [2] for the definition of fusion operation.

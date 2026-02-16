@@ -22,7 +22,8 @@ from typing_extensions import assert_never
 from graphix import command, optimization, parameter
 from graphix.clifford import Clifford
 from graphix.command import Command, CommandKind
-from graphix.fundamentals import Axis, ParameterizedAngle, Plane, Sign
+from graphix.flow.exceptions import FlowError
+from graphix.fundamentals import Axis, Plane, Sign
 from graphix.graphsim import GraphState
 from graphix.measurements import Measurement, Outcome, PauliMeasurement, toggle_outcome
 from graphix.opengraph import OpenGraph
@@ -42,12 +43,7 @@ if TYPE_CHECKING:
 
     from graphix.flow.core import CausalFlow, GFlow, XZCorrections
     from graphix.parameter import ExpressionOrSupportsComplex, ExpressionOrSupportsFloat, Parameter
-    from graphix.sim import (
-        Backend,
-        Data,
-        DensityMatrixBackend,
-        StatevectorBackend,
-    )
+    from graphix.sim import Backend, Data, DensityMatrixBackend, StatevectorBackend
     from graphix.sim.base_backend import _StateT_co
     from graphix.sim.tensornet import TensorNetworkBackend
     from graphix.simulator import _BackendLiteral
@@ -112,7 +108,6 @@ class Pattern:
         else:
             self.__input_nodes = list(input_nodes)  # input nodes (list() makes our own copy of the list)
         self.__n_node = len(self.__input_nodes)  # total number of nodes in the graph state
-        self._pauli_preprocessed = False  # flag for `measure_pauli` preprocessing completion
 
         self.__seq = []
         # output nodes are initially a copy input nodes, since none are measured yet
@@ -134,7 +129,6 @@ class Pattern:
         cmd : :class:`graphix.command.Command`
             MBQC command.
         """
-        self._pauli_preprocessed = False
         if cmd.kind == CommandKind.N:
             self.__n_node += 1
             self.__output_nodes.append(cmd.node)
@@ -148,7 +142,6 @@ class Pattern:
 
         :param cmds: sequences of commands
         """
-        self._pauli_preprocessed = False
         for item in cmds:
             if isinstance(item, Iterable):
                 for cmd in item:
@@ -158,7 +151,6 @@ class Pattern:
 
     def clear(self) -> None:
         """Clear the sequence of pattern commands."""
-        self._pauli_preprocessed = False
         self.__n_node = len(self.__input_nodes)
         self.__seq = []
         self.__output_nodes = list(self.__input_nodes)
@@ -170,7 +162,6 @@ class Pattern:
 
         :param input_nodes: optional, list of input qubits (by default, keep the same input nodes as before)
         """
-        self._pauli_preprocessed = False
         if input_nodes is not None:
             self.__input_nodes = list(input_nodes)
         self.clear()
@@ -216,12 +207,11 @@ class Pattern:
         - Input (and, respectively, output) nodes in the returned pattern have the order of the pattern `self` followed by those of the pattern `other`. Merged nodes are removed.
         - If `preserve_mapping = True` and :math:`|M_1| = |I_2| = |O_2|`, then the outputs of the returned pattern are the outputs of pattern `self`, where the nth merged output is replaced by the output of pattern `other` corresponding to its nth input instead.
         """
-        self._pauli_preprocessed = False
         nodes_p1 = self.extract_nodes() | self.results.keys()  # Results contain preprocessed Pauli nodes
         nodes_p2 = other.extract_nodes() | other.results.keys()
 
         if not mapping.keys() <= nodes_p2:
-            raise ValueError("Keys of `mapping` must correspond to the nodes of `other`.")
+            raise PatternError("Keys of `mapping` must correspond to the nodes of `other`.")
 
         # Cast to set for improved performance in membership test
         mapping_values_set = set(mapping.values())
@@ -229,14 +219,14 @@ class Pattern:
         i2_set = set(other.input_nodes)
 
         if len(mapping) != len(mapping_values_set):
-            raise ValueError("Values of `mapping` contain duplicates.")
+            raise PatternError("Values of `mapping` contain duplicates.")
 
         if mapping_values_set & nodes_p1 - o1_set:
-            raise ValueError("Values of `mapping` must not contain measured nodes of pattern `self`.")
+            raise PatternError("Values of `mapping` must not contain measured nodes of pattern `self`.")
 
         for k, v in mapping.items():
             if v in o1_set and k not in i2_set:
-                raise ValueError(
+                raise PatternError(
                     f"Mapping {k} -> {v} is not valid. {v} is an output of pattern `self` but {k} is not an input of pattern `other`."
                 )
 
@@ -516,7 +506,7 @@ class Pattern:
                     self._commute_with_following(target)
                 target += 1
             return signal_dict
-        raise ValueError("Invalid method")
+        raise PatternError("Invalid method")
 
     def shift_signals_direct(self) -> dict[int, set[int]]:
         """Perform signal shifting procedure."""
@@ -862,7 +852,7 @@ class Pattern:
             pos += 1
         return signal_dict
 
-    def _get_dependency(self) -> dict[int, set[int]]:
+    def _extract_dependency(self) -> dict[int, set[int]]:
         """Get dependency (byproduct correction & dependent measurement) structure of nodes in the graph (resource) state, according to the pattern.
 
         This is used to determine the optimum measurement order.
@@ -891,7 +881,7 @@ class Pattern:
         measured: set of int
             measured nodes.
         dependency: dict of set
-            which is produced by `_get_dependency`
+            which is produced by `_extract_dependency`
 
         Returns
         -------
@@ -1036,7 +1026,7 @@ class Pattern:
         nodes = set(graph.nodes)
         edges = set(graph.edges)
         not_measured = nodes - set(self.output_nodes)
-        dependency = self._get_dependency()
+        dependency = self._extract_dependency()
         self.update_dependency(self.results.keys(), dependency)
         meas_order = []
         removable_edges = set()
@@ -1072,54 +1062,18 @@ class Pattern:
         meas_cmds: list of command
             sorted measurement commands
         """
-        meas_cmds = []
-        for i in meas_order:
-            target = 0
-            while True:
-                cmd = self.__seq[target]
-                if cmd.kind == CommandKind.M and (cmd.node == i):
-                    meas_cmds.append(cmd)
-                    break
-                target += 1
-        return meas_cmds
+        meas_dict = self.extract_measurement_commands()
+        return [meas_dict[i] for i in meas_order]
 
-    def extract_measurement_commands(self) -> Iterator[command.M]:
-        """Return measurement commands.
+    def extract_measurement_commands(self) -> dict[int, command.M]:
+        """Return a dictionary mapping nodes to measurement commands.
 
         Returns
         -------
-        meas_cmds : Iterator[command.M]
-            measurement commands in the order of measurements
+        meas_dict : dict[int, command.M]
+            measurement commands indexed by nodes
         """
-        yield from (cmd for cmd in self if cmd.kind == CommandKind.M)
-
-    def get_meas_plane(self) -> dict[int, Plane]:
-        """Get measurement plane from the pattern.
-
-        Returns
-        -------
-        meas_plane: dict of graphix.pauli.Plane
-            list of planes representing measurement plane for each node.
-        """
-        meas_plane = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                meas_plane[cmd.node] = cmd.plane
-        return meas_plane
-
-    def get_angles(self) -> dict[int, ParameterizedAngle]:
-        """Get measurement angles of the pattern.
-
-        Returns
-        -------
-        angles : dict
-            measurement angles of the each node.
-        """
-        angles = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                angles[cmd.node] = cmd.angle
-        return angles
+        return {cmd.node: cmd for cmd in self if cmd.kind == CommandKind.M}
 
     def compute_max_degree(self) -> int:
         """Get max degree of a pattern.
@@ -1199,7 +1153,7 @@ class Pattern:
         for cmd in self.__seq:
             if cmd.kind == CommandKind.N:
                 if cmd.state != BasicStates.PLUS:
-                    raise ValueError(
+                    raise PatternError(
                         f"Open graph extraction requires N commands to represent a |+⟩ state. Error found in {cmd}."
                     )
                 nodes.add(cmd.node)
@@ -1217,37 +1171,14 @@ class Pattern:
         # Inputs and outputs are casted to `tuple` to replicate the behavior of `:func: graphix.opitmization.StandardizedPattern.extract_opengraph`.
         return OpenGraph(graph, tuple(self.__input_nodes), tuple(self.__output_nodes), measurements)
 
-    def get_vops(self, conj: bool = False, include_identity: bool = False) -> dict[int, Clifford]:
-        """Get local-Clifford decorations from measurement or Clifford commands.
-
-        Parameters
-        ----------
-            conj (False) : bool, optional
-                Apply conjugations to all local Clifford operators.
-            include_identity (False) : bool, optional
-                Whether or not to include identity gates in the output
+    def extract_clifford(self) -> dict[int, Clifford]:
+        """Extract Clifford commands.
 
         Returns
         -------
             vops : dict
         """
-        vops = {}
-        for cmd in self.__seq:
-            if cmd.kind == CommandKind.M:
-                if include_identity:
-                    vops[cmd.node] = Clifford.I
-            elif cmd.kind == CommandKind.C:
-                if cmd.clifford == Clifford.I:
-                    if include_identity:
-                        vops[cmd.node] = cmd.clifford
-                elif conj:
-                    vops[cmd.node] = cmd.clifford.conj
-                else:
-                    vops[cmd.node] = cmd.clifford
-        for out in self.output_nodes:
-            if out not in vops and include_identity:
-                vops[out] = Clifford.I
-        return vops
+        return {cmd.node: cmd.clifford for cmd in self.__seq if cmd.kind == CommandKind.C}
 
     def connected_nodes(self, node: int, prepared: set[int] | None = None) -> list[int]:
         """Find nodes that are connected to a specified node.
@@ -1314,9 +1245,12 @@ class Pattern:
         if not self.is_standard():
             self.standardize()
         meas_order = None
-        if not self._pauli_preprocessed:
-            cf = self.extract_opengraph().find_causal_flow()
-            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:]))) if cf is not None else None
+        try:
+            cf = self.extract_causal_flow()
+        except FlowError:
+            meas_order = None
+        else:
+            meas_order = list(itertools.chain(*reversed(cf.partial_order_layers[1:])))
         if meas_order is None:
             meas_order = self._measurement_order_space()
         self._reorder_pattern(self.sort_measurement_commands(meas_order))
@@ -1477,8 +1411,8 @@ class Pattern:
 
         """
         if self.input_nodes:
-            raise ValueError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
-        measure_pauli(self, copy=False, ignore_pauli_with_deps=ignore_pauli_with_deps)
+            raise PatternError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
+        self.__dict__.update(measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps).__dict__)
 
     def draw_graph(
         self,
@@ -1516,11 +1450,12 @@ class Pattern:
         graph = self.extract_graph()
         vin = self.input_nodes
         vout = self.output_nodes
-        meas_planes = self.get_meas_plane()
-        meas_angles = self.get_angles()
-        local_clifford = self.get_vops()
+        meas_dict = self.extract_measurement_commands()
+        meas_planes = {node: meas.plane for node, meas in meas_dict.items()}
+        meas_angles = {node: meas.angle for node, meas in meas_dict.items()}
+        clifford = self.extract_clifford()
 
-        vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
+        vis = GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, clifford)
 
         if flow_from_pattern:
             vis.visualize_from_pattern(
@@ -1595,7 +1530,6 @@ class Pattern:
         result.__input_nodes = self.__input_nodes.copy()
         result.__output_nodes = self.__output_nodes.copy()
         result.__n_node = self.__n_node
-        result._pauli_preprocessed = self._pauli_preprocessed
         result.results = self.results.copy()
         return result
 
@@ -1662,6 +1596,10 @@ class Pattern:
                 check_active(cmd, cmd.node)
 
 
+class PatternError(Exception):
+    """Exception subclass to handle pattern errors."""
+
+
 class RunnabilityErrorReason(Enum):
     """Describe the reason for a pattern not being runnable."""
 
@@ -1682,7 +1620,7 @@ class RunnabilityErrorReason(Enum):
 
 
 @dataclass
-class RunnabilityError(Exception):
+class RunnabilityError(PatternError):
     """Error raised by :method:`Pattern.check_runnability`."""
 
     cmd: Command
@@ -1704,7 +1642,7 @@ class RunnabilityError(Exception):
         assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_deps: bool = False) -> Pattern:
+def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1715,9 +1653,6 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     Parameters
     ----------
     pattern : graphix.pattern.Pattern object
-    copy : bool
-        True: changes will be applied to new copied object and will be returned
-        False: changes will be applied to the supplied Pattern object
     ignore_pauli_with_deps : bool
         Optional (*False* by default).
         If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
@@ -1733,14 +1668,14 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
-    pat = Pattern() if copy else pattern
+    pat = Pattern()
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
         standardized_pattern = standardized_pattern.perform_pauli_pushing()
     output_nodes = set(pattern.output_nodes)
     graph = standardized_pattern.extract_graph()
     graph_state = GraphState(nodes=graph.nodes, edges=graph.edges, vops=standardized_pattern.c_dict)
-    results: dict[int, Outcome] = pat.results
+    results: dict[int, Outcome] = pattern.results
     to_measure, non_pauli_meas = pauli_nodes(standardized_pattern)
     if not to_measure:
         return pattern
@@ -1783,14 +1718,14 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     # measure (remove) isolated nodes. if they aren't Pauli measurements,
     # measuring one of the results with probability of 1 should not occur as was possible above for Pauli measurements,
     # which means we can just choose s=0. We should not remove output nodes even if isolated.
-    isolates = graph_state.get_isolates()
+    isolates = graph_state.isolated_nodes()
     for node in non_pauli_meas:
         if (node in isolates) and (node not in output_nodes):
             graph_state.remove_node(node)
             results[node] = 0
 
     # update command sequence
-    vops = graph_state.get_vops()
+    vops = graph_state.extract_vops()
     new_seq: list[Command] = []
     new_seq.extend(command.N(node=index) for index in set(graph_state.nodes))
     new_seq.extend(command.E(nodes=edge) for edge in graph_state.edges)
@@ -1808,7 +1743,6 @@ def measure_pauli(pattern: Pattern, *, copy: bool = False, ignore_pauli_with_dep
     pat.reorder_output_nodes(standardized_pattern.output_nodes)
     assert pat.n_node == len(graph_state.nodes)
     pat.results = results
-    pat._pauli_preprocessed = True
     return pat
 
 
@@ -1848,7 +1782,7 @@ def pauli_nodes(pattern: optimization.StandardizedPattern) -> tuple[list[tuple[c
                 else:
                     pauli_node.append((cmd, pm))
             else:
-                raise ValueError("Unknown Pauli measurement basis")
+                raise PatternError("Unknown Pauli measurement basis")
         else:
             non_pauli_node.add(cmd.node)
     return pauli_node, non_pauli_node
@@ -1858,12 +1792,12 @@ def assert_permutation(original: list[int], user: list[int]) -> None:
     """Check that the provided `user` node list is a permutation from `original`."""
     node_set = set(user)
     if node_set != set(original):
-        raise ValueError(f"{node_set} != {set(original)}")
+        raise PatternError(f"{node_set} != {set(original)}")
     for node in user:
         if node in node_set:
             node_set.remove(node)
         else:
-            raise ValueError(f"{node} appears twice")
+            raise PatternError(f"{node} appears twice")
 
 
 @dataclass

@@ -15,19 +15,21 @@ from graphix.states import BasicStates, PlanarState
 if TYPE_CHECKING:
     from numpy.random import Generator
 
+    from graphix import Pattern
+
 
 class TestStatevec:
     @pytest.mark.parametrize(
         "state", [BasicStates.PLUS, BasicStates.ZERO, BasicStates.ONE, BasicStates.PLUS_I, BasicStates.MINUS_I]
     )
-    def test_measurement_into_each_xyz_basis(self, state: BasicStates) -> None:
+    def test_measurement_into_each_xyz_basis(self, state: PlanarState) -> None:
         n = 3
         k = 0
         # for measurement into |-> returns [[0, 0], ..., [0, 0]] (whose norm is zero)
-        statevector = state.get_statevector()
+        statevector = state.to_statevector()
         m_op = np.outer(statevector, statevector.T.conjugate())
         sv = Statevec(nqubit=n)
-        sv.evolve(m_op, [k])
+        sv.evolve(m_op.astype(np.complex128, copy=False), [k])
         sv.remove_qubit(k)
 
         sv2 = Statevec(nqubit=n - 1)
@@ -36,16 +38,16 @@ class TestStatevec:
     def test_measurement_into_minus_state(self) -> None:
         n = 3
         k = 0
-        m_op = np.outer(BasicStates.MINUS.get_statevector(), BasicStates.MINUS.get_statevector().T.conjugate())
+        m_op = np.outer(BasicStates.MINUS.to_statevector(), BasicStates.MINUS.to_statevector().T.conjugate())
         sv = Statevec(nqubit=n)
-        sv.evolve(m_op, [k])
+        sv.evolve(m_op.astype(np.complex128, copy=False), [k])
         with pytest.raises(AssertionError):
             sv.remove_qubit(k)
 
 
 class TestStatevecNew:
     # test initialization only
-    def test_init_success(self, hadamardpattern, fx_rng: Generator) -> None:
+    def test_init_success(self, hadamardpattern: Pattern, fx_rng: Generator) -> None:
         # plus state (default)
         backend = StatevectorBackend()
         backend.add_nodes(hadamardpattern.input_nodes)
@@ -73,7 +75,7 @@ class TestStatevecNew:
 
         # data input and Statevec input
 
-    def test_init_fail(self, hadamardpattern, fx_rng: Generator) -> None:
+    def test_init_fail(self, hadamardpattern: Pattern, fx_rng: Generator) -> None:
         rand_angle = fx_rng.random(2) * 2 * ANGLE_PI
         rand_plane = fx_rng.choice(np.array(Plane), 2)
 
@@ -91,7 +93,9 @@ class TestStatevecNew:
             # Applies clifford gate "Z"
             vec.evolve_single(clifford.matrix, 0)
             backend.apply_clifford(node=0, clifford=clifford)
-            np.testing.assert_allclose(vec.psi, backend.state.psi)
+            np.testing.assert_allclose(
+                vec.psi.astype(np.complex128, copy=False), backend.state.psi.astype(np.complex128, copy=False)
+            )
 
     def test_deterministic_measure_one(self, fx_rng: Generator) -> None:
         # plus state & zero state (default), but with tossed coins

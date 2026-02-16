@@ -134,43 +134,43 @@ class GraphVisualizer:
         causal_flow = og.find_causal_flow()
         if causal_flow is not None:
             print("Flow detected in the graph.")
-            pos = self.get_pos_from_flow(causal_flow)
+            pos = self.place_flow(causal_flow)
             cf = causal_flow.correction_function
             l_k = {
                 node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
             }
 
-            def get_paths(
+            def place_paths(
                 pos: Mapping[int, _Point],
             ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                return self.get_edge_path(cf, pos)
+                return self.place_edge_paths(cf, pos)
 
         else:
             g_flow = og.find_gflow()
             if g_flow is not None:
                 print("Gflow detected in the graph. (flow not detected)")
-                pos = self.get_pos_from_gflow(g_flow)
+                pos = self.place_gflow(g_flow)
                 cf = g_flow.correction_function
                 l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
 
-                def get_paths(
+                def place_paths(
                     pos: Mapping[int, _Point],
                 ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                    return self.get_edge_path(cf, pos)
+                    return self.place_edge_paths(cf, pos)
 
             else:
                 print("No flow or gflow detected in the graph.")
-                pos = self.get_pos_wo_structure()
+                pos = self.place_without_structure()
                 l_k = None
 
-                def get_paths(
+                def place_paths(
                     pos: Mapping[int, _Point],
                 ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-                    return (self.get_edge_path_wo_structure(pos), None)
+                    return (self.place_edge_paths_without_structure(pos), None)
 
         self.visualize_graph(
             pos,
-            get_paths,
+            place_paths,
             l_k,
             None,
             show_pauli_measurement,
@@ -241,33 +241,33 @@ class GraphVisualizer:
                         xzflow[key] |= value
                     else:
                         xzflow[key] = set(value)  # copy
-                pos = self.get_pos_all_correction(unfolded_layers)
+                pos = self.place_all_corrections(unfolded_layers)
                 cf = xzflow
                 l_k = None
                 corrections = xflow, zflow
             else:
                 print("The pattern is consistent with gflow structure. (not with flow)")
-                pos = self.get_pos_from_gflow(g_flow)
+                pos = self.place_gflow(g_flow)
                 cf = g_flow.correction_function
                 l_k = {node: layer_idx for layer_idx, layer in enumerate(g_flow.partial_order_layers) for node in layer}
                 corrections = None
         else:
             print("The pattern is consistent with flow structure.")
-            pos = self.get_pos_from_flow(causal_flow)
+            pos = self.place_flow(causal_flow)
             cf = causal_flow.correction_function
             l_k = {
                 node: layer_idx for layer_idx, layer in enumerate(causal_flow.partial_order_layers) for node in layer
             }
             corrections = None
 
-        def get_paths(
+        def place_paths(
             pos: Mapping[int, _Point],
         ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
-            return self.get_edge_path(cf, pos)
+            return self.place_edge_paths(cf, pos)
 
         self.visualize_graph(
             pos,
-            get_paths,
+            place_paths,
             l_k,
             corrections,
             show_pauli_measurement,
@@ -331,7 +331,7 @@ class GraphVisualizer:
     def visualize_graph(
         self,
         pos: Mapping[int, _Point],
-        get_paths: Callable[
+        place_paths: Callable[
             [Mapping[int, _Point]], tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]
         ],
         l_k: Mapping[int, int] | None,
@@ -356,7 +356,7 @@ class GraphVisualizer:
         ----------
         pos: Mapping[int, _Point]
             Node positions.
-        get_paths: Callable[
+        place_paths: Callable[
             [Mapping[int, _Point]], tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]
         ]
             Given scaled node positions, return the mapping of edge paths and the mapping of arrow paths.
@@ -381,11 +381,11 @@ class GraphVisualizer:
             Default in None.
         """
         if figsize is None:
-            figsize = self.get_figsize(l_k, pos, node_distance=node_distance)
+            figsize = self.determine_figsize(l_k, pos, node_distance=node_distance)
 
         pos = {k: (v[0] * node_distance[0], v[1] * node_distance[1]) for k, v in pos.items()}
 
-        edge_path, arrow_path = get_paths(pos)
+        edge_path, arrow_path = place_paths(pos)
 
         if corrections is not None:
             # add some padding to the right for the legend
@@ -498,7 +498,7 @@ class GraphVisualizer:
 
             plt.text(x, y, label, fontsize=9, zorder=3)
 
-    def get_figsize(
+    def determine_figsize(
         self,
         l_k: Mapping[int, int] | None,
         pos: Mapping[int, _Point] | None = None,
@@ -530,7 +530,7 @@ class GraphVisualizer:
         height = len({pos[node][1] for node in self.graph.nodes()}) if pos is not None else len(self.v_out)
         return (width * node_distance[0], height * node_distance[1])
 
-    def get_edge_path(
+    def place_edge_paths(
         self, flow: Mapping[int, AbstractSet[int]], pos: Mapping[int, _Point]
     ) -> tuple[dict[_Edge, list[_Point]], dict[_Edge, list[_Point]]]:
         """
@@ -550,7 +550,7 @@ class GraphVisualizer:
         arrow_path : dict
             dictionary of arrow paths.
         """
-        edge_path = self.get_edge_path_wo_structure(pos)
+        edge_path = self.place_edge_paths_without_structure(pos)
         edge_set = set(self.graph.edges())
         arrow_path: dict[_Edge, list[_Point]] = {}
         flow_arrows = {(k, v) for k, values in flow.items() for v in values}
@@ -636,7 +636,7 @@ class GraphVisualizer:
                 bezier_path.insert(index + i + 1, ctrl_point)
         return self._check_path(bezier_path, pos[arrow[1]])
 
-    def get_edge_path_wo_structure(self, pos: Mapping[int, _Point]) -> dict[_Edge, list[_Point]]:
+    def place_edge_paths_without_structure(self, pos: Mapping[int, _Point]) -> dict[_Edge, list[_Point]]:
         """
         Return the path of edges.
 
@@ -652,7 +652,7 @@ class GraphVisualizer:
         """
         return {edge: self._find_bezier_path(edge, [pos[edge[0]], pos[edge[1]]], pos) for edge in self.graph.edges()}
 
-    def get_pos_from_flow(self, flow: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
+    def place_flow(self, flow: CausalFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
         """
         Return the position of nodes based on the flow.
 
@@ -687,7 +687,7 @@ class GraphVisualizer:
                 pos[node][0] = lmax - layer_idx
         return {k: (x, y) for k, (x, y) in pos.items()}
 
-    def get_pos_from_gflow(self, flow: GFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
+    def place_gflow(self, flow: GFlow[AbstractPlanarMeasurement]) -> dict[int, _Point]:
         """
         Return the position of nodes based on the gflow.
 
@@ -728,7 +728,7 @@ class GraphVisualizer:
             node: (l_max - layer_idx, index[pos[node][1]]) for layer_idx, layer in enumerate(layers) for node in layer
         }
 
-    def get_pos_wo_structure(self) -> dict[int, _Point]:
+    def place_without_structure(self) -> dict[int, _Point]:
         """
         Return the position of nodes based on the graph.
 
@@ -816,7 +816,7 @@ class GraphVisualizer:
         index = {y: i for i, y in enumerate(vert)}
         return {node: (l_max - layers[node], index[pos[node][1]]) for node in self.graph.nodes()}
 
-    def get_pos_all_correction(self, layers: Mapping[int, int]) -> dict[int, _Point]:
+    def place_all_corrections(self, layers: Mapping[int, int]) -> dict[int, _Point]:
         """
         Return the position of nodes based on the pattern.
 

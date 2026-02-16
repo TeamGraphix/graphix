@@ -85,14 +85,14 @@ class MeasureMethod(abc.ABC):
         rng: Generator | None = None,
     ) -> None:
         """Perform a measure."""
-        description = self.get_measurement_description(cmd)
+        description = self.describe_measurement(cmd)
         result = backend.measure(cmd.node, description, rng=rng)
         if noise_model is not None:
             result = noise_model.confuse_result(cmd, result, rng=rng)
-        self.set_measure_result(cmd.node, result)
+        self.store_measurement_outcome(cmd.node, result)
 
     @abc.abstractmethod
-    def get_measurement_description(self, cmd: BaseM) -> Measurement:
+    def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by a command.
 
         Parameters
@@ -108,7 +108,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_measure_result(self, node: int) -> Outcome:
+    def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -124,7 +124,7 @@ class MeasureMethod(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def set_measure_result(self, node: int, result: Outcome) -> None:
+    def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -135,6 +135,16 @@ class MeasureMethod(abc.ABC):
             Measurement outcome to store.
         """
         ...
+
+    def check_domain(self, domain: Iterable[int]) -> bool:
+        """Check that the measurement outcomes match the domain condition.
+
+        Parameters
+        ----------
+        domain : Iterable[int]
+            domain on which to compute the condition for applying conditional commands.
+        """
+        return sum(self.measurement_outcome(j) for j in domain) % 2 == 1
 
 
 class DefaultMeasureMethod(MeasureMethod):
@@ -157,10 +167,11 @@ class DefaultMeasureMethod(MeasureMethod):
         performed during simulation are stored in `self.results`, which is a copy
         of the given mapping. The original `results` mapping is not modified.
         """
-        # results is coerced into dict, since `set_measure_result` mutates it.
+        # results is coerced into dict, since `store_measurement_outcome` mutates it.
         self.results = {} if results is None else dict(results)
 
-    def get_measurement_description(self, cmd: BaseM) -> Measurement:
+    @override
+    def describe_measurement(self, cmd: BaseM) -> Measurement:
         """Return the description of the measurement performed by ``cmd``.
 
         Parameters
@@ -181,7 +192,8 @@ class DefaultMeasureMethod(MeasureMethod):
         angle = cmd.angle * measure_update.coeff + measure_update.add_term
         return Measurement(angle, measure_update.new_plane)
 
-    def get_measure_result(self, node: int) -> Outcome:
+    @override
+    def measurement_outcome(self, node: int) -> Outcome:
         """Return the result of a previous measurement.
 
         Parameters
@@ -196,7 +208,8 @@ class DefaultMeasureMethod(MeasureMethod):
         """
         return self.results[node]
 
-    def set_measure_result(self, node: int, result: Outcome) -> None:
+    @override
+    def store_measurement_outcome(self, node: int, result: Outcome) -> None:
         """Store the result of a previous measurement.
 
         Parameters
@@ -276,10 +289,6 @@ class PatternSimulator(Generic[_StateT_co]):
         """Return the measure method."""
         return self.__measure_method
 
-    def set_noise_model(self, model: NoiseModel | None) -> None:
-        """Set a noise model."""
-        self.noise_model = model
-
     def run(self, input_state: Data = BasicStates.PLUS, rng: Generator | None = None) -> None:
         """Perform the simulation.
 
@@ -315,7 +324,8 @@ class PatternSimulator(Generic[_StateT_co]):
                 self.__measure_method.measure(self.backend, cmd, noise_model=self.noise_model, rng=rng)
             # Use of `==` here for mypy
             elif cmd.kind == CommandKind.X or cmd.kind == CommandKind.Z:  # noqa: PLR1714
-                self.backend.correct_byproduct(cmd, self.__measure_method)
+                if self.__measure_method.check_domain(cmd.domain):
+                    self.backend.correct_byproduct(cmd)
             elif cmd.kind == CommandKind.C:
                 self.backend.apply_clifford(cmd.node, cmd.clifford)
             elif cmd.kind == CommandKind.T:
@@ -325,7 +335,8 @@ class PatternSimulator(Generic[_StateT_co]):
                 # handling of ticks during noise transpilation.
                 pass
             elif cmd.kind == CommandKind.ApplyNoise:
-                self.backend.apply_noise(cmd.nodes, cmd.noise)
+                if cmd.domain is None or self.__measure_method.check_domain(cmd.domain):
+                    self.backend.apply_noise(cmd)
             elif cmd.kind == CommandKind.S:
                 raise ValueError("S commands unexpected in simulated patterns.")
             else:

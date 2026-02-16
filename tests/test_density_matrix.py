@@ -10,12 +10,13 @@ import numpy.typing as npt
 import pytest
 
 import graphix.random_objects as randobj
+from graphix import command
 from graphix.branch_selector import RandomBranchSelector
 from graphix.channels import KrausChannel, dephasing_channel, depolarising_channel
 from graphix.fundamentals import ANGLE_PI, Plane
 from graphix.ops import Ops
 from graphix.sim.density_matrix import DensityMatrix, DensityMatrixBackend
-from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec, StatevectorBackend
+from graphix.sim.statevec import CNOT_TENSOR, CZ_TENSOR, SWAP_TENSOR, Statevec
 from graphix.simulator import DefaultMeasureMethod
 from graphix.states import BasicStates, PlanarState
 from graphix.transpiler import Circuit
@@ -44,16 +45,9 @@ class TestDensityMatrix:
             DensityMatrix(nqubit=-2)
 
     def test_init_with_invalid_data_fail(self, fx_rng: Generator) -> None:
-        with pytest.raises(ValueError):
-            DensityMatrix("hello")
-        with pytest.raises(TypeError):
-            DensityMatrix(1)
         # Length is not a power of two
         with pytest.raises(ValueError):
-            DensityMatrix([1, 2, [3]])
-        # setting an array element with a sequence (numpy error)
-        with pytest.raises(ValueError):
-            DensityMatrix([1, 2, [3], 4])
+            DensityMatrix([1, 2, 3])
 
         # check with hermitian dm but not unit trace
         with pytest.raises(ValueError):
@@ -111,7 +105,9 @@ class TestDensityMatrix:
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
         # flattens input!
-        expected_dm = np.outer(vec.psi, vec.psi.conj())
+        expected_dm = np.outer(
+            vec.psi.astype(np.complex128, copy=False), vec.psi.conj().astype(np.complex128, copy=False)
+        )
 
         # input with a State object
         dm = DensityMatrix(data=states)
@@ -140,14 +136,16 @@ class TestDensityMatrix:
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
         # flattens input!
-        expected_dm = np.outer(vec.psi, vec.psi.conj())
+        expected_dm = np.outer(
+            vec.psi.astype(np.complex128, copy=False), vec.psi.conj().astype(np.complex128, copy=False)
+        )
 
         # input with a Statevec object
         dm = DensityMatrix(data=vec)
         assert dm.dims() == (2**nqb, 2**nqb)
         assert np.allclose(dm.rho, expected_dm)
 
-        sv_list = [state.get_statevector() for state in states]
+        sv_list = [state.to_statevector() for state in states]
         sv = functools.reduce(np.kron, sv_list)  # type: ignore[arg-type]
 
         # input with a statevector DATA (not Statevec object)
@@ -167,10 +165,12 @@ class TestDensityMatrix:
         print("planes", rand_planes)
         states = [PlanarState(plane=i, angle=j) for i, j in zip(rand_planes, rand_angles, strict=True)]
         vec = Statevec(data=states)
-        expected_dm = np.outer(vec.psi, vec.psi.conj())
+        expected_dm = np.outer(
+            vec.psi.astype(np.complex128, copy=False), vec.psi.conj().astype(np.complex128, copy=False)
+        )
 
         # input with a huge density matrix
-        dm_list = [state.get_densitymatrix() for state in states]
+        dm_list = [state.to_densitymatrix() for state in states]
         num_dm = functools.reduce(np.kron, dm_list)  # type: ignore[arg-type]
 
         dm = DensityMatrix(data=num_dm)
@@ -202,7 +202,9 @@ class TestDensityMatrix:
         for i in range(n):
             sv = Statevec(nqubit=n)
             sv.evolve_single(op, i)
-            expected_density_matrix = np.outer(sv.psi, sv.psi.conj())
+            expected_density_matrix = np.outer(
+                sv.psi.astype(np.complex128, copy=False), sv.psi.conj().astype(np.complex128, copy=False)
+            )
             dm = DensityMatrix(nqubit=n)
             dm.evolve_single(op, i)
             assert np.allclose(dm.rho, expected_density_matrix)
@@ -249,13 +251,6 @@ class TestDensityMatrix:
 
         # watch out ordering. Expval unitary is cpx so psi1 on the right to match DM.
         assert np.allclose(np.dot(psi.conjugate(), psi1), dm.expectation_single(op, target_qubit))
-
-    def test_tensor_fail(self) -> None:
-        dm = DensityMatrix(nqubit=1)
-        with pytest.raises(ValueError):
-            dm.tensor("hello")
-        with pytest.raises(TypeError):
-            dm.tensor(1)
 
     @pytest.mark.parametrize("n", range(3))
     def test_tensor_without_data_success(self, n: int) -> None:
@@ -502,15 +497,15 @@ class TestDensityMatrix:
 
         # check not square matrix
         with pytest.raises(ValueError):
-            dm.evolve(fx_rng.uniform(size=(2, 3)), (0, 1))
+            dm.evolve(fx_rng.uniform(size=(2, 3)).astype(np.complex128), (0, 1))
 
         # check higher dimensional matrix
         with pytest.raises(ValueError):
-            dm.evolve(fx_rng.uniform(size=(2, 2, 3)), (0, 1))
+            dm.evolve(fx_rng.uniform(size=(2, 2, 3)).astype(np.complex128), (0, 1))
 
         # check square but with incorrect dimension (non-qubit type)
         with pytest.raises(ValueError):
-            dm.evolve(fx_rng.uniform(size=(5, 5)), (0, 1))
+            dm.evolve(fx_rng.uniform(size=(5, 5)).astype(np.complex128), (0, 1))
 
     # TODO: the test for normalization is done at initialization with data.
     # Now check that all operations conserve the norm.
@@ -920,51 +915,14 @@ class TestDensityMatrixBackend:
 
     @pytest.mark.parametrize("pr_calc", [False, True])
     def test_measure(self, pr_calc: bool) -> None:
-        circ = Circuit(1)
-        circ.rx(0, ANGLE_PI / 2)
-        pattern = circ.transpile().pattern
-
         measure_method = DefaultMeasureMethod()
         backend = DensityMatrixBackend(branch_selector=RandomBranchSelector(pr_calc=pr_calc))
-        backend.add_nodes(pattern.input_nodes)
+        backend.add_nodes([0])
         backend.add_nodes([1, 2])
         backend.entangle_nodes((0, 1))
         backend.entangle_nodes((1, 2))
-        measure_method.measure(backend, pattern[-4])
+        measure_method.measure(backend, command.M(0))
 
         expected_matrix_1 = np.kron(np.array([[1, 0], [0, 0]]), np.ones((2, 2)) / 2)
         expected_matrix_2 = np.kron(np.array([[0, 0], [0, 1]]), np.array([[0.5, -0.5], [-0.5, 0.5]]))
         assert np.allclose(backend.state.rho, expected_matrix_1) or np.allclose(backend.state.rho, expected_matrix_2)
-
-    def test_correct_byproduct(self) -> None:
-        circ = Circuit(1)
-        circ.rx(0, ANGLE_PI / 2)
-        pattern = circ.transpile().pattern
-        measure_method = DefaultMeasureMethod()
-        backend = DensityMatrixBackend()
-        backend.add_nodes(pattern.input_nodes)
-        # node 0 initialized in Backend
-        backend.add_nodes([1, 2])
-        backend.entangle_nodes((0, 1))
-        backend.entangle_nodes((1, 2))
-        measure_method.measure(backend, pattern[-4])
-        measure_method.measure(backend, pattern[-3])
-        backend.correct_byproduct(pattern[-2], measure_method)
-        backend.correct_byproduct(pattern[-1], measure_method)
-        backend.finalize(pattern.output_nodes)
-        rho = backend.state.rho
-
-        backend = StatevectorBackend()
-        backend.add_nodes(pattern.input_nodes)
-        # node 0 initialized in Backend
-        backend.add_nodes([1, 2])
-        backend.entangle_nodes((0, 1))
-        backend.entangle_nodes((1, 2))
-        measure_method.measure(backend, pattern[-4])
-        measure_method.measure(backend, pattern[-3])
-        backend.correct_byproduct(pattern[-2], measure_method)
-        backend.correct_byproduct(pattern[-1], measure_method)
-        backend.finalize(pattern.output_nodes)
-        psi = backend.state.psi
-
-        assert np.allclose(rho, np.outer(psi, psi.conj()))

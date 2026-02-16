@@ -44,6 +44,7 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderErrorReason,
 )
 from graphix.fundamentals import Axis, Plane
+from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -326,6 +327,38 @@ class XZCorrections(Generic[_M_co]):
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
+    def __str__(self) -> str:
+        """Return a human-readable string representing the XZCorrections' mappings and partial order layers."""
+        return self.to_ascii()
+
+    def to_ascii(self, multiline: bool = False) -> str:
+        """Return an ASCII string representing the XZCorrections' mappings and partial order layers.
+
+        Parameters
+        ----------
+        multiline : bool (optional)
+            Flag to format the output. If ``True`` a new line is printed after each correction set. Defaults to ``False``.
+
+        Returns
+        -------
+        str
+        """
+        return xzcorr_to_str(self, output=OutputFormat.ASCII, multiline=multiline)
+
+    def to_latex(self, multiline: bool = False) -> str:
+        """Return a string containing the LaTeX representation of the XZCorrections' mappings and partial order layers.
+
+        See notes in :meth:`to_ascii` for additional information.
+        """
+        return xzcorr_to_str(self, output=OutputFormat.LaTeX, multiline=multiline)
+
+    def to_unicode(self, multiline: bool = False) -> str:
+        """Return a Unicode string representing the XZCorrections' mappings and partial order layers.
+
+        See notes in :meth:`to_ascii` for additional information.
+        """
+        return xzcorr_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
+
     def subs(
         self: XZCorrections[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
     ) -> XZCorrections[Measurement]:
@@ -405,6 +438,8 @@ class PauliFlow(Generic[_M_co]):
     correction_function: Mapping[int, AbstractSet[int]]
     partial_order_layers: Sequence[AbstractSet[int]]
 
+    _CF_PREFIX: str = "p"  # Correction function prefix for printing
+
     @classmethod
     def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
         """Initialize a `PauliFlow` object from a matrix encoding a correction function.
@@ -458,9 +493,9 @@ class PauliFlow(Generic[_M_co]):
                 correcting_set = self.correction_function[measured_node]
                 # Conditionals avoid storing empty correction sets
                 if x_corrected_nodes := correcting_set & future:
-                    x_corrections[measured_node] = x_corrected_nodes
+                    x_corrections[measured_node] = frozenset(x_corrected_nodes)
                 if z_corrected_nodes := self.og.odd_neighbors(correcting_set) & future:
-                    z_corrections[measured_node] = z_corrected_nodes
+                    z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
             future |= layer
 
@@ -536,7 +571,7 @@ class PauliFlow(Generic[_M_co]):
             for node in layer:
                 correction_set = set(self.correction_function[node])
 
-                meas = self.get_measurement_label(node)
+                meas = self.node_measurement_label(node)
 
                 for i in (correction_set - {node}) & past_and_present_nodes:
                     if self.og.measurements[i].to_plane_or_axis() not in {Axis.X, Axis.Y}:
@@ -606,7 +641,7 @@ class PauliFlow(Generic[_M_co]):
         if {*o_set, *past_and_present_nodes} != set(self.og.graph.nodes):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
-    def get_measurement_label(self, node: int) -> Plane | Axis:
+    def node_measurement_label(self, node: int) -> Plane | Axis:
         """Get the measurement label of a given node in the open graph.
 
         This method interprets measurements with a Pauli angle as `Axis` instances, in consistence with the Pauli flow extraction routine.
@@ -620,6 +655,38 @@ class PauliFlow(Generic[_M_co]):
         Plane | Axis
         """
         return self.og.measurements[node].to_plane_or_axis()
+
+    def __str__(self) -> str:
+        """Return a human-readable string representing the flow's correction function and partial order layers."""
+        return self.to_ascii()
+
+    def to_ascii(self, multiline: bool = False) -> str:
+        """Return an ASCII string representing the flow's correction function and partial order layers.
+
+        Parameters
+        ----------
+        multiline : bool (optional)
+            Flag to format the output. If ``True`` a new line is printed after each correction set. Defaults to ``False``.
+
+        Returns
+        -------
+        str
+        """
+        return flow_to_str(self, output=OutputFormat.ASCII, multiline=multiline)
+
+    def to_latex(self, multiline: bool = False) -> str:
+        """Return a string containing the LaTeX representation of the flow's correction function and partial order layers.
+
+        See notes in :meth:`to_ascii` for additional information.
+        """
+        return flow_to_str(self, output=OutputFormat.LaTeX, multiline=multiline)
+
+    def to_unicode(self, multiline: bool = False) -> str:
+        """Return a Unicode string representing the flow's correction function and partial order layers.
+
+        See notes in :meth:`to_ascii` for additional information.
+        """
+        return flow_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
 
     def subs(  # noqa: PYI019 Annotating with `Self` is not possible since `self` must be of parametric type `Measurement`.
         self: _T_PauliFlowMeasurement, variable: Parameter, substitute: ExpressionOrSupportsFloat
@@ -765,6 +832,8 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
 
     """
 
+    _CF_PREFIX: str = "g"  # Correction function prefix for printing
+
     @override
     @classmethod
     def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> Self | None:
@@ -814,9 +883,9 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
         for measured_node, correcting_set in self.correction_function.items():
             # Conditionals avoid storing empty correction sets
             if x_corrected_nodes := correcting_set - {measured_node}:
-                x_corrections[measured_node] = x_corrected_nodes
+                x_corrections[measured_node] = frozenset(x_corrected_nodes)
             if z_corrected_nodes := self.og.odd_neighbors(correcting_set) - {measured_node}:
-                z_corrections[measured_node] = z_corrected_nodes
+                z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
@@ -884,7 +953,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
                         past_and_present_nodes=past_and_present_nodes,
                     )
 
-                plane = self.get_measurement_label(node)
+                plane = self.node_measurement_label(node)
 
                 if plane == Plane.XY:
                     if not (node not in correction_set and node in odd_neighbors):
@@ -910,7 +979,7 @@ class GFlow(PauliFlow[_PM_co], Generic[_PM_co]):
             raise PartialOrderError(PartialOrderErrorReason.IncorrectNodes)
 
     @override
-    def get_measurement_label(self, node: int) -> Plane:
+    def node_measurement_label(self, node: int) -> Plane:
         """Get the measurement label of a given node in the open graph.
 
         This method interprets measurements with a Pauli angle as `Plane` instances, in consistence with the gflow extraction routine.
@@ -940,6 +1009,8 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
 
     """
 
+    _CF_PREFIX: str = "c"  # Correction function prefix for printing
+
     @override
     @classmethod
     def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_PM_co]) -> None:
@@ -967,9 +1038,9 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
         for measured_node, correcting_set in self.correction_function.items():
             # Conditionals avoid storing empty correction sets
             if x_corrected_nodes := correcting_set:
-                x_corrections[measured_node] = x_corrected_nodes
+                x_corrections[measured_node] = frozenset(x_corrected_nodes)
             if z_corrected_nodes := self.og.neighbors(correcting_set) - {measured_node}:
-                z_corrections[measured_node] = z_corrected_nodes
+                z_corrections[measured_node] = frozenset(z_corrected_nodes)
 
         return XZCorrections(self.og, x_corrections, z_corrections, self.partial_order_layers)
 
@@ -1023,7 +1094,7 @@ class CausalFlow(GFlow[_PM_co], Generic[_PM_co]):
                 if len(correction_set) != 1:
                     raise FlowPropositionError(FlowPropositionErrorReason.C0, node=node, correction_set=correction_set)
 
-                meas = self.get_measurement_label(node)
+                meas = self.node_measurement_label(node)
                 if meas != Plane.XY:
                     raise FlowGenericError(FlowGenericErrorReason.XYPlane)
 

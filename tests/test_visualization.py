@@ -92,20 +92,21 @@ def example_pflow(rng: Generator) -> Pattern:
     return pattern
 
 
-def test_get_pos_from_flow() -> None:
+def test_flow_to_position() -> None:
     circuit = Circuit(1)
     circuit.h(0)
     pattern = circuit.transpile().pattern
     graph = pattern.extract_graph()
     vin = pattern.input_nodes if pattern.input_nodes is not None else []
     vout = pattern.output_nodes
-    meas_planes = pattern.get_meas_plane()
-    meas_angles = pattern.get_angles()
-    local_clifford = pattern.get_vops()
-    vis = visualization.GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, local_clifford)
+    meas_dict = pattern.extract_measurement_commands()
+    meas_planes = {node: meas.plane for node, meas in meas_dict.items()}
+    meas_angles = {node: meas.angle for node, meas in meas_dict.items()}
+    clifford = pattern.extract_clifford()
+    vis = visualization.GraphVisualizer(graph, vin, vout, meas_planes, meas_angles, clifford)
     og = OpenGraph(graph, vin, vout, meas_planes)
     causal_flow = og.extract_causal_flow()
-    pos = vis.get_pos_from_flow(causal_flow)
+    pos = vis.place_flow(causal_flow)
     assert pos is not None
 
 
@@ -200,10 +201,10 @@ def test_large_node_number() -> None:
     pattern.draw_graph()
 
 
-def test_get_figsize_without_layers_or_pos() -> None:
+def test_determine_figsize_without_layers_or_pos() -> None:
     vis, _pattern = example_visualizer()
     with pytest.raises(ValueError):
-        vis.get_figsize(None, None)
+        vis.determine_figsize(None, None)
 
 
 def test_edge_intersects_node_equals() -> None:

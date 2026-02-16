@@ -19,7 +19,7 @@ from graphix.flow.exceptions import (
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
 from graphix.measurements import Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
-from graphix.pattern import Pattern, RunnabilityError, RunnabilityErrorReason, shift_outcomes
+from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
 from graphix.sim.density_matrix import DensityMatrix
 from graphix.sim.statevec import Statevec
@@ -53,7 +53,7 @@ class TestPattern:
         pattern = Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[2, 0])
         assert pattern.input_nodes == [1, 0]
         assert pattern.output_nodes == [2, 0]
-        with pytest.raises(ValueError):
+        with pytest.raises(PatternError):
             Pattern(input_nodes=[1, 0], cmds=[N(node=2), M(node=1)], output_nodes=[0, 1, 2])
 
     def test_eq(self) -> None:
@@ -86,6 +86,50 @@ class TestPattern:
         state = circuit.simulate_statevector().statevec
         state_mbqc = pattern.simulate_pattern(rng=fx_rng)
         assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+
+    # https://github.com/TeamGraphix/graphix/issues/157
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            Pattern(
+                input_nodes=[0],
+                cmds=[
+                    N(1),
+                    N(2),
+                    E((0, 1)),
+                    E((1, 2)),
+                    M(1, Plane.XY, 0),
+                    M(0, Plane.XY, 0, {1}),
+                    Z(2, {0}),
+                ],
+            ),
+            Pattern(
+                input_nodes=[3],
+                cmds=[
+                    N(1),
+                    E((1, 3)),
+                    N(4),
+                    E((1, 4)),
+                    N(0),
+                    E((3, 0)),
+                    M(3),
+                    M(1, s_domain={3}),
+                    N(2),
+                    E((0, 2)),
+                    M(0),
+                    N(5),
+                    E((4, 5)),
+                    M(4, s_domain={1}, t_domain={3}),
+                    Z(5, {1}),
+                    X(2, {0}),
+                    X(5, {4}),
+                ],
+            ),
+        ],
+    )
+    def test_minimize_space_runnability(self, pattern: Pattern) -> None:
+        pattern.minimize_space()
+        pattern.check_runnability()
 
     def test_pauli_non_contiguous(self) -> None:
         pattern = Pattern(input_nodes=[0])
@@ -132,7 +176,7 @@ class TestPattern:
                 assert state.dims() == (1, 1)
             elif isinstance(state, MBQCTensorNet):
                 assert state.to_statevector().shape == (1,)
-            return sim.measure_method.get_measure_result(0)
+            return sim.measure_method.measurement_outcome(0)
 
         nb_shots = 1000
         nb_ones = sum(1 for _ in range(nb_shots) if simulate_and_measure())
@@ -256,7 +300,7 @@ class TestPattern:
         circuit = rand_circuit(nqubits, depth, fx_rng)
         pattern = circuit.transpile().pattern
         pattern.standardize()
-        with pytest.raises(ValueError):
+        with pytest.raises(PatternError):
             pattern.perform_pauli_measurements()
 
     def test_pauli_measurement_leave_input(self) -> None:
@@ -277,7 +321,7 @@ class TestPattern:
         swap(circuit, 0, 2)
         pattern = circuit.transpile().pattern
         pattern.standardize()
-        with pytest.raises(ValueError):
+        with pytest.raises(PatternError):
             pattern.perform_pauli_measurements()
 
     @pytest.mark.parametrize("jumps", range(1, 6))
@@ -332,7 +376,7 @@ class TestPattern:
         composed_pattern.perform_pauli_measurements()
         assert abs(len(composed_pattern.results) - len(pattern.results) - len(pattern1.results)) <= 2
 
-    def test_get_meas_plane(self) -> None:
+    def test_extract_measurement_commands(self) -> None:
         preset_meas_plane = [
             Plane.XY,
             Plane.XY,
@@ -349,17 +393,17 @@ class TestPattern:
         for i in range(len(preset_meas_plane)):
             pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(Clifford(vop_list[i % 3])))
         ref_meas_plane = {
-            0: Plane.XY,
-            1: Plane.XY,
-            2: Plane.YZ,
-            3: Plane.YZ,
-            4: Plane.XZ,
-            5: Plane.XY,
-            6: Plane.XZ,
-            7: Plane.YZ,
-            8: Plane.XZ,
+            0: M(0, Plane.XY),
+            1: M(1, Plane.XY, 0.5),
+            2: M(2, Plane.YZ),
+            3: M(3, Plane.YZ),
+            4: M(4, Plane.XZ),
+            5: M(5, Plane.XY),
+            6: M(6, Plane.XZ),
+            7: M(7, Plane.YZ),
+            8: M(8, Plane.XZ, 0.5),
         }
-        meas_plane = pattern.get_meas_plane()
+        meas_plane = pattern.extract_measurement_commands()
         assert meas_plane == ref_meas_plane
 
     @pytest.mark.parametrize("plane", Plane)
@@ -483,17 +527,19 @@ class TestPattern:
         assert pc == p
         assert mapping_c == {0: 1, 2: 5}
 
-        with pytest.raises(ValueError, match=r"Keys of `mapping` must correspond to the nodes of `other`."):
+        with pytest.raises(PatternError, match=r"Keys of `mapping` must correspond to the nodes of `other`."):
             p1.compose(p2, mapping={0: 1, 2: 5, 1: 2})
 
-        with pytest.raises(ValueError, match=r"Values of `mapping` contain duplicates."):
+        with pytest.raises(PatternError, match=r"Values of `mapping` contain duplicates."):
             p1.compose(p2, mapping={0: 1, 2: 1})
 
-        with pytest.raises(ValueError, match=r"Values of `mapping` must not contain measured nodes of pattern `self`."):
+        with pytest.raises(
+            PatternError, match=r"Values of `mapping` must not contain measured nodes of pattern `self`."
+        ):
             p1.compose(p2, mapping={0: 1, 2: 0})
 
         with pytest.raises(
-            ValueError,
+            PatternError,
             match=r"Mapping 2 -> 1 is not valid. 1 is an output of pattern `self` but 2 is not an input of pattern `other`.",
         ):
             p1.compose(p2, mapping={2: 1})
