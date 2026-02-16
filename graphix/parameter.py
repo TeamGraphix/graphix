@@ -375,7 +375,12 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     """
     if not isinstance(value, Expression):
         return value
-    return value.subs(variable, substitute)
+    new_value = value.subs(variable, substitute)
+    if math.isclose(new_value.imag, 0.0):
+        # Conversion to float, to enable the simulator to call
+        # real trigonometric functions to the result.
+        return new_value.real
+    return new_value
 
 
 @overload
@@ -408,7 +413,12 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     """
     if not isinstance(value, Expression):
         return value
-    return value.xreplace(assignment)
+    new_value = value.xreplace(assignment)
+    if math.isclose(new_value.imag, 0.0):
+        # Conversion to float, to enable the simulator to call
+        # real trigonometric functions to the result.
+        return new_value.real
+    return new_value
 
 
 def cos_sin(angle: ExpressionOrFloat) -> tuple[ExpressionOrFloat, ExpressionOrFloat]:
