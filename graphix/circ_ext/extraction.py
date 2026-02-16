@@ -131,7 +131,7 @@ class PauliString:
                 negative_sign ^= pm.sign == Sign.MINUS
 
         # One phase flip if measured on the YZ plane.
-        negative_sign ^= flow.get_measurement_label(node) == Plane.YZ
+        negative_sign ^= flow.node_measurement_label(node) == Plane.YZ
 
         return PauliString(x_corrections, y_corrections, z_corrections, negative_sign)
 

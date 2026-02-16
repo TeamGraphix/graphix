@@ -756,7 +756,7 @@ class PauliFlow(Generic[_M_co]):
             odd_correction_set = self.og.odd_neighbors(correction_set)
             symdiff_set = odd_correction_set.symmetric_difference(correction_set)
             for node in oc_set - {corrected_node}:
-                meas_label = self.get_measurement_label(node)
+                meas_label = self.node_measurement_label(node)
                 if node in correction_set and meas_label not in {Plane.XY, Axis.X, Axis.Y}:
                     return False
                 if node in odd_correction_set and meas_label not in {Plane.XZ, Plane.YZ, Axis.Y, Axis.Z}:
