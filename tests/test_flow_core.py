@@ -4,7 +4,6 @@ from dataclasses import fields
 from typing import TYPE_CHECKING, NamedTuple
 
 import networkx as nx
-import numpy as np
 import pytest
 
 from graphix.command import E, M, N, X, Z
