@@ -165,11 +165,22 @@ class TestStatevecFidelity:
         vec2 = Statevec(data=BasicStates.ONE)
         assert vec1.fidelity(vec2) == pytest.approx(0)
 
+    def test_fidelity_type_error(self) -> None:
+        vec = Statevec(nqubit=1)
+        with pytest.raises(TypeError):
+            vec.fidelity("invalid")  # type: ignore[arg-type]
+
+    def test_fidelity_dim_error(self) -> None:
+        vec1 = Statevec(nqubit=1)
+        vec2 = Statevec(nqubit=2)
+        with pytest.raises(ValueError):
+            vec1.fidelity(vec2)
+
     def test_isclose_phase(self) -> None:
         vec1 = Statevec(data=BasicStates.PLUS)
         vec2 = Statevec(data=BasicStates.PLUS)
         # Add global phase
-        vec2.psi *= 1j  # type: ignore[operator]
+        vec2.psi *= 1j  # type: ignore[misc]
         assert vec1.isclose(vec2)
 
     def test_isclose_fail(self) -> None:
