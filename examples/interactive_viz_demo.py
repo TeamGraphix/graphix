@@ -22,6 +22,7 @@ def main():
     # p.standardize()
     
     print("Pattern created with", len(p), "commands.")
+    print("Launching interactive visualization with real-time simulation...")
     
     viz = InteractiveGraphVisualizer(p)
     viz.visualize()
