@@ -421,7 +421,7 @@ class Statevec(DenseState):
         st1.normalize()
         st2 = copy.copy(other)
         st2.normalize()
-        return float(np.abs(np.vdot(st1.psi.flatten(), st2.psi.flatten()))) ** 2
+        return float(np.abs(np.vdot(st1.psi.flatten(), st2.psi.flatten()))) ** 2  # type: ignore[arg-type]
 
     def isclose(self, other: Statevec, atol: float = 1e-15, rtol: float = 1e-10) -> bool:
         r"""Return whether the state is equal to another state up to global phase.

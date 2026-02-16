@@ -14,6 +14,7 @@ from graphix.command import C, Command, E, X, Z
 from graphix.fundamentals import ANGLE_PI
 from graphix.ops import Ops
 from graphix.random_objects import rand_circuit
+from graphix.sim.statevec import Statevec
 from graphix.sim.tensornet import MBQCTensorNet, gen_str
 from graphix.states import BasicStates
 from graphix.transpiler import Circuit
@@ -379,8 +380,6 @@ class TestTN:
 
     @pytest.mark.parametrize(("nqubits", "jumps"), itertools.product(range(2, 6), range(1, 6)))
     def test_to_statevector(self, fx_bg: PCG64, nqubits: int, jumps: int, fx_rng: Generator) -> None:
-        from graphix.sim.statevec import Statevec
-
         rng = Generator(fx_bg.jumped(jumps))
         circuit = rand_circuit(nqubits, 3, rng)
         pattern = circuit.transpile().pattern
