@@ -89,7 +89,7 @@ class InteractiveGraphVisualizer:
         """Render the graph state on the right panel."""
         try:
             self.ax_graph.clear()
-            
+
             # Get current state from simulation
             active_nodes, measured_nodes, active_edges, corrections, results = self._update_graph_state(
                 self.current_step
@@ -108,44 +108,41 @@ class InteractiveGraphVisualizer:
                     x, y = self.node_positions[node]
                     circle = plt.Circle((x, y), 0.1, color="lightgray", zorder=2)
                     self.ax_graph.add_patch(circle)
-                    
+
                     label_text = str(node)
                     # Show measurement outcome if available
                     if node in results:
                         label_text += f"\n={results[node]}"
-                    
+
                     self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, zorder=3)
 
             # 2. Active nodes (white with colored edge, with correction text)
             for node in active_nodes:
                 if node in self.node_positions:
                     x, y = self.node_positions[node]
-                    circle = plt.Circle(
-                        (x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2
-                    )
+                    circle = plt.Circle((x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2)
                     self.ax_graph.add_patch(circle)
-                    
+
                     label_text = str(node)
                     # Show accumulated internal corrections
                     if node in corrections:
                         label_text += "\n" + "".join(sorted(corrections[node]))
-                    
+
                     color = "black"
                     if node in corrections:
                         color = "blue"  # Highlight corrected nodes
 
-                    self.ax_graph.text(
-                        x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3
-                    )
+                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3)
 
             # Set aspect close to equal and hide axes
             self.ax_graph.set_aspect("equal")
             self.ax_graph.set_xlim(self.x_limits)
             self.ax_graph.set_ylim(self.y_limits)
             self.ax_graph.axis("off")
-            
+
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             print(f"Error drawing graph: {e}", file=sys.stderr)
         # Matplotlib widgets placeholders (initialized in visualize)
@@ -203,9 +200,7 @@ class InteractiveGraphVisualizer:
         self._update(0)
 
         # Slider config
-        self.slider = Slider(
-            self.ax_slider, "Step", 0, self.total_steps, valinit=0, valstep=1, color="lightblue"
-        )
+        self.slider = Slider(self.ax_slider, "Step", 0, self.total_steps, valinit=0, valstep=1, color="lightblue")
         self.slider.on_changed(self._update)
 
         # Buttons config
@@ -304,7 +299,7 @@ class InteractiveGraphVisualizer:
         if self.enable_simulation:
             # --- Simulation Mode ---
             backend = StatevectorBackend(pattern=self.pattern)
-            
+
             # Prerun input nodes (standard MBQC initialization)
             # Find all input nodes in the pattern
             input_nodes = self.pattern.input_nodes
@@ -337,7 +332,7 @@ class InteractiveGraphVisualizer:
 
                     # Compute the updated angle and plane based on signals
                     measure_update = MeasureUpdate.compute(cmd.plane, s_bool, t_bool, Clifford.I)
-                    
+
                     new_angle = cmd.angle * measure_update.coeff + measure_update.add_term
                     new_plane = measure_update.new_plane
 
@@ -360,11 +355,11 @@ class InteractiveGraphVisualizer:
         # --- Common Logic (Topological Tracking) ---
         # We track nodes/edges based on command history regardless of simulation
         # This ensures visualization works even if simulation is disabled
-        
+
         # Reset tracking
-        current_active_nodes = set(self.pattern.input_nodes) # Start with input nodes
+        current_active_nodes = set(self.pattern.input_nodes)  # Start with input nodes
         current_edges = set()
-        current_measured_nodes = set() # Track measured nodes for topological view
+        current_measured_nodes = set()  # Track measured nodes for topological view
 
         for i in range(step):
             cmd = self.pattern[i]
@@ -381,7 +376,7 @@ class InteractiveGraphVisualizer:
                     current_measured_nodes.add(cmd.node)
                     # Remove connected edges involving the measured node
                     current_edges = {e for e in current_edges if cmd.node not in e}
-            
+
             # Corrections are visualization-only metadata, handled in simulation block or ignored
 
         active_nodes = current_active_nodes
@@ -394,7 +389,7 @@ class InteractiveGraphVisualizer:
         """Render the graph state on the right panel."""
         try:
             self.ax_graph.clear()
-            
+
             # Get current state from simulation
             active_nodes, measured_nodes, active_edges, corrections, results = self._update_graph_state(
                 self.current_step
@@ -413,44 +408,41 @@ class InteractiveGraphVisualizer:
                     x, y = self.node_positions[node]
                     circle = plt.Circle((x, y), 0.1, color="lightgray", zorder=2)
                     self.ax_graph.add_patch(circle)
-                    
+
                     label_text = str(node)
                     # Show measurement outcome if available
                     if node in results:
                         label_text += f"\n={results[node]}"
-                    
+
                     self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, zorder=3)
 
             # 2. Active nodes (white with colored edge, with correction text)
             for node in active_nodes:
                 if node in self.node_positions:
                     x, y = self.node_positions[node]
-                    circle = plt.Circle(
-                        (x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2
-                    )
+                    circle = plt.Circle((x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2)
                     self.ax_graph.add_patch(circle)
-                    
+
                     label_text = str(node)
                     # Show accumulated internal corrections
                     if node in corrections:
                         label_text += "\n" + "".join(sorted(corrections[node]))
-                    
+
                     color = "black"
                     if node in corrections:
                         color = "blue"  # Highlight corrected nodes
 
-                    self.ax_graph.text(
-                        x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3
-                    )
+                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3)
 
             # Set aspect close to equal and hide axes
             self.ax_graph.set_aspect("equal")
             self.ax_graph.set_xlim(self.x_limits)
             self.ax_graph.set_ylim(self.y_limits)
             self.ax_graph.axis("off")
-            
+
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             print(f"Error drawing graph: {e}", file=sys.stderr)
 
