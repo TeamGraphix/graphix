@@ -295,7 +295,7 @@ class AbstractPlanarMeasurement(AbstractMeasurement):
         """
 
     @override
-    def to_plane_or_axis(self) -> Plane | Axis:
+    def to_plane_or_axis(self) -> Plane:
         return self.to_plane()
 
 
