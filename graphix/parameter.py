@@ -375,14 +375,7 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     """
     if not isinstance(value, Expression):
         return value
-    new_value = value.subs(variable, substitute)
-    # On Python<=3.10, complex is not a subtype of SupportsComplex
-    if isinstance(new_value, (complex, SupportsComplex)):
-        c = complex(new_value)
-        if c.imag == 0.0:
-            return c.real
-        return c
-    return new_value
+    return value.subs(variable, substitute)
 
 
 @overload
@@ -415,14 +408,7 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     """
     if not isinstance(value, Expression):
         return value
-    new_value = value.xreplace(assignment)
-    # On Python<=3.10, complex is not a subtype of SupportsComplex
-    if isinstance(new_value, (complex, SupportsComplex)):
-        c = complex(new_value)
-        if c.imag == 0.0:
-            return c.real
-        return c
-    return new_value
+    return value.xreplace(assignment)
 
 
 def cos_sin(angle: ExpressionOrFloat) -> tuple[ExpressionOrFloat, ExpressionOrFloat]:

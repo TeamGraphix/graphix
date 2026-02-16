@@ -98,7 +98,7 @@ class ReverseDependency:
     branch: str | None = None
     version_constraint: VersionRange | None = None
     doctest_modules: bool = True
-    initialization: Callable[[Session], None] | None = None
+    initialization: Callable[[Session], bool | None] | None = None
 
 
 @nox.session(python=PYTHON_VERSIONS)
