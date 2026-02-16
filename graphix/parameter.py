@@ -376,7 +376,7 @@ def subs(value: T, variable: Parameter, substitute: ExpressionOrSupportsFloat) -
     if not isinstance(value, Expression):
         return value
     new_value = value.subs(variable, substitute)
-    if math.isclose(new_value.imag, 0.0):
+    if isinstance(new_value, complex) and math.isclose(new_value.imag, 0.0):
         # Conversion to float, to enable the simulator to call
         # real trigonometric functions to the result.
         return new_value.real
@@ -414,7 +414,7 @@ def xreplace(value: T, assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
     if not isinstance(value, Expression):
         return value
     new_value = value.xreplace(assignment)
-    if math.isclose(new_value.imag, 0.0):
+    if isinstance(new_value, complex) and math.isclose(new_value.imag, 0.0):
         # Conversion to float, to enable the simulator to call
         # real trigonometric functions to the result.
         return new_value.real
