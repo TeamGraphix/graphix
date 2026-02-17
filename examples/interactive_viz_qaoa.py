@@ -9,14 +9,8 @@ to demonstrate performance on complex patterns.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import networkx as nx
 import numpy as np
-
-# Add project root to path to ensure we use local graphix version
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from graphix import Circuit
 from graphix.visualization_interactive import InteractiveGraphVisualizer

@@ -8,7 +8,7 @@ import pytest
 from matplotlib.text import Text
 
 from graphix.command import E, M, N, X, Z
-from graphix.fundamentals import Plane
+from graphix.measurements import Measurement
 from graphix.pattern import Pattern
 from graphix.visualization_interactive import InteractiveGraphVisualizer
 
@@ -23,8 +23,8 @@ class TestInteractiveGraphVisualizer:
         pattern.add(N(node=2))
         pattern.add(E(nodes=(0, 1)))
         pattern.add(E(nodes=(1, 2)))
-        pattern.add(M(node=0, plane=Plane.XY, angle=0.5, s_domain={1}, t_domain={2}))
-        pattern.add(M(node=1, plane=Plane.XY, angle=0.0, s_domain={2}, t_domain=set()))
+        pattern.add(M(node=0, measurement=Measurement.XY(0.5), s_domain={1}, t_domain={2}))
+        pattern.add(M(node=1, measurement=Measurement.XY(0.0), s_domain={2}, t_domain=set()))
         pattern.add(X(node=2, domain={0}))
         pattern.add(Z(node=2, domain={1}))
         return pattern
@@ -32,6 +32,13 @@ class TestInteractiveGraphVisualizer:
     def test_init(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test initialization of the visualizer."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+
+        # Capture the OpenGraph mock correctly
+        mock_og_class = mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mock_og_instance = mock_og_class.return_value
+        # Ensure infer_pauli_measurements returns a mock (or itself) to support chaining
+        mock_og_instance.infer_pauli_measurements.return_value = mock_og_instance
+
         mocker.patch("matplotlib.pyplot.figure")
 
         # Mock layout generation
@@ -44,13 +51,18 @@ class TestInteractiveGraphVisualizer:
         assert viz.total_steps == len(pattern)
         assert viz.enable_simulation
         # Check if get_layout was called
+        mock_visualizer.assert_called_with(mock_og_instance)  # Verify visualizer init with corrected OG
         mock_vis_obj.get_layout.assert_called_once()
         # Check if node positions are set
         assert len(viz.node_positions) == 3
 
+        # Check if infer_pauli_measurements was called
+        mock_og_instance.infer_pauli_measurements.assert_called_once()
+
     def test_layout_generation(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test that layout logic delegates to GraphVisualizer."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
 
         mock_vis_obj = MagicMock()
@@ -69,6 +81,7 @@ class TestInteractiveGraphVisualizer:
     def test_update_graph_state_simulation_enabled(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test graph state update with simulation enabled."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
         mock_backend = mocker.patch("graphix.visualization_interactive.StatevectorBackend")
 
@@ -116,6 +129,7 @@ class TestInteractiveGraphVisualizer:
     def test_update_graph_state_simulation_disabled(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test graph state update with simulation disabled."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
 
         mock_vis_obj = MagicMock()
@@ -150,6 +164,7 @@ class TestInteractiveGraphVisualizer:
     def test_navigation(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test step navigation methods."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
 
         mock_vis_obj = MagicMock()
@@ -185,6 +200,7 @@ class TestInteractiveGraphVisualizer:
     def test_visualize(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test the main visualize method (smoke test)."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
         mock_show = mocker.patch("matplotlib.pyplot.show")
         mocker.patch("graphix.visualization_interactive.Slider")  # Mock Slider to avoid matplotlib validation
@@ -208,6 +224,7 @@ class TestInteractiveGraphVisualizer:
     def test_interaction_events(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test interaction event handlers."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
 
         mock_vis_obj = MagicMock()
@@ -238,6 +255,7 @@ class TestInteractiveGraphVisualizer:
         pattern.add(Z(node=0, domain=set()))
 
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
         mocker.patch("matplotlib.pyplot.figure")
 
         mock_vis_obj = MagicMock()
@@ -263,3 +281,34 @@ class TestInteractiveGraphVisualizer:
         # Should set slider to index + 1 (highlight executed commands up to that point)
         viz._on_pick(pick_event)
         viz.slider.set_val.assert_called_with(6)
+
+    def test_layout_fallback_triggered(self, mocker: MagicMock) -> None:
+        """Test that spring layout fallback is triggered for narrow graphs."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+        mock_spring_layout = mocker.patch("graphix.visualization_interactive.nx.spring_layout")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+
+        initial_pos = {i: (0, i) for i in range(6)}
+        mock_vis_obj.get_layout.return_value = (initial_pos, {}, {})
+
+        # Spring layout returns something else
+        spring_pos = {i: (10, i) for i in range(6)}
+        mock_spring_layout.return_value = spring_pos
+
+        big_pattern = Pattern(input_nodes=list(range(6)))
+        for i in range(6):
+            big_pattern.add(N(node=i))
+
+        viz = InteractiveGraphVisualizer(big_pattern)
+
+        # Check if spring layout was called
+        mock_spring_layout.assert_called_once()
+
+        # Check if positions were updated to spring layout positions
+        # Note: InteractiveGraphVisualizer applies scaling after layout
+        # default node_distance is (1, 1), so positions should match spring_pos
+        assert viz.node_positions == spring_pos

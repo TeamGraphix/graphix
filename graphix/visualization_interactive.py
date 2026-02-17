@@ -14,8 +14,8 @@ from matplotlib.text import Text
 from matplotlib.widgets import Button, Slider
 
 from graphix.clifford import Clifford
-from graphix.command import CommandKind, MeasureUpdate
-from graphix.measurements import Measurement
+from graphix.command import CommandKind
+from graphix.opengraph import OpenGraph
 from graphix.pretty_print import OutputFormat, command_to_str
 from graphix.sim.statevec import StatevectorBackend
 from graphix.visualization import GraphVisualizer
@@ -91,16 +91,33 @@ class InteractiveGraphVisualizer:
     def _prepare_layout(self) -> None:
         # Build full graph to determine positions
         g: Any = nx.Graph()
+        measurements: dict[int, Any] = {}
         for cmd in self.pattern:
             if cmd.kind == CommandKind.N:
                 g.add_node(cmd.node)
             elif cmd.kind == CommandKind.E:
                 g.add_edge(cmd.nodes[0], cmd.nodes[1])
+            elif cmd.kind == CommandKind.M:
+                measurements[cmd.node] = cmd.measurement
 
         # Use GraphVisualizer to determine positions based on flow/structure
-        vis = GraphVisualizer(g, self.pattern.input_nodes, self.pattern.output_nodes)
+        og = OpenGraph(g, self.pattern.input_nodes, self.pattern.output_nodes, measurements)
+        # Infer Pauli measurements to avoid warnings and improve flow detection
+        og = og.infer_pauli_measurements()
+
+        vis = GraphVisualizer(og)
         pos_mapping, _, _ = vis.get_layout()
         self.node_positions = dict(pos_mapping)
+
+        x_coords = [p[0] for p in self.node_positions.values()]
+        y_coords = [p[1] for p in self.node_positions.values()]
+        if x_coords and y_coords:
+            width = max(x_coords) - min(x_coords)
+            if width < 2.0 and len(self.node_positions) > 5:
+                # Fallback to spring layout for better interactivity
+                # We recreate the graph for layout since `og.graph` might be modified
+                pos_spring = nx.spring_layout(g, seed=42)
+                self.node_positions = {n: (p[0], p[1]) for n, p in pos_spring.items()}
 
         # Apply scaling
         self.node_positions = {
@@ -111,8 +128,12 @@ class InteractiveGraphVisualizer:
         all_x = [pos[0] for pos in self.node_positions.values()]
         all_y = [pos[1] for pos in self.node_positions.values()]
         margin = 0.5
-        self.x_limits = (min(all_x) - margin, max(all_x) + margin)
-        self.y_limits = (min(all_y) - margin, max(all_y) + margin)
+        if all_x and all_y:
+            self.x_limits = (min(all_x) - margin, max(all_x) + margin)
+            self.y_limits = (min(all_y) - margin, max(all_y) + margin)
+        else:
+            self.x_limits = (-1, 1)
+            self.y_limits = (-1, 1)
 
     def visualize(self) -> None:
         """Launch the interactive visualization window."""
@@ -222,13 +243,15 @@ class InteractiveGraphVisualizer:
                     t_bool = t_signal % 2 == 1
 
                     # Compute the updated angle and plane based on signals
-                    measure_update = MeasureUpdate.compute(cmd.plane, s_bool, t_bool, Clifford.I)
+                    clifford = Clifford.I
+                    if s_bool:
+                        clifford = Clifford.X @ clifford
+                    if t_bool:
+                        clifford = Clifford.Z @ clifford
 
-                    new_angle = cmd.angle * measure_update.coeff + measure_update.add_term
-                    new_plane = measure_update.new_plane
+                    measurement = cmd.measurement.clifford(clifford)
 
                     # Execute measurement on the backend using the adapted measurement
-                    measurement = Measurement(new_angle, new_plane)
                     result = backend.measure(cmd.node, measurement, rng=rng)
                     results[cmd.node] = result
                 elif cmd.kind == CommandKind.X:
