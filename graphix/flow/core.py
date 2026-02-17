@@ -19,8 +19,6 @@ import graphix.pattern
 from graphix.command import E, M, N, X, Z
 from graphix.flow._find_gpflow import (
     CorrectionMatrix,
-    _M_co,
-    _PM_co,
     compute_partial_order_layers,
 )
 from graphix.flow._partial_order import compute_topological_generations
@@ -41,7 +39,8 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderError,
     XZCorrectionsOrderErrorReason,
 )
-from graphix.fundamentals import Axis, Plane
+from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
+from graphix.measurements import Measurement
 from graphix.pretty_print import OutputFormat, flow_to_str, xzcorr_to_str
 
 if TYPE_CHECKING:
@@ -49,7 +48,6 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
     from typing import Self
 
-    from graphix.measurements import Measurement
     from graphix.opengraph import OpenGraph
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
@@ -57,15 +55,18 @@ if TYPE_CHECKING:
 TotalOrder = Sequence[int]
 
 _T_PauliFlowMeasurement = TypeVar("_T_PauliFlowMeasurement", bound="PauliFlow[Measurement]")
+_M = TypeVar("_M", bound=Measurement)
+_AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
+_PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
 @dataclass(frozen=True)
-class XZCorrections(Generic[_M_co]):
+class XZCorrections(Generic[_AM_co]):
     """An unmutable dataclass providing a representation of XZ-corrections.
 
     Attributes
     ----------
-    og : OpenGraph[_M_co]
+    og : OpenGraph[_AM_co]
         The open graph with respect to which the XZ-corrections are defined.
     x_corrections : Mapping[int, AbstractSet[int]]
         Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
@@ -80,22 +81,22 @@ class XZCorrections(Generic[_M_co]):
 
     """
 
-    og: OpenGraph[_M_co]
+    og: OpenGraph[_AM_co]
     x_corrections: Mapping[int, AbstractSet[int]]  # {domain: nodes}
     z_corrections: Mapping[int, AbstractSet[int]]  # {domain: nodes}
     partial_order_layers: Sequence[AbstractSet[int]]
 
     @staticmethod
     def from_measured_nodes_mapping(
-        og: OpenGraph[_M_co],
+        og: OpenGraph[_AM_co],
         x_corrections: Mapping[int, AbstractSet[int]] | None = None,
         z_corrections: Mapping[int, AbstractSet[int]] | None = None,
-    ) -> XZCorrections[_M_co]:
+    ) -> XZCorrections[_AM_co]:
         """Create an `XZCorrections` instance from the XZ-corrections mappings.
 
         Parameters
         ----------
-        og : OpenGraph[_M_co]
+        og : OpenGraph[_AM_co]
             Open graph with respect to which the corrections are defined.
         x_corrections : Mapping[int, AbstractSet[int]] | None
             Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
@@ -104,7 +105,7 @@ class XZCorrections(Generic[_M_co]):
 
         Returns
         -------
-        XZCorrections[_M_co]
+        XZCorrections[_AM_co]
 
         Raises
         ------
@@ -178,7 +179,7 @@ class XZCorrections(Generic[_M_co]):
 
         for measured_node in total_measurement_order:
             measurement = self.og.measurements[measured_node]
-            pattern.add(M(node=measured_node, plane=measurement.plane, angle=measurement.angle))
+            pattern.add(M(node=measured_node, measurement=measurement))
 
             for corrected_node in self.z_corrections.get(measured_node, []):
                 pattern.add(Z(node=corrected_node, domain={measured_node}))
@@ -357,9 +358,7 @@ class XZCorrections(Generic[_M_co]):
         """
         return xzcorr_to_str(self, output=OutputFormat.Unicode, multiline=multiline)
 
-    def subs(
-        self: XZCorrections[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
-    ) -> XZCorrections[Measurement]:
+    def subs(self: XZCorrections[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> XZCorrections[_M]:
         """Substitute a parameter with a value or expression in all measurement angles of the open graph.
 
         Parameters
@@ -382,8 +381,8 @@ class XZCorrections(Generic[_M_co]):
         return dataclasses.replace(self, og=new_og)
 
     def xreplace(
-        self: XZCorrections[Measurement], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
-    ) -> XZCorrections[Measurement]:
+        self: XZCorrections[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
+    ) -> XZCorrections[_M]:
         """Perform parallel substitution of multiple parameters in measurement angles of the open graph.
 
         Parameters
@@ -405,12 +404,12 @@ class XZCorrections(Generic[_M_co]):
 
 
 @dataclass(frozen=True)
-class PauliFlow(Generic[_M_co]):
+class PauliFlow(Generic[_AM_co]):
     """An unmutable dataclass providing a representation of a Pauli flow.
 
     Attributes
     ----------
-    og : OpenGraph[_M_co]
+    og : OpenGraph[_AM_co]
         The open graph with respect to which the Pauli flow is defined.
     correction_function : Mapping[int, AbstractSet[int]
         Pauli flow correction function. `correction_function[i]` is the set of qubits correcting the measurement of qubit `i`.
@@ -432,19 +431,19 @@ class PauliFlow(Generic[_M_co]):
 
     """
 
-    og: OpenGraph[_M_co]
+    og: OpenGraph[_AM_co]
     correction_function: Mapping[int, AbstractSet[int]]
     partial_order_layers: Sequence[AbstractSet[int]]
 
     _CF_PREFIX: str = "p"  # Correction function prefix for printing
 
     @classmethod
-    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_M_co]) -> Self | None:
+    def try_from_correction_matrix(cls, correction_matrix: CorrectionMatrix[_AM_co]) -> Self | None:
         """Initialize a `PauliFlow` object from a matrix encoding a correction function.
 
         Parameters
         ----------
-        correction_matrix : CorrectionMatrix[_M_co]
+        correction_matrix : CorrectionMatrix[_AM_co]
             Algebraic representation of the correction function.
 
         Returns
@@ -467,12 +466,12 @@ class PauliFlow(Generic[_M_co]):
 
         return cls(correction_matrix.aog.og, correction_function, partial_order_layers)
 
-    def to_corrections(self) -> XZCorrections[_M_co]:
+    def to_corrections(self) -> XZCorrections[_AM_co]:
         """Compute the X and Z corrections induced by the Pauli flow encoded in `self`.
 
         Returns
         -------
-        XZCorrections[_M_co]
+        XZCorrections[_AM_co]
 
         Notes
         -----
@@ -1074,13 +1073,13 @@ def _corrections_to_dag(
 
 
 def _corrections_to_partial_order_layers(
-    og: OpenGraph[_M_co], x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
+    og: OpenGraph[_AM_co], x_corrections: Mapping[int, AbstractSet[int]], z_corrections: Mapping[int, AbstractSet[int]]
 ) -> tuple[frozenset[int], ...]:
     """Return the partial order encoded in the correction mappings in a layer form if it exists.
 
     Parameters
     ----------
-    og : OpenGraph[_M_co]
+    og : OpenGraph[_AM_co]
         The open graph with respect to which the XZ-corrections are defined.
     x_corrections : Mapping[int, AbstractSet[int]]
         Mapping of X-corrections: in each (`key`, `value`) pair, `key` is a measured node, and `value` is the set of nodes on which an X-correction must be applied depending on the measurement result of `key`.
@@ -1140,26 +1139,28 @@ def _corrections_to_partial_order_layers(
 
 
 def _check_correction_function_domain(
-    og: OpenGraph[_M_co], correction_function: Mapping[int, AbstractSet[int]]
+    og: OpenGraph[_AM_co], correction_function: Mapping[int, AbstractSet[int]]
 ) -> bool:
     """Verify that the domain of the correction function is the set of non-output nodes of the open graph."""
     oc_set = og.graph.nodes - set(og.output_nodes)
     return correction_function.keys() == oc_set
 
 
-def _check_correction_function_image(og: OpenGraph[_M_co], correction_function: Mapping[int, AbstractSet[int]]) -> bool:
+def _check_correction_function_image(
+    og: OpenGraph[_AM_co], correction_function: Mapping[int, AbstractSet[int]]
+) -> bool:
     """Verify that the image of the correction function is a subset of non-input nodes of the open graph."""
     ic_set = og.graph.nodes - set(og.input_nodes)
     image = set().union(*correction_function.values())
     return image.issubset(ic_set)
 
 
-def _check_flow_general_properties(flow: PauliFlow[_M_co]) -> None:
+def _check_flow_general_properties(flow: PauliFlow[_AM_co]) -> None:
     """Verify the general properties of a flow.
 
     Parameters
     ----------
-    flow : PauliFlow[_M_co]
+    flow : PauliFlow[_AM_co]
 
     Raises
     ------

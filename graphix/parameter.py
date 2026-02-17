@@ -152,7 +152,7 @@ class AffineExpression(Expression):
         """Add *d* to the expression."""
         return AffineExpression(a=self.a, x=self.x, b=self.b + d)
 
-    def _scale_non_null(self, k: float) -> AffineExpression:
+    def scale_non_null(self, k: float) -> AffineExpression:
         """Return ``self`` scaled by ``k`` assuming ``k`` is non-zero.
 
         Parameters
@@ -171,7 +171,7 @@ class AffineExpression(Expression):
         """Multiply the expression by `k`."""
         if k == 0:
             return 0
-        return self._scale_non_null(k)
+        return self.scale_non_null(k)
 
     def __mul__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
@@ -215,12 +215,12 @@ class AffineExpression(Expression):
     def __rsub__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
         if isinstance(other, SupportsFloat):
-            return self._scale_non_null(-1).offset(float(other))
+            return self.scale_non_null(-1).offset(float(other))
         return NotImplemented
 
     def __neg__(self) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
-        return self._scale_non_null(-1)
+        return self.scale_non_null(-1)
 
     def __truediv__(self, other: object) -> ExpressionOrFloat:
         """Look to the documentation in the parent class."""
