@@ -17,7 +17,7 @@ from graphix.flow.exceptions import (
     FlowError,
 )
 from graphix.fundamentals import ANGLE_PI, Angle, Plane
-from graphix.measurements import Measurement, Outcome, PauliMeasurement
+from graphix.measurements import BlochMeasurement, Measurement, Outcome, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.pattern import Pattern, PatternError, RunnabilityError, RunnabilityErrorReason, shift_outcomes
 from graphix.random_objects import rand_circuit, rand_gate
@@ -98,8 +98,8 @@ class TestPattern:
                     N(2),
                     E((0, 1)),
                     E((1, 2)),
-                    M(1, Plane.XY, 0),
-                    M(0, Plane.XY, 0, {1}),
+                    M(1),
+                    M(0, s_domain={1}),
                     Z(2, {0}),
                 ],
             ),
@@ -137,7 +137,7 @@ class TestPattern:
             [
                 N(node=2, state=PlanarState(plane=Plane.XY, angle=0.0)),
                 E(nodes=(0, 2)),
-                M(node=0, plane=Plane.XY, angle=0.0, s_domain=set(), t_domain=set()),
+                M(0, Measurement.X, s_domain=set(), t_domain=set()),
             ]
         )
         pattern.remove_input_nodes()
@@ -164,7 +164,7 @@ class TestPattern:
     @pytest.mark.parametrize("backend_type", ["statevector", "densitymatrix", "tensornetwork"])
     def test_empty_output_nodes(self, backend_type: _BackendLiteral) -> None:
         pattern = Pattern(input_nodes=[0])
-        pattern.add(M(node=0, angle=0.5))
+        pattern.add(M(0, Measurement.Y))
 
         def simulate_and_measure() -> int:
             sim = PatternSimulator(pattern, backend_type)
@@ -253,15 +253,14 @@ class TestPattern:
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements(ignore_pauli_with_deps=ignore_pauli_with_deps)
         assert ignore_pauli_with_deps or not any(
-            PauliMeasurement.try_from(cmd.plane, cmd.angle) for cmd in pattern if cmd.kind == CommandKind.M
+            cmd.measurement.try_to_pauli() is not None for cmd in pattern if cmd.kind == CommandKind.M
         )
 
-    @pytest.mark.parametrize("plane", Plane)
-    @pytest.mark.parametrize("angle", [0.0, 0.5, 1.0, 1.5])
-    def test_pauli_measurement_single(self, plane: Plane, angle: float) -> None:
+    @pytest.mark.parametrize("pm", PauliMeasurement)
+    def test_pauli_measurement_single(self, pm: PauliMeasurement) -> None:
         pattern = Pattern(input_nodes=[0, 1])
         pattern.add(E(nodes=(0, 1)))
-        pattern.add(M(node=0, plane=plane, angle=angle))
+        pattern.add(M(0, pm))
         pattern_ref = pattern.copy()
         pattern.remove_input_nodes()
         pattern.perform_pauli_measurements()
@@ -391,20 +390,20 @@ class TestPattern:
         vop_list = [0, 5, 6]  # [identity, S gate, H gate]
         pattern = Pattern(input_nodes=list(range(len(preset_meas_plane))))
         for i in range(len(preset_meas_plane)):
-            pattern.add(M(node=i, plane=preset_meas_plane[i]).clifford(Clifford(vop_list[i % 3])))
-        ref_meas_plane = {
-            0: M(0, Plane.XY),
-            1: M(1, Plane.XY, 0.5),
-            2: M(2, Plane.YZ),
-            3: M(3, Plane.YZ),
-            4: M(4, Plane.XZ),
-            5: M(5, Plane.XY),
-            6: M(6, Plane.XZ),
-            7: M(7, Plane.YZ),
-            8: M(8, Plane.XZ, 0.5),
+            pattern.add(M(i, BlochMeasurement(0, plane=preset_meas_plane[i])).clifford(Clifford(vop_list[i % 3])))
+        ref_meas = {
+            0: M(0, Measurement.XY(0)),
+            1: M(1, Measurement.XY(0.5)),
+            2: M(2, Measurement.YZ(0)),
+            3: M(3, Measurement.YZ(0)),
+            4: M(4, Measurement.XZ(0)),
+            5: M(5, Measurement.XY(0)),
+            6: M(6, Measurement.XZ(0)),
+            7: M(7, Measurement.YZ(0)),
+            8: M(8, Measurement.XZ(0.5)),
         }
-        meas_plane = pattern.extract_measurement_commands()
-        assert meas_plane == ref_meas_plane
+        meas = pattern.extract_measurement_commands()
+        assert meas == ref_meas
 
     @pytest.mark.parametrize("plane", Plane)
     @pytest.mark.parametrize("method", ["mc", "direct"])
@@ -413,9 +412,19 @@ class TestPattern:
         for i in (1, 2, 3):
             pattern.add(N(node=i))
             pattern.add(E(nodes=(0, i)))
-        pattern.add(M(node=0, angle=0.5))
-        pattern.add(M(node=1, angle=0.5))
-        pattern.add(M(node=2, angle=0.5, plane=plane, s_domain={0}, t_domain={1}))
+        pattern.add(M(0, Measurement.Y))
+        pattern.add(M(1, Measurement.Y))
+        pattern.add(
+            M(
+                2,
+                BlochMeasurement(
+                    angle=0.5,
+                    plane=plane,
+                ),
+                s_domain={0},
+                t_domain={1},
+            )
+        )
         pattern.add(Z(node=3, domain={2}))
         pattern_ref = copy.deepcopy(pattern)
         pattern.standardize()
@@ -862,7 +871,7 @@ class TestPattern:
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({2}), frozenset({0}))
 
-        p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, angle=0.3)])
+        p = Pattern(cmds=[N(0), N(1), N(2), M(0), E((1, 2)), X(1, {0}), M(2, Measurement.XY(0.3))])
         p.perform_pauli_measurements()
         assert p.extract_partial_order_layers() == (frozenset({1}), frozenset({2}))
 
@@ -891,25 +900,25 @@ class TestPattern:
                     E((4, 5)),
                     E((4, 6)),
                     E((5, 7)),
-                    M(0, angle=0.1),
+                    M(0, Measurement.XY(0.1)),
                     Z(3, {0}),
                     Z(4, {0}),
                     X(2, {0}),
-                    M(1, angle=0.1),
+                    M(1, Measurement.XY(0.1)),
                     Z(2, {1}),
                     Z(5, {1}),
                     X(3, {1}),
-                    M(2, angle=0.1),
+                    M(2, Measurement.XY(0.1)),
                     Z(5, {2}),
                     Z(6, {2}),
                     X(4, {2}),
-                    M(3, angle=0.1),
+                    M(3, Measurement.XY(0.1)),
                     Z(4, {3}),
                     Z(7, {3}),
                     X(5, {3}),
-                    M(4, angle=0.1),
+                    M(4, Measurement.XY(0.1)),
                     X(6, {4}),
-                    M(5, angle=0.4),
+                    M(5, Measurement.XY(0.4)),
                     X(7, {5}),
                 ],
                 output_nodes=[6, 7],
@@ -931,7 +940,7 @@ class TestPattern:
         ),
         PatternFlowTestCase(
             # Pattern with XZ measurements.
-            Pattern(cmds=[N(0), N(1), E((0, 1)), M(0, Plane.XZ, 0.3), Z(1, {0}), X(1, {0})], output_nodes=[1]),
+            Pattern(cmds=[N(0), N(1), E((0, 1)), M(0, Measurement.XZ(0.3)), Z(1, {0}), X(1, {0})], output_nodes=[1]),
             has_cflow=False,
             has_gflow=True,
         ),
@@ -950,14 +959,14 @@ class TestPattern:
                     E((6, 3)),
                     E((2, 5)),
                     E((5, 3)),
-                    M(1, angle=0.1),
+                    M(1, Measurement.XY(0.1)),
                     X(5, {1}),
                     X(6, {1}),
-                    M(2, angle=0.2),
+                    M(2, Measurement.XY(0.2)),
                     X(4, {2}),
                     X(5, {2}),
                     X(6, {2}),
-                    M(3, angle=0.3),
+                    M(3, Measurement.XY(0.3)),
                     X(4, {3}),
                     X(6, {3}),
                 ],
@@ -968,7 +977,7 @@ class TestPattern:
         ),
         PatternFlowTestCase(
             # Non-deterministic pattern
-            Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Plane.XY, 0.3)]),
+            Pattern(input_nodes=[0], cmds=[N(1), E((0, 1)), M(0, Measurement.XY(0.3))]),
             has_cflow=False,
             has_gflow=False,
         ),
@@ -982,7 +991,7 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.extract_causal_flow().to_corrections().to_pattern()
+        p_test = p_ref.to_bloch().extract_causal_flow().to_corrections().to_pattern().infer_pauli_measurements()
 
         p_ref.remove_input_nodes()
         p_test.remove_input_nodes()
@@ -1001,7 +1010,8 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.extract_gflow().to_corrections().to_pattern()
+        p_test = p_ref.to_bloch().extract_gflow().to_corrections().to_pattern().infer_pauli_measurements()
+
         p_ref.remove_input_nodes()
         p_test.remove_input_nodes()
         p_ref.perform_pauli_measurements()
@@ -1017,7 +1027,7 @@ class TestPattern:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
 
-            p_test = test_case.pattern.extract_causal_flow().to_corrections().to_pattern()
+            p_test = test_case.pattern.to_bloch().extract_causal_flow().to_corrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
@@ -1031,7 +1041,7 @@ class TestPattern:
             alpha = 2 * np.pi * fx_rng.random()
             s_ref = test_case.pattern.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha))
 
-            p_test = test_case.pattern.extract_gflow().to_corrections().to_pattern()
+            p_test = test_case.pattern.to_bloch().extract_gflow().to_corrections().to_pattern()
             s_test = p_test.simulate_pattern(input_state=PlanarState(Plane.XZ, alpha), rng=fx_rng)
 
             assert np.abs(np.dot(s_ref.flatten().conjugate(), s_test.flatten())) == pytest.approx(1)
@@ -1048,10 +1058,10 @@ class TestPattern:
             input_nodes=[1, 2],
             output_nodes=[6, 5],
             measurements={
-                1: Measurement(0.1, Plane.XY),
-                2: Measurement(0.2, Plane.XY),
-                3: Measurement(0.3, Plane.XY),
-                4: Measurement(0.4, Plane.XY),
+                1: Measurement.XY(0.1),
+                2: Measurement.XY(0.2),
+                3: Measurement.XY(0.3),
+                4: Measurement.XY(0.4),
             },
         )
         p_ref = og.extract_causal_flow().to_corrections().to_pattern()
@@ -1071,10 +1081,10 @@ class TestPattern:
             input_nodes=[1, 2],
             output_nodes=[6, 5],
             measurements={
-                1: Measurement(0.1, Plane.XY),
-                2: Measurement(0.2, Plane.XY),
-                3: Measurement(0.3, Plane.XY),
-                4: Measurement(0.4, Plane.XY),
+                1: Measurement.XY(0.1),
+                2: Measurement.XY(0.2),
+                3: Measurement.XY(0.3),
+                4: Measurement.XY(0.4),
             },
         )
 
@@ -1302,7 +1312,7 @@ class TestMCOps:
         # https://github.com/TeamGraphix/graphix/issues/153
         p = Pattern(input_nodes=[0])
         p.add(N(node=1))
-        p.add(M(node=1, plane=Plane.XY))
+        p.add(M(1, Measurement.X))
         p.remove_input_nodes()
         p.perform_pauli_measurements()
 

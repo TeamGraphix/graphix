@@ -107,7 +107,7 @@ class ReverseDependency:
     [
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-stim-backend",
-            branch="fix/graphix_220",
+            branch="fix_graphix423",
             version_constraint=VersionRange(upper=Version("3.14")),
         ),
         ReverseDependency(
@@ -119,14 +119,14 @@ class ReverseDependency:
         ReverseDependency("https://github.com/TeamGraphix/graphix-qasm-parser", branch="fix_angles"),
         ReverseDependency(
             "https://github.com/thierry-martinez/veriphix",
-            branch="graphix_220",
+            branch="graphix_181",
             version_constraint=VersionRange(upper=Version("3.14")),
             doctest_modules=False,
             initialization=lambda session: session.run("python", "-m", "veriphix.sampling_circuits.experiments"),
         ),
         ReverseDependency(
             "https://github.com/thierry-martinez/graphix-ibmq",
-            branch="support_313",
+            branch="fix/graphix_423",
             version_constraint=VersionRange(upper=Version("3.14")),
             doctest_modules=False,
         ),

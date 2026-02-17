@@ -22,7 +22,7 @@ with the pattern, graph or the (generalized-)flow.
 from __future__ import annotations
 
 from graphix import Circuit
-from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.fundamentals import ANGLE_PI
 
 circuit = Circuit(3)
 circuit.cnot(0, 1)
@@ -60,41 +60,37 @@ pattern.draw_graph(flow_from_pattern=True, show_local_clifford=True, node_distan
 # %%
 # Visualize based on the graph
 # ----------------------------
-# The visualizer also works without the pattern. Simply supply the
+# The visualizer also works without the pattern. Simply supply the graph.
 
 import networkx as nx
 
+from graphix.measurements import Measurement
+from graphix.opengraph import OpenGraph
 from graphix.visualization import GraphVisualizer
 
 # graph with gflow but no flow
-nodes = [1, 2, 3, 4, 5, 6]
-edges = [(1, 4), (1, 6), (2, 4), (2, 5), (2, 6), (3, 5), (3, 6)]
-inputs = {1, 2, 3}
-outputs = {4, 5, 6}
-graph: nx.Graph[int] = nx.Graph()
-graph.add_nodes_from(nodes)
-graph.add_edges_from(edges)
-meas_planes = {1: Plane.XY, 2: Plane.XY, 3: Plane.XY}
-vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
+graph: nx.Graph[int] = nx.Graph([(1, 4), (1, 6), (2, 4), (2, 5), (2, 6), (3, 5), (3, 6)])
+inputs = [1, 2, 3]
+outputs = [4, 5, 6]
+measurements = {node: Measurement.XY(0) for node in graph.nodes() if node not in outputs}
+og = OpenGraph(graph, inputs, outputs, measurements)
+vis = GraphVisualizer(og)
 vis.visualize(show_measurement_planes=True)
 
 # %%
 
 # graph with extended gflow but no flow
-nodes = [0, 1, 2, 3, 4, 5]
-edges = [(0, 1), (0, 2), (0, 4), (1, 5), (2, 4), (2, 5), (3, 5)]
-inputs = {0, 1}
-outputs = {4, 5}
-graph = nx.Graph()
-graph.add_nodes_from(nodes)
-graph.add_edges_from(edges)
-meas_planes = {
-    0: Plane.XY,
-    1: Plane.XY,
-    2: Plane.XZ,
-    3: Plane.YZ,
+graph = nx.Graph([(0, 1), (0, 2), (0, 4), (1, 5), (2, 4), (2, 5), (3, 5)])
+inputs = [0, 1]
+outputs = [4, 5]
+measurements = {
+    0: Measurement.XY(0),
+    1: Measurement.XY(0),
+    2: Measurement.XZ(0),
+    3: Measurement.YZ(0),
 }
-vis = GraphVisualizer(graph, inputs, outputs, meas_plane=meas_planes)
+og = OpenGraph(graph, inputs, outputs, measurements)
+vis = GraphVisualizer(og)
 vis.visualize(show_measurement_planes=True)
 
 # %%

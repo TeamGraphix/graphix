@@ -7,6 +7,7 @@ Simulates MBQC by executing the pattern.
 from __future__ import annotations
 
 import abc
+import logging
 import warnings
 from typing import TYPE_CHECKING, Generic, Literal, TypeVar, overload
 
@@ -17,8 +18,7 @@ from typing_extensions import assert_never, override
 from graphix import command
 from graphix.branch_selector import BranchSelector, RandomBranchSelector
 from graphix.clifford import Clifford
-from graphix.command import BaseM, CommandKind, MeasureUpdate, N
-from graphix.measurements import Measurement, Outcome
+from graphix.command import BaseM, CommandKind, N
 from graphix.sim import (
     Backend,
     DensityMatrixBackend,
@@ -33,10 +33,12 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from graphix.command import BaseN
+    from graphix.measurements import Measurement, Outcome
     from graphix.noise_models.noise_model import CommandOrNoise, NoiseModel
     from graphix.pattern import Pattern
     from graphix.sim import Data, DensityMatrix, MBQCTensorNet, Statevec
 
+logger = logging.getLogger(__name__)
 
 _BuiltinBackend = DensityMatrixBackend | StatevectorBackend | TensorNetworkBackend
 _BackendLiteral = Literal["statevector", "densitymatrix", "tensornetwork", "mps"]
@@ -95,6 +97,7 @@ class MeasureMethod(abc.ABC):
         """Perform a measure."""
         description = self.describe_measurement(cmd)
         result = backend.measure(cmd.node, description, rng=rng)
+        logger.debug("Measure: %s", result)
         if noise_model is not None:
             result = noise_model.confuse_result(cmd, result, rng=rng)
         self.store_measurement_outcome(cmd.node, result)
@@ -194,11 +197,14 @@ class DefaultMeasureMethod(MeasureMethod):
         """
         assert isinstance(cmd, command.M)
         # extract signals for adaptive angle
-        s_signal = sum(self.results[j] for j in cmd.s_domain)
-        t_signal = sum(self.results[j] for j in cmd.t_domain)
-        measure_update = MeasureUpdate.compute(cmd.plane, s_signal % 2 == 1, t_signal % 2 == 1, Clifford.I)
-        angle = cmd.angle * measure_update.coeff + measure_update.add_term
-        return Measurement(angle, measure_update.new_plane)
+        s_signal = sum(self.results[j] for j in cmd.s_domain) % 2
+        t_signal = sum(self.results[j] for j in cmd.t_domain) % 2
+        measurement = cmd.measurement
+        if s_signal:
+            measurement = measurement.clifford(Clifford.X)
+        if t_signal:
+            measurement = measurement.clifford(Clifford.Z)
+        return measurement
 
     @override
     def measurement_outcome(self, node: int) -> Outcome:
@@ -375,7 +381,10 @@ class PatternSimulator(Generic[_StateT_co]):
         # to catch these errors before starting the simulation.
         self.pattern.check_runnability()
 
+        logger.debug("Initial state: %s", self.backend.state)
+
         for cmd in pattern:
+            logger.debug("Command: %s", cmd)
             if cmd.kind == CommandKind.N:
                 self.__prepare_method.prepare(self.backend, cmd, rng=rng)
             elif cmd.kind == CommandKind.E:
@@ -401,6 +410,7 @@ class PatternSimulator(Generic[_StateT_co]):
                 raise ValueError("S commands unexpected in simulated patterns.")
             else:
                 assert_never(cmd.kind)
+            logger.debug("State: %s", self.backend.state)
         self.backend.finalize(output_nodes=self.pattern.output_nodes)
 
 

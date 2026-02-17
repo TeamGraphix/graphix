@@ -52,7 +52,7 @@ def assert_reconstructed_pyzx_graph_equal(g: BaseGraph[int, tuple[int, int]]) ->
 
     g_copy = deepcopy(g)
     og = from_pyzx_graph(g_copy)
-    reconstructed_pyzx_graph = to_pyzx_graph(og)
+    reconstructed_pyzx_graph = to_pyzx_graph(og.to_bloch())
 
     # The "tensorfy" function break if the rows aren't set for some reason
     for v in reconstructed_pyzx_graph.vertices():
@@ -82,9 +82,9 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     circuit = rand_circuit(nqubits, depth, rng)
     pattern = circuit.transpile().pattern
     opengraph = pattern.extract_opengraph()
-    zx_graph = to_pyzx_graph(opengraph)
+    zx_graph = to_pyzx_graph(opengraph.to_bloch())
     opengraph2 = from_pyzx_graph(zx_graph)
-    pattern2 = opengraph2.to_pattern()
+    pattern2 = opengraph2.to_pattern().infer_pauli_measurements()
     pattern.remove_input_nodes()
     pattern.perform_pauli_measurements()
     pattern.minimize_space()
@@ -103,7 +103,7 @@ def test_rz() -> None:
     # pyzx 0.8 does not support arithmetic expressions such as `pi / 4`.
     circ = zx.qasm(f"qreg q[2]; rz({np.pi / 4}) q[0];")  # type: ignore[attr-defined]
     g = circ.to_graph()
-    og = from_pyzx_graph(g)
+    og = from_pyzx_graph(g).infer_pauli_measurements()
     pattern_zx = og.to_pattern()
     state = pattern.simulate_pattern()
     state_zx = pattern_zx.simulate_pattern()
@@ -116,7 +116,7 @@ def test_full_reduce_toffoli() -> None:
     c.ccx(0, 1, 2)
     p = c.transpile().pattern
     og = p.extract_opengraph()
-    pyg = to_pyzx_graph(og)
+    pyg = to_pyzx_graph(og.to_bloch())
     pyg.normalize()
     pyg_copy = deepcopy(pyg)
     zx.simplify.full_reduce(pyg)
@@ -124,7 +124,7 @@ def test_full_reduce_toffoli() -> None:
     t = zx.tensorfy(pyg)
     t2 = zx.tensorfy(pyg_copy)
     assert zx.compare_tensors(t, t2)
-    og2 = from_pyzx_graph(pyg)
+    og2 = from_pyzx_graph(pyg).infer_pauli_measurements()
     p2 = og2.to_pattern()
     s = p.simulate_pattern()
     s2 = p2.simulate_pattern()

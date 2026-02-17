@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import math
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -20,11 +21,18 @@ from graphix._db import (
     CLIFFORD_TO_QASM3,
 )
 from graphix.fundamentals import Axis, ComplexUnit, I
-from graphix.measurements import Domains
 from graphix.pauli import Pauli
 
 if TYPE_CHECKING:
     import numpy.typing as npt
+
+
+@dataclass
+class Domains:
+    """Represent `X^sZ^t` where s and t are XOR of results from given sets of indices."""
+
+    s_domain: set[int]
+    t_domain: set[int]
 
 
 class Clifford(Enum):
