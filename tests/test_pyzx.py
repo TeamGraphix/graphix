@@ -93,7 +93,7 @@ def test_random_circuit(fx_bg: PCG64, jumps: int) -> None:
     pattern2.perform_pauli_measurements()
     pattern2.minimize_space()
     state2 = pattern2.simulate_pattern()
-    assert np.abs(np.dot(state.flatten().conjugate(), state2.flatten())) == pytest.approx(1)
+    assert state.isclose(state2)
 
 
 def test_rz() -> None:
@@ -107,7 +107,7 @@ def test_rz() -> None:
     pattern_zx = og.to_pattern()
     state = pattern.simulate_pattern()
     state_zx = pattern_zx.simulate_pattern()
-    assert np.abs(np.dot(state_zx.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+    assert state_zx.isclose(state)
 
 
 # Issue #235
@@ -128,4 +128,4 @@ def test_full_reduce_toffoli() -> None:
     p2 = og2.to_pattern()
     s = p.simulate_pattern()
     s2 = p2.simulate_pattern()
-    print(np.abs(np.dot(s.flatten().conj(), s2.flatten())))
+    print(s.fidelity(s2))
