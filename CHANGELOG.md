@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #181, #423: Structural separation of Pauli measurements
   - The class `Measurement` is now abstract and has two concrete subclasses: `PauliMeasurement` and `BlochMeasurement`.
   - `M` commands are now parameterized by an instance `Measurement` (instead of carrying a plane and an angle).
-  - Conversions are explicit with `Measurement.to_bloch()` and `Measurement.infer_pauli_measurements()`.  Pauli measurement inference uses `math.isclose` and has optional parameters `rel_tol` and `abs_tol`.
+  - Conversions are explicit with `Measurement.to_bloch()` and `Measurement.infer_pauli_measurements()`. Pauli measurement inference uses `math.isclose` and has optional parameters `rel_tol` and `abs_tol`.
 
 ## [0.3.4] - 2026-02-05
 
