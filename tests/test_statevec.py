@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.pattern import Pattern
 from graphix.sim.statevec import Statevec, _norm_numeric
 from graphix.states import BasicStates, PlanarState
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 class TestStatevec:
     """Test for Statevec class. Particularly new constructor."""
 
-    # test injitializing one qubit in plus state
+    # test initializing one qubit in plus state
     def test_default_success(self) -> None:
         vec = Statevec(nqubit=1)
         assert np.allclose(vec.psi, np.array([1, 1] / np.sqrt(2)))
@@ -143,6 +144,16 @@ class TestStatevec:
 
         with pytest.raises(ValueError):
             _vec = Statevec(nqubit=length - 1, data=test_vec)
+
+    def test_nqubits(self) -> None:
+        for i in [1, 2, 5]:
+            sv = Statevec(nqubit=i)
+            assert sv.nqubit == i
+
+    def test_nqubits_pattern(self) -> None:
+        p = Pattern(input_nodes=[0, 1, 2])
+        sv = p.simulate_pattern(backend="statevector")
+        assert sv.nqubit == 3
 
 
 def test_normalize() -> None:
