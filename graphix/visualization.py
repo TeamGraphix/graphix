@@ -9,9 +9,12 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 
 from graphix.flow.exceptions import FlowError
-from graphix.measurements import Measurement, PauliMeasurement
+from graphix.fundamentals import Sign
+from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
+from graphix.pretty_print import OutputFormat, angle_to_str
 
 # OpenGraph is needed for dataclass
 from graphix.opengraph import OpenGraph  # noqa: TC001
@@ -57,13 +60,14 @@ class GraphVisualizer:
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
+        show_measurement_angles: bool = False,
+        show_legend: bool = False,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
-        """
-        Visualize the graph with flow or gflow structure.
+        """Visualize the graph with flow or gflow structure.
 
         If there exists a flow structure, then the graph is visualized with the flow structure.
         If flow structure is not found and there exists a gflow structure, then the graph is visualized
@@ -73,11 +77,15 @@ class GraphVisualizer:
         Parameters
         ----------
         show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
+            If True, Pauli-measured nodes are filled with blue instead of black.
         show_local_clifford : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
+        show_measurement_angles : bool
+            If True, the measurement angles (in units of pi) are displayed adjacent to the nodes.
+        show_legend : bool
+            If True, a legend is displayed indicating node types and edge meanings.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -139,6 +147,8 @@ class GraphVisualizer:
             show_pauli_measurement,
             show_local_clifford,
             show_measurement_planes,
+            show_measurement_angles,
+            show_legend,
             show_loop,
             node_distance,
             figsize,
@@ -151,13 +161,14 @@ class GraphVisualizer:
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
+        show_measurement_angles: bool = False,
+        show_legend: bool = False,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
         filename: Path | None = None,
     ) -> None:
-        """
-        Visualize the graph with flow or gflow structure found from the given pattern.
+        """Visualize the graph with flow or gflow structure found from the given pattern.
 
         If pattern sequence is consistent with flow structure, then the graph is visualized with the flow structure.
         If it is not consistent with flow structure and consistent with gflow structure, then the graph is visualized
@@ -168,11 +179,15 @@ class GraphVisualizer:
         pattern : Pattern
             pattern to be visualized
         show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
+            If True, Pauli-measured nodes are filled with blue instead of black.
         show_local_clifford : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
+        show_measurement_angles : bool
+            If True, the measurement angles (in units of pi) are displayed adjacent to the nodes.
+        show_legend : bool
+            If True, a legend is displayed indicating node types and edge meanings.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -236,6 +251,8 @@ class GraphVisualizer:
             show_pauli_measurement,
             show_local_clifford,
             show_measurement_planes,
+            show_measurement_angles,
+            show_legend,
             show_loop,
             node_distance,
             figsize,
@@ -252,35 +269,78 @@ class GraphVisualizer:
         new_path[-1] = last_edge
         return new_path
 
-    def _draw_labels(self, pos: Mapping[int, _Point]) -> None:
-        fontsize = 12
-        if max(self.og.graph.nodes(), default=0) >= 100:
-            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
-        nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize)
-
-    def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> None:
-        """
-        Draw the nodes with different colors based on their role (input, output, or other).
+    def _draw_labels(self, pos: Mapping[int, _Point], dark_nodes: set[int] | None = None) -> None:
+        """Draw node number labels with appropriate text color.
 
         Parameters
         ----------
         pos : Mapping[int, tuple[float, float]]
-            dictionary of node positions.
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
+            Dictionary of node positions.
+        dark_nodes : set[int] | None
+            Nodes with dark backgrounds that need white text. If None, all labels are black.
         """
+        fontsize = 12
+        if max(self.og.graph.nodes(), default=0) >= 100:
+            fontsize = int(fontsize * 2 / len(str(max(self.og.graph.nodes()))))
+        if dark_nodes:
+            light_labels = {n: str(n) for n in self.og.graph.nodes() if n not in dark_nodes}
+            dark_labels = {n: str(n) for n in self.og.graph.nodes() if n in dark_nodes}
+            if light_labels:
+                nx.draw_networkx_labels(self.og.graph, pos, labels=light_labels, font_size=fontsize, font_color="black")
+            if dark_labels:
+                nx.draw_networkx_labels(self.og.graph, pos, labels=dark_labels, font_size=fontsize, font_color="white")
+        else:
+            nx.draw_networkx_labels(self.og.graph, pos, font_size=fontsize)
+
+    def __draw_nodes_role(self, pos: Mapping[int, _Point], show_pauli_measurement: bool = False) -> set[int]:
+        """Draw the nodes with shapes and fills following MBQC literature conventions.
+
+        Input nodes are drawn as squares, measured (non-output) nodes as filled circles,
+        and output nodes as empty circles. Pauli-measured nodes are optionally distinguished
+        with a blue fill.
+
+        Parameters
+        ----------
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary of node positions.
+        show_pauli_measurement : bool
+            If True, Pauli-measured nodes are filled with blue instead of black.
+
+        Returns
+        -------
+        set[int]
+            Set of node indices with dark (black) fill, used for white label text.
+        """
+        dark_nodes: set[int] = set()
+        input_set = set(self.og.input_nodes)
+        output_set = set(self.og.output_nodes)
+
         for node in self.og.graph.nodes():
-            color = "black"  # default color for 'other' nodes
-            inner_color = "white"
-            if node in self.og.input_nodes:
-                color = "red"
-            if node in self.og.output_nodes:
-                inner_color = "lightgray"
-            elif show_pauli_measurement and isinstance(self.og.measurements[node], PauliMeasurement):
-                inner_color = "lightblue"
+            is_input = node in input_set
+            is_output = node in output_set
+            is_pauli = (
+                show_pauli_measurement
+                and node in self.og.measurements
+                and isinstance(self.og.measurements[node], PauliMeasurement)
+            )
+
+            # Inputs are squares, all others are circles
+            marker = "s" if is_input else "o"
+
+            if is_output:
+                facecolor = "white"
+            elif is_pauli:
+                facecolor = "#4292c6"
+            else:
+                facecolor = "black"
+                dark_nodes.add(node)
+
             plt.scatter(
-                *pos[node], edgecolor=color, facecolor=inner_color, s=350, zorder=2
-            )  # Draw the nodes manually with scatter()
+                *pos[node], marker=marker, edgecolor="black", facecolor=facecolor,
+                s=350, zorder=2, linewidths=1.5,
+            )
+
+        return dark_nodes
 
     def visualize_graph(
         self,
@@ -293,18 +353,19 @@ class GraphVisualizer:
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
+        show_measurement_angles: bool = False,
+        show_legend: bool = False,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: _Point | None = None,
         filename: Path | None = None,
     ) -> None:
-        """
-        Visualizes the graph.
+        """Visualize the graph.
 
-        Nodes are colored based on their role (input, output, or other) and edges are depicted as arrows
-        or dashed lines depending on whether they are in the flow mapping. Vertical dashed lines separate
-        different layers of the graph. This function does not return anything but plots the graph
-        using matplotlib's pyplot.
+        Nodes are drawn following MBQC literature conventions: inputs as squares,
+        measured nodes as filled circles, and outputs as empty circles. Graph edges
+        are solid lines and flow arrows indicate corrections. A horizontal arrow
+        below the graph indicates the measurement order.
 
         Parameters
         ----------
@@ -319,11 +380,15 @@ class GraphVisualizer:
         corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None
             X and Z corrections if any.
         show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
+            If True, Pauli-measured nodes are filled with blue instead of black.
         show_local_clifford : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         show_measurement_planes : bool
             If True, the measurement planes are displayed adjacent to the nodes.
+        show_measurement_angles : bool
+            If True, the measurement angles (in units of pi) are displayed adjacent to the nodes.
+        show_legend : bool
+            If True, a legend is displayed indicating node types and edge meanings.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -341,7 +406,7 @@ class GraphVisualizer:
 
         edge_path, arrow_path = place_paths(pos)
 
-        if corrections is not None:
+        if show_legend or corrections is not None:
             # add some padding to the right for the legend
             figsize = (figsize[0] + 3.0, figsize[1])
 
@@ -349,10 +414,10 @@ class GraphVisualizer:
 
         for edge, path in edge_path.items():
             if len(path) == 2:
-                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="dashed", alpha=0.7)
+                nx.draw_networkx_edges(self.og.graph, pos, edgelist=[edge], style="solid", edge_color="gray", alpha=0.5)
             else:
                 curve = self._bezier_curve_linspace(path)
-                plt.plot(curve[:, 0], curve[:, 1], "k--", linewidth=1, alpha=0.7)
+                plt.plot(curve[:, 0], curve[:, 1], color="gray", linewidth=1, alpha=0.5)
 
         if arrow_path is not None:
             for arrow, path in arrow_path.items():
@@ -391,19 +456,21 @@ class GraphVisualizer:
                         arrowprops={"arrowstyle": "->", "color": color, "lw": 1},
                     )
 
-        self.__draw_nodes_role(pos, show_pauli_measurement)
+        dark_nodes = self.__draw_nodes_role(pos, show_pauli_measurement)
 
         if show_local_clifford:
             self.__draw_local_clifford(pos)
 
-        if show_measurement_planes:
-            self.__draw_measurement_planes(pos)
+        if show_measurement_planes or show_measurement_angles:
+            self.__draw_measurement_labels(pos, show_measurement_planes, show_measurement_angles)
 
-        self._draw_labels(pos)
+        self._draw_labels(pos, dark_nodes)
 
-        if corrections is not None:
-            # legend for arrow colors
-            plt.plot([], [], "k--", alpha=0.7, label="graph edge")
+        if show_legend:
+            self.__draw_legend(show_pauli_measurement, corrections, arrow_path is not None)
+        elif corrections is not None:
+            # backward-compatible minimal legend for correction arrows
+            plt.plot([], [], color="gray", alpha=0.5, label="graph edge")
             plt.plot([], [], color="tab:red", label="xflow")
             plt.plot([], [], color="tab:green", label="zflow")
             plt.plot([], [], color="tab:brown", label="xflow and zflow")
@@ -414,26 +481,39 @@ class GraphVisualizer:
         y_min = min((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the minimum y coordinate
         y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the maximum y coordinate
 
-        if l_k is not None and l_k:
-            # Draw the vertical lines to separate different layers
-            for layer in range(min(l_k.values()), max(l_k.values())):
-                plt.axvline(
-                    x=(layer + 0.5) * node_distance[0], color="gray", linestyle="--", alpha=0.5
-                )  # Draw line between layers
-            for layer in range(min(l_k.values()), max(l_k.values()) + 1):
+        has_layers = l_k is not None and l_k
+        if has_layers:
+            l_min_val = min(l_k.values())
+            l_max_val = max(l_k.values())
+            # Draw layer labels below nodes
+            for layer in range(l_min_val, l_max_val + 1):
                 plt.text(
-                    layer * node_distance[0], y_min - 0.5, f"L: {max(l_k.values()) - layer}", ha="center", va="top"
-                )  # Add layer label at bottom
+                    layer * node_distance[0], y_min - 0.4,
+                    f"L{l_max_val - layer}",
+                    ha="center", va="top", fontsize=8, color="gray",
+                )
+            # Draw horizontal arrow indicating measurement order
+            if l_max_val > l_min_val:
+                arrow_y = y_min - 0.7
+                plt.annotate(
+                    "",
+                    xy=(l_max_val * node_distance[0] + 0.3, arrow_y),
+                    xytext=(l_min_val * node_distance[0] - 0.3, arrow_y),
+                    arrowprops={"arrowstyle": "->", "color": "gray", "lw": 1.2},
+                )
+                mid_x = (l_min_val + l_max_val) / 2 * node_distance[0]
+                plt.text(mid_x, arrow_y - 0.2, "Measurement order", ha="center", va="top", fontsize=8, color="gray")
 
         plt.xlim(
             x_min - 0.5 * node_distance[0], x_max + 0.5 * node_distance[0]
         )  # Add some padding to the left and right
-        plt.ylim(y_min - 1, y_max + 0.5)  # Add some padding to the top and bottom
+        bottom_margin = 1.3 if has_layers else 1
+        plt.ylim(y_min - bottom_margin, y_max + 0.5)
 
         if filename is None:
             plt.show()
         else:
-            plt.savefig(filename)
+            plt.savefig(filename, bbox_inches="tight")
 
     def __draw_local_clifford(self, pos: Mapping[int, _Point]) -> None:
         if self.local_clifford is not None:
@@ -441,12 +521,124 @@ class GraphVisualizer:
                 x, y = pos[node] + np.array([0.2, 0.2])
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
-    def __draw_measurement_planes(self, pos: Mapping[int, _Point]) -> None:
-        for node, meas in self.og.measurements.items():
-            x, y = pos[node] + np.array([0.22, -0.2])
-            label = meas.to_plane_or_axis().name
+    def __draw_legend(
+        self,
+        show_pauli_measurement: bool,
+        corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None,
+        has_arrows: bool,
+    ) -> None:
+        """Draw a legend indicating node types and edge meanings.
 
-            plt.text(x, y, label, fontsize=9, zorder=3)
+        Parameters
+        ----------
+        show_pauli_measurement : bool
+            Whether Pauli-measured nodes are visually distinct.
+        corrections : tuple or None
+            X and Z corrections if any, to determine arrow legend entries.
+        has_arrows : bool
+            Whether flow arrows are present in the graph.
+        """
+        elements: list[Line2D] = []
+
+        # Node types
+        elements.append(Line2D(
+            [0], [0], marker="s", color="w", markerfacecolor="black",
+            markeredgecolor="black", markersize=10, label="Input",
+        ))
+        elements.append(Line2D(
+            [0], [0], marker="o", color="w", markerfacecolor="black",
+            markeredgecolor="black", markersize=10, label="Measured",
+        ))
+        if show_pauli_measurement:
+            elements.append(Line2D(
+                [0], [0], marker="o", color="w", markerfacecolor="#4292c6",
+                markeredgecolor="black", markersize=10, label="Pauli-measured",
+            ))
+        elements.append(Line2D(
+            [0], [0], marker="o", color="w", markerfacecolor="white",
+            markeredgecolor="black", markersize=10, label="Output",
+        ))
+
+        # Edge types
+        elements.append(Line2D([0], [0], color="gray", linewidth=1, alpha=0.5, label="Graph edge"))
+
+        if corrections is not None:
+            elements.append(Line2D([0], [0], color="tab:red", linewidth=1, label="X-correction"))
+            elements.append(Line2D([0], [0], color="tab:green", linewidth=1, label="Z-correction"))
+            elements.append(Line2D([0], [0], color="tab:brown", linewidth=1, label="X & Z-correction"))
+        elif has_arrows:
+            elements.append(Line2D([0], [0], color="black", linewidth=1, label="Flow"))
+
+        plt.legend(handles=elements, loc="center left", fontsize=9, bbox_to_anchor=(1, 0.5))
+
+    def __draw_measurement_labels(
+        self, pos: Mapping[int, _Point], show_planes: bool = False, show_angles: bool = False
+    ) -> None:
+        """Draw measurement labels (planes and/or angles) next to measured nodes.
+
+        Labels are rendered with a white background to ensure legibility over graph edges.
+
+        Parameters
+        ----------
+        pos : Mapping[int, tuple[float, float]]
+            Dictionary of node positions.
+        show_planes : bool
+            If True, display the measurement plane (XY, XZ, YZ) or axis (X, Y, Z).
+        show_angles : bool
+            If True, display the measurement angle in units of pi.
+        """
+        for node, meas in self.og.measurements.items():
+            label = self._format_measurement_label(meas, show_planes, show_angles)
+            if label:
+                x, y = pos[node]
+                plt.text(
+                    x + 0.22, y - 0.25, label, fontsize=8, zorder=3,
+                    bbox={"boxstyle": "round,pad=0.15", "facecolor": "white", "edgecolor": "none", "alpha": 0.85},
+                )
+
+    @staticmethod
+    def _format_measurement_label(meas: Measurement, show_planes: bool, show_angles: bool) -> str:
+        """Format a measurement label for display.
+
+        Parameters
+        ----------
+        meas : Measurement
+            The measurement to format.
+        show_planes : bool
+            Include measurement plane/axis in the label.
+        show_angles : bool
+            Include measurement angle in the label.
+
+        Returns
+        -------
+        str
+            Formatted label string, or empty string if nothing to show.
+        """
+        if isinstance(meas, PauliMeasurement):
+            if show_planes:
+                sign = "" if meas.sign == Sign.PLUS else "-"
+                return f"{sign}{meas.axis.name}"
+            if show_angles:
+                bloch = meas.to_bloch()
+                if isinstance(bloch.angle, (int, float)):
+                    return angle_to_str(bloch.angle, OutputFormat.Unicode)
+                return str(bloch.angle)
+            return ""
+        if isinstance(meas, BlochMeasurement):
+            plane_str = meas.plane.name if show_planes else ""
+            if show_angles:
+                if isinstance(meas.angle, (int, float)):
+                    angle_str = angle_to_str(meas.angle, OutputFormat.Unicode)
+                else:
+                    angle_str = str(meas.angle)
+                if plane_str:
+                    return f"{plane_str}({angle_str})"
+                return angle_str
+            return plane_str
+        # Generic Measurement fallback
+        if show_planes:
+            return meas.to_plane_or_axis().name
+        return ""
 
     def determine_figsize(
         self,

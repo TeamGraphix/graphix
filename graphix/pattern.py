@@ -1438,6 +1438,8 @@ class Pattern:
         show_pauli_measurement: bool = True,
         show_local_clifford: bool = False,
         show_measurement_planes: bool = False,
+        show_measurement_angles: bool = False,
+        show_legend: bool = False,
         show_loop: bool = True,
         node_distance: tuple[float, float] = (1, 1),
         figsize: tuple[int, int] | None = None,
@@ -1445,16 +1447,23 @@ class Pattern:
     ) -> None:
         """Visualize the underlying graph of the pattern with flow or gflow structure.
 
+        Nodes are drawn following MBQC literature conventions: inputs as squares,
+        measured nodes as filled circles, and outputs as empty circles.
+
         Parameters
         ----------
         flow_from_pattern : bool
             If True, the command sequence of the pattern is used to derive flow or gflow structure. If False, only the underlying graph is used.
         show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
+            If True, Pauli-measured nodes are filled with blue instead of black.
         show_local_clifford : bool
             If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
         show_measurement_planes : bool
             If True, measurement planes are displayed adjacent to the nodes.
+        show_measurement_angles : bool
+            If True, measurement angles (in units of pi) are displayed adjacent to the nodes.
+        show_legend : bool
+            If True, a legend is displayed indicating node types and edge meanings.
         show_loop : bool
             whether or not to show loops for graphs with gflow. defaulted to True.
         node_distance : tuple
@@ -1476,6 +1485,8 @@ class Pattern:
                 show_pauli_measurement=show_pauli_measurement,
                 show_local_clifford=show_local_clifford,
                 show_measurement_planes=show_measurement_planes,
+                show_measurement_angles=show_measurement_angles,
+                show_legend=show_legend,
                 show_loop=show_loop,
                 node_distance=node_distance,
                 figsize=figsize,
@@ -1486,6 +1497,8 @@ class Pattern:
                 show_pauli_measurement=show_pauli_measurement,
                 show_local_clifford=show_local_clifford,
                 show_measurement_planes=show_measurement_planes,
+                show_measurement_angles=show_measurement_angles,
+                show_legend=show_legend,
                 show_loop=show_loop,
                 node_distance=node_distance,
                 figsize=figsize,

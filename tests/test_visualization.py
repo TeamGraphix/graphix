@@ -9,7 +9,7 @@ import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command, visualization
-from graphix.fundamentals import ANGLE_PI
+from graphix.fundamentals import ANGLE_PI, Sign
 from graphix.measurements import Measurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
@@ -250,3 +250,92 @@ def test_draw_graph_reference(flow_and_not_pauli_presimulate: bool) -> Figure:
         flow_from_pattern=flow_and_not_pauli_presimulate, node_distance=(0.7, 0.6), show_measurement_planes=True
     )
     return plt.gcf()
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_measurement_angles(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        show_measurement_angles=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_measurement_planes_and_angles(fx_rng: Generator) -> None:
+    pattern = example_pflow(fx_rng)
+    pattern.draw_graph(
+        show_measurement_planes=True,
+        show_measurement_angles=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_legend(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        show_legend=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+@pytest.mark.usefixtures("mock_plot")
+def test_draw_graph_show_legend_with_corrections(fx_rng: Generator) -> None:
+    pattern = example_flow(fx_rng)
+    pattern.draw_graph(
+        flow_from_pattern=True,
+        show_legend=True,
+        show_pauli_measurement=True,
+        node_distance=(0.7, 0.6),
+    )
+
+
+def test_format_measurement_label_bloch() -> None:
+    bloch_xy = Measurement.XY(0.25)
+    # planes + angles
+    label = GraphVisualizer._format_measurement_label(bloch_xy, show_planes=True, show_angles=True)
+    assert "XY" in label
+    assert "/" in label  # pi/4 contains "/"
+    # planes only
+    assert GraphVisualizer._format_measurement_label(bloch_xy, show_planes=True, show_angles=False) == "XY"
+    # angles only
+    angle_label = GraphVisualizer._format_measurement_label(bloch_xy, show_planes=False, show_angles=True)
+    assert angle_label != ""
+    assert "XY" not in angle_label
+    # neither
+    assert GraphVisualizer._format_measurement_label(bloch_xy, show_planes=False, show_angles=False) == ""
+
+
+def test_format_measurement_label_bloch_zero() -> None:
+    bloch_zero = Measurement.XY(0)
+    label = GraphVisualizer._format_measurement_label(bloch_zero, show_planes=True, show_angles=True)
+    assert "XY" in label
+    assert "0" in label
+
+
+def test_format_measurement_label_bloch_xz() -> None:
+    bloch_xz = Measurement.XZ(0.5)
+    label = GraphVisualizer._format_measurement_label(bloch_xz, show_planes=True, show_angles=True)
+    assert "XZ" in label
+
+
+def test_format_measurement_label_pauli() -> None:
+    pauli_x = Measurement.X
+    # planes
+    assert GraphVisualizer._format_measurement_label(pauli_x, show_planes=True, show_angles=False) == "X"
+    assert GraphVisualizer._format_measurement_label(pauli_x, show_planes=True, show_angles=True) == "X"
+    # angles only (returns Bloch equivalent angle)
+    angle_label = GraphVisualizer._format_measurement_label(pauli_x, show_planes=False, show_angles=True)
+    assert angle_label == "0"
+    # neither
+    assert GraphVisualizer._format_measurement_label(pauli_x, show_planes=False, show_angles=False) == ""
+
+
+def test_format_measurement_label_pauli_minus() -> None:
+    from graphix.fundamentals import Axis
+    from graphix.measurements import PauliMeasurement
+
+    pauli_minus_z = PauliMeasurement(Axis.Z, Sign.MINUS)
+    label = GraphVisualizer._format_measurement_label(pauli_minus_z, show_planes=True, show_angles=False)
+    assert label == "-Z"
