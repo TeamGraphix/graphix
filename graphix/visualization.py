@@ -14,11 +14,11 @@ from matplotlib.lines import Line2D
 from graphix.flow.exceptions import FlowError
 from graphix.fundamentals import Sign
 from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
-from graphix.pretty_print import OutputFormat, angle_to_str
 
 # OpenGraph is needed for dataclass
 from graphix.opengraph import OpenGraph  # noqa: TC001
 from graphix.optimization import StandardizedPattern
+from graphix.pretty_print import OutputFormat, angle_to_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
@@ -336,8 +336,13 @@ class GraphVisualizer:
                 dark_nodes.add(node)
 
             plt.scatter(
-                *pos[node], marker=marker, edgecolor="black", facecolor=facecolor,
-                s=350, zorder=2, linewidths=1.5,
+                *pos[node],
+                marker=marker,
+                edgecolor="black",
+                facecolor=facecolor,
+                s=350,
+                zorder=2,
+                linewidths=1.5,
             )
 
         return dark_nodes
@@ -481,16 +486,20 @@ class GraphVisualizer:
         y_min = min((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the minimum y coordinate
         y_max = max((pos[node][1] for node in self.og.graph.nodes()), default=0)  # Get the maximum y coordinate
 
-        has_layers = l_k is not None and l_k
-        if has_layers:
+        has_layers = l_k is not None and len(l_k) > 0
+        if has_layers and l_k is not None:
             l_min_val = min(l_k.values())
             l_max_val = max(l_k.values())
             # Draw layer labels below nodes
             for layer in range(l_min_val, l_max_val + 1):
                 plt.text(
-                    layer * node_distance[0], y_min - 0.4,
+                    layer * node_distance[0],
+                    y_min - 0.4,
                     f"L{l_max_val - layer}",
-                    ha="center", va="top", fontsize=8, color="gray",
+                    ha="center",
+                    va="top",
+                    fontsize=8,
+                    color="gray",
                 )
             # Draw horizontal arrow indicating measurement order
             if l_max_val > l_min_val:
@@ -521,8 +530,8 @@ class GraphVisualizer:
                 x, y = pos[node] + np.array([0.2, 0.2])
                 plt.text(x, y, f"{self.local_clifford[node]}", fontsize=10, zorder=3)
 
+    @staticmethod
     def __draw_legend(
-        self,
         show_pauli_measurement: bool,
         corrections: tuple[Mapping[int, AbstractSet[int]], Mapping[int, AbstractSet[int]]] | None,
         has_arrows: bool,
@@ -538,34 +547,65 @@ class GraphVisualizer:
         has_arrows : bool
             Whether flow arrows are present in the graph.
         """
-        elements: list[Line2D] = []
-
-        # Node types
-        elements.append(Line2D(
-            [0], [0], marker="s", color="w", markerfacecolor="black",
-            markeredgecolor="black", markersize=10, label="Input",
-        ))
-        elements.append(Line2D(
-            [0], [0], marker="o", color="w", markerfacecolor="black",
-            markeredgecolor="black", markersize=10, label="Measured",
-        ))
+        elements: list[Line2D] = [
+            Line2D(
+                [0],
+                [0],
+                marker="s",
+                color="w",
+                markerfacecolor="black",
+                markeredgecolor="black",
+                markersize=10,
+                label="Input",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor="black",
+                markeredgecolor="black",
+                markersize=10,
+                label="Measured",
+            ),
+        ]
         if show_pauli_measurement:
-            elements.append(Line2D(
-                [0], [0], marker="o", color="w", markerfacecolor="#4292c6",
-                markeredgecolor="black", markersize=10, label="Pauli-measured",
-            ))
-        elements.append(Line2D(
-            [0], [0], marker="o", color="w", markerfacecolor="white",
-            markeredgecolor="black", markersize=10, label="Output",
-        ))
-
-        # Edge types
-        elements.append(Line2D([0], [0], color="gray", linewidth=1, alpha=0.5, label="Graph edge"))
+            elements.append(
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor="#4292c6",
+                    markeredgecolor="black",
+                    markersize=10,
+                    label="Pauli-measured",
+                )
+            )
+        elements.extend(
+            [
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor="white",
+                    markeredgecolor="black",
+                    markersize=10,
+                    label="Output",
+                ),
+                Line2D([0], [0], color="gray", linewidth=1, alpha=0.5, label="Graph edge"),
+            ]
+        )
 
         if corrections is not None:
-            elements.append(Line2D([0], [0], color="tab:red", linewidth=1, label="X-correction"))
-            elements.append(Line2D([0], [0], color="tab:green", linewidth=1, label="Z-correction"))
-            elements.append(Line2D([0], [0], color="tab:brown", linewidth=1, label="X & Z-correction"))
+            elements.extend(
+                [
+                    Line2D([0], [0], color="tab:red", linewidth=1, label="X-correction"),
+                    Line2D([0], [0], color="tab:green", linewidth=1, label="Z-correction"),
+                    Line2D([0], [0], color="tab:brown", linewidth=1, label="X & Z-correction"),
+                ]
+            )
         elif has_arrows:
             elements.append(Line2D([0], [0], color="black", linewidth=1, label="Flow"))
 
@@ -592,7 +632,11 @@ class GraphVisualizer:
             if label:
                 x, y = pos[node]
                 plt.text(
-                    x + 0.22, y - 0.25, label, fontsize=8, zorder=3,
+                    x + 0.22,
+                    y - 0.25,
+                    label,
+                    fontsize=8,
+                    zorder=3,
                     bbox={"boxstyle": "round,pad=0.15", "facecolor": "white", "edgecolor": "none", "alpha": 0.85},
                 )
 

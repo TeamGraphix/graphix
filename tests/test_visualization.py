@@ -9,8 +9,8 @@ import networkx as nx
 import pytest
 
 from graphix import Circuit, Pattern, command, visualization
-from graphix.fundamentals import ANGLE_PI, Sign
-from graphix.measurements import Measurement
+from graphix.fundamentals import ANGLE_PI, Axis, Sign
+from graphix.measurements import Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph, OpenGraphError
 from graphix.visualization import GraphVisualizer
 
@@ -301,10 +301,10 @@ def test_format_measurement_label_bloch() -> None:
     assert GraphVisualizer._format_measurement_label(bloch_xy, show_planes=True, show_angles=False) == "XY"
     # angles only
     angle_label = GraphVisualizer._format_measurement_label(bloch_xy, show_planes=False, show_angles=True)
-    assert angle_label != ""
+    assert angle_label
     assert "XY" not in angle_label
     # neither
-    assert GraphVisualizer._format_measurement_label(bloch_xy, show_planes=False, show_angles=False) == ""
+    assert not GraphVisualizer._format_measurement_label(bloch_xy, show_planes=False, show_angles=False)
 
 
 def test_format_measurement_label_bloch_zero() -> None:
@@ -329,13 +329,10 @@ def test_format_measurement_label_pauli() -> None:
     angle_label = GraphVisualizer._format_measurement_label(pauli_x, show_planes=False, show_angles=True)
     assert angle_label == "0"
     # neither
-    assert GraphVisualizer._format_measurement_label(pauli_x, show_planes=False, show_angles=False) == ""
+    assert not GraphVisualizer._format_measurement_label(pauli_x, show_planes=False, show_angles=False)
 
 
 def test_format_measurement_label_pauli_minus() -> None:
-    from graphix.fundamentals import Axis
-    from graphix.measurements import PauliMeasurement
-
     pauli_minus_z = PauliMeasurement(Axis.Z, Sign.MINUS)
     label = GraphVisualizer._format_measurement_label(pauli_minus_z, show_planes=True, show_angles=False)
     assert label == "-Z"
