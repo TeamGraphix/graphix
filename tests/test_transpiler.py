@@ -247,3 +247,13 @@ class TestTranspilerUnitGates:
         state = circuit.simulate_statevector(input_state=input_state).statevec
         state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
         assert state_mbqc.isclose(state)
+
+    def test_simple(self) -> None:
+        rng = np.random.default_rng(420)
+        circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
+        input_state = rand_state_vector(3, rng=rng)
+        state = circuit.simulate_statevector(input_state=input_state).statevec
+        state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
+        assert state_mbqc.isclose(state)
