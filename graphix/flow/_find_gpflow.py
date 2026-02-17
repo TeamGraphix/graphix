@@ -30,11 +30,11 @@ if TYPE_CHECKING:
     from graphix.opengraph import OpenGraph
 
 
-_M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
+_AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
 _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
 
 
-class AlgebraicOpenGraph(Generic[_M_co]):
+class AlgebraicOpenGraph(Generic[_AM_co]):
     """A class for providing an algebraic representation of open graphs as introduced in [1]. In particular, it allows managing the mapping between node labels of the graph and the relevant matrix indices. The flow-demand and order-demand matrices are cached properties.
 
     It reuses the class `:class: graphix.sim.base_backend.NodeIndex` introduced for managing the mapping between node numbers and qubit indices in the internal state of the backend.
@@ -55,12 +55,12 @@ class AlgebraicOpenGraph(Generic[_M_co]):
     [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
-    def __init__(self, og: OpenGraph[_M_co]) -> None:
+    def __init__(self, og: OpenGraph[_AM_co]) -> None:
         """Initialize AlgebraicOpenGraph objects.
 
         Parameters
         ----------
-        og : OpenGraph[_M_co]
+        og : OpenGraph[_AM_co]
             The open graph in its standard representation.
         """
         self.og = og
@@ -227,7 +227,7 @@ class PlanarAlgebraicOpenGraph(AlgebraicOpenGraph[_PM_co]):
 
 
 @dataclass(frozen=True)  # `NamedTuple` does not support multiple inheritance in Python 3.9 and 3.10
-class CorrectionMatrix(Generic[_M_co]):
+class CorrectionMatrix(Generic[_AM_co]):
     r"""A dataclass to bundle the correction matrix and its associated open graph.
 
     Attributes
@@ -242,7 +242,7 @@ class CorrectionMatrix(Generic[_M_co]):
     See Definition 3.6 in Mitosek and Backens, 2024 (arXiv:2410.23439).
     """
 
-    aog: AlgebraicOpenGraph[_M_co]
+    aog: AlgebraicOpenGraph[_AM_co]
     c_matrix: MatGF2
 
     def to_correction_function(self) -> dict[int, frozenset[int]]:
@@ -263,7 +263,7 @@ class CorrectionMatrix(Generic[_M_co]):
         return correction_function
 
 
-def _compute_p_matrix(aog: AlgebraicOpenGraph[_M_co], nb_matrix: MatGF2) -> MatGF2 | None:
+def _compute_p_matrix(aog: AlgebraicOpenGraph[_AM_co], nb_matrix: MatGF2) -> MatGF2 | None:
     r"""Perform the steps 8 - 12 of the general case (larger number of outputs than inputs) algorithm.
 
     Parameters
@@ -314,7 +314,7 @@ def _compute_p_matrix(aog: AlgebraicOpenGraph[_M_co], nb_matrix: MatGF2) -> MatG
 
 
 def _find_solvable_nodes(
-    aog: AlgebraicOpenGraph[_M_co],
+    aog: AlgebraicOpenGraph[_AM_co],
     kls_matrix: MatGF2,
     non_outputs_set: AbstractSet[int],
     solved_nodes: AbstractSet[int],
@@ -346,7 +346,7 @@ def _find_solvable_nodes(
 
 
 def _update_p_matrix(
-    aog: AlgebraicOpenGraph[_M_co],
+    aog: AlgebraicOpenGraph[_AM_co],
     kls_matrix: MatGF2,
     p_matrix: MatGF2,
     solvable_nodes: AbstractSet[int],
@@ -368,7 +368,7 @@ def _update_p_matrix(
 
 
 def _update_kls_matrix(
-    aog: AlgebraicOpenGraph[_M_co],
+    aog: AlgebraicOpenGraph[_AM_co],
     kls_matrix: MatGF2,
     kils_matrix: MatGF2,
     solvable_nodes: AbstractSet[int],
@@ -464,7 +464,7 @@ def _update_kls_matrix(
 
 
 def _compute_correction_matrix_general_case(
-    aog: AlgebraicOpenGraph[_M_co], flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2
+    aog: AlgebraicOpenGraph[_AM_co], flow_demand_matrix: MatGF2, order_demand_matrix: MatGF2
 ) -> MatGF2 | None:
     r"""Construct the generalized correction matrix :math:`C'C^B` for an open graph with larger number of outputs than inputs.
 
@@ -571,12 +571,12 @@ def _try_ordering_matrix_to_topological_generations(ordering_matrix: MatGF2) -> 
     return compute_topological_generations(neighbors, indegree_map, zero_indegree)
 
 
-def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> tuple[frozenset[int], ...] | None:
+def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_AM_co]) -> tuple[frozenset[int], ...] | None:
     r"""Compute the partial order compatible with the correction matrix if it exists.
 
     Parameters
     ----------
-    correction_matrix : CorrectionMatrix[_M_co]
+    correction_matrix : CorrectionMatrix[_AM_co]
         Algebraic representation of the correction function.
 
     Returns
@@ -613,17 +613,17 @@ def compute_partial_order_layers(correction_matrix: CorrectionMatrix[_M_co]) -> 
     return tuple(layers)
 
 
-def compute_correction_matrix(aog: AlgebraicOpenGraph[_M_co]) -> CorrectionMatrix[_M_co] | None:
+def compute_correction_matrix(aog: AlgebraicOpenGraph[_AM_co]) -> CorrectionMatrix[_AM_co] | None:
     """Return the correction matrix of the input open graph if it exists.
 
     Parameters
     ----------
-    aog : AlgebraicOpenGraph[_M_co]
+    aog : AlgebraicOpenGraph[_AM_co]
         Algberaic representation of the open graph whose correction matrix is calculated.
 
     Returns
     -------
-    correction_matrix : CorrectionMatrix[_M_co]
+    correction_matrix : CorrectionMatrix[_AM_co]
         Algebraic representation of the correction function.
 
     or `None`

@@ -2,33 +2,35 @@
 
 from __future__ import annotations
 
-import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
+from warnings import warn
 
 import networkx as nx
 
-from graphix import parameter
 from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
-from graphix.measurements import Measurement
+from graphix.measurements import BlochMeasurement, Measurement
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
     from graphix.flow.core import CausalFlow
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
 
 # TODO: Maybe move these definitions to graphix.fundamentals and graphix.measurements ? Now they are redefined in graphix.flow._find_gpflow, not very elegant.
-_M_co = TypeVar("_M_co", bound=AbstractMeasurement, covariant=True)
+_AM_co = TypeVar("_AM_co", bound=AbstractMeasurement, covariant=True)
 _PM_co = TypeVar("_PM_co", bound=AbstractPlanarMeasurement, covariant=True)
+_M = TypeVar("_M", bound=Measurement)
+_A = TypeVar("_A", bound=AbstractMeasurement)
+_B = TypeVar("_B", bound=AbstractMeasurement)
 
 
 @dataclass(frozen=True)
-class OpenGraph(Generic[_M_co]):
+class OpenGraph(Generic[_AM_co]):
     """An unmutable dataclass providing a representation of open graph states.
 
     Attributes
@@ -39,7 +41,7 @@ class OpenGraph(Generic[_M_co]):
         An ordered sequence of node labels corresponding to the open graph inputs.
     output_nodes : Sequence[int]
         An ordered sequence of node labels corresponding to the open graph outputs.
-    measurements : Mapping[int, _M_co]
+    measurements : Mapping[int, _AM_co]
         A mapping between the non-output nodes of the open graph (``key``) and their corresponding measurement label (``value``). Measurement labels can be specified as `Measurement`, `Plane` or `Axis` instances.
 
     Notes
@@ -49,12 +51,11 @@ class OpenGraph(Generic[_M_co]):
     Example
     -------
     >>> import networkx as nx
-    >>> from graphix.fundamentals import Plane
     >>> from graphix.opengraph import OpenGraph
     >>> from graphix.measurements import Measurement
     >>>
     >>> graph = nx.Graph([(0, 1), (1, 2)])
-    >>> measurements = {i: Measurement(0.5 * i, Plane.XY) for i in range(2)}
+    >>> measurements = {i: Measurement.XY(0.5 * i) for i in range(2)}
     >>> input_nodes = [0]
     >>> output_nodes = [2]
     >>> og = OpenGraph(graph, input_nodes, output_nodes, measurements)
@@ -63,7 +64,7 @@ class OpenGraph(Generic[_M_co]):
     graph: nx.Graph[int]
     input_nodes: Sequence[int]
     output_nodes: Sequence[int]
-    measurements: Mapping[int, _M_co]
+    measurements: Mapping[int, _AM_co]
 
     def __post_init__(self) -> None:
         """Validate the correctness of the open graph."""
@@ -86,8 +87,14 @@ class OpenGraph(Generic[_M_co]):
         if len(outputs) != len(self.output_nodes):
             raise OpenGraphError("Output nodes contain duplicates.")
 
-    def to_pattern(self: OpenGraph[Measurement]) -> Pattern:
+    def to_pattern(self: OpenGraph[Measurement], *, stacklevel: int = 1) -> Pattern:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -110,19 +117,142 @@ class OpenGraph(Generic[_M_co]):
         ----------
         [1] Browne et al., NJP 9, 250 (2007)
         """
-        for extractor in (self.find_causal_flow, self.find_pauli_flow):
-            flow = extractor()
-            if flow is not None:
-                return flow.to_corrections().to_pattern()
-
+        try:
+            bloch_case = self.downcast_bloch()
+        except TypeError:
+            flow: PauliFlow[Measurement] | None = None
+        else:
+            flow = bloch_case.find_causal_flow()
+        if flow is None:
+            flow = self.find_pauli_flow(stacklevel=stacklevel + 1)
+        if flow is not None:
+            return flow.to_corrections().to_pattern()
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
 
-    def isclose(self, other: OpenGraph[_M_co], rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+    def map(self: OpenGraph[_A], f: Callable[[_A], _B]) -> OpenGraph[_B]:
+        """Apply a function to every measurement of the open graph and return the resulting open graph.
+
+        Parameters
+        ----------
+        f: Callable[[_A], _B]
+            Function applied to each measurement.
+
+        Returns
+        -------
+        OpenGraph[_B]
+            The resulting open graph.
+
+        Notes
+        -----
+        The types of measurements can be changed by ``f``.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.map(lambda m: m.plane).measurements
+        {0: Plane.XY, 1: Plane.YZ}
+        """
+        measurements = {node: f(meas) for node, meas in self.measurements.items()}
+        return OpenGraph(self.graph, self.input_nodes, self.output_nodes, measurements)
+
+    def to_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
+        """Return the open graph where all measurements are converted to Bloch.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.X, 1: Measurement.Y}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.to_bloch().measurements
+        {0: Measurement.XY(0), 1: Measurement.XY(0.5)}
+        """
+        return self.map(lambda meas: meas.to_bloch())
+
+    def downcast_bloch(self: OpenGraph[Measurement]) -> OpenGraph[BlochMeasurement]:
+        """Return the open graph if all measurements are described as Bloch measurements; raise `TypeError` otherwise.
+
+        If this method succeeds, the returned graph is identical to
+        the original one, but this function narrows the static type of
+        the measurements.  The returned graph can be used with
+        functions that require all measurements are described as Bloch
+        measurements, such as :func:`OpenGraph.extract_causal_flow`.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.downcast_bloch().measurements
+        {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> measurements = {0: Measurement.X, 1: Measurement.Y}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.downcast_bloch()
+        Traceback (most recent call last):
+            ...
+        TypeError: Bloch measurement expected, but Pauli measurement was found.
+
+        """
+        return self.map(lambda meas: meas.downcast_bloch())
+
+    def infer_pauli_measurements(
+        self: OpenGraph[Measurement], rel_tol: float = 1e-09, abs_tol: float = 0.0
+    ) -> OpenGraph[Measurement]:
+        r"""Return an equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Pauli measurements are measurements with a Pauli angle,
+        i.e. an integer multiple of :math:`\pi/2`.
+
+        This method can be used before calling methods such as
+        `OpenGraph.find_pauli_flow`, that deal with Pauli measurements
+        in a special way.
+
+        Parameters
+        ----------
+        pattern : pattern
+            Source pattern.
+        rel_tol : float, optional
+            Relative tolerance for comparing angles, passed to :func:`math.isclose`.
+            Default is ``1e-9``.
+        abs_tol : float, optional
+            Absolute tolerance for comparing angles, passed to :func:`math.isclose`.
+            Default is ``0.0``.
+
+        Returns
+        -------
+        Pattern
+            An equivalent open graph in which Bloch measurements close to a Pauli measurement are replaced by Pauli measurements.
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XY(0.5), 1: Measurement.YZ(1)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.infer_pauli_measurements().measurements
+        {0: Measurement.Y, 1: -Measurement.Z}
+
+        """
+        return self.map(lambda meas: meas.to_pauli_or_bloch(rel_tol, abs_tol))
+
+    def isclose(self, other: OpenGraph[_AM_co], rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
         """Check if two open graphs are equal within a given tolerance.
 
         Parameters
         ----------
-        other : OpenGraph[_M_co]
+        other : OpenGraph[_AM_co]
         rel_tol : float
             Relative tolerance. Optional, defaults to ``1e-09``.
         abs_tol : float
@@ -215,6 +345,10 @@ class OpenGraph(Generic[_M_co]):
 
         This method is a wrapper over :func:`OpenGraph.find_causal_flow` with a single return type.
 
+        This method requires all measurements to be planar: to extract
+        the causal flow from a graph that contains Pauli measurements,
+        you can apply :func:`OpenGraph.to_bloch()` first.
+
         Returns
         -------
         CausalFlow[_PM_co]
@@ -228,6 +362,7 @@ class OpenGraph(Generic[_M_co]):
         See Also
         --------
         :func:`OpenGraph.find_causal_flow`
+
         """
         cf = self.find_causal_flow()
         if cf is None:
@@ -238,6 +373,10 @@ class OpenGraph(Generic[_M_co]):
         r"""Try to extract a maximally delayed generalised flow (gflow) on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.find_gflow` with a single return type.
+
+        This method requires all measurements to be planar: to extract
+        a gflow from a graph that contains Pauli measurements, you
+        can apply :func:`OpenGraph.to_bloch()` first.
 
         Returns
         -------
@@ -252,20 +391,27 @@ class OpenGraph(Generic[_M_co]):
         See Also
         --------
         :func:`OpenGraph.find_gflow`
+
         """
         gf = self.find_gflow()
         if gf is None:
             raise OpenGraphError("The open graph does not have a gflow.")
         return gf
 
-    def extract_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co]:
+    def extract_pauli_flow(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> PauliFlow[_AM_co]:
         r"""Try to extract a maximally delayed Pauli on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.find_pauli_flow` with a single return type.
 
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
+
         Returns
         -------
-        PauliFlow[_M_co]
+        PauliFlow[_AM_co]
             A Pauli flow object if the open graph has Pauli flow.
 
         Raises
@@ -275,15 +421,19 @@ class OpenGraph(Generic[_M_co]):
 
         See Also
         --------
-        :func:`OpenGraph.find_pauli_flow`
+        :func:`OpenGraph.find_pauli_flow`, :func:`OpenGraph.infer_pauli_measurements`
         """
-        pf = self.find_pauli_flow()
+        pf = self.find_pauli_flow(stacklevel=stacklevel + 1)
         if pf is None:
             raise OpenGraphError("The open graph does not have a Pauli flow.")
         return pf
 
     def find_causal_flow(self: OpenGraph[_PM_co]) -> CausalFlow[_PM_co] | None:
         """Return a causal flow on the open graph if it exists.
+
+        This method requires all measurements to be planar: to find
+        the causal flow from a graph that contains Pauli measurements,
+        you can apply :func:`OpenGraph.to_bloch()` first.
 
         Returns
         -------
@@ -307,6 +457,10 @@ class OpenGraph(Generic[_M_co]):
 
     def find_gflow(self: OpenGraph[_PM_co]) -> GFlow[_PM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
+
+        This method requires all measurements to be planar: to find
+        a gflow in a graph that contains Pauli measurements, you
+        can apply :func:`OpenGraph.to_bloch()` first.
 
         Returns
         -------
@@ -334,27 +488,51 @@ class OpenGraph(Generic[_M_co]):
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def find_pauli_flow(self: OpenGraph[_M_co]) -> PauliFlow[_M_co] | None:
+    def find_pauli_flow(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> PauliFlow[_AM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
-        PauliFlow[_M_co] | None
+        PauliFlow[_AM_co] | None
             A Pauli flow object if the open graph has Pauli flow or ``None`` otherwise.
 
         See Also
         --------
-        :func:`OpenGraph.extract_pauli_flow`
+        :func:`OpenGraph.extract_pauli_flow`, :func:`OpenGraph.infer_pauli_measurements`
 
         Notes
         -----
-        - Measurement instances with a Pauli angle (integer multiple of :math:`\pi/2`) are interpreted as `Axis` instances, in contrast with :func:`OpenGraph.find_gflow`.
+        - Measurements are considered to be Pauli only if they are represented as :class:`graphix.measurements.PauliMeasurement`. The method :func:`OpenGraph.infer_pauli_measurements` can be called first to convert all measurements with a Pauli angle (integer multiple of :math:`\pi/2`) into Pauli measurements.
         - This function implements the algorithm presented in Ref. [1] with polynomial complexity on the number of nodes, :math:`O(N^3)`.
 
         References
         ----------
         [1] Mitosek and Backens, 2024 (arXiv:2410.23439).
+
+        Example
+        -------
+        >>> import networkx as nx
+        >>> from graphix.opengraph import OpenGraph
+        >>> from graphix.measurements import Measurement
+        >>> graph = nx.Graph([(0, 1), (1, 2)])
+        >>> measurements = {0: Measurement.XZ(0.5), 1: Measurement.XZ(0.5)}
+        >>> og = OpenGraph(graph, [0], [2], measurements)
+        >>> og.extract_pauli_flow()
+        Traceback (most recent call last):
+            ...
+        graphix.opengraph.OpenGraphError: The open graph does not have a Pauli flow.
+        >>> og.infer_pauli_measurements().measurements
+        {0: Measurement.X, 1: Measurement.X}
+        >>> str(og.infer_pauli_measurements().extract_pauli_flow())
+        'p(0) = {1}, p(1) = {2}; {0, 1} < {2}'
         """
+        self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
         aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
@@ -363,19 +541,19 @@ class OpenGraph(Generic[_M_co]):
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def compose(self, other: OpenGraph[_M_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_M_co], dict[int, int]]:
+    def compose(self, other: OpenGraph[_AM_co], mapping: Mapping[int, int]) -> tuple[OpenGraph[_AM_co], dict[int, int]]:
         r"""Compose two open graphs by merging subsets of nodes from ``self`` and ``other``, and relabeling the nodes of ``other`` that were not merged.
 
         Parameters
         ----------
-        other : OpenGraph[_M_co]
+        other : OpenGraph[_AM_co]
             Open graph to be composed with ``self``.
         mapping: dict[int, int]
             Partial relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node labels, respectively.
 
         Returns
         -------
-        og: OpenGraph[_M_co]
+        og: OpenGraph[_AM_co]
             Composed open graph.
         mapping_complete: dict[int, int]
             Complete relabelling of the nodes in ``other``, with ``keys`` and ``values`` denoting the old and new node label, respectively.
@@ -436,9 +614,7 @@ class OpenGraph(Generic[_M_co]):
 
         return OpenGraph(g, inputs, outputs, measurements), mapping_complete
 
-    def subs(
-        self: OpenGraph[Measurement], variable: Parameter, substitute: ExpressionOrSupportsFloat
-    ) -> OpenGraph[Measurement]:
+    def subs(self: OpenGraph[_M], variable: Parameter, substitute: ExpressionOrSupportsFloat) -> OpenGraph[_M]:
         """Substitute a parameter with a value or expression in all measurement angles.
 
         Creates a new open graph where every measurement angle containing the specified variable is updated using the provided substitution. The original open graph instance remains unmodified.
@@ -468,7 +644,7 @@ class OpenGraph(Generic[_M_co]):
         >>> from graphix.parameter import Placeholder
         >>> # Initialize placeholders and open graph
         >>> parametric_angles = [Placeholder(f"alpha{i}") for i in range(2)]
-        >>> measurements = {node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)}
+        >>> measurements = {node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)}
         >>> og = OpenGraph(
         ...     graph=nx.Graph([(0, 1), (1, 2)]),
         ...     input_nodes=[0],
@@ -479,15 +655,9 @@ class OpenGraph(Generic[_M_co]):
         >>> new_og = og.subs(parametric_angles[0], 0.3)
         >>> # Note: og.subs(Placeholder("alpha0"), 0.3) would not trigger any substitution.
         """
-        measurements = {
-            node: Measurement(parameter.subs(meas.angle, variable, substitute), meas.plane)
-            for node, meas in self.measurements.items()
-        }
-        return dataclasses.replace(self, measurements=measurements)
+        return self.map(lambda meas: meas.subs(variable, substitute))
 
-    def xreplace(
-        self: OpenGraph[Measurement], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]
-    ) -> OpenGraph[Measurement]:
+    def xreplace(self: OpenGraph[_M], assignment: Mapping[Parameter, ExpressionOrSupportsFloat]) -> OpenGraph[_M]:
         """Perform parallel substitution of multiple parameters in measurement angles.
 
         Creates a new open graph where occurrences of parameters defined in the assignment mapping are replaced by their corresponding values. The original open graph instance remains unmodified.
@@ -516,17 +686,19 @@ class OpenGraph(Generic[_M_co]):
         >>> # Initialize placeholders
         >>> alpha = Placeholder("alpha")
         >>> beta = Placeholder("beta")
-        >>> measurements = {0: Measurement(alpha, Plane.XY), 1: Measurement(beta, Plane.XY)}
+        >>> measurements = {0: Measurement.XY(alpha), 1: Measurement.XY(beta)}
         >>> og = OpenGraph(nx.Graph([(0, 1)]), [0], [], measurements)
         >>> # Substitute multiple parameters at once
         >>> subs_map = {alpha: 0.5, beta: 1.2}
         >>> new_og = og.xreplace(subs_map)
         """
-        measurements = {
-            node: Measurement(parameter.xreplace(meas.angle, assignment), meas.plane)
-            for node, meas in self.measurements.items()
-        }
-        return dataclasses.replace(self, measurements=measurements)
+        return self.map(lambda meas: meas.xreplace(assignment))
+
+    def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
+        for m in self.measurements.values():
+            if isinstance(m, BlochMeasurement) and m.try_to_pauli() is not None:
+                warn("Open graph with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
+                return
 
 
 class OpenGraphError(Exception):

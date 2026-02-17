@@ -234,7 +234,7 @@ class TestTranspilerUnitGates:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
-        flow = pattern.extract_causal_flow()
+        flow = pattern.to_bloch().extract_causal_flow()
         flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))
@@ -243,6 +243,16 @@ class TestTranspilerUnitGates:
         rng = Generator(fx_bg.jumped(jumps))
         circuit = Circuit(3, instr=[instruction(rng)])
         pattern = circuit.transpile().pattern
+        input_state = rand_state_vector(3, rng=rng)
+        state = circuit.simulate_statevector(input_state=input_state).statevec
+        state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
+        assert np.abs(np.dot(state_mbqc.flatten().conjugate(), state.flatten())) == pytest.approx(1)
+
+    def test_simple(self) -> None:
+        rng = np.random.default_rng(420)
+        circuit = Circuit(3, instr=[instruction.CCX(0, (1, 2))])
+        pattern = circuit.transpile().pattern
+        pattern.minimize_space()
         input_state = rand_state_vector(3, rng=rng)
         state = circuit.simulate_statevector(input_state=input_state).statevec
         state_mbqc = pattern.simulate_pattern(input_state=input_state, rng=rng)
