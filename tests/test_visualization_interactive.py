@@ -1,3 +1,5 @@
+"""Tests for the interactive visualization module."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -98,6 +100,19 @@ class TestInteractiveGraphVisualizer:
         assert backend_instance.measure.call_count == 2
         assert backend_instance.correct_byproduct.call_count == 2
 
+        # Manually trigger update to test drawing logic for measured/active nodes
+        viz.ax_graph = MagicMock()
+        viz.ax_commands = MagicMock()
+        viz.slider = MagicMock()
+        viz.slider.val = len(pattern)
+        viz._update(len(pattern))
+
+        # Check that drawing methods were called
+        # Measured nodes (0, 1) should generally be lightgray
+        # Active node (2) should be white/blue
+        assert viz.ax_graph.add_patch.call_count > 0
+        assert viz.ax_graph.text.call_count > 0
+
     def test_update_graph_state_simulation_disabled(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test graph state update with simulation disabled."""
         mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
@@ -120,6 +135,17 @@ class TestInteractiveGraphVisualizer:
         assert 2 in active
         # Results should be empty as simulation is disabled
         assert results == {}
+
+        # Manually trigger update to test drawing logic without simulation
+        viz.ax_graph = MagicMock()
+        viz.ax_commands = MagicMock()
+        viz.slider = MagicMock()
+        viz.slider.val = len(pattern)
+        viz._update(len(pattern))
+
+        # Ensure text is drawn (commands, node labels)
+        assert viz.ax_commands.text.call_count > 0
+        assert viz.ax_graph.text.call_count > 0
 
     def test_navigation(self, pattern: Pattern, mocker: MagicMock) -> None:
         """Test step navigation methods."""
@@ -203,6 +229,28 @@ class TestInteractiveGraphVisualizer:
         mock_prev = mocker.patch.object(viz, "_prev_step")
         viz._on_key(valid_key_event)
         mock_prev.assert_called_once()
+
+    def test_z_correction_initialization(self, mocker: MagicMock) -> None:
+        """Test tracking of Z corrections specifically to cover Z initialization."""
+        # Create a pattern with a Z correction on a fresh node
+        pattern = Pattern(input_nodes=[0])
+        pattern.add(N(node=0))
+        pattern.add(Z(node=0, domain=set()))
+
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0)}, {}, {})
+
+        viz = InteractiveGraphVisualizer(pattern, enable_simulation=False)
+
+        # Trigger update to process the Z command
+        viz.ax_graph = MagicMock()
+        viz.ax_commands = MagicMock()
+        viz.slider = MagicMock()
+        viz._update(len(pattern))
 
         # Test pick event (clicking on command list)
         # We need a real Text object (or a mock that spec=Text) because _on_pick uses isinstance

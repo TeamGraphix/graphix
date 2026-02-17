@@ -1,3 +1,12 @@
+"""
+Interactive Visualization Demo
+============================
+
+This example demonstrates the interactive graph visualizer using a simple
+manually constructed pattern. It shows how to step through the visualization
+and observe state changes.
+"""
+
 from __future__ import annotations
 
 import sys

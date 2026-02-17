@@ -40,12 +40,12 @@ def main() -> None:
     # Apply unitary evolution for the problem Hamiltonian
     for i, (u, v) in enumerate(g.edges):
         circuit.cnot(u, v)
-        circuit.rz(v, xi[i])  # Rotation by random angle
+        circuit.rz(v, float(xi[i]))  # Rotation by random angle
         circuit.cnot(u, v)
 
     # Apply unitary evolution for the mixing Hamiltonian
     for v in g.nodes:
-        circuit.rx(v, theta[v])
+        circuit.rx(v, float(theta[v]))
 
     # 2. Transpile to MBQC Pattern
     # This automatically generates the measurement pattern from the gate circuit
