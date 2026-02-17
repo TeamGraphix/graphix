@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
+from warnings import warn
 
 import networkx as nx
 
@@ -11,13 +12,12 @@ from graphix.flow._find_cflow import find_cflow
 from graphix.flow._find_gpflow import AlgebraicOpenGraph, PlanarAlgebraicOpenGraph, compute_correction_matrix
 from graphix.flow.core import GFlow, PauliFlow
 from graphix.fundamentals import AbstractMeasurement, AbstractPlanarMeasurement
-from graphix.measurements import Measurement
+from graphix.measurements import BlochMeasurement, Measurement
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
     from graphix.flow.core import CausalFlow
-    from graphix.measurements import BlochMeasurement
     from graphix.parameter import ExpressionOrSupportsFloat, Parameter
     from graphix.pattern import Pattern
 
@@ -87,8 +87,14 @@ class OpenGraph(Generic[_AM_co]):
         if len(outputs) != len(self.output_nodes):
             raise OpenGraphError("Output nodes contain duplicates.")
 
-    def to_pattern(self: OpenGraph[Measurement]) -> Pattern:
+    def to_pattern(self: OpenGraph[Measurement], *, stacklevel: int = 1) -> Pattern:
         """Extract a deterministic pattern from an `OpenGraph[Measurement]` if it exists.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -118,7 +124,7 @@ class OpenGraph(Generic[_AM_co]):
         else:
             flow = bloch_case.find_causal_flow()
         if flow is None:
-            flow = self.find_pauli_flow()
+            flow = self.find_pauli_flow(stacklevel=stacklevel + 1)
         if flow is not None:
             return flow.to_corrections().to_pattern()
         raise OpenGraphError("The open graph does not have flow. It does not support a deterministic pattern.")
@@ -392,10 +398,16 @@ class OpenGraph(Generic[_AM_co]):
             raise OpenGraphError("The open graph does not have a gflow.")
         return gf
 
-    def extract_pauli_flow(self: OpenGraph[_AM_co]) -> PauliFlow[_AM_co]:
+    def extract_pauli_flow(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> PauliFlow[_AM_co]:
         r"""Try to extract a maximally delayed Pauli on the open graph.
 
         This method is a wrapper over :func:`OpenGraph.find_pauli_flow` with a single return type.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -411,7 +423,7 @@ class OpenGraph(Generic[_AM_co]):
         --------
         :func:`OpenGraph.find_pauli_flow`, :func:`OpenGraph.infer_pauli_measurements`
         """
-        pf = self.find_pauli_flow()
+        pf = self.find_pauli_flow(stacklevel=stacklevel + 1)
         if pf is None:
             raise OpenGraphError("The open graph does not have a Pauli flow.")
         return pf
@@ -476,8 +488,14 @@ class OpenGraph(Generic[_AM_co]):
             correction_matrix
         )  # The constructor returns `None` if the correction matrix is not compatible with any partial order on the open graph.
 
-    def find_pauli_flow(self: OpenGraph[_AM_co]) -> PauliFlow[_AM_co] | None:
+    def find_pauli_flow(self: OpenGraph[_AM_co], *, stacklevel: int = 1) -> PauliFlow[_AM_co] | None:
         r"""Return a maximally delayed Pauli on the open graph if it exists.
+
+        Parameters
+        ----------
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         Returns
         -------
@@ -514,6 +532,7 @@ class OpenGraph(Generic[_AM_co]):
         >>> str(og.infer_pauli_measurements().extract_pauli_flow())
         'p(0) = {1}, p(1) = {2}; {0, 1} < {2}'
         """
+        self._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
         aog = AlgebraicOpenGraph(self)
         correction_matrix = compute_correction_matrix(aog)
         if correction_matrix is None:
@@ -674,6 +693,12 @@ class OpenGraph(Generic[_AM_co]):
         >>> new_og = og.xreplace(subs_map)
         """
         return self.map(lambda meas: meas.xreplace(assignment))
+
+    def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
+        for m in self.measurements.values():
+            if isinstance(m, BlochMeasurement) and m.try_to_pauli() is not None:
+                warn("Open graph with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
+                return
 
 
 class OpenGraphError(Exception):

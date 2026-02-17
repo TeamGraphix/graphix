@@ -106,7 +106,12 @@ def test_pattern_pretty_print_random(fx_bg: PCG64, jumps: int, output: OutputFor
 
 @pytest.mark.parametrize("jumps", range(1, 11))
 @pytest.mark.parametrize(
-    "flow_extractor", [OpenGraph.extract_causal_flow, OpenGraph.extract_gflow, OpenGraph.extract_pauli_flow]
+    "flow_extractor",
+    [
+        lambda og: OpenGraph.extract_causal_flow(og.to_bloch()),
+        lambda og: OpenGraph.extract_gflow(og.to_bloch()),
+        OpenGraph.extract_pauli_flow,
+    ],
 )
 def test_flow_pretty_print_random(
     fx_bg: PCG64,
@@ -115,7 +120,7 @@ def test_flow_pretty_print_random(
 ) -> None:
     rng = Generator(fx_bg.jumped(jumps))
     rand_og = rand_circuit(5, 5, rng=rng).transpile().pattern.extract_opengraph()
-    flow = flow_extractor(rand_og.to_bloch())
+    flow = flow_extractor(rand_og)
 
     flow.to_ascii()
     flow.to_latex()

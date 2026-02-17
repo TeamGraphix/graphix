@@ -991,7 +991,7 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().extract_causal_flow().to_corrections().to_pattern()
+        p_test = p_ref.to_bloch().extract_causal_flow().to_corrections().to_pattern().infer_pauli_measurements()
 
         p_ref.remove_input_nodes()
         p_test.remove_input_nodes()
@@ -1010,7 +1010,8 @@ class TestPattern:
         depth = 2
         circuit_1 = rand_circuit(nqubits, depth, rng, use_ccx=False)
         p_ref = circuit_1.transpile().pattern
-        p_test = p_ref.to_bloch().extract_gflow().to_corrections().to_pattern()
+        p_test = p_ref.to_bloch().extract_gflow().to_corrections().to_pattern().infer_pauli_measurements()
+
         p_ref.remove_input_nodes()
         p_test.remove_input_nodes()
         p_ref.perform_pauli_measurements()

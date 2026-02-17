@@ -1400,7 +1400,7 @@ class Pattern:
         empty_nodes: list[int] = []
         self.__input_nodes = empty_nodes
 
-    def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False) -> None:
+    def perform_pauli_measurements(self, ignore_pauli_with_deps: bool = False, *, stacklevel: int = 1) -> None:
         """Perform Pauli measurements in the pattern using efficient stabilizer simulator.
 
         Parameters
@@ -1409,13 +1409,28 @@ class Pattern:
             Optional (*False* by default).
             If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
             If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
+        stacklevel : int, optional
+            Stack level to use for warnings. Defaults to 1, meaning that warnings
+            are reported at this function's call site.
 
         .. seealso:: :func:`measure_pauli`
 
         """
         if self.input_nodes:
             raise PatternError("Remove inputs with `self.remove_input_nodes()` before performing Pauli presimulation.")
-        self.__dict__.update(measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps).__dict__)
+        self.__dict__.update(
+            measure_pauli(self, ignore_pauli_with_deps=ignore_pauli_with_deps, stacklevel=stacklevel + 1).__dict__
+        )
+
+    def _warn_non_inferred_pauli_measurements(self, stacklevel: int) -> None:
+        for cmd in self:
+            if (
+                cmd.kind == CommandKind.M
+                and isinstance(cmd.measurement, BlochMeasurement)
+                and cmd.measurement.try_to_pauli() is not None
+            ):
+                warnings.warn("Pattern with non-inferred Pauli measurements.", stacklevel=stacklevel + 1)
+                return
 
     def draw_graph(
         self,
@@ -1709,7 +1724,7 @@ class RunnabilityError(PatternError):
         assert_never(self.reason)
 
 
-def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> Pattern:
+def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False, stacklevel: int = 1) -> Pattern:
     """Perform Pauli measurement of a pattern by fast graph state simulator.
 
     Uses the decorated-graph method implemented in graphix.graphsim to perform the measurements in Pauli bases, and then sort remaining nodes back into
@@ -1724,6 +1739,9 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> 
         Optional (*False* by default).
         If *True*, Pauli measurements with domains depending on other measures are preserved as-is in the pattern.
         If *False*, all Pauli measurements are preprocessed. Formally, measurements are swapped so that all Pauli measurements are applied first, and domains are updated accordingly.
+    stacklevel : int, optional
+        Stack level to use for warnings. Defaults to 1, meaning that warnings
+        are reported at this function's call site.
 
     Returns
     -------
@@ -1735,6 +1753,7 @@ def measure_pauli(pattern: Pattern, *, ignore_pauli_with_deps: bool = False) -> 
     .. seealso:: :class:`graphix.pattern.Pattern.remove_input_nodes`
     .. seealso:: :class:`graphix.graphsim.GraphState`
     """
+    pattern._warn_non_inferred_pauli_measurements(stacklevel=stacklevel + 1)
     pat = Pattern()
     standardized_pattern = optimization.StandardizedPattern.from_pattern(pattern)
     if not ignore_pauli_with_deps:
