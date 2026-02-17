@@ -182,7 +182,7 @@ class ComplexUnit(EnumReprMixin, Enum):
         Returns
         -------
         ComplexUnit  | None
-        Complex unit close to value, or `None` otherwise.
+        Complex unit close to value, or ``None`` otherwise.
         """
         if isinstance(value, ComplexUnit):
             return value
