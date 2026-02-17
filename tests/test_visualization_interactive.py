@@ -312,3 +312,47 @@ class TestInteractiveGraphVisualizer:
         # Note: InteractiveGraphVisualizer applies scaling after layout
         # default node_distance is (1, 1), so positions should match spring_pos
         assert viz.node_positions == spring_pos
+
+    def test_draw_edges_coverage(self, pattern: Pattern, mocker: MagicMock) -> None:
+        """Test that edge drawing logic is executed (covers lines 312-314)."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        # Provide positions for nodes 0, 1, 2
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+
+        viz = InteractiveGraphVisualizer(pattern)
+        viz.ax_graph = MagicMock()
+        viz.slider = MagicMock()
+
+        # Step 5 in our fixture pattern has entanglement E(0, 1) and E(1, 2)
+        # and no nodes have been measured yet.
+        viz._update(5)
+
+        # Verify that plot (used for edges) was called
+        # There should be 2 edges: (0, 1) and (1, 2)
+        assert viz.ax_graph.plot.call_count == 2
+
+    def test_draw_graph_exception_coverage(self, pattern: Pattern, mocker: MagicMock) -> None:
+        """Test the exception handling in _draw_graph (covers lines 355-357)."""
+        mock_visualizer = mocker.patch("graphix.visualization_interactive.GraphVisualizer")
+        mocker.patch("graphix.visualization_interactive.OpenGraph")
+        mocker.patch("matplotlib.pyplot.figure")
+
+        mock_vis_obj = MagicMock()
+        mock_visualizer.return_value = mock_vis_obj
+        mock_vis_obj.get_layout.return_value = ({0: (0, 0), 1: (1, 0), 2: (0, 1)}, {}, {})
+
+        viz = InteractiveGraphVisualizer(pattern)
+        viz.ax_graph = MagicMock()
+
+        # Force an exception during state update
+        mocker.patch.object(viz, "_update_graph_state", side_effect=ValueError("Test Exception"))
+        # Mock traceback to avoid cluttering test output
+        mocker.patch("traceback.print_exc")
+
+        # This should not raise but log/print
+        viz._draw_graph()
