@@ -145,6 +145,58 @@ class TestStatevec:
             _vec = Statevec(nqubit=length - 1, data=test_vec)
 
 
+class TestFidelityIsclose:
+    def test_fidelity_same_state(self) -> None:
+        state = Statevec(data=BasicStates.PLUS)
+        assert state.fidelity(state) == pytest.approx(1)
+
+    def test_fidelity_orthogonal(self) -> None:
+        zero = Statevec(data=BasicStates.ZERO)
+        one = Statevec(data=BasicStates.ONE)
+        assert zero.fidelity(one) == pytest.approx(0)
+
+    def test_fidelity_known_value(self) -> None:
+        # F(|0>, |+>) = 0.5
+        zero = Statevec(data=BasicStates.ZERO)
+        plus = Statevec(data=BasicStates.PLUS)
+        assert zero.fidelity(plus) == pytest.approx(0.5)
+
+    def test_fidelity_global_phase(self) -> None:
+        plus = Statevec(data=BasicStates.PLUS)
+        plus_rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * 1j)
+        assert plus.fidelity(plus_rotated) == pytest.approx(1)
+
+    def test_fidelity_symmetry(self, fx_rng: Generator) -> None:
+        length = 4
+        vec_a = fx_rng.random(length) + 1j * fx_rng.random(length)
+        vec_a /= np.sqrt(np.sum(np.abs(vec_a) ** 2))
+        vec_b = fx_rng.random(length) + 1j * fx_rng.random(length)
+        vec_b /= np.sqrt(np.sum(np.abs(vec_b) ** 2))
+        a = Statevec(data=vec_a)
+        b = Statevec(data=vec_b)
+        assert a.fidelity(b) == pytest.approx(b.fidelity(a))
+
+    def test_isclose_same_state(self) -> None:
+        state = Statevec(data=BasicStates.PLUS)
+        assert state.isclose(state)
+
+    def test_isclose_orthogonal(self) -> None:
+        zero = Statevec(data=BasicStates.ZERO)
+        one = Statevec(data=BasicStates.ONE)
+        assert not zero.isclose(one)
+
+    def test_isclose_global_phase(self) -> None:
+        plus = Statevec(data=BasicStates.PLUS)
+        rotated = Statevec(data=np.array([1, 1]) / np.sqrt(2) * np.exp(1j * 0.7))
+        assert plus.isclose(rotated)
+
+    def test_isclose_tolerance(self) -> None:
+        zero = Statevec(data=BasicStates.ZERO)
+        almost = Statevec(data=np.array([np.sqrt(1 - 1e-8), np.sqrt(1e-8)]))
+        assert not zero.isclose(almost)
+        assert zero.isclose(almost, atol=1e-6)
+
+
 def test_normalize() -> None:
     statevec = Statevec(nqubit=1, data=BasicStates.PLUS)
     statevec.remove_qubit(0)

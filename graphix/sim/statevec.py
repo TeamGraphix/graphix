@@ -388,6 +388,45 @@ class Statevec(DenseState):
         st1.evolve(op, qargs)
         return complex(np.dot(st2.psi.flatten().conjugate(), st1.psi.flatten()))
 
+    def fidelity(self, other: Statevec) -> float:
+        r"""Calculate the fidelity against another statevector.
+
+        The fidelity is defined as :math:`|\langle\psi_1|\psi_2\rangle|^2`.
+
+        Parameters
+        ----------
+        other : :class:`Statevec`
+            statevector to compare with
+
+        Returns
+        -------
+        float
+            Fidelity between the two statevectors.
+        """
+        inner = np.dot(self.flatten().conjugate(), other.flatten())
+        return float(np.abs(inner) ** 2)
+
+    def isclose(self, other: Statevec, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
+        """Check if two quantum states are equal up to global phase.
+
+        Two states are considered close if their fidelity is close to 1.
+
+        Parameters
+        ----------
+        other : :class:`Statevec`
+            statevector to compare with
+        rtol : float
+            relative tolerance for :func:`math.isclose`
+        atol : float
+            absolute tolerance for :func:`math.isclose`
+
+        Returns
+        -------
+        bool
+            ``True`` if the states are equal up to global phase.
+        """
+        return math.isclose(self.fidelity(other), 1, rel_tol=rtol, abs_tol=atol)
+
     def subs(self, variable: Parameter, substitute: ExpressionOrSupportsFloat) -> Statevec:
         """Return a copy of the state vector where all occurrences of the given variable in measurement angles are substituted by the given value."""
         result = Statevec()
