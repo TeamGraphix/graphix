@@ -1,14 +1,17 @@
-from graphix.pattern import Pattern
-from graphix.command import N, M, E, X, Z
-from graphix.fundamentals import Plane
-import sys
-import os
+from __future__ import annotations
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import sys
+from pathlib import Path
+
+from graphix.command import E, M, N, X, Z
+from graphix.fundamentals import Plane
+from graphix.pattern import Pattern
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from graphix.visualization_interactive import InteractiveGraphVisualizer
 
 
-def main():
+def main() -> None:
     # optimized pattern for QFT
     # Create a simple pattern manually for demonstration
     p = Pattern(input_nodes=[0, 1])

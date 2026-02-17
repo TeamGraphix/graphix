@@ -3,39 +3,38 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+import traceback
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from matplotlib.patches import Circle
+from matplotlib.text import Text
 from matplotlib.widgets import Button, Slider
 
 from graphix.clifford import Clifford
 from graphix.command import CommandKind, MeasureUpdate
 from graphix.measurements import Measurement
-from graphix.pattern import Pattern
 from graphix.pretty_print import OutputFormat, command_to_str
 from graphix.sim.statevec import StatevectorBackend
 from graphix.visualization import GraphVisualizer
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from graphix.pattern import Pattern
 
 
 class InteractiveGraphVisualizer:
-    """
-    Interactive visualization tool for MBQC patterns.
-
-    This visualizer provides a matplotlib-based GUI to step through the execution
-    of an MBQC pattern. It displays the sequence of commands and the corresponding
-    state of the graph state, including real-time simulation of measurement outcomes.
+    """Interactive visualization tool for MBQC patterns.
 
     Attributes
     ----------
     pattern : Pattern
         The MBQC pattern to visualize.
     node_distance : tuple[float, float]
-        Scale factors (x, y) for the node positions in the graph layout.
+        Scale factors (x, y) for the node positions.
+    enable_simulation : bool
+        If True, simulates the state vector and measurement outcomes.
     """
 
     def __init__(
@@ -44,18 +43,19 @@ class InteractiveGraphVisualizer:
         node_distance: tuple[float, float] = (1, 1),
         enable_simulation: bool = True,
     ) -> None:
-        """
-        Initialize the interactive visualizer.
+        """Construct an interactive visualizer.
 
         Parameters
         ----------
         pattern : Pattern
             The MBQC pattern to visualize.
         node_distance : tuple[float, float], optional
-            Scale factors for x and y coordinates of the graph nodes. Defaults to (1, 1).
+            Scale factors (x, y) for node positions. Defaults to (1, 1).
+        enable_simulation : bool, optional
+            If True, enables state vector simulation. Defaults to True.
         """
         self.pattern = pattern
-        self.node_positions = {}
+        self.node_positions: dict[int, tuple[float, float]] = {}
         self.node_distance = node_distance
         self.enable_simulation = enable_simulation
 
@@ -69,11 +69,11 @@ class InteractiveGraphVisualizer:
         # Layout optimized to prevent overlap:
         # Commands: Left 2% to 30%
         # Graph: Left 40% to 98%
-        self.ax_commands = self.fig.add_axes([0.02, 0.2, 0.28, 0.7])  # [left, bottom, width, height]
-        self.ax_graph = self.fig.add_axes([0.4, 0.2, 0.58, 0.7])
-        self.ax_slider = self.fig.add_axes([0.4, 0.05, 0.5, 0.03])
-        self.ax_prev = self.fig.add_axes([0.3, 0.05, 0.04, 0.04])
-        self.ax_next = self.fig.add_axes([0.92, 0.05, 0.04, 0.04])
+        self.ax_commands = self.fig.add_axes((0.02, 0.2, 0.28, 0.7))  # [left, bottom, width, height]
+        self.ax_graph = self.fig.add_axes((0.4, 0.2, 0.58, 0.7))
+        self.ax_slider = self.fig.add_axes((0.4, 0.05, 0.5, 0.03))
+        self.ax_prev = self.fig.add_axes((0.3, 0.05, 0.04, 0.04))
+        self.ax_next = self.fig.add_axes((0.92, 0.05, 0.04, 0.04))
 
         # Turn off axes frame for command list and graph
         self.ax_commands.axis("off")
@@ -83,77 +83,14 @@ class InteractiveGraphVisualizer:
         self.current_step = 0
         self.total_steps = len(pattern)
 
-    # ... (other methods) ...
-
-    def _draw_graph(self) -> None:
-        """Render the graph state on the right panel."""
-        try:
-            self.ax_graph.clear()
-
-            # Get current state from simulation
-            active_nodes, measured_nodes, active_edges, corrections, results = self._update_graph_state(
-                self.current_step
-            )
-
-            # Draw edges
-            for u, v in active_edges:
-                x1, y1 = self.node_positions[u]
-                x2, y2 = self.node_positions[v]
-                self.ax_graph.plot([x1, x2], [y1, y2], color="black", zorder=1)
-
-            # Draw nodes
-            # 1. Measured nodes (grey, with result text)
-            for node in measured_nodes:
-                if node in self.node_positions:
-                    x, y = self.node_positions[node]
-                    circle = plt.Circle((x, y), 0.1, color="lightgray", zorder=2)
-                    self.ax_graph.add_patch(circle)
-
-                    label_text = str(node)
-                    # Show measurement outcome if available
-                    if node in results:
-                        label_text += f"\n={results[node]}"
-
-                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, zorder=3)
-
-            # 2. Active nodes (white with colored edge, with correction text)
-            for node in active_nodes:
-                if node in self.node_positions:
-                    x, y = self.node_positions[node]
-                    circle = plt.Circle((x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2)
-                    self.ax_graph.add_patch(circle)
-
-                    label_text = str(node)
-                    # Show accumulated internal corrections
-                    if node in corrections:
-                        label_text += "\n" + "".join(sorted(corrections[node]))
-
-                    color = "black"
-                    if node in corrections:
-                        color = "blue"  # Highlight corrected nodes
-
-                    self.ax_graph.text(x, y, label_text, ha="center", va="center", fontsize=9, color=color, zorder=3)
-
-            # Set aspect close to equal and hide axes
-            self.ax_graph.set_aspect("equal")
-            self.ax_graph.set_xlim(self.x_limits)
-            self.ax_graph.set_ylim(self.y_limits)
-            self.ax_graph.axis("off")
-
-        except Exception as e:
-            import traceback
-
-            traceback.print_exc()
-            print(f"Error drawing graph: {e}", file=sys.stderr)
-        # Matplotlib widgets placeholders (initialized in visualize)
+        # Interaction state placeholders
         self.slider: Slider | None = None
         self.btn_prev: Button | None = None
         self.btn_next: Button | None = None
 
     def _prepare_layout(self) -> None:
-        """Calculate node positions for the graph."""
         # Build full graph to determine positions
-        g = nx.Graph()
+        g: Any = nx.Graph()
         for cmd in self.pattern:
             if cmd.kind == CommandKind.N:
                 g.add_node(cmd.node)
@@ -162,23 +99,8 @@ class InteractiveGraphVisualizer:
 
         # Use GraphVisualizer to determine positions based on flow/structure
         vis = GraphVisualizer(g, self.pattern.input_nodes, self.pattern.output_nodes)
-
-        # Try to find flow/gflow for better layout, fallback to spring layout
-        try:
-            from graphix.optimization import StandardizedPattern
-
-            pattern_std = StandardizedPattern.from_pattern(self.pattern)
-            try:
-                flow = pattern_std.extract_causal_flow()
-                self.node_positions = vis.place_flow(flow)
-            except Exception:
-                try:
-                    gflow = pattern_std.extract_gflow()
-                    self.node_positions = vis.place_gflow(gflow)
-                except Exception:
-                    self.node_positions = vis.place_without_structure()
-        except Exception:
-            self.node_positions = vis.place_without_structure()
+        pos_mapping, _, _ = vis.get_layout()
+        self.node_positions = dict(pos_mapping)
 
         # Apply scaling
         self.node_positions = {
@@ -219,7 +141,6 @@ class InteractiveGraphVisualizer:
         plt.show()
 
     def _draw_command_list(self) -> None:
-        """Render the list of commands in the left panel."""
         self.ax_commands.clear()
         self.ax_commands.axis("off")
         self.ax_commands.set_title(f"Commands ({self.total_steps})", loc="left")
@@ -232,7 +153,7 @@ class InteractiveGraphVisualizer:
         if end == self.total_steps:
             start = max(0, end - window_size)
 
-        cmds = self.pattern[start:end]
+        cmds: Any = self.pattern[start:end]  # type: ignore[index]
 
         for i, cmd in enumerate(cmds):
             abs_idx = start + i
@@ -260,35 +181,12 @@ class InteractiveGraphVisualizer:
                 picker=True,
             )
             # Store index with artist for picking
-            text_obj.index = abs_idx
+            text_obj.index = abs_idx  # type: ignore[attr-defined]
 
     def _update_graph_state(
         self, step: int
-    ) -> tuple[set, set, list[tuple[int, int]], dict[int, set[str]], dict[int, int]]:
-        """
-        Calculate the state of the graph by simulating the pattern up to `step`.
-
-        This method performs a full re-simulation using `StatevectorBackend`
-        to ensure deterministic measurement outcomes and correct adaptive behavior.
-
-        Parameters
-        ----------
-        step : int
-            Current execution step.
-
-        Returns
-        -------
-        active_nodes : set
-            Nodes currently in the graph (active).
-        measured_nodes : set
-            Nodes that have been measured.
-        active_edges : list[tuple[int, int]]
-            Edges currently in the graph.
-        corrections : dict
-            Accumulated Pauli corrections ('X', 'Z') for each node.
-        results : dict
-            Measurement outcomes (0 or 1) for measured nodes.
-        """
+    ) -> tuple[set[int], set[int], list[tuple[int, ...]], dict[int, set[str]], dict[int, int]]:
+        """Calculate the graph state by simulating the pattern up to `step`."""
         # Prepare return containers
         active_nodes = set()
         measured_nodes = set()
@@ -298,10 +196,9 @@ class InteractiveGraphVisualizer:
 
         if self.enable_simulation:
             # --- Simulation Mode ---
-            backend = StatevectorBackend(pattern=self.pattern)
+            backend = StatevectorBackend()
 
             # Prerun input nodes (standard MBQC initialization)
-            # Find all input nodes in the pattern
             input_nodes = self.pattern.input_nodes
             for node in input_nodes:
                 backend.add_nodes([node])
@@ -318,14 +215,8 @@ class InteractiveGraphVisualizer:
                 elif cmd.kind == CommandKind.M:
                     # --- Adaptive Measurement Logic (Feedforward) ---
                     # Calculate s and t signals from previous measurement results
-                    if cmd.s_domain:
-                        s_signal = sum(results.get(j, 0) for j in cmd.s_domain)
-                    else:
-                        s_signal = 0
-                    if cmd.t_domain:
-                        t_signal = sum(results.get(j, 0) for j in cmd.t_domain)
-                    else:
-                        t_signal = 0
+                    s_signal = sum(results.get(j, 0) for j in cmd.s_domain) if cmd.s_domain else 0
+                    t_signal = sum(results.get(j, 0) for j in cmd.t_domain) if cmd.t_domain else 0
 
                     s_bool = s_signal % 2 == 1
                     t_bool = t_signal % 2 == 1
@@ -370,12 +261,11 @@ class InteractiveGraphVisualizer:
                 # Only add edge if both nodes are currently active (not yet measured)
                 if u in current_active_nodes and v in current_active_nodes:
                     current_edges.add(tuple(sorted((u, v))))
-            elif cmd.kind == CommandKind.M:
-                if cmd.node in current_active_nodes:
-                    current_active_nodes.remove(cmd.node)
-                    current_measured_nodes.add(cmd.node)
-                    # Remove connected edges involving the measured node
-                    current_edges = {e for e in current_edges if cmd.node not in e}
+            elif cmd.kind == CommandKind.M and cmd.node in current_active_nodes:
+                current_active_nodes.remove(cmd.node)
+                current_measured_nodes.add(cmd.node)
+                # Remove connected edges involving the measured node
+                current_edges = {e for e in current_edges if cmd.node not in e}
 
             # Corrections are visualization-only metadata, handled in simulation block or ignored
 
@@ -386,7 +276,6 @@ class InteractiveGraphVisualizer:
         return active_nodes, measured_nodes, active_edges, corrections, results
 
     def _draw_graph(self) -> None:
-        """Render the graph state on the right panel."""
         try:
             self.ax_graph.clear()
 
@@ -406,7 +295,7 @@ class InteractiveGraphVisualizer:
             for node in measured_nodes:
                 if node in self.node_positions:
                     x, y = self.node_positions[node]
-                    circle = plt.Circle((x, y), 0.1, color="lightgray", zorder=2)
+                    circle = Circle((x, y), 0.1, color="lightgray", zorder=2)
                     self.ax_graph.add_patch(circle)
 
                     label_text = str(node)
@@ -420,7 +309,7 @@ class InteractiveGraphVisualizer:
             for node in active_nodes:
                 if node in self.node_positions:
                     x, y = self.node_positions[node]
-                    circle = plt.Circle((x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2)
+                    circle = Circle((x, y), 0.1, edgecolor="red", facecolor="white", linewidth=1.5, zorder=2)
                     self.ax_graph.add_patch(circle)
 
                     label_text = str(node)
@@ -440,14 +329,11 @@ class InteractiveGraphVisualizer:
             self.ax_graph.set_ylim(self.y_limits)
             self.ax_graph.axis("off")
 
-        except Exception as e:
-            import traceback
-
+        except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             print(f"Error drawing graph: {e}", file=sys.stderr)
 
     def _update(self, val: float) -> None:
-        """Update visualization when slider changes."""
         step = int(val)
         if step != self.current_step:
             self.current_step = step
@@ -455,26 +341,22 @@ class InteractiveGraphVisualizer:
             self._draw_graph()
             self.fig.canvas.draw_idle()
 
-    def _prev_step(self, event: object) -> None:
-        """Go backward one step."""
-        if self.current_step > 0:
+    def _prev_step(self, _event: Any) -> None:
+        if self.current_step > 0 and self.slider is not None:
             self.slider.set_val(self.current_step - 1)
 
-    def _next_step(self, event: object) -> None:
-        """Go forward one step."""
-        if self.current_step < self.total_steps:
+    def _next_step(self, _event: Any) -> None:
+        if self.current_step < self.total_steps and self.slider is not None:
             self.slider.set_val(self.current_step + 1)
 
-    def _on_key(self, event: object) -> None:
-        """Handle keyboard navigation."""
+    def _on_key(self, event: Any) -> None:
         if event.key == "right":
             self._next_step(None)
         elif event.key == "left":
             self._prev_step(None)
 
-    def _on_pick(self, event: object) -> None:
-        """Handle clicks on command list items."""
-        if isinstance(event.artist, plt.Text):
+    def _on_pick(self, event: Any) -> None:
+        if isinstance(event.artist, Text):
             idx = getattr(event.artist, "index", None)
-            if idx is not None:
+            if idx is not None and self.slider is not None:
                 self.slider.set_val(idx + 1)  # Jump to state AFTER the clicked command

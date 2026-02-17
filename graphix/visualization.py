@@ -94,41 +94,25 @@ class GraphVisualizer:
         self.meas_angles = meas_angles
         self.local_clifford = local_clifford
 
-    def visualize(
+    def get_layout(
         self,
-        show_pauli_measurement: bool = True,
-        show_local_clifford: bool = False,
-        show_measurement_planes: bool = False,
-        show_loop: bool = True,
-        node_distance: tuple[float, float] = (1, 1),
-        figsize: tuple[int, int] | None = None,
-        filename: Path | None = None,
-    ) -> None:
-        """
-        Visualize the graph with flow or gflow structure.
+    ) -> tuple[
+        Mapping[int, _Point],
+        Callable[
+            [Mapping[int, _Point]], tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]
+        ],
+        Mapping[int, int] | None,
+    ]:
+        """Determine the layout (positions, paths, layers) for the graph.
 
-        If there exists a flow structure, then the graph is visualized with the flow structure.
-        If flow structure is not found and there exists a gflow structure, then the graph is visualized
-        with the gflow structure.
-        If neither flow nor gflow structure is found, then the graph is visualized without any structure.
-
-        Parameters
-        ----------
-        show_pauli_measurement : bool
-            If True, the nodes with Pauli measurement angles are colored light blue.
-        show_local_clifford : bool
-            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
-        show_measurement_planes : bool
-            If True, the measurement planes are displayed adjacent to the nodes.
-        show_loop : bool
-            whether or not to show loops for graphs with gflow. defaulted to True.
-        node_distance : tuple
-            Distance multiplication factor between nodes for x and y directions.
-        figsize : tuple
-            Figure size of the plot.
-        filename : Path | None
-            If not None, filename of the png file to save the plot. If None, the plot is not saved.
-            Default in None.
+        Returns
+        -------
+        pos : dict
+            Node positions.
+        place_paths : callable
+            Function to place edges and arrows.
+        l_k : dict or None
+            Layer mapping.
         """
         og = OpenGraph(self.graph, list(self.v_in), list(self.v_out), self.meas_planes)
         causal_flow = og.find_causal_flow()
@@ -167,6 +151,46 @@ class GraphVisualizer:
                     pos: Mapping[int, _Point],
                 ) -> tuple[Mapping[_Edge, Sequence[_Point]], Mapping[_Edge, Sequence[_Point]] | None]:
                     return (self.place_edge_paths_without_structure(pos), None)
+
+        return pos, place_paths, l_k
+
+    def visualize(
+        self,
+        show_pauli_measurement: bool = True,
+        show_local_clifford: bool = False,
+        show_measurement_planes: bool = False,
+        show_loop: bool = True,
+        node_distance: tuple[float, float] = (1, 1),
+        figsize: tuple[int, int] | None = None,
+        filename: Path | None = None,
+    ) -> None:
+        """
+        Visualize the graph with flow or gflow structure.
+
+        If there exists a flow structure, then the graph is visualized with the flow structure.
+        If flow structure is not found and there exists a gflow structure, then the graph is visualized
+        with the gflow structure.
+        If neither flow nor gflow structure is found, then the graph is visualized without any structure.
+
+        Parameters
+        ----------
+        show_pauli_measurement : bool
+            If True, the nodes with Pauli measurement angles are colored light blue.
+        show_local_clifford : bool
+            If True, indexes of the local Clifford operator are displayed adjacent to the nodes.
+        show_measurement_planes : bool
+            If True, the measurement planes are displayed adjacent to the nodes.
+        show_loop : bool
+            whether or not to show loops for graphs with gflow. defaulted to True.
+        node_distance : tuple
+            Distance multiplication factor between nodes for x and y directions.
+        figsize : tuple
+            Figure size of the plot.
+        filename : Path | None
+            If not None, filename of the png file to save the plot. If None, the plot is not saved.
+            Default in None.
+        """
+        pos, place_paths, l_k = self.get_layout()
 
         self.visualize_graph(
             pos,
