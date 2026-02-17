@@ -174,5 +174,6 @@ exclude_also = [
   "raise NotImplementedError\\(.*\\)",
   "return NotImplemented",
   "typing_extensions.assert_never\\(.*\\)",
+  "assert_never\\(.*\\)",
   "@abc.abstractmethod",
 ]

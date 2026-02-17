@@ -234,7 +234,7 @@ class TestTranspilerUnitGates:
     def test_instruction_flow(self, fx_rng: Generator, instruction: InstructionTestCase) -> None:
         circuit = Circuit(3, instr=[instruction(fx_rng)])
         pattern = circuit.transpile().pattern
-        flow = pattern.extract_causal_flow()
+        flow = pattern.to_bloch().extract_causal_flow()
         flow.check_well_formed()
 
     @pytest.mark.parametrize("jumps", range(1, 11))

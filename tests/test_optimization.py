@@ -6,6 +6,7 @@ from numpy.random import PCG64, Generator
 from graphix.clifford import Clifford
 from graphix.command import C, Command, CommandKind, E, M, N, X, Z
 from graphix.fundamentals import ANGLE_PI, Plane
+from graphix.measurements import Measurement
 from graphix.optimization import StandardizedPattern, incorporate_pauli_results, remove_useless_domains
 from graphix.pattern import Pattern
 from graphix.random_objects import rand_circuit
@@ -110,7 +111,7 @@ def test_to_space_optimal_pattern() -> None:
             N(18),
             E((8, 17)),
             E((17, 18)),
-            M(8, angle=-0.75),
+            M(8, Measurement.XY(-0.75)),
             Z(18, {8}),
             X(17, {8}),
             C(17, (Clifford.S @ Clifford.Z)),

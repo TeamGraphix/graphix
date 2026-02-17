@@ -31,8 +31,8 @@ from graphix.flow.exceptions import (
     XZCorrectionsOrderError,
     XZCorrectionsOrderErrorReason,
 )
-from graphix.fundamentals import ANGLE_PI, AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane
-from graphix.measurements import Measurement
+from graphix.fundamentals import ANGLE_PI, AbstractMeasurement, AbstractPlanarMeasurement, Axis, Plane, Sign
+from graphix.measurements import BlochMeasurement, Measurement, PauliMeasurement
 from graphix.opengraph import OpenGraph
 from graphix.parameter import Placeholder
 from graphix.pattern import Pattern
@@ -68,7 +68,7 @@ def generate_causal_flow_0() -> CausalFlow[Plane]:
     )
 
 
-def generate_causal_flow_1() -> CausalFlow[Measurement]:
+def generate_causal_flow_1() -> CausalFlow[BlochMeasurement]:
     """Generate causal flow on H-shaped open graph.
 
     Open graph structure:
@@ -85,16 +85,16 @@ def generate_causal_flow_1() -> CausalFlow[Measurement]:
         graph=nx.Graph([(0, 2), (2, 3), (1, 3), (2, 4), (3, 5)]),
         input_nodes=[0, 1],
         output_nodes=[4, 5],
-        measurements=dict.fromkeys(range(4), Measurement(angle=0, plane=Plane.XY)),
+        measurements=dict.fromkeys(range(4), Measurement.X),
     )
     return CausalFlow(
-        og=og,
+        og=og.to_bloch(),
         correction_function={0: {2}, 1: {3}, 2: {4}, 3: {5}},
         partial_order_layers=[{4, 5}, {2, 3}, {0, 1}],
     )
 
 
-def generate_gflow_0() -> GFlow[Measurement]:
+def generate_gflow_0() -> GFlow[BlochMeasurement]:
     """Generate gflow on H-shaped open graph.
 
     Open graph structure:
@@ -115,7 +115,7 @@ def generate_gflow_0() -> GFlow[Measurement]:
         graph=nx.Graph([(0, 2), (2, 3), (1, 3), (2, 4), (3, 5)]),
         input_nodes=[0, 1],
         output_nodes=[4, 5],
-        measurements=dict.fromkeys(range(4), Measurement(angle=0, plane=Plane.XY)),
+        measurements=dict.fromkeys(range(4), Measurement.XY(0)),
     )
     return GFlow(
         og=og,
@@ -223,12 +223,12 @@ def generate_pauli_flow_1() -> PauliFlow[Measurement]:
         input_nodes=[0, 1],
         output_nodes=[6, 7],
         measurements={
-            0: Measurement(0.1, Plane.XY),  # XY
-            1: Measurement(0.1, Plane.XY),  # XY
-            2: Measurement(0.0, Plane.XY),  # X
-            3: Measurement(0.1, Plane.XY),  # XY
-            4: Measurement(0.0, Plane.XY),  # X
-            5: Measurement(0.5, Plane.XY),  # Y
+            0: Measurement.XY(0.1),  # XY
+            1: Measurement.XY(0.1),  # XY
+            2: Measurement.X,  # X
+            3: Measurement.XY(0.1),  # XY
+            4: Measurement.X,  # X
+            5: Measurement.Y,  # Y
         },
     )
     return PauliFlow(
@@ -354,11 +354,11 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                         E((4, 5)),
                         E((4, 6)),
                         E((5, 7)),
-                        M(0, angle=0.1),
+                        M(0, Measurement.XY(0.1)),
                         Z(3, {0}),
                         Z(4, {0}),
                         X(2, {0}),
-                        M(1, angle=0.1),
+                        M(1, Measurement.XY(0.1)),
                         Z(2, {1}),
                         Z(5, {1}),
                         X(3, {1}),
@@ -366,13 +366,13 @@ def prepare_test_xzcorrections() -> list[XZCorrectionsTestCase]:
                         Z(5, {2}),
                         Z(6, {2}),
                         X(4, {2}),
-                        M(3, angle=0.1),
+                        M(3, Measurement.XY(0.1)),
                         Z(4, {3}),
                         Z(7, {3}),
                         X(5, {3}),
                         M(4),
                         X(6, {4}),
-                        M(5, angle=0.5),
+                        M(5, Measurement.Y),
                         X(7, {5}),
                     ],
                     output_nodes=[6, 7],
@@ -420,12 +420,18 @@ class TestFlow:
         alpha = Placeholder("alpha")
         value = 0.3
         og = OpenGraph(
-            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(alpha, Plane.XY)}
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Measurement.XY(alpha)},
         )
         flow = og.extract_pauli_flow()
 
         og_ref = OpenGraph(
-            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(value, Plane.XY)}
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Measurement.XY(value)},
         )
         flow_ref = og_ref.extract_pauli_flow()
 
@@ -445,7 +451,7 @@ class TestFlow:
             graph=nx.Graph([(0, 1), (1, 2)]),
             input_nodes=[0],
             output_nodes=[2],
-            measurements={node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)},
+            measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
         flow = og.extract_pauli_flow()
 
@@ -453,7 +459,7 @@ class TestFlow:
             graph=nx.Graph([(0, 1), (1, 2)]),
             input_nodes=[0],
             output_nodes=[2],
-            measurements={node: Measurement(value, Plane.XY) for node in range(2)},
+            measurements={node: Measurement.XY(value) for node in range(2)},
         )
         flow_ref = og_ref.extract_pauli_flow()
 
@@ -487,7 +493,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 2), (2, 3), (1, 3), (2, 4), (3, 5)]),
             input_nodes=[0, 1],
             output_nodes=[4, 5],
-            measurements=dict.fromkeys(range(4), Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys(range(4), PauliMeasurement(Axis.X, Sign.PLUS)),
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(
@@ -514,7 +520,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (1, 2), (1, 3)]),
             input_nodes=[0],
             output_nodes=[2, 3],
-            measurements=dict.fromkeys(range(2), Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys(range(2), PauliMeasurement(Axis.X, Sign.PLUS)),
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={1: {0}})
@@ -536,7 +542,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (1, 2)]),
             input_nodes=[0],
             output_nodes=[],
-            measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys(range(3), PauliMeasurement(Axis.X, Sign.PLUS)),
         )
 
         corrections = XZCorrections.from_measured_nodes_mapping(
@@ -588,7 +594,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (2, 3)]),
             input_nodes=[],
             output_nodes=[3],
-            measurements=dict.fromkeys([0, 1, 2], Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys([0, 1, 2], PauliMeasurement(Axis.X, Sign.PLUS)),
         )
         x_corrections = {0: {1}, 2: {3}}
 
@@ -606,7 +612,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (2, 3)]),
             input_nodes=[],
             output_nodes=[1, 3],
-            measurements=dict.fromkeys([0, 2], Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys([0, 2], PauliMeasurement(Axis.X, Sign.PLUS)),
         )
         x_corrections = {0: {1}, 2: {3}}
 
@@ -621,7 +627,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (2, 3)]),
             input_nodes=[],
             output_nodes=[1, 3],
-            measurements=dict.fromkeys([0, 2], Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys([0, 2], PauliMeasurement(Axis.X, Sign.PLUS)),
         )
         x_corrections = {2: {3}}
 
@@ -636,7 +642,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (2, 3)]),
             input_nodes=[0],
             output_nodes=[1, 3],
-            measurements=dict.fromkeys([0, 2], Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys([0, 2], PauliMeasurement(Axis.X, Sign.PLUS)),
         )
         x_corrections = {0: {2}}
 
@@ -651,7 +657,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (1, 2), (2, 3)]),
             input_nodes=[0],
             output_nodes=[3],
-            measurements=dict.fromkeys(range(3), Measurement(angle=0, plane=Plane.XY)),
+            measurements=dict.fromkeys(range(3), PauliMeasurement(Axis.X, Sign.PLUS)),
         )
         with pytest.raises(XZCorrectionsGenericError) as exc_info:
             XZCorrections.from_measured_nodes_mapping(og=og, x_corrections={3: {1, 2}})
@@ -674,12 +680,18 @@ class TestXZCorrections:
         alpha = Placeholder("alpha")
         value = 0.3
         og = OpenGraph(
-            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(alpha, Plane.XY)}
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Measurement.XY(alpha)},
         )
         xzcorr = og.extract_causal_flow().to_corrections()
 
         og_ref = OpenGraph(
-            graph=nx.Graph([(0, 1)]), input_nodes=[0], output_nodes=[1], measurements={0: Measurement(value, Plane.XY)}
+            graph=nx.Graph([(0, 1)]),
+            input_nodes=[0],
+            output_nodes=[1],
+            measurements={0: Measurement.XY(value)},
         )
         xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
 
@@ -700,7 +712,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (1, 2)]),
             input_nodes=[0],
             output_nodes=[2],
-            measurements={node: Measurement(angle, Plane.XY) for node, angle in enumerate(parametric_angles)},
+            measurements={node: Measurement.XY(angle) for node, angle in enumerate(parametric_angles)},
         )
         xzcorr = og.extract_causal_flow().to_corrections()
 
@@ -708,7 +720,7 @@ class TestXZCorrections:
             graph=nx.Graph([(0, 1), (1, 2)]),
             input_nodes=[0],
             output_nodes=[2],
-            measurements={node: Measurement(value, Plane.XY) for node in range(2)},
+            measurements={node: Measurement.XY(value) for node in range(2)},
         )
         xzcorr_ref = og_ref.extract_causal_flow().to_corrections()
 
@@ -986,7 +998,7 @@ class TestIncorrectFlows:
                         graph=nx.Graph([(0, 1), (1, 2)]),
                         input_nodes=[0],
                         output_nodes=[2],
-                        measurements=dict.fromkeys(range(2), Measurement(0.5, Plane.XY)),
+                        measurements=dict.fromkeys(range(2), Measurement.Y),
                     ),
                     correction_function={0: {1}, 1: {2}},
                     partial_order_layers=[{2}, {0, 1}],
@@ -1011,7 +1023,7 @@ class TestIncorrectFlows:
                         graph=nx.Graph([(0, 1)]),
                         input_nodes=[0],
                         output_nodes=[1],
-                        measurements={0: Measurement(0, Plane.XZ)},
+                        measurements={0: Measurement.Z},
                     ),
                     correction_function={0: {1}},
                     partial_order_layers=[{1}, {0}],
